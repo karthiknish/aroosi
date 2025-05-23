@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -91,9 +91,23 @@ function AdminPageInner() {
 
   const queryClientInstance = useQueryClient();
 
+  const [adminError, setAdminError] = useState<string | null>(null);
+
   // Fetch blog posts and contact messages from Convex
   const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
   const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});
+
+  useEffect(() => {
+    if (
+      blogPostsRaw &&
+      (blogPostsRaw as any).error &&
+      /not authorized/i.test((blogPostsRaw as any).error.message)
+    ) {
+      setAdminError(
+        "You are not authorized to view this page. Please log in as an admin."
+      );
+    }
+  }, [blogPostsRaw]);
 
   // Map Convex data to expected types
   const blogPosts = blogPostsRaw?.map((post) => ({
@@ -294,6 +308,11 @@ function AdminPageInner() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {adminError && (
+        <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto mt-10 text-center">
+          <strong>Error:</strong> {adminError}
+        </div>
+      )}
       {/* Top Navigation */}
       <nav className="bg-white border-b border-gray-200 fixed w-full z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

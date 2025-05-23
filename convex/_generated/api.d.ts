@@ -23,6 +23,7 @@ import type * as scripts_cleanupDuplicateClerkUsers from "../scripts/cleanupDupl
 import type * as scripts_seedTestProfiles from "../scripts/seedTestProfiles.js";
 import type * as storage from "../storage.js";
 import type * as users from "../users.js";
+import type * as utils_requireAdmin from "../utils/requireAdmin.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   "scripts/seedTestProfiles": typeof scripts_seedTestProfiles;
   storage: typeof storage;
   users: typeof users;
+  "utils/requireAdmin": typeof utils_requireAdmin;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { requireAdmin } from "./utils/requireAdmin";
 
 export const createBlogPost = mutation({
   args: {
@@ -26,6 +27,8 @@ export const createBlogPost = mutation({
 export const listBlogPosts = query({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     const posts = await ctx.db.query("blogPosts").order("desc").collect();
     return posts;
   },
@@ -52,6 +55,8 @@ export const updateBlogPost = mutation({
     categories: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     await ctx.db.patch(args._id, {
       title: args.title,
       slug: args.slug,
@@ -68,6 +73,8 @@ export const updateBlogPost = mutation({
 export const deleteBlogPost = mutation({
   args: { _id: v.id("blogPosts") },
   handler: async (ctx, { _id }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     await ctx.db.delete(_id);
     return { success: true };
   },

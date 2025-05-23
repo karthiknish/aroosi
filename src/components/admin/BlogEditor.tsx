@@ -13,7 +13,6 @@ import Code from "@tiptap/extension-code";
 import CodeBlock from "@tiptap/extension-code-block";
 import HardBreak from "@tiptap/extension-hard-break";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
-import History from "@tiptap/extension-history";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Table from "@tiptap/extension-table";
@@ -36,6 +35,7 @@ import {
   Redo as RedoIcon,
   Eraser,
   Loader2,
+  X,
 } from "lucide-react";
 
 const MenuBar = ({
@@ -48,6 +48,12 @@ const MenuBar = ({
   cleaning: boolean;
 }) => {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkValue, setLinkValue] = useState("");
+  const [linkSelection, setLinkSelection] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
   if (!editor) return null;
   const buttons = [
     {
@@ -117,12 +123,14 @@ const MenuBar = ({
       key: "link",
       icon: LinkIcon,
       label: "Link",
-      onClick: () =>
-        editor
-          .chain()
-          .focus()
-          .setLink({ href: prompt("Enter URL") || "" })
-          .run(),
+      onClick: () => {
+        setLinkSelection({
+          from: editor.state.selection.from,
+          to: editor.state.selection.to,
+        });
+        setLinkValue(editor.getAttributes("link").href || "");
+        setLinkModalOpen(true);
+      },
       active: editor.isActive("link"),
     },
     {
@@ -172,31 +180,104 @@ const MenuBar = ({
     },
   ];
   return (
-    <div className="flex flex-wrap gap-2 mb-2 sticky top-0 z-10 bg-white/90 backdrop-blur p-2 rounded-t-lg border-b border-gray-200 shadow-sm">
-      {buttons.map((btn) => (
-        <div key={btn.key} className="relative">
-          <button
-            type="button"
-            onClick={btn.onClick}
-            className={`px-2 py-1 rounded transition font-semibold border border-transparent hover:bg-pink-50 focus:bg-pink-100 flex items-center gap-1 ${btn.active ? "bg-pink-100 text-pink-600 border-pink-200" : "text-gray-700"} ${btn.key === "clean" && cleaning ? "opacity-60 cursor-not-allowed" : ""}`}
-            onMouseEnter={() => setHovered(btn.key)}
-            onMouseLeave={() => setHovered(null)}
-            aria-label={btn.label}
-            disabled={btn.key === "clean" && cleaning}
-          >
-            <btn.icon className="w-4 h-4" />
-            {btn.key === "clean" && cleaning && (
-              <Loader2 className="w-4 h-4 ml-1 animate-spin text-pink-500" />
+    <>
+      <div className="flex flex-wrap gap-2 mb-2 sticky top-0 z-10 bg-white/90 backdrop-blur p-2 rounded-t-lg border-b border-gray-200 shadow-sm">
+        {buttons.map((btn) => (
+          <div key={btn.key} className="relative">
+            <button
+              type="button"
+              onClick={btn.onClick}
+              className={`px-2 py-1 rounded transition font-semibold border border-transparent hover:bg-pink-50 focus:bg-pink-100 flex items-center gap-1 ${btn.active ? "bg-pink-100 text-pink-600 border-pink-200" : "text-gray-700"} ${btn.key === "clean" && cleaning ? "opacity-60 cursor-not-allowed" : ""}`}
+              onMouseEnter={() => setHovered(btn.key)}
+              onMouseLeave={() => setHovered(null)}
+              aria-label={btn.label}
+              disabled={btn.key === "clean" && cleaning}
+            >
+              <btn.icon className="w-4 h-4" />
+              {btn.key === "clean" && cleaning && (
+                <Loader2 className="w-4 h-4 ml-1 animate-spin text-pink-500" />
+              )}
+            </button>
+            {hovered === btn.key && (
+              <div className="absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 bg-gray-900 text-white text-xs rounded shadow z-50 whitespace-nowrap pointer-events-none">
+                {btn.label}
+              </div>
             )}
-          </button>
-          {hovered === btn.key && (
-            <div className="absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 bg-gray-900 text-white text-xs rounded shadow z-50 whitespace-nowrap pointer-events-none">
-              {btn.label}
+          </div>
+        ))}
+      </div>
+      {/* Link Modal */}
+      {linkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl max-w-xs w-full p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+              onClick={() => setLinkModalOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-bold mb-4">Insert Link</h2>
+            <input
+              type="url"
+              className="w-full border rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-pink-400"
+              placeholder="https://example.com"
+              value={linkValue}
+              onChange={(e) => setLinkValue(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => setLinkModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-1 rounded bg-pink-600 hover:bg-pink-700 text-white font-semibold"
+                onClick={() => {
+                  if (linkSelection && editor) {
+                    editor
+                      .chain()
+                      .focus()
+                      .setTextSelection({
+                        from: linkSelection.from,
+                        to: linkSelection.to,
+                      })
+                      .setLink({ href: linkValue })
+                      .run();
+                  }
+                  setLinkModalOpen(false);
+                }}
+                disabled={!linkValue}
+              >
+                Insert
+              </button>
+              {editor && editor.isActive("link") && (
+                <button
+                  className="px-4 py-1 rounded bg-red-100 hover:bg-red-200 text-red-700 font-semibold"
+                  onClick={() => {
+                    if (linkSelection && editor) {
+                      editor
+                        .chain()
+                        .focus()
+                        .setTextSelection({
+                          from: linkSelection.from,
+                          to: linkSelection.to,
+                        })
+                        .unsetLink()
+                        .run();
+                    }
+                    setLinkModalOpen(false);
+                  }}
+                >
+                  Remove Link
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 };
 
@@ -227,7 +308,6 @@ export default function BlogEditor({
       CodeBlock,
       HardBreak,
       HorizontalRule,
-      History,
       Link,
       Image,
       Table.configure({ resizable: true }),
@@ -244,8 +324,29 @@ export default function BlogEditor({
         class:
           "prose max-w-none min-h-[300px] p-6 bg-gray-50 rounded-b-lg border border-gray-200 focus:outline-none shadow-md",
       },
+      handleDOMEvents: {},
     },
   });
+
+  // Add custom style for links in the editor
+  if (
+    typeof window !== "undefined" &&
+    !document.getElementById("tiptap-link-style")
+  ) {
+    const style = document.createElement("style");
+    style.id = "tiptap-link-style";
+    style.innerHTML = `
+      .tiptap-editor-content a {
+        color: #db2777;
+        text-decoration: underline;
+        transition: color 0.2s;
+      }
+      .tiptap-editor-content a:hover {
+        color: #a21caf;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   // Clean text handler
   const handleClean = async () => {
@@ -266,7 +367,9 @@ export default function BlogEditor({
   return (
     <div className="max-w-2xl mx-auto my-8 rounded-lg shadow-lg border border-gray-200 bg-white">
       <MenuBar editor={editor} onClean={handleClean} cleaning={cleaning} />
-      <EditorContent editor={editor} />
+      <div className="tiptap-editor-content">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

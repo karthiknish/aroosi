@@ -10,6 +10,7 @@ import {
 import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
+import { requireAdmin } from "./utils/requireAdmin";
 
 // --- Helper function to get user by Clerk ID ---
 const getUserByClerkIdInternal = async (
@@ -405,10 +406,14 @@ export const batchGetPublicProfiles = action({
   },
 });
 
+// Helper to check admin
+
 // List all profiles (for admin use only)
 export const listProfiles = query({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     return await ctx.db.query("profiles").collect();
   },
 });
@@ -417,6 +422,8 @@ export const listProfiles = query({
 export const deleteProfile = mutation({
   args: { id: v.id("profiles") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     await ctx.db.delete(args.id);
     return { success: true };
   },
@@ -480,6 +487,8 @@ export const adminUpdateProfile = mutation({
     }),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     await ctx.db.patch(args.id, args.updates);
     return { success: true };
   },
@@ -491,6 +500,8 @@ export const adminUpdateProfile = mutation({
 export const getProfileById = query({
   args: { id: v.id("profiles") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     const profile = await ctx.db.get(args.id);
     return profile;
   },
@@ -503,6 +514,8 @@ export const getProfileById = query({
 export const getMatchesForProfile = query({
   args: { profileId: v.id("profiles") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     // Get the profile
     const profile = await ctx.db.get(args.profileId);
     if (!profile) return [];
@@ -539,6 +552,8 @@ export const adminListProfiles = query({
     pageSize: v.number(),
   },
   handler: async (ctx, { search, page, pageSize }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     let allProfiles = await ctx.db.query("profiles").collect();
     // Join with user emails if needed
     const users = await ctx.db.query("users").collect();
@@ -556,7 +571,9 @@ export const adminListProfiles = query({
       });
     }
     // Sort by createdAt desc
-    allProfiles = allProfiles.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    allProfiles = allProfiles.sort(
+      (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+    );
     const total = allProfiles.length;
     const start = page * pageSize;
     const end = start + pageSize;
@@ -568,6 +585,8 @@ export const adminListProfiles = query({
 export const banUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     await ctx.db.patch(userId, { banned: true });
     // Optionally ban profile too
     const profile = await ctx.db
@@ -582,6 +601,8 @@ export const banUser = mutation({
 export const unbanUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     await ctx.db.patch(userId, { banned: false });
     const profile = await ctx.db
       .query("profiles")
@@ -595,6 +616,8 @@ export const unbanUser = mutation({
 export const deleteUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
     // Delete profile
     const profile = await ctx.db
       .query("profiles")
