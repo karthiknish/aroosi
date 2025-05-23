@@ -1,0 +1,486 @@
+"use strict";
+import {
+  internalMutation,
+  query,
+  mutation,
+  type QueryCtx,
+  type MutationCtx,
+  action,
+} from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
+
+// --- Helper function to get user by Clerk ID ---
+const getUserByClerkIdInternal = async (
+  ctx: QueryCtx | MutationCtx,
+  clerkId: string
+) => {
+  return await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+    .unique();
+};
+
+/**
+ * Retrieves the user record and their profile for the currently authenticated Clerk user.
+ */
+export const getCurrentUserWithProfile = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      // Not authenticated or token is invalid
+      return null;
+    }
+
+    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+
+    if (!user) {
+      // This can happen if the Clerk webhook for user creation hasn't fired yet
+      // or if there was an issue creating the user record in Convex.
+      console.warn(
+        `User with Clerk ID ${identity.subject} not found in Convex DB. Waiting for webhook or check webhook logs.`
+      );
+      return null;
+    }
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+
+    return { ...user, profile: profile || null }; // Profile might not exist if webhook created user but not profile yet
+  },
+});
+
+/**
+ * Internal mutation to create or update a user from a Clerk webhook.
+ * This should ONLY be called by an HTTP action triggered by Clerk.
+ * Ensures user exists in Convex and a basic profile record is created.
+ */
+export const internalUpsertUser = internalMutation(
+  async (ctx, { clerkId, email }: { clerkId: string; email: string }) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+      .unique();
+
+    let userId;
+
+    if (existingUser) {
+      userId = existingUser._id;
+      if (existingUser.email !== email) {
+        await ctx.db.patch(userId, { email });
+      }
+    } else {
+      // Defensive: check again before insert (handles race conditions)
+      const doubleCheck = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+        .unique();
+      if (doubleCheck) {
+        userId = doubleCheck._id;
+        if (doubleCheck.email !== email) {
+          await ctx.db.patch(userId, { email });
+        }
+      } else {
+        userId = await ctx.db.insert("users", { clerkId, email });
+      }
+    }
+
+    const existingProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!existingProfile) {
+      await ctx.db.insert("profiles", {
+        userId,
+        clerkId,
+        isProfileComplete: false,
+        createdAt: Date.now(),
+        // Initialize other fields as undefined or with defaults if necessary
+        fullName: undefined,
+        dateOfBirth: undefined,
+      });
+      console.log(`Created new profile for user ${userId}`);
+    } else {
+      if (!existingProfile.clerkId) {
+        await ctx.db.patch(existingProfile._id, { clerkId });
+      }
+      // If profile exists but createdAt is missing (e.g. old data), patch it.
+      // This is less likely if all new profiles get it, but good for data integrity.
+      if (existingProfile.createdAt === undefined) {
+        await ctx.db.patch(existingProfile._id, { createdAt: Date.now() });
+      }
+    }
+
+    return userId;
+  }
+);
+
+/**
+ * Updates the profile for the currently authenticated user.
+ */
+export const updateProfile = mutation({
+  args: {
+    fullName: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    gender: v.optional(
+      v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+    ),
+    ukCity: v.optional(v.string()),
+    ukPostcode: v.optional(v.string()),
+    religion: v.optional(v.string()),
+    caste: v.optional(v.string()),
+    motherTongue: v.optional(v.string()),
+    height: v.optional(v.string()),
+    maritalStatus: v.optional(
+      v.union(
+        v.literal("single"),
+        v.literal("divorced"),
+        v.literal("widowed"),
+        v.literal("annulled")
+      )
+    ),
+    education: v.optional(v.string()),
+    occupation: v.optional(v.string()),
+    annualIncome: v.optional(v.number()),
+    aboutMe: v.optional(v.string()),
+    partnerPreferenceAgeMin: v.optional(v.number()),
+    partnerPreferenceAgeMax: v.optional(v.number()),
+    partnerPreferenceReligion: v.optional(v.array(v.string())),
+    partnerPreferenceUkCity: v.optional(v.array(v.string())),
+    profileImageIds: v.optional(v.array(v.id("_storage"))),
+    // New fields for lifestyle/contact
+    phoneNumber: v.optional(v.string()),
+    diet: v.optional(
+      v.union(
+        v.literal("vegetarian"),
+        v.literal("non-vegetarian"),
+        v.literal("vegan"),
+        v.literal("eggetarian"),
+        v.literal("other")
+      )
+    ),
+    smoking: v.optional(
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+    ),
+    drinking: v.optional(
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+    ),
+    physicalStatus: v.optional(
+      v.union(
+        v.literal("normal"),
+        v.literal("differently-abled"),
+        v.literal("other")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, message: "Not authenticated" };
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      return { success: false, message: "User not found in Convex" };
+    }
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!profile) {
+      return { success: false, message: "Profile not found for user" };
+    }
+
+    let newProfileCompleteStatus = profile.isProfileComplete;
+    // Check essential fields only if profile is not already marked complete
+    if (
+      profile.isProfileComplete === false ||
+      profile.isProfileComplete === undefined
+    ) {
+      const essentialFields = [
+        "fullName",
+        "dateOfBirth",
+        "gender",
+        "ukCity",
+        "aboutMe",
+      ];
+      let allEssentialFilled = true;
+
+      const tempProfileDataForCheck = { ...profile, ...args }; // Combine existing and new data for check
+
+      for (const field of essentialFields) {
+        const value =
+          tempProfileDataForCheck[
+            field as keyof typeof tempProfileDataForCheck
+          ];
+        if (
+          value === undefined ||
+          value === null ||
+          (typeof value === "string" && value.trim() === "")
+        ) {
+          allEssentialFilled = false;
+          break;
+        }
+      }
+      if (allEssentialFilled) {
+        newProfileCompleteStatus = true;
+      }
+    }
+
+    const updatePayload: any = { ...args }; // Start with args
+    if (newProfileCompleteStatus !== profile.isProfileComplete) {
+      updatePayload.isProfileComplete = newProfileCompleteStatus;
+    }
+
+    // Ensure updatedAt is always set on any profile modification
+    updatePayload.updatedAt = Date.now();
+
+    try {
+      await ctx.db.patch(profile._id, updatePayload);
+      return {
+        success: true,
+        message: "Profile updated successfully",
+        isProfileComplete: newProfileCompleteStatus,
+      };
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return { success: false, message: "Failed to update profile" };
+    }
+  },
+});
+
+/**
+ * Retrieves a user's public profile information.
+ * This is for displaying profiles to other users. Filter sensitive information.
+ */
+export const getUserPublicProfile = query({
+  args: { userId: v.id("users") }, // Or use clerkId: v.string() if you want to query by that
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      console.warn(
+        `Public profile query: User with Convex ID ${args.userId} not found.`
+      );
+      return null;
+    }
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!profile) {
+      console.warn(
+        `Public profile query: Profile for user ${user._id} not found.`
+      );
+      return null;
+    }
+
+    if (profile.banned === true) {
+      // Hide banned profiles from the frontend
+      return null;
+    }
+
+    // Explicitly list fields to return for public view to ensure privacy
+    return {
+      // User-related info (be cautious)
+      // clerkId: user.clerkId, // Usually not public
+      // email: user.email, // Usually not public
+
+      // Profile-related info
+      profile: {
+        fullName: profile.fullName,
+        ukCity: profile.ukCity,
+        religion: profile.religion,
+        motherTongue: profile.motherTongue,
+        height: profile.height,
+        maritalStatus: profile.maritalStatus,
+        education: profile.education,
+        occupation: profile.occupation,
+        aboutMe: profile.aboutMe,
+        profileImageIds: profile.profileImageIds, // Assuming these are safe and you handle their URLs correctly
+        createdAt: profile.createdAt, // Useful for 'Member since'
+        // Explicitly DO NOT include: dateOfBirth, ukPostcode, caste (unless desired for your community),
+        // annualIncome, partner preferences, or other sensitive details.
+      },
+    };
+  },
+});
+
+// Block a user
+export const blockUser = mutation({
+  args: {
+    blockerUserId: v.id("users"),
+    blockedUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    if (args.blockerUserId === args.blockedUserId)
+      throw new Error("Cannot block yourself");
+    // Prevent duplicate blocks
+    const blocks = await ctx.db
+      .query("blocks")
+      .withIndex("by_blocker", (q) => q.eq("blockerUserId", args.blockerUserId))
+      .collect();
+    const existing = blocks.find(
+      (block) => block.blockedUserId === args.blockedUserId
+    );
+    if (existing) return { success: true };
+    await ctx.db.insert("blocks", {
+      blockerUserId: args.blockerUserId,
+      blockedUserId: args.blockedUserId,
+      createdAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+// Unblock a user
+export const unblockUser = mutation({
+  args: {
+    blockerUserId: v.id("users"),
+    blockedUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const blocks = await ctx.db
+      .query("blocks")
+      .withIndex("by_blocker", (q) => q.eq("blockerUserId", args.blockerUserId))
+      .collect();
+    const block = blocks.find(
+      (block) => block.blockedUserId === args.blockedUserId
+    );
+    if (block) await ctx.db.delete(block._id);
+    return { success: true };
+  },
+});
+
+// Check if a user has blocked another
+export const isBlocked = query({
+  args: {
+    blockerUserId: v.id("users"),
+    blockedUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const blocks = await ctx.db
+      .query("blocks")
+      .withIndex("by_blocker", (q) => q.eq("blockerUserId", args.blockerUserId))
+      .collect();
+    const block = blocks.find(
+      (block) => block.blockedUserId === args.blockedUserId
+    );
+    return !!block;
+  },
+});
+
+export const batchGetPublicProfiles = action({
+  args: { userIds: v.array(v.id("users")) },
+  handler: async (
+    ctx,
+    args
+  ): Promise<Array<{ userId: Id<"users">; profile: any }>> => {
+    const results: Array<{ userId: Id<"users">; profile: any } | null> =
+      await Promise.all(
+        args.userIds.map(async (userId) => {
+          const res: { profile: any } | null = await ctx.runQuery(
+            api.users.getUserPublicProfile,
+            { userId }
+          );
+          return res && res.profile ? { userId, profile: res.profile } : null;
+        })
+      );
+    return results.filter(Boolean) as Array<{
+      userId: Id<"users">;
+      profile: any;
+    }>;
+  },
+});
+
+// List all profiles (for admin use only)
+export const listProfiles = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("profiles").collect();
+  },
+});
+
+// Mutation to delete a profile by its _id
+export const deleteProfile = mutation({
+  args: { id: v.id("profiles") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+    return { success: true };
+  },
+});
+
+export const adminUpdateProfile = mutation({
+  args: {
+    id: v.id("profiles"),
+    updates: v.object({
+      fullName: v.optional(v.string()),
+      ukCity: v.optional(v.string()),
+      gender: v.optional(
+        v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+      ),
+      dateOfBirth: v.optional(v.string()),
+      religion: v.optional(v.string()),
+      caste: v.optional(v.string()),
+      motherTongue: v.optional(v.string()),
+      height: v.optional(v.string()),
+      maritalStatus: v.optional(
+        v.union(
+          v.literal("single"),
+          v.literal("divorced"),
+          v.literal("widowed"),
+          v.literal("annulled")
+        )
+      ),
+      education: v.optional(v.string()),
+      occupation: v.optional(v.string()),
+      annualIncome: v.optional(v.number()),
+      aboutMe: v.optional(v.string()),
+      phoneNumber: v.optional(v.string()),
+      diet: v.optional(
+        v.union(
+          v.literal("vegetarian"),
+          v.literal("non-vegetarian"),
+          v.literal("vegan"),
+          v.literal("eggetarian"),
+          v.literal("other")
+        )
+      ),
+      smoking: v.optional(
+        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      ),
+      drinking: v.optional(
+        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      ),
+      physicalStatus: v.optional(
+        v.union(
+          v.literal("normal"),
+          v.literal("differently-abled"),
+          v.literal("other")
+        )
+      ),
+      partnerPreferenceAgeMin: v.optional(v.number()),
+      partnerPreferenceAgeMax: v.optional(v.number()),
+      partnerPreferenceReligion: v.optional(v.array(v.string())),
+      partnerPreferenceUkCity: v.optional(v.array(v.string())),
+      profileImageIds: v.optional(v.array(v.id("_storage"))),
+      banned: v.optional(v.boolean()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, args.updates);
+    return { success: true };
+  },
+});
