@@ -31,18 +31,13 @@ import { BlogPosts } from "@/components/admin/BlogPosts";
 import { CreatePost } from "@/components/admin/CreatePost";
 import { ProfileManagement } from "@/components/admin/ProfileManagement";
 import { api } from "@/../convex/_generated/api";
-import { useQuery as useConvexQuery } from "convex/react";
-
-// Add type declarations for the modules
-declare module "remark-gfm" {
-  const content: any;
-  export default content;
-}
-
-declare module "rehype-highlight" {
-  const content: any;
-  export default content;
-}
+import {
+  useQuery as useConvexQuery,
+  useMutation as useConvexMutation,
+} from "convex/react";
+import Head from "next/head";
+import { motion } from "framer-motion";
+import { Id } from "@/../convex/_generated/dataModel";
 
 interface BlogPost {
   _id: string;
@@ -53,6 +48,7 @@ interface BlogPost {
   imageUrl?: string;
   createdAt: string;
   updatedAt: string;
+  categories?: string[];
 }
 
 interface ContactMessage {
@@ -69,6 +65,7 @@ const queryClient = new QueryClient();
 
 function AdminPageInner() {
   const [activeTab, setActiveTab] = useState<string>("contact");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [title, setTitle] = useState<string>("");
   const [slug, setSlug] = useState<string>("");
   const [excerpt, setExcerpt] = useState<string>("");
@@ -95,7 +92,7 @@ function AdminPageInner() {
   const queryClientInstance = useQueryClient();
 
   // Fetch blog posts and contact messages from Convex
-  const blogPostsRaw = useConvexQuery(api.contact.listBlogPosts, {});
+  const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
   const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});
 
   // Map Convex data to expected types
@@ -109,99 +106,38 @@ function AdminPageInner() {
     createdAt: msg.createdAt ? new Date(msg.createdAt).toISOString() : "",
   }));
 
-  // Create post mutation
-  const createPost = useMutation({
-    mutationFn: async (
-      post: Omit<BlogPost, "_id" | "createdAt" | "updatedAt">
-    ): Promise<BlogPost> => {
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(post),
-      });
-      if (!response.ok) throw new Error("Failed to create post");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClientInstance.invalidateQueries({ queryKey: ["posts"] });
-      setTitle("");
-      setSlug("");
-      setExcerpt("");
-      setContent("");
-      setImageUrl("");
-      setError(null);
-      toast.success("Post created successfully!");
-    },
-    onError: (error: unknown) => {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("Failed to create post");
-      }
-      toast.error("Failed to create post");
-    },
-  });
+  // Convex blog mutations
+  const createBlogPost = useConvexMutation(api.blog.createBlogPost);
+  const updateBlogPost = useConvexMutation(api.blog.updateBlogPost);
+  const deleteBlogPost = useConvexMutation(api.blog.deleteBlogPost);
 
-  // Update post mutation
-  const updatePost = useMutation({
-    mutationFn: async ({
-      id,
-      post,
-    }: {
-      id: string;
-      post: Partial<BlogPost>;
-    }): Promise<BlogPost> => {
-      const response = await fetch(`/api/posts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(post),
-      });
-      if (!response.ok) throw new Error("Failed to update post");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClientInstance.invalidateQueries({ queryKey: ["posts"] });
-      setEditingId(null);
-      toast.success("Post updated successfully!");
-    },
-    onError: (error: unknown) => {
-      toast.error("Failed to update post");
-    },
-  });
-
-  // Delete post mutation
-  const deletePost = useMutation({
-    mutationFn: async (id: string): Promise<{ success: boolean }> => {
-      const response = await fetch(`/api/posts/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete post");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClientInstance.invalidateQueries({ queryKey: ["posts"] });
-      toast.success("Post deleted successfully!");
-    },
-    onError: (error: unknown) => {
-      toast.error("Failed to delete post");
-    },
-  });
+  const [categories, setCategories] = useState<string[]>([]);
+  const [editCategories, setEditCategories] = useState<string[]>([]);
 
   const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCreating(true);
     setError(null);
-
     try {
-      await createPost.mutateAsync({
+      await createBlogPost({
         title,
         slug,
         excerpt,
         content,
         imageUrl,
+        categories,
       });
+      setTitle("");
+      setSlug("");
+      setExcerpt("");
+      setContent("");
+      setImageUrl("");
+      setCategories([]);
+      setError(null);
+      toast.success("Post created successfully!");
     } catch (error) {
-      console.error("Error creating post:", error);
+      setError("Failed to create post");
+      toast.error("Failed to create post");
     } finally {
       setCreating(false);
     }
@@ -215,22 +151,24 @@ function AdminPageInner() {
     setEditContent(post.content);
     setEditImageUrl(post.imageUrl || "");
     setEditSlugManuallyEdited(false);
+    setEditCategories(post.categories || []);
   };
 
   const saveEdit = async (id: string) => {
     try {
-      await updatePost.mutateAsync({
-        id,
-        post: {
-          title: editTitle,
-          slug: editSlug,
-          excerpt: editExcerpt,
-          content: editContent,
-          imageUrl: editImageUrl,
-        },
+      await updateBlogPost({
+        _id: id as Id<"blogPosts">,
+        title: editTitle,
+        slug: editSlug,
+        excerpt: editExcerpt,
+        content: editContent,
+        imageUrl: editImageUrl,
+        categories: editCategories,
       });
+      setEditingId(null);
+      toast.success("Post updated successfully!");
     } catch (error) {
-      console.error("Error updating post:", error);
+      toast.error("Failed to update post");
     }
   };
 
@@ -249,7 +187,10 @@ function AdminPageInner() {
       typeof window !== "undefined" &&
       window.confirm("Are you sure you want to delete this post?")
     ) {
-      deletePost.mutate(id);
+      deleteBlogPost({
+        _id: id as Id<"blogPosts">,
+      });
+      toast.success("Post deleted successfully!");
     }
   };
 
@@ -268,9 +209,9 @@ function AdminPageInner() {
     block?: boolean;
   };
 
-  const markdownShortcuts: MarkdownShortcut[] = [
-    { label: <Heading1 className="w-4 h-4" />, title: "Heading 1", md: "# " },
-    { label: <Heading2 className="w-4 h-4" />, title: "Heading 2", md: "## " },
+  const markdownShortcuts = [
+    { label: "H1", title: "Heading 1", md: "# " },
+    { label: "H2", title: "Heading 2", md: "## " },
     { label: "H3", title: "Heading 3", md: "### " },
     { label: "B", title: "Bold", md: "**", wrap: "**" },
     { label: "I", title: "Italic", md: "_", wrap: "_" },
@@ -327,12 +268,15 @@ function AdminPageInner() {
     }, 0);
   };
 
-  const convertToMarkdownWithGemini = async (text: string): Promise<string> => {
+  const convertToMarkdownWithGemini = async (
+    text: string,
+    prompt?: string
+  ): Promise<string> => {
     try {
       const response = await fetch("/api/convert-markdown", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, prompt }),
       });
 
       if (!response.ok) {
@@ -367,90 +311,105 @@ function AdminPageInner() {
       </nav>
 
       <div className="pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Overview Cards */}
-          <DashboardOverview
-            totalPosts={blogPosts?.length || 0}
-            totalMessages={contactMessages?.length || 0}
-          />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Overview Cards */}
+            <DashboardOverview
+              totalPosts={blogPosts?.length || 0}
+              totalMessages={contactMessages?.length || 0}
+            />
 
-          {/* Make the grid a flex container for full height sidebar */}
-          <div className="mt-8 flex flex-col md:flex-row gap-8 min-h-[60vh] md:min-h-[calc(100vh-16rem)]">
-            {/* Sidebar */}
-            <div className="md:w-1/4 w-full md:sticky md:top-16 md:self-start">
-              <div className="h-full md:min-h-[calc(100vh-8rem)]">
-                <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+            {/* Make the grid a flex container for full height sidebar */}
+            <div className="mt-8 flex flex-col md:flex-row gap-8 min-h-[60vh] md:min-h-[calc(100vh-16rem)]">
+              {/* Sidebar */}
+              <div className="md:w-1/4 w-full md:sticky md:top-16 md:self-start">
+                <div className="h-full md:min-h-[calc(100vh-8rem)]">
+                  <Sidebar
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    collapsed={sidebarCollapsed}
+                    setCollapsed={setSidebarCollapsed}
+                  />
+                </div>
+              </div>
+
+              {/* Main Content */}
+              <div
+                className={`transition-all duration-300 ${sidebarCollapsed ? "md:w-full" : "md:w-3/4"} w-full`}
+              >
+                {activeTab === "profiles" && <ProfileManagement />}
+                {activeTab === "contact" && (
+                  <ContactMessages messages={contactMessages || []} />
+                )}
+                {activeTab === "blog" && (
+                  <BlogPosts
+                    posts={blogPosts || []}
+                    editingPost={editingId}
+                    setEditingPost={(id) => {
+                      const post = blogPosts?.find((p) => p._id === id);
+                      if (post) startEdit(post);
+                      else setEditingId(id);
+                    }}
+                    editTitle={editTitle}
+                    setEditTitle={setEditTitle}
+                    editSlug={editSlug}
+                    setEditSlug={setEditSlug}
+                    editExcerpt={editExcerpt}
+                    setEditExcerpt={setEditExcerpt}
+                    editContent={editContent}
+                    setEditContent={setEditContent}
+                    editImageUrl={editImageUrl}
+                    setEditImageUrl={setEditImageUrl}
+                    editSlugManuallyEdited={editSlugManuallyEdited}
+                    setEditSlugManuallyEdited={setEditSlugManuallyEdited}
+                    editPexelsOpen={editPexelsOpen}
+                    setEditPexelsOpen={setEditPexelsOpen}
+                    markdownShortcuts={markdownShortcuts}
+                    insertMarkdown={insertMarkdown}
+                    editContentRef={editContentRef}
+                    convertToMarkdownWithGemini={convertToMarkdownWithGemini}
+                    slugify={slugify}
+                    saveEdit={saveEdit}
+                    cancelEdit={cancelEdit}
+                    deletePost={confirmDelete}
+                    editCategories={editCategories}
+                    setEditCategories={setEditCategories}
+                  />
+                )}
+                {activeTab === "create" && (
+                  <CreatePost
+                    title={title}
+                    setTitle={setTitle}
+                    slug={slug}
+                    setSlug={setSlug}
+                    excerpt={excerpt}
+                    setExcerpt={setExcerpt}
+                    content={content}
+                    setContent={setContent}
+                    imageUrl={imageUrl}
+                    setImageUrl={setImageUrl}
+                    creating={creating}
+                    error={error}
+                    onSubmit={handleCreatePost}
+                    slugManuallyEdited={slugManuallyEdited}
+                    setSlugManuallyEdited={setSlugManuallyEdited}
+                    pexelsOpen={pexelsOpen}
+                    setPexelsOpen={setPexelsOpen}
+                    markdownShortcuts={markdownShortcuts}
+                    insertMarkdown={insertMarkdown}
+                    contentRef={contentRef}
+                    convertToMarkdownWithGemini={convertToMarkdownWithGemini}
+                    slugify={slugify}
+                  />
+                )}
               </div>
             </div>
-
-            {/* Main Content */}
-            <div className="md:w-3/4 w-full">
-              {activeTab === "profiles" && <ProfileManagement />}
-              {activeTab === "contact" && (
-                <ContactMessages messages={contactMessages || []} />
-              )}
-              {activeTab === "blog" && (
-                <BlogPosts
-                  posts={blogPosts || []}
-                  editingPost={editingId}
-                  setEditingPost={(id) => {
-                    const post = blogPosts?.find((p) => p._id === id);
-                    if (post) startEdit(post);
-                    else setEditingId(id);
-                  }}
-                  editTitle={editTitle}
-                  setEditTitle={setEditTitle}
-                  editSlug={editSlug}
-                  setEditSlug={setEditSlug}
-                  editExcerpt={editExcerpt}
-                  setEditExcerpt={setEditExcerpt}
-                  editContent={editContent}
-                  setEditContent={setEditContent}
-                  editImageUrl={editImageUrl}
-                  setEditImageUrl={setEditImageUrl}
-                  editSlugManuallyEdited={editSlugManuallyEdited}
-                  setEditSlugManuallyEdited={setEditSlugManuallyEdited}
-                  editPexelsOpen={editPexelsOpen}
-                  setEditPexelsOpen={setEditPexelsOpen}
-                  markdownShortcuts={markdownShortcuts}
-                  insertMarkdown={insertMarkdown}
-                  editContentRef={editContentRef}
-                  convertToMarkdownWithGemini={convertToMarkdownWithGemini}
-                  slugify={slugify}
-                  saveEdit={saveEdit}
-                  cancelEdit={cancelEdit}
-                  deletePost={confirmDelete}
-                />
-              )}
-              {activeTab === "create" && (
-                <CreatePost
-                  title={title}
-                  setTitle={setTitle}
-                  slug={slug}
-                  setSlug={setSlug}
-                  excerpt={excerpt}
-                  setExcerpt={setExcerpt}
-                  content={content}
-                  setContent={setContent}
-                  imageUrl={imageUrl}
-                  setImageUrl={setImageUrl}
-                  creating={creating}
-                  error={error}
-                  onSubmit={handleCreatePost}
-                  slugManuallyEdited={slugManuallyEdited}
-                  setSlugManuallyEdited={setSlugManuallyEdited}
-                  pexelsOpen={pexelsOpen}
-                  setPexelsOpen={setPexelsOpen}
-                  markdownShortcuts={markdownShortcuts}
-                  insertMarkdown={insertMarkdown}
-                  contentRef={contentRef}
-                  convertToMarkdownWithGemini={convertToMarkdownWithGemini}
-                  slugify={slugify}
-                />
-              )}
-            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Image Selection Modal */}
@@ -478,8 +437,32 @@ function AdminPageInner() {
 
 export default function AdminPage() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AdminPageInner />
-    </QueryClientProvider>
+    <>
+      <Head>
+        <title>Admin Dashboard | Aroosi</title>
+        <meta
+          name="description"
+          content="Admin dashboard for Aroosi, the UK's trusted Muslim matrimony platform."
+        />
+        <meta property="og:title" content="Admin Dashboard | Aroosi" />
+        <meta
+          property="og:description"
+          content="Admin dashboard for Aroosi, the UK's trusted Muslim matrimony platform."
+        />
+        <meta property="og:image" content="/og-image.png" />
+        <meta property="og:url" content="https://aroosi.co.uk/admin" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Admin Dashboard | Aroosi" />
+        <meta
+          name="twitter:description"
+          content="Admin dashboard for Aroosi, the UK's trusted Muslim matrimony platform."
+        />
+        <meta name="twitter:image" content="/og-image.png" />
+      </Head>
+      <QueryClientProvider client={queryClient}>
+        <AdminPageInner />
+      </QueryClientProvider>
+    </>
   );
 }

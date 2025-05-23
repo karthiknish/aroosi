@@ -17,6 +17,7 @@ export const getProfileImages = query({
     return Promise.all(
       images.map(async (image) => ({
         _id: image._id,
+        storageId: image.storageId,
         url: await ctx.storage.getUrl(image.storageId),
       }))
     );

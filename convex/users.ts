@@ -484,3 +484,157 @@ export const adminUpdateProfile = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Fetch a profile by its _id (for admin use)
+ */
+export const getProfileById = query({
+  args: { id: v.id("profiles") },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.id);
+    return profile;
+  },
+});
+
+/**
+ * Get all mutual matches for a profile (admin use)
+ * Returns an array of profile objects that are mutual matches with the given profile
+ */
+export const getMatchesForProfile = query({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, args) => {
+    // Get the profile
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile) return [];
+    const userId = profile.userId;
+    // Get all interests sent and received by this user
+    const sent = await ctx.db
+      .query("interests")
+      .withIndex("by_from_to", (q) => q.eq("fromUserId", userId))
+      .collect();
+    const received = await ctx.db
+      .query("interests")
+      .withIndex("by_to", (q) => q.eq("toUserId", userId))
+      .collect();
+    // Find mutual matches: both users have accepted each other's interest
+    const acceptedSent = sent.filter((i) => i.status === "accepted");
+    const acceptedReceived = received.filter((i) => i.status === "accepted");
+    const mutualUserIds = acceptedSent
+      .map((i) => i.toUserId)
+      .filter((id) => acceptedReceived.some((r) => r.fromUserId === id));
+    // Get profiles for these userIds
+    const allProfiles = await ctx.db.query("profiles").collect();
+    const matches = allProfiles.filter((p) => mutualUserIds.includes(p.userId));
+    return matches;
+  },
+});
+
+/**
+ * Admin: List profiles with search and pagination
+ */
+export const adminListProfiles = query({
+  args: {
+    search: v.optional(v.string()),
+    page: v.number(),
+    pageSize: v.number(),
+  },
+  handler: async (ctx, { search, page, pageSize }) => {
+    let allProfiles = await ctx.db.query("profiles").collect();
+    // Join with user emails if needed
+    const users = await ctx.db.query("users").collect();
+    if (search && search.trim() !== "") {
+      const s = search.trim().toLowerCase();
+      allProfiles = allProfiles.filter((p) => {
+        const user = users.find((u) => u._id === p.userId);
+        return (
+          (p.fullName && p.fullName.toLowerCase().includes(s)) ||
+          (p.ukCity && p.ukCity.toLowerCase().includes(s)) ||
+          (p.religion && p.religion.toLowerCase().includes(s)) ||
+          (p.phoneNumber && p.phoneNumber.toLowerCase().includes(s)) ||
+          (user && user.email && user.email.toLowerCase().includes(s))
+        );
+      });
+    }
+    // Sort by createdAt desc
+    allProfiles = allProfiles.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const total = allProfiles.length;
+    const start = page * pageSize;
+    const end = start + pageSize;
+    const profiles = allProfiles.slice(start, end);
+    return { profiles, total, page, pageSize };
+  },
+});
+
+export const banUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId, { banned: true });
+    // Optionally ban profile too
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (profile) await ctx.db.patch(profile._id, { banned: true });
+    return { success: true };
+  },
+});
+
+export const unbanUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId, { banned: false });
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (profile) await ctx.db.patch(profile._id, { banned: false });
+    return { success: true };
+  },
+});
+
+export const deleteUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    // Delete profile
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (profile) await ctx.db.delete(profile._id);
+    // Delete user
+    await ctx.db.delete(userId);
+    return { success: true };
+  },
+});
+
+export const listUsersWithProfiles = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const profiles = await ctx.db.query("profiles").collect();
+    return users.map((user) => ({
+      ...user,
+      profile:
+        profiles.find((p) => p.userId === user._id && p.banned !== true) ||
+        null,
+    }));
+  },
+});
+
+export const userCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const profiles = await ctx.db.query("profiles").collect();
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+    return {
+      totalUsers: users.length,
+      bannedUsers: users.filter((u) => u.banned).length,
+      completedProfiles: profiles.filter((p) => p.isProfileComplete).length,
+      newThisWeek: users.filter((u) => u._creationTime > weekAgo).length,
+      newThisMonth: users.filter((u) => u._creationTime > monthAgo).length,
+    };
+  },
+});

@@ -106,6 +106,7 @@ export default defineSchema({
     excerpt: v.string(),
     content: v.string(),
     imageUrl: v.optional(v.string()), // Optional cover image for blog post
+    categories: v.optional(v.array(v.string())), // Blog categories
     createdAt: v.float64(),
     updatedAt: v.optional(v.float64()),
   }).index("by_slug", ["slug"]),

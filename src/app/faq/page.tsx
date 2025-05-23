@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import Head from "next/head";
 
 const faqData = [
   {
@@ -49,62 +50,86 @@ const faqData = [
 
 export default function FaqPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
-      <motion.main
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-3xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
-      >
-        <div className="text-center mb-10 sm:mb-16">
-          <Link
-            href="/"
-            className="inline-block mb-4 text-4xl sm:text-5xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
-          >
-            Aroosi
-          </Link>
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
-            Frequently Asked Questions
-          </h1>
-          <p className="mt-3 text-lg text-gray-600">
-            Find answers to common questions about Aroosi.
-          </p>
-        </div>
-
-        <Accordion type="single" collapsible className="w-full">
-          {faqData.map((item, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
+    <>
+      <Head>
+        <title>FAQ | Aroosi</title>
+        <meta
+          name="description"
+          content="Frequently asked questions about Aroosi, the UK's trusted Muslim matrimony platform."
+        />
+        <meta property="og:title" content="FAQ | Aroosi" />
+        <meta
+          property="og:description"
+          content="Frequently asked questions about Aroosi, the UK's trusted Muslim matrimony platform."
+        />
+        <meta property="og:image" content="/og-image.png" />
+        <meta property="og:url" content="https://aroosi.co.uk/faq" />
+        <meta property="og:type" content="article" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="FAQ | Aroosi" />
+        <meta
+          name="twitter:description"
+          content="Frequently asked questions about Aroosi, the UK's trusted Muslim matrimony platform."
+        />
+        <meta name="twitter:image" content="/og-image.png" />
+      </Head>
+      <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+        <motion.main
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-3xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
+        >
+          <div className="text-center mb-10 sm:mb-16">
+            <Link
+              href="/"
+              className="inline-block mb-4 text-4xl sm:text-5xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
             >
-              <AccordionItem value={`item-${index}`}>
-                <AccordionTrigger className="text-left hover:no-underline">
-                  <span className="font-medium text-lg text-gray-700">
-                    {item.question}
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600 text-base leading-relaxed pt-2">
-                  {item.answer}
-                </AccordionContent>
-              </AccordionItem>
-            </motion.div>
-          ))}
-        </Accordion>
+              Aroosi
+            </Link>
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
+              Frequently Asked Questions
+            </h1>
+            <p className="mt-3 text-lg text-gray-600">
+              Find answers to common questions about Aroosi.
+            </p>
+          </div>
 
-        <div className="mt-12 text-center">
-          <p className="text-lg text-gray-700">
-            Can't find the answer you're looking for?
-          </p>
-          <Link
-            href="/contact"
-            className="mt-3 inline-block text-pink-600 hover:text-pink-700 font-semibold hover:underline transition-colors"
-          >
-            Contact our support team
-          </Link>
-        </div>
-      </motion.main>
-    </div>
+          <Accordion type="single" collapsible className="w-full">
+            {faqData.map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <AccordionItem value={`item-${index}`}>
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-medium text-lg text-gray-700">
+                      {item.question}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-600 text-base leading-relaxed pt-2">
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              </motion.div>
+            ))}
+          </Accordion>
+
+          <div className="mt-12 text-center">
+            <p className="text-lg text-gray-700">
+              Can't find the answer you're looking for?
+            </p>
+            <Link
+              href="/contact"
+              className="mt-3 inline-block text-pink-600 hover:text-pink-700 font-semibold hover:underline transition-colors"
+            >
+              Contact our support team
+            </Link>
+          </div>
+        </motion.main>
+      </div>
+    </>
   );
 }

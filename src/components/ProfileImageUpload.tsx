@@ -13,8 +13,9 @@ interface ProfileImageUploadProps {
 }
 
 interface ImageData {
-  _id: Id<"_storage">;
-  url: string;
+  _id: Id<"images">;
+  storageId: string;
+  url: string | null;
 }
 
 export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
@@ -55,7 +56,7 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
           }
 
           const { storageId } = await result.json();
-          newImageIds.push(storageId);
+          newImageIds.push(storageId as Id<"_storage">);
 
           // Step 3: Save the image reference to the database
           await uploadImage({
@@ -66,7 +67,8 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
         }
 
         // Step 4: Update the profile with the new image IDs
-        const currentImageIds = images?.map((img) => img._id) || [];
+        const currentImageIds =
+          images?.map((img) => img.storageId as Id<"_storage">) || [];
         await updateProfile({
           profileImageIds: [...currentImageIds, ...newImageIds],
         });
@@ -87,7 +89,8 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
       await deleteImage({ userId, imageId });
 
       // Update the profile to remove the deleted image ID
-      const currentImageIds = images?.map((img) => img._id) || [];
+      const currentImageIds =
+        images?.map((img) => img.storageId as Id<"_storage">) || [];
       await updateProfile({
         profileImageIds: currentImageIds.filter((id) => id !== imageId),
       });
@@ -140,10 +143,13 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
 
       {images && images.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {images.map(({ _id, url }: ImageData) => (
-            <div key={_id} className="relative group aspect-square">
+          {images.map(({ storageId, url }: ImageData) => (
+            <div
+              key={storageId as Id<"_storage">}
+              className="relative group aspect-square"
+            >
               <Image
-                src={url}
+                src={url || ""}
                 alt="Profile"
                 fill
                 className="object-cover rounded-lg"
@@ -152,7 +158,7 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
                 variant="destructive"
                 size="icon"
                 className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => handleDelete(_id)}
+                onClick={() => handleDelete(storageId as Id<"_storage">)}
               >
                 <X className="h-4 w-4" />
               </Button>

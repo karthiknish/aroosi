@@ -36,7 +36,7 @@ function HeadingWithHash(props: any) {
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const post = useQuery(api.contact.getBlogPostBySlug, { slug: slug || "" });
+  const post = useQuery(api.blog.getBlogPostBySlug, { slug: slug || "" });
 
   if (post === undefined) {
     return (
@@ -140,6 +140,19 @@ export default function BlogDetailPage() {
           </motion.div>
         )}
       </div>
+
+      {post.categories && post.categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {post.categories.map((cat: string) => (
+            <span
+              key={cat}
+              className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-medium"
+            >
+              {cat}
+            </span>
+          ))}
+        </div>
+      )}
 
       <Card className="mb-8">
         <CardContent className="pt-6">

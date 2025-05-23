@@ -19,9 +19,11 @@ import {
   useQuery as useConvexQuery,
   useMutation as useConvexMutation,
 } from "convex/react";
-import { Pencil, Trash2, Save, X } from "lucide-react";
+import { Pencil, Trash2, Save, X, Eye } from "lucide-react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { Id } from "@/../convex/_generated/dataModel";
+import Link from "next/link";
+import { useDebounce } from "use-debounce";
 
 interface Profile {
   _id: string;
@@ -61,25 +63,22 @@ export function ProfileManagement() {
   const [editingId, setEditingId] = useState<Id<"profiles"> | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [deleteId, setDeleteId] = useState<Id<"profiles"> | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 400);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
 
-  // Fetch profiles from Convex
-  const profilesRaw = useConvexQuery(api.users.listProfiles, {});
+  // Fetch paginated/searchable profiles from Convex
+  const { profiles = [], total = 0 } =
+    useConvexQuery(api.users.adminListProfiles, {
+      search: debouncedSearch,
+      page,
+      pageSize,
+    }) || {};
 
   // Convex mutation for deleting a profile
   const deleteProfile = useConvexMutation(api.users.deleteProfile);
-
-  // Map Convex data to expected types
-  const profiles = profilesRaw?.map((profile) => ({
-    ...profile,
-    _id: profile._id as Id<"profiles">,
-    createdAt: profile.createdAt
-      ? new Date(profile.createdAt).toISOString()
-      : "",
-    updatedAt: profile.updatedAt
-      ? new Date(profile.updatedAt).toISOString()
-      : "",
-  }));
 
   // Update profile mutation
   const adminUpdateProfile = useConvexMutation(api.users.adminUpdateProfile);
@@ -197,8 +196,23 @@ export function ProfileManagement() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Profile Management</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
+        <Input
+          placeholder="Search by name, city, religion, email, phone..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
+          className="max-w-xs"
+        />
+        <div className="flex-1" />
+        <div className="text-sm text-gray-500">
+          Showing {profiles.length} of {total} profiles
+        </div>
+      </div>
       <div className="grid gap-6">
-        {profiles?.map((profile) => (
+        {profiles.map((profile) => (
           <Card key={profile._id as string} className="relative">
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -243,6 +257,14 @@ export function ProfileManagement() {
                   </>
                 ) : (
                   <>
+                    <Link href={`/admin/profile/${profile._id}`} passHref>
+                      <Button asChild variant="outline" size="sm">
+                        <a>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </a>
+                      </Button>
+                    </Link>
                     <Button
                       variant="outline"
                       size="sm"
@@ -608,6 +630,49 @@ export function ProfileManagement() {
             </CardContent>
           </Card>
         ))}
+      </div>
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between mt-6">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={page === 0}
+        >
+          Previous
+        </Button>
+        <div className="text-sm text-gray-600">
+          Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            setPage((p) => (p + 1 < Math.ceil(total / pageSize) ? p + 1 : p))
+          }
+          disabled={page + 1 >= Math.ceil(total / pageSize)}
+        >
+          Next
+        </Button>
+        <div className="ml-4">
+          <Select
+            value={String(pageSize)}
+            onValueChange={(v) => {
+              setPageSize(Number(v));
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5 / page</SelectItem>
+              <SelectItem value="10">10 / page</SelectItem>
+              <SelectItem value="20">20 / page</SelectItem>
+              <SelectItem value="50">50 / page</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       {/* Delete Confirmation Modal */}
       {deleteId && (

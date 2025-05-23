@@ -20,6 +20,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { toast } from "sonner";
+import BlogEditor from "@/components/admin/BlogEditor";
 
 interface BlogPost {
   _id: string;
@@ -30,6 +31,7 @@ interface BlogPost {
   imageUrl?: string;
   createdAt: string;
   updatedAt: string;
+  categories?: string[];
 }
 
 interface BlogPostsProps {
@@ -71,6 +73,8 @@ interface BlogPostsProps {
   saveEdit: (id: string) => Promise<void>;
   cancelEdit: () => void;
   deletePost: (id: string) => void;
+  editCategories: string[];
+  setEditCategories: (value: string[]) => void;
 }
 
 export function BlogPosts({
@@ -99,6 +103,8 @@ export function BlogPosts({
   saveEdit,
   cancelEdit,
   deletePost,
+  editCategories,
+  setEditCategories,
 }: BlogPostsProps) {
   const getReadingTime = (content: string) => {
     const words = content.split(/\s+/).length;
@@ -163,69 +169,27 @@ export function BlogPosts({
                         className="h-32 rounded border mb-2"
                       />
                     )}
+                    <Input
+                      value={editCategories.join(", ")}
+                      onChange={(e) =>
+                        setEditCategories(
+                          e.target.value
+                            .split(",")
+                            .map((c) => c.trim())
+                            .filter(Boolean)
+                        )
+                      }
+                      placeholder="Categories (comma separated)"
+                      className="mb-2"
+                    />
                     <div className="md:flex gap-6">
                       <div className="flex-1">
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {markdownShortcuts.map((btn) => (
-                            <button
-                              type="button"
-                              key={btn.title}
-                              title={btn.title}
-                              className="px-2 py-1 rounded bg-pink-100 text-pink-700 hover:bg-pink-200 text-xs font-bold border border-pink-200 flex items-center justify-center"
-                              onClick={() =>
-                                insertMarkdown(
-                                  editContent || "",
-                                  setEditContent,
-                                  editContentRef,
-                                  btn.md,
-                                  btn.wrap,
-                                  btn.block
-                                )
-                              }
-                            >
-                              {btn.label}
-                            </button>
-                          ))}
-                          <button
-                            type="button"
-                            title="Convert to Markdown"
-                            className="px-2 py-1 rounded bg-pink-600 text-white hover:bg-pink-700 text-xs font-bold border border-pink-700"
-                            onClick={async () => {
-                              if (!editContent) return;
-                              const markdownContent =
-                                await convertToMarkdownWithGemini(editContent);
-                              setEditContent(markdownContent);
-                              toast.success("Content converted to markdown!");
-                            }}
-                          >
-                            Convert to Markdown
-                          </button>
+                        <div className="flex-1">
+                          <BlogEditor
+                            value={editContent}
+                            onChange={setEditContent}
+                          />
                         </div>
-                        <Textarea
-                          ref={editContentRef}
-                          value={editContent || ""}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          placeholder="Content (Markdown supported)"
-                          rows={12}
-                          className="font-mono"
-                        />
-                        <div className="text-xs text-gray-500 mt-1">
-                          Markdown supported: headings, bold, italic, lists,
-                          code, tables, checklists, images, links, and more.
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-8">
-                      <div className="font-semibold mb-2 text-pink-700">
-                        Live Preview:
-                      </div>
-                      <div className="prose prose-pink max-w-none bg-pink-50 p-4 rounded min-h-[200px]">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight]}
-                        >
-                          {editContent || ""}
-                        </ReactMarkdown>
                       </div>
                     </div>
                     <div className="flex gap-2 mt-2">
@@ -267,6 +231,18 @@ export function BlogPosts({
                           {getReadingTime(post.content)} min read
                         </div>
                       </div>
+                      {post.categories && post.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {post.categories.map((cat) => (
+                            <span
+                              key={cat}
+                              className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-medium"
+                            >
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button

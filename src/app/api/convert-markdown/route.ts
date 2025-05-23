@@ -42,21 +42,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Please provide text to convert.", 400);
     }
 
-    const prompt = `You are a markdown formatting expert. Convert the following text into well-formatted markdown. Follow these rules:
-1. Use appropriate headers (h1, h2, h3) for main topics and subtopics
-2. Convert lists into proper markdown lists (both ordered and unordered)
-3. Add emphasis (bold, italic) to important terms and phrases
-4. Format code snippets with \`\`\` blocks
-5. Convert URLs into proper markdown links
-6. Use blockquotes for important quotes or highlights
-7. Add horizontal rules to separate major sections
-8. Keep the original meaning and structure
-9. Make the content more readable and organized
-10. Use tables where appropriate
-
-Here's the text to convert:
-
-${text}`;
+    const prompt = text;
 
     const geminiBody = {
       contents: [

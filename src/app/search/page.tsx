@@ -35,7 +35,6 @@ const genderOptions = [
 
 export default function SearchProfilesPage() {
   const profiles = useQuery(api.contact.listUsersWithProfiles, {});
-  const [search, setSearch] = React.useState("");
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
   const [gender, setGender] = React.useState("any");
@@ -65,18 +64,23 @@ export default function SearchProfilesPage() {
     return ["any", ...Array.from(set)];
   }, [publicProfiles]);
 
-  // Filtering logic (same as before), but exclude the logged-in user's own profile
+  // Filtering logic (exclude logged-in user's own profile by Clerk ID or email)
   const filtered = React.useMemo(() => {
     return publicProfiles.filter((u: any) => {
-      // Exclude the logged-in user's own profile
-      if (user && u._id === user.id) return false;
+      // Exclude the logged-in user's own profile by Clerk ID or email
+      if (user) {
+        if (u._id === user.id) return false;
+        if (
+          u.email &&
+          user.emailAddresses?.some(
+            (e: { emailAddress: string }) =>
+              e.emailAddress.toLowerCase() === u.email.toLowerCase()
+          )
+        )
+          return false;
+      }
       const p = u.profile;
       if (
-        (search &&
-          !(
-            p.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-            p.aboutMe?.toLowerCase().includes(search.toLowerCase())
-          )) ||
         (city !== "any" && p.ukCity !== city) ||
         (religion !== "any" && p.religion !== religion) ||
         (gender !== "any" && p.gender !== gender)
@@ -92,7 +96,7 @@ export default function SearchProfilesPage() {
       }
       return true;
     });
-  }, [publicProfiles, search, city, religion, gender, ageMin, ageMax, user]);
+  }, [publicProfiles, city, religion, gender, ageMin, ageMax, user]);
 
   // Collect all userIds from filtered (always an array)
   const userIds = React.useMemo(
@@ -117,12 +121,6 @@ export default function SearchProfilesPage() {
             Browse and filter profiles to find your ideal match on Aroosi.
           </p>
           <div className="flex flex-wrap gap-3 justify-center mb-6">
-            <Input
-              placeholder="Search by name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-48 bg-white border-pink-200 focus:border-pink-400 shadow-sm"
-            />
             <Select value={city} onValueChange={setCity}>
               <SelectTrigger className="w-40 bg-white">
                 <SelectValue placeholder="Choose City" />

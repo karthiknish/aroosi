@@ -14,6 +14,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { toast } from "sonner";
+import BlogEditor from "@/components/admin/BlogEditor";
 
 interface CreatePostProps {
   title: string;
@@ -160,65 +161,7 @@ export function CreatePost({
           <div>
             <label className="text-sm font-medium text-gray-700">Content</label>
             <div className="mt-1">
-              <div className="flex flex-wrap gap-1 mb-2">
-                {markdownShortcuts.map((btn) => (
-                  <button
-                    type="button"
-                    key={btn.title}
-                    title={btn.title}
-                    className="px-2 py-1 rounded bg-pink-100 text-pink-700 hover:bg-pink-200 text-xs font-bold border border-pink-200 flex items-center justify-center"
-                    onClick={() =>
-                      insertMarkdown(
-                        content || "",
-                        setContent,
-                        contentRef,
-                        btn.md,
-                        btn.wrap,
-                        btn.block
-                      )
-                    }
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  title="Convert to Markdown"
-                  className="px-2 py-1 rounded bg-pink-600 text-white hover:bg-pink-700 text-xs font-bold border border-pink-700"
-                  onClick={async () => {
-                    if (!content) return;
-                    const markdownContent =
-                      await convertToMarkdownWithGemini(content);
-                    setContent(markdownContent);
-                    toast.success("Content converted to markdown!");
-                  }}
-                >
-                  Convert to Markdown
-                </button>
-              </div>
-              <Textarea
-                ref={contentRef}
-                placeholder="Write your post content here..."
-                value={content || ""}
-                onChange={(e) => setContent(e.target.value)}
-                rows={12}
-                disabled={creating}
-                className="font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <div className="font-semibold mb-2 text-pink-700">
-              Live Preview:
-            </div>
-            <div className="prose prose-pink max-w-none bg-pink-50 p-4 rounded min-h-[200px]">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
-              >
-                {content || ""}
-              </ReactMarkdown>
+              <BlogEditor value={content} onChange={setContent} />
             </div>
           </div>
 
