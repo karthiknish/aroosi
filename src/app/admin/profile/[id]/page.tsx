@@ -1,5 +1,6 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { notFound } from "next/navigation";
 import { api } from "@/../convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import {
@@ -12,25 +13,48 @@ import {
   Briefcase,
   Info,
 } from "lucide-react";
-import { fetchQuery } from "convex/nextjs";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useQuery } from "convex/react";
+import { useAuth } from "@clerk/nextjs";
 
-export default async function AdminProfileDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  // Fetch the profile by _id (server-side)
-  const profile = await fetchQuery(api.users.getProfileById, {
-    id: params.id as Id<"profiles">,
+export default function AdminProfileDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-pink-600">
+        Loading authentication...
+      </div>
+    );
+  if (!isSignedIn)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-600">
+        You must be signed in as an admin.
+      </div>
+    );
+
+  const profile = useQuery(api.users.getProfileById, {
+    id: id as Id<"profiles">,
   });
-  if (!profile) return notFound();
-  // Fetch matches for this profile
-  const matches = await fetchQuery(api.users.getMatchesForProfile, {
-    profileId: params.id as Id<"profiles">,
+  const matches = useQuery(api.users.getMatchesForProfile, {
+    profileId: id as Id<"profiles">,
   });
 
-  // Profile image logic
+  if (profile === undefined)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-pink-600">
+        Loading profile...
+      </div>
+    );
+  if (!profile)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-600">
+        Profile not found
+      </div>
+    );
+
   const profileImageUrl =
     profile.profileImageIds && profile.profileImageIds.length > 0
       ? `/api/storage/${profile.profileImageIds[0]}`
@@ -198,33 +222,25 @@ export default async function AdminProfileDetailPage({
                       </div>
                     )}
                     <div className="flex-1">
-                      <div className="font-semibold text-lg flex items-center gap-2">
+                      <div className="font-semibold text-gray-900">
                         {m.fullName || "Unnamed"}
-                        <Link
-                          href={`/admin/profile/${m._id}`}
-                          className="ml-2 text-pink-600 hover:underline flex items-center gap-1 text-sm"
-                        >
-                          <Eye className="w-4 h-4" /> View
-                        </Link>
                       </div>
-                      <div className="text-sm text-gray-600 flex items-center gap-1">
-                        <MapPin className="w-4 h-4" /> {m.ukCity || "-"}
-                      </div>
-                      <div className="text-sm text-gray-600 flex items-center gap-1">
-                        <Heart className="w-4 h-4" /> {m.religion || "-"}
-                      </div>
-                      <div className="text-sm text-gray-600 flex items-center gap-1">
-                        <Info className="w-4 h-4" /> {m.maritalStatus || "-"}
+                      <div className="text-sm text-gray-500">
+                        {m.ukCity || "-"}
                       </div>
                     </div>
+                    <Link
+                      href={`/admin/profile/${m._id}`}
+                      className="text-pink-600 hover:text-pink-800 font-semibold text-xs flex items-center gap-1"
+                    >
+                      <Eye className="w-4 h-4" /> View
+                    </Link>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="text-gray-700">
-              No matches found for this profile.
-            </div>
+            <div className="text-gray-400">No matches found.</div>
           )}
         </CardContent>
       </Card>

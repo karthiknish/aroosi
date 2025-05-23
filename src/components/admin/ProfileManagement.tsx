@@ -24,6 +24,7 @@ import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { Id } from "@/../convex/_generated/dataModel";
 import Link from "next/link";
 import { useDebounce } from "use-debounce";
+import { useRouter } from "next/navigation";
 
 interface Profile {
   _id: string;
@@ -68,7 +69,7 @@ export function ProfileManagement() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
-
+  const router = useRouter();
   // Fetch paginated/searchable profiles from Convex
   const { profiles = [], total = 0 } =
     useConvexQuery(api.users.adminListProfiles, {
@@ -257,14 +258,18 @@ export function ProfileManagement() {
                   </>
                 ) : (
                   <>
-                    <Link href={`/admin/profile/${profile._id}`} passHref>
-                      <Button asChild variant="outline" size="sm">
-                        <a>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </a>
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        router.push(`/admin/profile/${profile._id}`);
+                      }}
+                    >
+                      <span className="flex items-center">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </span>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

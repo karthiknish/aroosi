@@ -38,6 +38,7 @@ import {
 import Head from "next/head";
 import { motion } from "framer-motion";
 import { Id } from "@/../convex/_generated/dataModel";
+import { useAuth } from "@clerk/nextjs";
 
 interface BlogPost {
   _id: string;
@@ -92,6 +93,29 @@ function AdminPageInner() {
   const queryClientInstance = useQueryClient();
 
   const [adminError, setAdminError] = useState<string | null>(null);
+  const { isLoaded, isSignedIn, user } = useAuth();
+
+  // Wait for Clerk to be ready before making admin queries
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-600" />
+        <span className="ml-4 text-pink-600 font-semibold">
+          Loading authentication...
+        </span>
+      </div>
+    );
+  }
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto text-center">
+          <strong>Error:</strong> You must be signed in as an admin to view this
+          page.
+        </div>
+      </div>
+    );
+  }
 
   // Fetch blog posts and contact messages from Convex
   const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
