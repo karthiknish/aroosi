@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { SignedIn, useUser } from "@clerk/nextjs";
 import { useForm, Controller } from "react-hook-form";
 import {
