@@ -75,11 +75,11 @@ export async function handleExpressInterest({
 }: {
   setInterestError: (err: string | null) => void;
   sendInterest: (args: {
-    fromUserId: string;
-    toUserId: string;
-  }) => Promise<void>;
-  currentUserId: string;
-  id: string;
+    fromUserId: Id<"users">;
+    toUserId: Id<"users">;
+  }) => Promise<any>;
+  currentUserId: Id<"users">;
+  id: Id<"users">;
   setInterestSent: (val: boolean) => void;
 }) {
   setInterestError(null);
@@ -103,11 +103,11 @@ export async function handleBlock({
 }: {
   setBlockLoading: (val: boolean) => void;
   blockUserMutation: (args: {
-    blockerUserId: string;
-    blockedUserId: string;
-  }) => Promise<void>;
-  currentUserId: string;
-  id: string;
+    blockerUserId: Id<"users">;
+    blockedUserId: Id<"users">;
+  }) => Promise<any>;
+  currentUserId: Id<"users">;
+  id: Id<"users">;
 }) {
   setBlockLoading(true);
   try {
@@ -131,11 +131,11 @@ export async function handleUnblock({
 }: {
   setBlockLoading: (val: boolean) => void;
   unblockUserMutation: (args: {
-    blockerUserId: string;
-    blockedUserId: string;
-  }) => Promise<void>;
-  currentUserId: string;
-  id: string;
+    blockerUserId: Id<"users">;
+    blockedUserId: Id<"users">;
+  }) => Promise<any>;
+  currentUserId: Id<"users">;
+  id: Id<"users">;
 }) {
   setBlockLoading(true);
   try {

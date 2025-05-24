@@ -32,10 +32,27 @@ export default function ProfileDetailPage() {
   const data = useQuery(api.users.getUserPublicProfile, { userId: id });
   const currentUserConvex = useQuery(api.users.getCurrentUserWithProfile, {});
   const currentUserId = currentUserConvex?._id;
-  const sendInterest = useMutation(api.interests.sendInterest);
-  const blockUserMutation = useMutation(api.users.blockUser);
-  const unblockUserMutation = useMutation(api.users.unblockUser);
-  const updateProfile = useMutation(api.users.updateProfile);
+  const sendInterest = useMutation(
+    api.interests.sendInterest
+  ) as unknown as (args: {
+    fromUserId: Id<"users">;
+    toUserId: Id<"users">;
+  }) => Promise<any>;
+  const blockUserMutation = useMutation(
+    api.users.blockUser
+  ) as unknown as (args: {
+    blockerUserId: Id<"users">;
+    blockedUserId: Id<"users">;
+  }) => Promise<any>;
+  const unblockUserMutation = useMutation(
+    api.users.unblockUser
+  ) as unknown as (args: {
+    blockerUserId: Id<"users">;
+    blockedUserId: Id<"users">;
+  }) => Promise<any>;
+  const updateProfile = useMutation(
+    api.users.updateProfile
+  ) as unknown as (args: { profileImageIds: Id<"_storage">[] }) => Promise<any>;
 
   // These queries depend on currentUserId and id, but must always be called
   const isMutualInterest = useQuery(
@@ -230,7 +247,16 @@ export default function ProfileDetailPage() {
                             size="icon"
                             variant="outline"
                             disabled={idx === 0}
-                            onClick={() => handleMoveImage(idx, idx - 1)}
+                            onClick={() =>
+                              handleMoveImage({
+                                fromIdx: idx,
+                                toIdx: idx - 1,
+                                isOwnProfile,
+                                localImageOrder,
+                                setLocalImageOrder,
+                                updateProfile,
+                              })
+                            }
                             aria-label="Move Left"
                           >
                             ←
@@ -239,7 +265,16 @@ export default function ProfileDetailPage() {
                             size="icon"
                             variant="outline"
                             disabled={idx === localImageOrder.length - 1}
-                            onClick={() => handleMoveImage(idx, idx + 1)}
+                            onClick={() =>
+                              handleMoveImage({
+                                fromIdx: idx,
+                                toIdx: idx + 1,
+                                isOwnProfile,
+                                localImageOrder,
+                                setLocalImageOrder,
+                                updateProfile,
+                              })
+                            }
                             aria-label="Move Right"
                           >
                             →
@@ -285,7 +320,23 @@ export default function ProfileDetailPage() {
               {!isOwnProfile && (
                 <Button
                   className={`w-full md:w-auto ${isBlocked ? "bg-gray-400 hover:bg-gray-500" : "bg-red-500 hover:bg-red-600"}`}
-                  onClick={isBlocked ? handleUnblock : handleBlock}
+                  onClick={
+                    isBlocked
+                      ? () =>
+                          handleUnblock({
+                            setBlockLoading,
+                            unblockUserMutation,
+                            currentUserId: currentUserId as Id<"users">,
+                            id: id as Id<"users">,
+                          })
+                      : () =>
+                          handleBlock({
+                            setBlockLoading,
+                            blockUserMutation,
+                            currentUserId: currentUserId as Id<"users">,
+                            id: id as Id<"users">,
+                          })
+                  }
                   disabled={blockLoading}
                   variant={isBlocked ? "outline" : "destructive"}
                 >
@@ -299,7 +350,15 @@ export default function ProfileDetailPage() {
                 !alreadySentInterest && (
                   <Button
                     className="bg-pink-600 hover:bg-pink-700 w-full md:w-auto"
-                    onClick={handleExpressInterest}
+                    onClick={() =>
+                      handleExpressInterest({
+                        setInterestError,
+                        sendInterest,
+                        currentUserId: currentUserId as Id<"users">,
+                        id: id as Id<"users">,
+                        setInterestSent,
+                      })
+                    }
                   >
                     Express Interest
                   </Button>
@@ -316,7 +375,7 @@ export default function ProfileDetailPage() {
               {!isOwnProfile && !isBlocked && isMutualInterest && (
                 <Button
                   className="bg-green-600 hover:bg-green-700 w-full md:w-auto"
-                  onClick={handleMessage}
+                  onClick={() => handleMessage({ router, id })}
                 >
                   Message
                 </Button>

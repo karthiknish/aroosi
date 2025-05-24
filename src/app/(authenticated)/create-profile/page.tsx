@@ -1,6 +1,6 @@
 "use client";
 
-import CreateProfileForm from "@/components/profile/CreateProfileForm";
+import { ProfileForm } from "@/components/profile/ProfileForm";
 import Link from "next/link";
 
 export default function CreateProfilePage() {
@@ -22,7 +22,7 @@ export default function CreateProfilePage() {
             better your matches!
           </p>
         </div>
-        <CreateProfileForm />
+        <ProfileForm />
       </main>
     </div>
   );
