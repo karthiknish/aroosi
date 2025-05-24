@@ -2,27 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  useQuery,
-  useMutation,
   useQueryClient,
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Image as ImageIcon, Settings, Heading1, Heading2 } from "lucide-react";
+
+import { Settings } from "lucide-react";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
 import { toast } from "sonner";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
 import { Sidebar } from "@/components/admin/Sidebar";

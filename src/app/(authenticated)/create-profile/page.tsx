@@ -1,6 +1,6 @@
 "use client";
 
-import { ProfileForm } from "@/components/profile/ProfileForm";
+import ProfileForm from "@/components/profile/ProfileForm";
 import Link from "next/link";
 
 export default function CreateProfilePage() {
@@ -22,7 +22,12 @@ export default function CreateProfilePage() {
             better your matches!
           </p>
         </div>
-        <ProfileForm />
+        <ProfileForm
+          mode="create"
+          onSubmit={async (values) => {
+            console.log(values);
+          }}
+        />
       </main>
     </div>
   );
