@@ -19,12 +19,45 @@ import {
   useQuery as useConvexQuery,
   useMutation as useConvexMutation,
 } from "convex/react";
-import { Pencil, Trash2, Save, X, Eye } from "lucide-react";
+import { Pencil, Trash2, Save, X, Eye, Image as ImageIcon } from "lucide-react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
+import { ProfileImageReorder } from "@/components/ProfileImageReorder";
+// Removed import { ProfileImageStack } from "@/components/ProfileImageStack";
 import { Id } from "@/../convex/_generated/dataModel";
 import Link from "next/link";
 import { useDebounce } from "use-debounce";
 import { useRouter } from "next/navigation";
+import ProfileCard from "./ProfileCard";
+
+// Helper for rendering a profile image or fallback
+function ProfileImageAvatar({
+  imageIds,
+  alt,
+  fallbackText,
+}: {
+  imageIds: string[];
+  alt: string;
+  fallbackText: string;
+}) {
+  // If there is at least one imageId, render the image
+  if (imageIds && imageIds.length > 0) {
+    // You may want to adjust the image URL logic as per your backend
+    // For now, assume /api/images/[imageId] returns the image
+    return (
+      <img
+        src={`/api/images/${imageIds[0]}`}
+        alt={alt}
+        className="w-12 h-12 rounded-full object-cover"
+      />
+    );
+  }
+  // Otherwise, render fallback (initial or icon)
+  return (
+    <div className="w-12 h-12 rounded-full bg-pink-200 flex items-center justify-center text-lg font-bold text-white">
+      {fallbackText ? fallbackText : <ImageIcon className="w-6 h-6" />}
+    </div>
+  );
+}
 
 interface Profile {
   _id: string;
@@ -183,6 +216,14 @@ export function ProfileManagement() {
     setEditForm((prev: typeof editForm) => ({ ...prev, [name]: value }));
   };
 
+  // Profile image update handler
+  const handleProfileImagesChange = (newImageIds: string[]) => {
+    setEditForm((prev: typeof editForm) => ({
+      ...prev,
+      profileImageIds: newImageIds,
+    }));
+  };
+
   // Ban/unban logic
   const toggleBan = async (id: Id<"profiles">, banned: boolean) => {
     try {
@@ -214,426 +255,18 @@ export function ProfileManagement() {
       </div>
       <div className="grid gap-6">
         {profiles.map((profile) => (
-          <Card key={profile._id as string} className="relative">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
-                  {profile.profileImageIds &&
-                  profile.profileImageIds.length > 0 ? (
-                    <img
-                      src={`/api/storage/${profile.profileImageIds[0]}`}
-                      alt={profile.fullName || "Unnamed"}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-pink-600 text-xl font-semibold">
-                      {profile.fullName?.charAt(0) || "?"}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <CardTitle className="text-xl">
-                    {profile.fullName || "Unnamed"}
-                  </CardTitle>
-                  <div className="text-sm text-gray-500">
-                    {profile.ukCity || "-"}
-                  </div>
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                {editingId === profile._id ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => saveEdit(profile._id as Id<"profiles">)}
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      Save
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={cancelEdit}>
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        router.push(`/admin/profile/${profile._id}`);
-                      }}
-                    >
-                      <span className="flex items-center">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => startEdit(profile)}
-                    >
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDeleteId(profile._id as Id<"profiles">)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                    <Button
-                      variant={profile.banned ? "secondary" : "destructive"}
-                      size="sm"
-                      onClick={() =>
-                        toggleBan(
-                          profile._id as Id<"profiles">,
-                          profile.banned || false
-                        )
-                      }
-                    >
-                      {profile.banned ? "Unban" : "Ban"}
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {editingId === profile._id ? (
-                <div className="grid gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Full Name</label>
-                    <Input
-                      name="fullName"
-                      value={editForm.fullName || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Date of Birth</label>
-                    <Input
-                      name="dateOfBirth"
-                      value={editForm.dateOfBirth || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">City</label>
-                    <Input
-                      name="ukCity"
-                      value={editForm.ukCity || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Postcode</label>
-                    <Input
-                      name="ukPostcode"
-                      value={editForm.ukPostcode || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Gender</label>
-                    <Select
-                      value={editForm.gender || ""}
-                      onValueChange={(value) =>
-                        handleSelectChange("gender", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Religion</label>
-                    <Input
-                      name="religion"
-                      value={editForm.religion || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Caste</label>
-                    <Input
-                      name="caste"
-                      value={editForm.caste || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Mother Tongue</label>
-                    <Input
-                      name="motherTongue"
-                      value={editForm.motherTongue || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Height</label>
-                    <Input
-                      name="height"
-                      value={editForm.height || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      Marital Status
-                    </label>
-                    <Select
-                      value={editForm.maritalStatus || ""}
-                      onValueChange={(value) =>
-                        handleSelectChange("maritalStatus", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="single">Single</SelectItem>
-                        <SelectItem value="divorced">Divorced</SelectItem>
-                        <SelectItem value="widowed">Widowed</SelectItem>
-                        <SelectItem value="annulled">Annulled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Education</label>
-                    <Input
-                      name="education"
-                      value={editForm.education || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Occupation</label>
-                    <Input
-                      name="occupation"
-                      value={editForm.occupation || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Annual Income</label>
-                    <Input
-                      name="annualIncome"
-                      value={editForm.annualIncome || ""}
-                      onChange={handleInputChange}
-                      type="number"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">About Me</label>
-                    <Textarea
-                      name="aboutMe"
-                      value={editForm.aboutMe || ""}
-                      onChange={handleInputChange}
-                      rows={4}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Phone Number</label>
-                    <Input
-                      name="phoneNumber"
-                      value={editForm.phoneNumber || ""}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Diet</label>
-                    <Select
-                      value={editForm.diet || ""}
-                      onValueChange={(value) =>
-                        handleSelectChange("diet", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select diet" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="vegetarian">Vegetarian</SelectItem>
-                        <SelectItem value="non-vegetarian">
-                          Non-Vegetarian
-                        </SelectItem>
-                        <SelectItem value="vegan">Vegan</SelectItem>
-                        <SelectItem value="eggetarian">Eggetarian</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Smoking</label>
-                    <Select
-                      value={editForm.smoking || ""}
-                      onValueChange={(value) =>
-                        handleSelectChange("smoking", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select smoking" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no">No</SelectItem>
-                        <SelectItem value="occasionally">
-                          Occasionally
-                        </SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Drinking</label>
-                    <Select
-                      value={editForm.drinking || ""}
-                      onValueChange={(value) =>
-                        handleSelectChange("drinking", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select drinking" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no">No</SelectItem>
-                        <SelectItem value="occasionally">
-                          Occasionally
-                        </SelectItem>
-                        <SelectItem value="yes">Yes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      Physical Status
-                    </label>
-                    <Select
-                      value={editForm.physicalStatus || ""}
-                      onValueChange={(value) =>
-                        handleSelectChange("physicalStatus", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="differently-abled">
-                          Differently-abled
-                        </SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      Partner Preference Age Min
-                    </label>
-                    <Input
-                      name="partnerPreferenceAgeMin"
-                      value={editForm.partnerPreferenceAgeMin || ""}
-                      onChange={handleInputChange}
-                      type="number"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      Partner Preference Age Max
-                    </label>
-                    <Input
-                      name="partnerPreferenceAgeMax"
-                      value={editForm.partnerPreferenceAgeMax || ""}
-                      onChange={handleInputChange}
-                      type="number"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      Partner Preference Religion (comma separated)
-                    </label>
-                    <Input
-                      name="partnerPreferenceReligion"
-                      value={
-                        editForm.partnerPreferenceReligion?.join(",") || ""
-                      }
-                      onChange={(e) =>
-                        setEditForm((prev: typeof editForm) => ({
-                          ...prev,
-                          partnerPreferenceReligion: e.target.value
-                            .split(",")
-                            .map((s: string) => s.trim())
-                            .filter(Boolean),
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      Partner Preference UK City (comma separated)
-                    </label>
-                    <Input
-                      name="partnerPreferenceUkCity"
-                      value={editForm.partnerPreferenceUkCity?.join(",") || ""}
-                      onChange={(e) =>
-                        setEditForm((prev: typeof editForm) => ({
-                          ...prev,
-                          partnerPreferenceUkCity: e.target.value
-                            .split(",")
-                            .map((s: string) => s.trim())
-                            .filter(Boolean),
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">
-                      Profile Images
-                    </label>
-                    <ProfileImageUpload userId={profile.userId} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editForm.banned || false}
-                      onChange={(e) =>
-                        setEditForm((prev: typeof editForm) => ({
-                          ...prev,
-                          banned: e.target.checked,
-                        }))
-                      }
-                    />
-                    <label className="text-sm">Banned</label>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Gender</p>
-                    <p className="font-medium capitalize">
-                      {profile.gender || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">City</p>
-                    <p className="font-medium">{profile.ukCity || "-"}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-500">About Me</p>
-                    <p className="font-medium">{profile.aboutMe || "-"}</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ProfileCard
+            key={profile._id as string}
+            profile={profile}
+            editingId={editingId}
+            editForm={editForm}
+            onStartEdit={startEdit}
+            onSaveEdit={saveEdit}
+            onCancelEdit={cancelEdit}
+            onDelete={handleDelete}
+            onToggleBan={toggleBan}
+            setDeleteId={setDeleteId}
+          />
         ))}
       </div>
       {/* Pagination Controls */}
@@ -659,25 +292,6 @@ export function ProfileManagement() {
         >
           Next
         </Button>
-        <div className="ml-4">
-          <Select
-            value={String(pageSize)}
-            onValueChange={(v) => {
-              setPageSize(Number(v));
-              setPage(0);
-            }}
-          >
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5">5 / page</SelectItem>
-              <SelectItem value="10">10 / page</SelectItem>
-              <SelectItem value="20">20 / page</SelectItem>
-              <SelectItem value="50">50 / page</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
       {/* Delete Confirmation Modal */}
       {deleteId && (

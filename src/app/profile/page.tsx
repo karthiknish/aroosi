@@ -220,7 +220,7 @@ export default function ProfilePage() {
         <p className="text-xl text-gray-700 mb-4">
           Please sign in to manage your profile.
         </p>
-        <Link href="/sign-in" passHref legacyBehavior>
+        <Link href="/sign-in" passHref>
           <Button className="bg-pink-600 hover:bg-pink-700">
             Go to Sign In
           </Button>

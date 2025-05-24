@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.cursor/rules/always-apply-changes.mdc
+.cursor/rules/no-ask-just-do.mdc

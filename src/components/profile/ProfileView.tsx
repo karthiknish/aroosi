@@ -25,9 +25,10 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { Id } from "@/../convex/_generated/dataModel";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { motion } from "framer-motion";
+import { ProfileImageReorder } from "../ProfileImageReorder";
 
 interface ImageData {
   _id: Id<"_storage">;
@@ -110,6 +111,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const images = useQuery(api.images.getProfileImages, {
     userId: userConvexData?._id || "",
   });
+  const imagesArray = (images || []).map((img) => ({
+    ...img,
+    url: img.url || "",
+  }));
+  const updateOrder = useMutation(api.users.updateProfileImageOrder);
+
+  const handleReorder = (newOrder: string[]) => {
+    // Optionally, implement reordering logic if you want to persist order
+    // For now, do nothing or show a toast
+  };
+
+  console.log("images", images);
+  console.log("imagesArray", imagesArray);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
@@ -173,40 +187,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   fullWidth
                 >
                   {userConvexData?._id && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
-                    >
-                      {images?.map(({ _id, url }) => (
-                        <motion.div
-                          key={_id}
-                          className="relative group aspect-square"
-                          whileHover={{ scale: 1.02 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <Image
-                            src={url}
-                            alt={`${profileData?.fullName || "Profile"}'s profile`}
-                            fill
-                            className="object-cover rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                            unoptimized
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl" />
-                        </motion.div>
-                      ))}
-                      {(!images || images.length === 0) && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="col-span-full text-center text-muted-foreground py-12"
-                        >
-                          No profile images uploaded yet
-                        </motion.div>
-                      )}
-                    </motion.div>
+                    <ProfileImageReorder
+                      images={imagesArray}
+                      onReorder={handleReorder}
+                    />
                   )}
+                  {imagesArray.length === 0 && <div>No images found</div>}
                 </DisplaySection>
 
                 <DisplaySection

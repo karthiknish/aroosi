@@ -31,6 +31,16 @@ import {
 import * as z from "zod";
 import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
+import { ProfileImageReorder } from "../ProfileImageReorder";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useMutation } from "convex/react";
+import { Id } from "@/../convex/_generated/dataModel";
+
+interface ImageData {
+  _id: string;
+  url: string;
+}
 
 // Helper components
 export const FormSection: React.FC<{

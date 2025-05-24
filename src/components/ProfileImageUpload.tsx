@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useDropzone } from "react-dropzone";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
@@ -7,6 +7,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import Image from "next/image";
+import { ProfileImageReorder } from "./ProfileImageReorder";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface ProfileImageUploadProps {
   userId: Id<"users">;
@@ -14,7 +22,7 @@ interface ProfileImageUploadProps {
 
 interface ImageData {
   _id: Id<"images">;
-  storageId: string;
+  storageId: Id<"_storage">;
   url: string | null;
 }
 
@@ -26,53 +34,66 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
   const deleteImage = useMutation(api.images.deleteProfileImage);
   const updateProfile = useMutation(api.users.updateProfile);
 
+  // Local state for ordered images
+  const [orderedImages, setOrderedImages] = useState<ImageData[]>([]);
+  // Modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<Id<"_storage"> | null>(
+    null
+  );
+
+  // Sync orderedImages with images from server
+  useEffect(() => {
+    if (images && images.length > 0) {
+      setOrderedImages(
+        images.map((img) => ({
+          ...img,
+          storageId: img.storageId as Id<"_storage">,
+        }))
+      );
+    } else {
+      setOrderedImages([]);
+    }
+  }, [images]);
+
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       if (!userId) return;
-
-      // Check if adding these files would exceed the limit
-      const currentImages = images || [];
+      const currentImages = orderedImages || [];
       if (currentImages.length + acceptedFiles.length > 5) {
         toast.error("You can only upload up to 5 images");
         return;
       }
-
       setIsUploading(true);
       try {
         const newImageIds: Id<"_storage">[] = [];
         for (const file of acceptedFiles) {
-          // Step 1: Get the upload URL
           const uploadUrl = await generateUploadUrl();
-
-          // Step 2: Upload the file to storage
+          if (typeof uploadUrl !== "string") {
+            throw new Error("Failed to get upload URL");
+          }
           const result = await fetch(uploadUrl, {
             method: "POST",
             headers: { "Content-Type": file.type },
             body: file,
           });
-
           if (!result.ok) {
             throw new Error("Failed to upload image");
           }
-
           const { storageId } = await result.json();
           newImageIds.push(storageId as Id<"_storage">);
-
-          // Step 3: Save the image reference to the database
           await uploadImage({
             userId,
             storageId,
             fileName: file.name,
           });
         }
-
-        // Step 4: Update the profile with the new image IDs
-        const currentImageIds =
-          images?.map((img) => img.storageId as Id<"_storage">) || [];
-        await updateProfile({
-          profileImageIds: [...currentImageIds, ...newImageIds],
-        });
-
+        // Update the profile with the new image IDs (append to current order)
+        const currentImageIds = orderedImages.map(
+          (img) => img.storageId as Id<"_storage">
+        );
+        const newOrder = [...currentImageIds, ...newImageIds];
+        await updateProfile({ profileImageIds: newOrder });
         toast.success("Images uploaded successfully");
       } catch (error) {
         console.error("Error uploading images:", error);
@@ -81,24 +102,53 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
         setIsUploading(false);
       }
     },
-    [userId, images, generateUploadUrl, uploadImage, updateProfile]
+    [userId, orderedImages, generateUploadUrl, uploadImage, updateProfile]
   );
 
-  const handleDelete = async (imageId: Id<"_storage">) => {
+  // Save new order to server and update local state
+  const handleReorder = async (newOrder: string[]) => {
+    if (!orderedImages) return;
+    // Map newOrder (_id) to image object
+    const idToImage: Record<string, ImageData> = {};
+    orderedImages.forEach((img) => {
+      idToImage[img._id] = img;
+    });
+    const newOrderedImages = newOrder
+      .map((id) => idToImage[id])
+      .filter(Boolean);
+    setOrderedImages(newOrderedImages);
+    // Save new order to server (by storageId)
+    const newStorageOrder = newOrderedImages.map(
+      (img) => img.storageId as Id<"_storage">
+    );
+    await updateProfile({ profileImageIds: newStorageOrder });
+    toast.success("Image order updated");
+  };
+
+  // Open modal to confirm deletion
+  const confirmDelete = (storageId: Id<"_storage">) => {
+    setPendingDeleteId(storageId);
+    setDeleteModalOpen(true);
+  };
+
+  // Delete image and update order in server and local state
+  const handleDelete = async () => {
+    if (!pendingDeleteId) return;
     try {
-      await deleteImage({ userId, imageId });
-
-      // Update the profile to remove the deleted image ID
-      const currentImageIds =
-        images?.map((img) => img.storageId as Id<"_storage">) || [];
-      await updateProfile({
-        profileImageIds: currentImageIds.filter((id) => id !== imageId),
-      });
-
+      await deleteImage({ userId, imageId: pendingDeleteId });
+      const newOrderedImages = orderedImages.filter(
+        (img) => img.storageId !== pendingDeleteId
+      );
+      setOrderedImages(newOrderedImages);
+      const newStorageOrder = newOrderedImages.map((img) => img.storageId);
+      await updateProfile({ profileImageIds: newStorageOrder });
       toast.success("Image deleted successfully");
     } catch (error) {
       console.error("Error deleting image:", error);
       toast.error("Failed to delete image");
+    } finally {
+      setDeleteModalOpen(false);
+      setPendingDeleteId(null);
     }
   };
 
@@ -111,8 +161,20 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
     },
     maxSize: 2 * 1024 * 1024, // 2MB
     multiple: false,
-    disabled: isUploading || (images?.length ?? 0) >= 5,
+    disabled: isUploading || (orderedImages?.length ?? 0) >= 5,
   });
+
+  const memoizedOrderedImages = useMemo(
+    () =>
+      orderedImages && orderedImages.length > 0
+        ? orderedImages.map((img) => ({
+            _id: String(img._id),
+            url: img.url || "",
+            storageId: img.storageId,
+          }))
+        : [],
+    [orderedImages]
+  );
 
   return (
     <div className="space-y-4">
@@ -124,7 +186,7 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25 hover:border-primary/50"
           }
-          ${isUploading || (images?.length ?? 0) >= 5 ? "opacity-50 cursor-not-allowed" : ""}
+          ${isUploading || (orderedImages?.length ?? 0) >= 5 ? "opacity-50 cursor-not-allowed" : ""}
         `}
       >
         <input {...getInputProps()} />
@@ -134,38 +196,49 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
           <p>Drop the image here...</p>
         ) : (
           <p>
-            {images?.length === 5
+            {orderedImages?.length === 5
               ? "Maximum number of images reached"
               : "Drag & drop an image here, or click to select"}
           </p>
         )}
       </div>
-
-      {images && images.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {images.map(({ storageId, url }: ImageData) => (
-            <div
-              key={storageId as Id<"_storage">}
-              className="relative group aspect-square"
+      {/* Single drag-and-drop row with delete buttons */}
+      <ProfileImageReorder
+        images={memoizedOrderedImages}
+        onReorder={handleReorder}
+        renderAction={(img) =>
+          img.storageId ? (
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => confirmDelete(img.storageId as Id<"_storage">)}
             >
-              <Image
-                src={url || ""}
-                alt="Profile"
-                fill
-                className="object-cover rounded-lg"
-              />
-              <Button
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => handleDelete(storageId as Id<"_storage">)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
+              <X className="h-4 w-4" />
+            </Button>
+          ) : null
+        }
+      />
+      {/* Confirm delete modal */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Image</DialogTitle>
+          </DialogHeader>
+          <p>
+            Are you sure you want to delete this image? This action cannot be
+            undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
