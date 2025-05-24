@@ -55,20 +55,22 @@
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.3.0",
-    "tailwindcss": "^4.1.7",
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.4",
     "zod": "^3.25.23"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.7",
     "@types/node": "^20.17.50",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-dropzone": "^4.2.2",
+    "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "15.1.8",
-    "postcss": "^8",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.7",
     "typescript": "^5"
   }
 }
