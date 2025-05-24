@@ -11,42 +11,16 @@ import { UserCircle } from "lucide-react";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
 import Image from "next/image";
-import { useQuery as useConvexQuery } from "convex/react";
 import Head from "next/head";
-
-// Helper for displaying profile details
-const ProfileDetailView: React.FC<{
-  label: string;
-  value?: string | null | number;
-  isTextArea?: boolean;
-}> = ({ label, value, isTextArea }) => {
-  const displayValue =
-    value === null || value === undefined || value === "" ? "-" : String(value);
-  return (
-    <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4">
-      <dt className="text-sm font-medium text-gray-500">{label}</dt>
-      {isTextArea ? (
-        <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800 whitespace-pre-wrap">
-          {displayValue}
-        </dd>
-      ) : (
-        <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800">
-          {displayValue}
-        </dd>
-      )}
-    </div>
-  );
-};
-
-const DisplaySection: React.FC<{
-  title: string;
-  children: React.ReactNode;
-}> = ({ title, children }) => (
-  <div className="space-y-1 pt-6 border-t first:border-t-0 first:pt-0">
-    <h2 className="text-xl font-semibold text-gray-700 mb-3">{title}</h2>
-    {children}
-  </div>
-);
+import {
+  ProfileDetailView,
+  DisplaySection,
+  handleMoveImage,
+  handleExpressInterest,
+  handleMessage,
+  handleBlock,
+  handleUnblock,
+} from "./profileDetailHelpers";
 
 export default function ProfileDetailPage() {
   // All hooks must be called unconditionally and in the same order
@@ -86,9 +60,10 @@ export default function ProfileDetailPage() {
     id ? { userId: id } : "skip"
   );
   // For public profile image (for others), use batchGetProfileImages
-  const userImages = useConvexQuery(api.images.batchGetProfileImages, {
-    userIds: id ? [id] : [],
-  });
+  const userImages = useQuery(
+    api.images.batchGetProfileImages,
+    id ? { userIds: [id] } : { userIds: [] }
+  );
 
   // State hooks (always called)
   const [interestSent, setInterestSent] = React.useState(false);
@@ -96,7 +71,6 @@ export default function ProfileDetailPage() {
   const [showMutualNotification, setShowMutualNotification] =
     React.useState(false);
   const [blockLoading, setBlockLoading] = React.useState(false);
-  // For image order, always call with fallback
   const [localImageOrder, setLocalImageOrder] = React.useState<string[]>([]);
 
   // Only after all hooks, do early returns
@@ -123,45 +97,25 @@ export default function ProfileDetailPage() {
     setLocalImageOrder(p?.profileImageIds || []);
   }, [p?.profileImageIds]);
 
-  // Memoized map of storageId to url for own profile
-  const storageIdToUrl = React.useMemo(() => {
-    if (!userProfileImages || !Array.isArray(userProfileImages)) return {};
-    const map: Record<string, string | null> = {};
+  // Inline derived values instead of useMemo
+  const storageIdToUrl: Record<string, string> = {};
+  if (userProfileImages && Array.isArray(userProfileImages)) {
     for (const img of userProfileImages) {
-      map[img.storageId] = img.url;
+      if (img.url) storageIdToUrl[img.storageId] = img.url;
     }
-    return map;
-  }, [userProfileImages]);
+  }
+  const alreadySentInterest =
+    sentInterest && Array.isArray(sentInterest)
+      ? sentInterest.some((i: any) => i.toUserId === id)
+      : false;
 
-  // Memoized check for already sent interest
-  const alreadySentInterest = React.useMemo(() => {
-    if (!sentInterest || !Array.isArray(sentInterest)) return false;
-    return sentInterest.some((i: any) => i.toUserId === id);
-  }, [sentInterest, id]);
-
-  // Memoized image URLs for public profile (for others)
-  const imageUrls = React.useMemo(() => {
-    if (!p || !p.profileImageIds || !userImages || !id || !userImages[id])
-      return [];
-    return p.profileImageIds.map((imgId: string) => userImages[id]);
-  }, [p, userImages, id]);
-
-  // Handle image reordering (own profile)
-  const handleMoveImage = async (fromIdx: number, toIdx: number) => {
-    if (!isOwnProfile) return;
-    if (toIdx < 0 || toIdx >= localImageOrder.length) return;
-    const newOrder = [...localImageOrder];
-    const [moved] = newOrder.splice(fromIdx, 1);
-    newOrder.splice(toIdx, 0, moved);
-    setLocalImageOrder(newOrder);
-    // Persist to backend
-    try {
-      await updateProfile({ profileImageIds: newOrder as Id<"_storage">[] });
-      toast.success("Image order updated");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update image order");
-    }
-  };
+  // For public profile, imageUrls is just an array of the same url (if available)
+  let imageUrls: string[] = [];
+  if (!isOwnProfile && p.profileImageIds && userImages && userImages[id]) {
+    imageUrls = p.profileImageIds
+      .map(() => userImages[id])
+      .filter((url): url is string => typeof url === "string");
+  }
 
   // Show notification on mutual interest
   React.useEffect(() => {
@@ -170,52 +124,6 @@ export default function ProfileDetailPage() {
       toast.success("It's a match! You can now message each other.");
     }
   }, [isMutualInterest]);
-
-  // Express interest handler
-  const handleExpressInterest = async () => {
-    setInterestError(null);
-    try {
-      await sendInterest({ fromUserId: currentUserId, toUserId: id });
-      setInterestSent(true);
-    } catch (err: any) {
-      setInterestError(err.message || "Could not send interest.");
-    }
-  };
-
-  // Message handler
-  const handleMessage = () => {
-    router.push(`/messages?userId=${id}`);
-  };
-
-  // Block/unblock handlers
-  const handleBlock = async () => {
-    setBlockLoading(true);
-    try {
-      await blockUserMutation({
-        blockerUserId: currentUserId,
-        blockedUserId: id,
-      });
-      toast.success("User blocked.");
-    } catch (err: any) {
-      toast.error(err.message || "Could not block user.");
-    } finally {
-      setBlockLoading(false);
-    }
-  };
-  const handleUnblock = async () => {
-    setBlockLoading(true);
-    try {
-      await unblockUserMutation({
-        blockerUserId: currentUserId,
-        blockedUserId: id,
-      });
-      toast.success("User unblocked.");
-    } catch (err: any) {
-      toast.error(err.message || "Could not unblock user.");
-    } finally {
-      setBlockLoading(false);
-    }
-  };
 
   return (
     <>
@@ -246,11 +154,15 @@ export default function ProfileDetailPage() {
           <CardHeader className="p-0">
             {localImageOrder &&
             localImageOrder.length > 0 &&
-            userImages &&
-            userImages[id] ? (
+            ((isOwnProfile && storageIdToUrl[localImageOrder[0]]) ||
+              (!isOwnProfile && userImages && userImages[id])) ? (
               <div className="relative w-full h-72">
                 <Image
-                  src={userImages[id]}
+                  src={
+                    isOwnProfile
+                      ? storageIdToUrl[localImageOrder[0]] || "/placeholder.png"
+                      : (userImages && userImages[id]) || "/placeholder.png"
+                  }
                   alt={p.fullName || "Profile"}
                   fill
                   className="object-cover object-center"
