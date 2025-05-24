@@ -34,13 +34,18 @@ const genderOptions = [
 ];
 
 export default function SearchProfilesPage() {
-  const profiles = useQuery(api.users.listUsersWithProfiles, {});
+  const { user } = useUser();
+  const currentUserProfile = useQuery(api.users.getCurrentUserWithProfile, {});
+  const preferredGender = currentUserProfile?.profile?.preferredGender || "any";
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
-  const [gender, setGender] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
   const [ageMax, setAgeMax] = React.useState("");
-  const { user } = useUser();
+
+  // Fetch profiles filtered by preferredGender (unless overridden by gender filter)
+  const profiles = useQuery(api.users.listUsersWithProfiles, {
+    preferredGender,
+  });
 
   // Only show users with a complete profile
   const publicProfiles = React.useMemo(() => {
@@ -83,7 +88,7 @@ export default function SearchProfilesPage() {
       if (
         (city !== "any" && p.ukCity !== city) ||
         (religion !== "any" && p.religion !== religion) ||
-        (gender !== "any" && p.gender !== gender)
+        p.gender !== preferredGender
       ) {
         return false;
       }
@@ -96,7 +101,7 @@ export default function SearchProfilesPage() {
       }
       return true;
     });
-  }, [publicProfiles, city, religion, gender, ageMin, ageMax, user]);
+  }, [publicProfiles, city, religion, ageMin, ageMax, user, preferredGender]);
 
   // Collect all userIds from filtered (always an array)
   const userIds = React.useMemo(
@@ -141,18 +146,6 @@ export default function SearchProfilesPage() {
                 {religionOptions.map((r) => (
                   <SelectItem key={r} value={r}>
                     {r === "any" ? "Any Religion" : r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger className="w-32 bg-white">
-                <SelectValue placeholder="Choose Gender" />
-              </SelectTrigger>
-              <SelectContent>
-                {genderOptions.map((g) => (
-                  <SelectItem key={g.value} value={g.value}>
-                    {g.label}
                   </SelectItem>
                 ))}
               </SelectContent>

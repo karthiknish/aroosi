@@ -118,6 +118,25 @@ export default function ProfileEditForm({
         </Select>
       </div>
       <div>
+        <label className="text-sm font-medium">Preferred Gender</label>
+        <Select
+          value={editForm.preferredGender || ""}
+          onValueChange={(v) =>
+            onSelectChange && onSelectChange("preferredGender", v)
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select preferred gender" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="male">Male</SelectItem>
+            <SelectItem value="female">Female</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
+            <SelectItem value="any">Any</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
         <label className="text-sm font-medium">Religion</label>
         <Input
           name="religion"

@@ -1,10 +1,24 @@
-import { Card, CardTitle } from "@/components/ui/card";
 import { Profile } from "@/types/profile";
 import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
-import { Loader2, User } from "lucide-react";
+import {
+  Loader2,
+  User,
+  MapPin,
+  Briefcase,
+  GraduationCap,
+  Heart,
+  BadgeCheck,
+  Cake,
+  Users,
+  HeartHandshake,
+  HandHelping,
+  Ruler,
+  Phone,
+  PersonStanding,
+} from "lucide-react";
 
 interface ProfileImage {
   _id: Id<"images">;
@@ -32,30 +46,30 @@ export default function ProfileView({ profile }: { profile: Profile }) {
 
   // Get profile images with proper URLs
   const result = useQuery(
-    api.images.getProfileImages, 
+    api.images.getProfileImages,
     profile.userId ? { userId: profile.userId as Id<"users"> } : "skip"
   );
 
   // Debug log to check the API response
-  console.log('Profile images API response:', { 
-    result, 
+  console.log("Profile images API response:", {
+    result,
     hasResult: !!result,
     isArray: Array.isArray(result),
     profileUserId: profile.userId,
     profile: {
       userId: profile.userId,
       hasProfileImageIds: !!profile.profileImageIds,
-      profileImageIds: profile.profileImageIds
-    }
+      profileImageIds: profile.profileImageIds,
+    },
   });
-  
+
   // Log the first image URL if available
   if (Array.isArray(result) && result.length > 0) {
-    console.log('First image data:', {
+    console.log("First image data:", {
       id: result[0]._id,
       storageId: result[0].storageId,
       url: result[0].url,
-      hasUrl: !!result[0].url
+      hasUrl: !!result[0].url,
     });
   }
 
@@ -79,25 +93,25 @@ export default function ProfileView({ profile }: { profile: Profile }) {
   }
 
   // Ensure we have an array of images
-  const profileImages: ProfileImage[] = Array.isArray(result) 
-    ? result.filter(img => img && img._id && img.storageId)
+  const profileImages: ProfileImage[] = Array.isArray(result)
+    ? result.filter((img) => img && img._id && img.storageId)
     : [];
-  
-  console.log('Processed profile images:', profileImages);
+
+  console.log("Processed profile images:", profileImages);
 
   // Get the first image as profile image or use placeholder
   const profileImage = profileImages.length > 0 ? profileImages[0] : null;
 
   // Render all profile images in order
   const images = (profileImages || []).map((img, index) => (
-    <div 
-      key={img._id} 
+    <div
+      key={img._id}
       className={`relative w-20 h-20 rounded-lg overflow-hidden border mr-2 ${
-        index === 0 ? 'ring-2 ring-primary' : ''
+        index === 0 ? "ring-2 ring-primary" : ""
       }`}
     >
       <Image
-        src={img.url}
+        src={img.url || ""}
         alt={profile.fullName || "Profile image"}
         fill
         className="object-cover"
@@ -106,7 +120,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
           // Fallback to a placeholder if image fails to load
           const target = e.target as HTMLImageElement;
           target.onerror = null;
-          target.src = '/placeholder-user.jpg';
+          target.src = "/placeholder-user.jpg";
         }}
       />
       {index === 0 && (
@@ -120,21 +134,24 @@ export default function ProfileView({ profile }: { profile: Profile }) {
   // Add placeholder if no images
   if (profileImages.length === 0) {
     images.push(
-      <div key="placeholder" className="relative w-20 h-20 rounded-lg overflow-hidden border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
+      <div
+        key="placeholder"
+        className="relative w-20 h-20 rounded-lg overflow-hidden border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400"
+      >
         <span>No Image</span>
       </div>
     );
   }
 
   return (
-    <Card className="w-full max-w-2xl p-6 border rounded-lg shadow-sm">
+    <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white">
       {/* Profile image and details row */}
       <div className="flex flex-col sm:flex-row gap-6 mb-6">
         {/* Profile image */}
         <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white">
           {profileImage ? (
             <Image
-              src={profileImage.url}
+              src={profileImage.url || ""}
               alt={profile.fullName || "Profile image"}
               width={128}
               height={128}
@@ -142,7 +159,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.onerror = null;
-                target.src = '/placeholder-user.jpg';
+                target.src = "/placeholder-user.jpg";
               }}
             />
           ) : (
@@ -151,14 +168,14 @@ export default function ProfileView({ profile }: { profile: Profile }) {
             </div>
           )}
         </div>
-        
+
         {/* Profile details */}
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-gray-900">
-            {profile.fullName || 'No Name'}
+            {profile.fullName || "No Name"}
           </h2>
-          {profile.bio && (
-            <p className="mt-1 text-gray-600">{profile.bio}</p>
+          {profile.aboutMe && (
+            <p className="mt-1 text-gray-600">{profile.aboutMe}</p>
           )}
         </div>
       </div>
@@ -168,68 +185,89 @@ export default function ProfileView({ profile }: { profile: Profile }) {
         <h3 className="text-sm font-medium text-gray-700">Profile Photos</h3>
         <div className="flex flex-wrap gap-2">{images}</div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 mt-2 gap-x-8 gap-y-3">
         <div>
-          <span className="block text-xs text-gray-500">Gender</span>
-          <span className="font-medium text-gray-700">
-            {profile.gender
-              ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1)
-              : "-"}
+          <span className="block text-md text-gray-500 flex items-center gap-1">
+            <User className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.gender
+                ? profile.gender.charAt(0).toUpperCase() +
+                  profile.gender.slice(1)
+                : "-"}
+            </span>
           </span>
         </div>
         <div>
-          <span className="block text-xs text-gray-500">Age</span>
-          <span className="font-medium text-gray-700">{age}</span>
-        </div>
-        <div>
-          <span className="block text-xs text-gray-500">City</span>
-          <span className="font-medium text-gray-700">
-            {profile.ukCity || "-"}
-          </span>
-        </div>
-
-        <div>
-          <span className="block text-xs text-gray-500">Religion</span>
-          <span className="font-medium text-gray-700">
-            {profile.religion || "-"}
+          <span className=" text-md text-gray-500 flex items-center gap-1">
+            <Cake className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">{age}</span>
           </span>
         </div>
         <div>
-          <span className="block text-xs text-gray-500">Caste</span>
-          <span className="font-medium text-gray-700">
-            {profile.caste || "-"}
+          <span className=" text-md text-gray-500 flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.ukCity || "-"}
+            </span>
           </span>
         </div>
 
         <div>
-          <span className="block text-xs text-gray-500">Height</span>
-          <span className="font-medium text-gray-700">
-            {profile.height || "-"}
+          <span className=" text-md text-gray-500 flex items-center gap-1">
+            <HeartHandshake className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.religion || "-"}
+            </span>
           </span>
         </div>
         <div>
-          <span className="block text-xs text-gray-500">Marital Status</span>
-          <span className="font-medium text-gray-700">
-            {profile.maritalStatus || "-"}
-          </span>
-        </div>
-        <div>
-          <span className="block text-xs text-gray-500">Education</span>
-          <span className="font-medium text-gray-700">
-            {profile.education || "-"}
-          </span>
-        </div>
-        <div>
-          <span className="block text-xs text-gray-500">Occupation</span>
-          <span className="font-medium text-gray-700">
-            {profile.occupation || "-"}
+          <span className=" text-md text-gray-500 flex items-center gap-1">
+            <HandHelping className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.caste || "-"}
+            </span>
           </span>
         </div>
 
         <div>
-          <span className="block text-xs text-gray-500">Phone Number</span>
-          <span className="font-medium text-gray-700">
-            {profile.phoneNumber || "-"}
+          <span className=" text-md text-gray-500 flex items-center gap-1">
+            <Ruler className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.height || "-"}
+            </span>
+          </span>
+        </div>
+        <div>
+          <span className="text-md text-gray-500 flex items-center gap-1">
+            <PersonStanding className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.maritalStatus || "-"}
+            </span>
+          </span>
+        </div>
+        <div>
+          <span className="text-md text-gray-500 flex items-center gap-1">
+            <GraduationCap className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.education || "-"}
+            </span>
+          </span>
+        </div>
+        <div>
+          <span className="text-md text-gray-500 flex items-center gap-1">
+            <Briefcase className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.occupation || "-"}
+            </span>
+          </span>
+        </div>
+
+        <div>
+          <span className=" text-md text-gray-500 flex items-center gap-1">
+            <Phone className="w-3.5 h-3.5 text-gray-400" />
+            <span className="font-medium text-gray-700">
+              {profile.phoneNumber || "-"}
+            </span>
           </span>
         </div>
       </div>
@@ -248,7 +286,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
           </span>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -268,27 +306,45 @@ export function ProfileMinifiedView({ profile }: { profile: Profile }) {
     }
   }
   return (
-    <div className="flex items-center gap-4 p-2 border rounded-md bg-gray-50">
-      <div className="flex flex-col">
-        <span className="text-sm text-gray-600">
-          {profile.gender
-            ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1)
-            : "-"}
-          {" | "}
+    <div className="flex items-center gap-4 p-3 border rounded-lg bg-white shadow-sm">
+      {/* Gender icon */}
+      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100">
+        {profile.gender === "male" && (
+          <Users className="w-5 h-5 text-blue-500" />
+        )}
+        {profile.gender === "female" && (
+          <Users className="w-5 h-5 text-pink-500" />
+        )}
+        {profile.gender === "other" && (
+          <Users className="w-5 h-5 text-gray-400" />
+        )}
+        {!profile.gender && <Users className="w-5 h-5 text-gray-300" />}
+      </div>
+      <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1 items-center">
+        <div className="flex items-center gap-1 text-gray-700 text-sm">
+          <MapPin className="w-4 h-4 text-gray-400" />
           {profile.ukCity || "-"}
-          {" | Age: "}
+        </div>
+        <div className="flex items-center gap-1 text-gray-700 text-sm">
+          <Cake className="w-4 h-4 text-gray-400" />
           {age}
-        </span>
-        <span className="text-xs text-gray-500">
+        </div>
+        <div className="flex items-center gap-1 text-gray-700 text-xs">
+          <Briefcase className="w-4 h-4 text-gray-400" />
           {profile.occupation || "-"}
-          {" | "}
+        </div>
+        <div className="flex items-center gap-1 text-gray-700 text-xs">
+          <GraduationCap className="w-4 h-4 text-gray-400" />
           {profile.education || "-"}
-        </span>
-        <span className="text-xs text-gray-500">
+        </div>
+        <div className="flex items-center gap-1 text-gray-700 text-xs">
+          <Heart className="w-4 h-4 text-pink-400" />
           {profile.religion || "-"}
-          {" | "}
+        </div>
+        <div className="flex items-center gap-1 text-gray-700 text-xs">
+          <BadgeCheck className="w-4 h-4 text-green-400" />
           {profile.maritalStatus || "-"}
-        </span>
+        </div>
       </div>
     </div>
   );

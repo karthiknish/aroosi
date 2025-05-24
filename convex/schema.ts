@@ -20,6 +20,14 @@ export default defineSchema({
     gender: v.optional(
       v.union(v.literal("male"), v.literal("female"), v.literal("other"))
     ),
+    preferredGender: v.optional(
+      v.union(
+        v.literal("male"),
+        v.literal("female"),
+        v.literal("other"),
+        v.literal("any")
+      )
+    ),
     // UK-centric fields
     ukCity: v.optional(v.string()),
     ukPostcode: v.optional(v.string()),
@@ -157,8 +165,7 @@ export default defineSchema({
     contentType: v.optional(v.string()),
     fileSize: v.optional(v.number()),
     _creationTime: v.number(),
-  })
-    .index("by_user", ["userId"]),
+  }).index("by_user", ["userId"]),
 
   // Rate limits table for abuse prevention
   rateLimits: defineTable({

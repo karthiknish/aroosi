@@ -287,6 +287,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       title: "About & Preferences",
       fields: [
         "aboutMe",
+        "preferredGender",
         "partnerPreferenceAgeMin",
         "partnerPreferenceAgeMax",
         "partnerPreferenceReligion",
@@ -328,6 +329,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       occupation: "",
       annualIncome: undefined,
       aboutMe: "",
+      preferredGender: undefined,
       partnerPreferenceAgeMin: undefined,
       partnerPreferenceAgeMax: undefined,
       partnerPreferenceReligion: [],
@@ -353,24 +355,32 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   // Unified submit handler
   const handleSubmit = async (values: any) => {
     // Check if we're on the image upload step and no images are uploaded
-    if (mode === 'create' && currentStep === 4 && uploadedImageIds.length === 0) {
-      form.setError('profileImageIds', {
-        type: 'manual',
-        message: 'Please upload at least one profile image',
+    if (
+      mode === "create" &&
+      currentStep === 4 &&
+      uploadedImageIds.length === 0
+    ) {
+      form.setError("profileImageIds", {
+        type: "manual",
+        message: "Please upload at least one profile image",
       });
       return;
     }
-    
+
     // If we're submitting the final form, ensure we have images
-    if (mode === 'create' && currentStep === totalSteps - 1 && uploadedImageIds.length === 0) {
-      form.setError('profileImageIds', {
-        type: 'manual',
-        message: 'Please upload at least one profile image before submitting',
+    if (
+      mode === "create" &&
+      currentStep === totalSteps - 1 &&
+      uploadedImageIds.length === 0
+    ) {
+      form.setError("profileImageIds", {
+        type: "manual",
+        message: "Please upload at least one profile image before submitting",
       });
       setCurrentStep(4); // Go to the images step
       return;
     }
-    
+
     await onSubmit({ ...values, profileImageIds: uploadedImageIds });
     setShowSuccessModal(true);
     setHasSubmittedSuccessfully(true);
@@ -568,6 +578,19 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                   form={form}
                   placeholder="Tell us about yourself..."
                 />
+                <FormSelectField
+                  name="preferredGender"
+                  label="Preferred Gender"
+                  form={form}
+                  placeholder="Select preferred gender"
+                  options={[
+                    { value: "male", label: "Male" },
+                    { value: "female", label: "Female" },
+                    { value: "other", label: "Other" },
+                    { value: "any", label: "Any" },
+                  ]}
+                  isRequired={mode === "create"}
+                />
                 <FormField
                   name="partnerPreferenceAgeMin"
                   label="Min Preferred Partner Age"
@@ -600,14 +623,18 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
               <FormSection title="Profile Images">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">Upload Profile Images</h3>
+                    <h3 className="text-sm font-medium">
+                      Upload Profile Images
+                    </h3>
                     <span className="text-xs text-gray-500">
                       {uploadedImageIds.length} of 10 images
                     </span>
                   </div>
-                  <ProfileImageUpload 
-                    userId={clerkUser?.id} 
-                    onImagesChanged={(newImageIds) => setUploadedImageIds(newImageIds)}
+                  <ProfileImageUpload
+                    userId={clerkUser?.id}
+                    onImagesChanged={(newImageIds) =>
+                      setUploadedImageIds(newImageIds)
+                    }
                   />
                   {form.formState.errors.profileImageIds && (
                     <p className="text-sm text-red-600 mt-2">
@@ -615,7 +642,8 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-2">
-                    Please upload at least one clear photo of yourself. First image will be your main profile picture.
+                    Please upload at least one clear photo of yourself. First
+                    image will be your main profile picture.
                   </p>
                 </div>
               </FormSection>

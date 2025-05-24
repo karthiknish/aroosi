@@ -24,6 +24,7 @@ export interface Profile {
   partnerPreferenceAgeMax?: number;
   partnerPreferenceReligion?: string[];
   partnerPreferenceUkCity?: string[];
+  preferredGender?: string;
   profileImageIds?: string[];
   banned?: boolean;
   createdAt: string;

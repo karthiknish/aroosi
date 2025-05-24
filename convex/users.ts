@@ -641,16 +641,31 @@ export const deleteUser = mutation({
 });
 
 export const listUsersWithProfiles = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    preferredGender: v.optional(
+      v.union(
+        v.literal("male"),
+        v.literal("female"),
+        v.literal("other"),
+        v.literal("any")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
     const users = await ctx.db.query("users").collect();
     const profiles = await ctx.db.query("profiles").collect();
-    return users.map((user) => ({
+    let filtered = users.map((user) => ({
       ...user,
       profile:
         profiles.find((p) => p.userId === user._id && p.banned !== true) ||
         null,
     }));
+    if (args.preferredGender && args.preferredGender !== "any") {
+      filtered = filtered.filter(
+        (u) => u.profile && u.profile.gender === args.preferredGender
+      );
+    }
+    return filtered;
   },
 });
 

@@ -100,6 +100,9 @@ export function getProfileFormSchema(isOnboarding: boolean) {
       ),
       partnerPreferenceReligion: z.array(z.string()).optional(),
       partnerPreferenceUkCity: z.array(z.string()).optional(),
+      preferredGender: z.enum(["male", "female", "other", "any"], {
+        required_error: "Preferred gender is required",
+      }),
       profileImageIds: z.array(z.string()).optional(),
       phoneNumber: z
         .string()
@@ -186,6 +189,7 @@ export default function ProfilePage() {
         "partnerPreferenceAgeMax",
         "partnerPreferenceReligion",
         "partnerPreferenceUkCity",
+        "preferredGender",
         "profileImageIds",
         // New lifestyle/contact fields
         "phoneNumber",
