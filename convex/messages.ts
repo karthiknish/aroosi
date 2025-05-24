@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { checkRateLimit } from "./utils/rateLimit";
 
 // Send a message (only if mutual interest)
 export const sendMessage = mutation({
@@ -18,6 +19,15 @@ export const sendMessage = mutation({
       text: string;
     }
   ) => {
+    // Rate limit by fromUserId
+    const rateKey = `message:send:${args.fromUserId}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     if (!args.text.trim()) throw new Error("Message cannot be empty");
     // Optionally: check mutual interest here (or in frontend)
     const now = Date.now();
@@ -72,6 +82,15 @@ export const saveChatbotMessage = mutation({
     timestamp: v.float64(),
   },
   handler: async (ctx, args) => {
+    // Rate limit by email
+    const rateKey = `chatbot:save:${args.email}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     return ctx.db.insert("chatbotMessages", args);
   },
 });

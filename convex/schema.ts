@@ -154,4 +154,11 @@ export default defineSchema({
     storageId: v.string(),
     fileName: v.string(),
   }).index("by_user", ["userId"]),
+
+  // Rate limits table for abuse prevention
+  rateLimits: defineTable({
+    key: v.string(), // e.g., IP address or user ID + endpoint
+    windowStart: v.float64(), // timestamp of window start
+    count: v.int64(), // number of requests in window
+  }).index("by_key", ["key"]),
 });

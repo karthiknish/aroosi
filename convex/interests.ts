@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { checkRateLimit } from "./utils/rateLimit";
 
 // Send an interest (like/express interest)
 export const sendInterest = mutation({
@@ -8,6 +9,15 @@ export const sendInterest = mutation({
     toUserId: v.id("users"),
   },
   handler: async (ctx: any, args: { fromUserId: string; toUserId: string }) => {
+    // Rate limit by fromUserId
+    const rateKey = `interest:send:${args.fromUserId}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     // Prevent duplicate or self-interest
     if (args.fromUserId === args.toUserId)
       throw new Error("Cannot send interest to self");
@@ -38,6 +48,15 @@ export const respondToInterest = mutation({
     ctx: any,
     args: { interestId: string; status: "accepted" | "rejected" }
   ) => {
+    // Rate limit by interestId
+    const rateKey = `interest:respond:${args.interestId}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     const interest = await ctx.db.get(args.interestId);
     if (!interest) throw new Error("Interest not found");
     return ctx.db.patch(args.interestId, { status: args.status });

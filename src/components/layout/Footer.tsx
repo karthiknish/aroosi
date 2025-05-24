@@ -34,6 +34,20 @@ export default function Footer() {
               Connecting hearts, building futures. Find your UK-based life
               partner.
             </p>
+            <div className="flex space-x-4 mt-6">
+              <a href="#" className={linkHover} aria-label="Facebook">
+                <Facebook size={20} />
+              </a>
+              <a href="#" className={linkHover} aria-label="Twitter">
+                <Twitter size={20} />
+              </a>
+              <a href="#" className={linkHover} aria-label="Instagram">
+                <Instagram size={20} />
+              </a>
+              <a href="#" className={linkHover} aria-label="LinkedIn">
+                <Linkedin size={20} />
+              </a>
+            </div>
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-200 mb-4">
@@ -89,28 +103,13 @@ export default function Footer() {
           </div>
           {/* Optional: Add a fourth column for social media or newsletter if desired */}
         </div>
-        <div className="mt-8 pt-8 border-t border-gray-700 flex flex-col sm:flex-row justify-between items-center">
-          <p className="text-sm text-gray-500">
-            &copy; {currentYear} Aroosi. All rights reserved.
-          </p>
-          <div className="flex space-x-4 mt-4 sm:mt-0">
-            <a href="#" className={linkHover} aria-label="Facebook">
-              <Facebook size={20} />
-            </a>
-            <a href="#" className={linkHover} aria-label="Twitter">
-              <Twitter size={20} />
-            </a>
-            <a href="#" className={linkHover} aria-label="Instagram">
-              <Instagram size={20} />
-            </a>
-            <a href="#" className={linkHover} aria-label="LinkedIn">
-              <Linkedin size={20} />
-            </a>
-          </div>
-        </div>
+
         <p className="text-xs text-gray-600 mt-6 text-center">
           Aroosi is a UK-focused matrimonial platform. Please ensure you review
           our terms and safety guidelines.
+        </p>
+        <p className="text-sm text-center mt-6 text-gray-500">
+          &copy; {currentYear} Aroosi. All rights reserved.
         </p>
       </div>
     </motion.footer>

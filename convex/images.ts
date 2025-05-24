@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { checkRateLimit } from "./utils/rateLimit";
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
 const MAX_IMAGES = 5;
@@ -27,6 +28,15 @@ export const getProfileImages = query({
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
+    // Rate limit by a generic key (could use user identity if available)
+    const rateKey = `images:generateUploadUrl`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -38,6 +48,15 @@ export const uploadProfileImage = mutation({
     fileName: v.string(),
   },
   handler: async (ctx, args) => {
+    // Rate limit by userId
+    const rateKey = `images:upload:${args.userId}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     // Save to database
     return await ctx.db.insert("images", {
       userId: args.userId,
@@ -53,6 +72,15 @@ export const deleteProfileImage = mutation({
     imageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
+    // Rate limit by userId
+    const rateKey = `images:delete:${args.userId}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     const image = await ctx.db
       .query("images")
       .filter((q) => q.eq(q.field("userId"), args.userId))

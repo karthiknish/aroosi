@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { requireAdmin } from "./utils/requireAdmin";
+import { checkRateLimit } from "./utils/rateLimit";
 
 export const createBlogPost = mutation({
   args: {
@@ -13,6 +14,15 @@ export const createBlogPost = mutation({
     categories: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const rateKey = `blog:create:${identity?.subject || "anon"}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     const now = Date.now();
     await ctx.db.insert("blogPosts", {
       ...args,
@@ -56,6 +66,14 @@ export const updateBlogPost = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
+    const rateKey = `blog:update:${identity?.subject || "anon"}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     requireAdmin(identity);
     await ctx.db.patch(args._id, {
       title: args.title,
@@ -74,6 +92,14 @@ export const deleteBlogPost = mutation({
   args: { _id: v.id("blogPosts") },
   handler: async (ctx, { _id }) => {
     const identity = await ctx.auth.getUserIdentity();
+    const rateKey = `blog:delete:${identity?.subject || "anon"}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
     requireAdmin(identity);
     await ctx.db.delete(_id);
     return { success: true };
