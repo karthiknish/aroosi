@@ -90,14 +90,16 @@ export default function ProfileDetailPage() {
     userIds: id ? [id] : [],
   });
 
-  // State hooks
+  // State hooks (always called)
   const [interestSent, setInterestSent] = React.useState(false);
   const [interestError, setInterestError] = React.useState<string | null>(null);
   const [showMutualNotification, setShowMutualNotification] =
     React.useState(false);
   const [blockLoading, setBlockLoading] = React.useState(false);
+  // For image order, always call with fallback
+  const [localImageOrder, setLocalImageOrder] = React.useState<string[]>([]);
 
-  // Only render after all hooks are called
+  // Only after all hooks, do early returns
   if (
     data === undefined ||
     currentUserConvex === undefined ||
@@ -112,13 +114,9 @@ export default function ProfileDetailPage() {
     );
   }
 
+  // Now safe to use profile data
   const p = data.profile;
   const isOwnProfile = currentUserId && id && currentUserId === id;
-
-  // Local image order state (for own profile)
-  const [localImageOrder, setLocalImageOrder] = React.useState<string[]>(
-    p?.profileImageIds || []
-  );
 
   // Keep localImageOrder in sync with profile data
   React.useEffect(() => {

@@ -12,16 +12,63 @@ import {
   GraduationCap,
   Briefcase,
   Info,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { useAuth } from "@clerk/nextjs";
+import React, { useState } from "react";
 
 export default function AdminProfileDetailPage() {
+  // All hooks must be called unconditionally at the top
   const { id } = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useAuth();
+  const profile = useQuery(api.users.getProfileById, {
+    id: id as Id<"profiles">,
+  });
+  // We must always call this hook, so pass a dummy userId if profile is not loaded
+  const images = useQuery(
+    api.images.getProfileImages,
+    profile && profile.userId
+      ? { userId: profile.userId as Id<"users"> }
+      : "skip"
+  );
+  const matches = useQuery(api.users.getMatchesForProfile, {
+    profileId: id as Id<"profiles">,
+  });
+  const imageMap =
+    images && Array.isArray(images)
+      ? Object.fromEntries(images.map((img) => [String(img.storageId), img]))
+      : {};
+  const orderedImages =
+    profile && profile.profileImageIds && images
+      ? profile.profileImageIds
+          .map((id) => imageMap[String(id)])
+          .filter(Boolean)
+      : [];
+  const [currentImageIdx, setCurrentImageIdx] = useState(0);
+  const handlePrev = () => {
+    setCurrentImageIdx((prev) =>
+      prev === 0 ? orderedImages.length - 1 : prev - 1
+    );
+  };
+  const handleNext = () => {
+    setCurrentImageIdx((prev) =>
+      prev === orderedImages.length - 1 ? 0 : prev + 1
+    );
+  };
 
+  // Debug logs
+  console.log({
+    userId: profile?.userId,
+    images,
+    profileImageIds: profile?.profileImageIds,
+    orderedImages,
+  });
+
+  // Now do early returns for loading/auth
   if (!isLoaded)
     return (
       <div className="min-h-screen flex items-center justify-center text-pink-600">
@@ -34,14 +81,6 @@ export default function AdminProfileDetailPage() {
         You must be signed in as an admin.
       </div>
     );
-
-  const profile = useQuery(api.users.getProfileById, {
-    id: id as Id<"profiles">,
-  });
-  const matches = useQuery(api.users.getMatchesForProfile, {
-    profileId: id as Id<"profiles">,
-  });
-
   if (profile === undefined)
     return (
       <div className="min-h-screen flex items-center justify-center text-pink-600">
@@ -55,28 +94,107 @@ export default function AdminProfileDetailPage() {
       </div>
     );
 
-  const profileImageUrl =
-    profile.profileImageIds && profile.profileImageIds.length > 0
-      ? `/api/storage/${profile.profileImageIds[0]}`
-      : null;
-
   return (
     <div className="max-w-3xl mx-auto py-10 px-2">
+      {/* Profile Images Slider Section */}
+      {orderedImages.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Profile Images</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center">
+              <div className="relative w-64 h-64 flex items-center justify-center">
+                <button
+                  onClick={handlePrev}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition"
+                  aria-label="Previous image"
+                  type="button"
+                  disabled={orderedImages.length <= 1}
+                  style={{
+                    opacity: orderedImages.length <= 1 ? 0.5 : 1,
+                    pointerEvents: orderedImages.length <= 1 ? "none" : "auto",
+                  }}
+                >
+                  <ChevronLeft className="w-6 h-6 text-pink-600" />
+                </button>
+                <img
+                  src={
+                    orderedImages[currentImageIdx].url ||
+                    `/api/storage/${orderedImages[currentImageIdx].storageId}`
+                  }
+                  alt={`Profile image ${currentImageIdx + 1}`}
+                  className="object-cover rounded-lg w-64 h-64 border-2 border-gray-200 shadow"
+                  style={{ maxWidth: 256, maxHeight: 256 }}
+                />
+                <button
+                  onClick={handleNext}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition"
+                  aria-label="Next image"
+                  type="button"
+                  disabled={orderedImages.length <= 1}
+                  style={{
+                    opacity: orderedImages.length <= 1 ? 0.5 : 1,
+                    pointerEvents: orderedImages.length <= 1 ? "none" : "auto",
+                  }}
+                >
+                  <ChevronRight className="w-6 h-6 text-pink-600" />
+                </button>
+                <div className="absolute bottom-2 right-2 bg-white/80 text-xs px-2 py-0.5 rounded shadow">
+                  {currentImageIdx + 1} / {orderedImages.length}
+                </div>
+              </div>
+              {orderedImages.length > 1 && (
+                <div className="flex gap-2 mt-4">
+                  {orderedImages.map((img, idx) => (
+                    <button
+                      key={img.storageId}
+                      className={`w-3 h-3 rounded-full border-2 ${
+                        idx === currentImageIdx
+                          ? "bg-pink-600 border-pink-600"
+                          : "bg-gray-200 border-gray-300"
+                      }`}
+                      onClick={() => setCurrentImageIdx(idx)}
+                      aria-label={`Go to image ${idx + 1}`}
+                      type="button"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* Fallback: show all images if orderedImages is empty but images exist */}
+      {orderedImages.length === 0 &&
+        Array.isArray(images) &&
+        images.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>All Images (Unordered)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-4">
+                {images.map((img, idx) => (
+                  <img
+                    key={img.storageId}
+                    src={img.url || `/api/storage/${img.storageId}`}
+                    alt={`Image ${idx + 1}`}
+                    style={{
+                      width: 120,
+                      height: 120,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                      border: "2px solid #eee",
+                    }}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       <Card className="mb-8 shadow-xl">
         <CardContent className="pt-8 pb-10 px-6 flex flex-col items-center">
-          <div className="relative w-32 h-32 mb-4">
-            {profileImageUrl ? (
-              <img
-                src={profileImageUrl}
-                alt={profile.fullName || "Profile"}
-                className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
-              />
-            ) : (
-              <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-4 border-white shadow-md">
-                <UserCircle className="w-20 h-20 text-gray-300" />
-              </div>
-            )}
-          </div>
           <div className="text-2xl font-bold text-gray-900 mb-1">
             {profile.fullName || "Unnamed"}
           </div>

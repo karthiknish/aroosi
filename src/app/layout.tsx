@@ -6,6 +6,7 @@ import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { Toaster } from "sonner";
 import MainLayoutContent from "@/components/layout/MainLayoutContent";
 import ChatBot from "@/components/ChatBot";
+import { StagewiseToolbar } from "@stagewise/toolbar-next";
 
 export const metadata: Metadata = {
   title: "Aroosi - UK Matrimony for Muslims",
@@ -84,6 +85,9 @@ export default function RootLayout({
             <Toaster richColors />
             <ChatBot />
           </ConvexClientProvider>
+          {process.env.NODE_ENV === "development" && (
+            <StagewiseToolbar config={{ plugins: [] }} />
+          )}
         </body>
       </html>
     </ClerkProvider>
