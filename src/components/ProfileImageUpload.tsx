@@ -20,6 +20,8 @@ interface ProfileImageUploadProps {
   userId: Id<"users">;
   isAdmin?: boolean;
   profileId?: Id<"profiles">;
+  profileImageIds?: string[];
+  onImagesChanged?: () => void;
 }
 
 interface ImageData {
@@ -32,6 +34,8 @@ export function ProfileImageUpload({
   userId,
   isAdmin = false,
   profileId,
+  profileImageIds,
+  onImagesChanged,
 }: ProfileImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const imagesQuery = useQuery(api.images.getProfileImages, { userId });
@@ -105,8 +109,10 @@ export function ProfileImageUpload({
             id: profileId,
             updates: { profileImageIds: newOrder },
           });
+          if (onImagesChanged) onImagesChanged();
         } else {
           await updateProfile({ profileImageIds: newOrder });
+          if (onImagesChanged) onImagesChanged();
         }
         toast.success("Images uploaded successfully");
       } catch (error) {
@@ -125,6 +131,7 @@ export function ProfileImageUpload({
       isAdmin,
       profileId,
       adminUpdateProfile,
+      onImagesChanged,
     ]
   );
 
@@ -145,6 +152,7 @@ export function ProfileImageUpload({
       setOrderedImages(newOrderedImages);
       const newStorageOrder = newOrderedImages.map((img) => img.storageId);
       await updateProfile({ profileImageIds: newStorageOrder });
+      if (onImagesChanged) onImagesChanged();
       toast.success("Image deleted successfully");
     } catch (error) {
       console.error("Error deleting image:", error);
@@ -168,18 +176,28 @@ export function ProfileImageUpload({
   });
 
   const images = imagesQuery || [];
-
-  const memoizedOrderedImages = useMemo(
-    () =>
-      images && images.length > 0
-        ? images.map((img) => ({
-            _id: String(img._id),
-            url: img.url || "",
-            storageId: img.storageId,
-          }))
-        : [],
-    [images]
-  );
+  const memoizedOrderedImages = useMemo(() => {
+    if (profileImageIds && profileImageIds.length > 0) {
+      const imageMap = Object.fromEntries(
+        images.map((img) => [String(img.storageId), img])
+      );
+      return profileImageIds
+        .map((id) => imageMap[String(id)])
+        .filter(Boolean)
+        .map((img) => ({
+          _id: String(img._id),
+          url: img.url || "",
+          storageId: img.storageId,
+        }));
+    }
+    return images && images.length > 0
+      ? images.map((img) => ({
+          _id: String(img._id),
+          url: img.url || "",
+          storageId: img.storageId,
+        }))
+      : [];
+  }, [images, profileImageIds]);
 
   return (
     <div className="space-y-4">

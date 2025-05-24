@@ -18,6 +18,7 @@ interface ProfileCardProps {
   onDelete: (id: Id<"profiles">) => void;
   onToggleBan: (id: Id<"profiles">, banned: boolean) => void;
   setDeleteId: (id: Id<"profiles"> | null) => void;
+  onImagesChanged?: () => void;
 }
 
 export default function ProfileCard({
@@ -30,6 +31,7 @@ export default function ProfileCard({
   onDelete,
   onToggleBan,
   setDeleteId,
+  onImagesChanged,
 }: ProfileCardProps) {
   const router = useRouter();
 
@@ -191,6 +193,7 @@ export default function ProfileCard({
             onCheckboxChange={handleCheckboxChange}
             onSubmit={handleSubmit}
             loading={isSaving}
+            onImagesChanged={onImagesChanged}
           />
         ) : (
           <ProfileView profile={profile} />

@@ -1,17 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/../convex/_generated/api";
@@ -19,46 +12,14 @@ import {
   useQuery as useConvexQuery,
   useMutation as useConvexMutation,
 } from "convex/react";
-import { Pencil, Trash2, Save, X, Eye, Image as ImageIcon } from "lucide-react";
-import { ProfileImageUpload } from "@/components/ProfileImageUpload";
-import { ProfileImageReorder } from "@/components/ProfileImageReorder";
+
 // Removed import { ProfileImageStack } from "@/components/ProfileImageStack";
 import { Id } from "@/../convex/_generated/dataModel";
-import Link from "next/link";
 import { useDebounce } from "use-debounce";
 import { useRouter } from "next/navigation";
 import ProfileCard from "./ProfileCard";
-import { Profile } from "@/types/profile";
 
 // Helper for rendering a profile image or fallback
-function ProfileImageAvatar({
-  imageIds,
-  alt,
-  fallbackText,
-}: {
-  imageIds: string[];
-  alt: string;
-  fallbackText: string;
-}) {
-  // If there is at least one imageId, render the image
-  if (imageIds && imageIds.length > 0) {
-    // You may want to adjust the image URL logic as per your backend
-    // For now, assume /api/images/[imageId] returns the image
-    return (
-      <img
-        src={`/api/images/${imageIds[0]}`}
-        alt={alt}
-        className="w-12 h-12 rounded-full object-cover"
-      />
-    );
-  }
-  // Otherwise, render fallback (initial or icon)
-  return (
-    <div className="w-12 h-12 rounded-full bg-pink-200 flex items-center justify-center text-lg font-bold text-white">
-      {fallbackText ? fallbackText : <ImageIcon className="w-6 h-6" />}
-    </div>
-  );
-}
 
 export function ProfileManagement() {
   const [editingId, setEditingId] = useState<Id<"profiles"> | null>(null);
@@ -172,25 +133,6 @@ export function ProfileManagement() {
     }
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setEditForm((prev: typeof editForm) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setEditForm((prev: typeof editForm) => ({ ...prev, [name]: value }));
-  };
-
-  // Profile image update handler
-  const handleProfileImagesChange = (newImageIds: string[]) => {
-    setEditForm((prev: typeof editForm) => ({
-      ...prev,
-      profileImageIds: newImageIds,
-    }));
-  };
-
   // Ban/unban logic
   const toggleBan = async (id: Id<"profiles">, banned: boolean) => {
     try {
@@ -213,7 +155,7 @@ export function ProfileManagement() {
             setSearch(e.target.value);
             setPage(0);
           }}
-          className="max-w-xs"
+          className="max-w-xs bg-white"
         />
         <div className="flex-1" />
         <div className="text-sm text-gray-500">
@@ -233,6 +175,9 @@ export function ProfileManagement() {
             onDelete={handleDelete}
             onToggleBan={toggleBan}
             setDeleteId={setDeleteId}
+            onImagesChanged={() =>
+              queryClient.invalidateQueries({ queryKey: ["profiles"] })
+            }
           />
         ))}
       </div>

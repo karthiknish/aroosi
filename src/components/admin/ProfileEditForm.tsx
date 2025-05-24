@@ -21,6 +21,7 @@ interface ProfileEditFormProps {
   onCheckboxChange?: (name: string, checked: boolean) => void;
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
   loading?: boolean;
+  onImagesChanged?: () => void;
 }
 
 export default function ProfileEditForm({
@@ -31,6 +32,7 @@ export default function ProfileEditForm({
   onCheckboxChange,
   onSubmit,
   loading,
+  onImagesChanged,
 }: ProfileEditFormProps) {
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
@@ -40,6 +42,8 @@ export default function ProfileEditForm({
           userId={profile.userId as Id<"users">}
           isAdmin={true}
           profileId={profile._id as Id<"profiles">}
+          profileImageIds={profile.profileImageIds}
+          onImagesChanged={onImagesChanged}
         />
       )}
 
@@ -314,16 +318,7 @@ export default function ProfileEditForm({
           }
         />
       </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={editForm.banned || false}
-          onChange={(e) =>
-            onCheckboxChange && onCheckboxChange("banned", e.target.checked)
-          }
-        />
-        <label className="text-sm">Banned</label>
-      </div>
+
       <button
         type="submit"
         className="mt-4 px-4 py-2 bg-primary text-white rounded disabled:opacity-50"

@@ -34,7 +34,7 @@ const genderOptions = [
 ];
 
 export default function SearchProfilesPage() {
-  const profiles = useQuery(api.contact.listUsersWithProfiles, {});
+  const profiles = useQuery(api.users.listUsersWithProfiles, {});
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
   const [gender, setGender] = React.useState("any");
@@ -196,11 +196,13 @@ export default function SearchProfilesPage() {
                   className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col"
                 >
                   {firstImageUrl ? (
-                    <img
-                      src={firstImageUrl}
-                      alt={p.fullName}
-                      className="w-full h-40 object-cover"
-                    />
+                    <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={firstImageUrl}
+                        alt={p.fullName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   ) : (
                     <div className="w-full h-40 flex items-center justify-center bg-gray-100">
                       <UserCircle className="w-16 h-16 text-gray-300" />

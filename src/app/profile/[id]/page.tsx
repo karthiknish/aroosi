@@ -3,7 +3,7 @@
 import React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -49,42 +49,53 @@ const DisplaySection: React.FC<{
 );
 
 export default function ProfileDetailPage() {
+  // All hooks must be called unconditionally and in the same order
   const { id } = useParams<{ id: Id<"users"> }>();
   const { user } = useUser();
   const router = useRouter();
-  // Always call all hooks at the top level
+
+  // Queries and mutations
   const data = useQuery(api.users.getUserPublicProfile, { userId: id });
   const currentUserConvex = useQuery(api.users.getCurrentUserWithProfile, {});
   const currentUserId = currentUserConvex?._id;
   const sendInterest = useMutation(api.interests.sendInterest);
+  const blockUserMutation = useMutation(api.users.blockUser);
+  const unblockUserMutation = useMutation(api.users.unblockUser);
+  const updateProfile = useMutation(api.users.updateProfile);
+
+  // These queries depend on currentUserId and id, but must always be called
   const isMutualInterest = useQuery(
     api.interests.isMutualInterest,
     currentUserId && id && currentUserId !== id
       ? { userA: currentUserId, userB: id }
       : "skip"
   );
-  const [interestSent, setInterestSent] = React.useState(false);
-  const [interestError, setInterestError] = React.useState<string | null>(null);
-  const [showMutualNotification, setShowMutualNotification] =
-    React.useState(false);
-  const blockUserMutation = useMutation(api.users.blockUser);
-  const unblockUserMutation = useMutation(api.users.unblockUser);
   const isBlocked = useQuery(
     api.users.isBlocked,
     currentUserId && id && currentUserId !== id
       ? { blockerUserId: currentUserId, blockedUserId: id }
       : "skip"
   );
-  const [blockLoading, setBlockLoading] = React.useState(false);
   const sentInterest = useQuery(
     api.interests.getSentInterests,
     currentUserId ? { userId: currentUserId } : "skip"
   );
-  const alreadySentInterest = React.useMemo(() => {
-    if (!sentInterest || !Array.isArray(sentInterest)) return false;
-    return sentInterest.some((i: any) => i.toUserId === id);
-  }, [sentInterest, id]);
-  const updateProfile = useMutation(api.users.updateProfile);
+  // For own profile, get all images with URLs
+  const userProfileImages = useQuery(
+    api.images.getProfileImages,
+    id ? { userId: id } : "skip"
+  );
+  // For public profile image (for others), use batchGetProfileImages
+  const userImages = useConvexQuery(api.images.batchGetProfileImages, {
+    userIds: id ? [id] : [],
+  });
+
+  // State hooks
+  const [interestSent, setInterestSent] = React.useState(false);
+  const [interestError, setInterestError] = React.useState<string | null>(null);
+  const [showMutualNotification, setShowMutualNotification] =
+    React.useState(false);
+  const [blockLoading, setBlockLoading] = React.useState(false);
 
   // Only render after all hooks are called
   if (
@@ -100,9 +111,11 @@ export default function ProfileDetailPage() {
       </div>
     );
   }
+
   const p = data.profile;
   const isOwnProfile = currentUserId && id && currentUserId === id;
 
+  // Local image order state (for own profile)
   const [localImageOrder, setLocalImageOrder] = React.useState<string[]>(
     p?.profileImageIds || []
   );
@@ -112,6 +125,30 @@ export default function ProfileDetailPage() {
     setLocalImageOrder(p?.profileImageIds || []);
   }, [p?.profileImageIds]);
 
+  // Memoized map of storageId to url for own profile
+  const storageIdToUrl = React.useMemo(() => {
+    if (!userProfileImages || !Array.isArray(userProfileImages)) return {};
+    const map: Record<string, string | null> = {};
+    for (const img of userProfileImages) {
+      map[img.storageId] = img.url;
+    }
+    return map;
+  }, [userProfileImages]);
+
+  // Memoized check for already sent interest
+  const alreadySentInterest = React.useMemo(() => {
+    if (!sentInterest || !Array.isArray(sentInterest)) return false;
+    return sentInterest.some((i: any) => i.toUserId === id);
+  }, [sentInterest, id]);
+
+  // Memoized image URLs for public profile (for others)
+  const imageUrls = React.useMemo(() => {
+    if (!p || !p.profileImageIds || !userImages || !id || !userImages[id])
+      return [];
+    return p.profileImageIds.map((imgId: string) => userImages[id]);
+  }, [p, userImages, id]);
+
+  // Handle image reordering (own profile)
   const handleMoveImage = async (fromIdx: number, toIdx: number) => {
     if (!isOwnProfile) return;
     if (toIdx < 0 || toIdx >= localImageOrder.length) return;
@@ -128,21 +165,15 @@ export default function ProfileDetailPage() {
     }
   };
 
+  // Show notification on mutual interest
   React.useEffect(() => {
     if (isMutualInterest) {
       setShowMutualNotification(true);
       toast.success("It's a match! You can now message each other.");
     }
   }, [isMutualInterest]);
-  const userImages = useConvexQuery(api.images.batchGetProfileImages, {
-    userIds: id ? [id] : [],
-  });
-  const imageUrls = React.useMemo(() => {
-    if (!p || !p.profileImageIds || !userImages || !id || !userImages[id])
-      return [];
-    return p.profileImageIds.map((imgId: string) => userImages[id]);
-  }, [p, userImages, id]);
 
+  // Express interest handler
   const handleExpressInterest = async () => {
     setInterestError(null);
     try {
@@ -153,10 +184,12 @@ export default function ProfileDetailPage() {
     }
   };
 
+  // Message handler
   const handleMessage = () => {
     router.push(`/messages?userId=${id}`);
   };
 
+  // Block/unblock handlers
   const handleBlock = async () => {
     setBlockLoading(true);
     try {
@@ -185,19 +218,6 @@ export default function ProfileDetailPage() {
       setBlockLoading(false);
     }
   };
-
-  const userProfileImages = useQuery(
-    api.images.getProfileImages,
-    isOwnProfile && id ? { userId: id } : "skip"
-  );
-  const storageIdToUrl = React.useMemo(() => {
-    if (!userProfileImages || !Array.isArray(userProfileImages)) return {};
-    const map: Record<string, string | null> = {};
-    for (const img of userProfileImages) {
-      map[img.storageId] = img.url;
-    }
-    return map;
-  }, [userProfileImages]);
 
   return (
     <>
