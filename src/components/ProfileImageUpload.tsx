@@ -21,7 +21,7 @@ type ProfileImageUploadProps = {
   userId: Id<"users">;
   profileId?: Id<"profiles">;
   isAdmin?: boolean;
-  onImagesChanged?: () => void;
+  onImagesChanged?: (newImageIds: string[]) => void;
 };
 
 export function ProfileImageUpload({
@@ -59,8 +59,13 @@ export function ProfileImageUpload({
 
   // Get profile image IDs
   const profileImageIds = useMemo(() => {
-    return orderedImages.map((img) => img.storageId);
-  }, [orderedImages]);
+    const ids = orderedImages.map((img) => img.storageId as string);
+    // Notify parent component about the image IDs change
+    if (onImagesChanged) {
+      onImagesChanged(ids);
+    }
+    return ids;
+  }, [orderedImages, onImagesChanged]);
 
   // Sync orderedImages with images from server
   useEffect(() => {

@@ -111,7 +111,7 @@ export default function ProfileCard({
       // Call parent onSaveEdit with the profile id and localEditForm
       // You may want to pass localEditForm up, or update parent state before calling onSaveEdit
       // For now, just call onSaveEdit
-      await onSaveEdit(profile._id as Id<"profiles">, localEditForm);
+      await onSaveEdit(profile._id as Id<"profiles">);
     } finally {
       setIsSaving(false);
     }

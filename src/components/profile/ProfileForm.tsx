@@ -352,6 +352,25 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   // Unified submit handler
   const handleSubmit = async (values: any) => {
+    // Check if we're on the image upload step and no images are uploaded
+    if (mode === 'create' && currentStep === 4 && uploadedImageIds.length === 0) {
+      form.setError('profileImageIds', {
+        type: 'manual',
+        message: 'Please upload at least one profile image',
+      });
+      return;
+    }
+    
+    // If we're submitting the final form, ensure we have images
+    if (mode === 'create' && currentStep === totalSteps - 1 && uploadedImageIds.length === 0) {
+      form.setError('profileImageIds', {
+        type: 'manual',
+        message: 'Please upload at least one profile image before submitting',
+      });
+      setCurrentStep(4); // Go to the images step
+      return;
+    }
+    
     await onSubmit({ ...values, profileImageIds: uploadedImageIds });
     setShowSuccessModal(true);
     setHasSubmittedSuccessfully(true);
@@ -579,9 +598,26 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
             )}
             {currentStep === totalSteps - 1 && (
               <FormSection title="Profile Images">
-                {userConvexData?._id && (
-                  <ProfileImageUpload userId={userConvexData._id} />
-                )}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Upload Profile Images</h3>
+                    <span className="text-xs text-gray-500">
+                      {uploadedImageIds.length} of 10 images
+                    </span>
+                  </div>
+                  <ProfileImageUpload 
+                    userId={clerkUser?.id} 
+                    onImagesChanged={(newImageIds) => setUploadedImageIds(newImageIds)}
+                  />
+                  {form.formState.errors.profileImageIds && (
+                    <p className="text-sm text-red-600 mt-2">
+                      {form.formState.errors.profileImageIds.message as string}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-2">
+                    Please upload at least one clear photo of yourself. First image will be your main profile picture.
+                  </p>
+                </div>
               </FormSection>
             )}
             {/* Navigation */}

@@ -107,3 +107,21 @@ export const isMutualInterest = query({
     return aToB?.status === "accepted" && bToA?.status === "accepted";
   },
 });
+
+export const removeInterest = mutation({
+  args: {
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const interest = await ctx.db
+      .query("interests")
+      .withIndex("by_from_to", (q) =>
+        q.eq("fromUserId", args.fromUserId).eq("toUserId", args.toUserId)
+      )
+      .first();
+    if (!interest) throw new Error("Interest not found");
+    await ctx.db.delete(interest._id);
+    return { success: true };
+  },
+});
