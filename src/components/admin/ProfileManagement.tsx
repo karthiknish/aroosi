@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import {
   useQuery as useConvexQuery,
   useMutation as useConvexMutation,

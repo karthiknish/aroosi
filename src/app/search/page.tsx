@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -88,7 +88,7 @@ export default function SearchProfilesPage() {
       if (
         (city !== "any" && p.ukCity !== city) ||
         (religion !== "any" && p.religion !== religion) ||
-        p.gender !== preferredGender
+        (preferredGender !== "any" && p.gender !== preferredGender)
       ) {
         return false;
       }

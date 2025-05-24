@@ -9,13 +9,13 @@ import {
 } from "@/components/ui/select";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { Id } from "@/../convex/_generated/dataModel";
-
 interface Profile {
   _id: string;
   userId: string;
   fullName?: string;
   dateOfBirth?: string;
   gender?: string;
+  preferredGender?: string;
   ukCity?: string;
   ukPostcode?: string;
   religion?: string;

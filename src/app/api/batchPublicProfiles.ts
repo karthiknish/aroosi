@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { convexClient } from "@/../convex/_generated/client";
 
 export async function POST(req: NextRequest) {

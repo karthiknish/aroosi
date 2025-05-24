@@ -4,7 +4,7 @@ import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState, forwardRef, useCallback } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";

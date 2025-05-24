@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useAction } from "convex/react";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MapPin, UserCircle } from "lucide-react";

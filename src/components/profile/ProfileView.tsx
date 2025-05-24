@@ -26,7 +26,7 @@ import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { motion } from "framer-motion";
 import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Profile } from "@/types/profile";

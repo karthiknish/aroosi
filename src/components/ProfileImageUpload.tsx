@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { ProfileImageReorder } from "./ProfileImageReorder";

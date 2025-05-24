@@ -3,7 +3,7 @@
 import { ReactNode, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 

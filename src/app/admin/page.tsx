@@ -30,7 +30,7 @@ import { ContactMessages } from "@/components/admin/ContactMessages";
 import { BlogPosts } from "@/components/admin/BlogPosts";
 import { CreatePost } from "@/components/admin/CreatePost";
 import { ProfileManagement } from "@/components/admin/ProfileManagement";
-import { api } from "@/../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 import {
   useQuery as useConvexQuery,
   useMutation as useConvexMutation,
