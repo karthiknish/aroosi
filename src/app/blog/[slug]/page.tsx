@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Share2, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-// @ts-ignore
-import "highlight.js/styles/github.css";
+
 
 // Calculate reading time
 function getReadingTime(content: string): number {
