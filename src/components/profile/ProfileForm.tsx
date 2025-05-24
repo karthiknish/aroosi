@@ -36,6 +36,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useMutation } from "convex/react";
 import { Id } from "@/../convex/_generated/dataModel";
+import { Profile } from "@/types/profile";
 
 interface ImageData {
   _id: string;

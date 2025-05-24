@@ -10,13 +10,45 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const getProfileImages = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const images = await ctx.db
+    // Get the profile to get the order
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+
+    if (!profile || !profile.profileImageIds) {
+      // fallback: return all images unordered
+      const images = await ctx.db
+        .query("images")
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .collect();
+      return Promise.all(
+        images.map(async (image) => ({
+          _id: image._id,
+          storageId: image.storageId,
+          url: await ctx.storage.getUrl(image.storageId),
+        }))
+      );
+    }
+
+    // Get all images for the user
+    const allImages = await ctx.db
       .query("images")
       .filter((q) => q.eq(q.field("userId"), args.userId))
       .collect();
 
+    // Map by storageId for fast lookup
+    const imageMap = Object.fromEntries(
+      allImages.map((img) => [String(img.storageId), img])
+    );
+
+    // Return images in the order of profile.profileImageIds
+    const orderedImages = profile.profileImageIds
+      .map((storageId) => imageMap[String(storageId)])
+      .filter(Boolean);
+
     return Promise.all(
-      images.map(async (image) => ({
+      orderedImages.map(async (image) => ({
         _id: image._id,
         storageId: image.storageId,
         url: await ctx.storage.getUrl(image.storageId),

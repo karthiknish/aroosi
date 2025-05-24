@@ -18,6 +18,8 @@ import {
 
 interface ProfileImageUploadProps {
   userId: Id<"users">;
+  isAdmin?: boolean;
+  profileId?: Id<"profiles">;
 }
 
 interface ImageData {
@@ -26,13 +28,18 @@ interface ImageData {
   url: string | null;
 }
 
-export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
+export function ProfileImageUpload({
+  userId,
+  isAdmin = false,
+  profileId,
+}: ProfileImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const images = useQuery(api.images.getProfileImages, { userId });
+  const imagesQuery = useQuery(api.images.getProfileImages, { userId });
   const generateUploadUrl = useMutation(api.images.generateUploadUrl);
   const uploadImage = useMutation(api.images.uploadProfileImage);
   const deleteImage = useMutation(api.images.deleteProfileImage);
   const updateProfile = useMutation(api.users.updateProfile);
+  const adminUpdateProfile = useMutation(api.users.adminUpdateProfile);
 
   // Local state for ordered images
   const [orderedImages, setOrderedImages] = useState<ImageData[]>([]);
@@ -44,9 +51,9 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
 
   // Sync orderedImages with images from server
   useEffect(() => {
-    if (images && images.length > 0) {
+    if (imagesQuery && imagesQuery.length > 0) {
       setOrderedImages(
-        images.map((img) => ({
+        imagesQuery.map((img) => ({
           ...img,
           storageId: img.storageId as Id<"_storage">,
         }))
@@ -54,7 +61,7 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
     } else {
       setOrderedImages([]);
     }
-  }, [images]);
+  }, [imagesQuery]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -93,7 +100,14 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
           (img) => img.storageId as Id<"_storage">
         );
         const newOrder = [...currentImageIds, ...newImageIds];
-        await updateProfile({ profileImageIds: newOrder });
+        if (isAdmin && profileId) {
+          await adminUpdateProfile({
+            id: profileId,
+            updates: { profileImageIds: newOrder },
+          });
+        } else {
+          await updateProfile({ profileImageIds: newOrder });
+        }
         toast.success("Images uploaded successfully");
       } catch (error) {
         console.error("Error uploading images:", error);
@@ -102,28 +116,17 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
         setIsUploading(false);
       }
     },
-    [userId, orderedImages, generateUploadUrl, uploadImage, updateProfile]
+    [
+      userId,
+      orderedImages,
+      generateUploadUrl,
+      uploadImage,
+      updateProfile,
+      isAdmin,
+      profileId,
+      adminUpdateProfile,
+    ]
   );
-
-  // Save new order to server and update local state
-  const handleReorder = async (newOrder: string[]) => {
-    if (!orderedImages) return;
-    // Map newOrder (_id) to image object
-    const idToImage: Record<string, ImageData> = {};
-    orderedImages.forEach((img) => {
-      idToImage[img._id] = img;
-    });
-    const newOrderedImages = newOrder
-      .map((id) => idToImage[id])
-      .filter(Boolean);
-    setOrderedImages(newOrderedImages);
-    // Save new order to server (by storageId)
-    const newStorageOrder = newOrderedImages.map(
-      (img) => img.storageId as Id<"_storage">
-    );
-    await updateProfile({ profileImageIds: newStorageOrder });
-    toast.success("Image order updated");
-  };
 
   // Open modal to confirm deletion
   const confirmDelete = (storageId: Id<"_storage">) => {
@@ -164,16 +167,18 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
     disabled: isUploading || (orderedImages?.length ?? 0) >= 5,
   });
 
+  const images = imagesQuery || [];
+
   const memoizedOrderedImages = useMemo(
     () =>
-      orderedImages && orderedImages.length > 0
-        ? orderedImages.map((img) => ({
+      images && images.length > 0
+        ? images.map((img) => ({
             _id: String(img._id),
             url: img.url || "",
             storageId: img.storageId,
           }))
         : [],
-    [orderedImages]
+    [images]
   );
 
   return (
@@ -205,7 +210,9 @@ export function ProfileImageUpload({ userId }: ProfileImageUploadProps) {
       {/* Single drag-and-drop row with delete buttons */}
       <ProfileImageReorder
         images={memoizedOrderedImages}
-        onReorder={handleReorder}
+        userId={userId}
+        isAdmin={isAdmin}
+        profileId={profileId}
         renderAction={(img) =>
           img.storageId ? (
             <Button

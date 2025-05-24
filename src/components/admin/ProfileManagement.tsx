@@ -28,6 +28,7 @@ import Link from "next/link";
 import { useDebounce } from "use-debounce";
 import { useRouter } from "next/navigation";
 import ProfileCard from "./ProfileCard";
+import { Profile } from "@/types/profile";
 
 // Helper for rendering a profile image or fallback
 function ProfileImageAvatar({
@@ -57,40 +58,6 @@ function ProfileImageAvatar({
       {fallbackText ? fallbackText : <ImageIcon className="w-6 h-6" />}
     </div>
   );
-}
-
-interface Profile {
-  _id: string;
-  userId: string;
-  clerkId: string;
-  isProfileComplete?: boolean;
-  fullName?: string;
-  dateOfBirth?: string;
-  gender?: "male" | "female" | "other";
-  ukCity?: string;
-  ukPostcode?: string;
-  religion?: string;
-  caste?: string;
-  motherTongue?: string;
-  height?: string;
-  maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
-  education?: string;
-  occupation?: string;
-  annualIncome?: number;
-  aboutMe?: string;
-  phoneNumber?: string;
-  diet?: "vegetarian" | "non-vegetarian" | "vegan" | "eggetarian" | "other";
-  smoking?: "no" | "occasionally" | "yes";
-  drinking?: "no" | "occasionally" | "yes";
-  physicalStatus?: "normal" | "differently-abled" | "other";
-  partnerPreferenceAgeMin?: number;
-  partnerPreferenceAgeMax?: number;
-  partnerPreferenceReligion?: string[];
-  partnerPreferenceUkCity?: string[];
-  profileImageIds?: string[];
-  banned?: boolean;
-  createdAt: string;
-  updatedAt?: string;
 }
 
 export function ProfileManagement() {

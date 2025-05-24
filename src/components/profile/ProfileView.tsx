@@ -29,6 +29,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { motion } from "framer-motion";
 import { ProfileImageReorder } from "../ProfileImageReorder";
+import { Profile } from "@/types/profile";
 
 interface ImageData {
   _id: Id<"_storage">;
@@ -125,6 +126,46 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   console.log("images", images);
   console.log("imagesArray", imagesArray);
 
+  // Determine ordered images based on profileData.profileImageIds if available
+  let orderedImages: { url: string; _id: Id<"_storage"> }[] = [];
+  if (
+    profileData?.profileImageIds &&
+    Array.isArray(profileData.profileImageIds) &&
+    profileData.profileImageIds.length > 0
+  ) {
+    // Map storage IDs to image objects from imagesArray, and use storageId as _id
+    orderedImages = profileData.profileImageIds
+      .map((storageId: Id<"_storage">) => {
+        const img = imagesArray.find((img) => img.storageId === storageId);
+        if (img) {
+          return { url: img.url, _id: storageId };
+        }
+        return null;
+      })
+      .filter(Boolean) as { url: string; _id: Id<"_storage"> }[];
+  } else {
+    // fallback: use imagesArray, but use storageId as _id if available
+    orderedImages = imagesArray.map((img) => ({
+      url: img.url,
+      _id: img.storageId as Id<"_storage">,
+    }));
+  }
+
+  // Render images row
+  const imagesRow =
+    orderedImages.length > 0 ? (
+      <div className="flex flex-row gap-2 mb-6">
+        {orderedImages.map((img) => (
+          <img
+            key={img._id}
+            src={img.url}
+            alt="Profile image"
+            className="w-20 h-20 rounded-lg object-cover border"
+          />
+        ))}
+      </div>
+    ) : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -189,6 +230,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   {userConvexData?._id && (
                     <ProfileImageReorder
                       images={imagesArray}
+                      userId={userConvexData._id as Id<"users">}
                       onReorder={handleReorder}
                     />
                   )}

@@ -1,0 +1,31 @@
+export interface Profile {
+  _id: string;
+  userId: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  ukCity?: string;
+  ukPostcode?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: string;
+  education?: string;
+  occupation?: string;
+  annualIncome?: number;
+  aboutMe?: string;
+  phoneNumber?: string;
+  diet?: string;
+  smoking?: string;
+  drinking?: string;
+  physicalStatus?: string;
+  partnerPreferenceAgeMin?: number;
+  partnerPreferenceAgeMax?: number;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  profileImageIds?: string[];
+  banned?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}

@@ -1,41 +1,5 @@
 import { Card, CardTitle } from "@/components/ui/card";
-
-interface Profile {
-  _id: string;
-  userId: string;
-  fullName?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  ukCity?: string;
-  ukPostcode?: string;
-  religion?: string;
-  caste?: string;
-  motherTongue?: string;
-  height?: string;
-  maritalStatus?: string;
-  education?: string;
-  occupation?: string;
-  annualIncome?: number;
-  aboutMe?: string;
-  phoneNumber?: string;
-  diet?: string;
-  smoking?: string;
-  drinking?: string;
-  physicalStatus?: string;
-  partnerPreferenceAgeMin?: number;
-  partnerPreferenceAgeMax?: number;
-  partnerPreferenceReligion?: string[];
-  partnerPreferenceUkCity?: string[];
-  profileImageIds?: string[];
-  banned?: boolean;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-function formatCurrency(num?: number) {
-  if (typeof num !== "number") return "-";
-  return "£" + num.toLocaleString();
-}
+import { Profile } from "@/types/profile";
 
 export default function ProfileView({ profile }: { profile: Profile }) {
   // Calculate age from dateOfBirth if possible
@@ -53,8 +17,23 @@ export default function ProfileView({ profile }: { profile: Profile }) {
     }
   }
 
+  // Render all profile images in order
+  const images = (profile.profileImageIds || []).map((id) => (
+    <img
+      key={id}
+      src={`/api/storage/${id}`}
+      alt={profile.fullName || "Profile image"}
+      className="w-20 h-20 rounded-lg object-cover border mr-2"
+      style={{ display: "inline-block" }}
+    />
+  ));
+
   return (
     <Card className="w-full max-w-2xl p-6 border rounded-lg shadow-sm">
+      {/* Images row */}
+      {images.length > 0 && (
+        <div className="flex flex-row gap-2 mb-4">{images}</div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
         <div>
           <span className="block text-xs text-gray-500">Gender</span>
