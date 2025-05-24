@@ -21,6 +21,7 @@
     "@radix-ui/react-select": "^2.2.5",
     "@radix-ui/react-slot": "^1.2.3",
     "@stagewise/toolbar-next": "^0.1.2",
+    "@tanstack/react-query": "^5.77.0",
     "@tiptap/extension-code-block-lowlight": "^2.12.0",
     "@tiptap/extension-image": "^2.12.0",
     "@tiptap/extension-link": "^2.12.0",
@@ -50,6 +51,8 @@
     "react-hook-form": "^7.56.4",
     "react-image-crop": "^11.0.10",
     "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.3.0",
     "tailwindcss-animate": "^1.0.7",
@@ -58,7 +61,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tanstack/react-query": "^5.77.0",
     "@types/node": "^20.17.50",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -66,8 +68,6 @@
     "eslint": "^9",
     "eslint-config-next": "15.1.8",
     "postcss": "^8",
-    "rehype-highlight": "^7.0.2",
-    "remark-gfm": "^4.0.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
