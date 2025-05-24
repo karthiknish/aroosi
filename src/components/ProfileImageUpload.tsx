@@ -1,148 +1,107 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { useDropzone } from "react-dropzone";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/../convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import Image from "next/image";
 import { ProfileImageReorder } from "./ProfileImageReorder";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-
-interface ProfileImageUploadProps {
-  userId: Id<"users">;
-  isAdmin?: boolean;
-  profileId?: Id<"profiles">;
-  profileImageIds?: string[];
-  onImagesChanged?: () => void;
-}
+import { ImageUploader } from "./ImageUploader";
+import { ImageDeleteConfirmation } from "./ImageDeleteConfirmation";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface ImageData {
-  _id: Id<"images">;
-  storageId: Id<"_storage">;
-  url: string | null;
+  _id: Id<"images"> | string;
+  _creationTime?: number;
+  storageId: Id<"_storage"> | string;
+  url: string;
+  fileName?: string;
+  uploadedAt?: number;
 }
+
+type ProfileImageUploadProps = {
+  userId: Id<"users">;
+  profileId?: Id<"profiles">;
+  isAdmin?: boolean;
+  onImagesChanged?: () => void;
+};
 
 export function ProfileImageUpload({
   userId,
   isAdmin = false,
   profileId,
-  profileImageIds,
   onImagesChanged,
 }: ProfileImageUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const imagesQuery = useQuery(api.images.getProfileImages, { userId });
+  // State for upload status
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+
+  // Convex mutations
   const generateUploadUrl = useMutation(api.images.generateUploadUrl);
   const uploadImage = useMutation(api.images.uploadProfileImage);
   const deleteImage = useMutation(api.images.deleteProfileImage);
   const updateProfile = useMutation(api.users.updateProfile);
   const adminUpdateProfile = useMutation(api.users.adminUpdateProfile);
 
+  // Fetch profile images
+  const imagesQuery = useQuery(api.images.getProfileImages, { userId });
+
   // Local state for ordered images
   const [orderedImages, setOrderedImages] = useState<ImageData[]>([]);
-  // Modal state
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  // Modal states
+  const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<Id<"_storage"> | null>(
     null
   );
 
+  // Modal state for viewing large image
+  const [viewImageModalOpen, setViewImageModalOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [selectedImageIdx, setSelectedImageIdx] = useState<number>(-1);
+
+  // Get profile image IDs
+  const profileImageIds = useMemo(() => {
+    return orderedImages.map((img) => img.storageId);
+  }, [orderedImages]);
+
   // Sync orderedImages with images from server
   useEffect(() => {
-    if (imagesQuery && imagesQuery.length > 0) {
-      setOrderedImages(
-        imagesQuery.map((img) => ({
-          ...img,
-          storageId: img.storageId as Id<"_storage">,
-        }))
-      );
-    } else {
-      setOrderedImages([]);
+    if (imagesQuery) {
+      setOrderedImages(imagesQuery);
     }
   }, [imagesQuery]);
 
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      if (!userId) return;
-      const currentImages = orderedImages || [];
-      if (currentImages.length + acceptedFiles.length > 5) {
-        toast.error("You can only upload up to 5 images");
-        return;
-      }
-      setIsUploading(true);
+  // Handle image reordering
+  const onReorder = useCallback(
+    async (reorderedImages: ImageData[]) => {
+      setOrderedImages(reorderedImages);
+      const newOrder = reorderedImages.map(
+        (img) => img.storageId as Id<"_storage">
+      );
+
       try {
-        const newImageIds: Id<"_storage">[] = [];
-        for (const file of acceptedFiles) {
-          const uploadUrl = await generateUploadUrl();
-          if (typeof uploadUrl !== "string") {
-            throw new Error("Failed to get upload URL");
-          }
-          const result = await fetch(uploadUrl, {
-            method: "POST",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-          if (!result.ok) {
-            throw new Error("Failed to upload image");
-          }
-          const { storageId } = await result.json();
-          newImageIds.push(storageId as Id<"_storage">);
-          await uploadImage({
-            userId,
-            storageId,
-            fileName: file.name,
-          });
-        }
-        // Update the profile with the new image IDs (append to current order)
-        const currentImageIds = orderedImages.map(
-          (img) => img.storageId as Id<"_storage">
-        );
-        const newOrder = [...currentImageIds, ...newImageIds];
         if (isAdmin && profileId) {
           await adminUpdateProfile({
             id: profileId,
             updates: { profileImageIds: newOrder },
           });
-          if (onImagesChanged) onImagesChanged();
         } else {
           await updateProfile({ profileImageIds: newOrder });
-          if (onImagesChanged) onImagesChanged();
         }
-        toast.success("Images uploaded successfully");
+        if (onImagesChanged) onImagesChanged();
       } catch (error) {
-        console.error("Error uploading images:", error);
-        toast.error("Failed to upload images");
-      } finally {
-        setIsUploading(false);
+        console.error("Error updating image order:", error);
+        toast.error("Failed to update image order");
       }
     },
-    [
-      userId,
-      orderedImages,
-      generateUploadUrl,
-      uploadImage,
-      updateProfile,
-      isAdmin,
-      profileId,
-      adminUpdateProfile,
-      onImagesChanged,
-    ]
+    [isAdmin, profileId, onImagesChanged, adminUpdateProfile, updateProfile]
   );
 
-  // Open modal to confirm deletion
-  const confirmDelete = (storageId: Id<"_storage">) => {
-    setPendingDeleteId(storageId);
+  // Handle image deletion
+  const confirmDelete = useCallback((id: Id<"_storage">) => {
+    setPendingDeleteId(id);
     setDeleteModalOpen(true);
-  };
+  }, []);
 
-  // Delete image and update order in server and local state
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!pendingDeleteId) return;
     try {
       await deleteImage({ userId, imageId: pendingDeleteId });
@@ -151,7 +110,16 @@ export function ProfileImageUpload({
       );
       setOrderedImages(newOrderedImages);
       const newStorageOrder = newOrderedImages.map((img) => img.storageId);
-      await updateProfile({ profileImageIds: newStorageOrder });
+
+      if (isAdmin && profileId) {
+        await adminUpdateProfile({
+          id: profileId,
+          updates: { profileImageIds: newStorageOrder },
+        });
+      } else {
+        await updateProfile({ profileImageIds: newStorageOrder });
+      }
+
       if (onImagesChanged) onImagesChanged();
       toast.success("Image deleted successfully");
     } catch (error) {
@@ -161,109 +129,160 @@ export function ProfileImageUpload({
       setDeleteModalOpen(false);
       setPendingDeleteId(null);
     }
-  };
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "image/jpeg": [],
-      "image/png": [],
-      "image/webp": [],
-    },
-    maxSize: 2 * 1024 * 1024, // 2MB
-    multiple: false,
-    disabled: isUploading || (orderedImages?.length ?? 0) >= 5,
-  });
+  }, [
+    pendingDeleteId,
+    deleteImage,
+    userId,
+    orderedImages,
+    isAdmin,
+    profileId,
+    adminUpdateProfile,
+    updateProfile,
+    onImagesChanged,
+  ]);
 
   const images = imagesQuery || [];
+
+  // Memoize the ordered images based on profileImageIds or use default order
   const memoizedOrderedImages = useMemo(() => {
-    if (profileImageIds && profileImageIds.length > 0) {
-      const imageMap = Object.fromEntries(
-        images.map((img) => [String(img.storageId), img])
-      );
+    const validImages = images.filter((img): img is ImageData =>
+      Boolean(img && img.url && img.storageId)
+    );
+
+    if (profileImageIds?.length > 0) {
+      const imageMap = new Map(validImages.map((img) => [img.storageId, img]));
+
       return profileImageIds
-        .map((id) => imageMap[String(id)])
-        .filter(Boolean)
-        .map((img) => ({
-          _id: String(img._id),
-          url: img.url || "",
-          storageId: img.storageId,
-        }));
+        .map((id) => imageMap.get(id as Id<"_storage">))
+        .filter((img): img is ImageData => Boolean(img));
     }
-    return images && images.length > 0
-      ? images.map((img) => ({
-          _id: String(img._id),
-          url: img.url || "",
-          storageId: img.storageId,
-        }))
-      : [];
+
+    return validImages;
   }, [images, profileImageIds]);
+
+  // Helper to open modal for a specific image
+  const openImageModal = (imgUrl: string, idx: number) => {
+    setSelectedImageUrl(imgUrl);
+    setSelectedImageIdx(idx);
+    setViewImageModalOpen(true);
+  };
+
+  // Helper to go to previous/next image
+  const goToPrevImage = () => {
+    if (selectedImageIdx > 0) {
+      const prevIdx = selectedImageIdx - 1;
+      setSelectedImageIdx(prevIdx);
+      setSelectedImageUrl(memoizedOrderedImages[prevIdx]?.url || null);
+    }
+  };
+  const goToNextImage = () => {
+    if (selectedImageIdx < memoizedOrderedImages.length - 1) {
+      const nextIdx = selectedImageIdx + 1;
+      setSelectedImageIdx(nextIdx);
+      setSelectedImageUrl(memoizedOrderedImages[nextIdx]?.url || null);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-          ${
-            isDragActive
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/25 hover:border-primary/50"
-          }
-          ${isUploading || (orderedImages?.length ?? 0) >= 5 ? "opacity-50 cursor-not-allowed" : ""}
-        `}
-      >
-        <input {...getInputProps()} />
-        {isUploading ? (
-          <p>Uploading...</p>
-        ) : isDragActive ? (
-          <p>Drop the image here...</p>
-        ) : (
-          <p>
-            {orderedImages?.length === 5
-              ? "Maximum number of images reached"
-              : "Drag & drop an image here, or click to select"}
+      {/* Image Upload Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Profile Photos</h3>
+          <span className="text-xs text-muted-foreground">
+            {orderedImages?.length ?? 0} of 5 photos
+          </span>
+        </div>
+        <ImageUploader
+          userId={userId}
+          orderedImages={orderedImages}
+          isAdmin={isAdmin}
+          profileId={profileId}
+          onImagesChanged={onImagesChanged}
+          generateUploadUrl={generateUploadUrl}
+          uploadImage={uploadImage}
+          updateProfile={updateProfile}
+          adminUpdateProfile={adminUpdateProfile}
+          setIsUploading={setIsUploading}
+          toast={toast}
+          disabled={isUploading || (orderedImages?.length ?? 0) >= 5}
+          isUploading={isUploading}
+          maxFiles={5}
+        />
+        {/* Upload limit indicator */}
+        <div className="flex justify-between px-1">
+          <p className="text-xs text-muted-foreground">
+            {orderedImages?.length === 0
+              ? "Upload at least 1 photo"
+              : `Upload up to ${5 - (orderedImages?.length || 0)} more`}
           </p>
-        )}
+          <p className="text-xs text-muted-foreground">
+            {5 - (orderedImages?.length || 0)} remaining
+          </p>
+        </div>
       </div>
-      {/* Single drag-and-drop row with delete buttons */}
-      <ProfileImageReorder
-        images={memoizedOrderedImages}
-        userId={userId}
-        isAdmin={isAdmin}
-        profileId={profileId}
-        renderAction={(img) =>
-          img.storageId ? (
-            <Button
-              variant="destructive"
-              size="icon"
-              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => confirmDelete(img.storageId as Id<"_storage">)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          ) : null
-        }
-      />
-      {/* Confirm delete modal */}
-      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Image</DialogTitle>
-          </DialogHeader>
-          <p>
-            Are you sure you want to delete this image? This action cannot be
-            undone.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
-            </Button>
-          </DialogFooter>
+
+      {/* Image Reorder and List */}
+      <div className="mt-4">
+        <ProfileImageReorder
+          images={memoizedOrderedImages}
+          onReorder={onReorder}
+          onDelete={confirmDelete}
+          isAdmin={isAdmin}
+          renderAction={(img, idx) => (
+            <img
+              src={img.url}
+              alt="Profile preview"
+              className="w-20 h-20 object-cover rounded-lg cursor-pointer border"
+              onClick={() => openImageModal(img.url, idx)}
+            />
+          )}
+        />
+      </div>
+
+      {/* View Large Image Modal */}
+      <Dialog open={viewImageModalOpen} onOpenChange={setViewImageModalOpen}>
+        <DialogContent className="max-w-2xl flex flex-col items-center justify-center relative">
+          {selectedImageUrl && (
+            <>
+              <div className="flex items-center justify-center w-full">
+                <button
+                  onClick={goToPrevImage}
+                  disabled={selectedImageIdx <= 0}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-white disabled:opacity-50 z-10"
+                  aria-label="Previous image"
+                >
+                  &#8592;
+                </button>
+                <img
+                  src={selectedImageUrl}
+                  alt="Large profile preview"
+                  className="max-h-[70vh] max-w-full rounded-lg"
+                  style={{ objectFit: "contain" }}
+                />
+                <button
+                  onClick={goToNextImage}
+                  disabled={
+                    selectedImageIdx >= memoizedOrderedImages.length - 1
+                  }
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-white disabled:opacity-50 z-10"
+                  aria-label="Next image"
+                >
+                  &#8594;
+                </button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ImageDeleteConfirmation
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        isLoading={isUploading}
+      />
     </div>
   );
 }

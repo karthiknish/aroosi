@@ -4,16 +4,21 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { SignedIn, useUser } from "@clerk/nextjs";
 import { useForm, Controller } from "react-hook-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+} from "../../../components/ui/select";
+import { Button } from "../../../components/ui/button";
 import { Loader2, MapPin, Search, UserCircle } from "lucide-react";
 import { useState } from "react";
 

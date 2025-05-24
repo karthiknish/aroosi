@@ -29,6 +29,8 @@ export const uploadImage = mutation({
     userId: v.id("users"),
     storageId: v.string(),
     fileName: v.string(),
+    contentType: v.string(),
+    fileSize: v.number(),
   },
   handler: async (ctx, args) => {
     // Rate limit by userId
@@ -44,6 +46,8 @@ export const uploadImage = mutation({
       userId: args.userId,
       storageId: args.storageId,
       fileName: args.fileName,
+      contentType: args.contentType,
+      fileSize: args.fileSize,
     });
   },
 });

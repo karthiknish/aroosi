@@ -13,7 +13,6 @@ import {
   useMutation as useConvexMutation,
 } from "convex/react";
 
-// Removed import { ProfileImageStack } from "@/components/ProfileImageStack";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
 import { useRouter } from "next/navigation";
@@ -163,23 +162,33 @@ export function ProfileManagement() {
         </div>
       </div>
       <div className="grid gap-6">
-        {profiles.map((profile) => (
-          <ProfileCard
-            key={profile._id as string}
-            profile={profile}
-            editingId={editingId}
-            editForm={editForm}
-            onStartEdit={startEdit}
-            onSaveEdit={saveEdit}
-            onCancelEdit={cancelEdit}
-            onDelete={handleDelete}
-            onToggleBan={toggleBan}
-            setDeleteId={setDeleteId}
-            onImagesChanged={() =>
-              queryClient.invalidateQueries({ queryKey: ["profiles"] })
-            }
-          />
-        ))}
+        {profiles.filter(Boolean).map((profile) => {
+          const safeProfile = {
+            ...profile,
+            createdAt:
+              typeof profile.createdAt === "number"
+                ? new Date(profile.createdAt).toISOString()
+                : profile.createdAt,
+            updatedAt:
+              typeof profile.updatedAt === "number"
+                ? new Date(profile.updatedAt).toISOString()
+                : profile.updatedAt,
+          };
+          return (
+            <ProfileCard
+              key={profile._id as string}
+              profile={profile}
+              editingId={editingId}
+              editForm={editForm}
+              onStartEdit={startEdit}
+              onSaveEdit={saveEdit}
+              onCancelEdit={cancelEdit}
+              onDelete={handleDelete}
+              onToggleBan={toggleBan}
+              setDeleteId={setDeleteId}
+            />
+          );
+        })}
       </div>
       {/* Pagination Controls */}
       <div className="flex items-center justify-between mt-6">

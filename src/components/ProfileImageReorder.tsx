@@ -31,7 +31,7 @@ type Props = {
   images: Image[];
   userId: Id<"users">;
   onReorder?: (newOrder: string[]) => void;
-  renderAction?: (img: Image) => React.ReactNode;
+  renderAction?: (img: Image, idx: number) => React.ReactNode;
   isAdmin?: boolean;
   profileId?: Id<"profiles">;
 };
@@ -39,9 +39,11 @@ type Props = {
 function SortableImage({
   img,
   renderAction,
+  idx,
 }: {
   img: Image;
-  renderAction?: (img: Image) => React.ReactNode;
+  renderAction?: (img: Image, idx: number) => React.ReactNode;
+  idx: number;
 }) {
   const {
     attributes,
@@ -71,12 +73,20 @@ function SortableImage({
       {...listeners}
       className="relative group"
     >
-      <img
-        src={img.url}
-        alt=""
-        style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8 }}
-      />
-      {renderAction && renderAction(img)}
+      {renderAction ? (
+        renderAction(img, idx)
+      ) : (
+        <img
+          src={img.url}
+          alt=""
+          style={{
+            width: 100,
+            height: 100,
+            objectFit: "cover",
+            borderRadius: 8,
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -141,11 +151,12 @@ export function ProfileImageReorder({
         strategy={horizontalListSortingStrategy}
       >
         <div style={{ display: "flex", gap: 16 }} className="profile-images">
-          {images.map((img) => (
+          {images.map((img, idx) => (
             <SortableImage
               key={img._id}
               img={img}
               renderAction={renderAction}
+              idx={idx}
             />
           ))}
         </div>

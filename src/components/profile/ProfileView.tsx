@@ -109,9 +109,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   deleting,
 }) => {
   const { user } = useUser();
-  const images = useQuery(api.images.getProfileImages, {
-    userId: userConvexData?._id || "",
-  });
+  const images = useQuery(
+    api.images.getProfileImages,
+    userConvexData?._id &&
+      typeof userConvexData._id === "string" &&
+      userConvexData._id.length > 0
+      ? { userId: userConvexData._id }
+      : "skip"
+  );
   const imagesArray = (images || []).map((img) => ({
     ...img,
     url: img.url || "",

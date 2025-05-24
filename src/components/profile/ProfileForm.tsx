@@ -2,7 +2,11 @@
 
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState, forwardRef } from "react";
+import { useEffect, useRef, useState, forwardRef, useCallback } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/../convex/_generated/api";
+import { Id } from "@/../convex/_generated/dataModel";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import DatePicker from "react-datepicker";
@@ -32,15 +36,15 @@ import * as z from "zod";
 import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder } from "../ProfileImageReorder";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { useMutation } from "convex/react";
-import { Id } from "@/../convex/_generated/dataModel";
 import { Profile } from "@/types/profile";
 
-interface ImageData {
+interface ProfileImage {
   _id: string;
   url: string;
+  storageId: string;
+  userId: Id<"users">;
+  fileName: string;
+  _creationTime: number;
 }
 
 // Helper components

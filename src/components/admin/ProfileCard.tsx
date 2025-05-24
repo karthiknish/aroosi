@@ -6,7 +6,40 @@ import { Id } from "@/../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import ProfileEditForm from "./ProfileEditForm";
 import ProfileView from "./ProfileView";
-import { Profile } from "@/types/profile";
+
+interface Profile {
+  _id: string;
+  userId: string;
+  clerkId: string;
+  isProfileComplete?: boolean;
+  fullName?: string;
+  dateOfBirth?: string;
+  gender?: "male" | "female" | "other";
+  ukCity?: string;
+  ukPostcode?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
+  education?: string;
+  occupation?: string;
+  annualIncome?: number;
+  aboutMe?: string;
+  phoneNumber?: string;
+  diet?: "vegetarian" | "non-vegetarian" | "vegan" | "eggetarian" | "other";
+  smoking?: "no" | "occasionally" | "yes";
+  drinking?: "no" | "occasionally" | "yes";
+  physicalStatus?: "normal" | "differently-abled" | "other";
+  partnerPreferenceAgeMin?: number;
+  partnerPreferenceAgeMax?: number;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  profileImageIds?: string[];
+  banned?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
 
 interface ProfileCardProps {
   profile: Profile;
@@ -18,7 +51,6 @@ interface ProfileCardProps {
   onDelete: (id: Id<"profiles">) => void;
   onToggleBan: (id: Id<"profiles">, banned: boolean) => void;
   setDeleteId: (id: Id<"profiles"> | null) => void;
-  onImagesChanged?: () => void;
 }
 
 export default function ProfileCard({
@@ -31,7 +63,6 @@ export default function ProfileCard({
   onDelete,
   onToggleBan,
   setDeleteId,
-  onImagesChanged,
 }: ProfileCardProps) {
   const router = useRouter();
 
@@ -89,27 +120,6 @@ export default function ProfileCard({
   return (
     <Card key={profile._id as string} className="relative">
       <CardHeader className="flex flex-row items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
-            {profile.profileImageIds && profile.profileImageIds.length > 0 ? (
-              <img
-                src={`/api/storage/${profile.profileImageIds[0]}`}
-                alt={profile.fullName || "Unnamed"}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-            ) : (
-              <span className="text-pink-600 text-xl font-semibold">
-                {profile.fullName?.charAt(0) || "?"}
-              </span>
-            )}
-          </div>
-          <div>
-            <CardTitle className="text-xl">
-              {profile.fullName || "Unnamed"}
-            </CardTitle>
-            <div className="text-sm text-gray-500">{profile.ukCity || "-"}</div>
-          </div>
-        </div>
         <div className="flex space-x-2">
           {editingId === profile._id ? (
             <>
@@ -193,7 +203,6 @@ export default function ProfileCard({
             onCheckboxChange={handleCheckboxChange}
             onSubmit={handleSubmit}
             loading={isSaving}
-            onImagesChanged={onImagesChanged}
           />
         ) : (
           <ProfileView profile={profile} />

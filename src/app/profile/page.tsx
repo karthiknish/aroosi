@@ -144,7 +144,7 @@ export default function ProfilePage() {
   );
   const updateProfileMutation = useMutation(api.users.updateProfile);
   const storageUpload = useAction(api.storage.generateUploadUrl);
-  const deleteUserMutation = useMutation(api.contact.deleteUser);
+  const deleteUserMutation = useMutation(api.users.deleteUser);
   const router = useRouter();
   const { signOut } = useClerk();
 

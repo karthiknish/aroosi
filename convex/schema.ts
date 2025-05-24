@@ -153,7 +153,12 @@ export default defineSchema({
     userId: v.id("users"),
     storageId: v.string(),
     fileName: v.string(),
-  }).index("by_user", ["userId"]),
+    // Make these fields optional to handle existing data
+    contentType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
+    _creationTime: v.number(),
+  })
+    .index("by_user", ["userId"]),
 
   // Rate limits table for abuse prevention
   rateLimits: defineTable({

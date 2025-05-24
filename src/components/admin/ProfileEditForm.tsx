@@ -9,7 +9,38 @@ import {
 } from "@/components/ui/select";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { Id } from "@/../convex/_generated/dataModel";
-import { Profile } from "@/types/profile";
+
+interface Profile {
+  _id: string;
+  userId: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  ukCity?: string;
+  ukPostcode?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: string;
+  education?: string;
+  occupation?: string;
+  annualIncome?: number;
+  aboutMe?: string;
+  phoneNumber?: string;
+  diet?: string;
+  smoking?: string;
+  drinking?: string;
+  physicalStatus?: string;
+  partnerPreferenceAgeMin?: number;
+  partnerPreferenceAgeMax?: number;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  profileImageIds?: string[];
+  banned?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
 
 interface ProfileEditFormProps {
   profile: Profile;
@@ -21,7 +52,6 @@ interface ProfileEditFormProps {
   onCheckboxChange?: (name: string, checked: boolean) => void;
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
   loading?: boolean;
-  onImagesChanged?: () => void;
 }
 
 export default function ProfileEditForm({
@@ -32,21 +62,13 @@ export default function ProfileEditForm({
   onCheckboxChange,
   onSubmit,
   loading,
-  onImagesChanged,
 }: ProfileEditFormProps) {
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
       {/* Profile Image Management */}
       {profile.userId && (
-        <ProfileImageUpload
-          userId={profile.userId as Id<"users">}
-          isAdmin={true}
-          profileId={profile._id as Id<"profiles">}
-          profileImageIds={profile.profileImageIds}
-          onImagesChanged={onImagesChanged}
-        />
+        <ProfileImageUpload userId={profile.userId as Id<"users">} />
       )}
-
       <div>
         <label className="text-sm font-medium">Full Name</label>
         <Input
