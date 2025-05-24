@@ -49,10 +49,13 @@ export const uploadImage = mutation({
 });
 
 export const deleteImage = mutation({
-  args: { storageId: v.string() },
+  args: {
+    storageId: v.string(),
+    userId: v.id("users"),
+  },
   handler: async (ctx, args) => {
-    // Rate limit by storageId
-    const rateKey = `storage:delete:${args.storageId}`;
+    // Rate limit by userId instead of storageId
+    const rateKey = `storage:delete:${args.userId}`;
     const rate = await checkRateLimit(ctx.db, rateKey);
     if (!rate.allowed) {
       return {
@@ -62,7 +65,12 @@ export const deleteImage = mutation({
     }
     const image = await ctx.db
       .query("images")
-      .filter((q) => q.eq(q.field("storageId"), args.storageId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("storageId"), args.storageId),
+          q.eq(q.field("userId"), args.userId)
+        )
+      )
       .first();
 
     if (!image) {

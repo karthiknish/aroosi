@@ -11,6 +11,7 @@ import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 import { requireAdmin } from "./utils/requireAdmin";
+import { checkRateLimit } from "./utils/rateLimit";
 
 // --- Helper function to get user by Clerk ID ---
 const getUserByClerkIdInternal = async (
@@ -181,6 +182,15 @@ export const updateProfile = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
+    const rateKey = `users:updateProfile:${identity?.subject || "anon"}`;
+    const rate = await checkRateLimit(ctx.db, rateKey);
+    if (!rate.allowed) {
+      return {
+        success: false,
+        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+      };
+    }
+
     if (!identity) {
       return { success: false, message: "Not authenticated" };
     }
@@ -659,5 +669,35 @@ export const userCounts = query({
       newThisWeek: users.filter((u) => u._creationTime > weekAgo).length,
       newThisMonth: users.filter((u) => u._creationTime > monthAgo).length,
     };
+  },
+});
+
+export const updateProfileImageOrder = mutation({
+  args: {
+    userId: v.id("users"),
+    imageIds: v.array(v.id("_storage")),
+  },
+  handler: async (ctx, { userId, imageIds }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, error: "Not authenticated" };
+    }
+    // Only allow updating your own profile
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user || user._id !== userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    if (!profile) {
+      return { success: false, error: "Profile not found" };
+    }
+    await ctx.db.patch(profile._id, { profileImageIds: imageIds });
+    return { success: true };
   },
 });
