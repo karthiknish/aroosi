@@ -101,7 +101,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       if (!acceptedFiles.length || !editor) return;
       setUploading(true);
       setUploadError(null);
-      let objectUrl: string | null = null;
       try {
         const file = acceptedFiles[0];
         // 1. Get upload URL from backend
@@ -128,11 +127,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         editor.chain().focus().setImage({ src: imageDoc.url }).run();
         setImageModalOpen(false);
       } catch (err: any) {
-        setUploadError(err.message || "Failed to upload image");
+        console.error("Image upload failed:", err);
+        setUploadError(err?.message || "Failed to upload image");
       } finally {
         setUploading(false);
-        // Clean up any object URLs
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
       }
     },
     [editor, generateUploadUrl, uploadBlogImage]
