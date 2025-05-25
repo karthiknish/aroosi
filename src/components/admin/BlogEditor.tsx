@@ -65,8 +65,9 @@ import {
 import { useDropzone } from "react-dropzone";
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
-import { useTheme } from "next-themes";
 import "@/styles/emoji-picker-custom.css";
+import { useMutation } from "convex/react";
+import { api } from "@convex/_generated/api";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
@@ -90,34 +91,51 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string>("");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const { theme: siteTheme } = useTheme ? useTheme() : { theme: "light" };
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPopoverRef = useRef<HTMLDivElement>(null);
+  const generateUploadUrl = useMutation(api.images.generateUploadUrl);
+  const uploadBlogImage = useMutation(api.images.uploadBlogImage);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       if (!acceptedFiles.length || !editor) return;
       setUploading(true);
       setUploadError(null);
+      let objectUrl: string | null = null;
       try {
-        // TODO: Replace with your actual upload logic
-        // For now, use a placeholder upload (simulate delay)
         const file = acceptedFiles[0];
-        // Simulate upload
-        await new Promise((res) => setTimeout(res, 1200));
-        // Use a local URL for preview (replace with real upload URL)
-        const url = URL.createObjectURL(file);
-        setUploadedUrl(url);
-        // Insert image into editor
-        editor.chain().focus().setImage({ src: url }).run();
+        // 1. Get upload URL from backend
+        const uploadUrl = await generateUploadUrl();
+        if (typeof uploadUrl !== "string")
+          throw new Error("Failed to get upload URL");
+        // 2. Upload file to storage
+        const uploadRes = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        if (!uploadRes.ok) throw new Error("Failed to upload image");
+        const { storageId } = await uploadRes.json();
+        // 3. Register image and get public URL
+        const imageDoc = await uploadBlogImage({
+          storageId,
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+        });
+        if (!imageDoc?.url) throw new Error("Failed to get image URL");
+        // 4. Insert image into editor
+        editor.chain().focus().setImage({ src: imageDoc.url }).run();
         setImageModalOpen(false);
       } catch (err: any) {
-        setUploadError("Failed to upload image");
+        setUploadError(err.message || "Failed to upload image");
       } finally {
         setUploading(false);
+        // Clean up any object URLs
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
       }
     },
-    [editor]
+    [editor, generateUploadUrl, uploadBlogImage]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -510,6 +528,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                 if (uploadedUrl) {
                   editor.chain().focus().setImage({ src: uploadedUrl }).run();
                   setImageModalOpen(false);
+                  // If uploadedUrl is an object URL, revoke it
+                  if (uploadedUrl.startsWith("blob:")) {
+                    URL.revokeObjectURL(uploadedUrl);
+                  }
                 }
               }}
             />
@@ -537,10 +559,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
               editor.chain().focus().insertContent(emoji).run();
               setEmojiPickerOpen(false);
             }}
-            theme={siteTheme === "dark" ? Theme.DARK : Theme.LIGHT}
-            className="aroosi-emoji-picker"
+            theme={Theme.LIGHT}
             width={320}
             height={400}
+            className="aroosi-emoji-picker"
           />
         </div>
       )}

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./utils/rateLimit";
 import { ConvexError } from "convex/values";
+import { requireAdmin } from "./utils/requireAdmin";
 
 // Constants
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -12,16 +13,16 @@ const UPLOAD_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const UPLOAD_RATE_LIMIT_MAX = 10; // Max uploads per window
 
 export const getProfileImages = query({
-  args: { 
-    userId: v.id("users")
+  args: {
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    console.log('getProfileImages called with userId:', args.userId);
-    
+    console.log("getProfileImages called with userId:", args.userId);
+
     try {
       // Validate userId is not empty or just whitespace
-      if (!args.userId || args.userId.trim() === '') {
-        console.log('Empty or invalid user ID provided');
+      if (!args.userId || args.userId.trim() === "") {
+        console.log("Empty or invalid user ID provided");
         return [];
       }
 
@@ -31,14 +32,14 @@ export const getProfileImages = query({
         .withIndex("by_userId", (q) => q.eq("userId", args.userId))
         .unique();
 
-      console.log('Profile found:', {
+      console.log("Profile found:", {
         hasProfile: !!profile,
         profileImageIds: profile?.profileImageIds,
-        profileImageIdsLength: profile?.profileImageIds?.length
+        profileImageIdsLength: profile?.profileImageIds?.length,
       });
 
       if (!profile) {
-        console.log('No profile found for user:', args.userId);
+        console.log("No profile found for user:", args.userId);
         return [];
       }
 
@@ -48,17 +49,20 @@ export const getProfileImages = query({
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
         .collect();
 
-      console.log('Images found in database:', {
+      console.log("Images found in database:", {
         count: allImages.length,
-        storageIds: allImages.map(img => img.storageId)
+        storageIds: allImages.map((img) => img.storageId),
       });
 
       // If no explicit order, return all images
       if (!profile.profileImageIds || profile.profileImageIds.length === 0) {
-        console.log('No profileImageIds, returning all images in any order');
+        console.log("No profileImageIds, returning all images in any order");
         const imagePromises = allImages.map(async (image) => {
           const url = await ctx.storage.getUrl(image.storageId);
-          console.log('Generated URL for image:', { storageId: image.storageId, url });
+          console.log("Generated URL for image:", {
+            storageId: image.storageId,
+            url,
+          });
           return {
             _id: image._id,
             storageId: image.storageId,
@@ -68,35 +72,39 @@ export const getProfileImages = query({
           };
         });
         const result = await Promise.all(imagePromises);
-        console.log('Returning all images:', result);
+        console.log("Returning all images:", result);
         return result;
       }
 
       // Map by storageId for fast lookup
       const imageMap = new Map(
-        allImages.map(img => [String(img.storageId), img])
+        allImages.map((img) => [String(img.storageId), img])
       );
 
       // Return images in the order of profile.profileImageIds
       const orderedImages = (profile.profileImageIds || [])
-        .map(storageId => imageMap.get(String(storageId)))
+        .map((storageId) => imageMap.get(String(storageId)))
         .filter((img): img is NonNullable<typeof img> => Boolean(img));
 
-      console.log('Ordered images based on profileImageIds:', {
+      console.log("Ordered images based on profileImageIds:", {
         profileImageIds: profile.profileImageIds,
-        foundImages: orderedImages.map(img => img.storageId)
+        foundImages: orderedImages.map((img) => img.storageId),
       });
 
       // If no ordered images found, return all images in any order
-      const imagesToProcess = orderedImages.length > 0 ? orderedImages : allImages;
-      console.log('Images to process:', {
+      const imagesToProcess =
+        orderedImages.length > 0 ? orderedImages : allImages;
+      console.log("Images to process:", {
         usingOrdered: orderedImages.length > 0,
-        count: imagesToProcess.length
+        count: imagesToProcess.length,
       });
 
       const imagePromises = imagesToProcess.map(async (image) => {
         const url = await ctx.storage.getUrl(image.storageId);
-        console.log('Generated URL for image:', { storageId: image.storageId, url });
+        console.log("Generated URL for image:", {
+          storageId: image.storageId,
+          url,
+        });
         return {
           _id: image._id,
           storageId: image.storageId,
@@ -107,7 +115,7 @@ export const getProfileImages = query({
       });
 
       const result = await Promise.all(imagePromises);
-      console.log('Returning ordered images:', result);
+      console.log("Returning ordered images:", result);
       return result;
     } catch (error) {
       console.error("Error in getProfileImages:", error);
@@ -222,7 +230,7 @@ export const uploadProfileImage = mutation({
       }
 
       const currentImageIds = profile.profileImageIds || [];
-      
+
       // Don't add duplicate image IDs
       if (!currentImageIds.includes(args.storageId)) {
         await ctx.db.patch(profile._id, {
@@ -231,10 +239,10 @@ export const uploadProfileImage = mutation({
         });
       }
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         imageId: args.storageId,
-        message: "Image uploaded successfully" 
+        message: "Image uploaded successfully",
       };
     } catch (error) {
       console.error("Error in uploadProfileImage:", error);
@@ -287,7 +295,7 @@ export const deleteProfileImage = mutation({
         const updatedImageIds = profile.profileImageIds.filter(
           (id) => id !== args.imageId
         );
-        
+
         if (updatedImageIds.length !== profile.profileImageIds.length) {
           await ctx.db.patch(profile._id, {
             profileImageIds: updatedImageIds,
@@ -299,10 +307,10 @@ export const deleteProfileImage = mutation({
       // Delete the image from storage and database
       await ctx.storage.delete(args.imageId);
       await ctx.db.delete(image._id);
-      
-      return { 
+
+      return {
         success: true,
-        message: "Image deleted successfully"
+        message: "Image deleted successfully",
       };
     } catch (error) {
       console.error("Error in deleteProfileImage:", error);
@@ -324,8 +332,9 @@ export const batchGetProfileImages = query({
 
       // Get all images for the requested users
       // First fetch all images and then filter in memory since Convex doesn't support .in() with multiple values
-      const allImages = (await ctx.db.query("images").collect())
-        .filter(img => args.userIds.includes(img.userId));
+      const allImages = (await ctx.db.query("images").collect()).filter((img) =>
+        args.userIds.includes(img.userId)
+      );
 
       // Group images by user ID
       const imagesByUser = new Map<string, any[]>();
@@ -341,9 +350,10 @@ export const batchGetProfileImages = query({
       const result: Record<string, string | null> = {};
       for (const userId of args.userIds) {
         const userImages = imagesByUser.get(userId) || [];
-        result[userId] = userImages.length > 0 
-          ? await ctx.storage.getUrl(userImages[0].storageId) 
-          : null;
+        result[userId] =
+          userImages.length > 0
+            ? await ctx.storage.getUrl(userImages[0].storageId)
+            : null;
       }
 
       return result;
@@ -383,7 +393,7 @@ export const updateProfileImageOrder = mutation({
         .query("users")
         .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
         .unique();
-      
+
       if (!user || user._id !== args.userId) {
         throw new ConvexError("Unauthorized to update this profile");
       }
@@ -393,16 +403,16 @@ export const updateProfileImageOrder = mutation({
         .query("profiles")
         .withIndex("by_userId", (q) => q.eq("userId", args.userId))
         .first();
-      
+
       if (!profile) {
         throw new ConvexError("Profile not found");
       }
 
       // If no image IDs provided, just clear the order
       if (args.imageIds.length === 0) {
-        await ctx.db.patch(profile._id, { 
+        await ctx.db.patch(profile._id, {
           profileImageIds: [],
-          updatedAt: Date.now() 
+          updatedAt: Date.now(),
         });
         return { success: true, message: "Image order cleared" };
       }
@@ -412,23 +422,27 @@ export const updateProfileImageOrder = mutation({
         .query("images")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
         .collect();
-      
-      const userImageIds = new Set(userImages.map(img => img.storageId));
-      const invalidImageIds = args.imageIds.filter(id => !userImageIds.has(id));
-      
+
+      const userImageIds = new Set(userImages.map((img) => img.storageId));
+      const invalidImageIds = args.imageIds.filter(
+        (id) => !userImageIds.has(id)
+      );
+
       if (invalidImageIds.length > 0) {
-        throw new ConvexError(`Invalid image IDs: ${invalidImageIds.join(", ")}`);
+        throw new ConvexError(
+          `Invalid image IDs: ${invalidImageIds.join(", ")}`
+        );
       }
 
       // Update the profile with the new image order
-      await ctx.db.patch(profile._id, { 
+      await ctx.db.patch(profile._id, {
         profileImageIds: args.imageIds,
-        updatedAt: Date.now() 
+        updatedAt: Date.now(),
       });
-      
-      return { 
+
+      return {
         success: true,
-        message: "Image order updated successfully" 
+        message: "Image order updated successfully",
       };
     } catch (error) {
       console.error("Error in updateProfileImageOrder:", error);
@@ -437,5 +451,31 @@ export const updateProfileImageOrder = mutation({
       }
       throw new ConvexError("Failed to update image order");
     }
+  },
+});
+
+export const uploadBlogImage = mutation({
+  args: {
+    storageId: v.string(),
+    fileName: v.string(),
+    contentType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Only allow admins to upload blog images
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
+    // Save to blogImages table
+    const now = Date.now();
+    await ctx.db.insert("blogImages", {
+      storageId: args.storageId,
+      fileName: args.fileName,
+      contentType: args.contentType,
+      fileSize: args.fileSize,
+      createdAt: now,
+    });
+    // Get public URL
+    const url = await ctx.storage.getUrl(args.storageId);
+    return { success: true, url };
   },
 });

@@ -48,6 +48,7 @@ import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Profile } from "@/types/profile";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
+import { Progress } from "@/components/ui/progress";
 
 interface ProfileImage {
   _id: string;
@@ -460,6 +461,15 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     url: storageIdToUrlMap[id] || "",
   }));
 
+  const stepTips = [
+    "Tip: Use your real name and accurate details for better matches.",
+    "Tip: Sharing your city helps us find matches near you.",
+    "Tip: Sharing your background helps us personalize your experience.",
+    "Tip: Education and career info helps you stand out.",
+    "Tip: Write a friendly, honest 'About Me' to attract the right matches.",
+    "Tip: A clear profile photo increases your chances by 3x!",
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <motion.main
@@ -469,6 +479,25 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
         className="max-w-4xl mx-auto"
       >
         <div className="shadow-xl bg-white rounded-lg">
+          {/* Progress Bar & Step Indicator */}
+          <div className="px-6 pt-6">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-medium text-pink-700">
+                Step {currentStep + 1} of {totalSteps}
+              </span>
+              <span className="text-xs text-gray-500">
+                Profile {Math.round(((currentStep + 1) / totalSteps) * 100)}%
+                complete
+              </span>
+            </div>
+            <Progress
+              value={((currentStep + 1) / totalSteps) * 100}
+              className="h-2 bg-pink-100 [&>div]:bg-pink-500"
+            />
+            <div className="mt-2 text-sm text-pink-600 font-semibold">
+              {stepTips[currentStep]}
+            </div>
+          </div>
           <div className="border-b pb-4 px-6 pt-6 flex justify-between items-center flex-wrap gap-2">
             <div>
               <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
@@ -482,12 +511,6 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
             </div>
           </div>
           <div className="p-6 sm:p-8">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-sm text-gray-600">
-                Step {currentStep + 1} of {totalSteps}:{" "}
-                {profileStepLogic[currentStep].title}
-              </span>
-            </div>
             {/* Step content */}
             {currentStep === 0 && (
               <FormSection title="Basic Information">

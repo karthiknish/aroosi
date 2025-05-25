@@ -173,4 +173,12 @@ export default defineSchema({
     windowStart: v.float64(), // timestamp of window start
     count: v.int64(), // number of requests in window
   }).index("by_key", ["key"]),
+
+  blogImages: defineTable({
+    storageId: v.string(),
+    fileName: v.string(),
+    contentType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
+    createdAt: v.float64(),
+  }),
 });
