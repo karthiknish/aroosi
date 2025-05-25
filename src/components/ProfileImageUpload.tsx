@@ -39,6 +39,14 @@ export function ProfileImageUpload({
   // State for upload status
   const [isUploading, setIsUploading] = useState<boolean>(false);
 
+  // If admin and profileId is provided, fetch the userId for that profile
+  const profileQuery =
+    isAdmin && profileId
+      ? useQuery(api.users.getProfileById, { id: profileId })
+      : null;
+  const effectiveUserId =
+    isAdmin && profileQuery?.userId ? profileQuery.userId : userId;
+
   // Convex mutations
   const generateUploadUrl = useMutation(api.images.generateUploadUrl);
   const uploadImage = useMutation(api.images.uploadProfileImage);
@@ -47,7 +55,9 @@ export function ProfileImageUpload({
   const adminUpdateProfile = useMutation(api.users.adminUpdateProfile);
 
   // Fetch profile images
-  const imagesQuery = useQuery(api.images.getProfileImages, { userId });
+  const imagesQuery = useQuery(api.images.getProfileImages, {
+    userId: effectiveUserId,
+  });
 
   // Local state for ordered images
   const [orderedImages, setOrderedImages] = useState<ImageData[]>([]);
@@ -120,7 +130,7 @@ export function ProfileImageUpload({
   const handleDelete = useCallback(async () => {
     if (!pendingDeleteId) return;
     try {
-      await deleteImage({ userId, imageId: pendingDeleteId });
+      await deleteImage({ userId: effectiveUserId, imageId: pendingDeleteId });
       const newOrderedImages = orderedImages.filter(
         (img) => img.storageId !== pendingDeleteId
       );
@@ -155,6 +165,7 @@ export function ProfileImageUpload({
     adminUpdateProfile,
     updateProfile,
     onImagesChanged,
+    effectiveUserId,
   ]);
 
   const images = imagesQuery || [];
@@ -209,11 +220,18 @@ export function ProfileImageUpload({
           </span>
         </div>
         <ImageUploader
-          userId={userId}
+          userId={effectiveUserId}
           orderedImages={orderedImages}
           isAdmin={isAdmin}
           profileId={profileId}
-          onImagesChanged={onImagesChanged}
+          onImagesChanged={
+            onImagesChanged
+              ? () =>
+                  onImagesChanged(
+                    orderedImages.map((img) => String(img.storageId))
+                  )
+              : undefined
+          }
           generateUploadUrl={generateUploadUrl}
           uploadImage={uploadImage}
           updateProfile={updateProfile}

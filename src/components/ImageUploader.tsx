@@ -170,21 +170,21 @@ export function ImageUploader({
         <div
           className={`
             flex flex-col items-center justify-center p-8 text-center rounded-xl border-2 border-dashed 
-            ${isDragActive ? "border-primary bg-primary/5" : "border-border"}
+            ${isDragActive ? "border-pink-600 bg-pink-50" : "border-border"}
             transition-all duration-200 ease-in-out
-            group-hover:border-primary/50
+            group-hover:border-pink-400
           `}
         >
           {isUploading ? (
             <div className="flex flex-col items-center justify-center space-y-3 w-full">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <Loader2 className="w-8 h-8 text-pink-600 animate-spin" />
               <div className="w-full space-y-2">
                 <p className="text-sm font-medium text-foreground">
                   Uploading your photo
                 </p>
                 <div className="w-full bg-muted rounded-full h-1.5">
                   <div
-                    className="bg-primary h-1.5 rounded-full animate-pulse"
+                    className="bg-pink-600 h-1.5 rounded-full animate-pulse"
                     style={{ width: "70%" }}
                   ></div>
                 </div>
@@ -196,10 +196,10 @@ export function ImageUploader({
           ) : isDragActive ? (
             <div className="space-y-3">
               <div className="flex justify-center">
-                <Upload className="w-8 h-8 text-primary" />
+                <Upload className="w-8 h-8 text-pink-600" />
               </div>
               <div className="space-y-1">
-                <p className="text-base font-medium text-primary">
+                <p className="text-base font-medium text-pink-600">
                   Drop to upload
                 </p>
                 <p className="text-sm text-muted-foreground">

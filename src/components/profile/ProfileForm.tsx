@@ -8,7 +8,7 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addYears, subYears } from "date-fns";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/styles/react-datepicker-custom.css";
@@ -49,6 +49,48 @@ import { Profile } from "@/types/profile";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
+// Hardcoded list of major UK cities
+const majorUkCities = [
+  "Belfast",
+  "Birmingham",
+  "Bradford",
+  "Brighton",
+  "Bristol",
+  "Cambridge",
+  "Cardiff",
+  "Coventry",
+  "Derby",
+  "Edinburgh",
+  "Glasgow",
+  "Kingston upon Hull",
+  "Leeds",
+  "Leicester",
+  "Liverpool",
+  "London",
+  "Manchester",
+  "Milton Keynes",
+  "Newcastle upon Tyne",
+  "Newport",
+  "Norwich",
+  "Nottingham",
+  "Oxford",
+  "Plymouth",
+  "Portsmouth",
+  "Preston",
+  "Reading",
+  "Sheffield",
+  "Southampton",
+  "Stoke-on-Trent",
+  "Sunderland",
+  "Swansea",
+  "Wakefield",
+  "Wolverhampton",
+  "York",
+];
+const ukCityOptions = majorUkCities
+  .sort()
+  .map((city) => ({ value: city, label: city }));
 
 interface ProfileImage {
   _id: string;
@@ -230,7 +272,7 @@ const FormDateField: React.FC<FormDateFieldProps> = ({
                 popperPlacement="bottom-start"
                 disabled={form.formState.isSubmitting}
                 minDate={new Date("1900-01-01")}
-                maxDate={new Date()}
+                maxDate={subYears(new Date(), 18)}
               />
             );
           }}
@@ -259,6 +301,18 @@ export interface UnifiedProfileFormProps {
   onEditDone?: () => void;
   userConvexData?: any;
 }
+
+function cmToFeetInches(cm: number) {
+  const totalInches = Math.round(cm / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return `${feet}'${inches}\"`;
+}
+
+// Phone number validation regex (UK/international)
+const phoneRegex = /^\+?\d{10,15}$/;
+
+const LOCAL_STORAGE_KEY = "aroosi-profile-draft";
 
 const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   mode,
@@ -316,6 +370,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   const [uploadedImageIds, setUploadedImageIds] = React.useState<string[]>(
     initialValues?.profileImageIds || []
   );
+  const [imagesVersion, setImagesVersion] = React.useState(0);
   const [showSuccessModal, setShowSuccessModal] = React.useState(false);
   const [hasSubmittedSuccessfully, setHasSubmittedSuccessfully] =
     React.useState(false);
@@ -326,6 +381,9 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     null
   );
   const updateOrder = useMutation(api.users.updateProfileImageOrder);
+
+  // Always call useWindowSize at the top level
+  const { width: windowWidth, height: windowHeight } = useWindowSize();
 
   React.useEffect(() => {
     setHasSubmittedSuccessfully(false);
@@ -362,9 +420,48 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     },
   });
 
+  // On mount, prefill from localStorage if available (only for create mode)
+  React.useEffect(() => {
+    if (mode === "create") {
+      const draft = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          Object.entries(parsed).forEach(([key, value]) => {
+            if (form.getValues(key) !== value) {
+              form.setValue(key, value);
+            }
+          });
+        } catch {}
+      }
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  // Persist form data to localStorage on change (only for create mode)
+  React.useEffect(() => {
+    if (mode === "create") {
+      const subscription = form.watch((values) => {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(values));
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [form, mode]);
+
   // Step navigation
   const handleNextStep = async () => {
     const stepFields = profileStepLogic[currentStep].fields;
+    // If on the Basic Information step, validate phone number
+    if (currentStep === 0) {
+      const phone = form.getValues("phoneNumber");
+      if (!phoneRegex.test(phone)) {
+        form.setError("phoneNumber", {
+          type: "manual",
+          message: "Please enter a valid phone number (e.g., +447123456789)",
+        });
+        return;
+      }
+    }
     const valid = await form.trigger(stepFields as any, { shouldFocus: true });
     if (valid) setCurrentStep((s: number) => Math.min(s + 1, totalSteps - 1));
   };
@@ -373,12 +470,12 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   // Unified submit handler
   const handleSubmit = async (values: any) => {
+    // Use images from userImagesQuery for validation
+    const validImages = (userImagesQuery || []).filter(
+      (img: any) => img && img.url && img.storageId
+    );
     // Check if we're on the image upload step and no images are uploaded
-    if (
-      mode === "create" &&
-      currentStep === 4 &&
-      uploadedImageIds.length === 0
-    ) {
+    if (mode === "create" && currentStep === 4 && validImages.length === 0) {
       form.setError("profileImageIds", {
         type: "manual",
         message: "Please upload at least one profile image",
@@ -390,7 +487,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     if (
       mode === "create" &&
       currentStep === totalSteps - 1 &&
-      uploadedImageIds.length === 0
+      validImages.length === 0
     ) {
       form.setError("profileImageIds", {
         type: "manual",
@@ -400,13 +497,23 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       return;
     }
 
+    // Convert annualIncome to number if present
+    if (values.annualIncome !== undefined && values.annualIncome !== null) {
+      values.annualIncome = Number(values.annualIncome);
+    }
+
     await onSubmit({ ...values, profileImageIds: uploadedImageIds });
     setShowSuccessModal(true);
     setHasSubmittedSuccessfully(true);
+    // Remove draft from localStorage after successful submit
+    if (mode === "create") {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
   };
 
   const handleImagesChanged = React.useCallback((newImageIds: string[]) => {
     setUploadedImageIds(newImageIds);
+    setImagesVersion((v) => v + 1);
   }, []);
 
   const currentUserConvex = useQuery(
@@ -480,24 +587,26 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       >
         <div className="shadow-xl bg-white rounded-lg">
           {/* Progress Bar & Step Indicator */}
-          <div className="px-6 pt-6">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-pink-700">
-                Step {currentStep + 1} of {totalSteps}
-              </span>
-              <span className="text-xs text-gray-500">
-                Profile {Math.round(((currentStep + 1) / totalSteps) * 100)}%
-                complete
-              </span>
+          {mode === "create" && (
+            <div className="px-6 pt-6">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-pink-700">
+                  Step {currentStep + 1} of {totalSteps}
+                </span>
+                <span className="text-xs text-gray-500">
+                  Profile {Math.round(((currentStep + 1) / totalSteps) * 100)}%
+                  complete
+                </span>
+              </div>
+              <Progress
+                value={((currentStep + 1) / totalSteps) * 100}
+                className="h-2 bg-pink-100 [&>div]:bg-pink-500"
+              />
+              <div className="mt-2 text-sm text-pink-600 font-semibold">
+                {stepTips[currentStep]}
+              </div>
             </div>
-            <Progress
-              value={((currentStep + 1) / totalSteps) * 100}
-              className="h-2 bg-pink-100 [&>div]:bg-pink-500"
-            />
-            <div className="mt-2 text-sm text-pink-600 font-semibold">
-              {stepTips[currentStep]}
-            </div>
-          </div>
+          )}
           <div className="border-b pb-4 px-6 pt-6 flex justify-between items-center flex-wrap gap-2">
             <div>
               <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
@@ -538,12 +647,49 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                   ]}
                   isRequired
                 />
-                <FormField
-                  name="height"
-                  label="Height"
-                  form={form}
-                  placeholder="e.g., 5ft 10in or 178cm"
-                />
+                <div className="mb-4">
+                  <Label htmlFor="height">
+                    Height <span className="text-red-600">*</span>
+                  </Label>
+                  <Controller
+                    name="height"
+                    control={form.control}
+                    defaultValue={form.getValues("height") || 170}
+                    render={({ field }) => (
+                      <div className="flex flex-col gap-2 mt-2">
+                        <Slider
+                          min={137}
+                          max={198}
+                          step={1}
+                          value={[Number(field.value) || 170]}
+                          onValueChange={([val]) => field.onChange(val)}
+                          className="w-full my-2"
+                          style={
+                            {
+                              "--slider-track-bg": "#fce7f3", // pink-100
+                              "--slider-range-bg": "#db2777", // pink-600
+                              "--slider-thumb-border": "#db2777", // pink-600
+                            } as React.CSSProperties
+                          }
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>4'6"</span>
+                          <span>6'6"</span>
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-pink-700">
+                          {field.value
+                            ? `${cmToFeetInches(Number(field.value))} (${field.value} cm)`
+                            : "Select your height"}
+                        </div>
+                        {form.formState.errors.height && (
+                          <p className="text-sm text-red-600 mt-1">
+                            {form.formState.errors.height.message as string}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  />
+                </div>
                 <FormField
                   name="phoneNumber"
                   label="Phone Number"
@@ -555,7 +701,14 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
             )}
             {currentStep === 1 && (
               <FormSection title="Location (UK) & Lifestyle">
-                <FormField name="ukCity" label="City" form={form} isRequired />
+                <FormSelectField
+                  name="ukCity"
+                  label="City"
+                  form={form}
+                  placeholder="Select city"
+                  options={ukCityOptions}
+                  isRequired
+                />
                 <FormField
                   name="ukPostcode"
                   label="Postcode"
@@ -612,11 +765,22 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
             )}
             {currentStep === 2 && (
               <FormSection title="Cultural & Religious Background">
-                <FormField
+                <FormSelectField
                   name="religion"
                   label="Religion"
                   form={form}
-                  placeholder="e.g., Islam"
+                  placeholder="Select religion"
+                  options={[
+                    { value: "islam", label: "Islam" },
+                    { value: "hinduism", label: "Hinduism" },
+                    { value: "christianity", label: "Christianity" },
+                    { value: "sikhism", label: "Sikhism" },
+                    { value: "jainism", label: "Jainism" },
+                    { value: "buddhism", label: "Buddhism" },
+                    { value: "judaism", label: "Judaism" },
+                    { value: "other", label: "Other" },
+                  ]}
+                  isRequired
                 />
                 <FormField
                   name="caste"
@@ -664,6 +828,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                   form={form}
                   type="number"
                   placeholder="e.g., 40000"
+                  isRequired
                 />
               </FormSection>
             )}
@@ -953,8 +1118,8 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                     </p>
                   </div>
                   <Confetti
-                    width={useWindowSize().width}
-                    height={useWindowSize().height}
+                    width={windowWidth}
+                    height={windowHeight}
                     numberOfPieces={250}
                     recycle={false}
                   />

@@ -67,7 +67,10 @@ export default function ProfileEditForm({
     <form className="grid gap-4" onSubmit={onSubmit}>
       {/* Profile Image Management */}
       {profile.userId && (
-        <ProfileImageUpload userId={profile.userId as Id<"users">} />
+        <ProfileImageUpload
+          isAdmin={true}
+          userId={profile.userId as Id<"users">}
+        />
       )}
       <div>
         <label className="text-sm font-medium">Full Name</label>
@@ -362,7 +365,7 @@ export default function ProfileEditForm({
 
       <button
         type="submit"
-        className="mt-4 px-4 py-2 bg-primary text-white rounded disabled:opacity-50"
+        className="mt-4 px-4 py-2 bg-pink-500 text-white rounded disabled:opacity-50"
         disabled={loading}
       >
         {loading ? "Saving..." : "Save Changes"}
