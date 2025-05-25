@@ -27,6 +27,7 @@ import Head from "next/head";
 import { motion } from "framer-motion";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
 
 interface BlogPost {
   _id: string;
@@ -396,17 +397,7 @@ function AdminPageInner() {
             )}
 
             {activeTab === "profiles" && <ProfileManagement />}
-            {activeTab === "matches" && (
-              <div className="p-6 bg-white rounded-lg shadow text-center">
-                <h2 className="text-2xl font-bold mb-4">
-                  Matches (Admin View)
-                </h2>
-                <p className="text-gray-600">
-                  This is a placeholder for admin matches management. Implement
-                  match analytics, search, or moderation here.
-                </p>
-              </div>
-            )}
+            {activeTab === "matches" && <AdminMatches />}
             {activeTab === "contact" && (
               <ContactMessages messages={contactMessages || []} />
             )}
@@ -509,6 +500,84 @@ function AdminPageInner() {
           setEditPexelsOpen(false);
         }}
       />
+    </div>
+  );
+}
+
+function AdminMatches() {
+  const profiles = useConvexQuery(api.users.listProfiles, {});
+  const interests = useConvexQuery(api.interests.listAllInterests, {});
+  const [mutualMatches, setMutualMatches] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!profiles || !interests) return;
+    // Build a map of accepted interests: fromUserId -> Set of toUserIds
+    const acceptedMap: Record<string, Set<string>> = {};
+    for (const i of interests) {
+      if (i.status === "accepted") {
+        if (!acceptedMap[i.fromUserId]) acceptedMap[i.fromUserId] = new Set();
+        acceptedMap[i.fromUserId].add(i.toUserId);
+      }
+    }
+    // Find mutual matches
+    const matches: any[] = [];
+    for (const i of interests) {
+      if (i.status === "accepted") {
+        const from = i.fromUserId;
+        const to = i.toUserId;
+        if (
+          acceptedMap[to] &&
+          acceptedMap[to].has(from) &&
+          from < to // Avoid duplicates (A-B and B-A)
+        ) {
+          const profileA = profiles.find((p: any) => p.userId === from);
+          const profileB = profiles.find((p: any) => p.userId === to);
+          if (profileA && profileB) {
+            matches.push({ profileA, profileB });
+          }
+        }
+      }
+    }
+    setMutualMatches(matches);
+  }, [profiles, interests]);
+
+  return (
+    <div className="p-6 bg-white rounded-lg shadow text-center">
+      <h2 className="text-2xl font-bold mb-4">Mutual Matches</h2>
+      {mutualMatches.length === 0 ? (
+        <p className="text-gray-600">No mutual matches found.</p>
+      ) : (
+        <table className="min-w-full border">
+          <thead>
+            <tr className="bg-pink-50">
+              <th className="py-2 px-4 border">User A</th>
+              <th className="py-2 px-4 border">User B</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mutualMatches.map((m, idx) => (
+              <tr key={idx} className="border-t">
+                <td className="py-2 px-4 border">
+                  <Link
+                    href={`/admin/profile/${m.profileA._id}`}
+                    className="text-pink-600 hover:underline"
+                  >
+                    {m.profileA.fullName || m.profileA._id}
+                  </Link>
+                </td>
+                <td className="py-2 px-4 border">
+                  <Link
+                    href={`/admin/profile/${m.profileB._id}`}
+                    className="text-pink-600 hover:underline"
+                  >
+                    {m.profileB.fullName || m.profileB._id}
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

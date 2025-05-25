@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { checkRateLimit } from "./utils/rateLimit";
+import { requireAdmin } from "./utils/requireAdmin";
 
 // Send an interest (like/express interest)
 export const sendInterest = mutation({
@@ -123,5 +124,14 @@ export const removeInterest = mutation({
     if (!interest) throw new Error("Interest not found");
     await ctx.db.delete(interest._id);
     return { success: true };
+  },
+});
+
+export const listAllInterests = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
+    return await ctx.db.query("interests").collect();
   },
 });
