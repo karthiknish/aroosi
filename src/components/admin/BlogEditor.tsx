@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -15,6 +15,7 @@ import HardBreak from "@tiptap/extension-hard-break";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
+import ImageResize from "tiptap-extension-resize-image";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
@@ -54,7 +55,20 @@ import {
   Undo as UndoIcon,
   Redo as RedoIcon,
   X,
+  Underline as UnderlineIcon,
+  Strikethrough as StrikeIcon,
+  Subscript as SubscriptIcon,
+  Superscript as SuperscriptIcon,
+  Smile,
+  PenTool as HighlightIcon,
 } from "lucide-react";
+import { useDropzone } from "react-dropzone";
+import dynamic from "next/dynamic";
+import { Theme } from "emoji-picker-react";
+import { useTheme } from "next-themes";
+import "@/styles/emoji-picker-custom.css";
+
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
 type MenuBarProps = {
   editor: Editor | null;
@@ -68,6 +82,66 @@ const MenuBar = ({ editor }: MenuBarProps) => {
     from: number;
     to: number;
   } | null>(null);
+  const [tableModalOpen, setTableModalOpen] = useState(false);
+  const [tableRows, setTableRows] = useState(3);
+  const [tableCols, setTableCols] = useState(3);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string>("");
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const { theme: siteTheme } = useTheme ? useTheme() : { theme: "light" };
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiPopoverRef = useRef<HTMLDivElement>(null);
+
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      if (!acceptedFiles.length || !editor) return;
+      setUploading(true);
+      setUploadError(null);
+      try {
+        // TODO: Replace with your actual upload logic
+        // For now, use a placeholder upload (simulate delay)
+        const file = acceptedFiles[0];
+        // Simulate upload
+        await new Promise((res) => setTimeout(res, 1200));
+        // Use a local URL for preview (replace with real upload URL)
+        const url = URL.createObjectURL(file);
+        setUploadedUrl(url);
+        // Insert image into editor
+        editor.chain().focus().setImage({ src: url }).run();
+        setImageModalOpen(false);
+      } catch (err: any) {
+        setUploadError("Failed to upload image");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [editor]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { "image/*": [] },
+    multiple: false,
+  });
+
+  useEffect(() => {
+    if (!emojiPickerOpen) return;
+    function handleClick(event: MouseEvent) {
+      if (
+        emojiPopoverRef.current &&
+        !emojiPopoverRef.current.contains(event.target as Node) &&
+        emojiButtonRef.current &&
+        !emojiButtonRef.current.contains(event.target as Node)
+      ) {
+        setEmojiPickerOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [emojiPickerOpen]);
+
   if (!editor) return null;
   const buttons = [
     {
@@ -83,6 +157,34 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       label: "Italic",
       onClick: () => editor.chain().focus().toggleItalic().run(),
       active: editor.isActive("italic"),
+    },
+    {
+      key: "underline",
+      icon: UnderlineIcon,
+      label: "Underline",
+      onClick: () => editor.chain().focus().toggleUnderline().run(),
+      active: editor.isActive("underline"),
+    },
+    {
+      key: "strike",
+      icon: StrikeIcon,
+      label: "Strikethrough",
+      onClick: () => editor.chain().focus().toggleStrike().run(),
+      active: editor.isActive("strike"),
+    },
+    {
+      key: "subscript",
+      icon: SubscriptIcon,
+      label: "Subscript",
+      onClick: () => editor.chain().focus().toggleSubscript().run(),
+      active: editor.isActive("subscript"),
+    },
+    {
+      key: "superscript",
+      icon: SuperscriptIcon,
+      label: "Superscript",
+      onClick: () => editor.chain().focus().toggleSuperscript().run(),
+      active: editor.isActive("superscript"),
     },
     {
       key: "h1",
@@ -165,24 +267,14 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       key: "image",
       icon: ImageIcon,
       label: "Image",
-      onClick: () =>
-        editor
-          .chain()
-          .focus()
-          .setImage({ src: prompt("Enter image URL") || "" })
-          .run(),
+      onClick: () => setImageModalOpen(true),
       active: false,
     },
     {
       key: "table",
       icon: TableIcon,
       label: "Table",
-      onClick: () =>
-        editor
-          .chain()
-          .focus()
-          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-          .run(),
+      onClick: () => setTableModalOpen(true),
       active: false,
     },
     {
@@ -198,6 +290,21 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       label: "Redo",
       onClick: () => editor.chain().focus().redo().run(),
       active: false,
+    },
+    {
+      key: "highlight",
+      icon: HighlightIcon,
+      label: "Highlight",
+      onClick: () => editor.chain().focus().toggleHighlight().run(),
+      active: editor.isActive("highlight"),
+    },
+    {
+      key: "emoji",
+      icon: Smile,
+      label: "Emoji",
+      onClick: () => setEmojiPickerOpen((v) => !v),
+      active: false,
+      ref: emojiButtonRef,
     },
   ];
   return (
@@ -221,6 +328,75 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           )}
         </div>
       ))}
+      {/* Table Modal */}
+      {tableModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl max-w-xs w-full p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+              onClick={() => setTableModalOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-bold mb-4">Insert Table</h2>
+            <div className="flex gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Rows
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={tableRows}
+                  onChange={(e) => setTableRows(Number(e.target.value))}
+                  className="w-16 border rounded px-2 py-1"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Columns
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={tableCols}
+                  onChange={(e) => setTableCols(Number(e.target.value))}
+                  className="w-16 border rounded px-2 py-1"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => setTableModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-1 rounded bg-pink-600 hover:bg-pink-700 text-white font-semibold"
+                onClick={() => {
+                  editor
+                    .chain()
+                    .focus()
+                    .insertTable({
+                      rows: tableRows,
+                      cols: tableCols,
+                      withHeaderRow: true,
+                    })
+                    .run();
+                  setTableModalOpen(false);
+                  setTableRows(3);
+                  setTableCols(3);
+                }}
+              >
+                Insert
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Link Modal */}
       {linkModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -292,6 +468,82 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </div>
         </div>
       )}
+      {/* Image Upload Modal */}
+      {imageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl max-w-xs w-full p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+              onClick={() => setImageModalOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-bold mb-4">Insert Image</h2>
+            <div
+              {...getRootProps()}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${isDragActive ? "border-pink-500 bg-pink-50" : "border-gray-300 bg-gray-50"}`}
+            >
+              <input {...getInputProps()} />
+              {isDragActive ? (
+                <p className="text-pink-600 font-semibold">
+                  Drop the image here ...
+                </p>
+              ) : (
+                <>
+                  <p className="text-gray-700">
+                    Drag & drop an image here, or click to select
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    PNG, JPG, GIF, SVG, WebP supported
+                  </p>
+                </>
+              )}
+            </div>
+            <div className="my-4 text-center text-gray-500 text-xs">or</div>
+            <input
+              type="url"
+              className="w-full border rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-pink-400"
+              placeholder="Paste image URL (https://...)"
+              value={uploadedUrl}
+              onChange={(e) => setUploadedUrl(e.target.value)}
+              onBlur={() => {
+                if (uploadedUrl) {
+                  editor.chain().focus().setImage({ src: uploadedUrl }).run();
+                  setImageModalOpen(false);
+                }
+              }}
+            />
+            {uploading && (
+              <div className="text-pink-600 text-sm mb-2">Uploading...</div>
+            )}
+            {uploadError && (
+              <div className="text-red-600 text-sm mb-2">{uploadError}</div>
+            )}
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                onClick={() => setImageModalOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {emojiPickerOpen && (
+        <div ref={emojiPopoverRef} className="absolute z-50 mt-2 left-0">
+          <EmojiPicker
+            onEmojiClick={({ emoji }) => {
+              editor.chain().focus().insertContent(emoji).run();
+              setEmojiPickerOpen(false);
+            }}
+            theme={siteTheme === "dark" ? Theme.DARK : Theme.LIGHT}
+            className="aroosi-emoji-picker"
+            width={320}
+            height={400}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -329,6 +581,7 @@ export default function BlogEditor({
       HorizontalRule,
       Link,
       Image,
+      ImageResize,
       Table.configure({ resizable: true }),
       TableRow,
       TableCell,
@@ -357,7 +610,7 @@ export default function BlogEditor({
     },
   });
 
-  // Add custom style for links in the editor
+  // Add custom style for links and tables in the editor
   if (
     typeof window !== "undefined" &&
     !document.getElementById("tiptap-link-style")
@@ -372,6 +625,153 @@ export default function BlogEditor({
       }
       .tiptap-editor-content a:hover {
         color: #a21caf;
+      }
+      .tiptap-editor-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1em 0;
+      }
+      .tiptap-editor-content th {
+        border: 1.5px solid #e11d48;
+        background: #ffe4e6;
+        color: #be185d;
+        font-weight: 700;
+        padding: 0.6em 0.9em;
+        text-align: left;
+      }
+      .tiptap-editor-content td {
+        border: 1px solid #e5e7eb;
+        padding: 0.5em 0.75em;
+        text-align: left;
+        background: #fff;
+      }
+      .tiptap-editor-content tr:nth-child(even) td {
+        background: #f3f4f6;
+      }
+      .tiptap-editor-content blockquote {
+        border-left: 4px solid #db2777;
+        background: #fdf2f8;
+        color: #a21caf;
+        margin: 1em 0;
+        padding: 0.75em 1.25em;
+        font-style: italic;
+        border-radius: 0.375em;
+      }
+      .tiptap-editor-content pre {
+        background: #f3f4f6;
+        color: #be185d;
+        font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+        padding: 1em;
+        border-radius: 0.375em;
+        overflow-x: auto;
+        margin: 1em 0;
+        font-size: 0.97em;
+      }
+      .tiptap-editor-content code {
+        background: #fef3c7;
+        color: #b45309;
+        font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+        padding: 0.15em 0.4em;
+        border-radius: 0.3em;
+        font-size: 0.97em;
+      }
+      .tiptap-editor-content pre code {
+        background: none;
+        color: inherit;
+        padding: 0;
+        border-radius: 0;
+        font-size: inherit;
+      }
+      .tiptap-editor-content ul {
+        list-style-type: disc;
+        padding-left: 2em;
+        margin: 1em 0;
+      }
+      .tiptap-editor-content ol {
+        list-style-type: decimal;
+        padding-left: 2em;
+        margin: 1em 0;
+      }
+      .tiptap-editor-content ul ul,
+      .tiptap-editor-content ol ul {
+        list-style-type: circle;
+        padding-left: 1.5em;
+        margin: 0.5em 0;
+      }
+      .tiptap-editor-content ol ol,
+      .tiptap-editor-content ul ol {
+        list-style-type: lower-alpha;
+        padding-left: 1.5em;
+        margin: 0.5em 0;
+      }
+      .tiptap-editor-content li {
+        margin-bottom: 0.25em;
+      }
+      .tiptap-editor-content hr {
+        border: none;
+        border-top: 2px solid #db2777;
+        margin: 2em 0;
+        height: 0;
+        background: none;
+      }
+      /* Hide consecutive hr elements visually */
+      .tiptap-editor-content hr + hr {
+        display: none;
+      }
+      .tiptap-editor-content h1 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: inherit;
+        margin: 1.5em 0 0.7em 0;
+        line-height: 1.1;
+      }
+      .tiptap-editor-content h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: inherit;
+        margin: 1.3em 0 0.6em 0;
+        line-height: 1.15;
+      }
+      .tiptap-editor-content h3 {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: inherit;
+        margin: 1.1em 0 0.5em 0;
+        line-height: 1.18;
+      }
+      .tiptap-editor-content h4 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: inherit;
+        margin: 1em 0 0.4em 0;
+        line-height: 1.2;
+      }
+      .tiptap-editor-content h5 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: inherit;
+        margin: 0.9em 0 0.3em 0;
+        line-height: 1.22;
+      }
+      .tiptap-editor-content h6 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: inherit;
+        margin: 0.8em 0 0.2em 0;
+        line-height: 1.25;
+      }
+      .tiptap-editor-content img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 1.5em auto;
+        border-radius: 0.5em;
+        box-shadow: 0 2px 8px 0 rgba(219,39,119,0.08);
+        resize: both;
+        overflow: auto;
+        min-width: 80px;
+        min-height: 40px;
+        background: #fff;
       }
     `;
     document.head.appendChild(style);

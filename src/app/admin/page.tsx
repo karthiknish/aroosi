@@ -81,10 +81,11 @@ function AdminPageInner() {
   const queryClientInstance = useQueryClient();
 
   const [adminError, setAdminError] = useState<string | null>(null);
-  const { isLoaded, isSignedIn, user } = useAuth();
+  const auth = useAuth();
+  const user = (auth as any).user;
 
   // Wait for Clerk to be ready before making admin queries
-  if (!isLoaded) {
+  if (!auth.isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-600" />
@@ -94,7 +95,7 @@ function AdminPageInner() {
       </div>
     );
   }
-  if (!isSignedIn) {
+  if (!auth.isSignedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto text-center">
@@ -355,135 +356,132 @@ function AdminPageInner() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {adminError && (
-        <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto mt-10 text-center">
-          <strong>Error:</strong> {adminError}
-        </div>
-      )}
-      {/* Top Navigation */}
-      <nav className="bg-white border-b border-gray-200 fixed w-full z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-            </div>
-            <div className="flex items-center">
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Top Bar */}
 
-      <div className="pt-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Overview Cards */}
-            <DashboardOverview
-              totalPosts={blogPosts?.length || 0}
-              totalMessages={contactMessages?.length || 0}
-            />
+      <div className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Overview Cards */}
+        <DashboardOverview
+          totalPosts={blogPosts?.length || 0}
+          totalMessages={contactMessages?.length || 0}
+        />
 
-            {/* Make the grid a flex container for full height sidebar */}
-            <div className="mt-8 flex flex-col md:flex-row gap-8 min-h-[60vh] md:min-h-[calc(100vh-16rem)]">
-              {/* Sidebar */}
-              <div className="md:w-1/4 w-full md:sticky md:top-16 md:self-start">
-                <div className="h-full md:min-h-[calc(100vh-8rem)]">
-                  <Sidebar
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    collapsed={sidebarCollapsed}
-                    setCollapsed={setSidebarCollapsed}
+        <div className="mt-8 flex flex-col md:flex-row gap-8 min-h-[60vh]">
+          {/* Sidebar */}
+          <aside className="md:w-1/4 w-full md:sticky md:top-24">
+            <nav className="bg-pink-50 border border-pink-100 rounded-lg shadow p-4 flex md:flex-col gap-2 mb-4 md:mb-0">
+              {[
+                { key: "blog", label: "Blog Posts" },
+                { key: "create-post", label: "Create Post" },
+                { key: "profiles", label: "Profiles" },
+                { key: "contact", label: "Contact" },
+              ].map((tab) => (
+                <Button
+                  key={tab.key}
+                  variant={activeTab === tab.key ? "default" : "ghost"}
+                  className={`w-full justify-start rounded font-semibold transition-colors ${activeTab === tab.key ? "bg-pink-600 text-white hover:bg-pink-700" : "text-pink-700 hover:bg-pink-100"}`}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label}
+                </Button>
+              ))}
+            </nav>
+          </aside>
+
+          {/* Main Content */}
+          <main className="flex-1">
+            {adminError && (
+              <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto mb-6 text-center">
+                <strong>Error:</strong> {adminError}
+              </div>
+            )}
+
+            {activeTab === "profiles" && <ProfileManagement />}
+            {activeTab === "contact" && (
+              <ContactMessages messages={contactMessages || []} />
+            )}
+            {activeTab === "blog" && (
+              <>
+                {/* Search/Filter Bar */}
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="text"
+                    placeholder="Search posts..."
+                    className="w-full md:w-1/3 px-3 py-2 border rounded focus:ring-2 focus:ring-pink-200"
+                    // Add search logic if desired
                   />
+                  {/* <Button variant="outline">Filter</Button> */}
                 </div>
-              </div>
-
-              {/* Main Content */}
-              <div
-                className={`transition-all duration-300 ${sidebarCollapsed ? "md:w-full" : "md:w-3/4"} w-full`}
-              >
-                {activeTab === "profiles" && <ProfileManagement />}
-                {activeTab === "contact" && (
-                  <ContactMessages messages={contactMessages || []} />
-                )}
-                {activeTab === "blog" && (
-                  <BlogPosts
-                    posts={blogPosts || []}
-                    editingPost={editingId}
-                    setEditingPost={(id) => {
-                      const post = blogPosts?.find((p) => p._id === id);
-                      if (post) startEdit(post);
-                      else setEditingId(id);
-                    }}
-                    editTitle={editTitle}
-                    setEditTitle={setEditTitle}
-                    editSlug={editSlug}
-                    setEditSlug={setEditSlug}
-                    editExcerpt={editExcerpt}
-                    setEditExcerpt={setEditExcerpt}
-                    editContent={editContent}
-                    setEditContent={setEditContent}
-                    editImageUrl={editImageUrl}
-                    setEditImageUrl={setEditImageUrl}
-                    editSlugManuallyEdited={editSlugManuallyEdited}
-                    setEditSlugManuallyEdited={setEditSlugManuallyEdited}
-                    editPexelsOpen={editPexelsOpen}
-                    setEditPexelsOpen={setEditPexelsOpen}
-                    markdownShortcuts={markdownShortcuts}
-                    insertMarkdown={insertMarkdown}
-                    editContentRef={editContentRef}
-                    convertToMarkdownWithGemini={convertToMarkdownWithGemini}
-                    slugify={slugify}
-                    saveEdit={saveEdit}
-                    cancelEdit={cancelEdit}
-                    deletePost={confirmDelete}
-                    editCategories={editCategories}
-                    setEditCategories={setEditCategories}
-                  />
-                )}
-                {activeTab === "create-post" && (
-                  <CreatePost
-                    title={title}
-                    setTitle={setTitle}
-                    slug={slug}
-                    setSlug={setSlug}
-                    excerpt={excerpt}
-                    setExcerpt={setExcerpt}
-                    content={content}
-                    setContent={setContent}
-                    imageUrl={imageUrl}
-                    setImageUrl={setImageUrl}
-                    creating={creating}
-                    error={error}
-                    onSubmit={handleCreatePost}
-                    slugManuallyEdited={slugManuallyEdited}
-                    setSlugManuallyEdited={setSlugManuallyEdited}
-                    pexelsOpen={pexelsOpen}
-                    setPexelsOpen={setPexelsOpen}
-                    markdownShortcuts={markdownShortcuts}
-                    insertMarkdown={insertMarkdown}
-                    contentRef={contentRef}
-                    convertToMarkdownWithGemini={convertToMarkdownWithGemini}
-                    slugify={slugify}
-                    categories={categories}
-                    setCategories={setCategories}
-                    aiLoading={aiLoading}
-                    aiText={aiText}
-                    previewHtml={previewHtml}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </motion.div>
+                <BlogPosts
+                  posts={blogPosts || []}
+                  editingPost={editingId}
+                  setEditingPost={(id) => {
+                    const post = blogPosts?.find((p) => p._id === id);
+                    if (post) startEdit(post);
+                    else setEditingId(id);
+                  }}
+                  editTitle={editTitle}
+                  setEditTitle={setEditTitle}
+                  editSlug={editSlug}
+                  setEditSlug={setEditSlug}
+                  editExcerpt={editExcerpt}
+                  setEditExcerpt={setEditExcerpt}
+                  editContent={editContent}
+                  setEditContent={setEditContent}
+                  editImageUrl={editImageUrl}
+                  setEditImageUrl={setEditImageUrl}
+                  editSlugManuallyEdited={editSlugManuallyEdited}
+                  setEditSlugManuallyEdited={setEditSlugManuallyEdited}
+                  editPexelsOpen={editPexelsOpen}
+                  setEditPexelsOpen={setEditPexelsOpen}
+                  markdownShortcuts={markdownShortcuts}
+                  insertMarkdown={insertMarkdown}
+                  editContentRef={editContentRef}
+                  convertToMarkdownWithGemini={convertToMarkdownWithGemini}
+                  slugify={slugify}
+                  saveEdit={saveEdit}
+                  cancelEdit={cancelEdit}
+                  deletePost={confirmDelete}
+                  editCategories={editCategories}
+                  setEditCategories={setEditCategories}
+                />
+              </>
+            )}
+            {activeTab === "create-post" && (
+              <CreatePost
+                title={title}
+                setTitle={setTitle}
+                slug={slug}
+                setSlug={setSlug}
+                excerpt={excerpt}
+                setExcerpt={setExcerpt}
+                content={content}
+                setContent={setContent}
+                imageUrl={imageUrl}
+                setImageUrl={setImageUrl}
+                creating={creating}
+                error={error}
+                onSubmit={handleCreatePost}
+                slugManuallyEdited={slugManuallyEdited}
+                setSlugManuallyEdited={setSlugManuallyEdited}
+                pexelsOpen={pexelsOpen}
+                setPexelsOpen={setPexelsOpen}
+                markdownShortcuts={markdownShortcuts}
+                insertMarkdown={insertMarkdown}
+                contentRef={contentRef}
+                convertToMarkdownWithGemini={convertToMarkdownWithGemini}
+                slugify={slugify}
+                categories={categories}
+                setCategories={setCategories}
+                aiLoading={aiLoading}
+                aiText={aiText}
+                previewHtml={previewHtml}
+              />
+            )}
+          </main>
+        </div>
       </div>
 
-      {/* Image Selection Modal */}
+      {/* Modals */}
       <PexelsImageModal
         isOpen={pexelsOpen}
         onClose={() => setPexelsOpen(false)}
@@ -492,8 +490,6 @@ function AdminPageInner() {
           setPexelsOpen(false);
         }}
       />
-
-      {/* Edit Image Selection Modal */}
       <PexelsImageModal
         isOpen={editPexelsOpen}
         onClose={() => setEditPexelsOpen(false)}

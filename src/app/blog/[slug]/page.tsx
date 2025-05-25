@@ -174,7 +174,7 @@ export default function BlogDetailPage() {
           </div>
           <div
             id="blog-content"
-            className="prose prose-lg max-w-none prose-pink prose-headings:text-rose-700 prose-strong:text-pink-700 prose-blockquote:border-l-4 prose-blockquote:border-pink-300 prose-blockquote:bg-pink-50/50 prose-table:border prose-table:border-pink-200 prose-th:bg-pink-100 prose-td:bg-pink-50 font-sans shadow-xl rounded-xl p-6 bg-white"
+            className="shadow-xl rounded-xl p-6 bg-white"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
         </CardContent>

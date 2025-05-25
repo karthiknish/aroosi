@@ -1,0 +1,56 @@
+/* Custom styles for Emoji Picker to match Aroosi site */
+.aroosi-emoji-picker.EmojiPickerReact {
+  --epr-bg-color: #fff;
+  --epr-category-label-bg-color: #fdf2f8;
+  --epr-text-color: #a21caf;
+  --epr-emoji-size: 28px;
+  --epr-emoji-gap: 8px;
+  --epr-hover-bg-color: #fce7f3;
+  --epr-search-bg-color: #f3f4f6;
+  --epr-search-border-color: #e5e7eb;
+  --epr-search-input-color: #334155;
+  --epr-border-radius: 0.75rem;
+  --epr-shadow: 0 2px 16px 0 rgba(219,39,119,0.10);
+  --epr-category-icon-active-color: #db2777;
+  --epr-category-icon-color: #a21caf;
+  --epr-highlight-color: #db2777;
+  --epr-skin-tone-picker-bg-color: #f3f4f6;
+  --epr-skin-tone-picker-border-color: #e5e7eb;
+  --epr-skin-tone-picker-active-bg-color: #fdf2f8;
+  --epr-skin-tone-picker-active-border-color: #db2777;
+  --epr-preview-bg-color: #f3f4f6;
+  --epr-preview-border-color: #e5e7eb;
+  --epr-preview-text-color: #a21caf;
+  --epr-scrollbar-thumb-color: #f9a8d4;
+  --epr-scrollbar-track-color: #f3f4f6;
+  font-family: 'Inter', 'Segoe UI', 'Arial', sans-serif;
+  border-radius: var(--epr-border-radius);
+  box-shadow: var(--epr-shadow);
+}
+
+.aroosi-emoji-picker.EmojiPickerReact.epr-dark-theme {
+  --epr-bg-color: #18181b;
+  --epr-category-label-bg-color: #312e81;
+  --epr-text-color: #f472b6;
+  --epr-hover-bg-color: #312e81;
+  --epr-search-bg-color: #27272a;
+  --epr-search-border-color: #52525b;
+  --epr-search-input-color: #f3f4f6;
+  --epr-border-radius: 0.75rem;
+  --epr-shadow: 0 2px 16px 0 rgba(219,39,119,0.18);
+  --epr-category-icon-active-color: #f472b6;
+  --epr-category-icon-color: #a21caf;
+  --epr-highlight-color: #f472b6;
+  --epr-skin-tone-picker-bg-color: #27272a;
+  --epr-skin-tone-picker-border-color: #52525b;
+  --epr-skin-tone-picker-active-bg-color: #312e81;
+  --epr-skin-tone-picker-active-border-color: #f472b6;
+  --epr-preview-bg-color: #27272a;
+  --epr-preview-border-color: #52525b;
+  --epr-preview-text-color: #f472b6;
+  --epr-scrollbar-thumb-color: #a21caf;
+  --epr-scrollbar-track-color: #27272a;
+  font-family: 'Inter', 'Segoe UI', 'Arial', sans-serif;
+  border-radius: var(--epr-border-radius);
+  box-shadow: var(--epr-shadow);
+} 

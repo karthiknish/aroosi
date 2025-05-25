@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import BlogEditor from "@/components/admin/BlogEditor";
 import { useState } from "react";
+import { BlogPostFields } from "@/components/admin/BlogPostFields";
 
 interface BlogPost {
   _id: string;
@@ -184,91 +185,27 @@ export function BlogPosts({
               >
                 {editingPost === post._id ? (
                   <div className="space-y-2">
-                    <Input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
+                    <BlogPostFields
+                      title={editTitle}
+                      setTitle={setEditTitle}
+                      slug={editSlug}
+                      setSlug={setEditSlug}
+                      slugManuallyEdited={editSlugManuallyEdited}
+                      setSlugManuallyEdited={setEditSlugManuallyEdited}
+                      slugify={slugify}
+                      excerpt={editExcerpt}
+                      setExcerpt={setEditExcerpt}
+                      categories={editCategories}
+                      setCategories={setEditCategories}
+                      imageUrl={editImageUrl}
+                      setImageUrl={setEditImageUrl}
+                      pexelsOpen={editPexelsOpen}
+                      setPexelsOpen={setEditPexelsOpen}
+                      aiLoading={aiLoading}
+                      aiText={aiText}
+                      content={editContent}
+                      disabled={false}
                     />
-                    <Input
-                      value={editSlug}
-                      onChange={(e) => {
-                        setEditSlug(e.target.value);
-                        setEditSlugManuallyEdited(true);
-                      }}
-                      placeholder="Slug (e.g. my-first-post)"
-                    />
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        value={editExcerpt}
-                        onChange={(e) => setEditExcerpt(e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="text-pink-600 border-pink-300"
-                        onClick={async () => {
-                          const ai = await aiText(editContent, "excerpt");
-                          if (ai) setEditExcerpt(ai);
-                        }}
-                        disabled={aiLoading.excerpt}
-                      >
-                        {aiLoading.excerpt ? "AI..." : "AI"}
-                      </Button>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        value={editCategories.join(", ")}
-                        onChange={(e) =>
-                          setEditCategories(
-                            e.target.value
-                              .split(",")
-                              .map((c) => c.trim())
-                              .filter(Boolean)
-                          )
-                        }
-                        placeholder="Categories (comma separated)"
-                        className="mb-2"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="text-pink-600 border-pink-300"
-                        onClick={async () => {
-                          const ai = await aiText(editContent, "category");
-                          if (ai)
-                            setEditCategories(
-                              ai
-                                .split(",")
-                                .map((c: string) => c.trim())
-                                .filter(Boolean)
-                            );
-                        }}
-                        disabled={aiLoading.category}
-                      >
-                        {aiLoading.category ? "AI..." : "AI"}
-                      </Button>
-                    </div>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        value={editImageUrl}
-                        onChange={(e) => setEditImageUrl(e.target.value)}
-                        placeholder="Image URL (optional)"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="text-pink-600 border-pink-300"
-                        onClick={() => setEditPexelsOpen(true)}
-                      >
-                        Search Image
-                      </Button>
-                    </div>
-                    {editImageUrl && (
-                      <img
-                        src={editImageUrl}
-                        alt="Preview"
-                        className="h-32 rounded border mb-2"
-                      />
-                    )}
                     <div className="md:flex gap-6">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
