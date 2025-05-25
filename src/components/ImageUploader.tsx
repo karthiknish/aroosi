@@ -2,12 +2,7 @@ import { useCallback, useState, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload } from "lucide-react";
-import {
-  createImage,
-  getCroppedImg,
-  readFile,
-  centerAspectCrop,
-} from "@/lib/imageUtils";
+import { createImage, getCroppedImg, readFile } from "@/lib/imageUtils";
 import {
   Dialog,
   DialogContent,
@@ -15,13 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import ReactCrop, {
-  Crop as CropType,
-  PixelCrop,
-  centerCrop,
-  makeAspectCrop,
-} from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+import Cropper, { Area } from "react-easy-crop";
 import { Id } from "@/../convex/_generated/dataModel";
 
 interface ImageUploaderProps {
@@ -40,44 +29,6 @@ interface ImageUploaderProps {
   isUploading?: boolean;
   maxFiles?: number;
   className?: string;
-}
-
-// Helper to convert percent crop to pixel crop
-function percentCropToPixelCrop(
-  crop: CropType | PixelCrop,
-  image: HTMLImageElement
-): PixelCrop {
-  if (!image || crop.unit === "px") return crop as PixelCrop;
-  const width = image.naturalWidth;
-  const height = image.naturalHeight;
-  return {
-    unit: "px",
-    x: Math.round((crop.x / 100) * width),
-    y: Math.round((crop.y / 100) * height),
-    width: Math.round((crop.width / 100) * width),
-    height: Math.round((crop.height / 100) * height),
-  };
-}
-
-// Helper to get a centered aspect crop
-function getCenteredAspectCrop(
-  mediaWidth: number,
-  mediaHeight: number,
-  aspect: number
-) {
-  return centerCrop(
-    makeAspectCrop(
-      {
-        unit: "%",
-        width: 90,
-        aspect,
-      },
-      mediaWidth,
-      mediaHeight
-    ),
-    mediaWidth,
-    mediaHeight
-  );
 }
 
 export function ImageUploader({
@@ -100,9 +51,9 @@ export function ImageUploader({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<File | null>(null);
   const [isCropping, setIsCropping] = useState(false);
-  const [crop, setCrop] = useState<CropType>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const imgRef = useRef<HTMLImageElement>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -193,41 +144,6 @@ export function ImageUploader({
     ]
   );
 
-  const onImageLoad = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      const { width, height } = e.currentTarget;
-      setCrop(getCenteredAspectCrop(width, height, 1));
-    },
-    []
-  );
-
-  const handleCropComplete = useCallback(async () => {
-    if (!completedCrop || !imgRef.current || !imagePreview || !pendingUpload)
-      return;
-    // Ensure completedCrop is in pixels
-    const pixelCrop = percentCropToPixelCrop(completedCrop, imgRef.current);
-    try {
-      const image = await createImage(imagePreview);
-      const croppedBlob = await getCroppedImg(
-        image,
-        pixelCrop,
-        `cropped_${Date.now()}.jpg`,
-        1
-      );
-      const croppedFile = new File([croppedBlob], `cropped_${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
-      await uploadImageFile(croppedFile);
-      setIsCropping(false);
-      setImagePreview(null);
-      setPendingUpload(null);
-      setCrop(undefined);
-      setCompletedCrop(undefined);
-    } catch (error) {
-      console.error("Error cropping image:", error);
-    }
-  }, [completedCrop, imagePreview, uploadImageFile, pendingUpload]);
-
   return (
     <div className={className}>
       <div
@@ -307,41 +223,37 @@ export function ImageUploader({
           </DialogHeader>
           <div className="space-y-6">
             {imagePreview && (
-              <div className="relative max-h-[60vh] overflow-auto rounded-lg border border-border bg-muted/20 p-2">
-                <ReactCrop
+              <div className="relative max-h-[60vh] h-[400px] w-full bg-muted/20 rounded-lg border border-border">
+                <Cropper
+                  image={imagePreview}
                   crop={crop}
-                  onChange={(c) => setCrop(c)}
-                  onComplete={(c) => {
-                    // Always set completedCrop as pixel crop
-                    if (imgRef.current) {
-                      setCompletedCrop(
-                        percentCropToPixelCrop(c, imgRef.current)
-                      );
-                    } else {
-                      setCompletedCrop(c);
-                    }
-                  }}
+                  zoom={zoom}
                   aspect={1}
-                  minWidth={200}
-                  minHeight={200}
-                  className="[&_img]:rounded-sm [&_.react-crop__crop-selection]:border-2 [&_.react-crop__crop-selection]:border-primary [&_.react-crop__crop-selection]:shadow-lg"
-                >
-                  <img
-                    ref={imgRef}
-                    src={imagePreview}
-                    alt="Crop preview"
-                    className="max-w-full rounded-sm"
-                    onLoad={onImageLoad}
-                    style={{
-                      maxHeight: "60vh",
-                      objectFit: "contain",
-                      display: "block",
-                      margin: "0 auto",
-                    }}
-                  />
-                </ReactCrop>
+                  minZoom={1}
+                  maxZoom={3}
+                  cropShape="rect"
+                  showGrid={true}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={(_, croppedAreaPixels) =>
+                    setCroppedAreaPixels(croppedAreaPixels)
+                  }
+                  style={{ containerStyle: { borderRadius: "0.5rem" } }}
+                />
               </div>
             )}
+            <div className="flex items-center gap-4 pt-2">
+              <span className="text-xs text-muted-foreground">Zoom</span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-32"
+              />
+            </div>
             <div className="flex justify-end space-x-3 pt-2">
               <Button
                 type="button"
@@ -350,8 +262,9 @@ export function ImageUploader({
                   setIsCropping(false);
                   setImagePreview(null);
                   setPendingUpload(null);
-                  setCrop(undefined);
-                  setCompletedCrop(undefined);
+                  setCrop({ x: 0, y: 0 });
+                  setZoom(1);
+                  setCroppedAreaPixels(null);
                 }}
                 disabled={isUploading}
               >
@@ -359,8 +272,36 @@ export function ImageUploader({
               </Button>
               <Button
                 type="button"
-                onClick={handleCropComplete}
-                disabled={!completedCrop || isUploading}
+                onClick={async () => {
+                  if (!croppedAreaPixels || !imagePreview || !pendingUpload)
+                    return;
+                  try {
+                    const image = await createImage(imagePreview);
+                    const croppedBlob = await getCroppedImg(
+                      image,
+                      croppedAreaPixels,
+                      `cropped_${Date.now()}.jpg`,
+                      1
+                    );
+                    const croppedFile = new File(
+                      [croppedBlob],
+                      `cropped_${Date.now()}.jpg`,
+                      {
+                        type: "image/jpeg",
+                      }
+                    );
+                    await uploadImageFile(croppedFile);
+                    setIsCropping(false);
+                    setImagePreview(null);
+                    setPendingUpload(null);
+                    setCrop({ x: 0, y: 0 });
+                    setZoom(1);
+                    setCroppedAreaPixels(null);
+                  } catch (error) {
+                    console.error("Error cropping image:", error);
+                  }
+                }}
+                disabled={!croppedAreaPixels || isUploading}
               >
                 {isUploading ? (
                   <>

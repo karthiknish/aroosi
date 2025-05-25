@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
     };
     return config;
   },
+  turbopack: {
+    resolveAlias: {
+      "@": path.resolve(__dirname, "src"),
+      "@convex": path.resolve(__dirname, "convex"),
+    },
+  },
 };
 
 export default nextConfig;
