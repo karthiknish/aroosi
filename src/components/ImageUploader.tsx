@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload } from "lucide-react";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import Cropper, { Area } from "react-easy-crop";
 import { Id } from "@/../convex/_generated/dataModel";
+import { ConvexError } from "convex/values";
 
 interface ImageUploaderProps {
   userId: Id<"users">;
@@ -54,6 +55,9 @@ export function ImageUploader({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => setIsClient(true), []);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -82,8 +86,11 @@ export function ImageUploader({
     async (file: File) => {
       if (!userId) return;
       const currentImages = orderedImages || [];
-      if (currentImages.length >= maxFiles) {
-        toast.error(`You can only upload up to ${maxFiles} images`);
+      const maxProfileImages = 10;
+      if (currentImages.length >= maxProfileImages) {
+        toast.error(
+          `You can only display up to ${maxProfileImages} images on your profile`
+        );
         return;
       }
       try {
@@ -122,7 +129,13 @@ export function ImageUploader({
         toast.success("Image uploaded successfully");
       } catch (error) {
         console.error("Error uploading image:", error);
-        toast.error("Failed to upload image");
+        if (error instanceof ConvexError) {
+          toast.error(
+            "Something went wrong while uploading your image. Please try again."
+          );
+        } else {
+          toast.error("Failed to upload image");
+        }
         throw error;
       } finally {
         setIsUploading(false);
@@ -140,7 +153,6 @@ export function ImageUploader({
       updateProfile,
       setIsUploading,
       toast,
-      maxFiles,
     ]
   );
 
@@ -222,7 +234,7 @@ export function ImageUploader({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
-            {imagePreview && (
+            {isClient && imagePreview && (
               <div className="relative max-h-[60vh] h-[400px] w-full bg-muted/20 rounded-lg border border-border">
                 <Cropper
                   image={imagePreview}
@@ -238,22 +250,19 @@ export function ImageUploader({
                   onCropComplete={(_, croppedAreaPixels) =>
                     setCroppedAreaPixels(croppedAreaPixels)
                   }
-                  style={{ containerStyle: { borderRadius: "0.5rem" } }}
+                  style={{
+                    containerStyle: { borderRadius: "0.75rem" },
+                    cropAreaStyle: {
+                      border: "2px solid #6366f1", // Tailwind indigo-500
+                      borderRadius: "0.75rem",
+                      boxShadow: "0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,0.12)",
+                      cursor: "move",
+                      background: "rgba(255,255,255,0.02)",
+                    },
+                  }}
                 />
               </div>
             )}
-            <div className="flex items-center gap-4 pt-2">
-              <span className="text-xs text-muted-foreground">Zoom</span>
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.01}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-32"
-              />
-            </div>
             <div className="flex justify-end space-x-3 pt-2">
               <Button
                 type="button"
@@ -276,16 +285,17 @@ export function ImageUploader({
                   if (!croppedAreaPixels || !imagePreview || !pendingUpload)
                     return;
                   try {
+                    const timestamp = Date.now();
                     const image = await createImage(imagePreview);
                     const croppedBlob = await getCroppedImg(
                       image,
                       croppedAreaPixels,
-                      `cropped_${Date.now()}.jpg`,
+                      `cropped_${timestamp}.jpg`,
                       1
                     );
                     const croppedFile = new File(
                       [croppedBlob],
-                      `cropped_${Date.now()}.jpg`,
+                      `cropped_${timestamp}.jpg`,
                       {
                         type: "image/jpeg",
                       }
@@ -299,6 +309,13 @@ export function ImageUploader({
                     setCroppedAreaPixels(null);
                   } catch (error) {
                     console.error("Error cropping image:", error);
+                    if (error instanceof ConvexError) {
+                      toast.error(
+                        "Something went wrong while processing your image. Please try again."
+                      );
+                    } else {
+                      toast.error("Failed to crop image. Please try again.");
+                    }
                   }
                 }}
                 disabled={!croppedAreaPixels || isUploading}

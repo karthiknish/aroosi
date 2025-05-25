@@ -20,6 +20,8 @@ import {
   Briefcase,
   Heart,
   Info,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@clerk/nextjs";
@@ -30,6 +32,8 @@ import { api } from "@convex/_generated/api";
 import { motion } from "framer-motion";
 import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Profile } from "@/types/profile";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface ImageData {
   _id: Id<"_storage">;
@@ -123,9 +127,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   }));
   const updateOrder = useMutation(api.users.updateProfileImageOrder);
 
-  const handleReorder = (newOrder: string[]) => {
-    // Optionally, implement reordering logic if you want to persist order
-    // For now, do nothing or show a toast
+  const handleReorder = async (newOrder: any[]) => {
+    if (!userConvexData?._id) return;
+    let imageIds: string[] = [];
+    if (typeof newOrder[0] === "string") {
+      imageIds = newOrder as string[];
+    } else if (typeof newOrder[0] === "object" && newOrder[0]._id) {
+      imageIds = newOrder.map((img: any) => img._id);
+    }
+    try {
+      await updateOrder({
+        userId: userConvexData._id,
+        imageIds: imageIds as Id<"_storage">[],
+      });
+      toast.success("Image order updated");
+    } catch (error) {
+      toast.error("Failed to update image order");
+    }
   };
 
   console.log("images", images);
@@ -156,20 +174,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     }));
   }
 
-  // Render images row
-  const imagesRow =
-    orderedImages.length > 0 ? (
-      <div className="flex flex-row gap-2 mb-6">
-        {orderedImages.map((img) => (
-          <img
-            key={img._id}
-            src={img.url}
-            alt="Profile image"
-            className="w-20 h-20 rounded-lg object-cover border"
-          />
-        ))}
-      </div>
-    ) : null;
+  // Modal state for image preview
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [modalIndex, setModalIndex] = React.useState(0);
+
+  const handleImageClick = (idx: number) => {
+    setModalIndex(idx);
+    setModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
@@ -234,9 +246,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 >
                   {userConvexData?._id && (
                     <ProfileImageReorder
-                      images={imagesArray}
+                      images={orderedImages}
                       userId={userConvexData._id as Id<"users">}
                       onReorder={handleReorder}
+                      renderAction={(_, idx) => (
+                        <img
+                          src={orderedImages[idx].url}
+                          alt=""
+                          style={{
+                            width: 100,
+                            height: 100,
+                            objectFit: "cover",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                          }}
+                          onClick={() => handleImageClick(idx)}
+                        />
+                      )}
                     />
                   )}
                   {imagesArray.length === 0 && <div>No images found</div>}
@@ -377,6 +403,47 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     }
                   />
                 </DisplaySection>
+
+                <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                  <DialogContent className="max-w-2xl flex flex-col items-center justify-center bg-black/90 p-0">
+                    <div className="relative w-full flex items-center justify-center min-h-[400px]">
+                      <button
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
+                        onClick={() =>
+                          setModalIndex(
+                            (modalIndex - 1 + orderedImages.length) %
+                              orderedImages.length
+                          )
+                        }
+                        aria-label="Previous image"
+                        disabled={orderedImages.length <= 1}
+                        style={{ opacity: orderedImages.length > 1 ? 1 : 0.5 }}
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </button>
+                      <img
+                        src={orderedImages[modalIndex]?.url}
+                        alt="Profile large preview"
+                        className="w-full h-[70vh] rounded-lg object-cover bg-black"
+                        style={{ margin: "0 auto" }}
+                      />
+                      <button
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
+                        onClick={() =>
+                          setModalIndex((modalIndex + 1) % orderedImages.length)
+                        }
+                        aria-label="Next image"
+                        disabled={orderedImages.length <= 1}
+                        style={{ opacity: orderedImages.length > 1 ? 1 : 0.5 }}
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </button>
+                    </div>
+                    <div className="text-white text-center py-2 w-full bg-black/60 rounded-b-lg">
+                      {modalIndex + 1} / {orderedImages.length}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </>
             ) : (
               <div className="text-center py-10">

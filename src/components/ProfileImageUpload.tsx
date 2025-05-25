@@ -6,7 +6,13 @@ import { toast } from "sonner";
 import { ProfileImageReorder } from "./ProfileImageReorder";
 import { ImageUploader } from "./ImageUploader";
 import { ImageDeleteConfirmation } from "./ImageDeleteConfirmation";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Trash2 } from "lucide-react";
 
 interface ImageData {
   _id: Id<"images"> | string;
@@ -57,20 +63,26 @@ export function ProfileImageUpload({
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedImageIdx, setSelectedImageIdx] = useState<number>(-1);
 
-  // Get profile image IDs
+  // Get profile image IDs as Id<_storage>[]
   const profileImageIds = useMemo(() => {
-    const ids = orderedImages.map((img) => img.storageId as string);
-    // Notify parent component about the image IDs change
+    return orderedImages.map((img) => img.storageId as Id<"_storage">);
+  }, [orderedImages]);
+
+  // Notify parent component about the image IDs change (side effect, not during render)
+  useEffect(() => {
     if (onImagesChanged) {
-      onImagesChanged(ids);
+      onImagesChanged(profileImageIds.map(String));
     }
-    return ids;
-  }, [orderedImages, onImagesChanged]);
+  }, [profileImageIds, onImagesChanged]);
 
   // Sync orderedImages with images from server
   useEffect(() => {
     if (imagesQuery) {
-      setOrderedImages(imagesQuery);
+      setOrderedImages(
+        (imagesQuery as ImageData[]).filter(
+          (img) => !!img.url && !!img.storageId
+        )
+      );
     }
   }, [imagesQuery]);
 
@@ -81,7 +93,6 @@ export function ProfileImageUpload({
       const newOrder = reorderedImages.map(
         (img) => img.storageId as Id<"_storage">
       );
-
       try {
         if (isAdmin && profileId) {
           await adminUpdateProfile({
@@ -91,7 +102,7 @@ export function ProfileImageUpload({
         } else {
           await updateProfile({ profileImageIds: newOrder });
         }
-        if (onImagesChanged) onImagesChanged();
+        if (onImagesChanged) onImagesChanged(newOrder.map(String));
       } catch (error) {
         console.error("Error updating image order:", error);
         toast.error("Failed to update image order");
@@ -114,8 +125,9 @@ export function ProfileImageUpload({
         (img) => img.storageId !== pendingDeleteId
       );
       setOrderedImages(newOrderedImages);
-      const newStorageOrder = newOrderedImages.map((img) => img.storageId);
-
+      const newStorageOrder = newOrderedImages.map(
+        (img) => img.storageId as Id<"_storage">
+      );
       if (isAdmin && profileId) {
         await adminUpdateProfile({
           id: profileId,
@@ -124,8 +136,7 @@ export function ProfileImageUpload({
       } else {
         await updateProfile({ profileImageIds: newStorageOrder });
       }
-
-      if (onImagesChanged) onImagesChanged();
+      if (onImagesChanged) onImagesChanged(newStorageOrder.map(String));
       toast.success("Image deleted successfully");
     } catch (error) {
       console.error("Error deleting image:", error);
@@ -150,13 +161,12 @@ export function ProfileImageUpload({
 
   // Memoize the ordered images based on profileImageIds or use default order
   const memoizedOrderedImages = useMemo(() => {
-    const validImages = images.filter((img): img is ImageData =>
+    const validImages = (images as ImageData[]).filter((img) =>
       Boolean(img && img.url && img.storageId)
     );
 
     if (profileImageIds?.length > 0) {
       const imageMap = new Map(validImages.map((img) => [img.storageId, img]));
-
       return profileImageIds
         .map((id) => imageMap.get(id as Id<"_storage">))
         .filter((img): img is ImageData => Boolean(img));
@@ -227,56 +237,37 @@ export function ProfileImageUpload({
         </div>
       </div>
 
-      {/* Image Reorder and List */}
-      <div className="mt-4">
-        <ProfileImageReorder
-          images={memoizedOrderedImages}
-          onReorder={onReorder}
-          onDelete={confirmDelete}
-          isAdmin={isAdmin}
-          renderAction={(img, idx) => (
-            <img
-              src={img.url}
-              alt="Profile preview"
-              className="w-20 h-20 object-cover rounded-lg cursor-pointer border"
-              onClick={() => openImageModal(img.url, idx)}
-            />
-          )}
-        />
-      </div>
-
       {/* View Large Image Modal */}
       <Dialog open={viewImageModalOpen} onOpenChange={setViewImageModalOpen}>
-        <DialogContent className="max-w-2xl flex flex-col items-center justify-center relative">
+        <DialogContent className="max-w-2xl w-full flex flex-col items-center justify-center relative">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Profile Image Preview</DialogTitle>
+          </DialogHeader>
           {selectedImageUrl && (
-            <>
-              <div className="flex items-center justify-center w-full">
-                <button
-                  onClick={goToPrevImage}
-                  disabled={selectedImageIdx <= 0}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-white disabled:opacity-50 z-10"
-                  aria-label="Previous image"
-                >
-                  &#8592;
-                </button>
-                <img
-                  src={selectedImageUrl}
-                  alt="Large profile preview"
-                  className="max-h-[70vh] max-w-full rounded-lg"
-                  style={{ objectFit: "contain" }}
-                />
-                <button
-                  onClick={goToNextImage}
-                  disabled={
-                    selectedImageIdx >= memoizedOrderedImages.length - 1
-                  }
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-white disabled:opacity-50 z-10"
-                  aria-label="Next image"
-                >
-                  &#8594;
-                </button>
-              </div>
-            </>
+            <div className="flex items-center justify-center w-full max-w-full max-h-[80vh] min-h-[300px]">
+              <button
+                onClick={goToPrevImage}
+                disabled={selectedImageIdx <= 0}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-white disabled:opacity-50 z-10"
+                aria-label="Previous image"
+              >
+                &#8592;
+              </button>
+              <img
+                src={selectedImageUrl}
+                alt="Large profile preview"
+                className="max-h-[70vh] max-w-full rounded-lg mx-auto"
+                style={{ objectFit: "contain" }}
+              />
+              <button
+                onClick={goToNextImage}
+                disabled={selectedImageIdx >= memoizedOrderedImages.length - 1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-white disabled:opacity-50 z-10"
+                aria-label="Next image"
+              >
+                &#8594;
+              </button>
+            </div>
           )}
         </DialogContent>
       </Dialog>

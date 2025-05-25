@@ -179,6 +179,14 @@ export const updateProfile = mutation({
         v.literal("other")
       )
     ),
+    preferredGender: v.optional(
+      v.union(
+        v.literal("male"),
+        v.literal("female"),
+        v.literal("other"),
+        v.literal("any")
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();

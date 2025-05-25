@@ -21,6 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ConvexError } from "convex/values";
 
 const requiredFields = [
   "fullName",
@@ -205,7 +206,13 @@ export default function ProfilePage() {
       setIsEditing(false);
       setShowSuccessModal(true);
     } catch (error: any) {
-      setServerError(error.message || "An unexpected error occurred.");
+      if (error instanceof ConvexError) {
+        setServerError(
+          "Something went wrong while saving your profile. Please try again."
+        );
+      } else {
+        setServerError(error.message || "An unexpected error occurred.");
+      }
     } finally {
       setLoading(false);
     }
@@ -260,13 +267,32 @@ export default function ProfilePage() {
     );
   }
   return (
-    <ProfileView
-      profileData={profileData}
-      clerkUser={clerkUser}
-      userConvexData={userConvexData}
-      onEdit={handleEdit}
-      onDelete={() => setShowDeleteModal(true)}
-      deleting={deleting}
-    />
+    <>
+      <ProfileView
+        profileData={profileData}
+        clerkUser={clerkUser}
+        userConvexData={userConvexData}
+        onEdit={handleEdit}
+        onDelete={() => setShowDeleteModal(true)}
+        deleting={deleting}
+      />
+      {showSuccessModal && (
+        <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Profile updated successfully!</DialogTitle>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                className="bg-pink-600 hover:bg-pink-700 text-white"
+                onClick={() => setShowSuccessModal(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }

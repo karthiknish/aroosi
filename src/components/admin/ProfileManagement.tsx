@@ -4,6 +4,13 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,6 +24,7 @@ import { Id } from "@/../convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
 import { useRouter } from "next/navigation";
 import ProfileCard from "./ProfileCard";
+import { ConvexError } from "convex/values";
 
 // Helper for rendering a profile image or fallback
 
@@ -30,6 +38,7 @@ export function ProfileManagement() {
   const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
   const router = useRouter();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   // Fetch paginated/searchable profiles from Convex
   const { profiles = [], total = 0 } =
     useConvexQuery(api.users.adminListProfiles, {
@@ -109,9 +118,15 @@ export function ProfileManagement() {
       await adminUpdateProfile({ id, updates });
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
-      toast.success("Profile updated successfully!");
+      setShowSuccessModal(true);
     } catch (error) {
-      toast.error("Failed to update profile");
+      if (error instanceof ConvexError) {
+        toast.error(
+          "Something went wrong while updating the profile. Please try again."
+        );
+      } else {
+        toast.error("Failed to update profile");
+      }
     }
   };
 
@@ -177,7 +192,7 @@ export function ProfileManagement() {
           return (
             <ProfileCard
               key={profile._id as string}
-              profile={profile}
+              profile={safeProfile}
               editingId={editingId}
               editForm={editForm}
               onStartEdit={startEdit}
@@ -236,6 +251,18 @@ export function ProfileManagement() {
             </div>
           </div>
         </div>
+      )}
+      {showSuccessModal && (
+        <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Profile updated successfully!</DialogTitle>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setShowSuccessModal(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import "@/styles/react-datepicker-custom.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Camera, XCircle, Save } from "lucide-react";
+import {
+  Loader2,
+  Camera,
+  XCircle,
+  Save,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -37,6 +46,8 @@ import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Profile } from "@/types/profile";
+import Confetti from "react-confetti";
+import { useWindowSize } from "react-use";
 
 interface ProfileImage {
   _id: string;
@@ -307,6 +318,13 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   const [showSuccessModal, setShowSuccessModal] = React.useState(false);
   const [hasSubmittedSuccessfully, setHasSubmittedSuccessfully] =
     React.useState(false);
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [modalIndex, setModalIndex] = React.useState(0);
+  const deleteImage = useMutation(api.images.deleteProfileImage);
+  const [deletingImageId, setDeletingImageId] = React.useState<string | null>(
+    null
+  );
+  const updateOrder = useMutation(api.users.updateProfileImageOrder);
 
   React.useEffect(() => {
     setHasSubmittedSuccessfully(false);
@@ -385,6 +403,62 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     setShowSuccessModal(true);
     setHasSubmittedSuccessfully(true);
   };
+
+  const handleImagesChanged = React.useCallback((newImageIds: string[]) => {
+    setUploadedImageIds(newImageIds);
+  }, []);
+
+  const currentUserConvex = useQuery(
+    api.users.getCurrentUserWithProfile,
+    clerkUser?.id ? {} : "skip"
+  );
+  const convexUserId = currentUserConvex?._id;
+
+  const handleImageClick = (idx: number) => {
+    setModalIndex(idx);
+    setModalOpen(true);
+  };
+
+  const handleDeleteImage = async (storageId: string) => {
+    if (!convexUserId) return;
+    setDeletingImageId(storageId);
+    try {
+      await deleteImage({
+        userId: convexUserId,
+        imageId: storageId as Id<"_storage">,
+      });
+      // Remove from uploadedImageIds
+      const newIds = uploadedImageIds.filter((id) => id !== storageId);
+      setUploadedImageIds(newIds);
+      if (handleImagesChanged) handleImagesChanged(newIds);
+      toast.success("Image deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete image");
+    } finally {
+      setDeletingImageId(null);
+    }
+  };
+
+  // Add image query and mapping
+  const userImagesQuery = useQuery(
+    api.images.getProfileImages,
+    convexUserId ? { userId: convexUserId } : "skip"
+  );
+  const storageIdToUrlMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    if (userImagesQuery && Array.isArray(userImagesQuery)) {
+      for (const img of userImagesQuery) {
+        if (img?.storageId && img?.url) {
+          map[String(img.storageId)] = img.url;
+        }
+      }
+    }
+    return map;
+  }, [userImagesQuery]);
+  const orderedImages = uploadedImageIds.map((id) => ({
+    _id: id,
+    url: storageIdToUrlMap[id] || "",
+  }));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
@@ -622,20 +696,121 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
             {currentStep === totalSteps - 1 && (
               <FormSection title="Profile Images">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">
-                      Upload Profile Images
-                    </h3>
-                    <span className="text-xs text-gray-500">
-                      {uploadedImageIds.length} of 10 images
-                    </span>
-                  </div>
-                  <ProfileImageUpload
-                    userId={clerkUser?.id}
-                    onImagesChanged={(newImageIds) =>
-                      setUploadedImageIds(newImageIds)
-                    }
-                  />
+                  {!clerkUser?.id || !convexUserId ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                      <span className="ml-2 text-gray-500">
+                        Loading user...
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <ProfileImageUpload
+                        userId={convexUserId}
+                        onImagesChanged={handleImagesChanged}
+                      />
+                      <ProfileImageReorder
+                        images={orderedImages}
+                        userId={convexUserId}
+                        onReorder={async (newOrder) => {
+                          let newIds: string[] = [];
+                          if (Array.isArray(newOrder) && newOrder.length > 0) {
+                            if (typeof newOrder[0] === "string") {
+                              newIds = newOrder as string[];
+                            } else if (
+                              typeof newOrder[0] === "object" &&
+                              (newOrder[0] as any)._id
+                            ) {
+                              newIds = (newOrder as any[]).map((img: any) =>
+                                String(img._id)
+                              );
+                            }
+                          }
+                          setUploadedImageIds(newIds);
+                          handleImagesChanged(newIds);
+                          // Persist to Convex
+                          if (convexUserId) {
+                            try {
+                              await updateOrder({
+                                userId: convexUserId,
+                                imageIds: newIds as Id<"_storage">[],
+                              });
+                            } catch (error) {
+                              toast.error("Failed to update image order");
+                            }
+                          }
+                        }}
+                        renderAction={(img, idx) => (
+                          <div className="relative group w-20 h-20">
+                            <img
+                              src={img.url}
+                              alt="Profile preview"
+                              className="w-20 h-20 object-cover rounded-lg cursor-pointer border group-hover:brightness-90 transition"
+                              onClick={() => handleImageClick(idx)}
+                            />
+                            <button
+                              type="button"
+                              className="absolute top-1 right-1 bg-white/80 rounded-full p-1 shadow hover:bg-red-100 text-red-600 opacity-0 group-hover:opacity-100 transition"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteImage(String(img._id));
+                              }}
+                              aria-label="Delete image"
+                              disabled={deletingImageId === String(img._id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      />
+                      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                        <DialogContent className="max-w-2xl flex flex-col items-center justify-center bg-black/90 p-0">
+                          <div className="relative w-full flex items-center justify-center min-h-[400px]">
+                            <button
+                              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
+                              onClick={() =>
+                                setModalIndex(
+                                  (modalIndex - 1 + orderedImages.length) %
+                                    orderedImages.length
+                                )
+                              }
+                              aria-label="Previous image"
+                              disabled={orderedImages.length <= 1}
+                              style={{
+                                opacity: orderedImages.length > 1 ? 1 : 0.5,
+                              }}
+                            >
+                              <ChevronLeft className="w-6 h-6" />
+                            </button>
+                            <img
+                              src={orderedImages[modalIndex]?.url || ""}
+                              alt="Profile large preview"
+                              className="w-full h-[70vh] rounded-lg object-cover bg-black"
+                              style={{ margin: "0 auto" }}
+                            />
+                            <button
+                              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
+                              onClick={() =>
+                                setModalIndex(
+                                  (modalIndex + 1) % orderedImages.length
+                                )
+                              }
+                              aria-label="Next image"
+                              disabled={orderedImages.length <= 1}
+                              style={{
+                                opacity: orderedImages.length > 1 ? 1 : 0.5,
+                              }}
+                            >
+                              <ChevronRight className="w-6 h-6" />
+                            </button>
+                          </div>
+                          <div className="text-white text-center py-2 w-full bg-black/60 rounded-b-lg">
+                            {modalIndex + 1} / {orderedImages.length}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </>
+                  )}
                   {form.formState.errors.profileImageIds && (
                     <p className="text-sm text-red-600 mt-2">
                       {form.formState.errors.profileImageIds.message as string}
@@ -703,61 +878,77 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                 {serverError}
               </p>
             )}
-            <Dialog
-              open={showSuccessModal}
-              onOpenChange={(open) => {
-                setShowSuccessModal(open);
-                if (!open && hasSubmittedSuccessfully) {
-                  setHasSubmittedSuccessfully(false);
-                  if (onEditDone) onEditDone();
-                }
-              }}
-            >
-              <DialogContent className="bg-pink-50 text-pink-700 border-2 border-pink-200">
-                <DialogHeader>
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg
-                      className="w-6 h-6 text-pink-500"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 12l2 2 4-4"
-                      />
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
+            {showSuccessModal && mode === "create" && (
+              <Dialog
+                open={showSuccessModal}
+                onOpenChange={(open) => {
+                  setShowSuccessModal(open);
+                  if (!open && hasSubmittedSuccessfully) {
+                    setHasSubmittedSuccessfully(false);
+                    if (onEditDone) onEditDone();
+                  }
+                }}
+              >
+                <DialogContent className="bg-pink-50 text-pink-700 border-2 border-pink-200 relative">
+                  <DialogHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-6 h-6 text-pink-500"
+                        fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
-                        fill="none"
-                      />
-                    </svg>
-                    <DialogTitle className="text-pink-700">
-                      Profile Updated!
-                    </DialogTitle>
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9 12l2 2 4-4"
+                        />
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          fill="none"
+                        />
+                      </svg>
+                      <DialogTitle className="text-pink-700">
+                        Profile Updated!
+                      </DialogTitle>
+                    </div>
+                    <DialogDescription className="text-pink-600">
+                      Your profile has been updated successfully.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <h2 className="text-2xl font-bold text-pink-700 mb-2">
+                      Welcome to Aroosi!
+                    </h2>
+                    <p className="text-lg text-pink-600 mb-4">
+                      We're excited to have you join our community.
+                    </p>
                   </div>
-                  <DialogDescription className="text-pink-600">
-                    Your profile has been updated successfully.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    className="bg-pink-600 hover:bg-pink-700 text-white"
-                    onClick={() => {
-                      setShowSuccessModal(false);
-                      if (onEditDone) onEditDone();
-                    }}
-                  >
-                    Close
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                  <Confetti
+                    width={useWindowSize().width}
+                    height={useWindowSize().height}
+                    numberOfPieces={250}
+                    recycle={false}
+                  />
+                  <DialogFooter>
+                    <Button
+                      className="bg-pink-600 hover:bg-pink-700 text-white"
+                      onClick={() => {
+                        setShowSuccessModal(false);
+                        if (onEditDone) onEditDone();
+                      }}
+                    >
+                      Close
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
       </motion.main>
