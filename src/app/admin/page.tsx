@@ -106,6 +106,17 @@ function AdminPageInner() {
     );
   }
 
+  const isAdmin = user?.publicMetadata?.role === "admin";
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto text-center">
+          <strong>Error:</strong> You must be an admin to view this page.
+        </div>
+      </div>
+    );
+  }
+
   // Fetch blog posts and contact messages from Convex
   const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
   const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});

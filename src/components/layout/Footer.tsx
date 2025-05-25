@@ -65,11 +65,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/search" className={linkHover}>
-                  Search Profiles
-                </Link>
-              </li>
-              <li>
                 <Link href="/blog" className={linkHover}>
                   Blog
                 </Link>
