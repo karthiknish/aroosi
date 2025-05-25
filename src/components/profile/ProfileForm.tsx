@@ -46,10 +46,11 @@ import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Profile } from "@/types/profile";
-import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { useRouter } from "next/navigation";
+
 // Hardcoded list of major UK cities
 const majorUkCities = [
   "Belfast",
@@ -302,11 +303,29 @@ export interface UnifiedProfileFormProps {
   userConvexData?: any;
 }
 
+// Add Zod schema for validation
+const essentialProfileSchema = z.object({
+  fullName: z.string().min(2, "Full name is required"),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  gender: z.enum(["male", "female", "other"], {
+    required_error: "Gender is required",
+  }),
+  ukCity: z.string().min(1, "City is required"),
+  aboutMe: z.string().min(1, "About Me is required"),
+});
+
 function cmToFeetInches(cm: number) {
   const totalInches = Math.round(cm / 2.54);
   const feet = Math.floor(totalInches / 12);
   const inches = totalInches % 12;
   return `${feet}'${inches}\"`;
+}
+
+function cmToFeetInchesString(cm: number) {
+  const totalInches = Math.round(cm / 2.54);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
+  return `${feet}ft ${inches}in`;
 }
 
 // Phone number validation regex (UK/international)
@@ -385,12 +404,25 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   // Always call useWindowSize at the top level
   const { width: windowWidth, height: windowHeight } = useWindowSize();
 
+  const router = useRouter();
+
   React.useEffect(() => {
     setHasSubmittedSuccessfully(false);
   }, []);
 
   // Form setup
   const form = useForm<any>({
+    resolver: async (data, context, options) => {
+      try {
+        essentialProfileSchema.parse(data);
+        return { values: data, errors: {} };
+      } catch (err) {
+        return {
+          values: {},
+          errors: (err as any).formErrors?.fieldErrors || {},
+        };
+      }
+    },
     defaultValues: initialValues || {
       fullName: "",
       dateOfBirth: "",
@@ -502,6 +534,69 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       values.annualIncome = Number(values.annualIncome);
     }
 
+    // Convert height to '5ft 7in' string if present
+    if (
+      values.height !== undefined &&
+      values.height !== null &&
+      values.height !== ""
+    ) {
+      values.height = cmToFeetInchesString(Number(values.height));
+    }
+
+    // Convert partnerPreferenceAgeMin and partnerPreferenceAgeMax to numbers or undefined
+    if (
+      values.partnerPreferenceAgeMin === "" ||
+      values.partnerPreferenceAgeMin === undefined ||
+      values.partnerPreferenceAgeMin === null
+    ) {
+      values.partnerPreferenceAgeMin = undefined;
+    } else {
+      values.partnerPreferenceAgeMin = Number(values.partnerPreferenceAgeMin);
+    }
+    if (
+      values.partnerPreferenceAgeMax === "" ||
+      values.partnerPreferenceAgeMax === undefined ||
+      values.partnerPreferenceAgeMax === null
+    ) {
+      values.partnerPreferenceAgeMax = undefined;
+    } else {
+      values.partnerPreferenceAgeMax = Number(values.partnerPreferenceAgeMax);
+    }
+
+    // Convert partnerPreferenceReligion to array of strings or undefined
+    if (
+      values.partnerPreferenceReligion === "" ||
+      values.partnerPreferenceReligion === undefined ||
+      values.partnerPreferenceReligion === null
+    ) {
+      values.partnerPreferenceReligion = undefined;
+    } else if (typeof values.partnerPreferenceReligion === "string") {
+      values.partnerPreferenceReligion = values.partnerPreferenceReligion
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+      if (values.partnerPreferenceReligion.length === 0) {
+        values.partnerPreferenceReligion = undefined;
+      }
+    }
+
+    // Convert partnerPreferenceUkCity to array of strings or undefined
+    if (
+      values.partnerPreferenceUkCity === "" ||
+      values.partnerPreferenceUkCity === undefined ||
+      values.partnerPreferenceUkCity === null
+    ) {
+      values.partnerPreferenceUkCity = undefined;
+    } else if (typeof values.partnerPreferenceUkCity === "string") {
+      values.partnerPreferenceUkCity = values.partnerPreferenceUkCity
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+      if (values.partnerPreferenceUkCity.length === 0) {
+        values.partnerPreferenceUkCity = undefined;
+      }
+    }
+
     await onSubmit({ ...values, profileImageIds: uploadedImageIds });
     setShowSuccessModal(true);
     setHasSubmittedSuccessfully(true);
@@ -552,6 +647,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     api.images.getProfileImages,
     convexUserId ? { userId: convexUserId } : "skip"
   );
+
   const storageIdToUrlMap = React.useMemo(() => {
     const map: Record<string, string> = {};
     if (userImagesQuery && Array.isArray(userImagesQuery)) {
@@ -839,6 +935,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                   label="About Me"
                   form={form}
                   placeholder="Tell us about yourself..."
+                  isRequired
                 />
                 <FormSelectField
                   name="preferredGender"
@@ -1065,77 +1162,6 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
               <p className="text-sm font-medium text-destructive mt-4">
                 {serverError}
               </p>
-            )}
-            {showSuccessModal && mode === "create" && (
-              <Dialog
-                open={showSuccessModal}
-                onOpenChange={(open) => {
-                  setShowSuccessModal(open);
-                  if (!open && hasSubmittedSuccessfully) {
-                    setHasSubmittedSuccessfully(false);
-                    if (onEditDone) onEditDone();
-                  }
-                }}
-              >
-                <DialogContent className="bg-pink-50 text-pink-700 border-2 border-pink-200 relative">
-                  <DialogHeader>
-                    <div className="flex items-center gap-2 mb-2">
-                      <svg
-                        className="w-6 h-6 text-pink-500"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 12l2 2 4-4"
-                        />
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          fill="none"
-                        />
-                      </svg>
-                      <DialogTitle className="text-pink-700">
-                        Profile Updated!
-                      </DialogTitle>
-                    </div>
-                    <DialogDescription className="text-pink-600">
-                      Your profile has been updated successfully.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex flex-col items-center justify-center py-6">
-                    <h2 className="text-2xl font-bold text-pink-700 mb-2">
-                      Welcome to Aroosi!
-                    </h2>
-                    <p className="text-lg text-pink-600 mb-4">
-                      We're excited to have you join our community.
-                    </p>
-                  </div>
-                  <Confetti
-                    width={windowWidth}
-                    height={windowHeight}
-                    numberOfPieces={250}
-                    recycle={false}
-                  />
-                  <DialogFooter>
-                    <Button
-                      className="bg-pink-600 hover:bg-pink-700 text-white"
-                      onClick={() => {
-                        setShowSuccessModal(false);
-                        if (onEditDone) onEditDone();
-                      }}
-                    >
-                      Close
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             )}
           </div>
         </div>

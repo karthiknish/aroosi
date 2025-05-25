@@ -724,3 +724,131 @@ export const updateProfileImageOrder = mutation({
     return { success: true };
   },
 });
+
+export const createProfile = mutation({
+  args: {
+    fullName: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    gender: v.optional(
+      v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+    ),
+    ukCity: v.optional(v.string()),
+    ukPostcode: v.optional(v.string()),
+    religion: v.optional(v.string()),
+    caste: v.optional(v.string()),
+    motherTongue: v.optional(v.string()),
+    height: v.optional(v.string()),
+    maritalStatus: v.optional(
+      v.union(
+        v.literal("single"),
+        v.literal("divorced"),
+        v.literal("widowed"),
+        v.literal("annulled")
+      )
+    ),
+    education: v.optional(v.string()),
+    occupation: v.optional(v.string()),
+    annualIncome: v.optional(v.number()),
+    aboutMe: v.optional(v.string()),
+    partnerPreferenceAgeMin: v.optional(v.number()),
+    partnerPreferenceAgeMax: v.optional(v.number()),
+    partnerPreferenceReligion: v.optional(v.array(v.string())),
+    partnerPreferenceUkCity: v.optional(v.array(v.string())),
+    profileImageIds: v.optional(v.array(v.id("_storage"))),
+    phoneNumber: v.optional(v.string()),
+    diet: v.optional(
+      v.union(
+        v.literal("vegetarian"),
+        v.literal("non-vegetarian"),
+        v.literal("vegan"),
+        v.literal("eggetarian"),
+        v.literal("other")
+      )
+    ),
+    smoking: v.optional(
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+    ),
+    drinking: v.optional(
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+    ),
+    physicalStatus: v.optional(
+      v.union(
+        v.literal("normal"),
+        v.literal("differently-abled"),
+        v.literal("other")
+      )
+    ),
+    preferredGender: v.optional(
+      v.union(
+        v.literal("male"),
+        v.literal("female"),
+        v.literal("other"),
+        v.literal("any")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, message: "Not authenticated" };
+    }
+
+    // Find user by Clerk ID
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      return { success: false, message: "User not found in Convex" };
+    }
+
+    // Check if profile already exists
+    const existingProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (existingProfile) {
+      return { success: false, message: "Profile already exists" };
+    }
+
+    // Create new profile
+    const profileData: any = {
+      ...args,
+      userId: user._id,
+      clerkId: identity.subject,
+      isProfileComplete: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    // Mark as complete if all essential fields are filled
+    const essentialFields = [
+      "fullName",
+      "dateOfBirth",
+      "gender",
+      "ukCity",
+      "aboutMe",
+    ];
+    let allEssentialFilled = true;
+    for (const field of essentialFields) {
+      const value = profileData[field];
+      if (
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.trim() === "")
+      ) {
+        allEssentialFilled = false;
+        break;
+      }
+    }
+    if (allEssentialFilled) {
+      profileData.isProfileComplete = true;
+    }
+
+    await ctx.db.insert("profiles", profileData);
+
+    return { success: true, message: "Profile created successfully" };
+  },
+});

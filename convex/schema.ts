@@ -36,7 +36,7 @@ export default defineSchema({
     caste: v.optional(v.string()), // Optional, as some may not identify with a caste
     motherTongue: v.optional(v.string()),
     // Physical attributes
-    height: v.optional(v.string()), // e.g., "5ft 10in" or "178cm"
+    height: v.optional(v.string()), // store as '5ft 7in'
     // Life status
     maritalStatus: v.optional(
       v.union(
