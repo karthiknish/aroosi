@@ -139,6 +139,12 @@ function AdminPageInner() {
 
   const [categories, setCategories] = useState<string[]>([]);
   const [editCategories, setEditCategories] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState<{
+    excerpt?: boolean;
+    category?: boolean;
+    content?: boolean;
+  }>({});
+  const [previewHtml, setPreviewHtml] = useState<string>("");
 
   const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -318,6 +324,35 @@ function AdminPageInner() {
     }
   };
 
+  // Utility for AI excerpt/category (plain text)
+  async function aiText(text: string, field: "excerpt" | "category") {
+    setAiLoading((prev) => ({ ...prev, [field]: true }));
+    try {
+      const res = await fetch("/api/convert-ai-text-to-html", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, type: field }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI error");
+      // Extract plain text from HTML
+      const temp = document.createElement("div");
+      temp.innerHTML = data.html;
+      const plain = temp.textContent || temp.innerText || "";
+      return plain.trim();
+    } catch (err: any) {
+      toast.error(err.message || "AI error");
+      return "";
+    } finally {
+      setAiLoading((prev) => ({ ...prev, [field]: false }));
+    }
+  }
+
+  // Live preview effect for create post
+  useEffect(() => {
+    setPreviewHtml(content);
+  }, [content]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {adminError && (
@@ -411,7 +446,7 @@ function AdminPageInner() {
                     setEditCategories={setEditCategories}
                   />
                 )}
-                {activeTab === "create" && (
+                {activeTab === "create-post" && (
                   <CreatePost
                     title={title}
                     setTitle={setTitle}
@@ -435,6 +470,11 @@ function AdminPageInner() {
                     contentRef={contentRef}
                     convertToMarkdownWithGemini={convertToMarkdownWithGemini}
                     slugify={slugify}
+                    categories={categories}
+                    setCategories={setCategories}
+                    aiLoading={aiLoading}
+                    aiText={aiText}
+                    previewHtml={previewHtml}
                   />
                 )}
               </div>

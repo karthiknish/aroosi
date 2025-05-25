@@ -19,10 +19,30 @@ import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
+import Underline from "@tiptap/extension-underline";
+import Strike from "@tiptap/extension-strike";
+import Highlight from "@tiptap/extension-highlight";
+import TextStyle from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import Typography from "@tiptap/extension-typography";
+import Placeholder from "@tiptap/extension-placeholder";
+import CharacterCount from "@tiptap/extension-character-count";
+import Dropcursor from "@tiptap/extension-dropcursor";
+import Gapcursor from "@tiptap/extension-gapcursor";
+import TextAlign from "@tiptap/extension-text-align";
 import {
   Bold as BoldIcon,
   Italic as ItalicIcon,
   Heading1 as HeadingIcon,
+  Heading2 as Heading2Icon,
+  Heading3 as Heading3Icon,
+  Heading4 as Heading4Icon,
+  Heading5 as Heading5Icon,
+  Heading6 as Heading6Icon,
   List as ListIcon,
   ListOrdered as ListOrderedIcon,
   Code as CodeIcon,
@@ -33,20 +53,14 @@ import {
   Table as TableIcon,
   Undo as UndoIcon,
   Redo as RedoIcon,
-  Eraser,
-  Loader2,
   X,
 } from "lucide-react";
 
-const MenuBar = ({
-  editor,
-  onClean,
-  cleaning,
-}: {
+type MenuBarProps = {
   editor: Editor | null;
-  onClean: () => void;
-  cleaning: boolean;
-}) => {
+};
+
+const MenuBar = ({ editor }: MenuBarProps) => {
   const [hovered, setHovered] = useState<string | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
@@ -79,10 +93,24 @@ const MenuBar = ({
     },
     {
       key: "h2",
-      icon: HeadingIcon,
+      icon: Heading2Icon,
       label: "H2",
       onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
       active: editor.isActive("heading", { level: 2 }),
+    },
+    {
+      key: "h3",
+      icon: Heading3Icon,
+      label: "H3",
+      onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+      active: editor.isActive("heading", { level: 3 }),
+    },
+    {
+      key: "h4",
+      icon: Heading4Icon,
+      label: "H4",
+      onClick: () => editor.chain().focus().toggleHeading({ level: 4 }).run(),
+      active: editor.isActive("heading", { level: 4 }),
     },
     {
       key: "bulletList",
@@ -171,41 +199,28 @@ const MenuBar = ({
       onClick: () => editor.chain().focus().redo().run(),
       active: false,
     },
-    {
-      key: "clean",
-      icon: Eraser,
-      label: cleaning ? "Cleaning..." : "Clean Text",
-      onClick: onClean,
-      active: false,
-    },
   ];
   return (
-    <>
-      <div className="flex flex-wrap gap-2 mb-2 sticky top-0 z-10 bg-white/90 backdrop-blur p-2 rounded-t-lg border-b border-gray-200 shadow-sm">
-        {buttons.map((btn) => (
-          <div key={btn.key} className="relative">
-            <button
-              type="button"
-              onClick={btn.onClick}
-              className={`px-2 py-1 rounded transition font-semibold border border-transparent hover:bg-pink-50 focus:bg-pink-100 flex items-center gap-1 ${btn.active ? "bg-pink-100 text-pink-600 border-pink-200" : "text-gray-700"} ${btn.key === "clean" && cleaning ? "opacity-60 cursor-not-allowed" : ""}`}
-              onMouseEnter={() => setHovered(btn.key)}
-              onMouseLeave={() => setHovered(null)}
-              aria-label={btn.label}
-              disabled={btn.key === "clean" && cleaning}
-            >
-              <btn.icon className="w-4 h-4" />
-              {btn.key === "clean" && cleaning && (
-                <Loader2 className="w-4 h-4 ml-1 animate-spin text-pink-500" />
-              )}
-            </button>
-            {hovered === btn.key && (
-              <div className="absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 bg-gray-900 text-white text-xs rounded shadow z-50 whitespace-nowrap pointer-events-none">
-                {btn.label}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-2 mb-2 sticky top-0 z-20 bg-white/95 backdrop-blur p-2 rounded-t-lg border-b border-gray-200 shadow-sm">
+      {buttons.map((btn) => (
+        <div key={btn.key} className="relative">
+          <button
+            type="button"
+            onClick={btn.onClick}
+            className={`px-2 py-1 rounded transition font-semibold border border-transparent hover:bg-pink-50 focus:bg-pink-100 flex items-center gap-1 ${btn.active ? "bg-pink-100 text-pink-600 border-pink-200" : "text-gray-700"}`}
+            onMouseEnter={() => setHovered(btn.key)}
+            onMouseLeave={() => setHovered(null)}
+            aria-label={btn.label}
+          >
+            <btn.icon className="w-4 h-4" />
+          </button>
+          {hovered === btn.key && (
+            <div className="absolute left-1/2 -translate-x-1/2 -top-8 px-3 py-1 bg-gray-900 text-white text-xs rounded shadow z-50 whitespace-nowrap pointer-events-none">
+              {btn.label}
+            </div>
+          )}
+        </div>
+      ))}
       {/* Link Modal */}
       {linkModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -277,7 +292,7 @@ const MenuBar = ({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
@@ -293,12 +308,16 @@ export default function BlogEditor({
     prompt?: string
   ) => Promise<string>;
 }) {
-  const [cleaning, setCleaning] = useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit,
       Bold,
       Italic,
+      Underline,
+      Strike,
+      Highlight,
+      TextStyle,
+      Color,
       Heading,
       BulletList,
       OrderedList,
@@ -314,6 +333,16 @@ export default function BlogEditor({
       TableRow,
       TableCell,
       TableHeader,
+      Subscript,
+      Superscript,
+      TaskList,
+      TaskItem,
+      Typography,
+      Placeholder.configure({ placeholder: "Write your blog post..." }),
+      CharacterCount.configure({ limit: 20000 }),
+      Dropcursor,
+      Gapcursor,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
@@ -348,25 +377,9 @@ export default function BlogEditor({
     document.head.appendChild(style);
   }
 
-  // Clean text handler
-  const handleClean = async () => {
-    if (!editor || !convertToMarkdownWithGemini) return;
-    setCleaning(true);
-    try {
-      const html = editor.getHTML();
-      // Use a new, more specific prompt for cleaning
-      const prompt =
-        "Clean and format this text for a blog post. Remove unnecessary whitespace, fix formatting, and ensure it is clear and well-structured. Do not add extra content.";
-      const cleaned = await convertToMarkdownWithGemini(html, prompt);
-      editor.commands.setContent(cleaned);
-    } finally {
-      setCleaning(false);
-    }
-  };
-
   return (
     <div className="max-w-2xl mx-auto my-8 rounded-lg shadow-lg border border-gray-200 bg-white">
-      <MenuBar editor={editor} onClean={handleClean} cleaning={cleaning} />
+      <MenuBar editor={editor} />
       <div className="tiptap-editor-content">
         <EditorContent editor={editor} />
       </div>

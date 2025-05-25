@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Card,
   CardContent,
@@ -7,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Image as ImageIcon,
   Edit,
@@ -15,12 +15,10 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
-import { PexelsImageModal } from "@/components/PexelsImageModal";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
+
 import { toast } from "sonner";
 import BlogEditor from "@/components/admin/BlogEditor";
+import { useState } from "react";
 
 interface BlogPost {
   _id: string;
@@ -106,6 +104,61 @@ export function BlogPosts({
   editCategories,
   setEditCategories,
 }: BlogPostsProps) {
+  const [aiLoading, setAiLoading] = useState<{
+    content?: boolean;
+    excerpt?: boolean;
+    category?: boolean;
+  }>({});
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+
+  // Utility to call the AI HTML API
+  // Combined utility for AI HTML and plain text (excerpt/category)
+  async function aiProcess(
+    text: string,
+    type: "blog" | "excerpt" | "category"
+  ): Promise<string> {
+    setAiLoading((prev) => ({
+      ...prev,
+      [type === "blog" ? "content" : type]: true,
+    }));
+    try {
+      const res = await fetch("/api/convert-ai-text-to-html", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, type }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI error");
+      if (type === "blog") {
+        return data.html;
+      } else {
+        // Extract plain text from HTML for excerpt/category
+        const temp = document.createElement("div");
+        temp.innerHTML = data.html;
+        const plain = temp.textContent || temp.innerText || "";
+        return plain.trim();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "AI error");
+      return "";
+    } finally {
+      setAiLoading((prev) => ({
+        ...prev,
+        [type === "blog" ? "content" : type]: false,
+      }));
+    }
+  }
+
+  // Utility for excerpt/category (plain text)
+  function aiText(text: string, field: "excerpt" | "category") {
+    return aiProcess(text, field);
+  }
+
+  // Live preview effect
+  React.useEffect(() => {
+    setPreviewHtml(editContent);
+  }, [editContent]);
+
   const getReadingTime = (content: string) => {
     const words = content.split(/\s+/).length;
     return Math.ceil(words / 200); // Assuming 200 words per minute reading speed
@@ -143,10 +196,57 @@ export function BlogPosts({
                       }}
                       placeholder="Slug (e.g. my-first-post)"
                     />
-                    <Input
-                      value={editExcerpt}
-                      onChange={(e) => setEditExcerpt(e.target.value)}
-                    />
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        value={editExcerpt}
+                        onChange={(e) => setEditExcerpt(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="text-pink-600 border-pink-300"
+                        onClick={async () => {
+                          const ai = await aiText(editContent, "excerpt");
+                          if (ai) setEditExcerpt(ai);
+                        }}
+                        disabled={aiLoading.excerpt}
+                      >
+                        {aiLoading.excerpt ? "AI..." : "AI"}
+                      </Button>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        value={editCategories.join(", ")}
+                        onChange={(e) =>
+                          setEditCategories(
+                            e.target.value
+                              .split(",")
+                              .map((c) => c.trim())
+                              .filter(Boolean)
+                          )
+                        }
+                        placeholder="Categories (comma separated)"
+                        className="mb-2"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="text-pink-600 border-pink-300"
+                        onClick={async () => {
+                          const ai = await aiText(editContent, "category");
+                          if (ai)
+                            setEditCategories(
+                              ai
+                                .split(",")
+                                .map((c: string) => c.trim())
+                                .filter(Boolean)
+                            );
+                        }}
+                        disabled={aiLoading.category}
+                      >
+                        {aiLoading.category ? "AI..." : "AI"}
+                      </Button>
+                    </div>
                     <div className="flex gap-2 items-center">
                       <Input
                         value={editImageUrl}
@@ -169,28 +269,51 @@ export function BlogPosts({
                         className="h-32 rounded border mb-2"
                       />
                     )}
-                    <Input
-                      value={editCategories.join(", ")}
-                      onChange={(e) =>
-                        setEditCategories(
-                          e.target.value
-                            .split(",")
-                            .map((c) => c.trim())
-                            .filter(Boolean)
-                        )
-                      }
-                      placeholder="Categories (comma separated)"
-                      className="mb-2"
-                    />
                     <div className="md:flex gap-6">
                       <div className="flex-1">
-                        <div className="flex-1">
-                          <BlogEditor
-                            value={editContent}
-                            onChange={setEditContent}
-                          />
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-medium">Content</span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="text-pink-600 border-pink-300"
+                            onClick={async () => {
+                              setAiLoading((prev) => ({
+                                ...prev,
+                                content: true,
+                              }));
+                              const ai = await aiProcess(
+                                `${editTitle}\n${editExcerpt}\n${editCategories.join(", ")}`,
+                                "blog"
+                              );
+                              if (ai) setEditContent(ai);
+                              setAiLoading((prev) => ({
+                                ...prev,
+                                content: false,
+                              }));
+                            }}
+                            disabled={aiLoading.content}
+                          >
+                            {aiLoading.content ? "AI..." : "AI"}
+                          </Button>
                         </div>
+                        <BlogEditor
+                          key={editingPost || post._id}
+                          value={editContent}
+                          onChange={setEditContent}
+                        />
                       </div>
+                    </div>
+                    {/* Live Preview Section */}
+                    <div className="mt-6">
+                      <div className="font-semibold text-gray-700 mb-2">
+                        Live Preview
+                      </div>
+                      <div
+                        className="prose max-w-none bg-gray-50 border rounded-lg p-4 min-h-[120px]"
+                        dangerouslySetInnerHTML={{ __html: previewHtml }}
+                      />
                     </div>
                     <div className="flex gap-2 mt-2">
                       <Button

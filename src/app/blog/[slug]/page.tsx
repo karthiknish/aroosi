@@ -5,14 +5,10 @@ import { api } from "@convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
 import { Button } from "@/components/ui/button";
 import { Share2, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-
 
 // Calculate reading time
 function getReadingTime(content: string): number {
@@ -21,17 +17,7 @@ function getReadingTime(content: string): number {
   return Math.ceil(words / wordsPerMinute);
 }
 
-// Custom renderer to render headings as plain text (hashes shown)
-function HeadingWithHash(props: any) {
-  const { level, children } = props;
-  const hashes = "#".repeat(level);
-  // children is an array of React nodes, join as string for display
-  return (
-    <div>
-      {hashes} {children}
-    </div>
-  );
-}
+// Custom renderer for blog content based on slug
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -186,35 +172,11 @@ export default function BlogDetailPage() {
               Share
             </Button>
           </div>
-
-          <article className="prose prose-lg prose-pink max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
-              components={{
-                h1: ({ node, ...props }: any) => (
-                  <HeadingWithHash level={1} {...props} />
-                ),
-                h2: ({ node, ...props }: any) => (
-                  <HeadingWithHash level={2} {...props} />
-                ),
-                h3: ({ node, ...props }: any) => (
-                  <HeadingWithHash level={3} {...props} />
-                ),
-                h4: ({ node, ...props }: any) => (
-                  <HeadingWithHash level={4} {...props} />
-                ),
-                h5: ({ node, ...props }: any) => (
-                  <HeadingWithHash level={5} {...props} />
-                ),
-                h6: ({ node, ...props }: any) => (
-                  <HeadingWithHash level={6} {...props} />
-                ),
-              }}
-            >
-              {post.content}
-            </ReactMarkdown>
-          </article>
+          <div
+            id="blog-content"
+            className="prose prose-lg max-w-none prose-pink prose-headings:text-rose-700 prose-strong:text-pink-700 prose-blockquote:border-l-4 prose-blockquote:border-pink-300 prose-blockquote:bg-pink-50/50 prose-table:border prose-table:border-pink-200 prose-th:bg-pink-100 prose-td:bg-pink-50 font-sans shadow-xl rounded-xl p-6 bg-white"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
         </CardContent>
       </Card>
     </motion.div>

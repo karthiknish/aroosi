@@ -14,9 +14,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { UserCircle } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
 import { useQuery as useConvexQuery } from "convex/react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, SignInButton } from "@clerk/nextjs";
 
 function getAge(dateOfBirth: string) {
   if (!dateOfBirth) return "-";
@@ -34,13 +34,14 @@ const genderOptions = [
 ];
 
 export default function SearchProfilesPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const currentUserProfile = useQuery(api.users.getCurrentUserWithProfile, {});
   const preferredGender = currentUserProfile?.profile?.preferredGender || "any";
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
   const [ageMax, setAgeMax] = React.useState("");
+  const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
 
   // Fetch profiles filtered by preferredGender (unless overridden by gender filter)
   const profiles = useQuery(api.users.listUsersWithProfiles, {
@@ -111,6 +112,33 @@ export default function SearchProfilesPage() {
   const userImages = useConvexQuery(api.images.batchGetProfileImages, {
     userIds,
   });
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 via-rose-50 to-white">
+        <div className="text-lg text-gray-500 animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-pink-50 via-rose-50 to-white px-4">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-pink-600 mb-2">
+            Sign in to search profiles
+          </h1>
+          <p className="text-lg text-gray-600 mb-6">
+            You must be logged in to view and search profiles on Aroosi.
+          </p>
+          <SignInButton mode="modal">
+            <span className="inline-block bg-pink-600 hover:bg-pink-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition cursor-pointer">
+              Sign In
+            </span>
+          </SignInButton>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12">
@@ -183,17 +211,25 @@ export default function SearchProfilesPage() {
             {filtered.map((u: any) => {
               const p = u.profile;
               const firstImageUrl = userImages?.[u._id] || null;
+              const loaded = imgLoaded[u._id] || false;
               return (
                 <Card
                   key={u._id}
                   className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col"
                 >
                   {firstImageUrl ? (
-                    <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                    <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                      {/* Skeleton loader */}
+                      {!loaded && (
+                        <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
+                      )}
                       <img
                         src={firstImageUrl}
                         alt={p.fullName}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
+                        onLoad={() =>
+                          setImgLoaded((prev) => ({ ...prev, [u._id]: true }))
+                        }
                       />
                     </div>
                   ) : (

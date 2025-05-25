@@ -7,13 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Image as ImageIcon } from "lucide-react";
-import { PexelsImageModal } from "@/components/PexelsImageModal";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import { toast } from "sonner";
 import BlogEditor from "@/components/admin/BlogEditor";
 
 interface CreatePostProps {
@@ -33,7 +27,7 @@ interface CreatePostProps {
   slugManuallyEdited: boolean;
   setSlugManuallyEdited: (value: boolean) => void;
   pexelsOpen: boolean;
-  setPexelsOpen: (value: boolean) => void;
+  setPexelsOpen: (open: boolean) => void;
   markdownShortcuts: Array<{
     label: string;
     title: string;
@@ -52,6 +46,11 @@ interface CreatePostProps {
   contentRef: React.MutableRefObject<HTMLTextAreaElement | null>;
   convertToMarkdownWithGemini: (text: string) => Promise<string>;
   slugify: (str: string) => string;
+  categories: string[];
+  setCategories: (value: string[]) => void;
+  aiLoading: { excerpt?: boolean; category?: boolean; content?: boolean };
+  aiText: (text: string, field: "excerpt" | "category") => Promise<string>;
+  previewHtml: string;
 }
 
 export function CreatePost({
@@ -70,13 +69,14 @@ export function CreatePost({
   onSubmit,
   slugManuallyEdited,
   setSlugManuallyEdited,
+  slugify,
+  categories,
+  setCategories,
+  aiLoading,
+  aiText,
+  previewHtml,
   pexelsOpen,
   setPexelsOpen,
-  markdownShortcuts,
-  insertMarkdown,
-  contentRef,
-  convertToMarkdownWithGemini,
-  slugify,
 }: CreatePostProps) {
   return (
     <Card>
@@ -117,8 +117,7 @@ export function CreatePost({
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium text-gray-700">Excerpt</label>
+          <div className="flex gap-2 items-center">
             <Input
               placeholder="Brief description of the post"
               value={excerpt}
@@ -126,6 +125,53 @@ export function CreatePost({
               disabled={creating}
               className="mt-1"
             />
+            <Button
+              type="button"
+              variant="outline"
+              className="text-pink-600 border-pink-300"
+              onClick={async () => {
+                const ai = await aiText(content, "excerpt");
+                if (ai) setExcerpt(ai);
+              }}
+              disabled={aiLoading.excerpt}
+            >
+              {aiLoading.excerpt ? "AI..." : "AI"}
+            </Button>
+          </div>
+
+          <div className="flex gap-2 items-center">
+            <Input
+              placeholder="Categories (comma separated)"
+              value={categories.join(", ")}
+              onChange={(e) =>
+                setCategories(
+                  e.target.value
+                    .split(",")
+                    .map((c) => c.trim())
+                    .filter(Boolean)
+                )
+              }
+              className="mb-2"
+              disabled={creating}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="text-pink-600 border-pink-300"
+              onClick={async () => {
+                const ai = await aiText(content, "category");
+                if (ai)
+                  setCategories(
+                    ai
+                      .split(",")
+                      .map((c: string) => c.trim())
+                      .filter(Boolean)
+                  );
+              }}
+              disabled={aiLoading.category}
+            >
+              {aiLoading.category ? "AI..." : "AI"}
+            </Button>
           </div>
 
           <div>
@@ -163,6 +209,14 @@ export function CreatePost({
             <div className="mt-1">
               <BlogEditor value={content} onChange={setContent} />
             </div>
+          </div>
+
+          <div className="mt-6">
+            <div className="font-semibold text-gray-700 mb-2">Live Preview</div>
+            <div
+              className="prose max-w-none bg-gray-50 border rounded-lg p-4 min-h-[120px]"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
           </div>
 
           <div className="flex justify-end">

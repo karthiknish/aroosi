@@ -38,11 +38,24 @@ export async function POST(req: NextRequest) {
     }
 
     const text = typeof body?.text === "string" ? body.text.trim() : "";
+    const type = typeof body?.type === "string" ? body.type : "html";
     if (!text) {
       return errorResponse("Please provide text to convert.", 400);
     }
 
-    const prompt = text;
+    let prompt = "";
+    if (type === "blog") {
+      console.log("Converting to blog");
+      prompt = `You are an HTML formatter for blog posts.\n\n- Your ONLY job is to convert the input text into clean, semantic HTML, preserving ALL original content, structure, and formatting.\n- Do NOT summarize, extract, paraphrase, or generate a title, excerpt, or categories.\n- Do NOT add, remove, or change any content, headings, or sections.\n- If the input is already valid HTML, return it unchanged (except for fixing minor HTML errors if present).\n- Use appropriate tags (<h1> to <h6>, <p>, <ul>, <ol>, <li>, <blockquote>, <code>, <pre>, <a>, <table>, etc.) based on the structure and intent of the content.\n- Preserve all formatting such as bold, italics, blockquotes, inline code, tables, lists, and links.\n- Do NOT include <html>, <head>, or <body> tags.\n- Return ONLY the HTML content, and nothing else.\n- Do NOT output any summary, title, excerpt, or categories.\n\nInput:\n${text}`;
+    } else if (type === "excerpt") {
+      console.log("Converting to excerpt");
+      prompt = `Write a concise, engaging excerpt for this blog post (1-2 sentences, plain text only, no HTML):\n${text}`;
+    } else if (type === "category") {
+      console.log("Converting to category");
+      prompt = `Suggest 1-3 relevant blog categories for this post, comma separated (plain text, no HTML):\n${text}`;
+    } else {
+      prompt = text;
+    }
 
     const geminiBody = {
       contents: [
@@ -82,17 +95,14 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid response from Gemini API.", 502);
     }
 
-    const markdown = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!markdown || typeof markdown !== "string" || !markdown.trim()) {
-      return errorResponse("No markdown content received from Gemini", 502);
+    const html = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!html || typeof html !== "string" || !html.trim()) {
+      return errorResponse("No HTML content received from Gemini", 502);
     }
 
-    return successResponse({ markdown });
+    return successResponse({ html });
   } catch (error: any) {
-    console.error("Error converting to markdown:", error);
-    return errorResponse(
-      error?.message || "Failed to convert to markdown",
-      500
-    );
+    console.error("Error converting to HTML:", error);
+    return errorResponse(error?.message || "Failed to convert to HTML", 500);
   }
 }
