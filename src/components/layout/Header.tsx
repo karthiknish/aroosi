@@ -162,6 +162,21 @@ export default function Header() {
             </Button>
           </Link>
         </motion.div>
+        <motion.div
+          custom={2.5}
+          variants={navItemVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <Link href="/contact" onClick={onClick}>
+            <Button
+              variant="outline"
+              className="w-full text-left border-pink-300 text-pink-700 hover:bg-pink-50 hover:text-pink-800"
+            >
+              <span>Contact Us</span>
+            </Button>
+          </Link>
+        </motion.div>
       </SignedOut>
     </>
   );
