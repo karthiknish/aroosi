@@ -25,6 +25,7 @@ import { useDebounce } from "use-debounce";
 import { useRouter } from "next/navigation";
 import ProfileCard from "./ProfileCard";
 import { ConvexError } from "convex/values";
+import { Loader2 } from "lucide-react";
 
 // Helper for rendering a profile image or fallback
 
@@ -176,34 +177,43 @@ export function ProfileManagement() {
           Showing {profiles.length} of {total} profiles
         </div>
       </div>
-      <div className="grid gap-6">
-        {profiles.filter(Boolean).map((profile) => {
-          const safeProfile = {
-            ...profile,
-            createdAt:
-              typeof profile.createdAt === "number"
-                ? new Date(profile.createdAt).toISOString()
-                : profile.createdAt,
-            updatedAt:
-              typeof profile.updatedAt === "number"
-                ? new Date(profile.updatedAt).toISOString()
-                : profile.updatedAt,
-          };
-          return (
-            <ProfileCard
-              key={profile._id as string}
-              profile={safeProfile}
-              editingId={editingId}
-              editForm={editForm}
-              onStartEdit={startEdit}
-              onSaveEdit={saveEdit}
-              onCancelEdit={cancelEdit}
-              onDelete={handleDelete}
-              onToggleBan={toggleBan}
-              setDeleteId={setDeleteId}
-            />
-          );
-        })}
+      <div className="grid gap-6 min-h-[120px]">
+        {profiles === undefined ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-10 w-10 animate-spin text-pink-500" />
+            <span className="ml-3 text-pink-600 text-lg font-medium">
+              Loading profiles...
+            </span>
+          </div>
+        ) : (
+          profiles.filter(Boolean).map((profile) => {
+            const safeProfile = {
+              ...profile,
+              createdAt:
+                typeof profile.createdAt === "number"
+                  ? new Date(profile.createdAt).toISOString()
+                  : profile.createdAt,
+              updatedAt:
+                typeof profile.updatedAt === "number"
+                  ? new Date(profile.updatedAt).toISOString()
+                  : profile.updatedAt,
+            };
+            return (
+              <ProfileCard
+                key={profile._id as string}
+                profile={safeProfile}
+                editingId={editingId}
+                editForm={editForm}
+                onStartEdit={startEdit}
+                onSaveEdit={saveEdit}
+                onCancelEdit={cancelEdit}
+                onDelete={handleDelete}
+                onToggleBan={toggleBan}
+                setDeleteId={setDeleteId}
+              />
+            );
+          })
+        )}
       </div>
       {/* Pagination Controls */}
       <div className="flex items-center justify-between mt-6">
