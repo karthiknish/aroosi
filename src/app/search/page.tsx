@@ -48,11 +48,12 @@ export default function SearchProfilesPage() {
     preferredGender,
   });
 
-  // Only show users with a complete profile
+  // Only show users with a complete profile and not hidden from search
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: any) => u.profile && u.profile.isProfileComplete
+      (u: any) =>
+        u.profile && u.profile.isProfileComplete && !u.profile.hiddenFromSearch
     );
   }, [profiles]);
 

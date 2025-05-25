@@ -852,3 +852,16 @@ export const createProfile = mutation({
     return { success: true, message: "Profile created successfully" };
   },
 });
+
+export const setProfileHiddenFromSearch = mutation({
+  args: {
+    profileId: v.id("profiles"),
+    hidden: v.boolean(),
+  },
+  handler: async (ctx, { profileId, hidden }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
+    await ctx.db.patch(profileId, { hiddenFromSearch: hidden });
+    return { success: true };
+  },
+});

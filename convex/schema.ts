@@ -85,6 +85,7 @@ export default defineSchema({
 
     profileImageIds: v.optional(v.array(v.id("_storage"))),
     banned: v.optional(v.boolean()),
+    hiddenFromSearch: v.optional(v.boolean()),
     // Timestamps
     createdAt: v.float64(), // Automatically set by Convex?
     updatedAt: v.optional(v.float64()),

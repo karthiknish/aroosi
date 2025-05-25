@@ -372,6 +372,7 @@ function AdminPageInner() {
                 { key: "blog", label: "Blog Posts" },
                 { key: "create-post", label: "Create Post" },
                 { key: "profiles", label: "Profiles" },
+                { key: "matches", label: "Matches" },
                 { key: "contact", label: "Contact" },
               ].map((tab) => (
                 <Button
@@ -395,6 +396,17 @@ function AdminPageInner() {
             )}
 
             {activeTab === "profiles" && <ProfileManagement />}
+            {activeTab === "matches" && (
+              <div className="p-6 bg-white rounded-lg shadow text-center">
+                <h2 className="text-2xl font-bold mb-4">
+                  Matches (Admin View)
+                </h2>
+                <p className="text-gray-600">
+                  This is a placeholder for admin matches management. Implement
+                  match analytics, search, or moderation here.
+                </p>
+              </div>
+            )}
             {activeTab === "contact" && (
               <ContactMessages messages={contactMessages || []} />
             )}

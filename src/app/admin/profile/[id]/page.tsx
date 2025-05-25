@@ -215,6 +215,28 @@ export default function AdminProfileDetailPage() {
     );
   };
 
+  const setProfileHiddenFromSearch = useMutation(
+    api.users.setProfileHiddenFromSearch
+  );
+
+  // Add toggle for hiddenFromSearch
+  const handleToggleHiddenFromSearch = async () => {
+    if (!profile?._id) return;
+    try {
+      await setProfileHiddenFromSearch({
+        profileId: profile._id as Id<"profiles">,
+        hidden: !profile.hiddenFromSearch,
+      });
+      toast.success(
+        !profile.hiddenFromSearch
+          ? "Profile hidden from search."
+          : "Profile visible in search."
+      );
+    } catch (err) {
+      toast.error("Failed to update search visibility");
+    }
+  };
+
   return (
     <div className="max-w-3xl  mx-auto py-10 px-2">
       {/* Profile Images Slider Section */}
@@ -414,6 +436,14 @@ export default function AdminProfileDetailPage() {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Profile Details</CardTitle>
+          {/* Add toggle button for search visibility */}
+          <Button
+            variant={profile.hiddenFromSearch ? "secondary" : "outline"}
+            className="mt-2"
+            onClick={handleToggleHiddenFromSearch}
+          >
+            {profile.hiddenFromSearch ? "Show in Search" : "Hide from Search"}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
