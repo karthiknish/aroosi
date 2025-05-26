@@ -69,12 +69,13 @@ export default function CreateProfilePage() {
               | "other"
               | "any"
               | undefined = undefined;
-            if (allowedGenders.includes(values.preferredGender as any)) {
-              preferredGender = values.preferredGender as
-                | "male"
-                | "female"
-                | "other"
-                | "any";
+            if (
+              allowedGenders.includes(
+                values.preferredGender as unknown as (typeof allowedGenders)[number]
+              )
+            ) {
+              preferredGender =
+                values.preferredGender as (typeof allowedGenders)[number];
             }
             // Ensure maritalStatus is one of the allowed values
             const allowedMaritalStatuses = [
@@ -89,14 +90,83 @@ export default function CreateProfilePage() {
               | "widowed"
               | "annulled"
               | undefined = undefined;
-            if (allowedMaritalStatuses.includes(values.maritalStatus as any)) {
-              maritalStatus = values.maritalStatus as
-                | "single"
-                | "divorced"
-                | "widowed"
-                | "annulled";
+            if (
+              allowedMaritalStatuses.includes(
+                values.maritalStatus as unknown as (typeof allowedMaritalStatuses)[number]
+              )
+            ) {
+              maritalStatus =
+                values.maritalStatus as (typeof allowedMaritalStatuses)[number];
             }
-            const safeValues = { ...values, preferredGender, maritalStatus };
+            // Ensure diet is one of the allowed values
+            const allowedDiets = [
+              "vegetarian",
+              "non-vegetarian",
+              "vegan",
+              "eggetarian",
+              "other",
+            ] as const;
+            let diet: (typeof allowedDiets)[number] | undefined = undefined;
+            if (
+              allowedDiets.includes(
+                values.diet as unknown as (typeof allowedDiets)[number]
+              )
+            ) {
+              diet = values.diet as (typeof allowedDiets)[number];
+            }
+            // Ensure smoking is one of the allowed values
+            const allowedSmoking = ["no", "occasionally", "yes"] as const;
+            let smoking: (typeof allowedSmoking)[number] | undefined =
+              undefined;
+            if (
+              allowedSmoking.includes(
+                values.smoking as unknown as (typeof allowedSmoking)[number]
+              )
+            ) {
+              smoking = values.smoking as (typeof allowedSmoking)[number];
+            }
+            // Ensure drinking is one of the allowed values
+            const allowedDrinking = ["no", "occasionally", "yes"] as const;
+            let drinking: (typeof allowedDrinking)[number] | undefined =
+              undefined;
+            if (
+              allowedDrinking.includes(
+                values.drinking as unknown as (typeof allowedDrinking)[number]
+              )
+            ) {
+              drinking = values.drinking as (typeof allowedDrinking)[number];
+            }
+            // Ensure physicalStatus is one of the allowed values
+            const allowedPhysicalStatus = [
+              "normal",
+              "differently-abled",
+              "other",
+            ] as const;
+            let physicalStatus:
+              | (typeof allowedPhysicalStatus)[number]
+              | undefined = undefined;
+            if (
+              allowedPhysicalStatus.includes(
+                values.physicalStatus as unknown as (typeof allowedPhysicalStatus)[number]
+              )
+            ) {
+              physicalStatus =
+                values.physicalStatus as (typeof allowedPhysicalStatus)[number];
+            }
+            // Convert profileImageIds to undefined (let the form handle it), or to Id<"_storage">[] if you have a mapping
+            let profileImageIds: undefined = undefined;
+            // If you have a mapping from string[] to Id<"_storage">[], you can do it here
+            // Otherwise, let it be undefined so the form logic handles it
+            const safeValues = {
+              ...values,
+              preferredGender,
+              maritalStatus,
+              diet,
+              smoking,
+              drinking,
+              physicalStatus,
+              profileImageIds,
+            };
             // Refetch the profile before creating
             const latestProfile = await fetch(
               "/api/convex/getCurrentUserWithProfile"

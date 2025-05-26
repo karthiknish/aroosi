@@ -150,6 +150,11 @@ function AdminPageInner() {
     setMutualMatches(matches);
   }, [profiles, interests]);
 
+  // Live preview effect for create post (must be before any early returns)
+  useEffect(() => {
+    setPreviewHtml(content);
+  }, [content]);
+
   // Only after all hooks:
   if (!isLoaded) {
     return (
@@ -204,11 +209,6 @@ function AdminPageInner() {
           : "",
       }) as ContactMessage
   );
-
-  // Live preview effect for create post
-  useEffect(() => {
-    setPreviewHtml(content);
-  }, [content]);
 
   const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
