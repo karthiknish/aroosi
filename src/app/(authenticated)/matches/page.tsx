@@ -21,6 +21,7 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Loader2, MapPin, Search, UserCircle } from "lucide-react";
 import { useState } from "react";
+import type { Profile } from "@/types/profile";
 
 const religions = [
   "Any",
@@ -47,10 +48,14 @@ export default function MatchesPage() {
     defaultValues: filters,
   });
 
-  // TODO: Implement api.users.getPublicProfiles to accept filters and exclude current user
-  const profiles = useQuery(api.users.getPublicProfiles, {
-    ...filters,
-    excludeClerkId: clerkUser?.id,
+  // Only pass allowed values for preferredGender
+  const allowedGenders = ["male", "female", "other", "any"] as const;
+  const preferredGender = allowedGenders.includes(filters.religion as any)
+    ? (filters.religion as (typeof allowedGenders)[number])
+    : undefined;
+  const profiles = useQuery(api.users.listUsersWithProfiles, {
+    preferredGender,
+    // Add other filters as needed, e.g., city, minAge, maxAge, etc., if supported by the backend
   });
 
   const onSubmit = (data: typeof filters) => {
@@ -159,55 +164,60 @@ export default function MatchesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {profiles.map((profile: import("@/types/profile").Profile) => (
-              <Card key={profile._id} className="shadow-md">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    {profile.profileImageIds &&
-                    profile.profileImageIds.length > 0 ? (
-                      <img
-                        src={`/api/storage/${profile.profileImageIds[0]}`}
-                        alt="Profile"
-                        className="w-16 h-16 rounded-full object-cover border"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border">
-                        <UserCircle className="w-10 h-10 text-gray-400" />
-                      </div>
-                    )}
-                    <div>
-                      <CardTitle
-                        className="text-lg font-semibold"
-                        style={{ fontFamily: "var(--font-lora)" }}
-                      >
-                        {profile.fullName || "Anonymous"}
-                      </CardTitle>
-                      <div className="text-sm text-gray-500 flex items-center gap-1">
-                        <MapPin className="w-4 h-4" /> {profile.ukCity || "-"}
+            {profiles.map((value: any) => {
+              // value.profile is the Profile object
+              const profile = value.profile as Profile | null;
+              if (!profile) return null;
+              return (
+                <Card key={profile._id} className="shadow-md">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      {profile.profileImageIds &&
+                      profile.profileImageIds.length > 0 ? (
+                        <img
+                          src={`/api/storage/${profile.profileImageIds[0]}`}
+                          alt="Profile"
+                          className="w-16 h-16 rounded-full object-cover border"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border">
+                          <UserCircle className="w-10 h-10 text-gray-400" />
+                        </div>
+                      )}
+                      <div>
+                        <CardTitle
+                          className="text-lg font-semibold"
+                          style={{ fontFamily: "var(--font-lora)" }}
+                        >
+                          {profile.fullName || "Anonymous"}
+                        </CardTitle>
+                        <div className="text-sm text-gray-500 flex items-center gap-1">
+                          <MapPin className="w-4 h-4" /> {profile.ukCity || "-"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-gray-700 mb-2">
-                    <span className="font-semibold">Religion:</span>{" "}
-                    {profile.religion || "-"}
-                  </div>
-                  <div className="text-sm text-gray-700 mb-2">
-                    <span className="font-semibold">Age:</span>{" "}
-                    {profile.dateOfBirth ? getAge(profile.dateOfBirth) : "-"}
-                  </div>
-                  <div className="text-sm text-gray-700 mb-2">
-                    <span className="font-semibold">About:</span>{" "}
-                    {profile.aboutMe
-                      ? profile.aboutMe.slice(0, 80) +
-                        (profile.aboutMe.length > 80 ? "..." : "")
-                      : "-"}
-                  </div>
-                  {/* TODO: Add more profile details and a 'View Profile' button */}
-                </CardContent>
-              </Card>
-            ))}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm text-gray-700 mb-2">
+                      <span className="font-semibold">Religion:</span>{" "}
+                      {profile.religion || "-"}
+                    </div>
+                    <div className="text-sm text-gray-700 mb-2">
+                      <span className="font-semibold">Age:</span>{" "}
+                      {profile.dateOfBirth ? getAge(profile.dateOfBirth) : "-"}
+                    </div>
+                    <div className="text-sm text-gray-700 mb-2">
+                      <span className="font-semibold">About:</span>{" "}
+                      {profile.aboutMe
+                        ? profile.aboutMe.slice(0, 80) +
+                          (profile.aboutMe.length > 80 ? "..." : "")
+                        : "-"}
+                    </div>
+                    {/* TODO: Add more profile details and a 'View Profile' button */}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
