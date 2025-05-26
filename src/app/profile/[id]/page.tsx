@@ -15,7 +15,7 @@ import {
   handleExpressInterest,
   handleRemoveInterest,
 } from "./profileDetailHelpers";
-import type { Interest } from "@/types/profile";
+
 
 export default function ProfileDetailPage() {
   // 1. Router and authentication hooks (always called first)
@@ -318,61 +318,57 @@ export default function ProfileDetailPage() {
               </DisplaySection>
             </div>
             <div className="flex justify-center gap-8 mt-8 mb-2">
-              {
-                !isOwnProfile &&
-                  !isBlocked &&
-                  !isMutualInterest &&
-                  !alreadySentInterest && (
-                    <button
-                      className="flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white p-4 shadow-lg transition-colors"
-                      onClick={() => {
-                        if (!currentUserId || !userId) return;
-                        handleExpressInterest({
-                          setInterestError,
-                          sendInterestMutation: sendInterestMutation as (args: {
+              {!isOwnProfile &&
+                !isBlocked &&
+                !isMutualInterest &&
+                !alreadySentInterest && (
+                  <button
+                    className="flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white p-4 shadow-lg transition-colors"
+                    onClick={() => {
+                      if (!currentUserId || !userId) return;
+                      handleExpressInterest({
+                        setInterestError,
+                        sendInterestMutation: sendInterestMutation as (args: {
+                          fromUserId: Id<"users">;
+                          toUserId: Id<"users">;
+                        }) => Promise<unknown>,
+                        currentUserId,
+                        id: userId,
+                        setInterestSent,
+                      });
+                    }}
+                    title="Express Interest"
+                    aria-label="Express Interest"
+                  >
+                    <HeartIcon className="w-10 h-10" />
+                  </button>
+                )}
+              {!isOwnProfile &&
+                !isBlocked &&
+                !isMutualInterest &&
+                alreadySentInterest && (
+                  <button
+                    className="flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-pink-600 p-4 border border-gray-300 shadow-lg transition-colors"
+                    onClick={() => {
+                      if (!currentUserId || !userId) return;
+                      handleRemoveInterest({
+                        setInterestError,
+                        removeInterestMutation:
+                          removeInterestMutation as (args: {
                             fromUserId: Id<"users">;
                             toUserId: Id<"users">;
                           }) => Promise<unknown>,
-                          currentUserId,
-                          id: userId,
-                          setInterestSent,
-                        });
-                      }}
-                      title="Express Interest"
-                      aria-label="Express Interest"
-                    >
-                      <HeartIcon className="w-10 h-10" />
-                    </button>
-                  );
-              }
-              {
-                !isOwnProfile &&
-                  !isBlocked &&
-                  !isMutualInterest &&
-                  alreadySentInterest && (
-                    <button
-                      className="flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-pink-600 p-4 border border-gray-300 shadow-lg transition-colors"
-                      onClick={() => {
-                        if (!currentUserId || !userId) return;
-                        handleRemoveInterest({
-                          setInterestError,
-                          removeInterestMutation:
-                            removeInterestMutation as (args: {
-                              fromUserId: Id<"users">;
-                              toUserId: Id<"users">;
-                            }) => Promise<unknown>,
-                          currentUserId,
-                          id: userId,
-                          setInterestSent,
-                        });
-                      }}
-                      title="Withdraw Interest"
-                      aria-label="Withdraw Interest"
-                    >
-                      <HeartOffIcon className="w-10 h-10" />
-                    </button>
-                  );
-              }
+                        currentUserId,
+                        id: userId,
+                        setInterestSent,
+                      });
+                    }}
+                    title="Withdraw Interest"
+                    aria-label="Withdraw Interest"
+                  >
+                    <HeartOffIcon className="w-10 h-10" />
+                  </button>
+                )}
             </div>
             {interestError && (
               <div className="text-center text-red-600 text-sm mt-2">
