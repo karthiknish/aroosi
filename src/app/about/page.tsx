@@ -7,15 +7,15 @@ import { Button } from "@/components/ui/button";
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-0">
       <motion.main
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-4xl mx-auto"
+        className="w-full"
       >
         {/* Hero Section */}
-        <div className="text-center mb-16 bg-white p-8 rounded-xl shadow-xl">
+        <div className="w-full text-center mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
           <Link
             href="/"
             className="inline-block mb-4 text-4xl sm:text-5xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
@@ -32,7 +32,7 @@ export default function AboutPage() {
         </div>
 
         {/* Mission Section */}
-        <section className="mb-16 bg-white p-8 rounded-xl shadow-xl">
+        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6 text-center">
             Our Mission
           </h2>
@@ -69,7 +69,7 @@ export default function AboutPage() {
         </section>
 
         {/* Why Choose Aroosi Section */}
-        <section className="mb-16 bg-white p-8 rounded-xl shadow-xl">
+        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-8 text-center">
             Why Choose Aroosi?
           </h2>
@@ -123,7 +123,7 @@ export default function AboutPage() {
         </section>
 
         {/* Our Story Section */}
-        <section className="mb-16 bg-white p-8 rounded-xl shadow-xl">
+        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6 text-center">
             Our Story
           </h2>
@@ -178,7 +178,7 @@ export default function AboutPage() {
         </section>
 
         {/* Team Section */}
-        <section className="mb-16 bg-white p-8 rounded-xl shadow-xl">
+        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-8 text-center">
             Meet Our Team
           </h2>
@@ -216,7 +216,7 @@ export default function AboutPage() {
         </section>
 
         {/* Call to Action Section */}
-        <section className="text-center bg-white p-8 rounded-xl shadow-xl">
+        <section className="w-full text-center bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6">
             Join Our Community
           </h2>

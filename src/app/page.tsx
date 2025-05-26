@@ -110,6 +110,16 @@ export default function HomePage() {
         </motion.div>
       </section>
 
+      {/* Hero Banner Image Section */}
+      <section className="max-w-6xl mx-auto px-4 mb-16">
+        <div className="w-full h-56 md:h-72 rounded-3xl bg-gradient-to-r from-pink-200 via-rose-100 to-white flex items-center justify-center shadow-lg mb-4">
+          {/* TODO: Replace with real hero/banner image */}
+          <span className="text-2xl text-pink-400 font-bold opacity-60">
+            [Hero Banner Image Placeholder]
+          </span>
+        </div>
+      </section>
+
       {/* Statistics Section */}
       <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4">
@@ -150,6 +160,31 @@ export default function HomePage() {
               <h3 className="text-4xl font-bold text-pink-600 mb-2">24/7</h3>
               <p className="text-gray-600">Support Available</p>
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stories/Testimonials Image Grid Section */}
+      <section className="py-12 bg-gradient-to-b from-white via-pink-50 to-rose-50">
+        <div className="max-w-5xl mx-auto px-4">
+          <h2
+            className="text-3xl font-bold text-center text-gray-800 mb-10"
+            style={{ fontFamily: "var(--font-lora)" }}
+          >
+            Real Stories, Real Connections
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl bg-gradient-to-br from-pink-100 via-rose-100 to-white h-64 flex items-center justify-center shadow-md"
+              >
+                {/* TODO: Replace with real testimonial/story image */}
+                <span className="text-lg text-pink-400 font-semibold opacity-60">
+                  [Image {i} Placeholder]
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -209,6 +244,33 @@ export default function HomePage() {
                 Manchester and beyond.
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Community/Events Image Section */}
+      <section className="py-16 bg-gradient-to-r from-pink-50 via-white to-rose-50">
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <div className="rounded-3xl bg-gradient-to-tr from-pink-200 via-rose-100 to-white h-72 flex items-center justify-center shadow-lg">
+            {/* TODO: Replace with real community/event image */}
+            <span className="text-xl text-pink-400 font-semibold opacity-60">
+              [Community/Event Image Placeholder]
+            </span>
+          </div>
+          <div>
+            <h3
+              className="text-2xl font-bold mb-4 text-gray-800"
+              style={{ fontFamily: "var(--font-lora)" }}
+            >
+              Join Our Community
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Be part of a vibrant, supportive community. Attend events, connect
+              with others, and find inspiration for your journey.
+            </p>
+            <Button className="bg-pink-600 hover:bg-pink-700">
+              Learn More
+            </Button>
           </div>
         </div>
       </section>
