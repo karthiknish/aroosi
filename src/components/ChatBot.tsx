@@ -57,6 +57,7 @@ const ChatBot: React.FC = () => {
         { role: "bot", text: data.reply, timestamp: Date.now() },
       ]);
     } catch (err) {
+      console.error("Error sending message", err);
       setMessages((msgs) => [
         ...msgs,
         {

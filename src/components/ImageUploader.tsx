@@ -13,19 +13,33 @@ import {
 import Cropper, { Area } from "react-easy-crop";
 import { Id } from "@/../convex/_generated/dataModel";
 import { ConvexError } from "convex/values";
+import type { ImageData } from "./ProfileImageUpload";
 
 interface ImageUploaderProps {
   userId: Id<"users">;
-  orderedImages: any[];
+  orderedImages: ImageData[];
   isAdmin?: boolean;
   profileId?: Id<"profiles">;
   onImagesChanged?: () => void;
-  generateUploadUrl: any;
-  uploadImage: any;
-  updateProfile: any;
-  adminUpdateProfile: any;
+  generateUploadUrl: () => Promise<
+    string | { success: boolean; error: string }
+  >;
+  uploadImage: (args: {
+    userId: Id<"users">;
+    storageId: Id<"_storage">;
+    fileName: string;
+    contentType: string;
+    fileSize: number;
+  }) => Promise<{ success: boolean; imageId: Id<"_storage">; message: string }>;
+  updateProfile: (args: {
+    profileImageIds: Id<"_storage">[];
+  }) => Promise<unknown>;
+  adminUpdateProfile: (args: {
+    id: Id<"profiles">;
+    updates: { profileImageIds: Id<"_storage">[] };
+  }) => Promise<unknown>;
   setIsUploading: (val: boolean) => void;
-  toast: any;
+  toast: typeof import("sonner").toast;
   disabled?: boolean;
   isUploading?: boolean;
   maxFiles?: number;
@@ -107,15 +121,10 @@ export function ImageUploader({
           throw new Error("Failed to upload image");
         }
         const { storageId } = await result.json();
-        await uploadImage({
-          userId,
-          storageId: storageId,
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        });
-        const currentImageIds = orderedImages.map((img: any) => img.storageId);
-        const newOrder = [...currentImageIds, storageId];
+        const currentImageIds = orderedImages.map(
+          (img: ImageData) => img.storageId as Id<"_storage">
+        );
+        const newOrder = [...currentImageIds, storageId as Id<"_storage">];
         if (isAdmin && profileId) {
           await adminUpdateProfile({
             id: profileId,

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +67,8 @@ export default function ContactPage() {
             Contact Us
           </h1>
           <p className="mt-2 text-lg text-gray-600">
-            We'd love to hear from you! Send us a message using the form below.
+            We&apos;d love to hear from you! Send us a message using the form
+            below.
           </p>
         </div>
 
@@ -82,8 +82,8 @@ export default function ContactPage() {
               Thank You!
             </h2>
             <p className="mt-2 text-green-600">
-              Your message has been sent successfully. We'll get back to you
-              soon.
+              Your message has been sent successfully. We&apos;ll get back to
+              you soon.
             </p>
             <Button
               onClick={() => setIsSubmitted(false)}

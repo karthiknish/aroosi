@@ -37,7 +37,7 @@ export default function BlogDetailPage() {
           Post Not Found
         </h1>
         <p className="text-gray-600 mb-4">
-          Sorry, we couldn't find that blog post.
+          Sorry, we couldn&apos;t find that blog post.
         </p>
         <Button
           asChild

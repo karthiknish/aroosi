@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-interface ImageData {
+export interface ImageData {
   _id: Id<"images"> | string;
   _creationTime?: number;
   storageId: Id<"_storage"> | string;

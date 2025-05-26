@@ -27,7 +27,7 @@ export default function TermsPage() {
         <article className="prose prose-lg max-w-none text-gray-700">
           <p className="lead">
             Welcome to Aroosi! These terms and conditions outline the rules and
-            regulations for the use of Aroosi's Website, located at [Your
+            regulations for the use of Aroosi&apos;s Website, located at [Your
             Website URL].
           </p>
 
@@ -41,7 +41,7 @@ export default function TermsPage() {
           <h2>2. Cookies</h2>
           <p>
             We employ the use of cookies. By accessing Aroosi, you agreed to use
-            cookies in agreement with the Aroosi's Privacy Policy.
+            cookies in agreement with the Aroosi&apos;s Privacy Policy.
           </p>
 
           <h2>3. License</h2>
