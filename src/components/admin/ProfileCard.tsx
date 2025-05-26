@@ -41,7 +41,7 @@ interface Profile {
   updatedAt?: string;
 }
 
-type ProfileEditFormState = {
+export type ProfileEditFormState = {
   fullName?: string;
   ukCity?: string;
   gender?: string;

@@ -23,7 +23,7 @@ import {
 import { Id } from "@/../convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
 import { useRouter } from "next/navigation";
-import ProfileCard from "./ProfileCard";
+import ProfileCard, { type ProfileEditFormState } from "./ProfileCard";
 import { ConvexError } from "convex/values";
 import { Loader2 } from "lucide-react";
 
@@ -31,21 +31,19 @@ import { Loader2 } from "lucide-react";
 
 export function ProfileManagement() {
   const [editingId, setEditingId] = useState<Id<"profiles"> | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState<ProfileEditFormState>({});
   const [deleteId, setDeleteId] = useState<Id<"profiles"> | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 400);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
-  const router = useRouter();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   // Fetch paginated/searchable profiles from Convex
   const { profiles = [], total = 0 } =
     useConvexQuery(api.users.adminListProfiles, {
       search: debouncedSearch,
       page,
-      pageSize,
+      pageSize: 10,
     }) || {};
 
   // Convex mutation for deleting a profile
@@ -226,15 +224,15 @@ export function ProfileManagement() {
           Previous
         </Button>
         <div className="text-sm text-gray-600">
-          Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}
+          Page {page + 1} of {Math.max(1, Math.ceil(total / 10))}
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() =>
-            setPage((p) => (p + 1 < Math.ceil(total / pageSize) ? p + 1 : p))
+            setPage((p) => (p + 1 < Math.ceil(total / 10) ? p + 1 : p))
           }
-          disabled={page + 1 >= Math.ceil(total / pageSize)}
+          disabled={page + 1 >= Math.ceil(total / 10)}
         >
           Next
         </Button>
