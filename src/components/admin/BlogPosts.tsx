@@ -9,10 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, Calendar, Clock } from "lucide-react";
 
-import { toast } from "sonner";
-import BlogEditor from "@/components/admin/BlogEditor";
 import { useState } from "react";
-import { BlogPostFields } from "@/components/admin/BlogPostFields";
 
 interface BlogPost {
   _id: string;
@@ -32,50 +29,18 @@ interface BlogPostsProps {
   deletePost: (id: string) => void;
 }
 
-export function BlogPosts({ posts, setEditingPost, deletePost }: BlogPostsProps) {
-  const [aiLoading, setAiLoading] = useState<{
-    content?: boolean;
-    excerpt?: boolean;
-    category?: boolean;
-  }>({});
-
-  // Utility to call the AI HTML API
-  // Combined utility for AI HTML and plain text (excerpt/category)
-  async function aiProcess(
-    text: string,
-    type: "blog" | "excerpt" | "category"
-  ): Promise<string> {
-    setAiLoading((prev) => ({
-      ...prev,
-      [type === "blog" ? "content" : type]: true,
-    }));
-    try {
-      const res = await fetch("/api/convert-ai-text-to-html", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, type }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI error");
-      if (type === "blog") {
-        return data.html;
-      } else {
-        // Extract plain text from HTML for excerpt/category
-        const temp = document.createElement("div");
-        temp.innerHTML = data.html;
-        const plain = temp.textContent || temp.innerText || "";
-        return plain.trim();
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "AI error");
-      return "";
-    } finally {
-      setAiLoading((prev) => ({
-        ...prev,
-        [type === "blog" ? "content" : type]: false,
-      }));
-    }
-  }
+export function BlogPosts({
+  posts,
+  setEditingPost,
+  deletePost,
+}: BlogPostsProps) {
+  const [page, setPage] = useState(0);
+  const pageSize = 6;
+  const total = posts?.length || 0;
+  const pageCount = Math.ceil(total / pageSize);
+  const pagedPosts = posts
+    ? posts.slice(page * pageSize, (page + 1) * pageSize)
+    : [];
 
   // Utility for excerpt/category (plain text)
   const getReadingTime = (content: string) => {
@@ -95,67 +60,99 @@ export function BlogPosts({ posts, setEditingPost, deletePost }: BlogPostsProps)
         ) : posts.length === 0 ? (
           <div className="text-center py-8 text-gray-500">No posts yet</div>
         ) : (
-          <div className="space-y-4">
-            {posts.map((post) => (
-              <div
-                key={post._id}
-                className="p-4 bg-white rounded-lg border border-gray-200"
-              >
-                <div className="flex items-start gap-4">
-                  {post.imageUrl && (
-                    <img
-                      src={post.imageUrl}
-                      alt={post.title}
-                      className="w-20 h-20 rounded-lg object-cover"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{post.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{post.excerpt}</p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(post.createdAt).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {getReadingTime(post.content)} min read
-                      </div>
-                    </div>
-                    {post.categories && post.categories.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {post.categories.map((cat) => (
-                          <span
-                            key={cat}
-                            className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-medium"
-                          >
-                            {cat}
-                          </span>
-                        ))}
-                      </div>
+          <>
+            <div className="space-y-4">
+              {pagedPosts.map((post) => (
+                <div
+                  key={post._id}
+                  className="p-4 bg-white rounded-lg border border-gray-200"
+                >
+                  <div className="flex items-start gap-4">
+                    {post.imageUrl && (
+                      <img
+                        src={post.imageUrl}
+                        alt={post.title}
+                        className="w-20 h-20 rounded-lg object-cover"
+                      />
                     )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingPost(post._id)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => deletePost(post._id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">
+                        {post.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {post.excerpt}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(post.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {getReadingTime(post.content)} min read
+                        </div>
+                      </div>
+                      {post.categories && post.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {post.categories.map((cat) => (
+                            <span
+                              key={cat}
+                              className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-medium"
+                            >
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingPost(post._id)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => deletePost(post._id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+            {/* Pagination Controls */}
+            {pageCount > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  Previous
+                </Button>
+                <div className="text-sm text-gray-600">
+                  Page {page + 1} of {pageCount}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPage((p) => (p + 1 < pageCount ? p + 1 : p))
+                  }
+                  disabled={page + 1 >= pageCount}
+                >
+                  Next
+                </Button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
