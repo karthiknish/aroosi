@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConvexError } from "convex/values";
 import React, { useState } from "react";
+import { Id } from "@convex/_generated/dataModel";
 
 export default function ProfilePage() {
   const { user: clerkUser, isSignedIn } = useUser();
@@ -179,9 +180,9 @@ export default function ProfilePage() {
       <ProfileView
         profileData={
           toProfileType(profileData) || {
-            _id: "",
-            userId: "",
-            createdAt: "",
+            _id: "" as Id<"profiles">,
+            userId: "" as Id<"users">,
+            createdAt: "" as string,
           }
         }
         clerkUser={clerkUser ? { id: clerkUser.id } : undefined}
