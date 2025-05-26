@@ -159,6 +159,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(body),
       });
     } catch (err) {
+      console.error("Error in gemini-chat route:", err);
       return NextResponse.json(
         {
           reply:
@@ -182,6 +183,7 @@ export async function POST(req: NextRequest) {
     await saveChatbotMessage({ email, role: "bot", text: reply });
     return NextResponse.json({ reply });
   } catch (err: unknown) {
+    console.error("Error in gemini-chat route:", err);
     return NextResponse.json(
       {
         reply: `Server error: ${err instanceof Error ? err.message : String(err)}`,

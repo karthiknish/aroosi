@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { checkRateLimit } from "./utils/rateLimit";
 import { requireAdmin } from "./utils/requireAdmin";
@@ -9,7 +9,10 @@ export const sendInterest = mutation({
     fromUserId: v.id("users"),
     toUserId: v.id("users"),
   },
-  handler: async (ctx: any, args: { fromUserId: string; toUserId: string }) => {
+  handler: async (
+    ctx: MutationCtx,
+    args: { fromUserId: string; toUserId: string }
+  ) => {
     // Rate limit by fromUserId
     const rateKey = `interest:send:${args.fromUserId}`;
     const rate = await checkRateLimit(ctx.db, rateKey);
@@ -46,7 +49,7 @@ export const respondToInterest = mutation({
     status: v.union(v.literal("accepted"), v.literal("rejected")),
   },
   handler: async (
-    ctx: any,
+    ctx: MutationCtx,
     args: { interestId: string; status: "accepted" | "rejected" }
   ) => {
     // Rate limit by interestId
@@ -67,7 +70,7 @@ export const respondToInterest = mutation({
 // Query interests sent by a user
 export const getSentInterests = query({
   args: { userId: v.id("users") },
-  handler: async (ctx: any, args: { userId: string }) => {
+  handler: async (ctx: QueryCtx, args: { userId: string }) => {
     return ctx.db
       .query("interests")
       .withIndex("by_from_to", (q: any) => q.eq("fromUserId", args.userId))
@@ -78,7 +81,7 @@ export const getSentInterests = query({
 // Query interests received by a user
 export const getReceivedInterests = query({
   args: { userId: v.id("users") },
-  handler: async (ctx: any, args: { userId: string }) => {
+  handler: async (ctx: QueryCtx, args: { userId: string }) => {
     return ctx.db
       .query("interests")
       .withIndex("by_to", (q: any) => q.eq("toUserId", args.userId))
@@ -92,7 +95,7 @@ export const isMutualInterest = query({
     userA: v.id("users"),
     userB: v.id("users"),
   },
-  handler: async (ctx: any, args: { userA: string; userB: string }) => {
+  handler: async (ctx: QueryCtx, args: { userA: string; userB: string }) => {
     const aToB = await ctx.db
       .query("interests")
       .withIndex("by_from_to", (q: any) =>

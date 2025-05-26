@@ -128,8 +128,8 @@ export function BlogPosts({
         const plain = temp.textContent || temp.innerText || "";
         return plain.trim();
       }
-    } catch (err: any) {
-      toast.error(err.message || "AI error");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "AI error");
       return "";
     } finally {
       setAiLoading((prev) => ({

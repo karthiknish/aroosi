@@ -44,7 +44,7 @@ interface Profile {
 
 interface ProfileEditFormProps {
   profile: Profile;
-  editForm: any;
+  editForm: unknown;
   onInputChange?: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => void;

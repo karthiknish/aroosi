@@ -110,7 +110,7 @@ export function ProfileImageReorder({
     })
   );
 
-  const handleDragEnd = async (event: any) => {
+  const handleDragEnd = async (event: React.DragEvent<HTMLDivElement>) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = images.findIndex((img) => img._id === active.id);

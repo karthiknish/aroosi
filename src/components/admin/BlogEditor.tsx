@@ -126,9 +126,11 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         // 4. Insert image into editor
         editor.chain().focus().setImage({ src: imageDoc.url }).run();
         setImageModalOpen(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Image upload failed:", err);
-        setUploadError(err?.message || "Failed to upload image");
+        setUploadError(
+          err instanceof Error ? err.message : "Failed to upload image"
+        );
       } finally {
         setUploading(false);
       }

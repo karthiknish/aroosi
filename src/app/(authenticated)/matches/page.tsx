@@ -159,7 +159,7 @@ export default function MatchesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {profiles.map((profile: any) => (
+            {profiles.map((profile: import("@/types/profile").Profile) => (
               <Card key={profile._id} className="shadow-md">
                 <CardHeader>
                   <div className="flex items-center gap-3">
