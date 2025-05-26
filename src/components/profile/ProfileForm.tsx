@@ -30,6 +30,7 @@ import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { Image } from "@/components/ProfileImageReorder";
 
 // Hardcoded list of major UK cities
 const majorUkCities = [
@@ -349,7 +350,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   const handleSubmit = async (values: ProfileFormValues) => {
     // Use images from userImagesQuery for validation
     const validImages = (userImagesQuery || []).filter(
-      (img: any) => img && img.url && img.storageId
+      (img: any) => img && !!img.url && img.storageId
     );
     // Check if we're on the image upload step and no images are uploaded
     if (mode === "create" && currentStep === 4 && validImages.length === 0) {
@@ -511,9 +512,10 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     }
     return map;
   }, [userImagesQuery]);
-  const orderedImages = uploadedImageIds.map((id) => ({
+  const orderedImages: Image[] = uploadedImageIds.map((id) => ({
     _id: id,
     url: storageIdToUrlMap[id] || "",
+    storageId: id,
   }));
 
   const stepTips = [
@@ -1018,19 +1020,8 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                         images={orderedImages}
                         userId={convexUserId}
                         onReorder={async (newOrder) => {
-                          let newIds: string[] = [];
-                          if (Array.isArray(newOrder) && newOrder.length > 0) {
-                            if (typeof newOrder[0] === "string") {
-                              newIds = newOrder as string[];
-                            } else if (
-                              typeof newOrder[0] === "object" &&
-                              (newOrder[0] as any)._id
-                            ) {
-                              newIds = (newOrder as any[]).map((img: any) =>
-                                String(img._id)
-                              );
-                            }
-                          }
+                          // newOrder is always string[] (array of image IDs)
+                          const newIds = newOrder as string[];
                           setUploadedImageIds(newIds);
                           handleImagesChanged(newIds);
                           // Persist to Convex
@@ -1048,7 +1039,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                         renderAction={(img, idx) => (
                           <div className="relative group w-20 h-20">
                             <img
-                              src={img.url}
+                              src={img.url || ""}
                               alt="Profile preview"
                               className="w-20 h-20 object-cover rounded-lg cursor-pointer border group-hover:brightness-90 transition"
                               onClick={() => handleImageClick(idx)}

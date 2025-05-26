@@ -85,34 +85,141 @@ export function ProfileManagement() {
   // Update profile using Convex adminUpdateProfile mutation
   const saveEdit = async (id: Id<"profiles">) => {
     try {
-      // Convert empty string enums to undefined
-      const enumFields = [
-        "gender",
-        "maritalStatus",
-        "diet",
-        "smoking",
-        "drinking",
-        "physicalStatus",
-      ];
-      const updates = { ...editForm };
-      enumFields.forEach((field) => {
-        if (updates[field] === "") updates[field] = undefined;
-      });
-      // Convert empty string to undefined for number fields
-      [
-        "annualIncome",
-        "partnerPreferenceAgeMin",
-        "partnerPreferenceAgeMax",
-      ].forEach((field) => {
-        if (updates[field] === "") updates[field] = undefined;
-        if (
-          typeof updates[field] === "string" &&
-          updates[field] !== undefined
-        ) {
-          const num = Number(updates[field]);
-          updates[field] = isNaN(num) ? undefined : num;
-        }
-      });
+      type AdminProfileUpdate = {
+        banned?: boolean;
+        fullName?: string;
+        dateOfBirth?: string;
+        gender?: "male" | "female" | "other";
+        ukCity?: string;
+        religion?: string;
+        caste?: string;
+        motherTongue?: string;
+        height?: string;
+        maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
+        education?: string;
+        occupation?: string;
+        annualIncome?: number;
+        aboutMe?: string;
+        phoneNumber?: string;
+        diet?:
+          | "vegetarian"
+          | "non-vegetarian"
+          | "vegan"
+          | "eggetarian"
+          | "other";
+        smoking?: "no" | "occasionally" | "yes";
+        drinking?: "no" | "occasionally" | "yes";
+        physicalStatus?: "normal" | "differently-abled" | "other";
+        partnerPreferenceAgeMin?: number;
+        partnerPreferenceAgeMax?: number;
+        partnerPreferenceReligion?: string[];
+        partnerPreferenceUkCity?: string[];
+        profileImageIds?: Id<"_storage">[];
+      };
+      const ef = editForm;
+      const updates: AdminProfileUpdate = {
+        banned: ef.banned,
+        fullName: ef.fullName || undefined,
+        dateOfBirth: ef.dateOfBirth || undefined,
+        gender:
+          ef.gender && ["male", "female", "other"].includes(ef.gender)
+            ? (ef.gender as "male" | "female" | "other")
+            : undefined,
+        ukCity: ef.ukCity || undefined,
+        religion: ef.religion || undefined,
+        caste: ef.caste || undefined,
+        motherTongue: ef.motherTongue || undefined,
+        height: ef.height || undefined,
+        maritalStatus:
+          ef.maritalStatus &&
+          ["single", "divorced", "widowed", "annulled"].includes(
+            ef.maritalStatus
+          )
+            ? (ef.maritalStatus as
+                | "single"
+                | "divorced"
+                | "widowed"
+                | "annulled")
+            : undefined,
+        education: ef.education || undefined,
+        occupation: ef.occupation || undefined,
+        annualIncome:
+          ef.annualIncome === "" || ef.annualIncome === undefined
+            ? undefined
+            : typeof ef.annualIncome === "string"
+              ? isNaN(Number(ef.annualIncome))
+                ? undefined
+                : Number(ef.annualIncome)
+              : ef.annualIncome,
+        aboutMe: ef.aboutMe || undefined,
+        phoneNumber: ef.phoneNumber || undefined,
+        diet:
+          ef.diet &&
+          [
+            "vegetarian",
+            "non-vegetarian",
+            "vegan",
+            "eggetarian",
+            "other",
+          ].includes(ef.diet)
+            ? (ef.diet as
+                | "vegetarian"
+                | "non-vegetarian"
+                | "vegan"
+                | "eggetarian"
+                | "other")
+            : undefined,
+        smoking:
+          ef.smoking && ["no", "occasionally", "yes"].includes(ef.smoking)
+            ? (ef.smoking as "no" | "occasionally" | "yes")
+            : undefined,
+        drinking:
+          ef.drinking && ["no", "occasionally", "yes"].includes(ef.drinking)
+            ? (ef.drinking as "no" | "occasionally" | "yes")
+            : undefined,
+        physicalStatus:
+          ef.physicalStatus &&
+          ["normal", "differently-abled", "other"].includes(ef.physicalStatus)
+            ? (ef.physicalStatus as "normal" | "differently-abled" | "other")
+            : undefined,
+        partnerPreferenceAgeMin:
+          ef.partnerPreferenceAgeMin === "" ||
+          ef.partnerPreferenceAgeMin === undefined
+            ? undefined
+            : typeof ef.partnerPreferenceAgeMin === "string"
+              ? isNaN(Number(ef.partnerPreferenceAgeMin))
+                ? undefined
+                : Number(ef.partnerPreferenceAgeMin)
+              : ef.partnerPreferenceAgeMin,
+        partnerPreferenceAgeMax:
+          ef.partnerPreferenceAgeMax === "" ||
+          ef.partnerPreferenceAgeMax === undefined
+            ? undefined
+            : typeof ef.partnerPreferenceAgeMax === "string"
+              ? isNaN(Number(ef.partnerPreferenceAgeMax))
+                ? undefined
+                : Number(ef.partnerPreferenceAgeMax)
+              : ef.partnerPreferenceAgeMax,
+        partnerPreferenceReligion: Array.isArray(ef.partnerPreferenceReligion)
+          ? ef.partnerPreferenceReligion
+          : typeof ef.partnerPreferenceReligion === "string"
+            ? ef.partnerPreferenceReligion
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : undefined,
+        partnerPreferenceUkCity: Array.isArray(ef.partnerPreferenceUkCity)
+          ? ef.partnerPreferenceUkCity
+          : typeof ef.partnerPreferenceUkCity === "string"
+            ? ef.partnerPreferenceUkCity
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : undefined,
+        profileImageIds: Array.isArray(ef.profileImageIds)
+          ? (ef.profileImageIds.filter(Boolean) as Id<"_storage">[])
+          : undefined,
+      };
       await adminUpdateProfile({ id, updates });
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ["profiles"] });

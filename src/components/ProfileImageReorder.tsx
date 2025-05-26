@@ -21,7 +21,7 @@ import { toast } from "sonner";
 // If you get a type error for react-beautiful-dnd, you may need to install @types/react-beautiful-dnd
 // npm install --save-dev @types/react-beautiful-dnd
 
-type Image = {
+export type Image = {
   _id: string;
   url: string;
   storageId?: string;
