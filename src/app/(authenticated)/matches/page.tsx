@@ -167,7 +167,7 @@ export default function MatchesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {profiles.map((value: any) => {
+            {profiles.map((value) => {
               // value.profile is the Profile object
               const profile = value.profile as Profile | null;
               if (!profile) return null;
