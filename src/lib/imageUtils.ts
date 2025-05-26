@@ -135,7 +135,6 @@ export const centerAspectCrop = (
   const y = (100 - height) / 2;
 
   return {
-    unit: "%",
     x,
     y,
     width,
