@@ -14,7 +14,6 @@ type Props = {
 const ProfileFormStepBasicInfo: React.FC<Props> = ({
   form,
   cmToFeetInches,
-
 }) => (
   <>
     <FormField name="fullName" label="Full Name" form={form} isRequired />
@@ -43,44 +42,44 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
       <Controller
         name="height"
         control={form.control}
-        defaultValue={form.getValues("height") || "6ft 0in"}
-        render={({ field }) => (
-          <div className="flex flex-col gap-2 mt-2">
-            <Slider
-              min={137}
-              max={198}
-              step={1}
-              value={[
-                typeof field.value === "number"
-                  ? field.value
-                  : Number(field.value) || 170,
-              ]}
-              onValueChange={([val]) => field.onChange(val)}
-              className="w-full my-2"
-              style={
-                {
-                  "--slider-track-bg": "#fce7f3",
-                  "--slider-range-bg": "#db2777",
-                  "--slider-thumb-border": "#db2777",
-                } as React.CSSProperties
-              }
-            />
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>4&apos;6&quot;</span>
-              <span>6&apos;6&quot;</span>
+        defaultValue={(() => {
+          const val = form.getValues("height");
+          const num = Number(val);
+          return !isNaN(num) && num >= 137 && num <= 198 ? String(num) : "170";
+        })()}
+        render={({ field }) => {
+          const numVal = Number(field.value);
+          return (
+            <div className="flex flex-col gap-2 mt-2">
+              <Slider
+                min={137}
+                max={198}
+                step={1}
+                value={[
+                  !isNaN(numVal) && numVal >= 137 && numVal <= 198
+                    ? numVal
+                    : 170,
+                ]}
+                onValueChange={([val]) => field.onChange(String(val))}
+                className="w-full my-2  text-pink-700"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>4&apos;6&quot;</span>
+                <span>6&apos;6&quot;</span>
+              </div>
+              <div className="mt-1 text-sm font-medium text-pink-700 bg-rose-50 border border-pink-200 rounded px-2 py-1 w-fit">
+                {!isNaN(numVal) && numVal >= 137 && numVal <= 198
+                  ? `${cmToFeetInches(numVal)} (${numVal} cm)`
+                  : "Select your height"}
+              </div>
+              {form.formState.errors.height && (
+                <p className="text-sm text-red-600 mt-1">
+                  {form.formState.errors.height.message as string}
+                </p>
+              )}
             </div>
-            <div className="mt-1 text-sm font-medium text-pink-700">
-              {field.value
-                ? `${cmToFeetInches(typeof field.value === "number" ? field.value : Number(field.value))} (${String(field.value)} cm)`
-                : "Select your height"}
-            </div>
-            {form.formState.errors.height && (
-              <p className="text-sm text-red-600 mt-1">
-                {form.formState.errors.height.message as string}
-              </p>
-            )}
-          </div>
-        )}
+          );
+        }}
       />
     </div>
     <FormField

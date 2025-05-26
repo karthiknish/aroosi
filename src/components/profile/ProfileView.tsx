@@ -219,18 +219,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   icon={<Mail className="h-5 w-5" />}
                 >
                   <ProfileDetailView
-                    label="Email (Verified)"
-                    value={
-                      typeof clerkUser === "object" &&
-                      clerkUser &&
-                      "primaryEmailAddress" in clerkUser
-                        ? (
-                            clerkUser as {
-                              primaryEmailAddress: { emailAddress: string };
-                            }
-                          ).primaryEmailAddress?.emailAddress
-                        : undefined
-                    }
+                    label="Email"
+                    value={profileData.email}
                     icon={<Mail className="h-4 w-4" />}
                   />
                   <ProfileDetailView
@@ -286,7 +276,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   />
                   <ProfileDetailView
                     label="Date of Birth"
-                    value={profileData.dateOfBirth}
+                    value={
+                      profileData.dateOfBirth
+                        ? new Date(profileData.dateOfBirth).toLocaleDateString(
+                            "en-GB"
+                          )
+                        : "-"
+                    }
                     icon={<Calendar className="h-4 w-4" />}
                   />
                   <ProfileDetailView

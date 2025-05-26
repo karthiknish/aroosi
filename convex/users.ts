@@ -827,6 +827,7 @@ export const createProfile = mutation({
       ...args,
       userId: user._id,
       clerkId: identity.subject,
+      email: user.email,
       isProfileComplete: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),

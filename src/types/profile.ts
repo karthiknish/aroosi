@@ -29,6 +29,7 @@ export interface Profile {
   preferredGender?: string;
   profileImageIds?: string[];
   banned?: boolean;
+  email?: string;
   createdAt: string;
   updatedAt?: string;
 }
