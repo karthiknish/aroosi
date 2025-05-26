@@ -18,6 +18,45 @@ import React, { useState } from "react";
 import { useQuery as useConvexQuery } from "convex/react";
 import { useUser, SignInButton } from "@clerk/nextjs";
 
+const majorUkCities = [
+  "Belfast",
+  "Birmingham",
+  "Bradford",
+  "Brighton",
+  "Bristol",
+  "Cambridge",
+  "Cardiff",
+  "Coventry",
+  "Derby",
+  "Edinburgh",
+  "Glasgow",
+  "Kingston upon Hull",
+  "Leeds",
+  "Leicester",
+  "Liverpool",
+  "London",
+  "Manchester",
+  "Milton Keynes",
+  "Newcastle upon Tyne",
+  "Newport",
+  "Norwich",
+  "Nottingham",
+  "Oxford",
+  "Plymouth",
+  "Portsmouth",
+  "Preston",
+  "Reading",
+  "Sheffield",
+  "Southampton",
+  "Stoke-on-Trent",
+  "Sunderland",
+  "Swansea",
+  "Wakefield",
+  "Wolverhampton",
+  "York",
+];
+const cityOptions = ["any", ...majorUkCities.sort()];
+
 function getAge(dateOfBirth: string) {
   if (!dateOfBirth) return "-";
   const dob = new Date(dateOfBirth);
@@ -58,12 +97,6 @@ export default function SearchProfilesPage() {
   }, [profiles]);
 
   // Get unique cities and religions for filter dropdowns
-  const cityOptions = React.useMemo(() => {
-    const set = new Set(
-      publicProfiles.map((u: any) => u.profile.ukCity).filter(Boolean)
-    );
-    return ["any", ...Array.from(set)];
-  }, [publicProfiles]);
   const religionOptions = React.useMemo(() => {
     const set = new Set(
       publicProfiles.map((u: any) => u.profile.religion).filter(Boolean)

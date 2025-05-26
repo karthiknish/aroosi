@@ -101,16 +101,16 @@
     "tailwindcss-animate": "^1.0.7",
     "tiptap-extension-resize-image": "^1.2.2",
     "use-debounce": "^10.0.4",
-    "zod": "^3.25.23"
+    "zod": "^3.25.23",
+    "@types/node": "^20.17.50",
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@types/node": "^20.17.50",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
     "@types/react-dropzone": "^4.2.2",
     "eslint": "^9",
-    "eslint-config-next": "15.1.8",
-    "typescript": "^5.8.3"
+    "eslint-config-next": "15.1.8"
   }
 }
