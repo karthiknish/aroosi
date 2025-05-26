@@ -75,13 +75,33 @@ const ukCityOptions = majorUkCities
   .sort()
   .map((city) => ({ value: city, label: city }));
 
-interface ProfileImage {
-  _id: string;
-  url: string;
-  storageId: string;
-  userId: Id<"users">;
-  fileName: string;
-  _creationTime: number;
+// 1. Define ProfileFormValues
+export interface ProfileFormValues {
+  fullName: string;
+  dateOfBirth: string;
+  gender: "male" | "female" | "other";
+  height?: string;
+  phoneNumber: string;
+  ukCity: string;
+  ukPostcode?: string;
+  diet?: string;
+  smoking?: string;
+  drinking?: string;
+  physicalStatus?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  maritalStatus?: string;
+  education?: string;
+  occupation?: string;
+  annualIncome?: number;
+  aboutMe: string;
+  preferredGender?: string;
+  partnerPreferenceAgeMin?: number;
+  partnerPreferenceAgeMax?: number;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  profileImageIds?: string[];
 }
 
 // Helper components
@@ -104,185 +124,38 @@ export const DisplaySection: React.FC<{
   </div>
 );
 
+// 2. Update FormFieldProps, FormSelectFieldProps, FormDateFieldProps
+type UseFormType = import("react-hook-form").UseFormReturn<ProfileFormValues>;
 interface FormFieldProps {
-  name: string;
+  name: keyof ProfileFormValues;
   label: string;
-  form: any;
+  form: UseFormType;
   placeholder?: string;
   type?: string;
   description?: string;
   isRequired?: boolean;
 }
-const FormField: React.FC<FormFieldProps> = ({
-  name,
-  label,
-  form,
-  placeholder,
-  type = "text",
-  description,
-  isRequired,
-}) => (
-  <div>
-    <Label htmlFor={name}>
-      {label} {isRequired && <span className="text-red-600">*</span>}
-    </Label>
-    <Input
-      id={name}
-      type={type}
-      {...form.register(name)}
-      placeholder={placeholder}
-      className="mt-1"
-    />
-    {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
-    {form.formState.errors[name] && (
-      <p className="text-sm text-red-600 mt-1">
-        {form.formState.errors[name]?.message as string}
-      </p>
-    )}
-  </div>
-);
-
 interface FormSelectFieldProps extends FormFieldProps {
   options: { value: string; label: string }[];
 }
-const FormSelectField: React.FC<FormSelectFieldProps> = ({
-  name,
-  label,
-  form,
-  placeholder,
-  options,
-  description,
-  isRequired,
-}) => (
-  <div>
-    <Label htmlFor={name}>
-      {label} {isRequired && <span className="text-red-600">*</span>}
-    </Label>
-    <Select
-      onValueChange={(value) =>
-        form.setValue(name, value, { shouldDirty: true, shouldValidate: true })
-      }
-      defaultValue={form.getValues(name) || undefined}
-    >
-      <SelectTrigger id={name} className="mt-1">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-    {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
-    {form.formState.errors[name] && (
-      <p className="text-sm text-red-600 mt-1">
-        {form.formState.errors[name]?.message as string}
-      </p>
-    )}
-  </div>
-);
-
 interface FormDateFieldProps {
-  name: string;
+  name: keyof ProfileFormValues;
   label: string;
-  form: any;
+  form: UseFormType;
   isRequired?: boolean;
   description?: string;
 }
-const DatePickerCustomInput = React.forwardRef<
-  HTMLInputElement,
-  { value?: string; onClick?: () => void; label: string }
->(({ value, onClick, label }, ref) => (
-  <Button
-    type="button"
-    variant="outline"
-    className={cn(
-      "w-full justify-start text-left font-normal mt-1",
-      !value && "text-muted-foreground"
-    )}
-    onClick={onClick}
-    ref={ref as any}
-  >
-    <span className="mr-2">📅</span>
-    {value || <span>{label}</span>}
-  </Button>
-));
-DatePickerCustomInput.displayName = "DatePickerCustomInput";
-const FormDateField: React.FC<FormDateFieldProps> = ({
-  name,
-  label,
-  form,
-  isRequired,
-  description,
-}) => {
-  const {
-    control,
-    formState: { errors },
-    trigger,
-  } = form;
-  return (
-    <div>
-      <Label htmlFor={name}>
-        {label} {isRequired && <span className="text-red-600">*</span>}
-      </Label>
-      <div className="mt-1 w-full">
-        <Controller
-          control={control}
-          name={name}
-          render={({ field }) => {
-            const selectedDate =
-              field.value && typeof field.value === "string"
-                ? parseISO(field.value)
-                : null;
-            return (
-              <DatePicker
-                selected={selectedDate}
-                onChange={(date: Date | null) => {
-                  field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                  if (name === "dateOfBirth") trigger("dateOfBirth");
-                }}
-                customInput={<DatePickerCustomInput label="Pick a date" />}
-                dateFormat="PPP"
-                showYearDropdown
-                showMonthDropdown
-                dropdownMode="select"
-                yearDropdownItemNumber={100}
-                scrollableYearDropdown
-                placeholderText="Pick a date"
-                className="w-full"
-                popperPlacement="bottom-start"
-                disabled={form.formState.isSubmitting}
-                minDate={new Date("1900-01-01")}
-                maxDate={subYears(new Date(), 18)}
-              />
-            );
-          }}
-        />
-      </div>
-      {description && (
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
-      )}
-      {errors[name] && (
-        <p className="text-sm text-red-600 mt-1">
-          {(errors[name] as any)?.message}
-        </p>
-      )}
-    </div>
-  );
-};
 
-// ProfileForm props type
+// 3. Update UnifiedProfileFormProps
+type ClerkUser = { id: string; [key: string]: unknown };
 export interface UnifiedProfileFormProps {
   mode: "create" | "edit";
-  initialValues?: any;
-  onSubmit: (values: any) => Promise<void>;
-  clerkUser?: any;
+  initialValues?: Partial<ProfileFormValues>;
+  onSubmit: (values: ProfileFormValues) => Promise<void>;
+  clerkUser?: ClerkUser;
   loading?: boolean;
   serverError?: string | null;
   onEditDone?: () => void;
-  userConvexData?: any;
 }
 
 // Add Zod schema for validation
@@ -323,7 +196,6 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   loading = false,
   serverError = null,
   onEditDone,
-  userConvexData,
 }) => {
   // Step configuration
   const profileStepLogic = [
@@ -393,7 +265,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   }, []);
 
   // Form setup
-  const form = useForm<any>({
+  const form = useForm<ProfileFormValues>({
     resolver: async (data, context, options) => {
       try {
         essentialProfileSchema.parse(data);
@@ -401,7 +273,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       } catch (err) {
         return {
           values: {},
-          errors: (err as any).formErrors?.fieldErrors || {},
+          errors: (err as z.ZodError).formErrors?.fieldErrors || {},
         };
       }
     },
@@ -442,8 +314,11 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
         try {
           const parsed = JSON.parse(draft);
           Object.entries(parsed).forEach(([key, value]) => {
-            if (form.getValues(key) !== value) {
-              form.setValue(key, value);
+            if (form.getValues(key as keyof ProfileFormValues) !== value) {
+              form.setValue(
+                key as keyof ProfileFormValues,
+                value as string | number | string[] | undefined
+              );
             }
           });
         } catch {}
@@ -476,14 +351,17 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
         return;
       }
     }
-    const valid = await form.trigger(stepFields as any, { shouldFocus: true });
+    const valid = await form.trigger(
+      stepFields as (keyof ProfileFormValues)[],
+      { shouldFocus: true }
+    );
     if (valid) setCurrentStep((s: number) => Math.min(s + 1, totalSteps - 1));
   };
   const handlePrevious = () =>
     setCurrentStep((s: number) => Math.max(s - 1, 0));
 
-  // Unified submit handler
-  const handleSubmit = async (values: any) => {
+  // 5. Update handleSubmit signature
+  const handleSubmit = async (values: ProfileFormValues) => {
     // Use images from userImagesQuery for validation
     const validImages = (userImagesQuery || []).filter(
       (img: any) => img && img.url && img.storageId
@@ -527,54 +405,62 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
     // Convert partnerPreferenceAgeMin and partnerPreferenceAgeMax to numbers or undefined
     if (
-      values.partnerPreferenceAgeMin === "" ||
-      values.partnerPreferenceAgeMin === undefined ||
-      values.partnerPreferenceAgeMin === null
+      typeof values.partnerPreferenceAgeMin === "string" &&
+      values.partnerPreferenceAgeMin === ""
     ) {
       values.partnerPreferenceAgeMin = undefined;
-    } else {
+    } else if (typeof values.partnerPreferenceAgeMin === "string") {
       values.partnerPreferenceAgeMin = Number(values.partnerPreferenceAgeMin);
     }
     if (
-      values.partnerPreferenceAgeMax === "" ||
-      values.partnerPreferenceAgeMax === undefined ||
-      values.partnerPreferenceAgeMax === null
+      typeof values.partnerPreferenceAgeMax === "string" &&
+      values.partnerPreferenceAgeMax === ""
     ) {
       values.partnerPreferenceAgeMax = undefined;
-    } else {
+    } else if (typeof values.partnerPreferenceAgeMax === "string") {
       values.partnerPreferenceAgeMax = Number(values.partnerPreferenceAgeMax);
     }
 
     // Convert partnerPreferenceReligion to array of strings or undefined
     if (
-      values.partnerPreferenceReligion === "" ||
       values.partnerPreferenceReligion === undefined ||
-      values.partnerPreferenceReligion === null
+      values.partnerPreferenceReligion === null ||
+      (Array.isArray(values.partnerPreferenceReligion) &&
+        values.partnerPreferenceReligion.length === 0) ||
+      (typeof values.partnerPreferenceReligion === "string" &&
+        values.partnerPreferenceReligion === "")
     ) {
       values.partnerPreferenceReligion = undefined;
     } else if (typeof values.partnerPreferenceReligion === "string") {
-      values.partnerPreferenceReligion = values.partnerPreferenceReligion
+      values.partnerPreferenceReligion = (
+        values.partnerPreferenceReligion as string
+      )
         .split(",")
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
-      if (values.partnerPreferenceReligion.length === 0) {
+      if ((values.partnerPreferenceReligion as string[]).length === 0) {
         values.partnerPreferenceReligion = undefined;
       }
     }
 
     // Convert partnerPreferenceUkCity to array of strings or undefined
     if (
-      values.partnerPreferenceUkCity === "" ||
       values.partnerPreferenceUkCity === undefined ||
-      values.partnerPreferenceUkCity === null
+      values.partnerPreferenceUkCity === null ||
+      (Array.isArray(values.partnerPreferenceUkCity) &&
+        values.partnerPreferenceUkCity.length === 0) ||
+      (typeof values.partnerPreferenceUkCity === "string" &&
+        values.partnerPreferenceUkCity === "")
     ) {
       values.partnerPreferenceUkCity = undefined;
     } else if (typeof values.partnerPreferenceUkCity === "string") {
-      values.partnerPreferenceUkCity = values.partnerPreferenceUkCity
+      values.partnerPreferenceUkCity = (
+        values.partnerPreferenceUkCity as string
+      )
         .split(",")
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
-      if (values.partnerPreferenceUkCity.length === 0) {
+      if ((values.partnerPreferenceUkCity as string[]).length === 0) {
         values.partnerPreferenceUkCity = undefined;
       }
     }
@@ -654,6 +540,170 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     "Tip: Write a friendly, honest 'About Me' to attract the right matches.",
     "Tip: A clear profile photo increases your chances by 3x!",
   ];
+
+  // Add FormField
+  const FormField: React.FC<FormFieldProps> = ({
+    name,
+    label,
+    form,
+    placeholder,
+    type = "text",
+    description,
+    isRequired,
+  }) => (
+    <div>
+      <Label htmlFor={name}>
+        {label} {isRequired && <span className="text-red-600">*</span>}
+      </Label>
+      <Input
+        id={name}
+        type={type}
+        {...form.register(name)}
+        placeholder={typeof placeholder === "string" ? placeholder : undefined}
+        className="mt-1"
+      />
+      {description && (
+        <p className="text-xs text-gray-500 mt-1">{description}</p>
+      )}
+      {form.formState.errors[name] && (
+        <p className="text-sm text-red-600 mt-1">
+          {form.formState.errors[name]?.message as string}
+        </p>
+      )}
+    </div>
+  );
+
+  // Add FormSelectField
+  const FormSelectField: React.FC<FormSelectFieldProps> = ({
+    name,
+    label,
+    form,
+    placeholder,
+    options,
+    description,
+    isRequired,
+  }) => (
+    <div>
+      <Label htmlFor={name}>
+        {label} {isRequired && <span className="text-red-600">*</span>}
+      </Label>
+      <Select
+        onValueChange={(value) =>
+          form.setValue(name, value as string, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
+        defaultValue={
+          typeof form.getValues(name) === "string"
+            ? (form.getValues(name) as string)
+            : undefined
+        }
+      >
+        <SelectTrigger id={name} className="mt-1">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {description && (
+        <p className="text-xs text-gray-500 mt-1">{description}</p>
+      )}
+      {form.formState.errors[name] && (
+        <p className="text-sm text-red-600 mt-1">
+          {form.formState.errors[name]?.message as string}
+        </p>
+      )}
+    </div>
+  );
+
+  // Add FormDateField
+  const DatePickerCustomInput = React.forwardRef<
+    HTMLButtonElement,
+    { value?: string; onClick?: () => void; label: string }
+  >(({ value, onClick, label }, ref) => (
+    <Button
+      type="button"
+      variant="outline"
+      className={cn(
+        "w-full justify-start text-left font-normal mt-1",
+        !value && "text-muted-foreground"
+      )}
+      onClick={onClick}
+      ref={ref}
+    >
+      <span className="mr-2">📅</span>
+      {value || <span>{label}</span>}
+    </Button>
+  ));
+  DatePickerCustomInput.displayName = "DatePickerCustomInput";
+  const FormDateField: React.FC<FormDateFieldProps> = ({
+    name,
+    label,
+    form,
+    isRequired,
+    description,
+  }) => {
+    const {
+      control,
+      formState: { errors },
+      trigger,
+    } = form;
+    return (
+      <div>
+        <Label htmlFor={name}>
+          {label} {isRequired && <span className="text-red-600">*</span>}
+        </Label>
+        <div className="mt-1 w-full">
+          <Controller
+            control={control}
+            name={name}
+            render={({ field }) => {
+              const selectedDate =
+                field.value && typeof field.value === "string"
+                  ? parseISO(field.value)
+                  : null;
+              return (
+                <DatePicker
+                  selected={selectedDate}
+                  onChange={(date: Date | null) => {
+                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                    if (name === "dateOfBirth") trigger("dateOfBirth");
+                  }}
+                  customInput={<DatePickerCustomInput label="Pick a date" />}
+                  dateFormat="PPP"
+                  showYearDropdown
+                  showMonthDropdown
+                  dropdownMode="select"
+                  yearDropdownItemNumber={100}
+                  scrollableYearDropdown
+                  placeholderText="Pick a date"
+                  className="w-full"
+                  popperPlacement="bottom-start"
+                  disabled={form.formState.isSubmitting}
+                  minDate={new Date("1900-01-01")}
+                  maxDate={subYears(new Date(), 18)}
+                />
+              );
+            }}
+          />
+        </div>
+        {description && (
+          <p className="text-xs text-gray-500 mt-1">{description}</p>
+        )}
+        {errors[name] && (
+          <p className="text-sm text-red-600 mt-1">
+            {errors[name]?.message as string}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
@@ -739,24 +789,28 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                           min={137}
                           max={198}
                           step={1}
-                          value={[Number(field.value) || 170]}
+                          value={[
+                            typeof field.value === "number"
+                              ? field.value
+                              : Number(field.value) || 170,
+                          ]}
                           onValueChange={([val]) => field.onChange(val)}
                           className="w-full my-2"
                           style={
                             {
-                              "--slider-track-bg": "#fce7f3", // pink-100
-                              "--slider-range-bg": "#db2777", // pink-600
-                              "--slider-thumb-border": "#db2777", // pink-600
+                              "--slider-track-bg": "#fce7f3",
+                              "--slider-range-bg": "#db2777",
+                              "--slider-thumb-border": "#db2777",
                             } as React.CSSProperties
                           }
                         />
                         <div className="flex justify-between text-xs text-gray-500">
-                          <span>4'6"</span>
-                          <span>6'6"</span>
+                          <span>4&apos;6&quot;</span>
+                          <span>6&apos;6&quot;</span>
                         </div>
                         <div className="mt-1 text-sm font-medium text-pink-700">
                           {field.value
-                            ? `${cmToFeetInches(Number(field.value))} (${field.value} cm)`
+                            ? `${cmToFeetInches(typeof field.value === "number" ? field.value : Number(field.value))} (${String(field.value)} cm)`
                             : "Select your height"}
                         </div>
                         {form.formState.errors.height && (

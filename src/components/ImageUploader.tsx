@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Loader2, Upload } from "lucide-react";
@@ -46,7 +46,6 @@ export function ImageUploader({
   toast,
   disabled = false,
   isUploading = false,
-  maxFiles = 5,
   className = "",
 }: ImageUploaderProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -203,7 +202,7 @@ export function ImageUploader({
                   Drop to upload
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  We'll optimize your photo automatically
+                  We&apos;ll optimize your photo automatically
                 </p>
               </div>
             </div>
@@ -230,7 +229,7 @@ export function ImageUploader({
           <DialogHeader>
             <DialogTitle>Crop Image</DialogTitle>
             <DialogDescription>
-              Adjust the crop area and click 'Upload' when done
+              Adjust the crop area and click &apos;Upload&apos; when done
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">

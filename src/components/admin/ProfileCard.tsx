@@ -41,10 +41,37 @@ interface Profile {
   updatedAt?: string;
 }
 
+type ProfileEditFormState = {
+  fullName?: string;
+  ukCity?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: string;
+  education?: string;
+  occupation?: string;
+  annualIncome?: number | string;
+  aboutMe?: string;
+  phoneNumber?: string;
+  diet?: string;
+  smoking?: string;
+  drinking?: string;
+  physicalStatus?: string;
+  partnerPreferenceAgeMin?: number | string;
+  partnerPreferenceAgeMax?: number | string;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  profileImageIds?: string[];
+  banned?: boolean;
+};
+
 interface ProfileCardProps {
   profile: Profile;
   editingId: string | null;
-  editForm: any;
+  editForm: ProfileEditFormState;
   onStartEdit: (profile: Profile) => void;
   onSaveEdit: (id: Id<"profiles">) => void;
   onCancelEdit: () => void;
@@ -66,7 +93,7 @@ export default function ProfileCard({
   const router = useRouter();
 
   // Local state for edit form and loading
-  const [localEditForm, setLocalEditForm] = useState<unknown>({});
+  const [localEditForm, setLocalEditForm] = useState<ProfileEditFormState>({});
   const [isSaving, setIsSaving] = useState(false);
 
   // When editingId changes, sync localEditForm with editForm
@@ -79,15 +106,15 @@ export default function ProfileCard({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    setLocalEditForm((prev: any) => ({
+    setLocalEditForm((prev) => ({
       ...prev,
       [name]: type === "number" ? Number(value) : value,
     }));
   };
 
   // Handle select change
-  const handleSelectChange = (name: string, value: any) => {
-    setLocalEditForm((prev: any) => ({
+  const handleSelectChange = (name: string, value: string | string[]) => {
+    setLocalEditForm((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -95,7 +122,7 @@ export default function ProfileCard({
 
   // Handle checkbox change
   const handleCheckboxChange = (name: string, checked: boolean) => {
-    setLocalEditForm((prev: any) => ({ ...prev, [name]: checked }));
+    setLocalEditForm((prev) => ({ ...prev, [name]: checked }));
   };
 
   // Handle form submit

@@ -132,11 +132,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     }
     try {
       await updateOrder({
-        userId: userConvexData._id,
+        userId: userConvexData._id as Id<"users">,
         imageIds: imageIds as Id<"_storage">[],
       });
       toast.success("Image order updated");
     } catch (error) {
+      console.error("Error updating image order", error);
       toast.error("Failed to update image order");
     }
   };
