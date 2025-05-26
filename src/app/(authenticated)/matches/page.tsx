@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
-import { Loader2, MapPin, Search, UserCircle } from "lucide-react";
+import { MapPin, Search, UserCircle } from "lucide-react";
 import { useState } from "react";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";

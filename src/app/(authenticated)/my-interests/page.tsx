@@ -4,7 +4,7 @@ import { useQuery, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, MapPin, UserCircle } from "lucide-react";
+import { MapPin, UserCircle } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import type { Id } from "convex/_generated/dataModel";
