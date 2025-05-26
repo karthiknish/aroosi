@@ -39,3 +39,32 @@ export type Interest = {
   status: "pending" | "accepted" | "rejected";
   createdAt: number;
 };
+
+export type ProfileEditFormState = {
+  fullName?: string;
+  ukCity?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: string;
+  education?: string;
+  occupation?: string;
+  annualIncome?: number | string;
+  aboutMe?: string;
+  phoneNumber?: string;
+  diet?: string;
+  smoking?: string;
+  drinking?: string;
+  physicalStatus?: string;
+  partnerPreferenceAgeMin?: number | string;
+  partnerPreferenceAgeMax?: number | string;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  profileImageIds?: string[];
+  banned?: boolean;
+  ukPostcode?: string;
+  preferredGender?: string;
+};

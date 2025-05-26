@@ -110,7 +110,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     userConvexData?._id &&
       typeof userConvexData._id === "string" &&
       userConvexData._id.length > 0
-      ? { userId: userConvexData._id }
+      ? { userId: userConvexData._id as Id<"users"> }
       : "skip"
   );
   const imagesArray = (images || []).map((img) => ({
@@ -122,18 +122,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const handleReorder = async (newOrder: unknown[]) => {
     if (!userConvexData?._id) return;
     let imageIds: string[] = [];
-    if (typeof newOrder[0] === "string") {
+    if (Array.isArray(newOrder) && typeof newOrder[0] === "string") {
       imageIds = newOrder as string[];
     } else if (
+      Array.isArray(newOrder) &&
       typeof newOrder[0] === "object" &&
-      (newOrder[0] as { _id: string })._id
+      newOrder[0] !== null &&
+      "_id" in (newOrder[0] as object)
     ) {
-      imageIds = newOrder.map((img: { _id: string }) => img._id);
+      imageIds = (newOrder as { _id: string }[]).map((img) => img._id);
     }
     try {
       await updateOrder({
         userId: userConvexData._id as Id<"users">,
-        imageIds: imageIds as Id<"_storage">[],
+        imageIds: imageIds.map((id) => id as Id<"_storage">),
       });
       toast.success("Image order updated");
     } catch (error) {
@@ -153,8 +155,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     profileData.profileImageIds.length > 0
   ) {
     // Map storage IDs to image objects from imagesArray, and use storageId as _id
-    orderedImages = profileData.profileImageIds
-      .map((storageId: Id<"_storage">) => {
+    orderedImages = (profileData.profileImageIds as Id<"_storage">[])
+      .map((storageId) => {
         const img = imagesArray.find((img) => img.storageId === storageId);
         if (img) {
           return { url: img.url, _id: storageId };
@@ -218,7 +220,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 >
                   <ProfileDetailView
                     label="Email (Verified)"
-                    value={clerkUser?.primaryEmailAddress?.emailAddress}
+                    value={
+                      typeof clerkUser === "object" &&
+                      clerkUser &&
+                      "primaryEmailAddress" in clerkUser
+                        ? (clerkUser as any).primaryEmailAddress?.emailAddress
+                        : undefined
+                    }
                     icon={<Mail className="h-4 w-4" />}
                   />
                   <ProfileDetailView

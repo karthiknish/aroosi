@@ -605,7 +605,12 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                     setModalOpen={setModalOpen}
                     modalIndex={modalIndex}
                     setModalIndex={setModalIndex}
-                    updateOrder={updateOrder}
+                    updateOrder={({ userId, imageIds }) =>
+                      updateOrder({
+                        userId,
+                        imageIds: imageIds as Id<"_storage">[],
+                      })
+                    }
                     toast={toast}
                   />
                 ) : (

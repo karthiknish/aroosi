@@ -8,11 +8,13 @@ import type { ProfileFormValues } from "./ProfileForm";
 type Props = {
   form: import("react-hook-form").UseFormReturn<ProfileFormValues>;
   cmToFeetInches: (cm: number) => string;
+  mode?: "create" | "edit";
 };
 
 const ProfileFormStepBasicInfo: React.FC<Props> = ({
   form,
   cmToFeetInches,
+  mode,
 }) => (
   <>
     <FormField name="fullName" label="Full Name" form={form} isRequired />

@@ -22,7 +22,8 @@ import {
 
 import { Id } from "@/../convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
-import ProfileCard, { type ProfileEditFormState, Profile } from "./ProfileCard";
+import ProfileCard, { type ProfileEditFormState } from "./ProfileCard";
+import type { Profile } from "@/types/profile";
 import { Loader2 } from "lucide-react";
 
 // Helper for rendering a profile image or fallback
