@@ -5,6 +5,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -109,7 +110,7 @@ export function ProfileImageReorder({
     })
   );
 
-  const handleDragEnd = async (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = images.findIndex((img) => img._id === active.id);
