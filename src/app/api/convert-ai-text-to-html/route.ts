@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(geminiBody),
       });
     } catch (err) {
+      console.error("Error in convert-ai-text-to-html route:", err);
       return errorResponse("Failed to connect to Gemini API.", 502);
     }
 

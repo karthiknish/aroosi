@@ -24,7 +24,6 @@ export default function ProfileDetailPage() {
   // Local state for optimistic image reordering for the current user
   const [localCurrentUserImageOrder, setLocalCurrentUserImageOrder] =
     React.useState<string[]>([]);
-  const [interestSent, setInterestSent] = React.useState(false);
   const [interestError, setInterestError] = React.useState<string | null>(null);
 
   // 3. Get the ID from params with proper type safety
@@ -333,7 +332,6 @@ export default function ProfileDetailPage() {
                         }) => Promise<unknown>,
                         currentUserId,
                         id: userId,
-                        setInterestSent,
                       });
                     }}
                     title="Express Interest"
@@ -359,7 +357,6 @@ export default function ProfileDetailPage() {
                           }) => Promise<unknown>,
                         currentUserId,
                         id: userId,
-                        setInterestSent,
                       });
                     }}
                     title="Withdraw Interest"

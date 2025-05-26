@@ -83,7 +83,6 @@ interface ProfileCardProps {
 export default function ProfileCard({
   profile,
   editingId,
-  editForm,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,

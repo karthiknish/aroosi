@@ -82,6 +82,7 @@ export default function CreateProfilePage() {
               }
               router.replace("/create-profile/success");
             } catch (err) {
+              console.error("Error in create-profile page:", err);
               toast.error("Could not create profile. Please try again.");
             }
           }}

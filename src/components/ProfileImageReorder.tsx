@@ -93,7 +93,6 @@ function SortableImage({
 
 export function ProfileImageReorder({
   images,
-  userId,
   onReorder,
   renderAction,
   isAdmin = false,
@@ -132,6 +131,7 @@ export function ProfileImageReorder({
       toast.success("Image order updated");
       if (onReorder) onReorder(newOrdered.map((img) => img._id));
     } catch (e) {
+      console.error("Error in handleDragEnd:", e);
       toast.error("Failed to update image order");
     }
   };

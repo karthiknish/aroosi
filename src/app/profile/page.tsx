@@ -29,7 +29,6 @@ export default function ProfilePage() {
   const updateProfileMutation = useMutation(api.users.updateProfile);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -188,7 +187,7 @@ export default function ProfilePage() {
         clerkUser={clerkUser ? { id: clerkUser.id } : undefined}
         userConvexData={userConvexData}
         onEdit={handleEdit}
-        onDelete={() => setShowDeleteModal(true)}
+        onDelete={() => {}}
         deleting={deleting}
       />
       {showSuccessModal && (
