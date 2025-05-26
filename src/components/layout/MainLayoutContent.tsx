@@ -14,7 +14,7 @@ export default function MainLayoutContent({
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-grow py-8">
+      <main className="flex-grow pt-8">
         {/* Added some basic styling for the main content area */}
         {children}
       </main>

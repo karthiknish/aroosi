@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-0">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-4 px-0">
       <motion.main
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -15,7 +15,7 @@ export default function AboutPage() {
         className="w-full"
       >
         {/* Hero Section */}
-        <div className="w-full text-center mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
+        <section className="w-full text-center bg-white/90 p-8 md:p-16 border-b border-rose-100">
           <Link
             href="/"
             className="inline-block mb-4 text-4xl sm:text-5xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
@@ -29,14 +29,14 @@ export default function AboutPage() {
             Connecting hearts and building lasting relationships within the UK
             Muslim community.
           </p>
-        </div>
+        </section>
 
         {/* Mission Section */}
-        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
+        <section className="w-full bg-pink-50/60 p-8 md:p-16 border-b border-rose-100">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6 text-center">
             Our Mission
           </h2>
-          <p className="text-lg text-gray-700 leading-relaxed mb-6">
+          <p className="text-lg text-gray-700 leading-relaxed mb-6 max-w-3xl mx-auto text-center">
             At Aroosi, our mission is to provide a safe, respectful, and
             effective platform for Muslims in the United Kingdom to find their
             life partners. We understand the importance of shared values,
@@ -44,8 +44,8 @@ export default function AboutPage() {
             helping individuals navigate their journey towards marriage with
             confidence and support.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <div className="bg-pink-50 p-6 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 max-w-4xl mx-auto">
+            <div className="bg-white/80 p-6 rounded-lg">
               <h3 className="text-xl font-semibold text-gray-800 mb-3">
                 Our Vision
               </h3>
@@ -55,7 +55,7 @@ export default function AboutPage() {
                 marriages.
               </p>
             </div>
-            <div className="bg-rose-50 p-6 rounded-lg">
+            <div className="bg-white/80 p-6 rounded-lg">
               <h3 className="text-xl font-semibold text-gray-800 mb-3">
                 Our Values
               </h3>
@@ -69,13 +69,13 @@ export default function AboutPage() {
         </section>
 
         {/* Why Choose Aroosi Section */}
-        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
+        <section className="w-full bg-white/90 p-8 md:p-16 border-b border-rose-100">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-8 text-center">
             Why Choose Aroosi?
           </h2>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <motion.div
-              className="p-6 bg-pink-50 rounded-lg shadow-md"
+              className="p-6 bg-pink-50/80 rounded-lg"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
@@ -90,7 +90,7 @@ export default function AboutPage() {
               </p>
             </motion.div>
             <motion.div
-              className="p-6 bg-rose-50 rounded-lg shadow-md"
+              className="p-6 bg-rose-50/80 rounded-lg"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
@@ -105,7 +105,7 @@ export default function AboutPage() {
               </p>
             </motion.div>
             <motion.div
-              className="p-6 bg-purple-50 rounded-lg shadow-md"
+              className="p-6 bg-purple-50/80 rounded-lg"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
@@ -123,11 +123,11 @@ export default function AboutPage() {
         </section>
 
         {/* Our Story Section */}
-        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
+        <section className="w-full bg-pink-50/60 p-8 md:p-16 border-b border-rose-100">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6 text-center">
             Our Story
           </h2>
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             <div>
               <p className="text-lg text-gray-700 leading-relaxed mb-4">
                 Aroosi was founded with a simple vision: to make the process of
@@ -143,7 +143,7 @@ export default function AboutPage() {
                 goals.
               </p>
             </div>
-            <div className="bg-gradient-to-br from-pink-100 to-rose-100 p-6 rounded-lg">
+            <div className="bg-white/80 p-6 rounded-lg">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">
                 Our Journey
               </h3>
@@ -178,11 +178,11 @@ export default function AboutPage() {
         </section>
 
         {/* Team Section */}
-        <section className="w-full mb-16 bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
+        <section className="w-full bg-white/90 p-8 md:p-16 border-b border-rose-100">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-8 text-center">
             Meet Our Team
           </h2>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <div className="text-center">
               <div className="w-32 h-32 bg-pink-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <span className="text-2xl text-pink-600 font-semibold">AM</span>
@@ -216,7 +216,7 @@ export default function AboutPage() {
         </section>
 
         {/* Call to Action Section */}
-        <section className="w-full text-center bg-white p-8 md:p-16 rounded-none md:rounded-xl shadow-xl">
+        <section className="w-full text-center bg-pink-50/60 p-8 md:p-16">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6">
             Join Our Community
           </h2>
