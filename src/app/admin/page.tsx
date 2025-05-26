@@ -22,7 +22,8 @@ import { Id } from "@/../convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import type { Profile } from "@/types/profile";
-
+import { BlogPostFields } from "@/components/admin/BlogPostFields";
+import BlogEditor from "@/components/admin/BlogEditor";
 interface BlogPost {
   _id: string;
   title: string;
@@ -83,6 +84,7 @@ function AdminPageInner() {
     content?: boolean;
   }>({});
   const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [editorResetKey, setEditorResetKey] = useState(0);
 
   // Markdown shortcuts
   type MarkdownShortcut = {
@@ -229,6 +231,10 @@ function AdminPageInner() {
       setContent("");
       setImageUrl("");
       setCategories([]);
+      if (contentRef.current) {
+        contentRef.current.value = "";
+      }
+      setEditorResetKey((k) => k + 1);
       setError(null);
       toast.success("Post created successfully!");
     } catch {
@@ -440,43 +446,119 @@ function AdminPageInner() {
                   <input
                     type="text"
                     placeholder="Search posts..."
-                    className="w-full md:w-1/3 px-3 py-2 border rounded focus:ring-2 focus:ring-pink-200"
+                    className="w-full md:w-1/3 px-3 py-2 border rounded focus:ring-2 focus:ring-pink-200 bg-white"
                     // Add search logic if desired
                   />
                   {/* <Button variant="outline">Filter</Button> */}
                 </div>
+                {/* Edit Blog Form (separate from list) */}
+                {editingId && (
+                  <div className="mb-8">
+                    <div className="max-w-2xl mx-auto">
+                      <div className="bg-white rounded-lg shadow-lg p-6 border border-pink-200">
+                        <h2 className="text-xl font-bold mb-4 text-pink-700">
+                          Edit Blog Post
+                        </h2>
+                        <BlogPostFields
+                          title={editTitle}
+                          setTitle={setEditTitle}
+                          slug={editSlug}
+                          setSlug={setEditSlug}
+                          slugManuallyEdited={editSlugManuallyEdited}
+                          setSlugManuallyEdited={setEditSlugManuallyEdited}
+                          slugify={slugify}
+                          excerpt={editExcerpt}
+                          setExcerpt={setEditExcerpt}
+                          categories={editCategories}
+                          setCategories={setEditCategories}
+                          imageUrl={editImageUrl}
+                          setImageUrl={setEditImageUrl}
+                          pexelsOpen={editPexelsOpen}
+                          setPexelsOpen={setEditPexelsOpen}
+                          aiLoading={aiLoading}
+                          aiText={aiText}
+                          content={editContent}
+                          disabled={false}
+                        />
+                        <div className="md:flex gap-6 mt-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-medium">Content</span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="text-pink-600 border-pink-300"
+                                onClick={async () => {
+                                  setAiLoading((prev) => ({
+                                    ...prev,
+                                    content: true,
+                                  }));
+                                  const ai = await (async () => {
+                                    const res = await fetch(
+                                      "/api/convert-ai-text-to-html",
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({
+                                          text: `${editTitle}\n${editExcerpt}\n${editCategories.join(", ")}`,
+                                          type: "blog",
+                                        }),
+                                      }
+                                    );
+                                    const data = await res.json();
+                                    if (!res.ok)
+                                      throw new Error(data.error || "AI error");
+                                    return data.html;
+                                  })();
+                                  if (ai) setEditContent(ai);
+                                  setAiLoading((prev) => ({
+                                    ...prev,
+                                    content: false,
+                                  }));
+                                }}
+                                disabled={aiLoading.content}
+                              >
+                                {aiLoading.content ? "AI..." : "AI"}
+                              </Button>
+                            </div>
+                            <BlogEditor
+                              key={editingId}
+                              value={editContent}
+                              onChange={setEditContent}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                          <Button
+                            size="sm"
+                            className="bg-pink-600 hover:bg-pink-700"
+                            onClick={() => saveEdit(editingId)}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={cancelEdit}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <BlogPosts
                   posts={blogPosts || []}
-                  editingPost={editingId}
                   setEditingPost={(id) => {
                     const post = blogPosts?.find((p) => p._id === id);
                     if (post) startEdit(post);
                     else setEditingId(id);
                   }}
-                  editTitle={editTitle}
-                  setEditTitle={setEditTitle}
-                  editSlug={editSlug}
-                  setEditSlug={setEditSlug}
-                  editExcerpt={editExcerpt}
-                  setEditExcerpt={setEditExcerpt}
-                  editContent={editContent}
-                  setEditContent={setEditContent}
-                  editImageUrl={editImageUrl}
-                  setEditImageUrl={setEditImageUrl}
-                  editSlugManuallyEdited={editSlugManuallyEdited}
-                  setEditSlugManuallyEdited={setEditSlugManuallyEdited}
-                  editPexelsOpen={editPexelsOpen}
-                  setEditPexelsOpen={setEditPexelsOpen}
-                  markdownShortcuts={markdownShortcuts}
-                  insertMarkdown={insertMarkdown}
-                  editContentRef={editContentRef}
-                  convertToMarkdownWithGemini={convertToMarkdownWithGemini}
-                  slugify={slugify}
-                  saveEdit={saveEdit}
-                  cancelEdit={cancelEdit}
                   deletePost={confirmDelete}
-                  editCategories={editCategories}
-                  setEditCategories={setEditCategories}
                 />
               </>
             )}
@@ -509,6 +591,7 @@ function AdminPageInner() {
                 aiLoading={aiLoading}
                 aiText={aiText}
                 previewHtml={previewHtml}
+                editorResetKey={editorResetKey}
               />
             )}
           </main>

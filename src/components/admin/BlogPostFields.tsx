@@ -78,66 +78,84 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
         </div>
       </div>
 
-      <div className="flex gap-2 items-center">
-        <Input
-          placeholder="Brief description of the post"
-          value={excerpt}
-          onChange={(e) => setExcerpt(e.target.value)}
-          disabled={disabled}
-          className="mt-1"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className="text-pink-600 border-pink-300"
-          onClick={async () => {
-            const ai = await aiText(content, "excerpt");
-            if (ai) setExcerpt(ai);
-          }}
-          disabled={aiLoading.excerpt || disabled}
-        >
-          {aiLoading.excerpt ? "AI..." : "AI"}
-        </Button>
-      </div>
-
-      <div className="flex gap-2 items-center">
-        <Input
-          placeholder="Categories (comma separated)"
-          value={categories.join(", ")}
-          onChange={(e) =>
-            setCategories(
-              e.target.value
-                .split(",")
-                .map((c) => c.trim())
-                .filter(Boolean)
-            )
-          }
-          className="mb-2"
-          disabled={disabled}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className="text-pink-600 border-pink-300"
-          onClick={async () => {
-            const ai = await aiText(content, "category");
-            if (ai)
-              setCategories(
-                ai
-                  .split(",")
-                  .map((c: string) => c.trim())
-                  .filter(Boolean)
-              );
-          }}
-          disabled={aiLoading.category || disabled}
-        >
-          {aiLoading.category ? "AI..." : "AI"}
-        </Button>
+      <div>
+        <label className="text-sm font-medium text-gray-700">
+          Excerpt <span className="text-red-500">*</span>
+        </label>
+        <div className="flex gap-2 items-center">
+          <Input
+            placeholder="Short summary of the post"
+            value={excerpt}
+            onChange={(e) => setExcerpt(e.target.value)}
+            className="mb-2"
+            required
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="text-pink-600 border-pink-300"
+            onClick={async () => {
+              const ai = await aiText(content, "excerpt");
+              if (ai) setExcerpt(ai);
+            }}
+            disabled={aiLoading.excerpt || disabled}
+          >
+            {aiLoading.excerpt ? "AI..." : "AI"}
+          </Button>
+        </div>
+        {excerpt.trim() === "" && (
+          <div className="text-xs text-red-500 mb-2">Excerpt is required.</div>
+        )}
       </div>
 
       <div>
         <label className="text-sm font-medium text-gray-700">
-          Featured Image
+          Categories <span className="text-red-500">*</span>
+        </label>
+        <div className="flex gap-2 items-center">
+          <Input
+            placeholder="Categories (comma separated)"
+            value={categories.join(", ")}
+            onChange={(e) =>
+              setCategories(
+                e.target.value
+                  .split(",")
+                  .map((c) => c.trim())
+                  .filter(Boolean)
+              )
+            }
+            className="mb-2"
+            required
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="text-pink-600 border-pink-300"
+            onClick={async () => {
+              const ai = await aiText(content, "category");
+              if (ai)
+                setCategories(
+                  ai
+                    .split(",")
+                    .map((c: string) => c.trim())
+                    .filter(Boolean)
+                );
+            }}
+            disabled={aiLoading.category || disabled}
+          >
+            {aiLoading.category ? "AI..." : "AI"}
+          </Button>
+        </div>
+        {categories.length === 0 && (
+          <div className="text-xs text-red-500 mb-2">
+            At least one category is required.
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700">
+          Featured Image <span className="text-red-500">*</span>
         </label>
         <div className="mt-1 flex gap-2">
           <Input
@@ -145,6 +163,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             disabled={disabled}
+            required
           />
           <Button
             type="button"
@@ -157,6 +176,11 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             Search Images
           </Button>
         </div>
+        {(!imageUrl || imageUrl.trim() === "") && (
+          <div className="text-xs text-red-500 mb-2">
+            Image URL is required.
+          </div>
+        )}
         {imageUrl && (
           <img
             src={imageUrl}

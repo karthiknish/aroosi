@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
   try {
     const response = await fetch(
-      `${PEXELS_API_URL}?query=${encodeURIComponent(query)}&per_page=12`,
+      `${PEXELS_API_URL}?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape`,
       {
         headers: {
           Authorization: PEXELS_API_KEY,

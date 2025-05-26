@@ -50,6 +50,7 @@ interface CreatePostProps {
   aiLoading: { excerpt?: boolean; category?: boolean; content?: boolean };
   aiText: (text: string, field: "excerpt" | "category") => Promise<string>;
   previewHtml: string;
+  editorResetKey: number;
 }
 
 export function CreatePost({
@@ -75,6 +76,7 @@ export function CreatePost({
   aiText,
   pexelsOpen,
   setPexelsOpen,
+  editorResetKey,
 }: CreatePostProps) {
   return (
     <Card>
@@ -108,7 +110,11 @@ export function CreatePost({
           <div>
             <label className="text-sm font-medium text-gray-700">Content</label>
             <div className="mt-1">
-              <BlogEditor value={content} onChange={setContent} />
+              <BlogEditor
+                key={editorResetKey}
+                value={content}
+                onChange={setContent}
+              />
             </div>
           </div>
           <div className="flex justify-end">
