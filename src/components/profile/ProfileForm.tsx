@@ -327,10 +327,22 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   // 5. Update handleSubmit signature
   const handleSubmit = async (values: ProfileFormValues) => {
+    // Add a type guard for images
+    function isValidImage(
+      img: unknown
+    ): img is { url: string; storageId: string } {
+      return (
+        typeof img === "object" &&
+        img !== null &&
+        "url" in img &&
+        typeof (img as any).url === "string" &&
+        "storageId" in img &&
+        typeof (img as any).storageId === "string"
+      );
+    }
+
     // Use images from userImagesQuery for validation
-    const validImages = (userImagesQuery || []).filter(
-      (img: any) => img && !!img.url && img.storageId
-    );
+    const validImages = (userImagesQuery || []).filter(isValidImage);
     // Check if we're on the image upload step and no images are uploaded
     if (mode === "create" && currentStep === 4 && validImages.length === 0) {
       form.setError("profileImageIds", {
@@ -467,7 +479,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       setUploadedImageIds(newIds);
       if (handleImagesChanged) handleImagesChanged(newIds);
       toast.success("Image deleted successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete image");
     } finally {
       setDeletingImageId(null);

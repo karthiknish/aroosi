@@ -11,7 +11,6 @@ import {
   Phone,
   GraduationCap,
   Briefcase,
-  Info,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -24,6 +23,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+
 export default function AdminProfileDetailPage() {
   // All hooks must be called unconditionally at the top
   const { id } = useParams<{ id: string }>();
@@ -102,11 +102,15 @@ export default function AdminProfileDetailPage() {
   });
 
   // Process images for display
-  const { imageMap, orderedImages } = React.useMemo(() => {
+  type ImageType = {
+    storageId: string;
+    url?: string | null;
+    [key: string]: unknown;
+  };
+  const { orderedImages: orderedImagesRaw } = React.useMemo(() => {
     // Default return values
     const defaultReturn = {
-      imageMap: {} as Record<string, any>,
-      orderedImages: [] as any[],
+      orderedImages: [] as ImageType[],
     };
 
     if (!profile) {
@@ -118,7 +122,7 @@ export default function AdminProfileDetailPage() {
     console.log("Raw images:", images);
 
     // Ensure we have a valid images array
-    const validImages = Array.isArray(images) ? images : [];
+    const validImages: ImageType[] = Array.isArray(images) ? images : [];
     console.log("Valid images:", validImages);
 
     // If no images, return early
@@ -128,16 +132,16 @@ export default function AdminProfileDetailPage() {
     }
 
     // Create a map of storageId to image
-    const map = Object.fromEntries(
+    const map: Record<string, ImageType> = Object.fromEntries(
       validImages.map((img) => [String(img.storageId), img])
-    ) as Record<string, any>;
+    );
     console.log("Image map:", map);
 
     // Get all images in their original order
     const all = [...validImages];
 
     // Get ordered images based on profileImageIds if available
-    let ordered: any[] = [];
+    let ordered: ImageType[] = [];
     const profileImageIds = Array.isArray(profile.profileImageIds)
       ? profile.profileImageIds
       : [];
@@ -157,10 +161,13 @@ export default function AdminProfileDetailPage() {
     console.log("Final ordered images:", ordered);
 
     return {
-      imageMap: map,
-      orderedImages: ordered,
+      orderedImages: Array.isArray(ordered) ? ordered : [],
     };
   }, [images, profile]);
+
+  const orderedImages: ImageType[] = Array.isArray(orderedImagesRaw)
+    ? orderedImagesRaw
+    : [];
 
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const handlePrev = () => {
@@ -232,7 +239,7 @@ export default function AdminProfileDetailPage() {
           ? "Profile hidden from search."
           : "Profile visible in search."
       );
-    } catch (err) {
+    } catch {
       toast.error("Failed to update search visibility");
     }
   };
@@ -242,11 +249,11 @@ export default function AdminProfileDetailPage() {
       {/* Profile Images Slider Section */}
       <Card className="mb-8 mt-8">
         <CardContent>
-          {orderedImages.length > 0 ? (
+          {Array.isArray(orderedImages) && orderedImages.length > 0 ? (
             <div className="flex flex-col items-center">
               <div className="relative w-64 h-64 flex items-center justify-center">
                 {/* Only show arrows if more than one image */}
-                {orderedImages.length > 1 && (
+                {Array.isArray(orderedImages) && orderedImages.length > 1 && (
                   <button
                     onClick={handlePrev}
                     className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition z-10"
@@ -261,7 +268,7 @@ export default function AdminProfileDetailPage() {
                   <div className="w-full h-full flex items-center justify-center">
                     <img
                       src={
-                        orderedImages[currentImageIdx]?.url ||
+                        (orderedImages[currentImageIdx]?.url ?? undefined) ||
                         (orderedImages[currentImageIdx]?.storageId
                           ? `/api/storage/${orderedImages[currentImageIdx].storageId}`
                           : "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png")
@@ -307,7 +314,7 @@ export default function AdminProfileDetailPage() {
                 </div>
 
                 {/* Only show arrows if more than one image */}
-                {orderedImages.length > 1 && (
+                {Array.isArray(orderedImages) && orderedImages.length > 1 && (
                   <button
                     onClick={handleNext}
                     className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow hover:bg-pink-100 transition z-10"
@@ -326,7 +333,7 @@ export default function AdminProfileDetailPage() {
               {/* Thumbnail navigation */}
               <div className="flex flex-col gap-4 mt-8">
                 {/* Dots for mobile */}
-                {orderedImages.length > 1 && (
+                {Array.isArray(orderedImages) && orderedImages.length > 1 && (
                   <div className="flex gap-2 justify-center">
                     {orderedImages.map((_, idx) => (
                       <button
@@ -345,11 +352,11 @@ export default function AdminProfileDetailPage() {
                 )}
 
                 {/* Image grid */}
-                {orderedImages.length > 0 && (
+                {Array.isArray(orderedImages) && orderedImages.length > 0 && (
                   <div className="grid grid-cols-4 gap-2">
                     {orderedImages.map((img, idx) => (
                       <div
-                        key={img.storageId}
+                        key={String(img.storageId) || idx}
                         className={`relative aspect-square rounded-md overflow-hidden cursor-pointer border-2 transition-all ${
                           idx === currentImageIdx
                             ? "border-pink-500 ring-2 ring-pink-200"
@@ -358,7 +365,10 @@ export default function AdminProfileDetailPage() {
                         onClick={() => setCurrentImageIdx(idx)}
                       >
                         <img
-                          src={img.url || `/api/storage/${img.storageId}`}
+                          src={
+                            (img.url ?? undefined) ||
+                            `/api/storage/${img.storageId}`
+                          }
                           alt={`Thumbnail ${idx + 1}`}
                           className="w-full h-full object-cover"
                           onError={(e) => {
@@ -539,20 +549,30 @@ export default function AdminProfileDetailPage() {
         <CardContent>
           {matches && matches.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {matches.map((m: any) => {
+              {matches.map((m: Record<string, unknown>, idx: number) => {
+                const profileImageIds = Array.isArray(m.profileImageIds)
+                  ? m.profileImageIds
+                  : [];
                 const matchImageUrl =
-                  m.profileImageIds && m.profileImageIds.length > 0
-                    ? `/api/storage/${m.profileImageIds[0]}`
+                  profileImageIds.length > 0
+                    ? `/api/storage/${String(profileImageIds[0])}`
                     : null;
+                const fullName =
+                  typeof m.fullName === "string" ? m.fullName : "Unnamed";
+                const ukCity = typeof m.ukCity === "string" ? m.ukCity : "-";
+                const id =
+                  typeof m._id === "string" || typeof m._id === "number"
+                    ? m._id
+                    : idx;
                 return (
                   <div
-                    key={m._id}
+                    key={id}
                     className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border hover:shadow transition"
                   >
                     {matchImageUrl ? (
                       <img
                         src={matchImageUrl}
-                        alt={m.fullName || "Profile"}
+                        alt={fullName}
                         className="w-16 h-16 rounded-full object-cover border"
                       />
                     ) : (
@@ -562,14 +582,12 @@ export default function AdminProfileDetailPage() {
                     )}
                     <div className="flex-1">
                       <div className="font-semibold text-gray-900">
-                        {m.fullName || "Unnamed"}
+                        {fullName}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {m.ukCity || "-"}
-                      </div>
+                      <div className="text-sm text-gray-500">{ukCity}</div>
                     </div>
                     <Link
-                      href={`/admin/profile/${m._id}`}
+                      href={`/admin/profile/${id}`}
                       className="text-pink-600 hover:text-pink-800 font-semibold text-xs flex items-center gap-1"
                     >
                       <Eye className="w-4 h-4" /> View

@@ -23,7 +23,6 @@ import {
 import { Id } from "@/../convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
 import ProfileCard, { type ProfileEditFormState, Profile } from "./ProfileCard";
-import { ConvexError } from "convex/values";
 import { Loader2 } from "lucide-react";
 
 // Helper for rendering a profile image or fallback
@@ -200,26 +199,40 @@ export function ProfileManagement() {
                 ? undefined
                 : Number(ef.partnerPreferenceAgeMax)
               : ef.partnerPreferenceAgeMax,
-        partnerPreferenceReligion:
-          typeof ef.partnerPreferenceReligion === "string" &&
-          ef.partnerPreferenceReligion
-            ? ef.partnerPreferenceReligion
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-            : Array.isArray(ef.partnerPreferenceReligion)
-              ? ef.partnerPreferenceReligion
-              : undefined,
-        partnerPreferenceUkCity:
-          typeof ef.partnerPreferenceUkCity === "string" &&
-          ef.partnerPreferenceUkCity
-            ? ef.partnerPreferenceUkCity
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-            : Array.isArray(ef.partnerPreferenceUkCity)
-              ? ef.partnerPreferenceUkCity
-              : undefined,
+        partnerPreferenceReligion: ((): string[] | undefined => {
+          const val = ef.partnerPreferenceReligion;
+          if (
+            typeof val === "string" &&
+            val !== undefined &&
+            val !== null &&
+            val !== ""
+          ) {
+            return (val as string)
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean);
+          } else if (Array.isArray(val)) {
+            return val;
+          }
+          return undefined;
+        })(),
+        partnerPreferenceUkCity: ((): string[] | undefined => {
+          const val = ef.partnerPreferenceUkCity;
+          if (
+            typeof val === "string" &&
+            val !== undefined &&
+            val !== null &&
+            val !== ""
+          ) {
+            return (val as string)
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean);
+          } else if (Array.isArray(val)) {
+            return val;
+          }
+          return undefined;
+        })(),
         profileImageIds: Array.isArray(ef.profileImageIds)
           ? (ef.profileImageIds.filter(Boolean) as Id<"_storage">[])
           : undefined,
