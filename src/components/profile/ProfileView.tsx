@@ -90,7 +90,7 @@ const DisplaySection: React.FC<{
 
 export interface ProfileViewProps {
   profileData: Profile;
-  clerkUser: any;
+  clerkUser: unknown;
   userConvexData: { _id?: string; _creationTime?: number } | null | undefined;
   onEdit: () => void;
   onDelete: () => void;
@@ -119,13 +119,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   }));
   const updateOrder = useMutation(api.users.updateProfileImageOrder);
 
-  const handleReorder = async (newOrder: any[]) => {
+  const handleReorder = async (newOrder: unknown[]) => {
     if (!userConvexData?._id) return;
     let imageIds: string[] = [];
     if (typeof newOrder[0] === "string") {
       imageIds = newOrder as string[];
-    } else if (typeof newOrder[0] === "object" && newOrder[0]._id) {
-      imageIds = newOrder.map((img: any) => img._id);
+    } else if (
+      typeof newOrder[0] === "object" &&
+      (newOrder[0] as { _id: string })._id
+    ) {
+      imageIds = newOrder.map((img: { _id: string }) => img._id);
     }
     try {
       await updateOrder({
@@ -444,8 +447,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   Your Aroosi profile is ready to be filled out!
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
-                  Click the 'Edit Profile' button above to add your details and
-                  start connecting.
+                  Click the &apos;Edit Profile&apos; button above to add your
+                  details and start connecting.
                 </p>
                 <Button
                   onClick={onEdit}

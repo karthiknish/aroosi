@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Save, X, Eye } from "lucide-react";
 import { Id } from "@/../convex/_generated/dataModel";
@@ -60,14 +60,13 @@ export default function ProfileCard({
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
-  onDelete,
   onToggleBan,
   setDeleteId,
 }: ProfileCardProps) {
   const router = useRouter();
 
   // Local state for edit form and loading
-  const [localEditForm, setLocalEditForm] = useState(editForm || {});
+  const [localEditForm, setLocalEditForm] = useState<unknown>({});
   const [isSaving, setIsSaving] = useState(false);
 
   // When editingId changes, sync localEditForm with editForm
@@ -94,13 +93,9 @@ export default function ProfileCard({
     }));
   };
 
-  // Handle checkbox change (for boolean fields)
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setLocalEditForm((prev: any) => ({
-      ...prev,
-      [name]: checked,
-    }));
+  // Handle checkbox change
+  const handleCheckboxChange = (name: string, checked: boolean) => {
+    setLocalEditForm((prev: any) => ({ ...prev, [name]: checked }));
   };
 
   // Handle form submit
@@ -126,9 +121,7 @@ export default function ProfileCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  onSaveEdit(profile._id as Id<"profiles">, localEditForm)
-                }
+                onClick={() => onSaveEdit(profile._id as Id<"profiles">)}
                 disabled={isSaving}
               >
                 <Save className="h-4 w-4 mr-2" />

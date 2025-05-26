@@ -59,7 +59,6 @@ export default function ProfileEditForm({
   editForm,
   onInputChange,
   onSelectChange,
-  onCheckboxChange,
   onSubmit,
   loading,
 }: ProfileEditFormProps) {

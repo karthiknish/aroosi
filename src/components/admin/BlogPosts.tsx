@@ -7,14 +7,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Image as ImageIcon,
-  Edit,
-  Trash2,
-  Calendar,
-  Clock,
-} from "lucide-react";
+import { Edit, Trash2, Calendar, Clock } from "lucide-react";
 
 import { toast } from "sonner";
 import BlogEditor from "@/components/admin/BlogEditor";
@@ -94,10 +87,6 @@ export function BlogPosts({
   setEditSlugManuallyEdited,
   editPexelsOpen,
   setEditPexelsOpen,
-  markdownShortcuts,
-  insertMarkdown,
-  editContentRef,
-  convertToMarkdownWithGemini,
   slugify,
   saveEdit,
   cancelEdit,

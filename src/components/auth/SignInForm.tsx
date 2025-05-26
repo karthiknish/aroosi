@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,6 +24,8 @@ const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(1, { message: "Password is required." }), // Min 1, as we don't set length requirement for login
 });
+
+type ErrorWithMessage = { message?: string; data?: { message?: string } };
 
 export default function SignInForm() {
   const logInUserMutation = useMutation(api.users.logIn);
@@ -57,11 +58,28 @@ export default function SignInForm() {
         // This case should ideally be handled by errors thrown from the mutation
         setServerError("Login failed. Please check your credentials.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Sign in error:", error);
-      const convexErrorMessage = error.data?.message;
+      let convexErrorMessage: string | undefined = undefined;
+      let errorMessage: string | undefined = undefined;
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "data" in error &&
+        typeof (error as ErrorWithMessage).data?.message === "string"
+      ) {
+        convexErrorMessage = (error as ErrorWithMessage).data!.message;
+      }
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof (error as ErrorWithMessage).message === "string"
+      ) {
+        errorMessage = (error as ErrorWithMessage).message!;
+      }
       setServerError(
-        convexErrorMessage || error.message || "An unexpected error occurred."
+        convexErrorMessage || errorMessage || "An unexpected error occurred."
       );
     } finally {
       setIsLoading(false);

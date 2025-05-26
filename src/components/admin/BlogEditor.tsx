@@ -231,6 +231,20 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       active: editor.isActive("heading", { level: 4 }),
     },
     {
+      key: "h5",
+      icon: Heading5Icon,
+      label: "H5",
+      onClick: () => editor.chain().focus().toggleHeading({ level: 5 }).run(),
+      active: editor.isActive("heading", { level: 5 }),
+    },
+    {
+      key: "h6",
+      icon: Heading6Icon,
+      label: "H6",
+      onClick: () => editor.chain().focus().toggleHeading({ level: 6 }).run(),
+      active: editor.isActive("heading", { level: 6 }),
+    },
+    {
       key: "bulletList",
       icon: ListIcon,
       label: "List",
@@ -571,7 +585,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 export default function BlogEditor({
   value,
   onChange,
-  convertToMarkdownWithGemini,
 }: {
   value: string;
   onChange: (val: string) => void;

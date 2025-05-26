@@ -6,8 +6,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Image as ImageIcon } from "lucide-react";
 import BlogEditor from "@/components/admin/BlogEditor";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
 
@@ -75,7 +73,6 @@ export function CreatePost({
   setCategories,
   aiLoading,
   aiText,
-  previewHtml,
   pexelsOpen,
   setPexelsOpen,
 }: CreatePostProps) {

@@ -1,21 +1,19 @@
 "use client";
 
-import { useForm, SubmitHandler, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState, forwardRef, useCallback } from "react";
+import { useForm, Controller } from "react-hook-form";
+
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { format, parseISO, addYears, subYears } from "date-fns";
+import { motion } from "framer-motion";
+import { format, parseISO, subYears } from "date-fns";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "@/styles/react-datepicker-custom.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,29 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Loader2,
-  Camera,
-  XCircle,
-  Save,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Loader2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import * as z from "zod";
 import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder } from "../ProfileImageReorder";
-import { Profile } from "@/types/profile";
 import { useWindowSize } from "react-use";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
