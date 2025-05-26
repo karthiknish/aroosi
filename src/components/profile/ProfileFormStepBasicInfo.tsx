@@ -14,7 +14,7 @@ type Props = {
 const ProfileFormStepBasicInfo: React.FC<Props> = ({
   form,
   cmToFeetInches,
-  mode,
+
 }) => (
   <>
     <FormField name="fullName" label="Full Name" form={form} isRequired />

@@ -224,7 +224,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                       typeof clerkUser === "object" &&
                       clerkUser &&
                       "primaryEmailAddress" in clerkUser
-                        ? (clerkUser as any).primaryEmailAddress?.emailAddress
+                        ? (
+                            clerkUser as {
+                              primaryEmailAddress: { emailAddress: string };
+                            }
+                          ).primaryEmailAddress?.emailAddress
                         : undefined
                     }
                     icon={<Mail className="h-4 w-4" />}
