@@ -3,43 +3,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Save, X, Eye } from "lucide-react";
 import { Id } from "@/../convex/_generated/dataModel";
+import type { Profile } from "@/types/profile";
 import { useRouter } from "next/navigation";
 import ProfileEditForm from "./ProfileEditForm";
 import ProfileView from "./ProfileView";
-
-export interface Profile {
-  _id: string;
-  userId: string;
-  clerkId: string;
-  isProfileComplete?: boolean;
-  fullName?: string;
-  dateOfBirth?: string;
-  gender?: "male" | "female" | "other";
-  ukCity?: string;
-  ukPostcode?: string;
-  religion?: string;
-  caste?: string;
-  motherTongue?: string;
-  height?: string;
-  maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
-  education?: string;
-  occupation?: string;
-  annualIncome?: number;
-  aboutMe?: string;
-  phoneNumber?: string;
-  diet?: "vegetarian" | "non-vegetarian" | "vegan" | "eggetarian" | "other";
-  smoking?: "no" | "occasionally" | "yes";
-  drinking?: "no" | "occasionally" | "yes";
-  physicalStatus?: "normal" | "differently-abled" | "other";
-  partnerPreferenceAgeMin?: number;
-  partnerPreferenceAgeMax?: number;
-  partnerPreferenceReligion?: string[];
-  partnerPreferenceUkCity?: string[];
-  profileImageIds?: string[];
-  banned?: boolean;
-  createdAt: string;
-  updatedAt?: string;
-}
 
 export type ProfileEditFormState = {
   fullName?: string;
