@@ -46,7 +46,6 @@ export const DisplaySection: React.FC<DisplaySectionProps> = ({
 
 import { toast } from "sonner";
 import { Id } from "@/../convex/_generated/dataModel";
-import type { Interest } from "@/types/profile";
 
 export async function handleExpressInterest({
   setInterestError,

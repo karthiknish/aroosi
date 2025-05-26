@@ -328,13 +328,13 @@ export default function ProfileDetailPage() {
                       if (!currentUserId || !userId) return;
                       handleExpressInterest({
                         setInterestError,
+                        setInterestSent,
                         sendInterestMutation: sendInterestMutation as (args: {
                           fromUserId: Id<"users">;
                           toUserId: Id<"users">;
                         }) => Promise<unknown>,
                         currentUserId,
                         id: userId,
-                        setInterestSent,
                       });
                     }}
                     title="Express Interest"
@@ -353,6 +353,7 @@ export default function ProfileDetailPage() {
                       if (!currentUserId || !userId) return;
                       handleRemoveInterest({
                         setInterestError,
+                        setInterestSent,
                         removeInterestMutation:
                           removeInterestMutation as (args: {
                             fromUserId: Id<"users">;
@@ -360,7 +361,6 @@ export default function ProfileDetailPage() {
                           }) => Promise<unknown>,
                         currentUserId,
                         id: userId,
-                        setInterestSent,
                       });
                     }}
                     title="Withdraw Interest"
