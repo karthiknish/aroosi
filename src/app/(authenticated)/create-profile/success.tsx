@@ -67,7 +67,7 @@ export default function CreateProfileSuccessPage() {
         <p className="text-lg text-pink-600 mb-4 text-center">
           Your profile has been created successfully.
           <br />
-          We're excited to have you join our community.
+          We&apos;re excited to have you join our community.
         </p>
         <Button
           className="mt-6 px-6 py-2 rounded bg-pink-600 hover:bg-pink-700 text-white font-semibold shadow"

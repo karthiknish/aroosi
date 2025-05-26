@@ -6,11 +6,10 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function CreateProfilePage() {
-  const [profileCreated, setProfileCreated] = useState(false);
-  const [refetchKey, setRefetchKey] = useState(0);
+  const refetchKey = 0;
   const createProfile = useMutation(api.users.createProfile);
   const currentUserProfile = useQuery(api.users.getCurrentUserWithProfile, {});
   const router = useRouter();

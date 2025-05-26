@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Users, Heart, MapPin, Shield, Star, Clock } from "lucide-react";
+import { Users, Heart, Shield, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AboutPage() {

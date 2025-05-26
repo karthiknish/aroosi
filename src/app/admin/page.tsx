@@ -8,12 +8,9 @@ import {
 } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-
-import { Settings } from "lucide-react";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { toast } from "sonner";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
-import { Sidebar } from "@/components/admin/Sidebar";
 import { ContactMessages } from "@/components/admin/ContactMessages";
 import { BlogPosts } from "@/components/admin/BlogPosts";
 import { CreatePost } from "@/components/admin/CreatePost";
@@ -24,7 +21,6 @@ import {
   useMutation as useConvexMutation,
 } from "convex/react";
 import Head from "next/head";
-import { motion } from "framer-motion";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
@@ -78,8 +74,6 @@ function AdminPageInner() {
     useState<boolean>(false);
   const [editPexelsOpen, setEditPexelsOpen] = useState<boolean>(false);
   const editContentRef = useRef<HTMLTextAreaElement>(null);
-
-  const queryClientInstance = useQueryClient();
 
   const [adminError, setAdminError] = useState<string | null>(null);
   const { user, isLoaded, isSignedIn } = useUser();

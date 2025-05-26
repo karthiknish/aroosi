@@ -9,7 +9,7 @@ import Link from "next/link";
 import React from "react";
 
 export default function MyInterestsPage() {
-  const { user: clerkUser, isSignedIn } = useUser();
+  const { user: isSignedIn } = useUser();
   const currentUserConvex = useQuery(api.users.getCurrentUserWithProfile, {});
   const currentUserId = currentUserConvex?._id;
   // Fetch all interests sent by this user
@@ -60,7 +60,7 @@ export default function MyInterestsPage() {
           className="text-4xl font-bold mb-8 text-center"
           style={{ fontFamily: "var(--font-lora)" }}
         >
-          Profiles You've Expressed Interest In
+          Profiles You&apos;ve Expressed Interest In
         </h1>
         {sentInterests === undefined || loadingProfiles ? (
           <div className="flex justify-center py-20">
@@ -68,7 +68,7 @@ export default function MyInterestsPage() {
           </div>
         ) : profiles.length === 0 ? (
           <div className="text-center text-gray-500 py-20">
-            You haven't expressed interest in any profiles yet.
+            You haven&apos;t expressed interest in any profiles yet.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
