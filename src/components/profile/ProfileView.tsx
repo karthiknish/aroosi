@@ -25,20 +25,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@clerk/nextjs";
-import Image from "next/image";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { motion } from "framer-motion";
 import { ProfileImageReorder } from "../ProfileImageReorder";
-import { Profile } from "@/types/profile";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-
-interface ImageData {
-  _id: Id<"_storage">;
-  url: string;
-}
+import { Profile } from "@/types/profile";
 
 // Helper for displaying profile details
 const ProfileDetailView: React.FC<{
@@ -96,9 +90,9 @@ const DisplaySection: React.FC<{
 );
 
 export interface ProfileViewProps {
-  profileData: any;
+  profileData: Profile;
   clerkUser: any;
-  userConvexData: any;
+  userConvexData: { _id?: string; _creationTime?: number } | null | undefined;
   onEdit: () => void;
   onDelete: () => void;
   deleting: boolean;
@@ -112,7 +106,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   onDelete,
   deleting,
 }) => {
-  const { user } = useUser();
   const images = useQuery(
     api.images.getProfileImages,
     userConvexData?._id &&
