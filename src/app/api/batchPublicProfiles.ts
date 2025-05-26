@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { convexClient } from "@/../convex/_generated/client";
+import { ConvexHttpClient } from "convex/browser";
+import { Id } from "@convex/_generated/dataModel";
+
+// You may need to set this to your actual Convex deployment URL
+const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL as string;
+const convexClient = new ConvexHttpClient(convexUrl);
 
 export async function POST(req: NextRequest) {
   const { userIds } = await req.json();
@@ -12,7 +17,7 @@ export async function POST(req: NextRequest) {
     userIds.map(async (userId: string) => {
       try {
         const res = await convexClient.query(api.users.getUserPublicProfile, {
-          userId,
+          userId: userId as Id<"users">,
         });
         return res && res.profile ? { userId, profile: res.profile } : null;
       } catch {
