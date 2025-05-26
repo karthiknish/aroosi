@@ -28,10 +28,8 @@ import * as z from "zod";
 import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder } from "../ProfileImageReorder";
-import { useWindowSize } from "react-use";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
-import { useRouter } from "next/navigation";
 
 // Hardcoded list of major UK cities
 const majorUkCities = [
@@ -243,10 +241,6 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   const [uploadedImageIds, setUploadedImageIds] = React.useState<string[]>(
     initialValues?.profileImageIds || []
   );
-  const [imagesVersion, setImagesVersion] = React.useState(0);
-  const [showSuccessModal, setShowSuccessModal] = React.useState(false);
-  const [hasSubmittedSuccessfully, setHasSubmittedSuccessfully] =
-    React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [modalIndex, setModalIndex] = React.useState(0);
   const deleteImage = useMutation(api.images.deleteProfileImage);
@@ -255,18 +249,9 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   );
   const updateOrder = useMutation(api.users.updateProfileImageOrder);
 
-  // Always call useWindowSize at the top level
-  const { width: windowWidth, height: windowHeight } = useWindowSize();
-
-  const router = useRouter();
-
-  React.useEffect(() => {
-    setHasSubmittedSuccessfully(false);
-  }, []);
-
   // Form setup
   const form = useForm<ProfileFormValues>({
-    resolver: async (data, context, options) => {
+    resolver: async (data) => {
       try {
         essentialProfileSchema.parse(data);
         return { values: data, errors: {} };
@@ -466,8 +451,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     }
 
     await onSubmit({ ...values, profileImageIds: uploadedImageIds });
-    setShowSuccessModal(true);
-    setHasSubmittedSuccessfully(true);
+    // removed setShowSuccessModal
     // Remove draft from localStorage after successful submit
     if (mode === "create") {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -476,7 +460,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   const handleImagesChanged = React.useCallback((newImageIds: string[]) => {
     setUploadedImageIds(newImageIds);
-    setImagesVersion((v) => v + 1);
+    // removed setImagesVersion
   }, []);
 
   const currentUserConvex = useQuery(
@@ -782,7 +766,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                   <Controller
                     name="height"
                     control={form.control}
-                    defaultValue={form.getValues("height") || 170}
+                    defaultValue={form.getValues("height") || "6ft 0in"}
                     render={({ field }) => (
                       <div className="flex flex-col gap-2 mt-2">
                         <Slider

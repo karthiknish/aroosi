@@ -1,6 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { FileText, MessageSquare, Calendar } from "lucide-react";
-
 interface DashboardOverviewProps {
   totalPosts: number;
   totalMessages: number;

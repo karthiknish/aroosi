@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState, useMemo, useRef } from "react";
-import { useQuery, useMutation } from "convex/react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { ProfileImageReorder } from "./ProfileImageReorder";
 import { ImageUploader } from "./ImageUploader";
 import { ImageDeleteConfirmation } from "./ImageDeleteConfirmation";
 import {
@@ -12,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2 } from "lucide-react";
 
 interface ImageData {
   _id: Id<"images"> | string;
@@ -96,37 +94,7 @@ export function ProfileImageUpload({
     }
   }, [imagesQuery]);
 
-  // Handle image reordering
-  const onReorder = useCallback(
-    async (reorderedImages: ImageData[]) => {
-      setOrderedImages(reorderedImages);
-      const newOrder = reorderedImages.map(
-        (img) => img.storageId as Id<"_storage">
-      );
-      try {
-        if (isAdmin && profileId) {
-          await adminUpdateProfile({
-            id: profileId,
-            updates: { profileImageIds: newOrder },
-          });
-        } else {
-          await updateProfile({ profileImageIds: newOrder });
-        }
-        if (onImagesChanged) onImagesChanged(newOrder.map(String));
-      } catch (error) {
-        console.error("Error updating image order:", error);
-        toast.error("Failed to update image order");
-      }
-    },
-    [isAdmin, profileId, onImagesChanged, adminUpdateProfile, updateProfile]
-  );
-
   // Handle image deletion
-  const confirmDelete = useCallback((id: Id<"_storage">) => {
-    setPendingDeleteId(id);
-    setDeleteModalOpen(true);
-  }, []);
-
   const handleDelete = useCallback(async () => {
     if (!pendingDeleteId) return;
     try {

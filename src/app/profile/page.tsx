@@ -3,37 +3,23 @@
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useUser, useClerk } from "@clerk/nextjs";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, SubmitHandler } from "react-hook-form";
-import * as z from "zod";
-import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Loader2, UserCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import ProfileForm from "@/components/profile/ProfileForm";
+import ProfileForm, {
+  ProfileFormValues,
+} from "@/components/profile/ProfileForm";
 import ProfileView from "@/components/profile/ProfileView";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ConvexError } from "convex/values";
-import { getProfileFormSchema, ProfileFormValues } from "./profileFormSchema";
-
-const requiredFields = [
-  "fullName",
-  "dateOfBirth",
-  "gender",
-  "ukCity",
-  "aboutMe",
-  // "phoneNumber", // Uncomment if required
-  // "diet", "smoking", "drinking", "physicalStatus", // Uncomment if required
-] as const;
-type RequiredFields = (typeof requiredFields)[number];
+import React, { useState } from "react";
 
 export default function ProfilePage() {
   const { user: clerkUser, isSignedIn } = useUser();
@@ -42,7 +28,6 @@ export default function ProfilePage() {
     !isSignedIn ? "skip" : {}
   );
   const updateProfileMutation = useMutation(api.users.updateProfile);
-  const storageUpload = useAction(api.storage.generateUploadUrl);
   const deleteUserMutation = useMutation(api.users.deleteUser);
   const router = useRouter();
   const { signOut } = useClerk();
@@ -61,7 +46,7 @@ export default function ProfilePage() {
     currentUserProfileData?.profile?.isProfileComplete === false;
 
   // Unified submit handler
-  const handleProfileSubmit = async (values: any) => {
+  const handleProfileSubmit = async (values: ProfileFormValues) => {
     setLoading(true);
     setServerError(null);
     try {
@@ -144,7 +129,7 @@ export default function ProfilePage() {
   }
 
   const userConvexData = currentUserProfileData;
-  const profileData = currentUserProfileData?.profile;
+  const profileData = currentUserProfileData?.profile ?? undefined;
 
   // Conditionally render form or view
   if (isEditing || isOnboarding) {
@@ -153,19 +138,18 @@ export default function ProfilePage() {
         mode={isOnboarding ? "create" : "edit"}
         initialValues={profileData}
         onSubmit={handleProfileSubmit}
-        clerkUser={clerkUser}
+        clerkUser={clerkUser ? { id: clerkUser.id } : undefined}
         loading={loading}
         serverError={serverError}
         onEditDone={() => setIsEditing(false)}
-        userConvexData={userConvexData}
       />
     );
   }
   return (
     <>
       <ProfileView
-        profileData={profileData}
-        clerkUser={clerkUser}
+        profileData={profileData as any}
+        clerkUser={clerkUser ? { id: clerkUser.id } : undefined}
         userConvexData={userConvexData}
         onEdit={handleEdit}
         onDelete={() => setShowDeleteModal(true)}

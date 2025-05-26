@@ -22,7 +22,6 @@ import {
 
 import { Id } from "@/../convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
-import { useRouter } from "next/navigation";
 import ProfileCard, { type ProfileEditFormState } from "./ProfileCard";
 import { ConvexError } from "convex/values";
 import { Loader2 } from "lucide-react";
