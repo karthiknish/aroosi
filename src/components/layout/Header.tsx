@@ -16,10 +16,15 @@ import {
   Heart,
 } from "lucide-react";
 
+import { useTransition } from "react";
+import { Progress } from "@/components/ui/progress";
+
 export default function Header() {
   const { user } = useUser();
   const isAdmin = user?.publicMetadata?.role === "admin";
   const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const [isPending] = useTransition();
 
   const headerVariants = {
     hidden: { y: -100, opacity: 0 },
@@ -132,6 +137,36 @@ export default function Header() {
       </SignedIn>
       <SignedOut>
         <motion.div
+          custom={0.5}
+          variants={navItemVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <Link href="/about" onClick={onClick}>
+            <Button
+              variant="ghost"
+              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+            >
+              <span>About</span>
+            </Button>
+          </Link>
+        </motion.div>
+        <motion.div
+          custom={0.7}
+          variants={navItemVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <Link href="/how-it-works" onClick={onClick}>
+            <Button
+              variant="ghost"
+              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+            >
+              <span>How It Works</span>
+            </Button>
+          </Link>
+        </motion.div>
+        <motion.div
           custom={1}
           variants={navItemVariants}
           initial="hidden"
@@ -182,67 +217,77 @@ export default function Header() {
   );
 
   return (
-    <motion.header
-      variants={headerVariants}
-      initial="hidden"
-      animate="visible"
-      className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm"
-    >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          <motion.div
-            custom={0}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <Link
-              href="/"
-              className="text-3xl sm:text-4xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
+    <>
+      {isPending && (
+        <div className="fixed top-0 left-0 right-0 z-[9999]">
+          <Progress
+            value={80}
+            className="h-1 bg-pink-200 [&>div]:bg-pink-600 transition-all duration-300"
+          />
+        </div>
+      )}
+      <motion.header
+        variants={headerVariants}
+        initial="hidden"
+        animate="visible"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm"
+      >
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            <motion.div
+              custom={0}
+              variants={navItemVariants}
+              initial="hidden"
+              animate="visible"
             >
-              Aroosi
-            </Link>
-          </motion.div>
+              <Link
+                href="/"
+                className="text-3xl sm:text-4xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
+              >
+                Aroosi
+              </Link>
+            </motion.div>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center space-x-2 sm:space-x-3 md:space-x-4">
-            <NavLinks />
-          </nav>
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+              <NavLinks />
+            </nav>
 
-          {/* Mobile Hamburger */}
-          <div className="md:hidden flex items-center">
-            <button
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              onClick={() => setMobileOpen((open) => !open)}
-              className="p-2 rounded-md text-pink-600 hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
-            >
-              {mobileOpen ? (
-                <X className="h-7 w-7" />
-              ) : (
-                <Menu className="h-7 w-7" />
-              )}
-            </button>
+            {/* Mobile Hamburger */}
+            <div className="md:hidden flex items-center">
+              <button
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                onClick={() => setMobileOpen((open) => !open)}
+                className="p-2 rounded-md text-pink-600 hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
+              >
+                {mobileOpen ? (
+                  <X className="h-7 w-7" />
+                ) : (
+                  <Menu className="h-7 w-7" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Mobile Nav Drawer */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.nav
-            key="mobile-nav"
-            initial={{ y: -30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -30, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 120, damping: 18 }}
-            className="md:hidden absolute top-full left-0 right-0 bg-white/95 shadow-lg backdrop-blur-md border-b border-pink-100"
-          >
-            <div className="px-4 py-4 flex flex-col space-y-2">
-              <NavLinks onClick={() => setMobileOpen(false)} />
-            </div>
-          </motion.nav>
-        )}
-      </AnimatePresence>
-    </motion.header>
+        {/* Mobile Nav Drawer */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.nav
+              key="mobile-nav"
+              initial={{ y: -30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -30, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 120, damping: 18 }}
+              className="md:hidden absolute top-full left-0 right-0 bg-white/95 shadow-lg backdrop-blur-md border-b border-pink-100"
+            >
+              <div className="px-4 py-4 flex flex-col space-y-2">
+                <NavLinks onClick={() => setMobileOpen(false)} />
+              </div>
+            </motion.nav>
+          )}
+        </AnimatePresence>
+      </motion.header>
+    </>
   );
 }
