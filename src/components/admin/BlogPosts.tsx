@@ -99,7 +99,6 @@ export function BlogPosts({
     excerpt?: boolean;
     category?: boolean;
   }>({});
-  const [previewHtml, setPreviewHtml] = useState<string>("");
 
   // Utility to call the AI HTML API
   // Combined utility for AI HTML and plain text (excerpt/category)
@@ -143,11 +142,6 @@ export function BlogPosts({
   function aiText(text: string, field: "excerpt" | "category") {
     return aiProcess(text, field);
   }
-
-  // Live preview effect
-  React.useEffect(() => {
-    setPreviewHtml(editContent);
-  }, [editContent]);
 
   const getReadingTime = (content: string) => {
     const words = content.split(/\s+/).length;
@@ -230,16 +224,6 @@ export function BlogPosts({
                           onChange={setEditContent}
                         />
                       </div>
-                    </div>
-                    {/* Live Preview Section */}
-                    <div className="mt-6">
-                      <div className="font-semibold text-gray-700 mb-2">
-                        Live Preview
-                      </div>
-                      <div
-                        className="prose max-w-none bg-gray-50 border rounded-lg p-4 min-h-[120px]"
-                        dangerouslySetInnerHTML={{ __html: previewHtml }}
-                      />
                     </div>
                     <div className="flex gap-2 mt-2">
                       <Button
