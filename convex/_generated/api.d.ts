@@ -18,6 +18,7 @@ import type * as contact from "../contact.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as interests from "../interests.js";
+import type * as messages from "../messages.js";
 import type * as scripts_cleanupDuplicateClerkUsers from "../scripts/cleanupDuplicateClerkUsers.js";
 import type * as scripts_seedTestProfiles from "../scripts/seedTestProfiles.js";
 import type * as storage from "../storage.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   images: typeof images;
   interests: typeof interests;
+  messages: typeof messages;
   "scripts/cleanupDuplicateClerkUsers": typeof scripts_cleanupDuplicateClerkUsers;
   "scripts/seedTestProfiles": typeof scripts_seedTestProfiles;
   storage: typeof storage;
