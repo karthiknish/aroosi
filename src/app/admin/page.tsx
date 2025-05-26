@@ -68,7 +68,6 @@ function AdminPageInner() {
   const [editPexelsOpen, setEditPexelsOpen] = useState<boolean>(false);
   const editContentRef = useRef<HTMLTextAreaElement>(null);
 
-  const [adminError] = useState<string | null>(null);
   const { user, isLoaded, isSignedIn } = useUser();
 
   // Convex blog mutations (move here)
@@ -115,9 +114,6 @@ function AdminPageInner() {
   const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
   const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});
 
-  // Remove unused error variables
-  // Remove unused MarkdownShortcut type
-
   // Wait for Clerk to be ready before making admin queries
   if (!isLoaded) {
     return (
@@ -152,15 +148,23 @@ function AdminPageInner() {
   }
 
   // Map Convex data to expected types
-  const blogPosts = blogPostsRaw?.map((post: any) => ({
+  const blogPosts: BlogPost[] | undefined = blogPostsRaw?.map((post: any) => ({
     ...post,
-    createdAt: post.createdAt ? new Date(post.createdAt).toISOString() : "",
-    updatedAt: post.updatedAt ? new Date(post.updatedAt).toISOString() : "",
-  })) as BlogPost[] | undefined;
-  const contactMessages = contactMessagesRaw?.map((msg: any) => ({
-    ...msg,
-    createdAt: msg.createdAt ? new Date(msg.createdAt).toISOString() : "",
-  })) as ContactMessage[] | undefined;
+    createdAt: post.createdAt
+      ? new Date(post.createdAt as number).toISOString()
+      : "",
+    updatedAt: post.updatedAt
+      ? new Date(post.updatedAt as number).toISOString()
+      : "",
+  }));
+  const contactMessages: ContactMessage[] | undefined = contactMessagesRaw?.map(
+    (msg: any) => ({
+      ...msg,
+      createdAt: msg.createdAt
+        ? new Date(msg.createdAt as number).toISOString()
+        : "",
+    })
+  );
 
   // Live preview effect for create post
   useEffect(() => {
@@ -188,7 +192,7 @@ function AdminPageInner() {
       setCategories([]);
       setError(null);
       toast.success("Post created successfully!");
-    } catch (error) {
+    } catch {
       setError("Failed to create post");
       toast.error("Failed to create post");
     } finally {
@@ -220,7 +224,7 @@ function AdminPageInner() {
       });
       setEditingId(null);
       toast.success("Post updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update post");
     }
   };
@@ -383,12 +387,6 @@ function AdminPageInner() {
 
           {/* Main Content */}
           <main className="flex-1">
-            {adminError && (
-              <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto mb-6 text-center">
-                <strong>Error:</strong> {adminError}
-              </div>
-            )}
-
             {activeTab === "profiles" && <ProfileManagement />}
             {activeTab === "matches" && <AdminMatches />}
             {activeTab === "contact" && (
@@ -512,7 +510,7 @@ function AdminMatches() {
     if (!profiles || !interests) return;
     // Build a map of accepted interests: fromUserId -> Set of toUserIds
     const acceptedMap: Record<string, Set<string>> = {};
-    for (const i of interests as Interest[]) {
+    for (const i of interests ?? []) {
       if (i.status === "accepted") {
         if (!acceptedMap[i.fromUserId]) acceptedMap[i.fromUserId] = new Set();
         acceptedMap[i.fromUserId].add(i.toUserId);
@@ -520,7 +518,7 @@ function AdminMatches() {
     }
     // Find mutual matches
     const matches: { profileA: Profile; profileB: Profile }[] = [];
-    for (const i of interests as Interest[]) {
+    for (const i of interests ?? []) {
       if (i.status === "accepted") {
         const match =
           acceptedMap[i.toUserId] && acceptedMap[i.toUserId].has(i.fromUserId);

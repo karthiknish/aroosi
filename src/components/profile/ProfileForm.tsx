@@ -1,36 +1,32 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { format, parseISO, subYears } from "date-fns";
-import DatePicker from "react-datepicker";
+
 import "react-datepicker/dist/react-datepicker.css";
 import "@/styles/react-datepicker-custom.css";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Loader2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+import { Loader2 } from "lucide-react";
+
 import * as z from "zod";
 import React from "react";
-import { ProfileImageUpload } from "@/components/ProfileImageUpload";
-import { ProfileImageReorder } from "../ProfileImageReorder";
+
 import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
+
 import { Image } from "@/components/ProfileImageReorder";
+
+import ProfileFormStepBasicInfo from "./ProfileFormStepBasicInfo";
+import ProfileFormStepLocation from "./ProfileFormStepLocation";
+import ProfileFormStepCultural from "./ProfileFormStepCultural";
+import ProfileFormStepEducation from "./ProfileFormStepEducation";
+import ProfileFormStepAbout from "./ProfileFormStepAbout";
+import ProfileFormStepImages from "./ProfileFormStepImages";
 
 // Hardcoded list of major UK cities
 const majorUkCities = [
@@ -527,170 +523,6 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     "Tip: A clear profile photo increases your chances by 3x!",
   ];
 
-  // Add FormField
-  const FormField: React.FC<FormFieldProps> = ({
-    name,
-    label,
-    form,
-    placeholder,
-    type = "text",
-    description,
-    isRequired,
-  }) => (
-    <div>
-      <Label htmlFor={name}>
-        {label} {isRequired && <span className="text-red-600">*</span>}
-      </Label>
-      <Input
-        id={name}
-        type={type}
-        {...form.register(name)}
-        placeholder={typeof placeholder === "string" ? placeholder : undefined}
-        className="mt-1"
-      />
-      {description && (
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
-      )}
-      {form.formState.errors[name] && (
-        <p className="text-sm text-red-600 mt-1">
-          {form.formState.errors[name]?.message as string}
-        </p>
-      )}
-    </div>
-  );
-
-  // Add FormSelectField
-  const FormSelectField: React.FC<FormSelectFieldProps> = ({
-    name,
-    label,
-    form,
-    placeholder,
-    options,
-    description,
-    isRequired,
-  }) => (
-    <div>
-      <Label htmlFor={name}>
-        {label} {isRequired && <span className="text-red-600">*</span>}
-      </Label>
-      <Select
-        onValueChange={(value) =>
-          form.setValue(name, value as string, {
-            shouldDirty: true,
-            shouldValidate: true,
-          })
-        }
-        defaultValue={
-          typeof form.getValues(name) === "string"
-            ? (form.getValues(name) as string)
-            : undefined
-        }
-      >
-        <SelectTrigger id={name} className="mt-1">
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {description && (
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
-      )}
-      {form.formState.errors[name] && (
-        <p className="text-sm text-red-600 mt-1">
-          {form.formState.errors[name]?.message as string}
-        </p>
-      )}
-    </div>
-  );
-
-  // Add FormDateField
-  const DatePickerCustomInput = React.forwardRef<
-    HTMLButtonElement,
-    { value?: string; onClick?: () => void; label: string }
-  >(({ value, onClick, label }, ref) => (
-    <Button
-      type="button"
-      variant="outline"
-      className={cn(
-        "w-full justify-start text-left font-normal mt-1",
-        !value && "text-muted-foreground"
-      )}
-      onClick={onClick}
-      ref={ref}
-    >
-      <span className="mr-2">📅</span>
-      {value || <span>{label}</span>}
-    </Button>
-  ));
-  DatePickerCustomInput.displayName = "DatePickerCustomInput";
-  const FormDateField: React.FC<FormDateFieldProps> = ({
-    name,
-    label,
-    form,
-    isRequired,
-    description,
-  }) => {
-    const {
-      control,
-      formState: { errors },
-      trigger,
-    } = form;
-    return (
-      <div>
-        <Label htmlFor={name}>
-          {label} {isRequired && <span className="text-red-600">*</span>}
-        </Label>
-        <div className="mt-1 w-full">
-          <Controller
-            control={control}
-            name={name}
-            render={({ field }) => {
-              const selectedDate =
-                field.value && typeof field.value === "string"
-                  ? parseISO(field.value)
-                  : null;
-              return (
-                <DatePicker
-                  selected={selectedDate}
-                  onChange={(date: Date | null) => {
-                    field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                    if (name === "dateOfBirth") trigger("dateOfBirth");
-                  }}
-                  customInput={<DatePickerCustomInput label="Pick a date" />}
-                  dateFormat="PPP"
-                  showYearDropdown
-                  showMonthDropdown
-                  dropdownMode="select"
-                  yearDropdownItemNumber={100}
-                  scrollableYearDropdown
-                  placeholderText="Pick a date"
-                  className="w-full"
-                  popperPlacement="bottom-start"
-                  disabled={form.formState.isSubmitting}
-                  minDate={new Date("1900-01-01")}
-                  maxDate={subYears(new Date(), 18)}
-                />
-              );
-            }}
-          />
-        </div>
-        {description && (
-          <p className="text-xs text-gray-500 mt-1">{description}</p>
-        )}
-        {errors[name] && (
-          <p className="text-sm text-red-600 mt-1">
-            {errors[name]?.message as string}
-          </p>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <motion.main
@@ -737,386 +569,61 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
             {/* Step content */}
             {currentStep === 0 && (
               <FormSection title="Basic Information">
-                <FormField
-                  name="fullName"
-                  label="Full Name"
+                <ProfileFormStepBasicInfo
                   form={form}
-                  isRequired
-                />
-                <FormDateField
-                  name="dateOfBirth"
-                  label="Date of Birth"
-                  form={form}
-                  isRequired
-                />
-                <FormSelectField
-                  name="gender"
-                  label="Gender"
-                  form={form}
-                  placeholder="Select gender"
-                  options={[
-                    { value: "male", label: "Male" },
-                    { value: "female", label: "Female" },
-                    { value: "other", label: "Other" },
-                  ]}
-                  isRequired
-                />
-                <div className="mb-4">
-                  <Label htmlFor="height">
-                    Height <span className="text-red-600">*</span>
-                  </Label>
-                  <Controller
-                    name="height"
-                    control={form.control}
-                    defaultValue={form.getValues("height") || "6ft 0in"}
-                    render={({ field }) => (
-                      <div className="flex flex-col gap-2 mt-2">
-                        <Slider
-                          min={137}
-                          max={198}
-                          step={1}
-                          value={[
-                            typeof field.value === "number"
-                              ? field.value
-                              : Number(field.value) || 170,
-                          ]}
-                          onValueChange={([val]) => field.onChange(val)}
-                          className="w-full my-2"
-                          style={
-                            {
-                              "--slider-track-bg": "#fce7f3",
-                              "--slider-range-bg": "#db2777",
-                              "--slider-thumb-border": "#db2777",
-                            } as React.CSSProperties
-                          }
-                        />
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>4&apos;6&quot;</span>
-                          <span>6&apos;6&quot;</span>
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-pink-700">
-                          {field.value
-                            ? `${cmToFeetInches(typeof field.value === "number" ? field.value : Number(field.value))} (${String(field.value)} cm)`
-                            : "Select your height"}
-                        </div>
-                        {form.formState.errors.height && (
-                          <p className="text-sm text-red-600 mt-1">
-                            {form.formState.errors.height.message as string}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  />
-                </div>
-                <FormField
-                  name="phoneNumber"
-                  label="Phone Number"
-                  form={form}
-                  placeholder="e.g., +44 7123 456789"
-                  isRequired
+                  mode={mode}
+                  cmToFeetInches={cmToFeetInches}
                 />
               </FormSection>
             )}
             {currentStep === 1 && (
               <FormSection title="Location (UK) & Lifestyle">
-                <FormSelectField
-                  name="ukCity"
-                  label="City"
+                <ProfileFormStepLocation
                   form={form}
-                  placeholder="Select city"
-                  options={ukCityOptions}
-                  isRequired
-                />
-                <FormField
-                  name="ukPostcode"
-                  label="Postcode"
-                  form={form}
-                  placeholder="e.g., SW1A 1AA"
-                />
-                <FormSelectField
-                  name="diet"
-                  label="Diet"
-                  form={form}
-                  placeholder="Select diet"
-                  options={[
-                    { value: "vegetarian", label: "Vegetarian" },
-                    { value: "non-vegetarian", label: "Non-Vegetarian" },
-                    { value: "vegan", label: "Vegan" },
-                    { value: "eggetarian", label: "Eggetarian" },
-                    { value: "other", label: "Other" },
-                  ]}
-                />
-                <FormSelectField
-                  name="smoking"
-                  label="Smoking"
-                  form={form}
-                  placeholder="Select smoking habit"
-                  options={[
-                    { value: "no", label: "No" },
-                    { value: "occasionally", label: "Occasionally" },
-                    { value: "yes", label: "Yes" },
-                  ]}
-                />
-                <FormSelectField
-                  name="drinking"
-                  label="Drinking"
-                  form={form}
-                  placeholder="Select drinking habit"
-                  options={[
-                    { value: "no", label: "No" },
-                    { value: "occasionally", label: "Occasionally" },
-                    { value: "yes", label: "Yes" },
-                  ]}
-                />
-                <FormSelectField
-                  name="physicalStatus"
-                  label="Physical Status"
-                  form={form}
-                  placeholder="Select physical status"
-                  options={[
-                    { value: "normal", label: "Normal" },
-                    { value: "differently-abled", label: "Differently-abled" },
-                    { value: "other", label: "Other" },
-                  ]}
+                  ukCityOptions={ukCityOptions}
                 />
               </FormSection>
             )}
             {currentStep === 2 && (
               <FormSection title="Cultural & Religious Background">
-                <FormSelectField
-                  name="religion"
-                  label="Religion"
-                  form={form}
-                  placeholder="Select religion"
-                  options={[
-                    { value: "islam", label: "Islam" },
-                    { value: "hinduism", label: "Hinduism" },
-                    { value: "christianity", label: "Christianity" },
-                    { value: "sikhism", label: "Sikhism" },
-                    { value: "jainism", label: "Jainism" },
-                    { value: "buddhism", label: "Buddhism" },
-                    { value: "judaism", label: "Judaism" },
-                    { value: "other", label: "Other" },
-                  ]}
-                  isRequired
-                />
-                <FormField
-                  name="caste"
-                  label="Sect/Caste"
-                  form={form}
-                  placeholder="Optional"
-                />
-                <FormField
-                  name="motherTongue"
-                  label="Mother Tongue"
-                  form={form}
-                  placeholder="e.g., Urdu"
-                />
-                <FormSelectField
-                  name="maritalStatus"
-                  label="Marital Status"
-                  form={form}
-                  placeholder="Select status"
-                  options={[
-                    { value: "single", label: "Single" },
-                    { value: "divorced", label: "Divorced" },
-                    { value: "widowed", label: "Widowed" },
-                    { value: "annulled", label: "Annulled" },
-                  ]}
-                />
+                <ProfileFormStepCultural form={form} />
               </FormSection>
             )}
             {currentStep === 3 && (
               <FormSection title="Education & Career">
-                <FormField
-                  name="education"
-                  label="Education"
-                  form={form}
-                  placeholder="e.g., BSc Computer Science"
-                />
-                <FormField
-                  name="occupation"
-                  label="Occupation"
-                  form={form}
-                  placeholder="e.g., Software Engineer"
-                />
-                <FormField
-                  name="annualIncome"
-                  label="Annual Income (£)"
-                  form={form}
-                  type="number"
-                  placeholder="e.g., 40000"
-                  isRequired
-                />
+                <ProfileFormStepEducation form={form} />
               </FormSection>
             )}
             {currentStep === 4 && (
               <FormSection title="About & Preferences">
-                <FormField
-                  name="aboutMe"
-                  label="About Me"
-                  form={form}
-                  placeholder="Tell us about yourself..."
-                  isRequired
-                />
-                <FormSelectField
-                  name="preferredGender"
-                  label="Preferred Gender"
-                  form={form}
-                  placeholder="Select preferred gender"
-                  options={[
-                    { value: "male", label: "Male" },
-                    { value: "female", label: "Female" },
-                    { value: "other", label: "Other" },
-                    { value: "any", label: "Any" },
-                  ]}
-                  isRequired={mode === "create"}
-                />
-                <FormField
-                  name="partnerPreferenceAgeMin"
-                  label="Min Preferred Partner Age"
-                  form={form}
-                  type="number"
-                  placeholder="e.g., 25"
-                />
-                <FormField
-                  name="partnerPreferenceAgeMax"
-                  label="Max Preferred Partner Age"
-                  form={form}
-                  type="number"
-                  placeholder="e.g., 35"
-                />
-                <FormField
-                  name="partnerPreferenceReligion"
-                  label="Preferred Partner Religion(s)"
-                  form={form}
-                  placeholder="e.g., Islam, Christianity"
-                />
-                <FormField
-                  name="partnerPreferenceUkCity"
-                  label="Preferred Partner UK City/Cities"
-                  form={form}
-                  placeholder="e.g., London, Manchester"
-                />
+                <ProfileFormStepAbout form={form} mode={mode} />
               </FormSection>
             )}
             {currentStep === totalSteps - 1 && (
               <FormSection title="Profile Images">
-                <div className="space-y-4">
-                  {!clerkUser?.id || !convexUserId ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                      <span className="ml-2 text-gray-500">
-                        Loading user...
-                      </span>
-                    </div>
-                  ) : (
-                    <>
-                      <ProfileImageUpload
-                        userId={convexUserId}
-                        onImagesChanged={handleImagesChanged}
-                      />
-                      <ProfileImageReorder
-                        images={orderedImages}
-                        userId={convexUserId}
-                        onReorder={async (newOrder) => {
-                          // newOrder is always string[] (array of image IDs)
-                          const newIds = newOrder as string[];
-                          setUploadedImageIds(newIds);
-                          handleImagesChanged(newIds);
-                          // Persist to Convex
-                          if (convexUserId) {
-                            try {
-                              await updateOrder({
-                                userId: convexUserId,
-                                imageIds: newIds as Id<"_storage">[],
-                              });
-                            } catch (error) {
-                              toast.error("Failed to update image order");
-                            }
-                          }
-                        }}
-                        renderAction={(img, idx) => (
-                          <div className="relative group w-20 h-20">
-                            <img
-                              src={img.url || ""}
-                              alt="Profile preview"
-                              className="w-20 h-20 object-cover rounded-lg cursor-pointer border group-hover:brightness-90 transition"
-                              onClick={() => handleImageClick(idx)}
-                            />
-                            <button
-                              type="button"
-                              className="absolute top-1 right-1 bg-white/80 rounded-full p-1 shadow hover:bg-red-100 text-red-600 opacity-0 group-hover:opacity-100 transition"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteImage(String(img._id));
-                              }}
-                              aria-label="Delete image"
-                              disabled={deletingImageId === String(img._id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-                      />
-                      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                        <DialogContent className="max-w-2xl flex flex-col items-center justify-center bg-black/90 p-0">
-                          <div className="relative w-full flex items-center justify-center min-h-[400px]">
-                            <button
-                              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
-                              onClick={() =>
-                                setModalIndex(
-                                  (modalIndex - 1 + orderedImages.length) %
-                                    orderedImages.length
-                                )
-                              }
-                              aria-label="Previous image"
-                              disabled={orderedImages.length <= 1}
-                              style={{
-                                opacity: orderedImages.length > 1 ? 1 : 0.5,
-                              }}
-                            >
-                              <ChevronLeft className="w-6 h-6" />
-                            </button>
-                            <img
-                              src={orderedImages[modalIndex]?.url || ""}
-                              alt="Profile large preview"
-                              className="w-full h-[70vh] rounded-lg object-cover bg-black"
-                              style={{ margin: "0 auto" }}
-                            />
-                            <button
-                              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
-                              onClick={() =>
-                                setModalIndex(
-                                  (modalIndex + 1) % orderedImages.length
-                                )
-                              }
-                              aria-label="Next image"
-                              disabled={orderedImages.length <= 1}
-                              style={{
-                                opacity: orderedImages.length > 1 ? 1 : 0.5,
-                              }}
-                            >
-                              <ChevronRight className="w-6 h-6" />
-                            </button>
-                          </div>
-                          <div className="text-white text-center py-2 w-full bg-black/60 rounded-b-lg">
-                            {modalIndex + 1} / {orderedImages.length}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </>
-                  )}
-                  {form.formState.errors.profileImageIds && (
-                    <p className="text-sm text-red-600 mt-2">
-                      {form.formState.errors.profileImageIds.message as string}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Please upload at least one clear photo of yourself. First
-                    image will be your main profile picture.
-                  </p>
-                </div>
+                {convexUserId ? (
+                  <ProfileFormStepImages
+                    form={form}
+                    clerkUser={clerkUser}
+                    convexUserId={convexUserId}
+                    handleImagesChanged={handleImagesChanged}
+                    orderedImages={orderedImages}
+                    handleImageClick={handleImageClick}
+                    handleDeleteImage={handleDeleteImage}
+                    deletingImageId={deletingImageId}
+                    modalOpen={modalOpen}
+                    setModalOpen={setModalOpen}
+                    modalIndex={modalIndex}
+                    setModalIndex={setModalIndex}
+                    updateOrder={updateOrder}
+                    toast={toast}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-500">Loading user...</span>
+                  </div>
+                )}
               </FormSection>
             )}
             {/* Navigation */}
