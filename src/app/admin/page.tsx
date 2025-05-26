@@ -70,7 +70,7 @@ function AdminPageInner() {
 
   const { user, isLoaded, isSignedIn } = useUser();
 
-  // Convex blog mutations (move here)
+  // Convex blog mutations
   const createBlogPost = useConvexMutation(api.blog.createBlogPost);
   const updateBlogPost = useConvexMutation(api.blog.updateBlogPost);
   const deleteBlogPost = useConvexMutation(api.blog.deleteBlogPost);
@@ -110,11 +110,47 @@ function AdminPageInner() {
     },
   ];
 
-  // Fetch blog posts and contact messages from Convex (always call hooks at the top level)
+  // Fetch blog posts and contact messages from Convex
   const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
   const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});
+  const profiles = useConvexQuery(api.users.listProfiles, {}) as
+    | Profile[]
+    | undefined;
+  const interests = useConvexQuery(api.interests.listAllInterests, {}) as
+    | Interest[]
+    | undefined;
+  const [mutualMatches, setMutualMatches] = useState<
+    { profileA: Profile; profileB: Profile }[]
+  >([]);
+  useEffect(() => {
+    if (!profiles || !interests) return;
+    // Build a map of accepted interests: fromUserId -> Set of toUserIds
+    const acceptedMap: Record<string, Set<string>> = {};
+    for (const i of interests ?? []) {
+      if (i.status === "accepted") {
+        if (!acceptedMap[i.fromUserId]) acceptedMap[i.fromUserId] = new Set();
+        acceptedMap[i.fromUserId].add(i.toUserId);
+      }
+    }
+    // Find mutual matches
+    const matches: { profileA: Profile; profileB: Profile }[] = [];
+    for (const i of interests ?? []) {
+      if (i.status === "accepted") {
+        const match =
+          acceptedMap[i.toUserId] && acceptedMap[i.toUserId].has(i.fromUserId);
+        if (match) {
+          const profileA = profiles.find((p) => p.userId === i.fromUserId);
+          const profileB = profiles.find((p) => p.userId === i.toUserId);
+          if (profileA && profileB) {
+            matches.push({ profileA, profileB });
+          }
+        }
+      }
+    }
+    setMutualMatches(matches);
+  }, [profiles, interests]);
 
-  // Wait for Clerk to be ready before making admin queries
+  // Only after all hooks:
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -135,7 +171,6 @@ function AdminPageInner() {
       </div>
     );
   }
-
   const isAdmin = user?.publicMetadata?.role === "admin";
   if (!isAdmin) {
     return (
@@ -354,43 +389,6 @@ function AdminPageInner() {
       setAiLoading((prev) => ({ ...prev, [field]: false }));
     }
   }
-
-  const profiles = useConvexQuery(api.users.listProfiles, {}) as
-    | Profile[]
-    | undefined;
-  const interests = useConvexQuery(api.interests.listAllInterests, {}) as
-    | Interest[]
-    | undefined;
-  const [mutualMatches, setMutualMatches] = useState<
-    { profileA: Profile; profileB: Profile }[]
-  >([]);
-  useEffect(() => {
-    if (!profiles || !interests) return;
-    // Build a map of accepted interests: fromUserId -> Set of toUserIds
-    const acceptedMap: Record<string, Set<string>> = {};
-    for (const i of interests ?? []) {
-      if (i.status === "accepted") {
-        if (!acceptedMap[i.fromUserId]) acceptedMap[i.fromUserId] = new Set();
-        acceptedMap[i.fromUserId].add(i.toUserId);
-      }
-    }
-    // Find mutual matches
-    const matches: { profileA: Profile; profileB: Profile }[] = [];
-    for (const i of interests ?? []) {
-      if (i.status === "accepted") {
-        const match =
-          acceptedMap[i.toUserId] && acceptedMap[i.toUserId].has(i.fromUserId);
-        if (match) {
-          const profileA = profiles.find((p) => p.userId === i.fromUserId);
-          const profileB = profiles.find((p) => p.userId === i.toUserId);
-          if (profileA && profileB) {
-            matches.push({ profileA, profileB });
-          }
-        }
-      }
-    }
-    setMutualMatches(matches);
-  }, [profiles, interests]);
 
   return (
     <div className="min-h-screen bg-gray-50">

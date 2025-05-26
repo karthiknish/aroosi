@@ -59,8 +59,44 @@ export default function CreateProfilePage() {
         <ProfileForm
           key={refetchKey}
           mode="create"
-          userConvexData={currentUserProfile}
+          initialValues={currentUserProfile?.profile ?? {}}
           onSubmit={async (values) => {
+            // Ensure preferredGender is one of the allowed values
+            const allowedGenders = ["male", "female", "other", "any"] as const;
+            let preferredGender:
+              | "male"
+              | "female"
+              | "other"
+              | "any"
+              | undefined = undefined;
+            if (allowedGenders.includes(values.preferredGender as any)) {
+              preferredGender = values.preferredGender as
+                | "male"
+                | "female"
+                | "other"
+                | "any";
+            }
+            // Ensure maritalStatus is one of the allowed values
+            const allowedMaritalStatuses = [
+              "single",
+              "divorced",
+              "widowed",
+              "annulled",
+            ] as const;
+            let maritalStatus:
+              | "single"
+              | "divorced"
+              | "widowed"
+              | "annulled"
+              | undefined = undefined;
+            if (allowedMaritalStatuses.includes(values.maritalStatus as any)) {
+              maritalStatus = values.maritalStatus as
+                | "single"
+                | "divorced"
+                | "widowed"
+                | "annulled";
+            }
+            const safeValues = { ...values, preferredGender, maritalStatus };
             // Refetch the profile before creating
             const latestProfile = await fetch(
               "/api/convex/getCurrentUserWithProfile"
@@ -72,7 +108,7 @@ export default function CreateProfilePage() {
               return;
             }
             try {
-              const result = await createProfile(values);
+              const result = await createProfile(safeValues);
               if (!result?.success) {
                 toast.error(
                   result?.message ||
@@ -81,7 +117,7 @@ export default function CreateProfilePage() {
                 return;
               }
               router.replace("/create-profile/success");
-            } catch (err) {
+            } catch (err: unknown) {
               console.error("Error in create-profile page:", err);
               toast.error("Could not create profile. Please try again.");
             }

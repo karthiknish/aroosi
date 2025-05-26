@@ -28,15 +28,13 @@ export default function AdminProfileDetailPage() {
   // All hooks must be called unconditionally at the top
   const { id } = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useAuth();
-
-  // Fetch the profile
   const profile = useQuery(api.users.getProfileById, {
     id: id as Id<"profiles">,
   });
-
-  // Delete image mutation
   const deleteImage = useMutation(api.images.deleteProfileImage);
-
+  const setProfileHiddenFromSearch = useMutation(
+    api.users.setProfileHiddenFromSearch
+  );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<{
     storageId: string;
@@ -86,8 +84,6 @@ export default function AdminProfileDetailPage() {
     api.images.getProfileImages,
     isValidUserId ? { userId: profile.userId as Id<"users"> } : "skip"
   );
-
-  // Debug logging
   React.useEffect(() => {
     if (images) {
       console.log("Fetched images:", images);
@@ -95,8 +91,6 @@ export default function AdminProfileDetailPage() {
       console.log("No images found for user:", profile.userId);
     }
   }, [images, profile?.userId]);
-
-  // Get matches for the profile
   const matches = useQuery(api.users.getMatchesForProfile, {
     profileId: id as Id<"profiles">,
   });
@@ -181,7 +175,7 @@ export default function AdminProfileDetailPage() {
     );
   };
 
-  // Now do early returns for loading/auth
+  // Only after all hooks:
   if (!isLoaded)
     return (
       <div className="min-h-screen flex items-center justify-center text-pink-600">
@@ -221,10 +215,6 @@ export default function AdminProfileDetailPage() {
       />
     );
   };
-
-  const setProfileHiddenFromSearch = useMutation(
-    api.users.setProfileHiddenFromSearch
-  );
 
   // Add toggle for hiddenFromSearch
   const handleToggleHiddenFromSearch = async () => {

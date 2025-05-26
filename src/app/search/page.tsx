@@ -17,7 +17,6 @@ import { UserCircle } from "lucide-react";
 import React, { useState } from "react";
 import { useQuery as useConvexQuery } from "convex/react";
 import { useUser, SignInButton } from "@clerk/nextjs";
-import type { Profile } from "@/types/profile";
 import type { Id } from "convex/_generated/dataModel";
 
 const majorUkCities = [
