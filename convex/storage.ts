@@ -1,6 +1,5 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./utils/rateLimit";
 
 export const generateUploadUrl = action(async (ctx) => {

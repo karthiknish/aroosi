@@ -58,7 +58,7 @@ export async function handleExpressInterest({
   sendInterestMutation: (args: {
     fromUserId: Id<"users">;
     toUserId: Id<"users">;
-  }) => Promise<any>;
+  }) => Promise<unknown>;
   currentUserId: Id<"users">;
   id: Id<"users">;
   setInterestSent: (val: boolean) => void;
@@ -88,7 +88,7 @@ export async function handleBlock({
   blockUserMutation: (args: {
     blockerUserId: Id<"users">;
     blockedUserId: Id<"users">;
-  }) => Promise<any>;
+  }) => Promise<unknown>;
   currentUserId: Id<"users">;
   id: Id<"users">;
 }) {
@@ -120,7 +120,7 @@ export async function handleUnblock({
   unblockUserMutation: (args: {
     blockerUserId: Id<"users">;
     blockedUserId: Id<"users">;
-  }) => Promise<any>;
+  }) => Promise<unknown>;
   currentUserId: Id<"users">;
   id: Id<"users">;
 }) {
@@ -153,7 +153,7 @@ export async function handleRemoveInterest({
   removeInterestMutation: (args: {
     fromUserId: Id<"users">;
     toUserId: Id<"users">;
-  }) => Promise<any>;
+  }) => Promise<unknown>;
   currentUserId: Id<"users">;
   id: Id<"users">;
   setInterestSent: (val: boolean) => void;

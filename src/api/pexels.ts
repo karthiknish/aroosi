@@ -4,6 +4,12 @@ export interface PexelsImage {
   alt: string;
 }
 
+interface PexelsApiPhoto {
+  id: number;
+  src: { medium: string; large: string };
+  alt: string;
+}
+
 export async function searchPexelsImages(
   query: string
 ): Promise<PexelsImage[]> {
@@ -17,7 +23,7 @@ export async function searchPexelsImages(
   );
   if (!res.ok) throw new Error("Failed to fetch images from Pexels");
   const data = await res.json();
-  return (data.photos || []).map((img: any) => ({
+  return (data.photos || []).map((img: PexelsApiPhoto) => ({
     id: img.id,
     src: { medium: img.src.medium, large: img.src.large },
     alt: img.alt,

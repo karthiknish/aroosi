@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "../../../../convex/_generated/api";
+
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL =
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     // Convert messages to Gemini format
     const geminiMessages = [
       systemMessage,
-      ...messages.map((m: any) => ({
+      ...messages.map((m: { role: string; text: string }) => ({
         role: m.role === "user" ? "user" : "model",
         parts: [{ text: m.text }],
       })),
@@ -181,9 +181,11 @@ export async function POST(req: NextRequest) {
       "Sorry, I couldn't get a response.";
     await saveChatbotMessage({ email, role: "bot", text: reply });
     return NextResponse.json({ reply });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { reply: `Server error: ${err.message || err}` },
+      {
+        reply: `Server error: ${err instanceof Error ? err.message : String(err)}`,
+      },
       { status: 500 }
     );
   }

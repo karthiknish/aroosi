@@ -23,10 +23,13 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error saving chatbot message:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to save message" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to save message",
+      },
       { status: 500 }
     );
   }

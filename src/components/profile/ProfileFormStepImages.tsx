@@ -1,5 +1,4 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Loader2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
@@ -9,7 +8,7 @@ import { Id } from "@/../convex/_generated/dataModel";
 
 interface Props {
   form: import("react-hook-form").UseFormReturn<ProfileFormValues>;
-  clerkUser: any;
+  clerkUser?: { id: string };
   convexUserId: Id<"users">;
   handleImagesChanged: (newImageIds: string[]) => void;
   orderedImages: Image[];
@@ -20,8 +19,11 @@ interface Props {
   setModalOpen: (open: boolean) => void;
   modalIndex: number;
   setModalIndex: (idx: number) => void;
-  updateOrder: any;
-  toast: any;
+  updateOrder: (args: {
+    userId: Id<"users">;
+    imageIds: string[];
+  }) => Promise<unknown>;
+  toast: { error: (msg: string) => void };
 }
 
 const ProfileFormStepImages: React.FC<Props> = ({
@@ -41,7 +43,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
   toast,
 }) => (
   <div className="space-y-4">
-    {!clerkUser?.id || !convexUserId ? (
+    {!(clerkUser && "id" in clerkUser) || !convexUserId ? (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         <span className="ml-2 text-gray-500">Loading user...</span>
@@ -61,7 +63,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
             if (convexUserId) {
               try {
                 await updateOrder({ userId: convexUserId, imageIds: newIds });
-              } catch (error) {
+              } catch {
                 toast.error("Failed to update image order");
               }
             }

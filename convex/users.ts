@@ -7,7 +7,7 @@ import {
   type MutationCtx,
   action,
 } from "./_generated/server";
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 import { requireAdmin } from "./utils/requireAdmin";
