@@ -38,10 +38,10 @@ export function ProfileImageUpload({
   const [isUploading, setIsUploading] = useState<boolean>(false);
 
   // If admin and profileId is provided, fetch the userId for that profile
-  const profileQuery =
-    isAdmin && profileId
-      ? useQuery(api.users.getProfileById, { id: profileId })
-      : null;
+  const profileQuery = useQuery(
+    api.users.getProfileById,
+    isAdmin && profileId ? { id: profileId } : "skip"
+  );
   const effectiveUserId =
     isAdmin && profileQuery?.userId ? profileQuery.userId : userId;
 
@@ -126,7 +126,6 @@ export function ProfileImageUpload({
   }, [
     pendingDeleteId,
     deleteImage,
-    userId,
     orderedImages,
     isAdmin,
     profileId,
@@ -136,7 +135,7 @@ export function ProfileImageUpload({
     effectiveUserId,
   ]);
 
-  const images = imagesQuery || [];
+  const images = useMemo(() => imagesQuery || [], [imagesQuery]);
 
   // Memoize the ordered images based on profileImageIds or use default order
   const memoizedOrderedImages = useMemo(() => {
@@ -153,13 +152,6 @@ export function ProfileImageUpload({
 
     return validImages;
   }, [images, profileImageIds]);
-
-  // Helper to open modal for a specific image
-  const openImageModal = (imgUrl: string, idx: number) => {
-    setSelectedImageUrl(imgUrl);
-    setSelectedImageIdx(idx);
-    setViewImageModalOpen(true);
-  };
 
   // Helper to go to previous/next image
   const goToPrevImage = () => {

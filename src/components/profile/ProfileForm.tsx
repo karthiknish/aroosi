@@ -121,25 +121,8 @@ export const DisplaySection: React.FC<{
 
 // 2. Update FormFieldProps, FormSelectFieldProps, FormDateFieldProps
 type UseFormType = import("react-hook-form").UseFormReturn<ProfileFormValues>;
-interface FormFieldProps {
-  name: keyof ProfileFormValues;
-  label: string;
-  form: UseFormType;
-  placeholder?: string;
-  type?: string;
-  description?: string;
-  isRequired?: boolean;
-}
-interface FormSelectFieldProps extends FormFieldProps {
-  options: { value: string; label: string }[];
-}
-interface FormDateFieldProps {
-  name: keyof ProfileFormValues;
-  label: string;
-  form: UseFormType;
-  isRequired?: boolean;
-  description?: string;
-}
+
+
 
 // 3. Update UnifiedProfileFormProps
 type ClerkUser = { id: string; [key: string]: unknown };
