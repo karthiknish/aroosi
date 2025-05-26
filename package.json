@@ -103,14 +103,14 @@
     "use-debounce": "^10.0.4",
     "zod": "^3.25.23",
     "@types/node": "^20.17.50",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "eslint": "^9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
     "@types/react-dropzone": "^4.2.2",
-    "eslint": "^9",
     "eslint-config-next": "15.1.8"
   }
 }
