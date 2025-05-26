@@ -156,8 +156,8 @@ export default function ProfilePage() {
       ...p,
       createdAt: p.createdAt ? String(p.createdAt) : "",
       updatedAt: p.updatedAt ? String(p.updatedAt) : undefined,
-      _id: String(p._id),
-      userId: p.userId ? String(p.userId) : "",
+      _id: String(p._id) as Id<"profiles">,
+      userId: p.userId as Id<"users">,
     };
   }
 
