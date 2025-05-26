@@ -1,11 +1,10 @@
 "use client";
 
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { Loader2, UserCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import ProfileForm, {
   ProfileFormValues,
@@ -28,13 +27,10 @@ export default function ProfilePage() {
     !isSignedIn ? "skip" : {}
   );
   const updateProfileMutation = useMutation(api.users.updateProfile);
-  const deleteUserMutation = useMutation(api.users.deleteUser);
-  const router = useRouter();
-  const { signOut } = useClerk();
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deleting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -85,13 +81,18 @@ export default function ProfilePage() {
       await updateProfileMutation(filtered);
       setIsEditing(false);
       setShowSuccessModal(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ConvexError) {
         setServerError(
           "Something went wrong while saving your profile. Please try again."
         );
+      } else if (typeof error === "object" && error && "message" in error) {
+        setServerError(
+          String((error as { message?: unknown }).message) ||
+            "An unexpected error occurred."
+        );
       } else {
-        setServerError(error.message || "An unexpected error occurred.");
+        setServerError("An unexpected error occurred.");
       }
     } finally {
       setLoading(false);
@@ -131,6 +132,35 @@ export default function ProfilePage() {
   const userConvexData = currentUserProfileData;
   const profileData = currentUserProfileData?.profile ?? undefined;
 
+  // Helper to convert profileData to Profile type
+  function toProfileType(
+    profile: unknown
+  ): import("@/types/profile").Profile | undefined {
+    if (
+      !profile ||
+      typeof profile !== "object" ||
+      !("_id" in profile) ||
+      !("userId" in profile) ||
+      !("createdAt" in profile)
+    ) {
+      return undefined;
+    }
+    const p = profile as {
+      _id: string | number;
+      userId: string | number;
+      createdAt: string | number;
+      updatedAt?: string | number;
+      [key: string]: unknown;
+    };
+    return {
+      ...p,
+      createdAt: p.createdAt ? String(p.createdAt) : "",
+      updatedAt: p.updatedAt ? String(p.updatedAt) : undefined,
+      _id: String(p._id),
+      userId: p.userId ? String(p.userId) : "",
+    };
+  }
+
   // Conditionally render form or view
   if (isEditing || isOnboarding) {
     return (
@@ -148,7 +178,13 @@ export default function ProfilePage() {
   return (
     <>
       <ProfileView
-        profileData={profileData as any}
+        profileData={
+          toProfileType(profileData) || {
+            _id: "",
+            userId: "",
+            createdAt: "",
+          }
+        }
         clerkUser={clerkUser ? { id: clerkUser.id } : undefined}
         userConvexData={userConvexData}
         onEdit={handleEdit}

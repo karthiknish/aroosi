@@ -14,7 +14,7 @@ import DatePicker from "react-datepicker";
 import { format, parseISO, subYears } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { ProfileFormValues } from "./ProfileForm";
-import type { UseFormReturn, FieldErrors } from "react-hook-form";
+import type { UseFormReturn } from "react-hook-form";
 
 type UseFormType = UseFormReturn<ProfileFormValues>;
 

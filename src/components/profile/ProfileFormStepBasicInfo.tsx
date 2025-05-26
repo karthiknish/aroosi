@@ -7,13 +7,11 @@ import type { ProfileFormValues } from "./ProfileForm";
 
 type Props = {
   form: import("react-hook-form").UseFormReturn<ProfileFormValues>;
-  mode: "create" | "edit";
   cmToFeetInches: (cm: number) => string;
 };
 
 const ProfileFormStepBasicInfo: React.FC<Props> = ({
   form,
-  mode,
   cmToFeetInches,
 }) => (
   <>

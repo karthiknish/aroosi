@@ -119,11 +119,6 @@ export const DisplaySection: React.FC<{
   </div>
 );
 
-// 2. Update FormFieldProps, FormSelectFieldProps, FormDateFieldProps
-type UseFormType = import("react-hook-form").UseFormReturn<ProfileFormValues>;
-
-
-
 // 3. Update UnifiedProfileFormProps
 type ClerkUser = { id: string; [key: string]: unknown };
 export interface UnifiedProfileFormProps {
@@ -335,9 +330,9 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
         typeof img === "object" &&
         img !== null &&
         "url" in img &&
-        typeof (img as any).url === "string" &&
+        typeof (img as { url: unknown }).url === "string" &&
         "storageId" in img &&
-        typeof (img as any).storageId === "string"
+        typeof (img as { storageId: unknown }).storageId === "string"
       );
     }
 
