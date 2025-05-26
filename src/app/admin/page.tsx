@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import {
-  useQueryClient,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
@@ -24,6 +20,7 @@ import Head from "next/head";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import type { Profile } from "@/types/profile";
 
 interface BlogPost {
   _id: string;
@@ -37,21 +34,16 @@ interface BlogPost {
   categories?: string[];
 }
 
-interface ContactMessage {
-  _id: string;
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-  createdAt: string;
-}
-
-// Create a QueryClient instance outside the component to avoid recreation on every render
-const queryClient = new QueryClient();
+type Interest = {
+  fromUserId: string;
+  toUserId: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: number;
+};
 
 function AdminPageInner() {
+  // All hooks at the top
   const [activeTab, setActiveTab] = useState<string>("contact");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [title, setTitle] = useState<string>("");
   const [slug, setSlug] = useState<string>("");
   const [excerpt, setExcerpt] = useState<string>("");
@@ -77,6 +69,53 @@ function AdminPageInner() {
 
   const [adminError, setAdminError] = useState<string | null>(null);
   const { user, isLoaded, isSignedIn } = useUser();
+
+  // Convex blog mutations (move here)
+  const createBlogPost = useConvexMutation(api.blog.createBlogPost);
+  const updateBlogPost = useConvexMutation(api.blog.updateBlogPost);
+  const deleteBlogPost = useConvexMutation(api.blog.deleteBlogPost);
+
+  const [categories, setCategories] = useState<string[]>([]);
+  const [editCategories, setEditCategories] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState<{
+    excerpt?: boolean;
+    category?: boolean;
+    content?: boolean;
+  }>({});
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+
+  // Markdown shortcuts
+  type MarkdownShortcut = {
+    label: string;
+    title: string;
+    md: string;
+    wrap?: string;
+    block?: boolean;
+  };
+  const markdownShortcuts: MarkdownShortcut[] = [
+    { label: "H1", title: "Heading 1", md: "# " },
+    { label: "H2", title: "Heading 2", md: "## " },
+    { label: "H3", title: "Heading 3", md: "### " },
+    { label: "B", title: "Bold", md: "**", wrap: "**" },
+    { label: "I", title: "Italic", md: "_", wrap: "_" },
+    { label: "Link", title: "Link", md: "[", wrap: "](url)" },
+    { label: "Img", title: "Image", md: "![alt](", wrap: ")" },
+    { label: "Code", title: "Code", md: "```\n", wrap: "\n```", block: true },
+    { label: "List", title: "List", md: "- ", block: true },
+    {
+      label: "Table",
+      title: "Table",
+      md: "| Header | Header |\n| ------ | ------ |\n| Cell | Cell |",
+      block: true,
+    },
+  ];
+
+  // Fetch blog posts and contact messages from Convex (always call hooks at the top level)
+  const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
+  const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});
+
+  // Remove unused error variables
+  // Remove unused MarkdownShortcut type
 
   // Wait for Clerk to be ready before making admin queries
   if (!isLoaded) {
@@ -111,46 +150,21 @@ function AdminPageInner() {
     );
   }
 
-  // Fetch blog posts and contact messages from Convex
-  const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
-  const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});
-
-  useEffect(() => {
-    if (
-      blogPostsRaw &&
-      (blogPostsRaw as any).error &&
-      /not authorized/i.test((blogPostsRaw as any).error.message)
-    ) {
-      setAdminError(
-        "You are not authorized to view this page. Please log in as an admin."
-      );
-    }
-  }, [blogPostsRaw]);
-
   // Map Convex data to expected types
-  const blogPosts = blogPostsRaw?.map((post) => ({
+  const blogPosts = blogPostsRaw?.map((post: any) => ({
     ...post,
     createdAt: post.createdAt ? new Date(post.createdAt).toISOString() : "",
     updatedAt: post.updatedAt ? new Date(post.updatedAt).toISOString() : "",
   }));
-  const contactMessages = contactMessagesRaw?.map((msg) => ({
+  const contactMessages = contactMessagesRaw?.map((msg: any) => ({
     ...msg,
     createdAt: msg.createdAt ? new Date(msg.createdAt).toISOString() : "",
   }));
 
-  // Convex blog mutations
-  const createBlogPost = useConvexMutation(api.blog.createBlogPost);
-  const updateBlogPost = useConvexMutation(api.blog.updateBlogPost);
-  const deleteBlogPost = useConvexMutation(api.blog.deleteBlogPost);
-
-  const [categories, setCategories] = useState<string[]>([]);
-  const [editCategories, setEditCategories] = useState<string[]>([]);
-  const [aiLoading, setAiLoading] = useState<{
-    excerpt?: boolean;
-    category?: boolean;
-    content?: boolean;
-  }>({});
-  const [previewHtml, setPreviewHtml] = useState<string>("");
+  // Live preview effect for create post
+  useEffect(() => {
+    setPreviewHtml(content);
+  }, [content]);
 
   const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -238,32 +252,6 @@ function AdminPageInner() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
   };
-
-  type MarkdownShortcut = {
-    label: React.ReactNode;
-    title: string;
-    md: string;
-    wrap?: string;
-    block?: boolean;
-  };
-
-  const markdownShortcuts = [
-    { label: "H1", title: "Heading 1", md: "# " },
-    { label: "H2", title: "Heading 2", md: "## " },
-    { label: "H3", title: "Heading 3", md: "### " },
-    { label: "B", title: "Bold", md: "**", wrap: "**" },
-    { label: "I", title: "Italic", md: "_", wrap: "_" },
-    { label: "Link", title: "Link", md: "[", wrap: "](url)" },
-    { label: "Img", title: "Image", md: "![alt](", wrap: ")" },
-    { label: "Code", title: "Code", md: "```\n", wrap: "\n```", block: true },
-    { label: "List", title: "List", md: "- ", block: true },
-    {
-      label: "Table",
-      title: "Table",
-      md: "| Header | Header |\n| ------ | ------ |\n| Cell | Cell |",
-      block: true,
-    },
-  ];
 
   const insertMarkdown = (
     text: string,
@@ -353,11 +341,6 @@ function AdminPageInner() {
       setAiLoading((prev) => ({ ...prev, [field]: false }));
     }
   }
-
-  // Live preview effect for create post
-  useEffect(() => {
-    setPreviewHtml(content);
-  }, [content]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -510,9 +493,15 @@ function AdminPageInner() {
 }
 
 function AdminMatches() {
-  const profiles = useConvexQuery(api.users.listProfiles, {});
-  const interests = useConvexQuery(api.interests.listAllInterests, {});
-  const [mutualMatches, setMutualMatches] = useState<any[]>([]);
+  const profiles = useConvexQuery(api.users.listProfiles, {}) as
+    | Profile[]
+    | undefined;
+  const interests = useConvexQuery(api.interests.listAllInterests, {}) as
+    | Interest[]
+    | undefined;
+  const [mutualMatches, setMutualMatches] = useState<
+    { profileA: Profile; profileB: Profile }[]
+  >([]);
 
   useEffect(() => {
     if (!profiles || !interests) return;
@@ -525,7 +514,7 @@ function AdminMatches() {
       }
     }
     // Find mutual matches
-    const matches: any[] = [];
+    const matches: { profileA: Profile; profileB: Profile }[] = [];
     for (const i of interests) {
       if (i.status === "accepted") {
         const from = i.fromUserId;
@@ -535,8 +524,8 @@ function AdminMatches() {
           acceptedMap[to].has(from) &&
           from < to // Avoid duplicates (A-B and B-A)
         ) {
-          const profileA = profiles.find((p: any) => p.userId === from);
-          const profileB = profiles.find((p: any) => p.userId === to);
+          const profileA = profiles.find((p) => p.userId === from);
+          const profileB = profiles.find((p) => p.userId === to);
           if (profileA && profileB) {
             matches.push({ profileA, profileB });
           }
@@ -612,7 +601,7 @@ export default function AdminPage() {
         />
         <meta name="twitter:image" content="/og-image.png" />
       </Head>
-      <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={new QueryClient()}>
         <AdminPageInner />
       </QueryClientProvider>
     </>

@@ -222,7 +222,7 @@ export default function AboutPage() {
           </h2>
           <p className="text-lg text-gray-700 leading-relaxed mb-8 max-w-2xl mx-auto">
             Ready to start your journey? Aroosi is more than just a platform;
-            it's a community built on trust and shared aspirations.
+            it&apos;s a community built on trust and shared aspirations.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up">

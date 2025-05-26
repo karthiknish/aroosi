@@ -7,6 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MapPin, UserCircle } from "lucide-react";
 import Link from "next/link";
 import React from "react";
+import type { Id } from "convex/_generated/dataModel";
+
+type PublicProfile = {
+  userId: string;
+  profile: {
+    profileImageIds?: string[];
+    fullName?: string;
+    ukCity?: string;
+    religion?: string;
+    aboutMe?: string;
+    [key: string]: unknown;
+  };
+};
 
 export default function MyInterestsPage() {
   const { user: isSignedIn } = useUser();
@@ -19,7 +32,7 @@ export default function MyInterestsPage() {
   );
 
   const batchGetPublicProfiles = useAction(api.users.batchGetPublicProfiles);
-  const [profiles, setProfiles] = React.useState<any[]>([]);
+  const [profiles, setProfiles] = React.useState<PublicProfile[]>([]);
   const [loadingProfiles, setLoadingProfiles] = React.useState(false);
 
   React.useEffect(() => {
@@ -33,7 +46,9 @@ export default function MyInterestsPage() {
         return;
       }
       setLoadingProfiles(true);
-      const userIds = sentInterests.map((interest: any) => interest.toUserId);
+      const userIds = sentInterests.map(
+        (interest: { toUserId: string }) => interest.toUserId
+      ) as Id<"users">[];
       const data = await batchGetPublicProfiles({ userIds });
       setProfiles(data || []);
       setLoadingProfiles(false);
