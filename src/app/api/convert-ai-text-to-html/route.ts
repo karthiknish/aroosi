@@ -10,7 +10,7 @@ function errorResponse(message: string, status: number = 500) {
   });
 }
 
-function successResponse(data: any, status: number = 200) {
+function successResponse(data: unknown, status: number = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
@@ -30,15 +30,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let body: any;
+    let body: unknown;
     try {
       body = await req.json();
     } catch {
       return errorResponse("Invalid JSON in request body.", 400);
     }
 
-    const text = typeof body?.text === "string" ? body.text.trim() : "";
-    const type = typeof body?.type === "string" ? body.type : "html";
+    let text = "";
+    let type = "html";
+    if (typeof body === "object" && body !== null) {
+      if ("text" in body && typeof (body as any).text === "string") {
+        text = (body as any).text.trim();
+      }
+      if ("type" in body && typeof (body as any).type === "string") {
+        type = (body as any).type;
+      }
+    }
     if (!text) {
       return errorResponse("Please provide text to convert.", 400);
     }
@@ -88,21 +96,32 @@ export async function POST(req: NextRequest) {
       return errorResponse(errorMsg, res.status);
     }
 
-    let data: any;
+    let data: unknown;
     try {
       data = await res.json();
     } catch {
       return errorResponse("Invalid response from Gemini API.", 502);
     }
 
-    const html = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const html =
+      typeof data === "object" &&
+      data !== null &&
+      "candidates" in data &&
+      Array.isArray((data as any).candidates) &&
+      (data as any).candidates[0]?.content?.parts?.[0]?.text
+        ? (data as any).candidates[0].content.parts[0].text
+        : undefined;
     if (!html || typeof html !== "string" || !html.trim()) {
       return errorResponse("No HTML content received from Gemini", 502);
     }
 
     return successResponse({ html });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? String((error as { message?: unknown }).message)
+        : "Failed to convert to HTML";
     console.error("Error converting to HTML:", error);
-    return errorResponse(error?.message || "Failed to convert to HTML", 500);
+    return errorResponse(message, 500);
   }
 }
