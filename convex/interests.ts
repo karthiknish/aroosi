@@ -2,6 +2,7 @@ import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { checkRateLimit } from "./utils/rateLimit";
 import { requireAdmin } from "./utils/requireAdmin";
+import { Id } from "./_generated/dataModel";
 
 // Send an interest (like/express interest)
 export const sendInterest = mutation({
@@ -11,10 +12,10 @@ export const sendInterest = mutation({
   },
   handler: async (
     ctx: MutationCtx,
-    args: { fromUserId: string; toUserId: string }
+    args: { fromUserId: Id<"users">; toUserId: Id<"users"> }
   ) => {
     // Rate limit by fromUserId
-    const rateKey = `interest:send:${args.fromUserId}`;
+    const rateKey = `interest:send:${String(args.fromUserId)}`;
     const rate = await checkRateLimit(ctx.db, rateKey);
     if (!rate.allowed) {
       return {
@@ -70,7 +71,7 @@ export const respondToInterest = mutation({
 // Query interests sent by a user
 export const getSentInterests = query({
   args: { userId: v.id("users") },
-  handler: async (ctx: QueryCtx, args: { userId: string }) => {
+  handler: async (ctx: QueryCtx, args: { userId: Id<"users"> }) => {
     return ctx.db
       .query("interests")
       .withIndex("by_from_to", (q: any) => q.eq("fromUserId", args.userId))
@@ -81,7 +82,7 @@ export const getSentInterests = query({
 // Query interests received by a user
 export const getReceivedInterests = query({
   args: { userId: v.id("users") },
-  handler: async (ctx: QueryCtx, args: { userId: string }) => {
+  handler: async (ctx: QueryCtx, args: { userId: Id<"users"> }) => {
     return ctx.db
       .query("interests")
       .withIndex("by_to", (q: any) => q.eq("toUserId", args.userId))
@@ -95,7 +96,10 @@ export const isMutualInterest = query({
     userA: v.id("users"),
     userB: v.id("users"),
   },
-  handler: async (ctx: QueryCtx, args: { userA: string; userB: string }) => {
+  handler: async (
+    ctx: QueryCtx,
+    args: { userA: Id<"users">; userB: Id<"users"> }
+  ) => {
     const aToB = await ctx.db
       .query("interests")
       .withIndex("by_from_to", (q: any) =>

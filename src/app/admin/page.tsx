@@ -36,8 +36,8 @@ interface BlogPost {
 }
 
 type Interest = {
-  fromUserId: string;
-  toUserId: string;
+  fromUserId: Id<"users">;
+  toUserId: Id<"users">;
   status: "pending" | "accepted" | "rejected";
   createdAt: number;
 };
