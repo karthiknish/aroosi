@@ -98,6 +98,7 @@ export default function ProfileDetailPage() {
       // For other profiles, use their fixed order
       setLocalCurrentUserImageOrder(profileData.profile.profileImageIds);
     }
+    console.log("interestSent", interestSent);
   }, [
     isOwnProfile,
     currentUserProfileImagesData,

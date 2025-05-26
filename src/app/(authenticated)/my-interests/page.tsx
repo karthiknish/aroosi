@@ -8,7 +8,6 @@ import { Loader2, MapPin, UserCircle } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import type { Id } from "convex/_generated/dataModel";
-import type { Interest } from "@/types/profile";
 
 type PublicProfile = {
   userId: string;
