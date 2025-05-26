@@ -68,9 +68,13 @@ export async function handleExpressInterest({
     await sendInterestMutation({ fromUserId: currentUserId, toUserId: id });
     setInterestSent(true);
     toast.success("Interest sent!");
-  } catch (err: any) {
-    setInterestError(err.message || "Could not send interest.");
-    toast.error(err.message || "Could not send interest.");
+  } catch (err: unknown) {
+    const message =
+      typeof err === "object" && err && "message" in err
+        ? String((err as { message?: unknown }).message)
+        : "Could not send interest.";
+    setInterestError(message);
+    toast.error(message);
   }
 }
 
@@ -95,8 +99,12 @@ export async function handleBlock({
       blockedUserId: id,
     });
     toast.success("User blocked successfully");
-  } catch (err: any) {
-    toast.error(err.message || "Failed to block user");
+  } catch (err: unknown) {
+    const message =
+      typeof err === "object" && err && "message" in err
+        ? String((err as { message?: unknown }).message)
+        : "Failed to block user";
+    toast.error(message);
   } finally {
     setBlockLoading(false);
   }
@@ -123,8 +131,12 @@ export async function handleUnblock({
       blockedUserId: id,
     });
     toast.success("User unblocked.");
-  } catch (err: any) {
-    toast.error(err.message || "Could not unblock user.");
+  } catch (err: unknown) {
+    const message =
+      typeof err === "object" && err && "message" in err
+        ? String((err as { message?: unknown }).message)
+        : "Could not unblock user.";
+    toast.error(message);
   } finally {
     setBlockLoading(false);
   }
@@ -151,8 +163,12 @@ export async function handleRemoveInterest({
     await removeInterestMutation({ fromUserId: currentUserId, toUserId: id });
     setInterestSent(false);
     toast.success("Interest removed.");
-  } catch (err: any) {
-    setInterestError(err.message || "Could not remove interest.");
-    toast.error(err.message || "Could not remove interest.");
+  } catch (err: unknown) {
+    const message =
+      typeof err === "object" && err && "message" in err
+        ? String((err as { message?: unknown }).message)
+        : "Could not remove interest.";
+    setInterestError(message);
+    toast.error(message);
   }
 }

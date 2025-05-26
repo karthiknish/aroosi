@@ -17,6 +17,8 @@ import { UserCircle } from "lucide-react";
 import React, { useState } from "react";
 import { useQuery as useConvexQuery } from "convex/react";
 import { useUser, SignInButton } from "@clerk/nextjs";
+import type { Profile } from "@/types/profile";
+import type { Id } from "convex/_generated/dataModel";
 
 const majorUkCities = [
   "Belfast",
@@ -65,12 +67,49 @@ function getAge(dateOfBirth: string) {
   return isNaN(age) ? "-" : age;
 }
 
-const genderOptions = [
-  { value: "any", label: "Any" },
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-];
+// Convex profile type (matches Convex schema, createdAt is number)
+type ConvexProfile = {
+  _id: string;
+  userId: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  ukCity?: string;
+  ukPostcode?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: string;
+  education?: string;
+  occupation?: string;
+  annualIncome?: number;
+  aboutMe?: string;
+  phoneNumber?: string;
+  diet?: string;
+  smoking?: string;
+  drinking?: string;
+  physicalStatus?: string;
+  partnerPreferenceAgeMin?: number;
+  partnerPreferenceAgeMax?: number;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  preferredGender?: string;
+  profileImageIds?: string[];
+  banned?: boolean;
+  createdAt: number;
+  updatedAt?: number;
+  isProfileComplete?: boolean;
+  hiddenFromSearch?: boolean;
+};
+
+type ConvexUserWithProfile = {
+  _id: Id<"users">;
+  email: string;
+  role?: string;
+  banned?: boolean;
+  profile: ConvexProfile | null;
+};
 
 export default function SearchProfilesPage() {
   const { user, isLoaded } = useUser();
@@ -91,7 +130,7 @@ export default function SearchProfilesPage() {
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: any) =>
+      (u: ConvexUserWithProfile) =>
         u.profile && u.profile.isProfileComplete && !u.profile.hiddenFromSearch
     );
   }, [profiles]);
@@ -99,14 +138,16 @@ export default function SearchProfilesPage() {
   // Get unique cities and religions for filter dropdowns
   const religionOptions = React.useMemo(() => {
     const set = new Set(
-      publicProfiles.map((u: any) => u.profile.religion).filter(Boolean)
+      publicProfiles
+        .map((u: ConvexUserWithProfile) => u.profile!.religion)
+        .filter(Boolean)
     );
     return ["any", ...Array.from(set)];
   }, [publicProfiles]);
 
   // Filtering logic (exclude logged-in user's own profile by Clerk ID or email)
   const filtered = React.useMemo(() => {
-    return publicProfiles.filter((u: any) => {
+    return publicProfiles.filter((u: ConvexUserWithProfile) => {
       // Exclude the logged-in user's own profile by Clerk ID or email
       if (user) {
         if (u._id === user.id) return false;
@@ -119,7 +160,7 @@ export default function SearchProfilesPage() {
         )
           return false;
       }
-      const p = u.profile;
+      const p = u.profile!;
       if (
         (city !== "any" && p.ukCity !== city) ||
         (religion !== "any" && p.religion !== religion) ||
@@ -129,7 +170,7 @@ export default function SearchProfilesPage() {
       }
       // Age filter
       if (ageMin || ageMax) {
-        const age = getAge(p.dateOfBirth);
+        const age = getAge(p.dateOfBirth!);
         if (age === "-") return false;
         if (ageMin && age < Number(ageMin)) return false;
         if (ageMax && age > Number(ageMax)) return false;
@@ -140,12 +181,14 @@ export default function SearchProfilesPage() {
 
   // Collect all userIds from filtered (always an array)
   const userIds = React.useMemo(
-    () => filtered.map((u: any) => u._id),
+    () => filtered.map((u: ConvexUserWithProfile) => u._id),
     [filtered]
   );
-  const userImages = useConvexQuery(api.images.batchGetProfileImages, {
-    userIds,
-  });
+  // Allow null values in userImages
+  const userImages: { [userId: string]: string | null } | undefined =
+    useConvexQuery(api.images.batchGetProfileImages, {
+      userIds,
+    });
 
   if (!isLoaded) {
     return (
@@ -206,7 +249,7 @@ export default function SearchProfilesPage() {
               </SelectTrigger>
               <SelectContent>
                 {religionOptions.map((r) => (
-                  <SelectItem key={r} value={r}>
+                  <SelectItem key={r} value={r || ""}>
                     {r === "any" ? "Any Religion" : r}
                   </SelectItem>
                 ))}
@@ -217,7 +260,7 @@ export default function SearchProfilesPage() {
               min={18}
               max={99}
               placeholder="Min Age"
-              value={ageMin}
+              value={ageMin || ""}
               onChange={(e) => setAgeMin(e.target.value)}
               className="w-24 bg-white"
             />
@@ -226,7 +269,7 @@ export default function SearchProfilesPage() {
               min={18}
               max={99}
               placeholder="Max Age"
-              value={ageMax}
+              value={ageMax || ""}
               onChange={(e) => setAgeMax(e.target.value)}
               className="w-24 bg-white"
             />
@@ -242,8 +285,8 @@ export default function SearchProfilesPage() {
           </div>
         ) : (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((u: any) => {
-              const p = u.profile;
+            {filtered.map((u: ConvexUserWithProfile) => {
+              const p = u.profile!;
               const firstImageUrl = userImages?.[u._id] || null;
               const loaded = imgLoaded[u._id] || false;
               return (
@@ -288,7 +331,7 @@ export default function SearchProfilesPage() {
                       className="text-sm text-gray-600 mb-1"
                       style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                     >
-                      Age: {getAge(p.dateOfBirth)}
+                      Age: {getAge(p.dateOfBirth || "")}
                     </div>
                     <div
                       className="text-sm text-gray-600 mb-2"
