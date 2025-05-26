@@ -67,7 +67,6 @@ function AdminPageInner() {
   const [editSlugManuallyEdited, setEditSlugManuallyEdited] =
     useState<boolean>(false);
   const [editPexelsOpen, setEditPexelsOpen] = useState<boolean>(false);
-  const editContentRef = useRef<HTMLTextAreaElement>(null);
 
   const { user, isLoaded, isSignedIn } = useUser();
 
