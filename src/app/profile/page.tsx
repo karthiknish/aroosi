@@ -22,6 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ConvexError } from "convex/values";
+import { getProfileFormSchema, ProfileFormValues } from "./profileFormSchema";
 
 const requiredFields = [
   "fullName",
