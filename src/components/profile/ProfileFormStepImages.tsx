@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder, Image } from "../ProfileImageReorder";
@@ -92,6 +92,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
           )}
         />
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogTitle className="sr-only">Profile Image</DialogTitle>
           <DialogContent className="max-w-2xl flex flex-col items-center justify-center bg-black/90 p-0">
             <div className="relative w-full flex items-center justify-center min-h-[400px]">
               <button
