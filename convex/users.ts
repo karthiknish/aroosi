@@ -62,7 +62,10 @@ export const getCurrentUserWithProfile = query({
  * Ensures user exists in Convex and a basic profile record is created.
  */
 export const internalUpsertUser = internalMutation(
-  async (ctx, { clerkId, email }: { clerkId: string; email: string }) => {
+  async (
+    ctx,
+    { clerkId, email, role }: { clerkId: string; email: string; role?: string }
+  ) => {
     const existingUser = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
@@ -72,8 +75,10 @@ export const internalUpsertUser = internalMutation(
 
     if (existingUser) {
       userId = existingUser._id;
-      if (existingUser.email !== email) {
-        await ctx.db.patch(userId, { email });
+      const update: any = { email };
+      if (role && existingUser.role !== role) update.role = role;
+      if (existingUser.email !== email || update.role) {
+        await ctx.db.patch(userId, update);
       }
     } else {
       // Defensive: check again before insert (handles race conditions)
@@ -83,11 +88,13 @@ export const internalUpsertUser = internalMutation(
         .unique();
       if (doubleCheck) {
         userId = doubleCheck._id;
-        if (doubleCheck.email !== email) {
-          await ctx.db.patch(userId, { email });
+        const update: any = { email };
+        if (role && doubleCheck.role !== role) update.role = role;
+        if (doubleCheck.email !== email || update.role) {
+          await ctx.db.patch(userId, update);
         }
       } else {
-        userId = await ctx.db.insert("users", { clerkId, email });
+        userId = await ctx.db.insert("users", { clerkId, email, role });
       }
     }
 
@@ -662,12 +669,14 @@ export const listUsersWithProfiles = query({
   handler: async (ctx, args) => {
     const users = await ctx.db.query("users").collect();
     const profiles = await ctx.db.query("profiles").collect();
-    let filtered = users.map((user) => ({
-      ...user,
-      profile:
-        profiles.find((p) => p.userId === user._id && p.banned !== true) ||
-        null,
-    }));
+    let filtered = users
+      .filter((user) => user.role !== "admin") // Exclude admins
+      .map((user) => ({
+        ...user,
+        profile:
+          profiles.find((p) => p.userId === user._id && p.banned !== true) ||
+          null,
+      }));
     if (args.preferredGender && args.preferredGender !== "any") {
       filtered = filtered.filter(
         (u) => u.profile && u.profile.gender === args.preferredGender

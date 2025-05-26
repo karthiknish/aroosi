@@ -7,6 +7,7 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     banned: v.optional(v.boolean()),
+    role: v.optional(v.string()),
     // We might not need to store username if Clerk handles it and we can derive it
     // username: v.optional(v.string()),
   }).index("by_clerk_id", ["clerkId"]),
