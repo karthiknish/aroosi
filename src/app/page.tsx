@@ -240,9 +240,9 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-gray-700 italic">
-                "Aroosi made it easy to find someone who shares our values and
-                cultural background. We&apos;re grateful for this platform that
-                brought us together."
+                &quot;Aroosi made it easy to find someone who shares our values
+                and cultural background. We&apos;re grateful for this platform
+                that brought us together.&quot;
               </p>
             </motion.div>
             <motion.div
@@ -264,9 +264,9 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-gray-700 italic">
-                "The platform&apos;s focus on meaningful connections helped us
-                find each other. We appreciate the privacy and security features
-                that made us feel comfortable."
+                &quot;The platform&apos;s focus on meaningful connections helped
+                us find each other. We appreciate the privacy and security
+                features that made us feel comfortable.&quot;
               </p>
             </motion.div>
           </div>

@@ -9,14 +9,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Eye, Trash2, X } from "lucide-react";
 
-interface ContactMessage {
+export type ContactMessage = {
   _id: string;
   name: string;
   email: string;
   subject: string;
   message: string;
   createdAt: string;
-}
+};
 
 interface ContactMessagesProps {
   messages: ContactMessage[] | undefined;

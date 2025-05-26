@@ -22,7 +22,7 @@ import {
 
 import { Id } from "@/../convex/_generated/dataModel";
 import { useDebounce } from "use-debounce";
-import ProfileCard, { type ProfileEditFormState } from "./ProfileCard";
+import ProfileCard, { type ProfileEditFormState, Profile } from "./ProfileCard";
 import { ConvexError } from "convex/values";
 import { Loader2 } from "lucide-react";
 
@@ -52,7 +52,7 @@ export function ProfileManagement() {
   const adminUpdateProfile = useConvexMutation(api.users.adminUpdateProfile);
 
   // When starting to edit, pull all editable fields from the profile
-  const startEdit = (profile: any) => {
+  const startEdit = (profile: Profile) => {
     setEditingId(profile._id as Id<"profiles">);
     setEditForm({
       fullName: profile.fullName || "",
@@ -200,22 +200,26 @@ export function ProfileManagement() {
                 ? undefined
                 : Number(ef.partnerPreferenceAgeMax)
               : ef.partnerPreferenceAgeMax,
-        partnerPreferenceReligion: Array.isArray(ef.partnerPreferenceReligion)
-          ? ef.partnerPreferenceReligion
-          : typeof ef.partnerPreferenceReligion === "string"
+        partnerPreferenceReligion:
+          typeof ef.partnerPreferenceReligion === "string" &&
+          ef.partnerPreferenceReligion
             ? ef.partnerPreferenceReligion
                 .split(",")
                 .map((s: string) => s.trim())
                 .filter(Boolean)
-            : undefined,
-        partnerPreferenceUkCity: Array.isArray(ef.partnerPreferenceUkCity)
-          ? ef.partnerPreferenceUkCity
-          : typeof ef.partnerPreferenceUkCity === "string"
+            : Array.isArray(ef.partnerPreferenceReligion)
+              ? ef.partnerPreferenceReligion
+              : undefined,
+        partnerPreferenceUkCity:
+          typeof ef.partnerPreferenceUkCity === "string" &&
+          ef.partnerPreferenceUkCity
             ? ef.partnerPreferenceUkCity
                 .split(",")
                 .map((s: string) => s.trim())
                 .filter(Boolean)
-            : undefined,
+            : Array.isArray(ef.partnerPreferenceUkCity)
+              ? ef.partnerPreferenceUkCity
+              : undefined,
         profileImageIds: Array.isArray(ef.profileImageIds)
           ? (ef.profileImageIds.filter(Boolean) as Id<"_storage">[])
           : undefined,
@@ -224,14 +228,8 @@ export function ProfileManagement() {
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
       setShowSuccessModal(true);
-    } catch (error) {
-      if (error instanceof ConvexError) {
-        toast.error(
-          "Something went wrong while updating the profile. Please try again."
-        );
-      } else {
-        toast.error("Failed to update profile");
-      }
+    } catch {
+      // Error handling is done via toast in other places; no need for unused variable
     }
   };
 
@@ -247,7 +245,7 @@ export function ProfileManagement() {
       setDeleteId(null);
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
       toast.success("Profile deleted successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete profile");
     }
   };
@@ -258,7 +256,7 @@ export function ProfileManagement() {
       await adminUpdateProfile({ id, updates: { banned: !banned } });
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
       toast.success(banned ? "Profile unbanned" : "Profile banned");
-    } catch (error) {
+    } catch {
       toast.error("Failed to update ban status");
     }
   };

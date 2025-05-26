@@ -8,6 +8,7 @@ import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { toast } from "sonner";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
 import { ContactMessages } from "@/components/admin/ContactMessages";
+import type { ContactMessage } from "@/components/admin/ContactMessages";
 import { BlogPosts } from "@/components/admin/BlogPosts";
 import { CreatePost } from "@/components/admin/CreatePost";
 import { ProfileManagement } from "@/components/admin/ProfileManagement";
@@ -67,7 +68,7 @@ function AdminPageInner() {
   const [editPexelsOpen, setEditPexelsOpen] = useState<boolean>(false);
   const editContentRef = useRef<HTMLTextAreaElement>(null);
 
-  const [adminError, setAdminError] = useState<string | null>(null);
+  const [adminError] = useState<string | null>(null);
   const { user, isLoaded, isSignedIn } = useUser();
 
   // Convex blog mutations (move here)
@@ -155,11 +156,11 @@ function AdminPageInner() {
     ...post,
     createdAt: post.createdAt ? new Date(post.createdAt).toISOString() : "",
     updatedAt: post.updatedAt ? new Date(post.updatedAt).toISOString() : "",
-  }));
+  })) as BlogPost[] | undefined;
   const contactMessages = contactMessagesRaw?.map((msg: any) => ({
     ...msg,
     createdAt: msg.createdAt ? new Date(msg.createdAt).toISOString() : "",
-  }));
+  })) as ContactMessage[] | undefined;
 
   // Live preview effect for create post
   useEffect(() => {
@@ -334,8 +335,12 @@ function AdminPageInner() {
       temp.innerHTML = data.html;
       const plain = temp.textContent || temp.innerText || "";
       return plain.trim();
-    } catch (err: any) {
-      toast.error(err.message || "AI error");
+    } catch (err: unknown) {
+      const message =
+        typeof err === "object" && err && "message" in err
+          ? String((err as { message?: unknown }).message)
+          : "AI error";
+      toast.error(message);
       return "";
     } finally {
       setAiLoading((prev) => ({ ...prev, [field]: false }));
@@ -507,7 +512,7 @@ function AdminMatches() {
     if (!profiles || !interests) return;
     // Build a map of accepted interests: fromUserId -> Set of toUserIds
     const acceptedMap: Record<string, Set<string>> = {};
-    for (const i of interests) {
+    for (const i of interests as Interest[]) {
       if (i.status === "accepted") {
         if (!acceptedMap[i.fromUserId]) acceptedMap[i.fromUserId] = new Set();
         acceptedMap[i.fromUserId].add(i.toUserId);
@@ -515,17 +520,13 @@ function AdminMatches() {
     }
     // Find mutual matches
     const matches: { profileA: Profile; profileB: Profile }[] = [];
-    for (const i of interests) {
+    for (const i of interests as Interest[]) {
       if (i.status === "accepted") {
-        const from = i.fromUserId;
-        const to = i.toUserId;
-        if (
-          acceptedMap[to] &&
-          acceptedMap[to].has(from) &&
-          from < to // Avoid duplicates (A-B and B-A)
-        ) {
-          const profileA = profiles.find((p) => p.userId === from);
-          const profileB = profiles.find((p) => p.userId === to);
+        const match =
+          acceptedMap[i.toUserId] && acceptedMap[i.toUserId].has(i.fromUserId);
+        if (match) {
+          const profileA = profiles.find((p) => p.userId === i.fromUserId);
+          const profileB = profiles.find((p) => p.userId === i.toUserId);
           if (profileA && profileB) {
             matches.push({ profileA, profileB });
           }

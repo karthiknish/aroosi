@@ -40,11 +40,17 @@ export async function POST(req: NextRequest) {
     let text = "";
     let type = "html";
     if (typeof body === "object" && body !== null) {
-      if ("text" in body && typeof (body as any).text === "string") {
-        text = (body as any).text.trim();
+      if (
+        "text" in body &&
+        typeof (body as { text?: unknown }).text === "string"
+      ) {
+        text = ((body as { text?: unknown }).text as string).trim();
       }
-      if ("type" in body && typeof (body as any).type === "string") {
-        type = (body as any).type;
+      if (
+        "type" in body &&
+        typeof (body as { type?: unknown }).type === "string"
+      ) {
+        type = (body as { type?: unknown }).type as string;
       }
     }
     if (!text) {
@@ -89,8 +95,26 @@ export async function POST(req: NextRequest) {
       let errorMsg = `Gemini API error: ${res.status} ${res.statusText}`;
       let errorDetails = "";
       try {
-        const errJson = await res.json();
-        errorDetails = errJson?.error?.message || "";
+        const errJson: unknown = await res.json();
+        if (
+          typeof errJson === "object" &&
+          errJson !== null &&
+          "error" in errJson &&
+          typeof (errJson as { error?: unknown }).error === "object" &&
+          (errJson as { error?: { message?: unknown } }).error !== null &&
+          "message" in (errJson as { error: { message?: unknown } }).error &&
+          typeof (
+            (errJson as { error: { message?: unknown } }).error as {
+              message?: unknown;
+            }
+          ).message === "string"
+        ) {
+          errorDetails = (
+            (errJson as { error: { message?: unknown } }).error as {
+              message?: unknown;
+            }
+          ).message as string;
+        }
       } catch {}
       if (errorDetails) errorMsg += ` - ${errorDetails}`;
       return errorResponse(errorMsg, res.status);
@@ -107,9 +131,43 @@ export async function POST(req: NextRequest) {
       typeof data === "object" &&
       data !== null &&
       "candidates" in data &&
-      Array.isArray((data as any).candidates) &&
-      (data as any).candidates[0]?.content?.parts?.[0]?.text
-        ? (data as any).candidates[0].content.parts[0].text
+      Array.isArray((data as { candidates?: unknown }).candidates) &&
+      (
+        (data as { candidates: unknown[] }).candidates[0] as {
+          content?: unknown;
+        }
+      )?.content &&
+      typeof (
+        (data as { candidates: unknown[] }).candidates[0] as {
+          content?: unknown;
+        }
+      ).content === "object" &&
+      (
+        (data as { candidates: unknown[] }).candidates[0] as {
+          content: { parts?: unknown };
+        }
+      ).content.parts &&
+      Array.isArray(
+        (
+          (data as { candidates: unknown[] }).candidates[0] as {
+            content: { parts?: unknown };
+          }
+        ).content.parts
+      ) &&
+      typeof (
+        (
+          (data as { candidates: unknown[] }).candidates[0] as {
+            content: { parts: unknown[] };
+          }
+        ).content.parts[0] as { text?: unknown }
+      ).text === "string"
+        ? (
+            (
+              (data as { candidates: unknown[] }).candidates[0] as {
+                content: { parts: unknown[] };
+              }
+            ).content.parts[0] as { text: string }
+          ).text
         : undefined;
     if (!html || typeof html !== "string" || !html.trim()) {
       return errorResponse("No HTML content received from Gemini", 502);

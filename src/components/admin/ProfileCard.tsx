@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import ProfileEditForm from "./ProfileEditForm";
 import ProfileView from "./ProfileView";
 
-interface Profile {
+export interface Profile {
   _id: string;
   userId: string;
   clerkId: string;
