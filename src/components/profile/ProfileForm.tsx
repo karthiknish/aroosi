@@ -27,6 +27,7 @@ import ProfileFormStepCultural from "./ProfileFormStepCultural";
 import ProfileFormStepEducation from "./ProfileFormStepEducation";
 import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Hardcoded list of major UK cities
 const majorUkCities = [
@@ -614,9 +615,9 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
                     toast={toast}
                   />
                 ) : (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                    <span className="ml-2 text-gray-500">Loading user...</span>
+                  <div className="flex flex-col items-center justify-center py-8 gap-2">
+                    <Skeleton className="w-12 h-12 rounded-full" />
+                    <Skeleton className="h-4 w-24 rounded" />
                   </div>
                 )}
               </FormSection>

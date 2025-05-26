@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ChatBot: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -222,11 +223,9 @@ const ChatBot: React.FC = () => {
                 ))}
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="bg-white text-gray-800 border border-pink-100 rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-pink-600" />
-                        <span>Thinking...</span>
-                      </div>
+                    <div className="bg-white text-gray-800 border border-pink-100 rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm flex items-center gap-2">
+                      <Skeleton className="w-4 h-4 rounded-full" />
+                      <Skeleton className="h-4 w-20 rounded" />
                     </div>
                   </div>
                 )}

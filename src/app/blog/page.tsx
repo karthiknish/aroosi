@@ -8,6 +8,7 @@ import { api } from "@convex/_generated/api";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function BlogPage() {
   const [page, setPage] = React.useState(0);
@@ -53,8 +54,18 @@ export default function BlogPage() {
       <div className="px-2 sm:px-6 md:px-10 max-w-7xl mx-auto">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {posts === undefined ? (
-            <div className="col-span-full text-center text-gray-400 animate-pulse">
-              Loading posts...
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
+                >
+                  <Skeleton className="w-full h-40 rounded-xl" />
+                  <Skeleton className="h-6 w-2/3 rounded" />
+                  <Skeleton className="h-4 w-1/2 rounded" />
+                  <Skeleton className="h-4 w-1/3 rounded" />
+                </div>
+              ))}
             </div>
           ) : posts.length === 0 ? (
             <div className="col-span-full text-center text-gray-400">

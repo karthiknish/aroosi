@@ -7,6 +7,7 @@ import { api } from "@convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CreateProfilePage() {
   const refetchKey = 0;
@@ -25,7 +26,11 @@ export default function CreateProfilePage() {
   if (currentUserProfile === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-500 animate-pulse">Loading...</div>
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="w-20 h-20 rounded-full" />
+          <Skeleton className="h-6 w-40 rounded" />
+          <Skeleton className="h-4 w-32 rounded" />
+        </div>
       </div>
     );
   }

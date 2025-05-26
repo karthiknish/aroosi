@@ -5,6 +5,7 @@ import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder, Image } from "../ProfileImageReorder";
 import type { ProfileFormValues } from "./ProfileForm";
 import { Id } from "@/../convex/_generated/dataModel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
   form: import("react-hook-form").UseFormReturn<ProfileFormValues>;
@@ -44,9 +45,9 @@ const ProfileFormStepImages: React.FC<Props> = ({
 }) => (
   <div className="space-y-4">
     {!(clerkUser && "id" in clerkUser) || !convexUserId ? (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-        <span className="ml-2 text-gray-500">Loading user...</span>
+      <div className="flex flex-col items-center justify-center py-8 gap-2">
+        <Skeleton className="w-12 h-12 rounded-full" />
+        <Skeleton className="h-4 w-24 rounded" />
       </div>
     ) : (
       <>

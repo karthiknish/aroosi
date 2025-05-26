@@ -32,6 +32,7 @@ import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Profile } from "@/types/profile";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper for displaying profile details
 const ProfileDetailView: React.FC<{
@@ -449,21 +450,27 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 </Dialog>
               </>
             ) : (
-              <div className="text-center py-10">
-                <UserCircle className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-                <p className="text-lg text-gray-600 mb-2">
-                  Your Aroosi profile is ready to be filled out!
-                </p>
-                <p className="text-sm text-gray-500 mb-6">
-                  Click the &apos;Edit Profile&apos; button above to add your
-                  details and start connecting.
-                </p>
-                <Button
-                  onClick={onEdit}
-                  className="bg-pink-600 hover:bg-pink-700"
-                >
-                  <Edit3 className="mr-2 h-4 w-4" /> Start Editing Profile
-                </Button>
+              <div className="space-y-6">
+                {/* Header skeleton */}
+                <div className="flex flex-row items-center gap-4">
+                  <Skeleton className="h-10 w-40 rounded" />
+                  <Skeleton className="h-8 w-24 rounded" />
+                </div>
+                {/* Profile image skeleton */}
+                <div className="flex flex-row gap-4 items-center">
+                  <Skeleton className="h-32 w-32 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-6 w-1/2 rounded" />
+                    <Skeleton className="h-4 w-1/3 rounded" />
+                  </div>
+                </div>
+                {/* Info blocks skeleton */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Skeleton className="h-24 w-full rounded" />
+                  <Skeleton className="h-24 w-full rounded" />
+                  <Skeleton className="h-24 w-full rounded" />
+                  <Skeleton className="h-24 w-full rounded" />
+                </div>
               </div>
             )}
           </CardContent>

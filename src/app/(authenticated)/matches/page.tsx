@@ -22,6 +22,7 @@ import { Button } from "../../../components/ui/button";
 import { Loader2, MapPin, Search, UserCircle } from "lucide-react";
 import { useState } from "react";
 import type { Profile } from "@/types/profile";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const religions = [
   "Any",
@@ -36,7 +37,9 @@ const religions = [
 ];
 
 // Type guard for allowed genders
-function isAllowedGender(value: string): value is "male" | "female" | "other" | "any" {
+function isAllowedGender(
+  value: string
+): value is "male" | "female" | "other" | "any" {
   return ["male", "female", "other", "any"].includes(value);
 }
 
@@ -158,8 +161,18 @@ export default function MatchesPage() {
         </form>
         {/* TODO: Add distance filter if user location is available */}
         {profiles === undefined ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-pink-600" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 py-20">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
+              >
+                <Skeleton className="w-full h-32 rounded-xl" />
+                <Skeleton className="h-6 w-2/3 rounded" />
+                <Skeleton className="h-4 w-1/2 rounded" />
+                <Skeleton className="h-4 w-1/3 rounded" />
+              </div>
+            ))}
           </div>
         ) : profiles.length === 0 ? (
           <div className="text-center text-gray-500 py-20">

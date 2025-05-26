@@ -5,6 +5,7 @@ import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CreateProfileSuccessPage() {
   const currentUserProfile = useQuery(api.users.getCurrentUserWithProfile, {});
@@ -21,7 +22,11 @@ export default function CreateProfileSuccessPage() {
   if (currentUserProfile === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-500 animate-pulse">Loading...</div>
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="w-20 h-20 rounded-full" />
+          <Skeleton className="h-6 w-40 rounded" />
+          <Skeleton className="h-4 w-32 rounded" />
+        </div>
       </div>
     );
   }

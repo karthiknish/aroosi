@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ImageDeleteConfirmationProps {
   isOpen: boolean;
@@ -65,8 +66,8 @@ export function ImageDeleteConfirmation({
           >
             {isDeleting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                <Skeleton className="mr-2 h-4 w-4 rounded-full inline-block align-middle" />
+                <Skeleton className="h-4 w-16 rounded inline-block align-middle" />
               </>
             ) : (
               <>

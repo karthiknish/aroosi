@@ -19,6 +19,7 @@ import {
   Phone,
   PersonStanding,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProfileImage {
   _id: Id<"images">;
@@ -76,8 +77,10 @@ export default function ProfileView({ profile }: { profile: Profile }) {
   // Handle loading state
   if (result === undefined) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      <div className="flex flex-col items-center justify-center p-8 gap-4">
+        <Skeleton className="w-32 h-32 rounded-lg" />
+        <Skeleton className="h-6 w-40 rounded" />
+        <Skeleton className="h-4 w-32 rounded" />
       </div>
     );
   }

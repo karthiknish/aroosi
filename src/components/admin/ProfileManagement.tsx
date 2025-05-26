@@ -25,6 +25,7 @@ import { useDebounce } from "use-debounce";
 import ProfileCard, { type ProfileEditFormState } from "./ProfileCard";
 import type { Profile } from "@/types/profile";
 import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper for rendering a profile image or fallback
 
@@ -295,11 +296,18 @@ export function ProfileManagement() {
       </div>
       <div className="grid gap-6 min-h-[120px]">
         {profiles === undefined ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-10 w-10 animate-spin text-pink-500" />
-            <span className="ml-3 text-pink-600 text-lg font-medium">
-              Loading profiles...
-            </span>
+          <div className="grid gap-6 min-h-[120px]">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
+              >
+                <Skeleton className="w-full h-16 rounded-xl" />
+                <Skeleton className="h-6 w-2/3 rounded" />
+                <Skeleton className="h-4 w-1/2 rounded" />
+                <Skeleton className="h-4 w-1/3 rounded" />
+              </div>
+            ))}
           </div>
         ) : (
           profiles.filter(Boolean).map((profile) => {

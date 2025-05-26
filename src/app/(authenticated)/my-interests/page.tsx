@@ -8,6 +8,7 @@ import { Loader2, MapPin, UserCircle } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import type { Id } from "convex/_generated/dataModel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type PublicProfile = {
   userId: string;
@@ -78,8 +79,18 @@ export default function MyInterestsPage() {
           Profiles You&apos;ve Expressed Interest In
         </h1>
         {sentInterests === undefined || loadingProfiles ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-pink-600" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 py-20">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
+              >
+                <Skeleton className="w-full h-32 rounded-xl" />
+                <Skeleton className="h-6 w-2/3 rounded" />
+                <Skeleton className="h-4 w-1/2 rounded" />
+                <Skeleton className="h-4 w-1/3 rounded" />
+              </div>
+            ))}
           </div>
         ) : profiles.length === 0 ? (
           <div className="text-center text-gray-500 py-20">

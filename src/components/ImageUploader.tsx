@@ -14,6 +14,7 @@ import Cropper, { Area } from "react-easy-crop";
 import { Id } from "@/../convex/_generated/dataModel";
 import { ConvexError } from "convex/values";
 import type { ImageData } from "./ProfileImageUpload";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ImageUploaderProps {
   userId: Id<"users">;
@@ -185,20 +186,16 @@ export function ImageUploader({
         >
           {isUploading ? (
             <div className="flex flex-col items-center justify-center space-y-3 w-full">
-              <Loader2 className="w-8 h-8 text-pink-600 animate-spin" />
+              <Skeleton className="w-8 h-8 rounded-full" />
               <div className="w-full space-y-2">
-                <p className="text-sm font-medium text-foreground">
-                  Uploading your photo
-                </p>
+                <Skeleton className="h-4 w-1/2 rounded" />
                 <div className="w-full bg-muted rounded-full h-1.5">
                   <div
                     className="bg-pink-600 h-1.5 rounded-full animate-pulse"
                     style={{ width: "70%" }}
                   ></div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  This will just take a moment...
-                </p>
+                <Skeleton className="h-3 w-1/3 rounded" />
               </div>
             </div>
           ) : isDragActive ? (

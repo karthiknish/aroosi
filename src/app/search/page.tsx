@@ -18,6 +18,7 @@ import React, { useState } from "react";
 import { useQuery as useConvexQuery } from "convex/react";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import type { Id } from "convex/_generated/dataModel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const majorUkCities = [
   "Belfast",
@@ -192,7 +193,11 @@ export default function SearchProfilesPage() {
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 via-rose-50 to-white">
-        <div className="text-lg text-gray-500 animate-pulse">Loading...</div>
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="w-24 h-24 rounded-full" />
+          <Skeleton className="h-6 w-40 rounded" />
+          <Skeleton className="h-4 w-32 rounded" />
+        </div>
       </div>
     );
   }
@@ -275,8 +280,18 @@ export default function SearchProfilesPage() {
           </div>
         </section>
         {profiles === undefined || userImages === undefined ? (
-          <div className="text-center text-gray-400 animate-pulse">
-            Loading profiles...
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
+              >
+                <Skeleton className="w-full aspect-square rounded-xl" />
+                <Skeleton className="h-6 w-2/3 rounded" />
+                <Skeleton className="h-4 w-1/2 rounded" />
+                <Skeleton className="h-4 w-1/3 rounded" />
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-gray-400">

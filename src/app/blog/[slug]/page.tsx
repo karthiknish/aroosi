@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Share2, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Calculate reading time
 function getReadingTime(content: string): number {
@@ -25,8 +26,11 @@ export default function BlogDetailPage() {
 
   if (post === undefined) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="animate-pulse text-pink-600">Loading...</div>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+        <Skeleton className="h-10 w-2/3 rounded" />
+        <Skeleton className="h-6 w-1/2 rounded" />
+        <Skeleton className="h-4 w-1/3 rounded" />
+        <Skeleton className="h-4 w-1/4 rounded" />
       </div>
     );
   }

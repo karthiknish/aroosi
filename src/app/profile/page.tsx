@@ -20,6 +20,7 @@ import {
 import { ConvexError } from "convex/values";
 import React, { useState } from "react";
 import { Id } from "@convex/_generated/dataModel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfilePage() {
   const { user: clerkUser, isSignedIn } = useUser();
@@ -124,7 +125,11 @@ export default function ProfilePage() {
   if (currentUserProfileData === undefined && isSignedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-16 w-16 animate-spin text-pink-600" />
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="w-20 h-20 rounded-full" />
+          <Skeleton className="h-6 w-40 rounded" />
+          <Skeleton className="h-4 w-32 rounded" />
+        </div>
       </div>
     );
   }
