@@ -35,8 +35,13 @@ const religions = [
   "Other",
 ];
 
+// Type guard for allowed genders
+function isAllowedGender(value: string): value is "male" | "female" | "other" | "any" {
+  return ["male", "female", "other", "any"].includes(value);
+}
+
 export default function MatchesPage() {
-  const { user: clerkUser, isSignedIn } = useUser();
+  const { user: isSignedIn } = useUser();
   const [filters, setFilters] = useState({
     distance: "",
     religion: "Any",
@@ -48,10 +53,8 @@ export default function MatchesPage() {
     defaultValues: filters,
   });
 
-  // Only pass allowed values for preferredGender
-  const allowedGenders = ["male", "female", "other", "any"] as const;
-  const preferredGender = allowedGenders.includes(filters.religion as any)
-    ? (filters.religion as (typeof allowedGenders)[number])
+  const preferredGender = isAllowedGender(filters.religion)
+    ? filters.religion
     : undefined;
   const profiles = useQuery(api.users.listUsersWithProfiles, {
     preferredGender,
