@@ -154,7 +154,7 @@ export default function CreateProfilePage() {
                 values.physicalStatus as (typeof allowedPhysicalStatus)[number];
             }
             // Convert profileImageIds to undefined (let the form handle it), or to Id<"_storage">[] if you have a mapping
-            let profileImageIds: undefined = undefined;
+            const profileImageIds: undefined = undefined;
             // If you have a mapping from string[] to Id<"_storage">[], you can do it here
             // Otherwise, let it be undefined so the form logic handles it
             const safeValues = {
