@@ -19,7 +19,7 @@ export default function HowItWorksPage() {
         </h1>
         <p className="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto mb-6">
           Aroosi makes finding your ideal life partner simple, safe, and
-          meaningful. Here's how you can start your journey:
+          meaningful. Here&apos;s how you can start your journey:
         </p>
       </section>
 
@@ -89,7 +89,7 @@ export default function HowItWorksPage() {
                 </CardHeader>
                 <CardContent className="text-center text-gray-600">
                   Chat, get to know each other, and take the next step when
-                  you're ready.
+                  you&apos;re ready.
                 </CardContent>
               </Card>
             </motion.div>
