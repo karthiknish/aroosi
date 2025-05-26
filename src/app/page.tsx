@@ -66,9 +66,9 @@ export default function HomePage() {
             in the UK
           </h1>
           <p className="text-xl text-gray-700 mb-8 max-w-xl">
-            Aroosi is the UK's trusted, community-focused matrimony platform.
-            Secure, private, and designed for everyone seeking meaningful
-            connections.
+            Aroosi is the UK&apos;s trusted, community-focused matrimony
+            platform. Secure, private, and designed for everyone seeking
+            meaningful connections.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/sign-up">
@@ -241,7 +241,7 @@ export default function HomePage() {
               </div>
               <p className="text-gray-700 italic">
                 "Aroosi made it easy to find someone who shares our values and
-                cultural background. We're grateful for this platform that
+                cultural background. We&apos;re grateful for this platform that
                 brought us together."
               </p>
             </motion.div>
@@ -264,9 +264,9 @@ export default function HomePage() {
                 </div>
               </div>
               <p className="text-gray-700 italic">
-                "The platform's focus on meaningful connections helped us find
-                each other. We appreciate the privacy and security features that
-                made us feel comfortable."
+                "The platform&apos;s focus on meaningful connections helped us
+                find each other. We appreciate the privacy and security features
+                that made us feel comfortable."
               </p>
             </motion.div>
           </div>
@@ -324,8 +324,8 @@ export default function HomePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center text-gray-600">
-                Chat, get to know each other, and take the next step when you're
-                ready.
+                Chat, get to know each other, and take the next step when
+                you&apos;re ready.
               </CardContent>
             </Card>
           </div>
@@ -450,7 +450,7 @@ export default function HomePage() {
                 className="bg-white px-6 rounded-lg shadow"
               >
                 <AccordionTrigger className="text-lg font-semibold text-gray-800 hover:no-underline">
-                  Can I use Aroosi if I'm not in the UK?
+                  Can I use Aroosi if I&apos;m not in the UK?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-700">
                   While Aroosi is primarily focused on connecting individuals

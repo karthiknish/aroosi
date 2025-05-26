@@ -4,7 +4,6 @@ import React from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { UserCircle, HeartIcon, HeartOffIcon } from "lucide-react";
 import { Id } from "@/../convex/_generated/dataModel";
@@ -14,8 +13,6 @@ import {
   ProfileDetailView,
   DisplaySection,
   handleExpressInterest,
-  handleBlock,
-  handleUnblock,
   handleRemoveInterest,
 } from "./profileDetailHelpers";
 
@@ -27,8 +24,6 @@ export default function ProfileDetailPage() {
   // Local state for optimistic image reordering for the current user
   const [localCurrentUserImageOrder, setLocalCurrentUserImageOrder] =
     React.useState<string[]>([]);
-  // Add state for block/interest logic
-  const [blockLoading, setBlockLoading] = React.useState(false);
   const [interestSent, setInterestSent] = React.useState(false);
   const [interestError, setInterestError] = React.useState<string | null>(null);
 
@@ -64,10 +59,6 @@ export default function ProfileDetailPage() {
     api.interests.getSentInterests,
     currentUserId ? { userId: currentUserId } : "skip"
   );
-  const alreadySentInterest =
-    Array.isArray(sentInterest) && sentInterest.length > 0
-      ? sentInterest.some((i: any) => i?.toUserId === userId)
-      : false;
 
   // Images for the profile being viewed
   const userProfileImages =
@@ -114,8 +105,6 @@ export default function ProfileDetailPage() {
 
   // Add mutation hooks
   const sendInterestMutation = useMutation(api.interests.sendInterest);
-  const blockUserMutation = useMutation(api.users.blockUser);
-  const unblockUserMutation = useMutation(api.users.unblockUser);
   const removeInterestMutation = useMutation(api.interests.removeInterest);
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
@@ -176,10 +165,6 @@ export default function ProfileDetailPage() {
     return storageIdToUrlMap[storageId];
   };
 
-  // Don't show interaction buttons for own profile or when missing required data
-  const showInteractionButtons =
-    !isOwnProfile && currentUserId && userId && currentUserId !== userId;
-
   // Determine the source of image IDs for mapping
   // For own profile, use the optimistically updatable localCurrentUserImageOrder
   // For other profiles, use the profileImageIds from their profile data.
@@ -193,6 +178,17 @@ export default function ProfileDetailPage() {
     : userId
       ? getPublicUserImage(userId)
       : undefined;
+
+  type Interest = { toUserId: Id<"users"> };
+  const alreadySentInterest =
+    Array.isArray(sentInterest) && sentInterest.length > 0
+      ? sentInterest.some((i: unknown) => {
+          if (typeof i === "object" && i !== null && "toUserId" in i) {
+            return (i as Interest).toUserId === userId;
+          }
+          return false;
+        })
+      : false;
 
   return (
     <>
@@ -328,7 +324,6 @@ export default function ProfileDetailPage() {
               {!isOwnProfile &&
                 !isBlocked &&
                 !isMutualInterest &&
-                !interestSent &&
                 !alreadySentInterest && (
                   <button
                     className="flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white p-4 shadow-lg transition-colors"
@@ -336,7 +331,10 @@ export default function ProfileDetailPage() {
                       if (!currentUserId || !userId) return;
                       handleExpressInterest({
                         setInterestError,
-                        sendInterestMutation,
+                        sendInterestMutation: sendInterestMutation as (args: {
+                          fromUserId: Id<"users">;
+                          toUserId: Id<"users">;
+                        }) => Promise<any>,
                         currentUserId,
                         id: userId,
                         setInterestSent,
@@ -351,14 +349,18 @@ export default function ProfileDetailPage() {
               {!isOwnProfile &&
                 !isBlocked &&
                 !isMutualInterest &&
-                (interestSent || alreadySentInterest) && (
+                alreadySentInterest && (
                   <button
                     className="flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-pink-600 p-4 border border-gray-300 shadow-lg transition-colors"
                     onClick={() => {
                       if (!currentUserId || !userId) return;
                       handleRemoveInterest({
                         setInterestError,
-                        removeInterestMutation,
+                        removeInterestMutation:
+                          removeInterestMutation as (args: {
+                            fromUserId: Id<"users">;
+                            toUserId: Id<"users">;
+                          }) => Promise<any>,
                         currentUserId,
                         id: userId,
                         setInterestSent,
@@ -371,6 +373,11 @@ export default function ProfileDetailPage() {
                   </button>
                 )}
             </div>
+            {interestError && (
+              <div className="text-center text-red-600 text-sm mt-2">
+                {interestError}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

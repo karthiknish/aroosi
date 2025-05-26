@@ -50,18 +50,18 @@ export default function PrivacyPage() {
 
           <article className="prose prose-lg max-w-none text-gray-700">
             <p className="lead">
-              Your privacy is important to us. It is Aroosi's policy to respect
-              your privacy regarding any information we may collect from you
-              across our website, [Your Website URL], and other sites we own and
-              operate.
+              Your privacy is important to us. It is Aroosi&apos;s policy to
+              respect your privacy regarding any information we may collect from
+              you across our website, [Your Website URL], and other sites we own
+              and operate.
             </p>
 
             <h2>1. Information We Collect</h2>
             <p>
               We only ask for personal information when we truly need it to
               provide a service to you. We collect it by fair and lawful means,
-              with your knowledge and consent. We also let you know why we're
-              collecting it and how it will be used.
+              with your knowledge and consent. We also let you know why
+              we&apos;re collecting it and how it will be used.
             </p>
             <p>
               The types of personal information we may collect include your
@@ -95,14 +95,14 @@ export default function PrivacyPage() {
             <p>
               Aroosi follows a standard procedure of using log files. These
               files log visitors when they visit websites. All hosting companies
-              do this and a part of hosting services' analytics. The information
-              collected by log files include internet protocol (IP) addresses,
-              browser type, Internet Service Provider (ISP), date and time
-              stamp, referring/exit pages, and possibly the number of clicks.
-              These are not linked to any information that is personally
+              do this and a part of hosting services&apos; analytics. The
+              information collected by log files include internet protocol (IP)
+              addresses, browser type, Internet Service Provider (ISP), date and
+              time stamp, referring/exit pages, and possibly the number of
+              clicks. These are not linked to any information that is personally
               identifiable. The purpose of the information is for analyzing
-              trends, administering the site, tracking users' movement on the
-              website, and gathering demographic information.
+              trends, administering the site, tracking users&apos; movement on
+              the website, and gathering demographic information.
             </p>
 
             <h2>4. Data Security</h2>

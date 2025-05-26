@@ -119,7 +119,7 @@ export default function FaqPage() {
 
           <div className="mt-12 text-center">
             <p className="text-lg text-gray-700">
-              Can't find the answer you're looking for?
+              Can&apos;t find the answer you&apos;re looking for?
             </p>
             <Link
               href="/contact"
