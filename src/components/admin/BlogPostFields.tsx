@@ -39,7 +39,6 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
   setCategories,
   imageUrl,
   setImageUrl,
-  pexelsOpen,
   setPexelsOpen,
   aiLoading,
   aiText,

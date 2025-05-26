@@ -148,22 +148,26 @@ function AdminPageInner() {
   }
 
   // Map Convex data to expected types
-  const blogPosts: BlogPost[] | undefined = blogPostsRaw?.map((post: any) => ({
-    ...post,
-    createdAt: post.createdAt
-      ? new Date(post.createdAt as number).toISOString()
-      : "",
-    updatedAt: post.updatedAt
-      ? new Date(post.updatedAt as number).toISOString()
-      : "",
-  }));
+  const blogPosts: BlogPost[] | undefined = blogPostsRaw?.map(
+    (post) =>
+      ({
+        ...post,
+        createdAt: post.createdAt
+          ? new Date(post.createdAt as number).toISOString()
+          : "",
+        updatedAt: post.updatedAt
+          ? new Date(post.updatedAt as number).toISOString()
+          : "",
+      }) as BlogPost
+  );
   const contactMessages: ContactMessage[] | undefined = contactMessagesRaw?.map(
-    (msg: any) => ({
-      ...msg,
-      createdAt: msg.createdAt
-        ? new Date(msg.createdAt as number).toISOString()
-        : "",
-    })
+    (msg) =>
+      ({
+        ...msg,
+        createdAt: msg.createdAt
+          ? new Date(msg.createdAt as number).toISOString()
+          : "",
+      }) as ContactMessage
   );
 
   // Live preview effect for create post

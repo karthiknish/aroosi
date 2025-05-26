@@ -36,14 +36,20 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json();
-    const images = data.photos.map((photo: any) => ({
-      id: photo.id,
-      src: {
-        medium: photo.src.medium,
-        large: photo.src.large,
-      },
-      alt: photo.alt || "Image from Pexels",
-    }));
+    const images = data.photos.map(
+      (photo: {
+        id: number;
+        src: { medium: string; large: string };
+        alt: string;
+      }) => ({
+        id: photo.id,
+        src: {
+          medium: photo.src.medium,
+          large: photo.src.large,
+        },
+        alt: photo.alt || "Image from Pexels",
+      })
+    );
 
     return NextResponse.json({ images });
   } catch (error) {

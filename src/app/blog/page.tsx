@@ -61,54 +61,64 @@ export default function BlogPage() {
               No blog posts found.
             </div>
           ) : (
-            posts.map((post: any) => (
-              <Link
-                key={post._id}
-                href={`/blog/${post.slug}`}
-                className="group block focus:outline-none focus:ring-2 focus:ring-pink-400 rounded-2xl"
-                tabIndex={0}
-              >
-                <Card className="hover:shadow-2xl hover:-translate-y-1 transition-all border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col group cursor-pointer">
-                  {post.imageUrl && (
-                    <img
-                      src={post.imageUrl}
-                      alt={post.title}
-                      className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  )}
-                  <CardHeader className="flex-1">
-                    <CardTitle
-                      className="text-xl font-serif text-gray-900 mb-1"
-                      style={{ fontFamily: "Lora, serif" }}
-                    >
-                      {post.title}
-                    </CardTitle>
-                    <div className="text-xs text-gray-500 mb-2">
-                      {new Date(post.createdAt).toLocaleDateString("en-GB", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </div>
-                    <p className="text-gray-700 text-sm line-clamp-3 mb-2">
-                      {post.excerpt}
-                    </p>
-                    {post.categories && post.categories.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {post.categories.map((cat: string) => (
-                          <span
-                            key={cat}
-                            className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-medium"
-                          >
-                            {cat}
-                          </span>
-                        ))}
-                      </div>
+            posts.map(
+              (post: {
+                _id: string;
+                slug: string;
+                title: string;
+                createdAt: number;
+                excerpt: string;
+                imageUrl?: string;
+                categories?: string[];
+              }) => (
+                <Link
+                  key={post._id}
+                  href={`/blog/${post.slug}`}
+                  className="group block focus:outline-none focus:ring-2 focus:ring-pink-400 rounded-2xl"
+                  tabIndex={0}
+                >
+                  <Card className="hover:shadow-2xl hover:-translate-y-1 transition-all border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col group cursor-pointer">
+                    {post.imageUrl && (
+                      <img
+                        src={post.imageUrl}
+                        alt={post.title}
+                        className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     )}
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))
+                    <CardHeader className="flex-1">
+                      <CardTitle
+                        className="text-xl font-serif text-gray-900 mb-1"
+                        style={{ fontFamily: "Lora, serif" }}
+                      >
+                        {post.title}
+                      </CardTitle>
+                      <div className="text-xs text-gray-500 mb-2">
+                        {new Date(post.createdAt).toLocaleDateString("en-GB", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <p className="text-gray-700 text-sm line-clamp-3 mb-2">
+                        {post.excerpt}
+                      </p>
+                      {post.categories && post.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {post.categories.map((cat: string) => (
+                            <span
+                              key={cat}
+                              className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-medium"
+                            >
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </CardHeader>
+                  </Card>
+                </Link>
+              )
+            )
           )}
         </div>
         {/* Pagination below posts */}
