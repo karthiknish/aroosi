@@ -27,7 +27,7 @@ const profileSetupPath = "/profile";
 export default function ProfileCompletionGuard({
   children,
 }: ProfileCompletionGuardProps) {
-  const { user, isSignedIn, isLoaded: isClerkLoaded } = useUser();
+  const { isSignedIn, isLoaded: isClerkLoaded } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
