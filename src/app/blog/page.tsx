@@ -67,11 +67,7 @@ export default function BlogPage() {
                 </div>
               ))}
             </div>
-          ) : posts.length === 0 ? (
-            <div className="col-span-full text-center text-gray-400">
-              No blog posts found.
-            </div>
-          ) : (
+          ) : posts.length === 0 ? null : (
             posts.map(
               (post: {
                 _id: string;
