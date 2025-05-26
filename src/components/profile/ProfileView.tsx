@@ -90,7 +90,6 @@ const DisplaySection: React.FC<{
 
 export interface ProfileViewProps {
   profileData: Profile;
-  clerkUser: unknown;
   userConvexData: { _id?: string; _creationTime?: number } | null | undefined;
   onEdit: () => void;
   onDelete: () => void;
@@ -99,7 +98,6 @@ export interface ProfileViewProps {
 
 const ProfileView: React.FC<ProfileViewProps> = ({
   profileData,
-  clerkUser,
   userConvexData,
   onEdit,
   onDelete,
