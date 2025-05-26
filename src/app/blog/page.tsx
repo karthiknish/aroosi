@@ -14,14 +14,22 @@ export default function BlogPage() {
   const [page, setPage] = React.useState(0);
   const pageSize = 6;
   const [category, setCategory] = React.useState("all");
-  // Example categories, ideally fetch from API or config
-  const categories = ["all", "Advice", "Stories", "Inspiration", "Tips"];
   const { posts = [], total = 0 } =
     useQuery(api.blog.listBlogPostsPaginated, {
       page,
       pageSize,
       category: category === "all" ? undefined : category,
     }) || {};
+  // Dynamically extract unique categories from posts
+  const categories = React.useMemo(() => {
+    const set = new Set<string>();
+    posts?.forEach((post: { categories?: string[] }) => {
+      if (Array.isArray(post.categories)) {
+        post.categories.forEach((cat) => set.add(cat));
+      }
+    });
+    return ["all", ...Array.from(set).sort()];
+  }, [posts]);
   return (
     <>
       <section className="pt-24 sm:pt-28 md:pt-32 mb-12 text-center bg-gradient-to-b from-pink-50 via-white to-white">
