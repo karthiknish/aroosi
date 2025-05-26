@@ -15,6 +15,7 @@ const ProfileFormStepAbout: React.FC<Props> = ({ form, mode }) => (
       form={form}
       placeholder="Tell us about yourself..."
       isRequired
+      textarea
     />
     <FormSelectField
       name="preferredGender"

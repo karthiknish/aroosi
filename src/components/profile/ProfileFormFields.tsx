@@ -15,7 +15,7 @@ import { format, parseISO, subYears } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { ProfileFormValues } from "./ProfileForm";
 import type { UseFormReturn } from "react-hook-form";
-
+import { Textarea } from "@/components/ui/textarea";
 type UseFormType = UseFormReturn<ProfileFormValues>;
 
 interface FormFieldProps {
@@ -26,6 +26,7 @@ interface FormFieldProps {
   type?: string;
   description?: string;
   isRequired?: boolean;
+  textarea?: boolean;
 }
 
 interface FormSelectFieldProps extends FormFieldProps {
@@ -48,18 +49,29 @@ export const FormField: React.FC<FormFieldProps> = ({
   type = "text",
   description,
   isRequired,
+  textarea = false,
 }) => (
   <div>
     <Label htmlFor={name}>
       {label} {isRequired && <span className="text-red-600">*</span>}
     </Label>
-    <Input
-      id={name}
-      type={type}
-      {...form.register(name)}
-      placeholder={typeof placeholder === "string" ? placeholder : undefined}
-      className="mt-1"
-    />
+    {textarea ? (
+      <Textarea
+        id={name}
+        {...form.register(name)}
+        placeholder={typeof placeholder === "string" ? placeholder : undefined}
+        className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-pink-500 focus:border-pink-500 min-h-[100px]"
+        rows={5}
+      />
+    ) : (
+      <Input
+        id={name}
+        type={type}
+        {...form.register(name)}
+        placeholder={typeof placeholder === "string" ? placeholder : undefined}
+        className="mt-1"
+      />
+    )}
     {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
     {form.formState.errors[name] && (
       <p className="text-sm text-red-600 mt-1">
