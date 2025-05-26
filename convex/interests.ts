@@ -51,7 +51,7 @@ export const respondToInterest = mutation({
   },
   handler: async (
     ctx: MutationCtx,
-    args: { interestId: string; status: "accepted" | "rejected" }
+    args: { interestId: Id<"interests">; status: "accepted" | "rejected" }
   ) => {
     // Rate limit by interestId
     const rateKey = `interest:respond:${args.interestId}`;

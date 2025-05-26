@@ -1,6 +1,8 @@
+import type { Id } from "@/../convex/_generated/dataModel";
+
 export interface Profile {
-  _id: string;
-  userId: string;
+  _id: Id<"profiles">;
+  userId: Id<"users">;
   fullName?: string;
   dateOfBirth?: string;
   gender?: string;
@@ -30,3 +32,10 @@ export interface Profile {
   createdAt: string;
   updatedAt?: string;
 }
+
+export type Interest = {
+  fromUserId: Id<"users">;
+  toUserId: Id<"users">;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: number;
+};
