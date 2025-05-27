@@ -6,10 +6,9 @@ import { Id } from "@convex/_generated/dataModel";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").pop()!;
   const { userId, getToken } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,7 +19,7 @@ export async function GET(
   }
   convex.setAuth(token);
 
-  const viewedUserId = params.id as Id<"users">;
+  const viewedUserId = id as Id<"users">;
   const result = await convex.action(api.users.getProfileDetailPageData, {
     viewedUserId,
   });

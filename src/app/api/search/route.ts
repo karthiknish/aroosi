@@ -18,9 +18,5 @@ export async function GET() {
   const result = await convex.action(api.users.batchGetPublicProfiles, {
     userIds: [],
   });
-  return NextResponse.json(result, {
-    // headers: {
-    //   "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-    // },
-  });
+  return NextResponse.json(result);
 }
