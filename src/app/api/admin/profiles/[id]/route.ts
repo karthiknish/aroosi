@@ -4,17 +4,15 @@ import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest) {
   const token = getTokenFromRequest(req);
   if (!token)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
-  const { id } = params;
-  const { searchParams } = new URL(req.url);
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").pop()!;
+  const { searchParams } = url;
   if (searchParams.get("matches")) {
     const result = await convex.query(api.users.getMatchesForProfile, {
       profileId: id as unknown as Id<"profiles">,
@@ -27,10 +25,7 @@ export async function GET(
   return NextResponse.json(result);
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: NextRequest) {
   const { userId, getToken } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,21 +36,20 @@ export async function PUT(
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").pop()!;
   const updates = await req.json();
   if (!updates || typeof updates !== "object") {
     return NextResponse.json({ error: "Missing updates" }, { status: 400 });
   }
   const result = await convex.mutation(api.users.adminUpdateProfile, {
-    id: params.id as unknown as Id<"profiles">,
+    id: id as unknown as Id<"profiles">,
     updates,
   });
   return NextResponse.json(result);
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest) {
   const { userId, getToken } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -66,8 +60,10 @@ export async function DELETE(
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").pop()!;
   const result = await convex.mutation(api.users.deleteProfile, {
-    id: params.id as unknown as Id<"profiles">,
+    id: id as unknown as Id<"profiles">,
   });
   return NextResponse.json(result);
 }
