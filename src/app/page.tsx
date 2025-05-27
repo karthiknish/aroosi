@@ -386,8 +386,8 @@ export default function HomePage() {
                     className="font-nunito text-lg text-gray-600"
                   >
                     We understand the importance of finding the right life
-                    partner. That's why we've built a platform that prioritizes
-                    safety, compatibility, and genuine connections.
+                    partner. That&apos;s why we&apos;ve built a platform that
+                    prioritizes safety, compatibility, and genuine connections.
                   </motion.p>
                 </div>
 
@@ -581,10 +581,10 @@ export default function HomePage() {
                       </div>
                       <div className="relative">
                         <div className="absolute -left-2 -top-2 text-4xl text-rose-200 opacity-50">
-                          "
+                          &quot;
                         </div>
                         <div className="absolute -right-2 -bottom-6 text-4xl text-rose-200 opacity-50">
-                          "
+                          &quot;
                         </div>
                         <p className="font-nunito text-gray-600 italic relative z-10 px-4">
                           {story.quote}

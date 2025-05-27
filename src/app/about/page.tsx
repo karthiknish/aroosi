@@ -183,10 +183,10 @@ export default function AboutPage() {
                     </svg>
                   </h2>
                   <p className="font-nunito text-lg text-gray-600">
-                    At Aroosi, we're dedicated to creating a safe, respectful
-                    platform where British Muslims can find their perfect match.
-                    We believe in marriages built on shared values, mutual
-                    respect, and genuine connection.
+                    At Aroosi, we&apos;re dedicated to creating a safe,
+                    respectful platform where British South Asians can find
+                    their perfect match. We believe in marriages built on shared
+                    values, mutual respect, and genuine connection.
                   </p>
                   <p className="font-nunito text-lg text-gray-600">
                     Our approach combines traditional matchmaking wisdom with
@@ -413,7 +413,7 @@ export default function AboutPage() {
                         Aroosi was launched in 2025 with a vision to help
                         British Muslims find meaningful connections while
                         honouring faith and tradition. Our journey is just
-                        beginning, and we're excited to build a welcoming
+                        beginning, and we&apos;re excited to build a welcoming
                         community from the ground up.
                       </>
                     ),
@@ -423,10 +423,11 @@ export default function AboutPage() {
                     title: "Building Our Community",
                     desc: (
                       <>
-                        As a new platform, we're focused on creating a safe,
-                        supportive space for singles to meet and connect. Every
-                        member is part of our story, and together we're shaping
-                        the future of Muslim matrimony in the UK.
+                        As a new platform, we&apos;re focused on creating a
+                        safe, supportive space for singles to meet and connect.
+                        Every member is part of our story, and together
+                        we&apos;re shaping the future of Muslim matrimony in the
+                        UK.
                       </>
                     ),
                   },
@@ -435,7 +436,7 @@ export default function AboutPage() {
                     title: "Our Commitment",
                     desc: (
                       <>
-                        We're dedicated to providing a trustworthy,
+                        We&apos;re dedicated to providing a trustworthy,
                         privacy-first experience. Our team is working hard to
                         introduce innovative features and ensure every user
                         feels valued and respected.
