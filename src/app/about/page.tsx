@@ -75,9 +75,9 @@ export default function AboutPage() {
                 variants={fadeInUp}
                 custom={2}
               >
-                Aroosi was founded with a simple mission: to help British
-                Muslims find their perfect life partner while honoring cultural
-                values and traditions. Our journey began in 2008, and we've been
+                Aroosi was founded with a simple mission: to help British find
+                their perfect life partner while honoring cultural values and
+                traditions. Our journey began in 2008, and we&apos;ve been
                 bringing hearts together ever since.
               </motion.p>
             </motion.div>
@@ -222,7 +222,7 @@ export default function AboutPage() {
                     {
                       icon: <Star className="h-5 w-5 text-rose-600" />,
                       title: "Cultural Sensitivity",
-                      desc: "We respect diverse backgrounds within the Muslim community.",
+                      desc: "We respect diverse backgrounds within the community.",
                     },
                   ].map((item, i) => (
                     <motion.div
@@ -300,8 +300,8 @@ export default function AboutPage() {
                   desc: (
                     <>
                       We honor diverse backgrounds, traditions, and preferences
-                      within the Muslim community. Every member deserves dignity
-                      and respect.
+                      within the community. Every member deserves dignity and
+                      respect.
                     </>
                   ),
                 },
@@ -398,8 +398,8 @@ export default function AboutPage() {
                   variants={fadeInUp}
                   custom={1}
                 >
-                  From a small idea to the UK's leading matrimony platform for
-                  British Muslims.
+                  From a small idea to the UK&apos;s leading matrimony platform
+                  for British South Asians.
                 </motion.p>
               </motion.div>
 
@@ -411,7 +411,7 @@ export default function AboutPage() {
                     desc: (
                       <>
                         Aroosi was launched in 2025 with a vision to help
-                        British Muslims find meaningful connections while
+                        British South Asians find meaningful connections while
                         honouring faith and tradition. Our journey is just
                         beginning, and we&apos;re excited to build a welcoming
                         community from the ground up.
@@ -426,8 +426,8 @@ export default function AboutPage() {
                         As a new platform, we&apos;re focused on creating a
                         safe, supportive space for singles to meet and connect.
                         Every member is part of our story, and together
-                        we&apos;re shaping the future of Muslim matrimony in the
-                        UK.
+                        we&apos;re shaping the future of South Asian matrimony
+                        in the UK.
                       </>
                     ),
                   },
@@ -698,7 +698,7 @@ export default function AboutPage() {
                 {
                   icon: <Award className="h-5 w-5 text-rose-600" />,
                   title: "New Platform Launch",
-                  desc: "Aroosi launches in 2025 to connect British Muslims with purpose and tradition.",
+                  desc: "Aroosi launches in 2025 to connect British with purpose and tradition.",
                 },
                 {
                   icon: <Shield className="h-5 w-5 text-rose-600" />,
@@ -708,7 +708,7 @@ export default function AboutPage() {
                 {
                   icon: <Star className="h-5 w-5 text-rose-600" />,
                   title: "Community Focused",
-                  desc: "Shaping the future of Muslim matrimony in the UK, together.",
+                  desc: "Shaping the future of matrimony in the UK, together.",
                 },
               ].map((item, i) => (
                 <motion.div
@@ -818,8 +818,8 @@ export default function AboutPage() {
                 variants={fadeInUp}
                 custom={1}
               >
-                Join our community of British Muslims and take the first step
-                towards finding your perfect life partner.
+                Join our community of British and take the first step towards
+                finding your perfect life partner.
               </motion.p>
 
               <motion.div
