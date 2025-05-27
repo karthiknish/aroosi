@@ -3,6 +3,7 @@ import type { Id } from "@/../convex/_generated/dataModel";
 export interface Profile {
   _id: Id<"profiles">;
   userId: Id<"users">;
+  isProfileComplete?: boolean;
   fullName?: string;
   dateOfBirth?: string;
   gender?: string;

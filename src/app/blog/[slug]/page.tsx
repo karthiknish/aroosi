@@ -10,18 +10,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
-
-interface BlogPost {
-  _id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-  imageUrl?: string;
-  createdAt: number;
-  updatedAt?: number;
-  categories?: string[];
-}
+import { BlogPost } from "@/types/blog";
 
 // Calculate reading time
 function getReadingTime(content: string): number {
@@ -83,7 +72,7 @@ export default function BlogDetailPage() {
     );
   }
 
-  const readingTime = getReadingTime(post.content);
+  const readingTime = getReadingTime(post.content || "");
 
   return (
     <motion.div

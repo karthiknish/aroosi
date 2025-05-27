@@ -7,12 +7,13 @@ import React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BlogPost } from "@/types/blog";
 
 export default function BlogPage() {
   const [page, setPage] = React.useState(0);
   const pageSize = 6;
   const [category, setCategory] = React.useState("all");
-  const [posts, setPosts] = React.useState<any[]>([]);
+  const [posts, setPosts] = React.useState<BlogPost[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const { getToken } = useAuth();

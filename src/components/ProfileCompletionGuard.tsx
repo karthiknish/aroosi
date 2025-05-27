@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { Profile } from "@/types/profile";
 
 interface ProfileCompletionGuardProps {
   children: ReactNode;
@@ -31,7 +32,9 @@ export default function ProfileCompletionGuard({
   const pathname = usePathname();
 
   // State for profile data and loading
-  const [profileData, setProfileData] = useState<any>(undefined);
+  const [profileData, setProfileData] = useState<Profile | undefined>(
+    undefined
+  );
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   useEffect(() => {
@@ -59,7 +62,8 @@ export default function ProfileCompletionGuard({
           setProfileData(data);
           setIsProfileLoading(false);
         }
-      } catch (e) {
+      } catch (e: unknown) {
+        console.error(e);
         if (!ignore) {
           setProfileData(undefined);
           setIsProfileLoading(false);
@@ -72,7 +76,7 @@ export default function ProfileCompletionGuard({
     };
   }, [isClerkLoaded, isSignedIn, getToken]);
 
-  const isProfileComplete = profileData?.profile?.isProfileComplete;
+  const isProfileComplete = profileData?.isProfileComplete; // TODO: fix this
   const isProfileQueryLoading = isProfileLoading;
 
   useEffect(() => {
