@@ -1,6 +1,5 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
 import { useAuth } from "@clerk/nextjs";
 import { useForm, Controller } from "react-hook-form";
 import {
@@ -43,7 +42,6 @@ function isAllowedGender(
 }
 
 export default function MatchesPage() {
-  const { user: clerkUser } = useUser();
   const { isSignedIn, getToken } = useAuth();
   const [filters, setFilters] = useState({
     distance: "",
@@ -56,7 +54,7 @@ export default function MatchesPage() {
     defaultValues: filters,
   });
 
-  const [profiles, setProfiles] = useState<any[] | undefined>(undefined);
+  const [profiles, setProfiles] = useState<Profile[] | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,8 +85,8 @@ export default function MatchesPage() {
         }
         const data = await res.json();
         setProfiles(data || []);
-      } catch (e: any) {
-        setError(e.message || "Failed to fetch matches");
+      } catch (e: unknown) {
+        setError((e as Error).message || "Failed to fetch matches");
         setProfiles([]);
       } finally {
         setLoading(false);
@@ -217,8 +215,7 @@ export default function MatchesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {profiles?.map((value) => {
-              // value.profile is the Profile object
-              const profile = value.profile as Profile | null;
+              const profile = value as Profile | null;
               if (!profile) return null;
               return (
                 <Card key={profile._id} className="shadow-md">

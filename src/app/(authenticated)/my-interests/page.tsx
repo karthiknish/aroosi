@@ -7,6 +7,7 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@clerk/nextjs";
+import { Interest } from "@/types/profile";
 
 type PublicProfile = {
   userId: string;
@@ -24,7 +25,7 @@ export default function MyInterestsPage() {
   const { user: isSignedIn } = useUser();
   const { getToken } = useAuth();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [sentInterests, setSentInterests] = useState<any[] | undefined>(
+  const [sentInterests, setSentInterests] = useState<Interest[] | undefined>(
     undefined
   );
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
@@ -48,7 +49,6 @@ export default function MyInterestsPage() {
       }
     }
     fetchCurrentUser();
-     
   }, [getToken]);
 
   useEffect(() => {
@@ -73,7 +73,6 @@ export default function MyInterestsPage() {
       }
     }
     fetchSentInterests();
-     
   }, [currentUserId, getToken]);
 
   useEffect(() => {
@@ -113,7 +112,6 @@ export default function MyInterestsPage() {
       setLoadingProfiles(false);
     }
     fetchProfiles();
-     
   }, [sentInterests, getToken]);
 
   if (!isSignedIn) {

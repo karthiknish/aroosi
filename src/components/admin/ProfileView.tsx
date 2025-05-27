@@ -1,3 +1,4 @@
+"use client";
 import { Profile } from "@/types/profile";
 import Image from "next/image";
 import { useAuth } from "@clerk/nextjs";

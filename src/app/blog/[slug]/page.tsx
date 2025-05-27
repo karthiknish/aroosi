@@ -11,6 +11,18 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
 
+interface BlogPost {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  imageUrl?: string;
+  createdAt: number;
+  updatedAt?: number;
+  categories?: string[];
+}
+
 // Calculate reading time
 function getReadingTime(content: string): number {
   const wordsPerMinute = 200;
@@ -23,7 +35,7 @@ function getReadingTime(content: string): number {
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { getToken } = useAuth();
-  const [post, setPost] = React.useState<any | undefined>(undefined);
+  const [post, setPost] = React.useState<BlogPost | undefined>(undefined);
   React.useEffect(() => {
     async function fetchPost() {
       if (!slug) return;
@@ -35,7 +47,7 @@ export default function BlogDetailPage() {
       if (res.ok) {
         setPost(await res.json());
       } else {
-        setPost(null);
+        setPost(undefined);
       }
     }
     fetchPost();
@@ -51,7 +63,7 @@ export default function BlogDetailPage() {
       </div>
     );
   }
-  if (!post) {
+  if (post === null || post === undefined) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
         <h1 className="text-3xl font-bold text-pink-700 mb-4">
