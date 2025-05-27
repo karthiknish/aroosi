@@ -73,9 +73,8 @@ export default function AdminProfileDetailPage() {
     if (isSignedIn) fetchProfileData();
   }, [id, isSignedIn, getToken]);
 
-  const handleDeleteImage = async (id: string) => {
+  const handleDeleteImage = async () => {
     if (!profile?.userId || !imageToDelete) return;
-
     const { storageId } = imageToDelete;
 
     try {
@@ -222,7 +221,7 @@ export default function AdminProfileDetailPage() {
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        onConfirm={() => handleDeleteImage(imageToDelete.storageId)}
+        onConfirm={handleDeleteImage}
         isLoading={isDeleting}
         title="Delete Image"
         description="Are you sure you want to delete this image?"

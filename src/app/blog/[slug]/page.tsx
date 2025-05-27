@@ -197,7 +197,9 @@ export default function BlogDetailPage() {
           <div
             id="blog-content"
             className="shadow-xl rounded-xl p-6 bg-white"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{
+              __html: post.content || "",
+            }}
           />
         </CardContent>
       </Card>
