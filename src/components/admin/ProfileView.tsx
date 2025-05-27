@@ -71,7 +71,8 @@ export default function ProfileView({ profile }: { profile: Profile }) {
         setImages(
           Array.isArray(data.userProfileImages) ? data.userProfileImages : []
         );
-      } catch (e) {
+      } catch (e: unknown) {
+        console.error(e);
         setImages(null);
       }
     }

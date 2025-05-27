@@ -74,6 +74,8 @@ function AdminPageInner() {
   const [interests, setInterests] = useState<Interest[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const editorResetKey = 0;
   // Blog posts
   useEffect(() => {
     if (activeTab !== "blog") return;
@@ -422,9 +424,6 @@ function AdminPageInner() {
     }
   }
 
-  const [previewHtml, setPreviewHtml] = useState<string>("");
-  const [editorResetKey, setEditorResetKey] = useState(0);
-
   // Markdown shortcuts
   type MarkdownShortcut = {
     label: string;
@@ -534,7 +533,7 @@ function AdminPageInner() {
                           excerpt={editExcerpt}
                           setExcerpt={setEditExcerpt}
                           categories={[]}
-                          setCategories={(c) => {}}
+                          setCategories={() => {}}
                           imageUrl={editImageUrl}
                           setImageUrl={setEditImageUrl}
                           pexelsOpen={editPexelsOpen}
@@ -644,7 +643,7 @@ function AdminPageInner() {
                 convertToMarkdownWithGemini={convertToMarkdownWithGemini}
                 slugify={slugify}
                 categories={[]}
-                setCategories={(c) => {}}
+                setCategories={() => {}}
                 aiLoading={{}}
                 aiText={aiText}
                 previewHtml={previewHtml}

@@ -2,22 +2,18 @@
   "extends": [
     "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended",
-    "plugin:react/recommended"
+    "plugin:react/recommended",
+    "plugin:prettier/recommended" // Add this line for Prettier integration
   ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": "error",
-    "react/no-unescaped-entities": "error"
+    "react/no-unescaped-entities": "error",
+    "prettier/prettier": "error" // Ensures Prettier formatting issues are reported as ESLint errors
+  },
+  "settings": {
+    "react": {
+      "version": "detect" // Automatically detect the React version
+    }
   }
 }
-
-// To disable no-unused-vars in production, use a separate .eslintrc.prod.json:
-// {
-//   "extends": [ ... ],
-//   "rules": {
-//     "@typescript-eslint/no-unused-vars": "off"
-//   }
-// }
-
-
-// And configure your build tooling to use the appropriate config for each environment.

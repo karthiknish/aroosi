@@ -470,7 +470,12 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   const { getToken } = useAuth();
   const [convexUserId, setConvexUserId] = React.useState<string | null>(null);
-  const [userImages, setUserImages] = React.useState<any[]>([]);
+  const [userImages, setUserImages] = React.useState<
+    {
+      url: string;
+      storageId: string;
+    }[]
+  >([]);
   const [loadingImages, setLoadingImages] = React.useState(false);
 
   React.useEffect(() => {
@@ -487,7 +492,6 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       }
     }
     fetchUserId();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clerkUser?.id, getToken]);
 
   React.useEffect(() => {

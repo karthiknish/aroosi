@@ -48,7 +48,7 @@ export default function MyInterestsPage() {
       }
     }
     fetchCurrentUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [getToken]);
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function MyInterestsPage() {
       }
     }
     fetchSentInterests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [currentUserId, getToken]);
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function MyInterestsPage() {
       setLoadingProfiles(false);
     }
     fetchProfiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [sentInterests, getToken]);
 
   if (!isSignedIn) {

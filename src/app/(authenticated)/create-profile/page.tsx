@@ -7,14 +7,15 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@clerk/nextjs";
+import type { ProfileFormValues } from "@/components/profile/ProfileForm";
 
 export default function CreateProfilePage() {
   const refetchKey = 0;
   const router = useRouter();
-  const { getToken, isSignedIn } = useAuth();
-  const [currentUserProfile, setCurrentUserProfile] = useState<any | undefined>(
-    undefined
-  );
+  const { getToken } = useAuth();
+  const [currentUserProfile, setCurrentUserProfile] = useState<
+    Record<string, unknown> | null | undefined
+  >(undefined);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -34,7 +35,6 @@ export default function CreateProfilePage() {
       }
     }
     fetchProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getToken]);
 
   useEffect(() => {
@@ -83,8 +83,10 @@ export default function CreateProfilePage() {
         <ProfileForm
           key={refetchKey}
           mode="create"
-          initialValues={currentUserProfile?.profile ?? {}}
-          onSubmit={async (values) => {
+          initialValues={
+            (currentUserProfile?.profile as ProfileFormValues) ?? {}
+          }
+          onSubmit={async (values: ProfileFormValues) => {
             const allowedGenders = ["male", "female", "other", "any"] as const;
             let preferredGender:
               | "male"
@@ -92,8 +94,13 @@ export default function CreateProfilePage() {
               | "other"
               | "any"
               | undefined = undefined;
-            if (allowedGenders.includes(values.preferredGender as any)) {
-              preferredGender = values.preferredGender as any;
+            if (
+              allowedGenders.includes(
+                values.preferredGender as (typeof allowedGenders)[number]
+              )
+            ) {
+              preferredGender =
+                values.preferredGender as (typeof allowedGenders)[number];
             }
             const allowedMaritalStatuses = [
               "single",
@@ -102,13 +109,15 @@ export default function CreateProfilePage() {
               "annulled",
             ] as const;
             let maritalStatus:
-              | "single"
-              | "divorced"
-              | "widowed"
-              | "annulled"
+              | (typeof allowedMaritalStatuses)[number]
               | undefined = undefined;
-            if (allowedMaritalStatuses.includes(values.maritalStatus as any)) {
-              maritalStatus = values.maritalStatus as any;
+            if (
+              allowedMaritalStatuses.includes(
+                values.maritalStatus as (typeof allowedMaritalStatuses)[number]
+              )
+            ) {
+              maritalStatus =
+                values.maritalStatus as (typeof allowedMaritalStatuses)[number];
             }
             const allowedDiets = [
               "vegetarian",
@@ -118,20 +127,32 @@ export default function CreateProfilePage() {
               "other",
             ] as const;
             let diet: (typeof allowedDiets)[number] | undefined = undefined;
-            if (allowedDiets.includes(values.diet as any)) {
-              diet = values.diet as any;
+            if (
+              allowedDiets.includes(
+                values.diet as (typeof allowedDiets)[number]
+              )
+            ) {
+              diet = values.diet as (typeof allowedDiets)[number];
             }
             const allowedSmoking = ["no", "occasionally", "yes"] as const;
             let smoking: (typeof allowedSmoking)[number] | undefined =
               undefined;
-            if (allowedSmoking.includes(values.smoking as any)) {
-              smoking = values.smoking as any;
+            if (
+              allowedSmoking.includes(
+                values.smoking as (typeof allowedSmoking)[number]
+              )
+            ) {
+              smoking = values.smoking as (typeof allowedSmoking)[number];
             }
             const allowedDrinking = ["no", "occasionally", "yes"] as const;
             let drinking: (typeof allowedDrinking)[number] | undefined =
               undefined;
-            if (allowedDrinking.includes(values.drinking as any)) {
-              drinking = values.drinking as any;
+            if (
+              allowedDrinking.includes(
+                values.drinking as (typeof allowedDrinking)[number]
+              )
+            ) {
+              drinking = values.drinking as (typeof allowedDrinking)[number];
             }
             const allowedPhysicalStatus = [
               "normal",
@@ -141,11 +162,16 @@ export default function CreateProfilePage() {
             let physicalStatus:
               | (typeof allowedPhysicalStatus)[number]
               | undefined = undefined;
-            if (allowedPhysicalStatus.includes(values.physicalStatus as any)) {
-              physicalStatus = values.physicalStatus as any;
+            if (
+              allowedPhysicalStatus.includes(
+                values.physicalStatus as (typeof allowedPhysicalStatus)[number]
+              )
+            ) {
+              physicalStatus =
+                values.physicalStatus as (typeof allowedPhysicalStatus)[number];
             }
             const profileImageIds: undefined = undefined;
-            const safeValues = {
+            const safeValues: ProfileFormValues = {
               ...values,
               preferredGender,
               maritalStatus,

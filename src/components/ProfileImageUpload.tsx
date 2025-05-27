@@ -161,6 +161,64 @@ export function ProfileImageUpload({
     }
   };
 
+  // Add generateUploadUrl and uploadImage for ImageUploader
+  const generateUploadUrl = useCallback(async () => {
+    const token = await getToken();
+    if (!token) return { success: false, error: "No auth token" };
+    const res = await fetch("/api/images/upload-url", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      return { success: false, error: "Failed to get upload URL" };
+    }
+    const data = await res.json();
+    return data.uploadUrl as string;
+  }, [getToken]);
+
+  const uploadImage = useCallback(
+    async ({
+      userId,
+      storageId,
+      fileName,
+      contentType,
+      fileSize,
+    }: {
+      userId: string;
+      storageId: string;
+      fileName: string;
+      contentType: string;
+      fileSize: number;
+    }) => {
+      const token = await getToken();
+      if (!token)
+        return { success: false, imageId: storageId, message: "No auth token" };
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId,
+          storageId,
+          fileName,
+          contentType,
+          fileSize,
+        }),
+      });
+      if (!res.ok) {
+        return {
+          success: false,
+          imageId: storageId,
+          message: "Failed to upload image",
+        };
+      }
+      const data = await res.json();
+      return data;
+    },
+    [getToken]
+  );
+
   return (
     <div className="space-y-4">
       {/* Image Upload Section */}
@@ -183,6 +241,8 @@ export function ProfileImageUpload({
           isUploading={isUploading}
           maxFiles={5}
           fetchImages={fetchImages}
+          generateUploadUrl={generateUploadUrl}
+          uploadImage={uploadImage}
         />
         {/* Upload limit indicator */}
         <div className="flex justify-between px-1">

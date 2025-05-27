@@ -3,17 +3,24 @@ import { auth } from "@clerk/nextjs/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 export async function GET(req: NextRequest) {
-  const { userId, getToken } = await auth();
+  const { userId, getToken, sessionClaims } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // Robust admin check
+  const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
+  if (role !== "admin") {
+    return NextResponse.json(
+      { error: "Forbidden: Admins only" },
+      { status: 403 }
+    );
   }
   const token = await getToken({ template: "convex" });
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") || undefined;
@@ -36,6 +43,7 @@ export async function DELETE(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
   const body = await req.json();
   if (!body.id)
@@ -55,6 +63,7 @@ export async function PUT(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
   const body = await req.json();
   if (!body.id || !body.updates)

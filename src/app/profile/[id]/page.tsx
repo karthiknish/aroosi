@@ -15,7 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 // --- Motion imports ---
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-
+import { User } from "@clerk/nextjs/server";
+import { Profile } from "@/types/profile";
 type Interest = { toUserId: Id<"users"> };
 
 export default function ProfileDetailPage() {
@@ -30,18 +31,23 @@ export default function ProfileDetailPage() {
   const [interestSent, setInterestSent] = useState<boolean>(false);
 
   // State for text/profile data
-  const [currentUser, setCurrentUser] = useState<any>(undefined);
-  const [profileData, setProfileData] = useState<any>(undefined);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [profileData, setProfileData] = useState<Profile | null>(null);
   const [isBlocked, setIsBlocked] = useState<boolean>(false);
   const [isMutualInterest, setIsMutualInterest] = useState<boolean>(false);
-  const [sentInterest, setSentInterest] = useState<any[]>([]);
+  const [sentInterest, setSentInterest] = useState<Interest[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // State for images
-  const [userProfileImages, setUserProfileImages] = useState<any[]>([]);
+  const [userProfileImages, setUserProfileImages] = useState<
+    {
+      url: string;
+      storageId: string;
+    }[]
+  >([]);
   const [userImages, setUserImages] = useState<Record<string, string>>({});
   const [currentUserProfileImagesData, setCurrentUserProfileImagesData] =
-    useState<any[]>([]);
+    useState<{ url: string; storageId: string }[]>([]);
   const [loadingImages, setLoadingImages] = useState(true);
 
   const id = params?.id as string;
@@ -61,9 +67,10 @@ export default function ProfileDetailPage() {
       setIsBlocked(data.isBlocked);
       setIsMutualInterest(data.isMutualInterest);
       setSentInterest(data.sentInterest || []);
-    } catch (e) {
-      setCurrentUser(undefined);
-      setProfileData(undefined);
+    } catch (e: unknown) {
+      console.error(e);
+      setCurrentUser(null);
+      setProfileData(null);
       setIsBlocked(false);
       setIsMutualInterest(false);
       setSentInterest([]);
@@ -74,12 +81,13 @@ export default function ProfileDetailPage() {
 
   useEffect(() => {
     refetchProfile();
+    console.log("refetched profile", loadingImages);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, id]);
 
   // Fetch images only after profile data is loaded and valid
   useEffect(() => {
-    if (loadingProfile || !profileData || !profileData.profile) return;
+    if (loadingProfile || !profileData) return;
     async function fetchImages() {
       setLoadingImages(true);
       try {
@@ -93,7 +101,8 @@ export default function ProfileDetailPage() {
         setCurrentUserProfileImagesData(
           data.currentUserProfileImagesData || []
         );
-      } catch (e) {
+      } catch (e: unknown) {
+        console.error(e);
         setUserProfileImages([]);
         setUserImages({});
         setCurrentUserProfileImagesData([]);
@@ -106,7 +115,7 @@ export default function ProfileDetailPage() {
   }, [loadingProfile, profileData, id]);
 
   // Derived values
-  const currentUserId = currentUser?._id;
+  const currentUserId = currentUser?.id;
   const isOwnProfile = Boolean(
     currentUserId && userId && currentUserId === userId
   );
@@ -117,13 +126,13 @@ export default function ProfileDetailPage() {
         .filter((img) => img && img.storageId)
         .map((img) => img.storageId);
       setLocalCurrentUserImageOrder(initialOrder);
-    } else if (!isOwnProfile && profileData?.profile?.profileImageIds) {
-      setLocalCurrentUserImageOrder(profileData.profile.profileImageIds);
+    } else if (!isOwnProfile && profileData?.profileImageIds) {
+      setLocalCurrentUserImageOrder(profileData.profileImageIds);
     }
   }, [
     isOwnProfile,
     currentUserProfileImagesData,
-    profileData?.profile?.profileImageIds,
+    profileData?.profileImageIds,
   ]);
 
   // Loading states
@@ -138,7 +147,7 @@ export default function ProfileDetailPage() {
       </div>
     );
   }
-  if (!profileData || !profileData.profile) {
+  if (!profileData) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         Profile not found.
@@ -147,7 +156,7 @@ export default function ProfileDetailPage() {
   }
 
   // Now safe to use profile data
-  const profile = profileData.profile;
+  const profile = profileData;
 
   // Type-safe access to userImages (for non-own profile's main image)
   const getPublicUserImage = (
@@ -485,13 +494,16 @@ export default function ProfileDetailPage() {
                               }
                               toast.success("Interest sent!");
                               await refetchProfile();
-                            } catch (e: any) {
+                            } catch (e: unknown) {
+                              console.error(e);
                               setInterestSent(false);
                               setInterestError(
-                                e.message || "Failed to send interest"
+                                (e as Error).message ||
+                                  "Failed to send interest"
                               );
                               toast.error(
-                                e.message || "Failed to send interest"
+                                (e as Error).message ||
+                                  "Failed to send interest"
                               );
                             }
                           }}
@@ -554,13 +566,15 @@ export default function ProfileDetailPage() {
                               }
                               toast.success("Interest withdrawn.");
                               await refetchProfile();
-                            } catch (e: any) {
+                            } catch (e: unknown) {
                               setInterestSent(true);
                               setInterestError(
-                                e.message || "Failed to remove interest"
+                                (e as Error).message ||
+                                  "Failed to remove interest"
                               );
                               toast.error(
-                                e.message || "Failed to remove interest"
+                                (e as Error).message ||
+                                  "Failed to remove interest"
                               );
                             }
                           }}

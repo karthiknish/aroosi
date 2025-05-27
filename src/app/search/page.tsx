@@ -63,11 +63,29 @@ function getAge(dateOfBirth: string) {
   return isNaN(age) ? "-" : age;
 }
 
+// Types for search results
+interface ProfileData {
+  fullName: string;
+  ukCity?: string;
+  dateOfBirth?: string;
+  religion?: string;
+  isProfileComplete?: boolean;
+  hiddenFromSearch?: boolean;
+  [key: string]: unknown;
+}
+interface ProfileSearchResult {
+  userId: string;
+  email?: string;
+  profile: ProfileData;
+}
+
 export default function SearchProfilesPage() {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
-  const [currentUserProfile, setCurrentUserProfile] = useState<any>(undefined);
-  const [profiles, setProfiles] = useState<any[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<
+    Record<string, unknown> | undefined
+  >(undefined);
+  const [profiles, setProfiles] = useState<ProfileSearchResult[]>([]);
   const [userImages, setUserImages] = useState<
     { [userId: string]: string | null } | undefined
   >(undefined);
@@ -91,7 +109,16 @@ export default function SearchProfilesPage() {
     fetchProfile();
   }, [getToken]);
 
-  const preferredGender = currentUserProfile?.profile?.preferredGender || "any";
+  const preferredGender =
+    typeof currentUserProfile === "object" &&
+    currentUserProfile &&
+    "profile" in currentUserProfile &&
+    typeof currentUserProfile.profile === "object" &&
+    currentUserProfile.profile &&
+    "preferredGender" in currentUserProfile.profile
+      ? (currentUserProfile.profile as { preferredGender?: string })
+          .preferredGender || "any"
+      : "any";
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -114,7 +141,7 @@ export default function SearchProfilesPage() {
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: any) =>
+      (u: ProfileSearchResult) =>
         u.profile && u.profile.isProfileComplete && !u.profile.hiddenFromSearch
     );
   }, [profiles]);
@@ -122,14 +149,16 @@ export default function SearchProfilesPage() {
   // Get unique cities and religions for filter dropdowns
   const religionOptions = React.useMemo(() => {
     const set = new Set(
-      publicProfiles.map((u: any) => u.profile!.religion).filter(Boolean)
+      publicProfiles
+        .map((u: ProfileSearchResult) => u.profile!.religion)
+        .filter(Boolean)
     );
     return ["any", ...Array.from(set)];
   }, [publicProfiles]);
 
   // Filtering logic (exclude logged-in user's own profile by Clerk ID or email)
   const filtered = React.useMemo(() => {
-    return publicProfiles.filter((u: any) => {
+    return publicProfiles.filter((u: ProfileSearchResult) => {
       // Exclude the logged-in user's own profile by Clerk ID or email
       if (user) {
         if (u.userId === user.id) return false;
@@ -137,7 +166,7 @@ export default function SearchProfilesPage() {
           u.email &&
           user.emailAddresses?.some(
             (e: { emailAddress: string }) =>
-              e.emailAddress.toLowerCase() === u.email.toLowerCase()
+              e.emailAddress.toLowerCase() === (u.email?.toLowerCase() ?? "")
           )
         )
           return false;
@@ -163,7 +192,7 @@ export default function SearchProfilesPage() {
 
   // Collect all userIds from filtered (always an array)
   const userIds = React.useMemo(
-    () => filtered.map((u: any) => u.userId).filter(Boolean),
+    () => filtered.map((u: ProfileSearchResult) => u.userId).filter(Boolean),
     [filtered]
   );
   // Allow null values in userImages
@@ -295,7 +324,7 @@ export default function SearchProfilesPage() {
           </div>
         ) : (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((u: any, idx: number) => {
+            {filtered.map((u: ProfileSearchResult, idx: number) => {
               const p = u.profile!;
               const firstImageUrl = userImages?.[u.userId] || null;
               const loaded = imgLoaded[u.userId] || false;

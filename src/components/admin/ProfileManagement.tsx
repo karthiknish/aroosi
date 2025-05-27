@@ -28,7 +28,6 @@ export function ProfileManagement({
   setTotal,
   loading,
   setLoading,
-  ...props
 }: {
   profiles: Profile[];
   setProfiles: Dispatch<SetStateAction<Profile[]>>;
@@ -36,7 +35,7 @@ export function ProfileManagement({
   setTotal: Dispatch<SetStateAction<number>>;
   loading: boolean;
   setLoading: Dispatch<SetStateAction<boolean>>;
-  [key: string]: any;
+  [key: string]: unknown;
 }) {
   const { getToken } = useAuth();
   const [editingId, setEditingId] = useState<string | null>(null);

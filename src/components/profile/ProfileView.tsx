@@ -104,7 +104,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   deleting,
 }) => {
   const { getToken } = useAuth();
-  const [images, setImages] = React.useState<any[]>([]);
+  const [images, setImages] = React.useState<{ url: string; _id: string }[]>(
+    []
+  );
   const [loadingImages, setLoadingImages] = React.useState(true);
   React.useEffect(() => {
     async function fetchImages() {
@@ -156,10 +158,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       });
       if (!res.ok) throw new Error("Failed to update image order");
       // Update local images state to reflect new order
-      setImages((prev) => {
+      setImages((prev: { url: string; _id: string }[]) => {
         if (!prev) return prev;
-        const imageMap = new Map(prev.map((img) => [img.storageId, img]));
-        return imageIds.map((id) => imageMap.get(id)).filter(Boolean);
+        const imageMap = new Map(prev.map((img) => [img._id, img]));
+        return imageIds.map((id) => imageMap.get(id)).filter(Boolean) as {
+          url: string;
+          _id: string;
+        }[];
       });
       toast.dismiss();
       toast.success("Image order updated");
@@ -181,7 +186,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   ) {
     orderedImages = (profileData.profileImageIds as string[])
       .map((storageId) => {
-        const img = images.find((img) => img.storageId === storageId);
+        const img = images.find((img) => img._id === storageId);
         if (img) {
           return { url: img.url, _id: storageId };
         }
@@ -191,7 +196,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   } else {
     orderedImages = images.map((img) => ({
       url: img.url,
-      _id: img.storageId,
+      _id: img._id,
     }));
   }
 

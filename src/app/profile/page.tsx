@@ -19,12 +19,17 @@ import {
 import React, { useState, useEffect } from "react";
 import { Id } from "@convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Profile } from "@/types/profile";
 
 export default function ProfilePage() {
   const { user: clerkUser } = useUser();
   const { isSignedIn, getToken } = useAuth();
-  const [profileData, setProfileData] = useState<any>(undefined);
-  const [userConvexData, setUserConvexData] = useState<any>(undefined);
+  const [profileData, setProfileData] = useState<Profile | undefined>(
+    undefined
+  );
+  const [userConvexData, setUserConvexData] = useState<
+    Record<string, unknown> | undefined
+  >(undefined);
   const [isEditing, setIsEditing] = useState(false);
   const [deleting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -49,8 +54,8 @@ export default function ProfilePage() {
         });
         const data = await res.json();
         setUserConvexData(data);
-        setProfileData(data?.profile ?? undefined);
-      } catch (e) {
+        setProfileData(data?.profile ? toProfileType(data.profile) : undefined);
+      } catch {
         setProfileData(undefined);
         setUserConvexData(undefined);
       } finally {
@@ -62,10 +67,7 @@ export default function ProfilePage() {
   }, [isSignedIn, isEditing, showSuccessModal]);
 
   // Determine if onboarding (profile is incomplete or doesn't exist yet)
-  const isOnboarding =
-    profileData === null ||
-    profileData === undefined ||
-    profileData?.isProfileComplete === false;
+  const isOnboarding = profileData === null || profileData === undefined;
 
   // Unified submit handler
   const handleProfileSubmit = async (values: ProfileFormValues) => {
@@ -199,7 +201,7 @@ export default function ProfilePage() {
     return (
       <ProfileForm
         mode={isOnboarding ? "create" : "edit"}
-        initialValues={profileData}
+        initialValues={profileData as Partial<ProfileFormValues>}
         onSubmit={handleProfileSubmit}
         clerkUser={clerkUser ? { id: clerkUser.id } : undefined}
         loading={loading}

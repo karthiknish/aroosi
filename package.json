@@ -111,6 +111,8 @@
     "@eslint/eslintrc": "^3",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
-    "@types/react-dropzone": "^4.2.2"
+    "@types/react-dropzone": "^4.2.2",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0"
   }
 }

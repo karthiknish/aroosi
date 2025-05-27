@@ -4,8 +4,6 @@ import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 export async function POST(req: NextRequest) {
   const { userId, getToken } = await auth();
   if (!userId) {
@@ -15,12 +13,21 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
 
   const body = await req.json();
   const { fromUserId, toUserId } = body;
-  if (!fromUserId || !toUserId) {
-    return NextResponse.json({ error: "Missing user IDs" }, { status: 400 });
+  if (
+    !fromUserId ||
+    !toUserId ||
+    typeof fromUserId !== "string" ||
+    typeof toUserId !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "Invalid or missing user IDs" },
+      { status: 400 }
+    );
   }
 
   const result = await convex.mutation(api.interests.removeInterest, {

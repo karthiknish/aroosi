@@ -13,6 +13,69 @@ import { api } from "./_generated/api";
 import { requireAdmin } from "./utils/requireAdmin";
 import { checkRateLimit } from "./utils/rateLimit";
 
+// Types based on schema
+export interface User {
+  _id: Id<"users">;
+  clerkId: string;
+  email: string;
+  banned?: boolean;
+  role?: string;
+}
+
+export interface Profile {
+  _id: Id<"profiles">;
+  userId: Id<"users">;
+  clerkId: string;
+  isProfileComplete?: boolean;
+  fullName?: string;
+  dateOfBirth?: string;
+  gender?: "male" | "female" | "other";
+  preferredGender?: "male" | "female" | "other" | "any";
+  ukCity?: string;
+  ukPostcode?: string;
+  religion?: string;
+  caste?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
+  education?: string;
+  occupation?: string;
+  annualIncome?: number;
+  aboutMe?: string;
+  phoneNumber?: string;
+  diet?: "vegetarian" | "non-vegetarian" | "vegan" | "eggetarian" | "other";
+  smoking?: "no" | "occasionally" | "yes";
+  drinking?: "no" | "occasionally" | "yes";
+  physicalStatus?: "normal" | "differently-abled" | "other";
+  partnerPreferenceAgeMin?: number;
+  partnerPreferenceAgeMax?: number;
+  partnerPreferenceReligion?: string[];
+  partnerPreferenceUkCity?: string[];
+  profileImageIds?: Id<"_storage">[];
+  banned?: boolean;
+  hiddenFromSearch?: boolean;
+  email?: string;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+// Public-facing profile type (for getUserPublicProfile)
+export interface PublicProfile {
+  fullName?: string;
+  ukCity?: string;
+  religion?: string;
+  motherTongue?: string;
+  height?: string;
+  maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
+  education?: string;
+  occupation?: string;
+  aboutMe?: string;
+  profileImageIds?: Id<"_storage">[];
+  createdAt: number;
+  // Add more fields as needed, but do not include _id, userId, clerkId
+  [key: string]: unknown;
+}
+
 // --- Helper function to get user by Clerk ID ---
 const getUserByClerkIdInternal = async (
   ctx: QueryCtx | MutationCtx,
@@ -75,7 +138,7 @@ export const internalUpsertUser = internalMutation(
 
     if (existingUser) {
       userId = existingUser._id;
-      const update: any = { email };
+      const update: Partial<User> = { email };
       if (role && existingUser.role !== role) update.role = role;
       if (existingUser.email !== email || update.role) {
         await ctx.db.patch(userId, update);
@@ -88,7 +151,7 @@ export const internalUpsertUser = internalMutation(
         .unique();
       if (doubleCheck) {
         userId = doubleCheck._id;
-        const update: any = { email };
+        const update: Partial<User> = { email };
         if (role && doubleCheck.role !== role) update.role = role;
         if (doubleCheck.email !== email || update.role) {
           await ctx.db.patch(userId, update);
@@ -264,7 +327,7 @@ export const updateProfile = mutation({
       }
     }
 
-    const updatePayload: any = { ...args }; // Start with args
+    const updatePayload: Partial<Profile> = { ...args }; // Start with args
     if (newProfileCompleteStatus !== profile.isProfileComplete) {
       updatePayload.isProfileComplete = newProfileCompleteStatus;
     }
@@ -413,7 +476,7 @@ export const batchGetPublicProfiles = action({
   handler: async (
     ctx,
     args
-  ): Promise<Array<{ userId: Id<"users">; profile: any }>> => {
+  ): Promise<Array<{ userId: Id<"users">; profile: PublicProfile }>> => {
     if (!args.userIds.length) {
       // Return all public, complete, not-hidden, not-banned profiles
       const users = await ctx.runQuery(api.users.listUsersWithProfiles, {
@@ -422,7 +485,7 @@ export const batchGetPublicProfiles = action({
       // users is an array of user objects with .profile attached
       return users
         .filter(
-          (user: any) =>
+          (user: User & { profile: Profile | null }) =>
             user.role !== "admin" &&
             user.banned !== true &&
             user.profile &&
@@ -430,22 +493,27 @@ export const batchGetPublicProfiles = action({
             user.profile.hiddenFromSearch !== true &&
             user.profile.banned !== true
         )
-        .map((user: any) => ({ userId: user._id, profile: user.profile }));
+        .map((user) => ({
+          userId: user._id,
+          profile: user.profile! as PublicProfile,
+        }));
     }
     // Otherwise, return only the specified users
-    const results: Array<{ userId: Id<"users">; profile: any } | null> =
-      await Promise.all(
-        args.userIds.map(async (userId) => {
-          const res: { profile: any } | null = await ctx.runQuery(
-            api.users.getUserPublicProfile,
-            { userId }
-          );
-          return res && res.profile ? { userId, profile: res.profile } : null;
-        })
-      );
+    const results: Array<{
+      userId: Id<"users">;
+      profile: PublicProfile;
+    } | null> = await Promise.all(
+      args.userIds.map(async (userId) => {
+        const res: { profile: PublicProfile } | null = await ctx.runQuery(
+          api.users.getUserPublicProfile,
+          { userId }
+        );
+        return res && res.profile ? { userId, profile: res.profile } : null;
+      })
+    );
     return results.filter(Boolean) as Array<{
       userId: Id<"users">;
-      profile: any;
+      profile: PublicProfile;
     }>;
   },
 });
@@ -842,7 +910,7 @@ export const createProfile = mutation({
     }
 
     // Create new profile
-    const profileData: any = {
+    const profileData: Partial<Profile> = {
       ...args,
       userId: user._id,
       clerkId: identity.subject,
@@ -862,7 +930,7 @@ export const createProfile = mutation({
     ];
     let allEssentialFilled = true;
     for (const field of essentialFields) {
-      const value = profileData[field];
+      const value = (profileData as Record<string, unknown>)[field];
       if (
         value === undefined ||
         value === null ||
@@ -876,7 +944,9 @@ export const createProfile = mutation({
       profileData.isProfileComplete = true;
     }
 
-    await ctx.db.insert("profiles", profileData);
+    // Ensure clerkId is present (should always be)
+    if (!profileData.clerkId) profileData.clerkId = identity.subject;
+    await ctx.db.insert("profiles", profileData as Omit<Profile, "_id">);
 
     return { success: true, message: "Profile created successfully" };
   },
@@ -931,14 +1001,14 @@ export const getMyMatches = query({
 });
 
 type ProfileDetailPageData = {
-  currentUser: any;
-  profileData: any;
+  currentUser: User | null;
+  profileData: PublicProfile | null;
   isBlocked: boolean;
   isMutualInterest: boolean;
-  sentInterest: any[];
-  userProfileImages: any;
-  userImages: any;
-  currentUserProfileImagesData: any[];
+  sentInterest: unknown[];
+  userProfileImages: unknown;
+  userImages: unknown;
+  currentUserProfileImagesData: unknown[];
   error?: string;
 };
 
@@ -959,20 +1029,21 @@ export const getProfileDetailPageData = action({
         error: "Not authenticated",
       };
     // Get current user
-    const currentUser: any = await ctx.runQuery(
+    const currentUser: User | null = await ctx.runQuery(
       api.users.getCurrentUserWithProfile,
       {}
     );
     const currentUserId = currentUser?._id as Id<"users"> | undefined;
     // Get public profile for viewed user
-    const profileData: any = await ctx.runQuery(
-      api.users.getUserPublicProfile,
-      { userId: viewedUserId }
-    );
+    const publicProfileRes: { profile: PublicProfile } | null =
+      await ctx.runQuery(api.users.getUserPublicProfile, {
+        userId: viewedUserId,
+      });
+    const profileData: PublicProfile | null = publicProfileRes?.profile ?? null;
     // Blocked status
     let isBlocked: boolean = false;
     let isMutualInterest: boolean = false;
-    let sentInterest: any[] = [];
+    let sentInterest: unknown[] = [];
     if (currentUserId && viewedUserId && currentUserId !== viewedUserId) {
       isBlocked = await ctx.runQuery(api.users.isBlocked, {
         blockerUserId: currentUserId as Id<"users">,
@@ -987,21 +1058,21 @@ export const getProfileDetailPageData = action({
       });
     }
     // Images for the profile being viewed
-    const userProfileImages: any = await ctx.runQuery(
+    const userProfileImages: unknown = await ctx.runQuery(
       api.images.getProfileImages,
       {
         userId: viewedUserId as Id<"users">,
       }
     );
     // Batch get profile images (for one user)
-    const userImages: any = await ctx.runQuery(
+    const userImages: unknown = await ctx.runQuery(
       api.images.batchGetProfileImages,
       {
         userIds: [viewedUserId as Id<"users">],
       }
     );
     // Images for the current logged-in user
-    let currentUserProfileImagesData: any[] = [];
+    let currentUserProfileImagesData: unknown[] = [];
     if (currentUserId) {
       currentUserProfileImagesData = await ctx.runQuery(
         api.images.getProfileImages,

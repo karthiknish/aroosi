@@ -21,14 +21,23 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 
+// Define types for images and matches
+interface ImageType {
+  storageId: string;
+  url?: string | null;
+  [key: string]: unknown;
+}
+interface MatchType {
+  [key: string]: unknown;
+}
+
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useAuth();
   const { getToken } = useAuth();
-  const [profile, setProfile] = useState<any>(undefined);
-  const [images, setImages] = useState<any[]>([]);
-  const [matches, setMatches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
+  const [images, setImages] = useState<ImageType[]>([]);
+  const [matches, setMatches] = useState<MatchType[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<{
     storageId: string;
@@ -38,7 +47,6 @@ export default function AdminProfileDetailPage() {
 
   useEffect(() => {
     async function fetchProfileData() {
-      setLoading(true);
       const token = await getToken();
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -49,13 +57,18 @@ export default function AdminProfileDetailPage() {
       const imagesRes = await fetch(`/api/profile-detail/${id}/images`, {
         headers,
       });
-      setImages(imagesRes.ok ? (await imagesRes.json()).userProfileImages : []);
+      setImages(
+        imagesRes.ok
+          ? ((await imagesRes.json()).userProfileImages as ImageType[])
+          : []
+      );
       // Matches
       const matchesRes = await fetch(`/api/admin/profiles/${id}/matches`, {
         headers,
       });
-      setMatches(matchesRes.ok ? await matchesRes.json() : []);
-      setLoading(false);
+      setMatches(
+        matchesRes.ok ? ((await matchesRes.json()) as MatchType[]) : []
+      );
     }
     if (isSignedIn) fetchProfileData();
   }, [id, isSignedIn, getToken]);
@@ -102,11 +115,6 @@ export default function AdminProfileDetailPage() {
   };
 
   // Process images for display
-  type ImageType = {
-    storageId: string;
-    url?: string | null;
-    [key: string]: unknown;
-  };
   const { orderedImages: orderedImagesRaw } = React.useMemo(() => {
     // Default return values
     const defaultReturn = {
@@ -426,27 +434,38 @@ export default function AdminProfileDetailPage() {
       <Card className="mb-8 shadow-xl">
         <CardContent className="pt-8 pb-10 px-6 flex flex-col items-center">
           <div className="text-2xl font-bold text-gray-900 mb-1">
-            {profile.fullName || "Unnamed"}
+            {typeof profile?.fullName === "string"
+              ? profile.fullName
+              : "Unnamed"}
           </div>
           <div className="text-md text-gray-600 flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4" /> {profile.ukCity || "-"}
+            <MapPin className="w-4 h-4" />{" "}
+            {typeof profile?.ukCity === "string" ? profile.ukCity : "-"}
           </div>
           <div className="flex flex-wrap gap-4 justify-center mb-4">
             <div className="flex items-center gap-1 text-gray-500">
-              <Heart className="w-4 h-4" /> {profile.religion || "-"}
+              <Heart className="w-4 h-4" />{" "}
+              {typeof profile?.religion === "string" ? profile.religion : "-"}
             </div>
             <div className="flex items-center gap-1 text-gray-500">
-              <GraduationCap className="w-4 h-4" /> {profile.education || "-"}
+              <GraduationCap className="w-4 h-4" />{" "}
+              {typeof profile?.education === "string" ? profile.education : "-"}
             </div>
             <div className="flex items-center gap-1 text-gray-500">
-              <Briefcase className="w-4 h-4" /> {profile.occupation || "-"}
+              <Briefcase className="w-4 h-4" />{" "}
+              {typeof profile?.occupation === "string"
+                ? profile.occupation
+                : "-"}
             </div>
             <div className="flex items-center gap-1 text-gray-500">
-              <Phone className="w-4 h-4" /> {profile.phoneNumber || "-"}
+              <Phone className="w-4 h-4" />{" "}
+              {typeof profile?.phoneNumber === "string"
+                ? profile.phoneNumber
+                : "-"}
             </div>
           </div>
           <div className="text-sm text-gray-400 mb-2">
-            Profile ID: {profile._id}
+            Profile ID: {typeof profile?._id === "string" ? profile._id : "-"}
           </div>
         </CardContent>
       </Card>
@@ -455,95 +474,122 @@ export default function AdminProfileDetailPage() {
           <CardTitle>Profile Details</CardTitle>
           {/* Add toggle button for search visibility */}
           <Button
-            variant={profile.hiddenFromSearch ? "secondary" : "outline"}
+            variant={profile?.hiddenFromSearch ? "secondary" : "outline"}
             className="mt-2"
-            onClick={() => handleToggleHiddenFromSearch(profile._id)}
+            onClick={() => handleToggleHiddenFromSearch(String(profile?._id))}
           >
-            {profile.hiddenFromSearch ? "Show in Search" : "Hide from Search"}
+            {profile?.hiddenFromSearch ? "Show in Search" : "Hide from Search"}
           </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             <div>
               <span className="font-semibold">Date of Birth:</span>{" "}
-              {profile.dateOfBirth || "-"}
+              {typeof profile?.dateOfBirth === "string"
+                ? profile.dateOfBirth
+                : "-"}
             </div>
             <div>
               <span className="font-semibold">Gender:</span>{" "}
-              {profile.gender || "-"}
+              {typeof profile?.gender === "string" ? profile.gender : "-"}
             </div>
             <div>
               <span className="font-semibold">Postcode:</span>{" "}
-              {profile.ukPostcode || "-"}
+              {typeof profile?.ukPostcode === "string"
+                ? profile.ukPostcode
+                : "-"}
             </div>
             <div>
               <span className="font-semibold">Caste:</span>{" "}
-              {profile.caste || "-"}
+              {typeof profile?.caste === "string" ? profile.caste : "-"}
             </div>
             <div>
               <span className="font-semibold">Mother Tongue:</span>{" "}
-              {profile.motherTongue || "-"}
+              {typeof profile?.motherTongue === "string"
+                ? profile.motherTongue
+                : "-"}
             </div>
             <div>
               <span className="font-semibold">Height:</span>{" "}
-              {profile.height || "-"}
+              {typeof profile?.height === "string" ? profile.height : "-"}
             </div>
             <div>
               <span className="font-semibold">Marital Status:</span>{" "}
-              {profile.maritalStatus || "-"}
+              {typeof profile?.maritalStatus === "string"
+                ? profile.maritalStatus
+                : "-"}
             </div>
             <div>
               <span className="font-semibold">Annual Income:</span>{" "}
-              {profile.annualIncome || "-"}
+              {typeof profile?.annualIncome === "string" ||
+              typeof profile?.annualIncome === "number"
+                ? profile.annualIncome
+                : "-"}
             </div>
             <div>
-              <span className="font-semibold">Diet:</span> {profile.diet || "-"}
+              <span className="font-semibold">Diet:</span>{" "}
+              {typeof profile?.diet === "string" ? profile.diet : "-"}
             </div>
             <div>
               <span className="font-semibold">Smoking:</span>{" "}
-              {profile.smoking || "-"}
+              {typeof profile?.smoking === "string" ? profile.smoking : "-"}
             </div>
             <div>
               <span className="font-semibold">Drinking:</span>{" "}
-              {profile.drinking || "-"}
+              {typeof profile?.drinking === "string" ? profile.drinking : "-"}
             </div>
             <div>
               <span className="font-semibold">Physical Status:</span>{" "}
-              {profile.physicalStatus || "-"}
+              {typeof profile?.physicalStatus === "string"
+                ? profile.physicalStatus
+                : "-"}
             </div>
             <div className="md:col-span-2">
               <span className="font-semibold">About Me:</span>{" "}
-              <span className="text-gray-700">{profile.aboutMe || "-"}</span>
+              <span className="text-gray-700">
+                {typeof profile?.aboutMe === "string" ? profile.aboutMe : "-"}
+              </span>
             </div>
             <div className="md:col-span-2 border-t pt-4 mt-2">
               <span className="font-semibold">Partner Preference Age:</span>{" "}
-              {profile.partnerPreferenceAgeMin || "-"} -{" "}
-              {profile.partnerPreferenceAgeMax || "-"}
+              {typeof profile?.partnerPreferenceAgeMin === "number" ||
+              typeof profile?.partnerPreferenceAgeMin === "string"
+                ? profile.partnerPreferenceAgeMin
+                : "-"}{" "}
+              -{" "}
+              {typeof profile?.partnerPreferenceAgeMax === "number" ||
+              typeof profile?.partnerPreferenceAgeMax === "string"
+                ? profile.partnerPreferenceAgeMax
+                : "-"}
             </div>
             <div className="md:col-span-2">
               <span className="font-semibold">
                 Partner Preference Religion:
               </span>{" "}
-              {profile.partnerPreferenceReligion?.join(", ") || "-"}
+              {Array.isArray(profile?.partnerPreferenceReligion)
+                ? profile.partnerPreferenceReligion.join(", ")
+                : "-"}
             </div>
             <div className="md:col-span-2">
               <span className="font-semibold">Partner Preference UK City:</span>{" "}
-              {profile.partnerPreferenceUkCity?.join(", ") || "-"}
+              {Array.isArray(profile?.partnerPreferenceUkCity)
+                ? profile.partnerPreferenceUkCity.join(", ")
+                : "-"}
             </div>
             <div className="md:col-span-2 border-t pt-4 mt-2">
               <span className="font-semibold">Banned:</span>{" "}
-              {profile.banned ? "Yes" : "No"}
+              {profile?.banned ? "Yes" : "No"}
             </div>
             <div className="md:col-span-2">
               <span className="font-semibold">Created At:</span>{" "}
-              {profile.createdAt
-                ? new Date(profile.createdAt).toLocaleString()
+              {profile?.createdAt
+                ? new Date(String(profile.createdAt)).toLocaleString()
                 : "-"}
             </div>
             <div className="md:col-span-2">
               <span className="font-semibold">Updated At:</span>{" "}
-              {profile.updatedAt
-                ? new Date(profile.updatedAt).toLocaleString()
+              {profile?.updatedAt
+                ? new Date(String(profile.updatedAt)).toLocaleString()
                 : "-"}
             </div>
           </div>

@@ -4,8 +4,6 @@ import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 export async function GET(req: NextRequest) {
   const { userId, getToken } = await auth();
   if (!userId) {
@@ -15,6 +13,7 @@ export async function GET(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
   const { searchParams } = new URL(req.url);
   const userIdsParam = searchParams.get("userIds");
