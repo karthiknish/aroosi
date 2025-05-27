@@ -1,8 +1,7 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { useForm, Controller } from "react-hook-form";
 import {
   Card,
@@ -20,7 +19,7 @@ import {
 } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { MapPin, Search, UserCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -44,7 +43,8 @@ function isAllowedGender(
 }
 
 export default function MatchesPage() {
-  const { user: isSignedIn } = useUser();
+  const { user: clerkUser } = useUser();
+  const { isSignedIn, getToken } = useAuth();
   const [filters, setFilters] = useState({
     distance: "",
     religion: "Any",
@@ -56,13 +56,47 @@ export default function MatchesPage() {
     defaultValues: filters,
   });
 
-  const preferredGender = isAllowedGender(filters.religion)
-    ? filters.religion
-    : undefined;
-  const profiles = useQuery(api.users.listUsersWithProfiles, {
-    preferredGender,
-    // Add other filters as needed, e.g., city, minAge, maxAge, etc., if supported by the backend
-  });
+  const [profiles, setProfiles] = useState<any[] | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch profiles from API
+  useEffect(() => {
+    async function fetchProfiles() {
+      if (!isSignedIn) {
+        setProfiles(undefined);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await getToken();
+        const params = new URLSearchParams();
+        if (isAllowedGender(filters.religion)) {
+          params.append("preferredGender", filters.religion);
+        }
+        // Add more filters as needed
+        // e.g., params.append("city", filters.city);
+        const res = await fetch(`/api/search?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err?.error || "Failed to fetch matches");
+        }
+        const data = await res.json();
+        setProfiles(data || []);
+      } catch (e: any) {
+        setError(e.message || "Failed to fetch matches");
+        setProfiles([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProfiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, filters]);
 
   const onSubmit = (data: typeof filters) => {
     setFilters(data);
@@ -160,7 +194,7 @@ export default function MatchesPage() {
           </div>
         </form>
         {/* TODO: Add distance filter if user location is available */}
-        {profiles === undefined ? (
+        {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 py-20">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -174,13 +208,15 @@ export default function MatchesPage() {
               </div>
             ))}
           </div>
-        ) : profiles.length === 0 ? (
+        ) : error ? (
+          <div className="text-center text-red-500 py-20">{error}</div>
+        ) : profiles && profiles.length === 0 ? (
           <div className="text-center text-gray-500 py-20">
             No matches found. Try adjusting your filters.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {profiles.map((value) => {
+            {profiles?.map((value) => {
               // value.profile is the Profile object
               const profile = value.profile as Profile | null;
               if (!profile) return null;

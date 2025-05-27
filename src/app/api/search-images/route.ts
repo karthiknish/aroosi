@@ -51,7 +51,14 @@ export async function GET(request: Request) {
       })
     );
 
-    return NextResponse.json({ images });
+    return NextResponse.json(
+      { images },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching images from Pexels:", error);
     return NextResponse.json(

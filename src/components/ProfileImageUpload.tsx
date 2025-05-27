@@ -1,7 +1,4 @@
 import React, { useCallback, useEffect, useState, useMemo } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
-import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { ImageUploader } from "./ImageUploader";
 import { ImageDeleteConfirmation } from "./ImageDeleteConfirmation";
@@ -11,19 +8,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@clerk/nextjs";
 
 export interface ImageData {
-  _id: Id<"images"> | string;
+  _id: string;
   _creationTime?: number;
-  storageId: Id<"_storage"> | string;
+  storageId: string;
   url: string;
   fileName?: string;
   uploadedAt?: number;
 }
 
 type ProfileImageUploadProps = {
-  userId: Id<"users">;
-  profileId?: Id<"profiles">;
+  userId: string;
+  profileId?: string;
   isAdmin?: boolean;
   onImagesChanged?: (newImageIds: string[]) => void;
 };
@@ -34,124 +32,118 @@ export function ProfileImageUpload({
   profileId,
   onImagesChanged,
 }: ProfileImageUploadProps) {
-  // State for upload status
+  const { getToken } = useAuth();
   const [isUploading, setIsUploading] = useState<boolean>(false);
-
-  // If admin and profileId is provided, fetch the userId for that profile
-  const profileQuery = useQuery(
-    api.users.getProfileById,
-    isAdmin && profileId ? { id: profileId } : "skip"
-  );
-  const effectiveUserId =
-    isAdmin && profileQuery?.userId ? profileQuery.userId : userId;
-
-  // Convex mutations
-  const generateUploadUrl = useMutation(api.images.generateUploadUrl);
-  const uploadImage = useMutation(api.images.uploadProfileImage);
-  const deleteImage = useMutation(api.images.deleteProfileImage);
-  const updateProfile = useMutation(api.users.updateProfile);
-  const adminUpdateProfile = useMutation(api.users.adminUpdateProfile);
-
-  // Fetch profile images
-  const imagesQuery = useQuery(api.images.getProfileImages, {
-    userId: effectiveUserId,
-  });
-
-  // Local state for ordered images
   const [orderedImages, setOrderedImages] = useState<ImageData[]>([]);
-
-  // Modal states
   const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<Id<"_storage"> | null>(
-    null
-  );
-
-  // Modal state for viewing large image
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [viewImageModalOpen, setViewImageModalOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedImageIdx, setSelectedImageIdx] = useState<number>(-1);
 
-  // Get profile image IDs as Id<_storage>[]
-  const profileImageIds = useMemo(() => {
-    return orderedImages.map((img) => img.storageId as Id<"_storage">);
-  }, [orderedImages]);
-
-  // Notify parent component about the image IDs change (side effect, not during render)
-  useEffect(() => {
-    if (onImagesChanged) {
-      onImagesChanged(profileImageIds.map(String));
-    }
-  }, [profileImageIds, onImagesChanged]);
-
-  // Sync orderedImages with images from server
-  useEffect(() => {
-    if (imagesQuery) {
+  // Fetch images from API
+  const fetchImages = useCallback(async () => {
+    const token = await getToken();
+    if (!token) return;
+    const res = await fetch(`/api/profile-detail/${userId}/images`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
       setOrderedImages(
-        (imagesQuery as ImageData[]).filter(
-          (img) => !!img.url && !!img.storageId
+        (data.userProfileImages || []).filter(
+          (img: ImageData) => !!img.url && !!img.storageId
         )
       );
+    } else {
+      setOrderedImages([]);
     }
-  }, [imagesQuery]);
+  }, [userId, getToken]);
+
+  useEffect(() => {
+    fetchImages();
+  }, [fetchImages]);
+
+  // Notify parent component about the image IDs change
+  const profileImageIds = useMemo(() => {
+    return orderedImages.map((img) => img.storageId);
+  }, [orderedImages]);
+
+  useEffect(() => {
+    if (onImagesChanged) {
+      onImagesChanged(profileImageIds);
+    }
+  }, [profileImageIds, onImagesChanged]);
 
   // Handle image deletion
   const handleDelete = useCallback(async () => {
     if (!pendingDeleteId) return;
+    setIsUploading(true);
     try {
-      await deleteImage({ userId: effectiveUserId, imageId: pendingDeleteId });
+      const token = await getToken();
+      if (!token) throw new Error("No auth token");
+      const res = await fetch(`/api/images`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, imageId: pendingDeleteId }),
+      });
+      if (!res.ok) throw new Error("Failed to delete image");
       const newOrderedImages = orderedImages.filter(
         (img) => img.storageId !== pendingDeleteId
       );
       setOrderedImages(newOrderedImages);
-      const newStorageOrder = newOrderedImages.map(
-        (img) => img.storageId as Id<"_storage">
-      );
-      if (isAdmin && profileId) {
-        await adminUpdateProfile({
-          id: profileId,
-          updates: { profileImageIds: newStorageOrder },
-        });
-      } else {
-        await updateProfile({ profileImageIds: newStorageOrder });
-      }
-      if (onImagesChanged) onImagesChanged(newStorageOrder.map(String));
+      // Update profile image order
+      const newStorageOrder = newOrderedImages.map((img) => img.storageId);
+      const updateUrl =
+        isAdmin && profileId ? `/api/admin/profiles` : `/api/profile`;
+      const updateBody =
+        isAdmin && profileId
+          ? { id: profileId, updates: { profileImageIds: newStorageOrder } }
+          : { profileImageIds: newStorageOrder };
+      await fetch(updateUrl, {
+        method: isAdmin && profileId ? "PUT" : "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateBody),
+      });
+      if (onImagesChanged) onImagesChanged(newStorageOrder);
       toast.success("Image deleted successfully");
     } catch (error) {
       console.error("Error deleting image:", error);
       toast.error("Failed to delete image");
     } finally {
+      setIsUploading(false);
       setDeleteModalOpen(false);
       setPendingDeleteId(null);
     }
   }, [
     pendingDeleteId,
-    deleteImage,
     orderedImages,
     isAdmin,
     profileId,
-    adminUpdateProfile,
-    updateProfile,
     onImagesChanged,
-    effectiveUserId,
+    userId,
+    getToken,
   ]);
 
-  const images = useMemo(() => imagesQuery || [], [imagesQuery]);
-
-  // Memoize the ordered images based on profileImageIds or use default order
+  // Memoize the ordered images
   const memoizedOrderedImages = useMemo(() => {
-    const validImages = (images as ImageData[]).filter((img) =>
+    const validImages = (orderedImages || []).filter((img) =>
       Boolean(img && img.url && img.storageId)
     );
-
     if (profileImageIds?.length > 0) {
       const imageMap = new Map(validImages.map((img) => [img.storageId, img]));
       return profileImageIds
-        .map((id) => imageMap.get(id as Id<"_storage">))
+        .map((id) => imageMap.get(id))
         .filter((img): img is ImageData => Boolean(img));
     }
-
     return validImages;
-  }, [images, profileImageIds]);
+  }, [orderedImages, profileImageIds]);
 
   // Helper to go to previous/next image
   const goToPrevImage = () => {
@@ -180,27 +172,17 @@ export function ProfileImageUpload({
           </span>
         </div>
         <ImageUploader
-          userId={effectiveUserId}
+          userId={userId}
           orderedImages={orderedImages}
           isAdmin={isAdmin}
           profileId={profileId}
-          onImagesChanged={
-            onImagesChanged
-              ? () =>
-                  onImagesChanged(
-                    orderedImages.map((img) => String(img.storageId))
-                  )
-              : undefined
-          }
-          generateUploadUrl={generateUploadUrl}
-          uploadImage={uploadImage}
-          updateProfile={updateProfile}
-          adminUpdateProfile={adminUpdateProfile}
+          onImagesChanged={onImagesChanged}
           setIsUploading={setIsUploading}
           toast={toast}
           disabled={isUploading || (orderedImages?.length ?? 0) >= 5}
           isUploading={isUploading}
           maxFiles={5}
+          fetchImages={fetchImages}
         />
         {/* Upload limit indicator */}
         <div className="flex justify-between px-1">

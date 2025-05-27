@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PexelsImageModalProps {
   isOpen: boolean;
@@ -74,7 +75,13 @@ export function PexelsImageModal({
             Search
           </Button>
         </form>
-        {loading && <div className="text-center text-pink-600">Loading...</div>}
+        {loading && (
+          <div className="flex flex-col items-center gap-4 py-4">
+            <Skeleton className="w-20 h-6 rounded" />
+            <Skeleton className="w-40 h-4 rounded" />
+            <Skeleton className="w-32 h-4 rounded" />
+          </div>
+        )}
         {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {results.map((img) => (

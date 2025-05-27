@@ -1,8 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@convex/_generated/api";
-import { Id } from "@/../convex/_generated/dataModel";
 import {
   Eye,
   MapPin,
@@ -16,25 +14,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
 import { useAuth } from "@clerk/nextjs";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 
 export default function AdminProfileDetailPage() {
-  // All hooks must be called unconditionally at the top
   const { id } = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useAuth();
-  const profile = useQuery(api.users.getProfileById, {
-    id: id as Id<"profiles">,
-  });
-  const deleteImage = useMutation(api.images.deleteProfileImage);
-  const setProfileHiddenFromSearch = useMutation(
-    api.users.setProfileHiddenFromSearch
-  );
+  const { getToken } = useAuth();
+  const [profile, setProfile] = useState<any>(undefined);
+  const [images, setImages] = useState<any[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<{
     storageId: string;
@@ -42,23 +36,53 @@ export default function AdminProfileDetailPage() {
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteImage = async () => {
+  useEffect(() => {
+    async function fetchProfileData() {
+      setLoading(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      // Profile
+      const profileRes = await fetch(`/api/admin/profiles/${id}`, { headers });
+      setProfile(profileRes.ok ? await profileRes.json() : null);
+      // Images
+      const imagesRes = await fetch(`/api/profile-detail/${id}/images`, {
+        headers,
+      });
+      setImages(imagesRes.ok ? (await imagesRes.json()).userProfileImages : []);
+      // Matches
+      const matchesRes = await fetch(`/api/admin/profiles/${id}/matches`, {
+        headers,
+      });
+      setMatches(matchesRes.ok ? await matchesRes.json() : []);
+      setLoading(false);
+    }
+    if (isSignedIn) fetchProfileData();
+  }, [id, isSignedIn, getToken]);
+
+  const handleDeleteImage = async (id: string) => {
     if (!profile?.userId || !imageToDelete) return;
 
     const { storageId } = imageToDelete;
 
     try {
       setIsDeleting(true);
-      await deleteImage({
-        userId: profile.userId as Id<"users">,
-        imageId: storageId as Id<"_storage">,
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const deleteRes = await fetch(`/api/images/${storageId}`, {
+        method: "DELETE",
+        headers,
       });
 
-      // The server will handle updating the main image if needed
-
-      toast.success("Image deleted successfully");
-      setImageToDelete(null);
-      setIsDeleteModalOpen(false);
+      if (deleteRes.ok) {
+        toast.success("Image deleted successfully");
+        setImageToDelete(null);
+        setIsDeleteModalOpen(false);
+      } else {
+        console.error("Error deleting image:", deleteRes.statusText);
+        toast.error("Failed to delete image");
+      }
     } catch (error) {
       console.error("Error deleting image:", error);
       toast.error("Failed to delete image");
@@ -76,24 +100,6 @@ export default function AdminProfileDetailPage() {
     setIsDeleteModalOpen(false);
     setImageToDelete(null);
   };
-
-  // Fetch images using the profile's userId - only when we have a valid user ID
-  const isValidUserId =
-    typeof profile?.userId === "string" && profile.userId.trim().length > 0;
-  const images = useQuery(
-    api.images.getProfileImages,
-    isValidUserId ? { userId: profile.userId as Id<"users"> } : "skip"
-  );
-  React.useEffect(() => {
-    if (images) {
-      console.log("Fetched images:", images);
-    } else if (profile?.userId) {
-      console.log("No images found for user:", profile.userId);
-    }
-  }, [images, profile?.userId]);
-  const matches = useQuery(api.users.getMatchesForProfile, {
-    profileId: id as Id<"profiles">,
-  });
 
   // Process images for display
   type ImageType = {
@@ -208,7 +214,7 @@ export default function AdminProfileDetailPage() {
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        onConfirm={handleDeleteImage}
+        onConfirm={() => handleDeleteImage(imageToDelete.storageId)}
         isLoading={isDeleting}
         title="Delete Image"
         description="Are you sure you want to delete this image?"
@@ -217,18 +223,29 @@ export default function AdminProfileDetailPage() {
   };
 
   // Add toggle for hiddenFromSearch
-  const handleToggleHiddenFromSearch = async () => {
+  const handleToggleHiddenFromSearch = async (id: string) => {
     if (!profile?._id) return;
     try {
-      await setProfileHiddenFromSearch({
-        profileId: profile._id as Id<"profiles">,
-        hidden: !profile.hiddenFromSearch,
-      });
-      toast.success(
-        !profile.hiddenFromSearch
-          ? "Profile hidden from search."
-          : "Profile visible in search."
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const updateRes = await fetch(
+        `/api/admin/profiles/${id}/hiddenFromSearch`,
+        {
+          method: "PUT",
+          headers,
+        }
       );
+
+      if (updateRes.ok) {
+        toast.success(
+          !profile.hiddenFromSearch
+            ? "Profile hidden from search."
+            : "Profile visible in search."
+        );
+      } else {
+        toast.error("Failed to update search visibility");
+      }
     } catch {
       toast.error("Failed to update search visibility");
     }
@@ -440,7 +457,7 @@ export default function AdminProfileDetailPage() {
           <Button
             variant={profile.hiddenFromSearch ? "secondary" : "outline"}
             className="mt-2"
-            onClick={handleToggleHiddenFromSearch}
+            onClick={() => handleToggleHiddenFromSearch(profile._id)}
           >
             {profile.hiddenFromSearch ? "Show in Search" : "Hide from Search"}
           </Button>

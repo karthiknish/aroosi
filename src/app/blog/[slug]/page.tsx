@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
+import { useAuth } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +9,7 @@ import { Share2, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import React from "react";
 
 // Calculate reading time
 function getReadingTime(content: string): number {
@@ -22,7 +22,24 @@ function getReadingTime(content: string): number {
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const post = useQuery(api.blog.getBlogPostBySlug, { slug: slug || "" });
+  const { getToken } = useAuth();
+  const [post, setPost] = React.useState<any | undefined>(undefined);
+  React.useEffect(() => {
+    async function fetchPost() {
+      if (!slug) return;
+      setPost(undefined);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/blog/${slug}`, { headers });
+      if (res.ok) {
+        setPost(await res.json());
+      } else {
+        setPost(null);
+      }
+    }
+    fetchPost();
+  }, [slug, getToken]);
 
   if (post === undefined) {
     return (

@@ -24,9 +24,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Id } from "@/../convex/_generated/dataModel";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@convex/_generated/api";
+import { useAuth } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -105,19 +103,32 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   onDelete,
   deleting,
 }) => {
-  const images = useQuery(
-    api.images.getProfileImages,
-    userConvexData?._id &&
-      typeof userConvexData._id === "string" &&
-      userConvexData._id.length > 0
-      ? { userId: userConvexData._id as Id<"users"> }
-      : "skip"
-  );
-  const imagesArray = (images || []).map((img) => ({
-    ...img,
-    url: img.url || "",
-  }));
-  const updateOrder = useMutation(api.users.updateProfileImageOrder);
+  const { getToken } = useAuth();
+  const [images, setImages] = React.useState<any[]>([]);
+  const [loadingImages, setLoadingImages] = React.useState(true);
+  React.useEffect(() => {
+    async function fetchImages() {
+      setLoadingImages(true);
+      if (!userConvexData?._id) return;
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch(
+        `/api/profile-detail/${userConvexData._id}/images`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setImages(data.userProfileImages || []);
+      } else {
+        setImages([]);
+      }
+      setLoadingImages(false);
+    }
+    fetchImages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userConvexData?._id]);
 
   const handleReorder = async (newOrder: unknown[]) => {
     if (!userConvexData?._id) return;
@@ -133,42 +144,54 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       imageIds = (newOrder as { _id: string }[]).map((img) => img._id);
     }
     try {
-      await updateOrder({
-        userId: userConvexData._id as Id<"users">,
-        imageIds: imageIds.map((id) => id as Id<"_storage">),
+      const token = await getToken();
+      if (!token) throw new Error("No token");
+      const res = await fetch(`/api/images/order`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: userConvexData._id, imageIds }),
       });
+      if (!res.ok) throw new Error("Failed to update image order");
+      // Update local images state to reflect new order
+      setImages((prev) => {
+        if (!prev) return prev;
+        const imageMap = new Map(prev.map((img) => [img.storageId, img]));
+        return imageIds.map((id) => imageMap.get(id)).filter(Boolean);
+      });
+      toast.dismiss();
       toast.success("Image order updated");
     } catch (error) {
+      toast.dismiss();
       console.error("Error updating image order", error);
       toast.error("Failed to update image order");
     }
   };
 
   console.log("images", images);
-  console.log("imagesArray", imagesArray);
 
   // Determine ordered images based on profileData.profileImageIds if available
-  let orderedImages: { url: string; _id: Id<"_storage"> }[] = [];
+  let orderedImages: { url: string; _id: string }[] = [];
   if (
     profileData?.profileImageIds &&
     Array.isArray(profileData.profileImageIds) &&
     profileData.profileImageIds.length > 0
   ) {
-    // Map storage IDs to image objects from imagesArray, and use storageId as _id
-    orderedImages = (profileData.profileImageIds as Id<"_storage">[])
+    orderedImages = (profileData.profileImageIds as string[])
       .map((storageId) => {
-        const img = imagesArray.find((img) => img.storageId === storageId);
+        const img = images.find((img) => img.storageId === storageId);
         if (img) {
           return { url: img.url, _id: storageId };
         }
         return null;
       })
-      .filter(Boolean) as { url: string; _id: Id<"_storage"> }[];
+      .filter(Boolean) as { url: string; _id: string }[];
   } else {
-    // fallback: use imagesArray, but use storageId as _id if available
-    orderedImages = imagesArray.map((img) => ({
+    orderedImages = images.map((img) => ({
       url: img.url,
-      _id: img.storageId as Id<"_storage">,
+      _id: img.storageId,
     }));
   }
 
@@ -245,8 +268,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   {userConvexData?._id && (
                     <ProfileImageReorder
                       images={orderedImages}
-                      userId={userConvexData._id as Id<"users">}
+                      userId={userConvexData._id}
                       onReorder={handleReorder}
+                      loading={loadingImages}
                       renderAction={(_, idx) => (
                         <img
                           src={orderedImages[idx].url}
@@ -263,7 +287,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                       )}
                     />
                   )}
-                  {imagesArray.length === 0 && <div>No images found</div>}
                 </DisplaySection>
 
                 <DisplaySection

@@ -414,6 +414,25 @@ export const batchGetPublicProfiles = action({
     ctx,
     args
   ): Promise<Array<{ userId: Id<"users">; profile: any }>> => {
+    if (!args.userIds.length) {
+      // Return all public, complete, not-hidden, not-banned profiles
+      const users = await ctx.runQuery(api.users.listUsersWithProfiles, {
+        preferredGender: "any",
+      });
+      // users is an array of user objects with .profile attached
+      return users
+        .filter(
+          (user: any) =>
+            user.role !== "admin" &&
+            user.banned !== true &&
+            user.profile &&
+            user.profile.isProfileComplete === true &&
+            user.profile.hiddenFromSearch !== true &&
+            user.profile.banned !== true
+        )
+        .map((user: any) => ({ userId: user._id, profile: user.profile }));
+    }
+    // Otherwise, return only the specified users
     const results: Array<{ userId: Id<"users">; profile: any } | null> =
       await Promise.all(
         args.userIds.map(async (userId) => {
@@ -873,5 +892,133 @@ export const setProfileHiddenFromSearch = mutation({
     requireAdmin(identity);
     await ctx.db.patch(profileId, { hiddenFromSearch: hidden });
     return { success: true };
+  },
+});
+
+/**
+ * Returns all mutual matches for the currently authenticated user (not admin-only).
+ */
+export const getMyMatches = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) return [];
+    // Get all interests sent and received by this user
+    const sent = await ctx.db
+      .query("interests")
+      .withIndex("by_from_to", (q) => q.eq("fromUserId", user._id))
+      .collect();
+    const received = await ctx.db
+      .query("interests")
+      .withIndex("by_to", (q) => q.eq("toUserId", user._id))
+      .collect();
+    // Find mutual matches: both users have accepted each other's interest
+    const acceptedSent = sent.filter((i) => i.status === "accepted");
+    const acceptedReceived = received.filter((i) => i.status === "accepted");
+    const mutualUserIds = acceptedSent
+      .map((i) => i.toUserId)
+      .filter((id) => acceptedReceived.some((r) => r.fromUserId === id));
+    // Get profiles for these userIds
+    const allProfiles = await ctx.db.query("profiles").collect();
+    const matches = allProfiles.filter((p) => mutualUserIds.includes(p.userId));
+    return matches;
+  },
+});
+
+type ProfileDetailPageData = {
+  currentUser: any;
+  profileData: any;
+  isBlocked: boolean;
+  isMutualInterest: boolean;
+  sentInterest: any[];
+  userProfileImages: any;
+  userImages: any;
+  currentUserProfileImagesData: any[];
+  error?: string;
+};
+
+export const getProfileDetailPageData = action({
+  args: { viewedUserId: v.id("users") },
+  handler: async (ctx, { viewedUserId }): Promise<ProfileDetailPageData> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity)
+      return {
+        currentUser: null,
+        profileData: null,
+        isBlocked: false,
+        isMutualInterest: false,
+        sentInterest: [],
+        userProfileImages: [],
+        userImages: {},
+        currentUserProfileImagesData: [],
+        error: "Not authenticated",
+      };
+    // Get current user
+    const currentUser: any = await ctx.runQuery(
+      api.users.getCurrentUserWithProfile,
+      {}
+    );
+    const currentUserId = currentUser?._id as Id<"users"> | undefined;
+    // Get public profile for viewed user
+    const profileData: any = await ctx.runQuery(
+      api.users.getUserPublicProfile,
+      { userId: viewedUserId }
+    );
+    // Blocked status
+    let isBlocked: boolean = false;
+    let isMutualInterest: boolean = false;
+    let sentInterest: any[] = [];
+    if (currentUserId && viewedUserId && currentUserId !== viewedUserId) {
+      isBlocked = await ctx.runQuery(api.users.isBlocked, {
+        blockerUserId: currentUserId as Id<"users">,
+        blockedUserId: viewedUserId as Id<"users">,
+      });
+      isMutualInterest = await ctx.runQuery(api.interests.isMutualInterest, {
+        userA: currentUserId as Id<"users">,
+        userB: viewedUserId as Id<"users">,
+      });
+      sentInterest = await ctx.runQuery(api.interests.getSentInterests, {
+        userId: currentUserId as Id<"users">,
+      });
+    }
+    // Images for the profile being viewed
+    const userProfileImages: any = await ctx.runQuery(
+      api.images.getProfileImages,
+      {
+        userId: viewedUserId as Id<"users">,
+      }
+    );
+    // Batch get profile images (for one user)
+    const userImages: any = await ctx.runQuery(
+      api.images.batchGetProfileImages,
+      {
+        userIds: [viewedUserId as Id<"users">],
+      }
+    );
+    // Images for the current logged-in user
+    let currentUserProfileImagesData: any[] = [];
+    if (currentUserId) {
+      currentUserProfileImagesData = await ctx.runQuery(
+        api.images.getProfileImages,
+        {
+          userId: currentUserId as Id<"users">,
+        }
+      );
+    }
+    return {
+      currentUser,
+      profileData,
+      isBlocked,
+      isMutualInterest,
+      sentInterest,
+      userProfileImages,
+      userImages,
+      currentUserProfileImagesData,
+    };
   },
 });

@@ -1,9 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
+import { ReactNode, useEffect, useState } from "react";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -28,17 +26,54 @@ export default function ProfileCompletionGuard({
   children,
 }: ProfileCompletionGuardProps) {
   const { isSignedIn, isLoaded: isClerkLoaded } = useUser();
+  const { getToken } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  // Fetch user profile data from Convex, skip if Clerk is not loaded or user not signed in
-  const currentUserProfileData = useQuery(
-    api.users.getCurrentUserWithProfile,
-    isClerkLoaded && isSignedIn ? {} : "skip"
-  );
+  // State for profile data and loading
+  const [profileData, setProfileData] = useState<any>(undefined);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
-  const isProfileComplete = currentUserProfileData?.profile?.isProfileComplete;
-  const isProfileQueryLoading = currentUserProfileData === undefined;
+  useEffect(() => {
+    let ignore = false;
+    async function fetchProfile() {
+      if (!isClerkLoaded || !isSignedIn) {
+        setProfileData(undefined);
+        setIsProfileLoading(false);
+        return;
+      }
+      setIsProfileLoading(true);
+      try {
+        const token = await getToken();
+        if (!token) {
+          setProfileData(undefined);
+          setIsProfileLoading(false);
+          return;
+        }
+        const res = await fetch("/api/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to fetch profile");
+        const data = await res.json();
+        if (!ignore) {
+          setProfileData(data);
+          setIsProfileLoading(false);
+        }
+      } catch (e) {
+        if (!ignore) {
+          setProfileData(undefined);
+          setIsProfileLoading(false);
+        }
+      }
+    }
+    fetchProfile();
+    return () => {
+      ignore = true;
+    };
+  }, [isClerkLoaded, isSignedIn, getToken]);
+
+  const isProfileComplete = profileData?.profile?.isProfileComplete;
+  const isProfileQueryLoading = isProfileLoading;
 
   useEffect(() => {
     if (!isClerkLoaded) {

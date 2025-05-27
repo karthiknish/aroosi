@@ -14,10 +14,9 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useMutation } from "convex/react";
-import { api } from "@convex/_generated/api";
-import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // If you get a type error for react-beautiful-dnd, you may need to install @types/react-beautiful-dnd
 // npm install --save-dev @types/react-beautiful-dnd
@@ -30,11 +29,12 @@ export type Image = {
 
 type Props = {
   images: Image[];
-  userId: Id<"users">;
+  userId: string;
   onReorder?: (newOrder: string[]) => void;
   renderAction?: (img: Image, idx: number) => React.ReactNode;
   isAdmin?: boolean;
-  profileId?: Id<"profiles">;
+  profileId?: string;
+  loading?: boolean;
 };
 
 function SortableImage({
@@ -94,14 +94,12 @@ function SortableImage({
 
 export function ProfileImageReorder({
   images,
+  userId,
   onReorder,
   renderAction,
-  isAdmin = false,
-  profileId,
+  loading,
 }: Props) {
-  const updateProfile = useMutation(api.users.updateProfile);
-  const adminUpdateProfile = useMutation(api.users.adminUpdateProfile);
-
+  const { getToken } = useAuth();
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -119,16 +117,19 @@ export function ProfileImageReorder({
     const newOrdered = arrayMove(images, oldIndex, newIndex);
     const newStorageOrder = newOrdered
       .map((img) => img.storageId)
-      .filter((id): id is Id<"_storage"> => Boolean(id));
+      .filter((id): id is string => Boolean(id));
     try {
-      if (isAdmin && profileId) {
-        await adminUpdateProfile({
-          id: profileId,
-          updates: { profileImageIds: newStorageOrder },
-        });
-      } else {
-        await updateProfile({ profileImageIds: newStorageOrder });
-      }
+      const token = await getToken();
+      if (!token) throw new Error("No auth token");
+      const res = await fetch("/api/images/order", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, imageIds: newStorageOrder }),
+      });
+      if (!res.ok) throw new Error("Failed to update image order");
       toast.success("Image order updated");
       if (onReorder) onReorder(newOrdered.map((img) => img._id));
     } catch (e) {
@@ -137,8 +138,14 @@ export function ProfileImageReorder({
     }
   };
 
-  if (!images || images.length === 0) {
-    return <div style={{ color: "#888", padding: 16 }}>No images found</div>;
+  if (loading || !images) {
+    return (
+      <div className="flex gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="w-24 h-24 rounded-lg" />
+        ))}
+      </div>
+    );
   }
 
   return (

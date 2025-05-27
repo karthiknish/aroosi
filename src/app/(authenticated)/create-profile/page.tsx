@@ -2,27 +2,47 @@
 
 import ProfileForm from "@/components/profile/ProfileForm";
 import Link from "next/link";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@clerk/nextjs";
 
 export default function CreateProfilePage() {
   const refetchKey = 0;
-  const createProfile = useMutation(api.users.createProfile);
-  const currentUserProfile = useQuery(api.users.getCurrentUserWithProfile, {});
   const router = useRouter();
+  const { getToken, isSignedIn } = useAuth();
+  const [currentUserProfile, setCurrentUserProfile] = useState<any | undefined>(
+    undefined
+  );
+
+  useEffect(() => {
+    async function fetchProfile() {
+      const token = await getToken();
+      if (!token) {
+        setCurrentUserProfile(null);
+        return;
+      }
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUserProfile(data.profile ? data : { profile: null });
+      } else {
+        setCurrentUserProfile({ profile: null });
+      }
+    }
+    fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getToken]);
 
   useEffect(() => {
     if (currentUserProfile && currentUserProfile.profile) {
-      console.log("currentUserProfile", currentUserProfile);
       router.replace("/search");
     }
   }, [currentUserProfile, router]);
 
-  // If loading, show spinner
   if (currentUserProfile === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -35,7 +55,6 @@ export default function CreateProfilePage() {
     );
   }
 
-  // If user already has a profile, redirect to /search
   if (currentUserProfile && currentUserProfile.profile) {
     if (typeof window !== "undefined") {
       router.replace("/search");
@@ -66,7 +85,6 @@ export default function CreateProfilePage() {
           mode="create"
           initialValues={currentUserProfile?.profile ?? {}}
           onSubmit={async (values) => {
-            // Ensure preferredGender is one of the allowed values
             const allowedGenders = ["male", "female", "other", "any"] as const;
             let preferredGender:
               | "male"
@@ -74,15 +92,9 @@ export default function CreateProfilePage() {
               | "other"
               | "any"
               | undefined = undefined;
-            if (
-              allowedGenders.includes(
-                values.preferredGender as unknown as (typeof allowedGenders)[number]
-              )
-            ) {
-              preferredGender =
-                values.preferredGender as (typeof allowedGenders)[number];
+            if (allowedGenders.includes(values.preferredGender as any)) {
+              preferredGender = values.preferredGender as any;
             }
-            // Ensure maritalStatus is one of the allowed values
             const allowedMaritalStatuses = [
               "single",
               "divorced",
@@ -95,15 +107,9 @@ export default function CreateProfilePage() {
               | "widowed"
               | "annulled"
               | undefined = undefined;
-            if (
-              allowedMaritalStatuses.includes(
-                values.maritalStatus as unknown as (typeof allowedMaritalStatuses)[number]
-              )
-            ) {
-              maritalStatus =
-                values.maritalStatus as (typeof allowedMaritalStatuses)[number];
+            if (allowedMaritalStatuses.includes(values.maritalStatus as any)) {
+              maritalStatus = values.maritalStatus as any;
             }
-            // Ensure diet is one of the allowed values
             const allowedDiets = [
               "vegetarian",
               "non-vegetarian",
@@ -112,36 +118,21 @@ export default function CreateProfilePage() {
               "other",
             ] as const;
             let diet: (typeof allowedDiets)[number] | undefined = undefined;
-            if (
-              allowedDiets.includes(
-                values.diet as unknown as (typeof allowedDiets)[number]
-              )
-            ) {
-              diet = values.diet as (typeof allowedDiets)[number];
+            if (allowedDiets.includes(values.diet as any)) {
+              diet = values.diet as any;
             }
-            // Ensure smoking is one of the allowed values
             const allowedSmoking = ["no", "occasionally", "yes"] as const;
             let smoking: (typeof allowedSmoking)[number] | undefined =
               undefined;
-            if (
-              allowedSmoking.includes(
-                values.smoking as unknown as (typeof allowedSmoking)[number]
-              )
-            ) {
-              smoking = values.smoking as (typeof allowedSmoking)[number];
+            if (allowedSmoking.includes(values.smoking as any)) {
+              smoking = values.smoking as any;
             }
-            // Ensure drinking is one of the allowed values
             const allowedDrinking = ["no", "occasionally", "yes"] as const;
             let drinking: (typeof allowedDrinking)[number] | undefined =
               undefined;
-            if (
-              allowedDrinking.includes(
-                values.drinking as unknown as (typeof allowedDrinking)[number]
-              )
-            ) {
-              drinking = values.drinking as (typeof allowedDrinking)[number];
+            if (allowedDrinking.includes(values.drinking as any)) {
+              drinking = values.drinking as any;
             }
-            // Ensure physicalStatus is one of the allowed values
             const allowedPhysicalStatus = [
               "normal",
               "differently-abled",
@@ -150,18 +141,10 @@ export default function CreateProfilePage() {
             let physicalStatus:
               | (typeof allowedPhysicalStatus)[number]
               | undefined = undefined;
-            if (
-              allowedPhysicalStatus.includes(
-                values.physicalStatus as unknown as (typeof allowedPhysicalStatus)[number]
-              )
-            ) {
-              physicalStatus =
-                values.physicalStatus as (typeof allowedPhysicalStatus)[number];
+            if (allowedPhysicalStatus.includes(values.physicalStatus as any)) {
+              physicalStatus = values.physicalStatus as any;
             }
-            // Convert profileImageIds to undefined (let the form handle it), or to Id<"_storage">[] if you have a mapping
             const profileImageIds: undefined = undefined;
-            // If you have a mapping from string[] to Id<"_storage">[], you can do it here
-            // Otherwise, let it be undefined so the form logic handles it
             const safeValues = {
               ...values,
               preferredGender,
@@ -172,10 +155,18 @@ export default function CreateProfilePage() {
               physicalStatus,
               profileImageIds,
             };
+            const token = await getToken();
+            if (!token) {
+              toast.error("You must be signed in to create a profile.");
+              return;
+            }
             // Refetch the profile before creating
-            const latestProfile = await fetch(
-              "/api/convex/getCurrentUserWithProfile"
-            ).then((res) => res.json());
+            const latestProfileRes = await fetch("/api/profile", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const latestProfile = latestProfileRes.ok
+              ? await latestProfileRes.json()
+              : null;
             if (latestProfile && latestProfile.profile) {
               toast.error(
                 "You already have a profile. Please refresh or go to your profile page."
@@ -183,7 +174,15 @@ export default function CreateProfilePage() {
               return;
             }
             try {
-              const result = await createProfile(safeValues);
+              const res = await fetch("/api/profile", {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(safeValues),
+              });
+              const result = await res.json();
               if (!result?.success) {
                 toast.error(
                   result?.message ||

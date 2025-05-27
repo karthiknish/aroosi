@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,48 +13,107 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
-import { api } from "@convex/_generated/api";
-import {
-  useQuery as useConvexQuery,
-  useMutation as useConvexMutation,
-} from "convex/react";
-
-import { Id } from "@/../convex/_generated/dataModel";
-import { useDebounce } from "use-debounce";
 import ProfileCard, { type ProfileEditFormState } from "./ProfileCard";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper for rendering a profile image or fallback
 
-export function ProfileManagement() {
-  const [editingId, setEditingId] = useState<Id<"profiles"> | null>(null);
+export function ProfileManagement({
+  profiles,
+  setProfiles,
+  total,
+  setTotal,
+  loading,
+  setLoading,
+  ...props
+}: {
+  profiles: Profile[];
+  setProfiles: Dispatch<SetStateAction<Profile[]>>;
+  total: number;
+  setTotal: Dispatch<SetStateAction<number>>;
+  loading: boolean;
+  setLoading: Dispatch<SetStateAction<boolean>>;
+  [key: string]: any;
+}) {
+  const { getToken } = useAuth();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<ProfileEditFormState>({});
-  const [deleteId, setDeleteId] = useState<Id<"profiles"> | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounce(search, 400);
   const [page, setPage] = useState(0);
-  const queryClient = useQueryClient();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  // Fetch paginated/searchable profiles from Convex
-  const { profiles = [], total = 0 } =
-    useConvexQuery(api.users.adminListProfiles, {
-      search: debouncedSearch,
-      page,
-      pageSize: 10,
-    }) || {};
 
-  // Convex mutation for deleting a profile
-  const deleteProfile = useConvexMutation(api.users.deleteProfile);
+  // Fetch paginated/searchable profiles from API
+  useEffect(() => {
+    async function fetchProfiles() {
+      setLoading(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(
+        `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=10`,
+        { headers }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setProfiles(data.profiles || []);
+        setTotal(data.total || 0);
+      } else {
+        setProfiles([]);
+        setTotal(0);
+      }
+      setLoading(false);
+    }
+    fetchProfiles();
+  }, [search, page, getToken, setProfiles, setTotal, setLoading]);
 
-  // Update profile mutation
-  const adminUpdateProfile = useConvexMutation(api.users.adminUpdateProfile);
+  // Update profile using API
+  const saveEdit = async (id: string) => {
+    try {
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/admin/profiles/${id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(editForm),
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+      setEditingId(null);
+      setShowSuccessModal(true);
+      // Optionally refetch profiles
+      setPage(0);
+    } catch {
+      // handle error
+    }
+  };
+
+  // Delete profile using API
+  const handleDelete = async (id: string) => {
+    try {
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/admin/profiles/${id}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!res.ok) throw new Error("Failed to delete profile");
+      setDeleteId(null);
+      setPage(0);
+    } catch {
+      // handle error
+    }
+  };
 
   // When starting to edit, pull all editable fields from the profile
   const startEdit = (profile: Profile) => {
-    setEditingId(profile._id as Id<"profiles">);
+    setEditingId(profile._id as string);
     setEditForm({
       fullName: profile.fullName || "",
       ukCity: profile.ukCity || "",
@@ -82,193 +142,26 @@ export function ProfileManagement() {
     });
   };
 
-  // Update profile using Convex adminUpdateProfile mutation
-  const saveEdit = async (id: Id<"profiles">) => {
-    try {
-      type AdminProfileUpdate = {
-        banned?: boolean;
-        fullName?: string;
-        dateOfBirth?: string;
-        gender?: "male" | "female" | "other";
-        ukCity?: string;
-        religion?: string;
-        caste?: string;
-        motherTongue?: string;
-        height?: string;
-        maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
-        education?: string;
-        occupation?: string;
-        annualIncome?: number;
-        aboutMe?: string;
-        phoneNumber?: string;
-        diet?:
-          | "vegetarian"
-          | "non-vegetarian"
-          | "vegan"
-          | "eggetarian"
-          | "other";
-        smoking?: "no" | "occasionally" | "yes";
-        drinking?: "no" | "occasionally" | "yes";
-        physicalStatus?: "normal" | "differently-abled" | "other";
-        partnerPreferenceAgeMin?: number;
-        partnerPreferenceAgeMax?: number;
-        partnerPreferenceReligion?: string[];
-        partnerPreferenceUkCity?: string[];
-        profileImageIds?: Id<"_storage">[];
-      };
-      const ef = editForm;
-      const updates: AdminProfileUpdate = {
-        banned: ef.banned,
-        fullName: ef.fullName || undefined,
-        dateOfBirth: ef.dateOfBirth || undefined,
-        gender:
-          ef.gender && ["male", "female", "other"].includes(ef.gender)
-            ? (ef.gender as "male" | "female" | "other")
-            : undefined,
-        ukCity: ef.ukCity || undefined,
-        religion: ef.religion || undefined,
-        caste: ef.caste || undefined,
-        motherTongue: ef.motherTongue || undefined,
-        height: ef.height || undefined,
-        maritalStatus:
-          ef.maritalStatus &&
-          ["single", "divorced", "widowed", "annulled"].includes(
-            ef.maritalStatus
-          )
-            ? (ef.maritalStatus as
-                | "single"
-                | "divorced"
-                | "widowed"
-                | "annulled")
-            : undefined,
-        education: ef.education || undefined,
-        occupation: ef.occupation || undefined,
-        annualIncome:
-          ef.annualIncome === "" || ef.annualIncome === undefined
-            ? undefined
-            : typeof ef.annualIncome === "string"
-              ? isNaN(Number(ef.annualIncome))
-                ? undefined
-                : Number(ef.annualIncome)
-              : ef.annualIncome,
-        aboutMe: ef.aboutMe || undefined,
-        phoneNumber: ef.phoneNumber || undefined,
-        diet:
-          ef.diet &&
-          [
-            "vegetarian",
-            "non-vegetarian",
-            "vegan",
-            "eggetarian",
-            "other",
-          ].includes(ef.diet)
-            ? (ef.diet as
-                | "vegetarian"
-                | "non-vegetarian"
-                | "vegan"
-                | "eggetarian"
-                | "other")
-            : undefined,
-        smoking:
-          ef.smoking && ["no", "occasionally", "yes"].includes(ef.smoking)
-            ? (ef.smoking as "no" | "occasionally" | "yes")
-            : undefined,
-        drinking:
-          ef.drinking && ["no", "occasionally", "yes"].includes(ef.drinking)
-            ? (ef.drinking as "no" | "occasionally" | "yes")
-            : undefined,
-        physicalStatus:
-          ef.physicalStatus &&
-          ["normal", "differently-abled", "other"].includes(ef.physicalStatus)
-            ? (ef.physicalStatus as "normal" | "differently-abled" | "other")
-            : undefined,
-        partnerPreferenceAgeMin:
-          ef.partnerPreferenceAgeMin === "" ||
-          ef.partnerPreferenceAgeMin === undefined
-            ? undefined
-            : typeof ef.partnerPreferenceAgeMin === "string"
-              ? isNaN(Number(ef.partnerPreferenceAgeMin))
-                ? undefined
-                : Number(ef.partnerPreferenceAgeMin)
-              : ef.partnerPreferenceAgeMin,
-        partnerPreferenceAgeMax:
-          ef.partnerPreferenceAgeMax === "" ||
-          ef.partnerPreferenceAgeMax === undefined
-            ? undefined
-            : typeof ef.partnerPreferenceAgeMax === "string"
-              ? isNaN(Number(ef.partnerPreferenceAgeMax))
-                ? undefined
-                : Number(ef.partnerPreferenceAgeMax)
-              : ef.partnerPreferenceAgeMax,
-        partnerPreferenceReligion: ((): string[] | undefined => {
-          const val = ef.partnerPreferenceReligion;
-          if (
-            typeof val === "string" &&
-            val !== undefined &&
-            val !== null &&
-            val !== ""
-          ) {
-            return (val as string)
-              .split(",")
-              .map((s: string) => s.trim())
-              .filter(Boolean);
-          } else if (Array.isArray(val)) {
-            return val;
-          }
-          return undefined;
-        })(),
-        partnerPreferenceUkCity: ((): string[] | undefined => {
-          const val = ef.partnerPreferenceUkCity;
-          if (
-            typeof val === "string" &&
-            val !== undefined &&
-            val !== null &&
-            val !== ""
-          ) {
-            return (val as string)
-              .split(",")
-              .map((s: string) => s.trim())
-              .filter(Boolean);
-          } else if (Array.isArray(val)) {
-            return val;
-          }
-          return undefined;
-        })(),
-        profileImageIds: Array.isArray(ef.profileImageIds)
-          ? (ef.profileImageIds.filter(Boolean) as Id<"_storage">[])
-          : undefined,
-      };
-      await adminUpdateProfile({ id, updates });
-      setEditingId(null);
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
-      setShowSuccessModal(true);
-    } catch {
-      // Error handling is done via toast in other places; no need for unused variable
-    }
-  };
-
   const cancelEdit = () => {
     setEditingId(null);
     setEditForm({});
   };
 
-  // Delete logic using Convex mutation
-  const handleDelete = async (id: Id<"profiles">) => {
-    try {
-      await deleteProfile({ id });
-      setDeleteId(null);
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
-      toast.success("Profile deleted successfully!");
-    } catch {
-      toast.error("Failed to delete profile");
-    }
-  };
-
   // Ban/unban logic
-  const toggleBan = async (id: Id<"profiles">, banned: boolean) => {
+  const toggleBan = async (id: string, banned: boolean) => {
     try {
-      await adminUpdateProfile({ id, updates: { banned: !banned } });
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/admin/profiles/${id}/ban`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ banned: !banned }),
+      });
+      if (!res.ok) throw new Error("Failed to update ban status");
+      setPage(0);
       toast.success(banned ? "Profile unbanned" : "Profile banned");
     } catch {
       toast.error("Failed to update ban status");
@@ -294,7 +187,7 @@ export function ProfileManagement() {
         </div>
       </div>
       <div className="grid gap-6 min-h-[120px]">
-        {profiles === undefined ? (
+        {loading ? (
           <div className="grid gap-6 min-h-[120px]">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -309,7 +202,7 @@ export function ProfileManagement() {
             ))}
           </div>
         ) : (
-          profiles.filter(Boolean).map((profile) => {
+          profiles.filter(Boolean).map((profile: Profile) => {
             const safeProfile = {
               ...profile,
               createdAt:
@@ -377,7 +270,7 @@ export function ProfileManagement() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => handleDelete(deleteId! as Id<"profiles">)}
+                onClick={() => handleDelete(deleteId! as string)}
               >
                 Delete
               </Button>

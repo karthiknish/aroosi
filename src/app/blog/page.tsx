@@ -2,9 +2,7 @@
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
-
+import { useAuth } from "@clerk/nextjs";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,12 +12,36 @@ export default function BlogPage() {
   const [page, setPage] = React.useState(0);
   const pageSize = 6;
   const [category, setCategory] = React.useState("all");
-  const { posts = [], total = 0 } =
-    useQuery(api.blog.listBlogPostsPaginated, {
-      page,
-      pageSize,
-      category: category === "all" ? undefined : category,
-    }) || {};
+  const [posts, setPosts] = React.useState<any[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
+  const { getToken } = useAuth();
+
+  React.useEffect(() => {
+    async function fetchPosts() {
+      setLoading(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+      if (category !== "all") params.append("category", category);
+      const res = await fetch(`/api/blog?${params.toString()}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(data.posts || []);
+        setTotal(data.total || 0);
+      } else {
+        setPosts([]);
+        setTotal(0);
+      }
+      setLoading(false);
+    }
+    fetchPosts();
+  }, [page, category, getToken]);
+
   // Dynamically extract unique categories from posts
   const categories = React.useMemo(() => {
     const set = new Set<string>();
@@ -30,6 +52,7 @@ export default function BlogPage() {
     });
     return ["all", ...Array.from(set).sort()];
   }, [posts]);
+
   return (
     <>
       <section className="pt-24 sm:pt-28 md:pt-32 mb-12 text-center bg-gradient-to-b from-pink-50 via-white to-white">
@@ -61,7 +84,7 @@ export default function BlogPage() {
       </section>
       <div className="px-2 sm:px-6 md:px-10 max-w-7xl mx-auto">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {posts === undefined ? (
+          {loading ? (
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div

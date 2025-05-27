@@ -1,14 +1,12 @@
 "use client";
 
-import { useQuery, useAction } from "convex/react";
-import { api } from "@convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, UserCircle } from "lucide-react";
 import Link from "next/link";
-import React from "react";
-import type { Id } from "convex/_generated/dataModel";
+import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@clerk/nextjs";
 
 type PublicProfile = {
   userId: string;
@@ -24,19 +22,61 @@ type PublicProfile = {
 
 export default function MyInterestsPage() {
   const { user: isSignedIn } = useUser();
-  const currentUserConvex = useQuery(api.users.getCurrentUserWithProfile, {});
-  const currentUserId = currentUserConvex?._id;
-  // Fetch all interests sent by this user
-  const sentInterests = useQuery(
-    api.interests.getSentInterests,
-    currentUserId ? { userId: currentUserId } : "skip"
+  const { getToken } = useAuth();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [sentInterests, setSentInterests] = useState<any[] | undefined>(
+    undefined
   );
+  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
 
-  const batchGetPublicProfiles = useAction(api.users.batchGetPublicProfiles);
-  const [profiles, setProfiles] = React.useState<PublicProfile[]>([]);
-  const [loadingProfiles, setLoadingProfiles] = React.useState(false);
+  useEffect(() => {
+    async function fetchCurrentUser() {
+      const token = await getToken();
+      if (!token) {
+        setCurrentUserId(null);
+        return;
+      }
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUserId(data?.profile?.userId || null);
+      } else {
+        setCurrentUserId(null);
+      }
+    }
+    fetchCurrentUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getToken]);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    async function fetchSentInterests() {
+      if (!currentUserId) {
+        setSentInterests(undefined);
+        return;
+      }
+      const token = await getToken();
+      if (!token) {
+        setSentInterests(undefined);
+        return;
+      }
+      const res = await fetch(`/api/interests/sent?userId=${currentUserId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSentInterests(data || []);
+      } else {
+        setSentInterests([]);
+      }
+    }
+    fetchSentInterests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, getToken]);
+
+  useEffect(() => {
     async function fetchProfiles() {
       if (
         !sentInterests ||
@@ -49,14 +89,32 @@ export default function MyInterestsPage() {
       setLoadingProfiles(true);
       const userIds = sentInterests.map(
         (interest: { toUserId: string }) => interest.toUserId
-      ) as Id<"users">[];
-      const data = await batchGetPublicProfiles({ userIds });
-      setProfiles(data || []);
+      );
+      const token = await getToken();
+      if (!token) {
+        setProfiles([]);
+        setLoadingProfiles(false);
+        return;
+      }
+      const res = await fetch("/api/profile/batch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userIds }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfiles(data || []);
+      } else {
+        setProfiles([]);
+      }
       setLoadingProfiles(false);
     }
     fetchProfiles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sentInterests]);
+  }, [sentInterests, getToken]);
 
   if (!isSignedIn) {
     return (

@@ -128,7 +128,10 @@ export const removeInterest = mutation({
         q.eq("fromUserId", args.fromUserId).eq("toUserId", args.toUserId)
       )
       .first();
-    if (!interest) throw new Error("Interest not found");
+    if (!interest) {
+      // Instead of throwing, return success (idempotent)
+      return { success: true, alreadyRemoved: true };
+    }
     await ctx.db.delete(interest._id);
     return { success: true };
   },

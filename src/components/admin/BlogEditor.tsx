@@ -66,8 +66,7 @@ import { useDropzone } from "react-dropzone";
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
 import "@/styles/emoji-picker-custom.css";
-import { useMutation } from "convex/react";
-import { api } from "@convex/_generated/api";
+import { useAuth } from "@clerk/nextjs";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
@@ -93,8 +92,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPopoverRef = useRef<HTMLDivElement>(null);
-  const generateUploadUrl = useMutation(api.images.generateUploadUrl);
-  const uploadBlogImage = useMutation(api.images.uploadBlogImage);
+  const { getToken } = useAuth();
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -104,9 +102,12 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       try {
         const file = acceptedFiles[0];
         // 1. Get upload URL from backend
-        const uploadUrl = await generateUploadUrl();
-        if (typeof uploadUrl !== "string")
-          throw new Error("Failed to get upload URL");
+        const token = await getToken();
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const uploadUrlRes = await fetch("/api/images/upload-url", { headers });
+        if (!uploadUrlRes.ok) throw new Error("Failed to get upload URL");
+        const { uploadUrl } = await uploadUrlRes.json();
         // 2. Upload file to storage
         const uploadRes = await fetch(uploadUrl, {
           method: "POST",
@@ -116,12 +117,20 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         if (!uploadRes.ok) throw new Error("Failed to upload image");
         const { storageId } = await uploadRes.json();
         // 3. Register image and get public URL
-        const imageDoc = await uploadBlogImage({
-          storageId,
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
+        const blogImageRes = await fetch("/api/images/blog", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            storageId,
+            fileName: file.name,
+            contentType: file.type,
+            fileSize: file.size,
+          }),
         });
+        const imageDoc = await blogImageRes.json();
         if (!imageDoc?.url) throw new Error("Failed to get image URL");
         // 4. Insert image into editor
         editor.chain().focus().setImage({ src: imageDoc.url }).run();
@@ -135,7 +144,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         setUploading(false);
       }
     },
-    [editor, generateUploadUrl, uploadBlogImage]
+    [editor, getToken]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

@@ -1,16 +1,38 @@
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
 import { useRouter } from "next/navigation";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@clerk/nextjs";
 
 export default function CreateProfileSuccessPage() {
-  const currentUserProfile = useQuery(api.users.getCurrentUserWithProfile, {});
+  const [currentUserProfile, setCurrentUserProfile] = useState<any | undefined>(
+    undefined
+  );
   const router = useRouter();
   const { width, height } = useWindowSize();
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    async function fetchProfile() {
+      const token = await getToken();
+      if (!token) {
+        setCurrentUserProfile(null);
+        return;
+      }
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUserProfile(data.profile ? data : { profile: null });
+      } else {
+        setCurrentUserProfile({ profile: null });
+      }
+    }
+    fetchProfile();
+  }, [getToken]);
 
   useEffect(() => {
     if (currentUserProfile === undefined) return;

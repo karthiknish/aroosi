@@ -17,27 +17,25 @@ import type { ImageData } from "./ProfileImageUpload";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ImageUploaderProps {
-  userId: Id<"users">;
+  userId: string;
   orderedImages: ImageData[];
   isAdmin?: boolean;
-  profileId?: Id<"profiles">;
-  onImagesChanged?: () => void;
+  profileId?: string;
+  onImagesChanged?: (newImageIds: string[]) => void;
   generateUploadUrl: () => Promise<
     string | { success: boolean; error: string }
   >;
   uploadImage: (args: {
-    userId: Id<"users">;
+    userId: string;
     storageId: Id<"_storage">;
     fileName: string;
     contentType: string;
     fileSize: number;
   }) => Promise<{ success: boolean; imageId: Id<"_storage">; message: string }>;
-  updateProfile: (args: {
-    profileImageIds: Id<"_storage">[];
-  }) => Promise<unknown>;
-  adminUpdateProfile: (args: {
-    id: Id<"profiles">;
-    updates: { profileImageIds: Id<"_storage">[] };
+  updateProfile?: (args: { profileImageIds: string[] }) => Promise<unknown>;
+  adminUpdateProfile?: (args: {
+    id: string;
+    updates: { profileImageIds: string[] };
   }) => Promise<unknown>;
   setIsUploading: (val: boolean) => void;
   toast: typeof import("sonner").toast;
@@ -45,6 +43,7 @@ interface ImageUploaderProps {
   isUploading?: boolean;
   maxFiles?: number;
   className?: string;
+  fetchImages: () => Promise<void>;
 }
 
 export function ImageUploader({
@@ -62,6 +61,7 @@ export function ImageUploader({
   disabled = false,
   isUploading = false,
   className = "",
+  fetchImages,
 }: ImageUploaderProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<File | null>(null);
@@ -123,19 +123,24 @@ export function ImageUploader({
         }
         const { storageId } = await result.json();
         const currentImageIds = orderedImages.map(
-          (img: ImageData) => img.storageId as Id<"_storage">
+          (img: ImageData) => img.storageId
         );
-        const newOrder = [...currentImageIds, storageId as Id<"_storage">];
+        const newOrder = [...currentImageIds, storageId];
         if (isAdmin && profileId) {
-          await adminUpdateProfile({
-            id: profileId,
-            updates: { profileImageIds: newOrder },
-          });
+          if (adminUpdateProfile) {
+            await adminUpdateProfile({
+              id: profileId,
+              updates: { profileImageIds: newOrder },
+            });
+          }
         } else {
-          await updateProfile({ profileImageIds: newOrder });
+          if (updateProfile) {
+              await updateProfile({ profileImageIds: newOrder });
+          }
         }
-        if (onImagesChanged) onImagesChanged();
+        if (onImagesChanged) onImagesChanged(newOrder.map(String));
         toast.success("Image uploaded successfully");
+        await fetchImages();
       } catch (error) {
         console.error("Error uploading image:", error);
         if (error instanceof ConvexError) {
@@ -162,6 +167,7 @@ export function ImageUploader({
       updateProfile,
       setIsUploading,
       toast,
+      fetchImages,
     ]
   );
 

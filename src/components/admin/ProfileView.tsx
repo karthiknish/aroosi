@@ -1,8 +1,7 @@
 import { Profile } from "@/types/profile";
 import Image from "next/image";
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
-import { Id } from "@/../convex/_generated/dataModel";
+import { useAuth } from "@clerk/nextjs";
+import React, { useEffect, useState } from "react";
 import {
   User,
   MapPin,
@@ -21,7 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProfileImage {
-  _id: Id<"images">;
+  _id: string;
   storageId: string;
   url: string | null;
   fileName: string;
@@ -44,37 +43,43 @@ export default function ProfileView({ profile }: { profile: Profile }) {
     }
   }
 
-  // Get profile images with proper URLs
-  const result = useQuery(
-    api.images.getProfileImages,
-    profile.userId ? { userId: profile.userId as Id<"users"> } : "skip"
+  // Fetch profile images from API
+  const { getToken } = useAuth();
+  const [images, setImages] = useState<ProfileImage[] | null | undefined>(
+    undefined
   );
-
-  // Debug log to check the API response
-  console.log("Profile images API response:", {
-    result,
-    hasResult: !!result,
-    isArray: Array.isArray(result),
-    profileUserId: profile.userId,
-    profile: {
-      userId: profile.userId,
-      hasProfileImageIds: !!profile.profileImageIds,
-      profileImageIds: profile.profileImageIds,
-    },
-  });
-
-  // Log the first image URL if available
-  if (Array.isArray(result) && result.length > 0) {
-    console.log("First image data:", {
-      id: result[0]._id,
-      storageId: result[0].storageId,
-      url: result[0].url,
-      hasUrl: !!result[0].url,
-    });
-  }
+  useEffect(() => {
+    async function fetchImages() {
+      if (!profile.userId) {
+        setImages([]);
+        return;
+      }
+      try {
+        const token = await getToken();
+        if (!token) {
+          setImages([]);
+          return;
+        }
+        const res = await fetch(
+          `/api/profile-detail/${profile.userId}/images`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!res.ok) throw new Error("Failed to fetch images");
+        const data = await res.json();
+        setImages(
+          Array.isArray(data.userProfileImages) ? data.userProfileImages : []
+        );
+      } catch (e) {
+        setImages(null);
+      }
+    }
+    fetchImages();
+  }, [profile.userId, getToken]);
 
   // Handle loading state
-  if (result === undefined) {
+  if (images === undefined) {
     return (
       <div className="flex flex-col items-center justify-center p-8 gap-4">
         <Skeleton className="w-32 h-32 rounded-lg" />
@@ -85,7 +90,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
   }
 
   // Handle error state
-  if (result === null) {
+  if (images === null) {
     console.error("Error loading profile images: null response");
     return (
       <div className="p-4 text-red-500 text-sm">
@@ -95,17 +100,15 @@ export default function ProfileView({ profile }: { profile: Profile }) {
   }
 
   // Ensure we have an array of images
-  const profileImages: ProfileImage[] = Array.isArray(result)
-    ? result.filter((img) => img && img._id && img.storageId)
+  const profileImages: ProfileImage[] = Array.isArray(images)
+    ? images.filter((img) => img && img._id && img.storageId)
     : [];
-
-  console.log("Processed profile images:", profileImages);
 
   // Get the first image as profile image or use placeholder
   const profileImage = profileImages.length > 0 ? profileImages[0] : null;
 
   // Render all profile images in order
-  const images = (profileImages || []).map((img, index) => (
+  const imagesGrid = (profileImages || []).map((img, index) => (
     <div
       key={img._id}
       className={`relative w-20 h-20 rounded-lg overflow-hidden border mr-2 ${
@@ -135,7 +138,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
 
   // Add placeholder if no images
   if (profileImages.length === 0) {
-    images.push(
+    imagesGrid.push(
       <div
         key="placeholder"
         className="relative w-20 h-20 rounded-lg overflow-hidden border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400"
@@ -185,11 +188,11 @@ export default function ProfileView({ profile }: { profile: Profile }) {
       {/* Images grid */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-gray-700">Profile Photos</h3>
-        <div className="flex flex-wrap gap-2">{images}</div>
+        <div className="flex flex-wrap gap-2">{imagesGrid}</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 mt-2 gap-x-8 gap-y-3">
         <div>
-          <span className="block text-md text-gray-500 flex items-center gap-1">
+          <span className="text-md text-gray-500 flex items-center gap-1">
             <User className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
               {profile.gender
@@ -200,7 +203,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
           </span>
         </div>
         <div>
-          <span className=" text-md text-gray-500 flex items-center gap-1">
+          <span className="text-md text-gray-500 flex items-center gap-1">
             <Cake className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">{age}</span>
           </span>

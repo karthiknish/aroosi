@@ -1,8 +1,7 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,37 +16,62 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ConvexError } from "convex/values";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Id } from "@convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfilePage() {
-  const { user: clerkUser, isSignedIn } = useUser();
-  const currentUserProfileData = useQuery(
-    api.users.getCurrentUserWithProfile,
-    !isSignedIn ? "skip" : {}
-  );
-  const updateProfileMutation = useMutation(api.users.updateProfile);
-
+  const { user: clerkUser } = useUser();
+  const { isSignedIn, getToken } = useAuth();
+  const [profileData, setProfileData] = useState<any>(undefined);
+  const [userConvexData, setUserConvexData] = useState<any>(undefined);
   const [isEditing, setIsEditing] = useState(false);
   const [deleting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Fetch profile data from API
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!isSignedIn) {
+        setProfileData(undefined);
+        setUserConvexData(undefined);
+        setLoadingProfile(false);
+        return;
+      }
+      setLoadingProfile(true);
+      try {
+        const token = await getToken();
+        const res = await fetch("/api/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setUserConvexData(data);
+        setProfileData(data?.profile ?? undefined);
+      } catch (e) {
+        setProfileData(undefined);
+        setUserConvexData(undefined);
+      } finally {
+        setLoadingProfile(false);
+      }
+    }
+    fetchProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, isEditing, showSuccessModal]);
 
   // Determine if onboarding (profile is incomplete or doesn't exist yet)
   const isOnboarding =
-    currentUserProfileData === null ||
-    currentUserProfileData?.profile === null ||
-    currentUserProfileData?.profile?.isProfileComplete === false;
+    profileData === null ||
+    profileData === undefined ||
+    profileData?.isProfileComplete === false;
 
   // Unified submit handler
   const handleProfileSubmit = async (values: ProfileFormValues) => {
     setLoading(true);
     setServerError(null);
     try {
-      // Only send allowed fields to Convex
       const allowedFields = [
         "fullName",
         "dateOfBirth",
@@ -69,7 +93,6 @@ export default function ProfilePage() {
         "partnerPreferenceUkCity",
         "preferredGender",
         "profileImageIds",
-        // New lifestyle/contact fields
         "phoneNumber",
         "diet",
         "smoking",
@@ -79,15 +102,23 @@ export default function ProfilePage() {
       const filtered = Object.fromEntries(
         Object.entries(values).filter(([key]) => allowedFields.includes(key))
       );
-      await updateProfileMutation(filtered);
+      const token = await getToken();
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(filtered),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || "Failed to update profile");
+      }
       setIsEditing(false);
       setShowSuccessModal(true);
     } catch (error: unknown) {
-      if (error instanceof ConvexError) {
-        setServerError(
-          "Something went wrong while saving your profile. Please try again."
-        );
-      } else if (typeof error === "object" && error && "message" in error) {
+      if (typeof error === "object" && error && "message" in error) {
         setServerError(
           String((error as { message?: unknown }).message) ||
             "An unexpected error occurred."
@@ -122,7 +153,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (currentUserProfileData === undefined && isSignedIn) {
+  if (loadingProfile && isSignedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -133,9 +164,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const userConvexData = currentUserProfileData;
-  const profileData = currentUserProfileData?.profile ?? undefined;
 
   // Helper to convert profileData to Profile type
   function toProfileType(

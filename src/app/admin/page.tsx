@@ -12,14 +12,9 @@ import type { ContactMessage } from "@/components/admin/ContactMessages";
 import { BlogPosts } from "@/components/admin/BlogPosts";
 import { CreatePost } from "@/components/admin/CreatePost";
 import { ProfileManagement } from "@/components/admin/ProfileManagement";
-import { api } from "@convex/_generated/api";
-import {
-  useQuery as useConvexQuery,
-  useMutation as useConvexMutation,
-} from "convex/react";
 import Head from "next/head";
-import { Id } from "@/../convex/_generated/dataModel";
-import { useUser } from "@clerk/nextjs";
+import { Id } from "@convex/_generated/dataModel";
+import { useUser, useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import type { Profile } from "@/types/profile";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
@@ -69,87 +64,113 @@ function AdminPageInner() {
   const [editPexelsOpen, setEditPexelsOpen] = useState<boolean>(false);
 
   const { user, isLoaded, isSignedIn } = useUser();
+  const { getToken } = useAuth();
 
-  // Convex blog mutations
-  const createBlogPost = useConvexMutation(api.blog.createBlogPost);
-  const updateBlogPost = useConvexMutation(api.blog.updateBlogPost);
-  const deleteBlogPost = useConvexMutation(api.blog.deleteBlogPost);
+  // Replace Convex queries with API fetches
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [total, setTotal] = useState(0);
+  const [interests, setInterests] = useState<Interest[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [categories, setCategories] = useState<string[]>([]);
-  const [editCategories, setEditCategories] = useState<string[]>([]);
-  const [aiLoading, setAiLoading] = useState<{
-    excerpt?: boolean;
-    category?: boolean;
-    content?: boolean;
-  }>({});
-  const [previewHtml, setPreviewHtml] = useState<string>("");
-  const [editorResetKey, setEditorResetKey] = useState(0);
-
-  // Markdown shortcuts
-  type MarkdownShortcut = {
-    label: string;
-    title: string;
-    md: string;
-    wrap?: string;
-    block?: boolean;
-  };
-  const markdownShortcuts: MarkdownShortcut[] = [
-    { label: "H1", title: "Heading 1", md: "# " },
-    { label: "H2", title: "Heading 2", md: "## " },
-    { label: "H3", title: "Heading 3", md: "### " },
-    { label: "B", title: "Bold", md: "**", wrap: "**" },
-    { label: "I", title: "Italic", md: "_", wrap: "_" },
-    { label: "Link", title: "Link", md: "[", wrap: "](url)" },
-    { label: "Img", title: "Image", md: "![alt](", wrap: ")" },
-    { label: "Code", title: "Code", md: "```\n", wrap: "\n```", block: true },
-    { label: "List", title: "List", md: "- ", block: true },
-    {
-      label: "Table",
-      title: "Table",
-      md: "| Header | Header |\n| ------ | ------ |\n| Cell | Cell |",
-      block: true,
-    },
-  ];
-
-  // Fetch blog posts and contact messages from Convex
-  const blogPostsRaw = useConvexQuery(api.blog.listBlogPosts, {});
-  const contactMessagesRaw = useConvexQuery(api.contact.contactSubmissions, {});
-  const profiles = useConvexQuery(api.users.listProfiles, {}) as
-    | Profile[]
-    | undefined;
-  const interests = useConvexQuery(api.interests.listAllInterests, {}) as
-    | Interest[]
-    | undefined;
-  const [mutualMatches, setMutualMatches] = useState<
-    { profileA: Profile; profileB: Profile }[]
-  >([]);
+  // Blog posts
   useEffect(() => {
-    if (!profiles || !interests) return;
-    // Build a map of accepted interests: fromUserId -> Set of toUserIds
-    const acceptedMap: Record<string, Set<string>> = {};
-    for (const i of interests ?? []) {
-      if (i.status === "accepted") {
-        if (!acceptedMap[i.fromUserId]) acceptedMap[i.fromUserId] = new Set();
-        acceptedMap[i.fromUserId].add(i.toUserId);
-      }
-    }
-    // Find mutual matches
-    const matches: { profileA: Profile; profileB: Profile }[] = [];
-    for (const i of interests ?? []) {
-      if (i.status === "accepted") {
-        const match =
-          acceptedMap[i.toUserId] && acceptedMap[i.toUserId].has(i.fromUserId);
-        if (match) {
-          const profileA = profiles.find((p) => p.userId === i.fromUserId);
-          const profileB = profiles.find((p) => p.userId === i.toUserId);
-          if (profileA && profileB) {
-            matches.push({ profileA, profileB });
-          }
+    if (activeTab !== "blog") return;
+    let ignore = false;
+    async function fetchBlogPosts() {
+      setLoading(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const blogRes = await fetch("/api/blog", { headers });
+      if (!ignore) {
+        if (blogRes.ok) {
+          const data = await blogRes.json();
+          setBlogPosts(Array.isArray(data) ? data : data.posts || []);
+        } else {
+          setBlogPosts([]);
         }
+        setLoading(false);
       }
     }
-    setMutualMatches(matches);
-  }, [profiles, interests]);
+    fetchBlogPosts();
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, getToken]);
+
+  // Contact messages
+  useEffect(() => {
+    if (activeTab !== "contact") return;
+    let ignore = false;
+    async function fetchContactMessages() {
+      setLoading(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const contactRes = await fetch("/api/contact", { headers });
+      if (!ignore) {
+        setContactMessages(contactRes.ok ? await contactRes.json() : []);
+        setLoading(false);
+      }
+    }
+    fetchContactMessages();
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, getToken]);
+
+  // Profiles
+  useEffect(() => {
+    if (activeTab !== "profiles") return;
+    let ignore = false;
+    async function fetchProfiles() {
+      setLoading(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/admin/profiles?page=0&pageSize=10", {
+        headers,
+      });
+      if (!ignore) {
+        if (res.ok) {
+          const data = await res.json();
+          setProfiles(data.profiles || []);
+          setTotal(data.total || 0);
+        } else {
+          setProfiles([]);
+          setTotal(0);
+        }
+        setLoading(false);
+      }
+    }
+    fetchProfiles();
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, getToken]);
+
+  // Interests
+  useEffect(() => {
+    if (activeTab !== "matches") return;
+    let ignore = false;
+    async function fetchInterests() {
+      setLoading(true);
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const interestsRes = await fetch("/api/admin/interests", { headers });
+      if (!ignore) {
+        setInterests(interestsRes.ok ? await interestsRes.json() : []);
+        setLoading(false);
+      }
+    }
+    fetchInterests();
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, getToken]);
 
   // Live preview effect for create post (must be before any early returns)
   useEffect(() => {
@@ -189,51 +210,43 @@ function AdminPageInner() {
   }
 
   // Map Convex data to expected types
-  const blogPosts: BlogPost[] | undefined = blogPostsRaw?.map(
-    (post) =>
-      ({
-        ...post,
-        createdAt: post.createdAt
-          ? new Date(post.createdAt as number).toISOString()
-          : "",
-        updatedAt: post.updatedAt
-          ? new Date(post.updatedAt as number).toISOString()
-          : "",
-      }) as BlogPost
-  );
-  const contactMessages: ContactMessage[] | undefined = contactMessagesRaw?.map(
-    (msg) =>
-      ({
-        ...msg,
-        createdAt: msg.createdAt
-          ? new Date(msg.createdAt as number).toISOString()
-          : "",
-      }) as ContactMessage
-  );
+  const mutualMatches = interests
+    .filter((i) => i.status === "accepted")
+    .map((i) => ({
+      profileA: profiles.find((p) => p.userId === i.fromUserId) as Profile,
+      profileB: profiles.find((p) => p.userId === i.toUserId) as Profile,
+    }))
+    .filter((m) => m.profileA && m.profileB);
 
   const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCreating(true);
     setError(null);
     try {
-      await createBlogPost({
-        title,
-        slug,
-        excerpt,
-        content,
-        imageUrl,
-        categories,
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/blog", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          title,
+          slug,
+          excerpt,
+          content,
+          imageUrl,
+          categories: [],
+        }),
       });
-      setTitle("");
-      setSlug("");
-      setExcerpt("");
-      setContent("");
-      setImageUrl("");
-      setCategories([]);
-      if (contentRef.current) {
-        contentRef.current.value = "";
-      }
-      setEditorResetKey((k) => k + 1);
+      if (!res.ok) throw new Error("Failed to create post");
+      const post = await res.json();
+      setTitle(post.title);
+      setSlug(post.slug);
+      setExcerpt(post.excerpt);
+      setContent(post.content);
+      setImageUrl(post.imageUrl || "");
       setError(null);
       toast.success("Post created successfully!");
     } catch {
@@ -252,20 +265,28 @@ function AdminPageInner() {
     setEditContent(post.content);
     setEditImageUrl(post.imageUrl || "");
     setEditSlugManuallyEdited(false);
-    setEditCategories(post.categories || []);
   };
 
   const saveEdit = async (id: string) => {
     try {
-      await updateBlogPost({
-        _id: id as Id<"blogPosts">,
-        title: editTitle,
-        slug: editSlug,
-        excerpt: editExcerpt,
-        content: editContent,
-        imageUrl: editImageUrl,
-        categories: editCategories,
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/blog/${id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          title: editTitle,
+          slug: editSlug,
+          excerpt: editExcerpt,
+          content: editContent,
+          imageUrl: editImageUrl,
+          categories: [],
+        }),
       });
+      if (!res.ok) throw new Error("Failed to update post");
       setEditingId(null);
       toast.success("Post updated successfully!");
     } catch {
@@ -284,14 +305,23 @@ function AdminPageInner() {
   };
 
   const confirmDelete = (id: string) => {
-    if (
-      typeof window !== "undefined" &&
-      window.confirm("Are you sure you want to delete this post?")
-    ) {
-      deleteBlogPost({
-        _id: id as Id<"blogPosts">,
-      });
-      toast.success("Post deleted successfully!");
+    if (window.confirm("Are you sure you want to delete this post?")) {
+      (async () => {
+        const token = await getToken();
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        fetch(`/api/blog/${id}`, {
+          method: "DELETE",
+          headers,
+        }).then((res) => {
+          if (res.ok) {
+            toast.success("Post deleted successfully!");
+            setBlogPosts((prev) => prev.filter((p) => p._id !== id));
+          } else {
+            toast.error("Failed to delete post");
+          }
+        });
+      })();
     }
   };
 
@@ -369,7 +399,6 @@ function AdminPageInner() {
 
   // Utility for AI excerpt/category (plain text)
   async function aiText(text: string, field: "excerpt" | "category") {
-    setAiLoading((prev) => ({ ...prev, [field]: true }));
     try {
       const res = await fetch("/api/convert-ai-text-to-html", {
         method: "POST",
@@ -390,10 +419,37 @@ function AdminPageInner() {
           : "AI error";
       toast.error(message);
       return "";
-    } finally {
-      setAiLoading((prev) => ({ ...prev, [field]: false }));
     }
   }
+
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [editorResetKey, setEditorResetKey] = useState(0);
+
+  // Markdown shortcuts
+  type MarkdownShortcut = {
+    label: string;
+    title: string;
+    md: string;
+    wrap?: string;
+    block?: boolean;
+  };
+  const markdownShortcuts: MarkdownShortcut[] = [
+    { label: "H1", title: "Heading 1", md: "# " },
+    { label: "H2", title: "Heading 2", md: "## " },
+    { label: "H3", title: "Heading 3", md: "### " },
+    { label: "B", title: "Bold", md: "**", wrap: "**" },
+    { label: "I", title: "Italic", md: "_", wrap: "_" },
+    { label: "Link", title: "Link", md: "[", wrap: "](url)" },
+    { label: "Img", title: "Image", md: "![alt](", wrap: ")" },
+    { label: "Code", title: "Code", md: "```\n", wrap: "\n```", block: true },
+    { label: "List", title: "List", md: "- ", block: true },
+    {
+      label: "Table",
+      title: "Table",
+      md: "| Header | Header |\n| ------ | ------ |\n| Cell | Cell |",
+      block: true,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -402,8 +458,8 @@ function AdminPageInner() {
       <div className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Overview Cards */}
         <DashboardOverview
-          totalPosts={blogPosts?.length || 0}
-          totalMessages={contactMessages?.length || 0}
+          totalPosts={blogPosts.length}
+          totalMessages={contactMessages.length}
         />
 
         <div className="mt-8 flex flex-col md:flex-row gap-8 min-h-[60vh]">
@@ -431,12 +487,21 @@ function AdminPageInner() {
 
           {/* Main Content */}
           <main className="flex-1">
-            {activeTab === "profiles" && <ProfileManagement />}
+            {activeTab === "profiles" && (
+              <ProfileManagement
+                profiles={profiles}
+                setProfiles={setProfiles}
+                total={total}
+                setTotal={setTotal}
+                loading={loading}
+                setLoading={setLoading}
+              />
+            )}
             {activeTab === "matches" && (
               <AdminMatches mutualMatches={mutualMatches} />
             )}
             {activeTab === "contact" && (
-              <ContactMessages messages={contactMessages || []} />
+              <ContactMessages messages={contactMessages} loading={loading} />
             )}
             {activeTab === "blog" && (
               <>
@@ -468,13 +533,13 @@ function AdminPageInner() {
                           slugify={slugify}
                           excerpt={editExcerpt}
                           setExcerpt={setEditExcerpt}
-                          categories={editCategories}
-                          setCategories={setEditCategories}
+                          categories={[]}
+                          setCategories={(c) => {}}
                           imageUrl={editImageUrl}
                           setImageUrl={setEditImageUrl}
                           pexelsOpen={editPexelsOpen}
                           setPexelsOpen={setEditPexelsOpen}
-                          aiLoading={aiLoading}
+                          aiLoading={{}}
                           aiText={aiText}
                           content={editContent}
                           disabled={false}
@@ -489,10 +554,6 @@ function AdminPageInner() {
                                 variant="outline"
                                 className="text-pink-600 border-pink-300"
                                 onClick={async () => {
-                                  setAiLoading((prev) => ({
-                                    ...prev,
-                                    content: true,
-                                  }));
                                   const ai = await (async () => {
                                     const res = await fetch(
                                       "/api/convert-ai-text-to-html",
@@ -502,7 +563,7 @@ function AdminPageInner() {
                                           "Content-Type": "application/json",
                                         },
                                         body: JSON.stringify({
-                                          text: `${editTitle}\n${editExcerpt}\n${editCategories.join(", ")}`,
+                                          text: `${editTitle}\n${editExcerpt}`,
                                           type: "blog",
                                         }),
                                       }
@@ -513,14 +574,9 @@ function AdminPageInner() {
                                     return data.html;
                                   })();
                                   if (ai) setEditContent(ai);
-                                  setAiLoading((prev) => ({
-                                    ...prev,
-                                    content: false,
-                                  }));
                                 }}
-                                disabled={aiLoading.content}
                               >
-                                {aiLoading.content ? "AI..." : "AI"}
+                                AI
                               </Button>
                             </div>
                             <BlogEditor
@@ -551,14 +607,16 @@ function AdminPageInner() {
                   </div>
                 )}
                 <BlogPosts
-                  posts={blogPosts || []}
+                  posts={blogPosts}
                   setEditingPost={(id) => {
-                    const post = blogPosts?.find((p) => p._id === id);
+                    const post = blogPosts.find((p) => p._id === id);
                     if (post) startEdit(post);
                     else setEditingId(id);
                   }}
                   deletePost={confirmDelete}
+                  loading={loading}
                 />
+                ; ; ;
               </>
             )}
             {activeTab === "create-post" && (
@@ -585,9 +643,9 @@ function AdminPageInner() {
                 contentRef={contentRef}
                 convertToMarkdownWithGemini={convertToMarkdownWithGemini}
                 slugify={slugify}
-                categories={categories}
-                setCategories={setCategories}
-                aiLoading={aiLoading}
+                categories={[]}
+                setCategories={(c) => {}}
+                aiLoading={{}}
                 aiText={aiText}
                 previewHtml={previewHtml}
                 editorResetKey={editorResetKey}

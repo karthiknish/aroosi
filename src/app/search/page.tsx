@@ -1,7 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,10 +12,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { UserCircle } from "lucide-react";
-import React, { useState } from "react";
-import { useQuery as useConvexQuery } from "convex/react";
-import { useUser, SignInButton } from "@clerk/nextjs";
-import type { Id } from "convex/_generated/dataModel";
+import React, { useState, useEffect } from "react";
+import { useUser, SignInButton, useAuth } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const majorUkCities = [
@@ -67,70 +63,58 @@ function getAge(dateOfBirth: string) {
   return isNaN(age) ? "-" : age;
 }
 
-// Convex profile type (matches Convex schema, createdAt is number)
-type ConvexProfile = {
-  _id: string;
-  userId: string;
-  fullName?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  ukCity?: string;
-  ukPostcode?: string;
-  religion?: string;
-  caste?: string;
-  motherTongue?: string;
-  height?: string;
-  maritalStatus?: string;
-  education?: string;
-  occupation?: string;
-  annualIncome?: number;
-  aboutMe?: string;
-  phoneNumber?: string;
-  diet?: string;
-  smoking?: string;
-  drinking?: string;
-  physicalStatus?: string;
-  partnerPreferenceAgeMin?: number;
-  partnerPreferenceAgeMax?: number;
-  partnerPreferenceReligion?: string[];
-  partnerPreferenceUkCity?: string[];
-  preferredGender?: string;
-  profileImageIds?: string[];
-  banned?: boolean;
-  createdAt: number;
-  updatedAt?: number;
-  isProfileComplete?: boolean;
-  hiddenFromSearch?: boolean;
-};
-
-type ConvexUserWithProfile = {
-  _id: Id<"users">;
-  email: string;
-  role?: string;
-  banned?: boolean;
-  profile: ConvexProfile | null;
-};
-
 export default function SearchProfilesPage() {
   const { user, isLoaded } = useUser();
-  const currentUserProfile = useQuery(api.users.getCurrentUserWithProfile, {});
-  const preferredGender = currentUserProfile?.profile?.preferredGender || "any";
+  const { getToken } = useAuth();
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(undefined);
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [userImages, setUserImages] = useState<
+    { [userId: string]: string | null } | undefined
+  >(undefined);
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
   const [ageMax, setAgeMax] = React.useState("");
   const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
 
-  // Fetch profiles filtered by preferredGender (unless overridden by gender filter)
-  const profiles = useQuery(api.users.listUsersWithProfiles, {
-    preferredGender,
-  });
+  useEffect(() => {
+    async function fetchProfile() {
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setCurrentUserProfile(await res.json());
+      }
+    }
+    fetchProfile();
+  }, [getToken]);
+
+  const preferredGender = currentUserProfile?.profile?.preferredGender || "any";
+
+  useEffect(() => {
+    async function fetchProfiles() {
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch(
+        `/api/search?preferredGender=${preferredGender}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        console.log("API /api/search response:", data);
+        setProfiles(Array.isArray(data) ? data : data.profiles || []);
+      }
+    }
+    fetchProfiles();
+  }, [getToken, preferredGender]);
 
   // Only show users with a complete profile and not hidden from search
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: ConvexUserWithProfile) =>
+      (u: any) =>
         u.profile && u.profile.isProfileComplete && !u.profile.hiddenFromSearch
     );
   }, [profiles]);
@@ -138,19 +122,17 @@ export default function SearchProfilesPage() {
   // Get unique cities and religions for filter dropdowns
   const religionOptions = React.useMemo(() => {
     const set = new Set(
-      publicProfiles
-        .map((u: ConvexUserWithProfile) => u.profile!.religion)
-        .filter(Boolean)
+      publicProfiles.map((u: any) => u.profile!.religion).filter(Boolean)
     );
     return ["any", ...Array.from(set)];
   }, [publicProfiles]);
 
   // Filtering logic (exclude logged-in user's own profile by Clerk ID or email)
   const filtered = React.useMemo(() => {
-    return publicProfiles.filter((u: ConvexUserWithProfile) => {
+    return publicProfiles.filter((u: any) => {
       // Exclude the logged-in user's own profile by Clerk ID or email
       if (user) {
-        if (u._id === user.id) return false;
+        if (u.userId === user.id) return false;
         if (
           u.email &&
           user.emailAddresses?.some(
@@ -181,14 +163,28 @@ export default function SearchProfilesPage() {
 
   // Collect all userIds from filtered (always an array)
   const userIds = React.useMemo(
-    () => filtered.map((u: ConvexUserWithProfile) => u._id),
+    () => filtered.map((u: any) => u.userId).filter(Boolean),
     [filtered]
   );
   // Allow null values in userImages
-  const userImages: { [userId: string]: string | null } | undefined =
-    useConvexQuery(api.images.batchGetProfileImages, {
-      userIds,
-    });
+  useEffect(() => {
+    async function fetchImages() {
+      if (userIds.length === 0) {
+        setUserImages({});
+        return;
+      }
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch(
+        `/api/images/batch?userIds=${userIds.join(",")}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        setUserImages(await res.json());
+      }
+    }
+    fetchImages();
+  }, [getToken, userIds]);
 
   if (!isLoaded) {
     return (
@@ -299,13 +295,13 @@ export default function SearchProfilesPage() {
           </div>
         ) : (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((u: ConvexUserWithProfile) => {
+            {filtered.map((u: any, idx: number) => {
               const p = u.profile!;
-              const firstImageUrl = userImages?.[u._id] || null;
-              const loaded = imgLoaded[u._id] || false;
+              const firstImageUrl = userImages?.[u.userId] || null;
+              const loaded = imgLoaded[u.userId] || false;
               return (
                 <Card
-                  key={u._id}
+                  key={u.userId || idx}
                   className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col"
                 >
                   {firstImageUrl ? (
@@ -319,7 +315,10 @@ export default function SearchProfilesPage() {
                         alt={p.fullName}
                         className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
                         onLoad={() =>
-                          setImgLoaded((prev) => ({ ...prev, [u._id]: true }))
+                          setImgLoaded((prev) => ({
+                            ...prev,
+                            [u.userId]: true,
+                          }))
                         }
                       />
                     </div>
@@ -357,7 +356,7 @@ export default function SearchProfilesPage() {
                       asChild
                       className="bg-pink-600 hover:bg-pink-700 w-full mt-2"
                     >
-                      <Link href={`/profile/${u._id}`}>View Profile</Link>
+                      <Link href={`/profile/${u.userId}`}>View Profile</Link>
                     </Button>
                   </CardContent>
                 </Card>

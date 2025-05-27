@@ -63,7 +63,7 @@ export default function Header() {
           <Link href="/search" onClick={onClick}>
             <Button
               variant="ghost"
-              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
             >
               <Search className="h-5 w-5 mr-1 sm:mr-2" />
               {/* Show text on all screen sizes */}
@@ -81,7 +81,7 @@ export default function Header() {
             <Link href="/admin" onClick={onClick}>
               <Button
                 variant="ghost"
-                className="w-full text-left text-pink-700 hover:text-pink-800 hover:bg-pink-50 font-semibold"
+                className="w-full cursor-pointer text-left text-pink-700 hover:text-pink-800 hover:bg-pink-50 font-semibold"
               >
                 <Shield className="h-5 w-5 mr-1 sm:mr-2" />
                 {/* Show text on all screen sizes */}
@@ -99,7 +99,7 @@ export default function Header() {
           <Link href="/profile" passHref onClick={onClick}>
             <Button
               variant="ghost"
-              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
             >
               <LayoutDashboard className="h-5 w-5 mr-1 sm:mr-2" />
               {/* Show text on all screen sizes */}
@@ -116,7 +116,7 @@ export default function Header() {
           <Link href="/my-interests" passHref onClick={onClick}>
             <Button
               variant="ghost"
-              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
             >
               <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
               <span>My Interests</span>
@@ -145,7 +145,7 @@ export default function Header() {
           <Link href="/about" onClick={onClick}>
             <Button
               variant="ghost"
-              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
             >
               <span>About</span>
             </Button>
@@ -160,7 +160,7 @@ export default function Header() {
           <Link href="/how-it-works" onClick={onClick}>
             <Button
               variant="ghost"
-              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
             >
               <span>How It Works</span>
             </Button>
@@ -175,7 +175,7 @@ export default function Header() {
           <Link href="/sign-in" onClick={onClick}>
             <Button
               variant="ghost"
-              className="w-full text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
             >
               <LogIn className="h-5 w-5 mr-1 sm:mr-2" />{" "}
               {/* Show text on all screen sizes */}
@@ -206,7 +206,7 @@ export default function Header() {
           <Link href="/contact" onClick={onClick}>
             <Button
               variant="outline"
-              className="w-full text-left border-pink-300 text-pink-700 hover:bg-pink-50 hover:text-pink-800"
+              className="w-full cursor-pointer text-left border-pink-300 text-pink-700 hover:bg-pink-50 hover:text-pink-800"
             >
               <span>Contact Us</span>
             </Button>

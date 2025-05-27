@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
 import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { Toaster } from "sonner";
 import MainLayoutContent from "@/components/layout/MainLayoutContent";
 import ChatBot from "@/components/ChatBot";
-
 
 export const metadata: Metadata = {
   title: "Aroosi - UK Matrimony for Muslims",
@@ -78,13 +76,11 @@ export default function RootLayout({
           />
         </head>
         <body className={`font-sans antialiased`}>
-          <ConvexClientProvider>
-            <ProfileCompletionGuard>
-              <MainLayoutContent>{children}</MainLayoutContent>
-            </ProfileCompletionGuard>
-            <Toaster richColors />
-            <ChatBot />
-          </ConvexClientProvider>
+          <ProfileCompletionGuard>
+            <MainLayoutContent>{children}</MainLayoutContent>
+          </ProfileCompletionGuard>
+          <Toaster richColors />
+          <ChatBot />
         </body>
       </html>
     </ClerkProvider>

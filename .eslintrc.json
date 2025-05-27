@@ -10,3 +10,14 @@
     "react/no-unescaped-entities": "error"
   }
 }
+
+// To disable no-unused-vars in production, use a separate .eslintrc.prod.json:
+// {
+//   "extends": [ ... ],
+//   "rules": {
+//     "@typescript-eslint/no-unused-vars": "off"
+//   }
+// }
+
+
+// And configure your build tooling to use the appropriate config for each environment.

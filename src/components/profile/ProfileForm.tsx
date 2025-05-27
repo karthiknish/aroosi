@@ -2,11 +2,8 @@
 
 import { useForm } from "react-hook-form";
 
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
-import { Id } from "@/../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import "react-datepicker/dist/react-datepicker.css";
 import "@/styles/react-datepicker-custom.css";
@@ -28,6 +25,7 @@ import ProfileFormStepEducation from "./ProfileFormStepEducation";
 import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@clerk/nextjs";
 
 // Hardcoded list of major UK cities
 const majorUkCities = [
@@ -219,11 +217,32 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   );
   const [modalOpen, setModalOpen] = React.useState(false);
   const [modalIndex, setModalIndex] = React.useState(0);
-  const deleteImage = useMutation(api.images.deleteProfileImage);
   const [deletingImageId, setDeletingImageId] = React.useState<string | null>(
     null
   );
-  const updateOrder = useMutation(api.users.updateProfileImageOrder);
+  const deleteImage = async (
+    userId: string,
+    imageId: string,
+    token: string
+  ) => {
+    setDeletingImageId(imageId);
+    try {
+      const res = await fetch(`/api/images`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, imageId }),
+      });
+      if (!res.ok) throw new Error("Failed to delete image");
+      toast.success("Image deleted");
+    } catch {
+      toast.error("Failed to delete image");
+    } finally {
+      setDeletingImageId(null);
+    }
+  };
 
   // Form setup
   const form = useForm<ProfileFormValues>({
@@ -323,7 +342,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   // 5. Update handleSubmit signature
   const handleSubmit = async (values: ProfileFormValues) => {
-    // Add a type guard for images
+    // Use images from userImages for validation
     function isValidImage(
       img: unknown
     ): img is { url: string; storageId: string } {
@@ -336,9 +355,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
         typeof (img as { storageId: unknown }).storageId === "string"
       );
     }
-
-    // Use images from userImagesQuery for validation
-    const validImages = (userImagesQuery || []).filter(isValidImage);
+    const validImages = (userImages || []).filter(isValidImage);
     // Check if we're on the image upload step and no images are uploaded
     if (mode === "create" && currentStep === 4 && validImages.length === 0) {
       form.setError("profileImageIds", {
@@ -451,54 +468,89 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     // removed setImagesVersion
   }, []);
 
-  const currentUserConvex = useQuery(
-    api.users.getCurrentUserWithProfile,
-    clerkUser?.id ? {} : "skip"
-  );
-  const convexUserId = currentUserConvex?._id;
+  const { getToken } = useAuth();
+  const [convexUserId, setConvexUserId] = React.useState<string | null>(null);
+  const [userImages, setUserImages] = React.useState<any[]>([]);
+  const [loadingImages, setLoadingImages] = React.useState(false);
 
-  const handleImageClick = (idx: number) => {
-    setModalIndex(idx);
-    setModalOpen(true);
-  };
+  React.useEffect(() => {
+    async function fetchUserId() {
+      if (!clerkUser?.id) return;
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConvexUserId(data?.profile?.userId || null);
+      }
+    }
+    fetchUserId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clerkUser?.id, getToken]);
+
+  React.useEffect(() => {
+    async function fetchImages() {
+      if (!convexUserId) return;
+      setLoadingImages(true);
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch(`/api/profile-detail/${convexUserId}/images`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserImages(data.userProfileImages || []);
+      } else {
+        setUserImages([]);
+      }
+      setLoadingImages(false);
+    }
+    fetchImages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convexUserId]);
 
   const handleDeleteImage = async (storageId: string) => {
     if (!convexUserId) return;
-    setDeletingImageId(storageId);
+    const token = await getToken();
+    if (!token) {
+      toast.error("No authentication token");
+      return;
+    }
+    await deleteImage(convexUserId, storageId, token);
+  };
+
+  const handleReorderImages = async (userId: string, imageIds: string[]) => {
+    const token = await getToken();
+    if (!token) return;
     try {
-      await deleteImage({
-        userId: convexUserId,
-        imageId: storageId as Id<"_storage">,
+      const res = await fetch(`/api/images/order`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, imageIds }),
       });
-      // Remove from uploadedImageIds
-      const newIds = uploadedImageIds.filter((id) => id !== storageId);
-      setUploadedImageIds(newIds);
-      if (handleImagesChanged) handleImagesChanged(newIds);
-      toast.success("Image deleted successfully");
+      if (!res.ok) throw new Error("Failed to update image order");
+      toast.success("Image order updated");
     } catch {
-      toast.error("Failed to delete image");
-    } finally {
-      setDeletingImageId(null);
+      toast.error("Failed to update image order");
     }
   };
 
-  // Add image query and mapping
-  const userImagesQuery = useQuery(
-    api.images.getProfileImages,
-    convexUserId ? { userId: convexUserId } : "skip"
-  );
-
   const storageIdToUrlMap = React.useMemo(() => {
     const map: Record<string, string> = {};
-    if (userImagesQuery && Array.isArray(userImagesQuery)) {
-      for (const img of userImagesQuery) {
+    if (userImages && Array.isArray(userImages)) {
+      for (const img of userImages) {
         if (img?.storageId && img?.url) {
           map[String(img.storageId)] = img.url;
         }
       }
     }
     return map;
-  }, [userImagesQuery]);
+  }, [userImages]);
   const orderedImages: Image[] = uploadedImageIds.map((id) => ({
     _id: id,
     url: storageIdToUrlMap[id] || "",
@@ -513,6 +565,12 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     "Tip: Write a friendly, honest 'About Me' to attract the right matches.",
     "Tip: A clear profile photo increases your chances by 3x!",
   ];
+
+  // Add handleImageClick definition
+  const handleImageClick = (idx: number) => {
+    setModalIndex(idx);
+    setModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
@@ -558,70 +616,78 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
           </div>
           <div className="p-6 sm:p-8">
             {/* Step content */}
-            {currentStep === 0 && (
-              <FormSection title="Basic Information">
-                <ProfileFormStepBasicInfo
-                  form={form}
-                  mode={mode}
-                  cmToFeetInches={cmToFeetInches}
-                />
-              </FormSection>
-            )}
-            {currentStep === 1 && (
-              <FormSection title="Location (UK) & Lifestyle">
-                <ProfileFormStepLocation
-                  form={form}
-                  ukCityOptions={ukCityOptions}
-                />
-              </FormSection>
-            )}
-            {currentStep === 2 && (
-              <FormSection title="Cultural & Religious Background">
-                <ProfileFormStepCultural form={form} />
-              </FormSection>
-            )}
-            {currentStep === 3 && (
-              <FormSection title="Education & Career">
-                <ProfileFormStepEducation form={form} />
-              </FormSection>
-            )}
-            {currentStep === 4 && (
-              <FormSection title="About & Preferences">
-                <ProfileFormStepAbout form={form} mode={mode} />
-              </FormSection>
-            )}
-            {currentStep === totalSteps - 1 && (
-              <FormSection title="Profile Images">
-                {convexUserId ? (
-                  <ProfileFormStepImages
-                    form={form}
-                    clerkUser={clerkUser}
-                    convexUserId={convexUserId}
-                    handleImagesChanged={handleImagesChanged}
-                    orderedImages={orderedImages}
-                    handleImageClick={handleImageClick}
-                    handleDeleteImage={handleDeleteImage}
-                    deletingImageId={deletingImageId}
-                    modalOpen={modalOpen}
-                    setModalOpen={setModalOpen}
-                    modalIndex={modalIndex}
-                    setModalIndex={setModalIndex}
-                    updateOrder={({ userId, imageIds }) =>
-                      updateOrder({
-                        userId,
-                        imageIds: imageIds as Id<"_storage">[],
-                      })
-                    }
-                    toast={toast}
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 gap-2">
-                    <Skeleton className="w-12 h-12 rounded-full" />
-                    <Skeleton className="h-4 w-24 rounded" />
-                  </div>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+              >
+                {currentStep === 0 && (
+                  <FormSection title="Basic Information">
+                    <ProfileFormStepBasicInfo
+                      form={form}
+                      mode={mode}
+                      cmToFeetInches={cmToFeetInches}
+                    />
+                  </FormSection>
                 )}
-              </FormSection>
-            )}
+                {currentStep === 1 && (
+                  <FormSection title="Location (UK) & Lifestyle">
+                    <ProfileFormStepLocation
+                      form={form}
+                      ukCityOptions={ukCityOptions}
+                    />
+                  </FormSection>
+                )}
+                {currentStep === 2 && (
+                  <FormSection title="Cultural & Religious Background">
+                    <ProfileFormStepCultural form={form} />
+                  </FormSection>
+                )}
+                {currentStep === 3 && (
+                  <FormSection title="Education & Career">
+                    <ProfileFormStepEducation form={form} />
+                  </FormSection>
+                )}
+                {currentStep === 4 && (
+                  <FormSection title="About & Preferences">
+                    <ProfileFormStepAbout form={form} mode={mode} />
+                  </FormSection>
+                )}
+                {currentStep === totalSteps - 1 && (
+                  <FormSection title="Profile Images">
+                    {convexUserId ? (
+                      <ProfileFormStepImages
+                        form={form}
+                        clerkUser={clerkUser}
+                        convexUserId={convexUserId}
+                        handleImagesChanged={handleImagesChanged}
+                        orderedImages={orderedImages}
+                        handleImageClick={handleImageClick}
+                        handleDeleteImage={handleDeleteImage}
+                        deletingImageId={deletingImageId}
+                        modalOpen={modalOpen}
+                        setModalOpen={setModalOpen}
+                        modalIndex={modalIndex}
+                        setModalIndex={setModalIndex}
+                        updateOrder={({ userId, imageIds }) =>
+                          handleReorderImages(userId, imageIds)
+                        }
+                        toast={toast}
+                        loading={loadingImages}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2">
+                        <Skeleton className="w-12 h-12 rounded-full" />
+                        <Skeleton className="h-4 w-24 rounded" />
+                      </div>
+                    )}
+                  </FormSection>
+                )}
+              </motion.div>
+            </AnimatePresence>
             {/* Navigation */}
             <div className="flex justify-between pt-6 border-t mt-8">
               <div className="flex gap-2">

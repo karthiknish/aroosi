@@ -9,8 +9,6 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@convex/_generated/api";
 
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -28,7 +26,6 @@ type ContactFormValues = z.infer<typeof contactFormSchema>;
 export default function ContactPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const submitContact = useMutation(api.contact.submitContact);
 
   const {
     register,
@@ -42,15 +39,22 @@ export default function ContactPage() {
   const onSubmit: SubmitHandler<ContactFormValues> = async (data) => {
     setSubmitError(null);
     try {
-      const result = await submitContact(data);
-      if (result.success) {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
         setIsSubmitted(true);
         reset();
       } else {
         setSubmitError("Failed to send message. Please try again.");
       }
     } catch (error: unknown) {
-      setSubmitError(error instanceof Error ? error.message : "An unexpected error occurred.");
+      setSubmitError(
+        error instanceof Error ? error.message : "An unexpected error occurred."
+      );
     }
   };
 

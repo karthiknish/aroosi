@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Eye, Trash2, X } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type ContactMessage = {
   _id: string;
@@ -20,10 +21,15 @@ export type ContactMessage = {
 
 interface ContactMessagesProps {
   messages: ContactMessage[] | undefined;
+  loading: boolean;
   onDelete?: (id: string) => void;
 }
 
-export function ContactMessages({ messages, onDelete }: ContactMessagesProps) {
+export function ContactMessages({
+  messages,
+  loading,
+  onDelete,
+}: ContactMessagesProps) {
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const [viewed, setViewed] = useState<ContactMessage | null>(null);
@@ -43,8 +49,12 @@ export function ContactMessages({ messages, onDelete }: ContactMessagesProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {messages === undefined ? (
-          <div className="text-center py-8 text-gray-500">Loading...</div>
+        {loading ? (
+          <div className="flex flex-col items-center gap-4 py-8">
+            <Skeleton className="w-20 h-6 rounded" />
+            <Skeleton className="w-40 h-4 rounded" />
+            <Skeleton className="w-32 h-4 rounded" />
+          </div>
         ) : (
           <>
             <div className="overflow-x-auto">
