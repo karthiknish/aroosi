@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   }
   // Robust admin check
   const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
+  console.log("role", role, sessionClaims);
   if (role !== "admin") {
     return NextResponse.json(
       { error: "Forbidden: Admins only" },
