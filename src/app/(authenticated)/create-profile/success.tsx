@@ -17,7 +17,7 @@ export default function CreateProfileSuccessPage() {
 
   useEffect(() => {
     async function fetchProfile() {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) {
         setCurrentUserProfile({ profile: null });
         return;

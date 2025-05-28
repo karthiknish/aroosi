@@ -48,13 +48,19 @@ export default function ProfilePage() {
       }
       setLoadingProfile(true);
       try {
-        const token = await getToken();
+        const token = await getToken({ template: "convex" });
         const res = await fetch("/api/profile", {
-          headers: { Authorization: `Bearer ${token}` },
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-User-Id": clerkUser?.id ?? "",
+          },
         });
         const data = await res.json();
+        console.log("data", data);
+
         setUserConvexData(data);
-        setProfileData(data?.profile ? toProfileType(data.profile) : undefined);
+        setProfileData(data ? toProfileType(data) : undefined);
       } catch {
         setProfileData(undefined);
         setUserConvexData(undefined);
@@ -104,7 +110,7 @@ export default function ProfilePage() {
       const filtered = Object.fromEntries(
         Object.entries(values).filter(([key]) => allowedFields.includes(key))
       );
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: {
@@ -169,18 +175,23 @@ export default function ProfilePage() {
 
   // Helper to convert profileData to Profile type
   function toProfileType(
-    profile: unknown
+    data: unknown
   ): import("@/types/profile").Profile | undefined {
+    // If the data has a nested 'profile' field, use that
+    const profileObj =
+      data && typeof data === "object" && "profile" in data
+        ? (data as Record<string, unknown>)["profile"]
+        : data;
     if (
-      !profile ||
-      typeof profile !== "object" ||
-      !("_id" in profile) ||
-      !("userId" in profile) ||
-      !("createdAt" in profile)
+      !profileObj ||
+      typeof profileObj !== "object" ||
+      !("_id" in profileObj) ||
+      !("userId" in profileObj) ||
+      !("createdAt" in profileObj)
     ) {
       return undefined;
     }
-    const p = profile as {
+    const p = profileObj as {
       _id: string | number;
       userId: string | number;
       createdAt: string | number;

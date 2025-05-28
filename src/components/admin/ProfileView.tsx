@@ -56,7 +56,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
         return;
       }
       try {
-        const token = await getToken();
+        const token = await getToken({ template: "convex" });
         if (!token) {
           setImages([]);
           return;

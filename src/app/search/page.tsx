@@ -97,7 +97,7 @@ export default function SearchProfilesPage() {
 
   useEffect(() => {
     async function fetchProfile() {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
@@ -122,7 +122,7 @@ export default function SearchProfilesPage() {
 
   useEffect(() => {
     async function fetchProfiles() {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch(
         `/api/search?preferredGender=${preferredGender}`,
@@ -202,7 +202,7 @@ export default function SearchProfilesPage() {
         setUserImages({});
         return;
       }
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch(
         `/api/images/batch?userIds=${userIds.join(",")}`,

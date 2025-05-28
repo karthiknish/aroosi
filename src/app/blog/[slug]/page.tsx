@@ -29,7 +29,7 @@ export default function BlogDetailPage() {
     async function fetchPost() {
       if (!slug) return;
       setPost(undefined);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`/api/blog/${slug}`, { headers });

@@ -33,7 +33,7 @@ export default function MyInterestsPage() {
 
   useEffect(() => {
     async function fetchCurrentUser() {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) {
         setCurrentUserId(null);
         return;
@@ -43,7 +43,7 @@ export default function MyInterestsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCurrentUserId(data?.profile?.userId || null);
+        setCurrentUserId(data?.userId || null);
       } else {
         setCurrentUserId(null);
       }
@@ -57,7 +57,7 @@ export default function MyInterestsPage() {
         setSentInterests(undefined);
         return;
       }
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) {
         setSentInterests(undefined);
         return;
@@ -89,7 +89,7 @@ export default function MyInterestsPage() {
       const userIds = sentInterests.map(
         (interest: { toUserId: string }) => interest.toUserId
       );
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) {
         setProfiles([]);
         setLoadingProfiles(false);

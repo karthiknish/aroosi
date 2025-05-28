@@ -481,7 +481,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   React.useEffect(() => {
     async function fetchUserId() {
       if (!clerkUser?.id) return;
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
@@ -498,7 +498,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     async function fetchImages() {
       if (!convexUserId) return;
       setLoadingImages(true);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch(`/api/profile-detail/${convexUserId}/images`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -517,7 +517,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   const handleDeleteImage = async (storageId: string) => {
     if (!convexUserId) return;
-    const token = await getToken();
+    const token = await getToken({ template: "convex" });
     if (!token) {
       toast.error("No authentication token");
       return;
@@ -526,7 +526,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   };
 
   const handleReorderImages = async (userId: string, imageIds: string[]) => {
-    const token = await getToken();
+    const token = await getToken({ template: "convex" });
     if (!token) return;
     try {
       const res = await fetch(`/api/images/order`, {

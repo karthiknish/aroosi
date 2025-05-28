@@ -43,7 +43,7 @@ export function ProfileImageUpload({
 
   // Fetch images from API
   const fetchImages = useCallback(async () => {
-    const token = await getToken();
+    const token = await getToken({ template: "convex" });
     if (!token) return;
     const res = await fetch(`/api/profile-detail/${userId}/images`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -80,7 +80,7 @@ export function ProfileImageUpload({
     if (!pendingDeleteId) return;
     setIsUploading(true);
     try {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) throw new Error("No auth token");
       const res = await fetch(`/api/images`, {
         method: "DELETE",
@@ -163,7 +163,7 @@ export function ProfileImageUpload({
 
   // Add generateUploadUrl and uploadImage for ImageUploader
   const generateUploadUrl = useCallback(async () => {
-    const token = await getToken();
+    const token = await getToken({ template: "convex" });
     if (!token) return { success: false, error: "No auth token" };
     const res = await fetch("/api/images/upload-url", {
       headers: { Authorization: `Bearer ${token}` },
@@ -189,7 +189,7 @@ export function ProfileImageUpload({
       contentType: string;
       fileSize: number;
     }) => {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token)
         return { success: false, imageId: storageId, message: "No auth token" };
       const res = await fetch("/api/images", {

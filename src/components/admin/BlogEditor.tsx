@@ -102,7 +102,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       try {
         const file = acceptedFiles[0];
         // 1. Get upload URL from backend
-        const token = await getToken();
+        const token = await getToken({ template: "convex" });
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
         const uploadUrlRes = await fetch("/api/images/upload-url", { headers });

@@ -57,7 +57,7 @@ export default function ProfileDetailPage() {
   const refetchProfile = async () => {
     setLoadingProfile(true);
     try {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const res = await fetch(`/api/profile-detail/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -91,7 +91,7 @@ export default function ProfileDetailPage() {
     async function fetchImages() {
       setLoadingImages(true);
       try {
-        const token = await getToken();
+        const token = await getToken({ template: "convex" });
         const res = await fetch(`/api/profile-detail/${userId}/images`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -458,7 +458,9 @@ export default function ProfileDetailPage() {
                             setInterestSent(true);
                             setInterestError(null);
                             try {
-                              const token = await getToken();
+                              const token = await getToken({
+                                template: "convex",
+                              });
                               const res = await fetch(
                                 "/api/interests/express",
                                 {
@@ -541,7 +543,9 @@ export default function ProfileDetailPage() {
                             setInterestSent(false);
                             setInterestError(null);
                             try {
-                              const token = await getToken();
+                              const token = await getToken({
+                                template: "convex",
+                              });
                               const res = await fetch("/api/interests/remove", {
                                 method: "POST",
                                 headers: {

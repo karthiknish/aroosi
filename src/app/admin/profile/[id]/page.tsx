@@ -47,7 +47,7 @@ export default function AdminProfileDetailPage() {
 
   useEffect(() => {
     async function fetchProfileData() {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       // Profile
@@ -79,7 +79,7 @@ export default function AdminProfileDetailPage() {
 
     try {
       setIsDeleting(true);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const deleteRes = await fetch(`/api/images/${storageId}`, {

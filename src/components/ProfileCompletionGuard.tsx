@@ -47,7 +47,7 @@ export default function ProfileCompletionGuard({
       }
       setIsProfileLoading(true);
       try {
-        const token = await getToken();
+        const token = await getToken({ template: "convex" });
         if (!token) {
           setProfileData(undefined);
           setIsProfileLoading(false);

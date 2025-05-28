@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 
-export async function GET() {
-  const { userId, getToken, sessionClaims } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // Robust admin check
-  const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
-  if (role !== "admin") {
-    return NextResponse.json(
-      { error: "Forbidden: Admins only" },
-      { status: 403 }
-    );
-  }
-  const token = await getToken({ template: "convex" });
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -28,6 +16,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // Public endpoint: do not require authentication
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  // Do not set auth for public queries
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -40,22 +31,24 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const requiredFields = ["name", "email", "subject", "message"];
-  for (const field of requiredFields) {
-    if (!body[field] || typeof body[field] !== "string") {
-      return NextResponse.json(
-        { error: `Missing or invalid field: ${field}` },
-        { status: 400 }
-      );
-    }
+  const { email, name, subject, message } = body;
+  if (
+    typeof email !== "string" ||
+    typeof name !== "string" ||
+    typeof subject !== "string" ||
+    typeof message !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "Missing or invalid contact fields" },
+      { status: 400 }
+    );
   }
   try {
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
     const result = await convex.mutation(api.contact.submitContact, {
-      name: body.name as string,
-      email: body.email as string,
-      subject: body.subject as string,
-      message: body.message as string,
+      email,
+      name,
+      subject,
+      message,
     });
     return NextResponse.json(result);
   } catch (err: unknown) {

@@ -19,7 +19,7 @@ export default function CreateProfilePage() {
 
   useEffect(() => {
     async function fetchProfile() {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) {
         setCurrentUserProfile(null);
         return;
@@ -29,7 +29,7 @@ export default function CreateProfilePage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCurrentUserProfile(data.profile ? data : { profile: null });
+        setCurrentUserProfile(data && data.userId ? data : { profile: null });
       } else {
         setCurrentUserProfile({ profile: null });
       }
@@ -38,7 +38,7 @@ export default function CreateProfilePage() {
   }, [getToken]);
 
   useEffect(() => {
-    if (currentUserProfile && currentUserProfile.profile) {
+    if (currentUserProfile && currentUserProfile.userId) {
       router.replace("/search");
     }
   }, [currentUserProfile, router]);
@@ -55,7 +55,7 @@ export default function CreateProfilePage() {
     );
   }
 
-  if (currentUserProfile && currentUserProfile.profile) {
+  if (currentUserProfile && currentUserProfile.userId) {
     if (typeof window !== "undefined") {
       router.replace("/search");
     }
@@ -181,7 +181,7 @@ export default function CreateProfilePage() {
               physicalStatus,
               profileImageIds,
             };
-            const token = await getToken();
+            const token = await getToken({ template: "convex" });
             if (!token) {
               toast.error("You must be signed in to create a profile.");
               return;
@@ -193,7 +193,7 @@ export default function CreateProfilePage() {
             const latestProfile = latestProfileRes.ok
               ? await latestProfileRes.json()
               : null;
-            if (latestProfile && latestProfile.profile) {
+            if (latestProfile && latestProfile.userId) {
               toast.error(
                 "You already have a profile. Please refresh or go to your profile page."
               );

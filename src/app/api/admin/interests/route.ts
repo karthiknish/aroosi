@@ -1,14 +1,10 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 
-export async function GET() {
-  const { userId, getToken } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const token = await getToken({ template: "convex" });
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

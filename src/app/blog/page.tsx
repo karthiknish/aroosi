@@ -2,7 +2,6 @@
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,20 +15,17 @@ export default function BlogPage() {
   const [posts, setPosts] = React.useState<BlogPost[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
-  const { getToken } = useAuth();
 
   React.useEffect(() => {
     async function fetchPosts() {
       setLoading(true);
-      const token = await getToken();
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
       });
       if (category !== "all") params.append("category", category);
-      const res = await fetch(`/api/blog?${params.toString()}`, { headers });
+      const res = await fetch(`/api/blog?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setPosts(data.posts || []);
@@ -41,7 +37,7 @@ export default function BlogPage() {
       setLoading(false);
     }
     fetchPosts();
-  }, [page, category, getToken]);
+  }, [page, category]);
 
   // Dynamically extract unique categories from posts
   const categories = React.useMemo(() => {

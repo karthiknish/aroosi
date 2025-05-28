@@ -49,7 +49,7 @@ export function ProfileManagement({
   useEffect(() => {
     async function fetchProfiles() {
       setLoading(true);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(
@@ -149,7 +149,7 @@ export function ProfileManagement({
   // Ban/unban logic
   const toggleBan = async (id: string, banned: boolean) => {
     try {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };

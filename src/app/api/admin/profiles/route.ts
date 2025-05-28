@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 
 export async function GET(req: NextRequest) {
-  const { userId, getToken, sessionClaims } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // Robust admin check
-  const role = (sessionClaims?.publicMetadata as { role?: string })?.role;
-  console.log("role", role, sessionClaims);
-  if (role !== "admin") {
-    return NextResponse.json(
-      { error: "Forbidden: Admins only" },
-      { status: 403 }
-    );
-  }
-  const token = await getToken({ template: "convex" });
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -36,11 +23,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { userId, getToken } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const token = await getToken({ template: "convex" });
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -56,11 +40,8 @@ export async function DELETE(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const { userId, getToken } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const token = await getToken({ template: "convex" });
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

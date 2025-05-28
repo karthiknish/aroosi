@@ -82,7 +82,7 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchBlogPosts() {
       setLoading(true);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const blogRes = await fetch("/api/blog", { headers });
@@ -108,7 +108,7 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchContactMessages() {
       setLoading(true);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const contactRes = await fetch("/api/contact", { headers });
@@ -129,7 +129,7 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchProfiles() {
       setLoading(true);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/api/admin/profiles?page=0&pageSize=10", {
@@ -159,7 +159,7 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchInterests() {
       setLoading(true);
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const interestsRes = await fetch("/api/admin/interests", { headers });
@@ -225,7 +225,7 @@ function AdminPageInner() {
     setCreating(true);
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -271,7 +271,7 @@ function AdminPageInner() {
 
   const saveEdit = async (id: string) => {
     try {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -309,7 +309,7 @@ function AdminPageInner() {
   const confirmDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       (async () => {
-        const token = await getToken();
+        const token = await getToken({ template: "convex" });
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
         fetch(`/api/blog/${id}`, {
@@ -615,7 +615,6 @@ function AdminPageInner() {
                   deletePost={confirmDelete}
                   loading={loading}
                 />
-                ; ; ;
               </>
             )}
             {activeTab === "create-post" && (

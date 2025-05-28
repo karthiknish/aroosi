@@ -1,25 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 
 export async function GET(req: NextRequest) {
-  const { getToken } = await auth();
-  let token: string | null = null;
-  if (getToken) {
-    token = await getToken({ template: "convex" });
-  }
+  // Public endpoint: do not require authentication
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-  if (token) {
-    convex.setAuth(token);
-  }
-
+  // Do not set auth for public queries
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "0", 10);
   const pageSize = parseInt(searchParams.get("pageSize") || "6", 10);
   const category = searchParams.get("category") || undefined;
-
   const result = await convex.query(api.blog.listBlogPostsPaginated, {
     page,
     pageSize,
@@ -33,11 +24,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, getToken } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const token = await getToken({ template: "convex" });
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -93,11 +81,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { userId, getToken } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const token = await getToken({ template: "convex" });
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

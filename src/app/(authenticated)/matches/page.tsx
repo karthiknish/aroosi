@@ -69,7 +69,7 @@ export default function MatchesPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = await getToken();
+        const token = await getToken({ template: "convex" });
         const params = new URLSearchParams();
         if (isAllowedGender(filters.religion)) {
           params.append("preferredGender", filters.religion);

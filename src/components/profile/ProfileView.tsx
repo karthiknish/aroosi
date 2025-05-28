@@ -104,15 +104,33 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   deleting,
 }) => {
   const { getToken } = useAuth();
-  const [images, setImages] = React.useState<{ url: string; _id: string }[]>(
-    []
-  );
+  const [images, setImages] = React.useState<
+    { url: string; storageId: string; _id: string }[]
+  >([]);
   const [loadingImages, setLoadingImages] = React.useState(true);
+  // Local image order state for instant UI feedback
+  const [imageOrder, setImageOrder] = React.useState<string[]>(
+    profileData?.profileImageIds && Array.isArray(profileData.profileImageIds)
+      ? [...profileData.profileImageIds]
+      : []
+  );
+  // Keep imageOrder in sync with profileData.profileImageIds
+  React.useEffect(() => {
+    if (
+      profileData?.profileImageIds &&
+      Array.isArray(profileData.profileImageIds)
+    ) {
+      setImageOrder([...profileData.profileImageIds]);
+    } else {
+      setImageOrder([]);
+    }
+  }, [profileData?.profileImageIds]);
+
   React.useEffect(() => {
     async function fetchImages() {
       setLoadingImages(true);
       if (!userConvexData?._id) return;
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch(
         `/api/profile-detail/${userConvexData._id}/images`,
@@ -122,7 +140,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       );
       if (res.ok) {
         const data = await res.json();
-        setImages(data.userProfileImages || []);
+        // Normalize images: always use storageId as _id
+        type ApiImage = { storageId: string; url: string };
+        const normalized = (data.userProfileImages || []).map(
+          (img: ApiImage) => ({
+            _id: img.storageId,
+            storageId: img.storageId,
+            url: img.url,
+          })
+        );
+        setImages(normalized);
       } else {
         setImages([]);
       }
@@ -145,8 +172,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     ) {
       imageIds = (newOrder as { _id: string }[]).map((img) => img._id);
     }
+    // Optimistically update local order
+    setImageOrder(imageIds);
     try {
-      const token = await getToken();
+      setLoadingImages(true);
+      const token = await getToken({ template: "convex" });
       if (!token) throw new Error("No token");
       const res = await fetch(`/api/images/order`, {
         method: "PUT",
@@ -158,11 +188,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       });
       if (!res.ok) throw new Error("Failed to update image order");
       // Update local images state to reflect new order
-      setImages((prev: { url: string; _id: string }[]) => {
+      setImages((prev) => {
         if (!prev) return prev;
         const imageMap = new Map(prev.map((img) => [img._id, img]));
         return imageIds.map((id) => imageMap.get(id)).filter(Boolean) as {
           url: string;
+          storageId: string;
           _id: string;
         }[];
       });
@@ -172,31 +203,30 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       toast.dismiss();
       console.error("Error updating image order", error);
       toast.error("Failed to update image order");
+    } finally {
+      setLoadingImages(false);
     }
   };
 
   console.log("images", images);
 
-  // Determine ordered images based on profileData.profileImageIds if available
-  let orderedImages: { url: string; _id: string }[] = [];
-  if (
-    profileData?.profileImageIds &&
-    Array.isArray(profileData.profileImageIds) &&
-    profileData.profileImageIds.length > 0
-  ) {
-    orderedImages = (profileData.profileImageIds as string[])
+  // Determine ordered images based on local imageOrder if available
+  let orderedImages: { url: string; storageId: string; _id: string }[] = [];
+  if (imageOrder && imageOrder.length > 0) {
+    orderedImages = imageOrder
       .map((storageId) => {
-        const img = images.find((img) => img._id === storageId);
+        const img = images.find((img) => img.storageId === storageId);
         if (img) {
-          return { url: img.url, _id: storageId };
+          return { url: img.url, storageId, _id: storageId };
         }
         return null;
       })
-      .filter(Boolean) as { url: string; _id: string }[];
+      .filter(Boolean) as { url: string; storageId: string; _id: string }[];
   } else {
     orderedImages = images.map((img) => ({
       url: img.url,
-      _id: img._id,
+      storageId: img.storageId,
+      _id: img.storageId,
     }));
   }
 
@@ -263,7 +293,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     icon={<Calendar className="h-4 w-4" />}
                   />
                 </DisplaySection>
-
                 <DisplaySection
                   title="Profile Images"
                   icon={<Camera className="h-5 w-5" />}

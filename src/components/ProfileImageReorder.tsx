@@ -119,7 +119,7 @@ export function ProfileImageReorder({
       .map((img) => img.storageId)
       .filter((id): id is string => Boolean(id));
     try {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       if (!token) throw new Error("No auth token");
       const res = await fetch("/api/images/order", {
         method: "PUT",
