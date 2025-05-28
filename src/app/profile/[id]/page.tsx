@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useParams } from "next/navigation";
-import { UserCircle, HeartIcon, HeartOffIcon } from "lucide-react";
+import { UserCircle, HeartIcon } from "lucide-react";
 import { Id } from "@convex/_generated/dataModel";
 import Image from "next/image";
 import Head from "next/head";
@@ -28,7 +28,7 @@ export default function ProfileDetailPage() {
     string[]
   >([]);
   const [interestError, setInterestError] = useState<string | null>(null);
-  const [interestSent, setInterestSent] = useState<boolean>(false);
+  const [interestLoading, setInterestLoading] = useState(false);
 
   // State for text/profile data
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -255,6 +255,86 @@ export default function ProfileDetailPage() {
     tap: { scale: 0.92 },
   };
 
+  // Handler for sending interest
+  const handleSendInterest = async () => {
+    console.log("clicked");
+    if (!currentUserId || !userId) return;
+    setInterestLoading(true);
+    setInterestError(null);
+    try {
+      const token = await getToken({ template: "convex" });
+      const res = await fetch("/api/interests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-User-Id": currentUserId,
+        },
+        body: JSON.stringify({
+          fromUserId: currentUserId,
+          toUserId: userId,
+        }),
+      });
+      console.log("res", res);
+      if (!res.ok) {
+        const err = await res.json();
+        if (err?.error && err.error.includes("already sent")) {
+          toast.success("Interest already sent!");
+          await refetchProfile();
+          setInterestLoading(false);
+          return;
+        }
+        setInterestError(err?.error || "Failed to send interest");
+        toast.error(err?.error || "Failed to send interest");
+        setInterestLoading(false);
+        return;
+      }
+      toast.success("Interest sent!");
+      await refetchProfile();
+    } catch (e: unknown) {
+      console.error(e);
+      setInterestError((e as Error).message || "Failed to send interest");
+      toast.error((e as Error).message || "Failed to send interest");
+    } finally {
+      setInterestLoading(false);
+    }
+  };
+
+  // Handler for withdrawing interest
+  const handleWithdrawInterest = async () => {
+    if (!currentUserId || !userId) return;
+    setInterestLoading(true);
+    setInterestError(null);
+    try {
+      const token = await getToken({ template: "convex" });
+      const res = await fetch("/api/interests/remove", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          fromUserId: currentUserId,
+          toUserId: userId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setInterestError(err?.error || "Failed to remove interest");
+        toast.error(err?.error || "Failed to remove interest");
+        setInterestLoading(false);
+        return;
+      }
+      toast.success("Interest withdrawn.");
+      await refetchProfile();
+    } catch (e: unknown) {
+      setInterestError((e as Error).message || "Failed to remove interest");
+      toast.error((e as Error).message || "Failed to remove interest");
+    } finally {
+      setInterestLoading(false);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -441,164 +521,54 @@ export default function ProfileDetailPage() {
                 </motion.div>
                 <div className="flex justify-center gap-8 mt-8 mb-2">
                   <AnimatePresence>
-                    {!isOwnProfile &&
-                      !isBlocked &&
-                      !isMutualInterest &&
-                      !interestSent && (
-                        <motion.button
-                          key="express-interest"
-                          className="flex items-center justify-center rounded-full bg-pink-600 hover:bg-pink-700 text-white p-4 shadow-lg transition-colors"
-                          variants={buttonVariants}
-                          initial="hidden"
-                          animate="visible"
-                          exit="hidden"
-                          whileTap="tap"
-                          onClick={async () => {
-                            if (!currentUserId || !userId) return;
-                            setInterestSent(true);
-                            setInterestError(null);
-                            try {
-                              const token = await getToken({
-                                template: "convex",
-                              });
-                              const res = await fetch(
-                                "/api/interests/express",
-                                {
-                                  method: "POST",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                    Authorization: `Bearer ${token}`,
-                                  },
-                                  body: JSON.stringify({
-                                    fromUserId: currentUserId,
-                                    toUserId: userId,
-                                  }),
-                                }
-                              );
-                              if (!res.ok) {
-                                const err = await res.json();
-                                if (
-                                  err?.error &&
-                                  err.error.includes("already sent")
-                                ) {
-                                  toast.success("Interest already sent!");
-                                  await refetchProfile();
-                                  return;
-                                }
-                                setInterestSent(false);
-                                setInterestError(
-                                  err?.error || "Failed to send interest"
-                                );
-                                toast.error(
-                                  err?.error || "Failed to send interest"
-                                );
-                                return;
-                              }
-                              toast.success("Interest sent!");
-                              await refetchProfile();
-                            } catch (e: unknown) {
-                              console.error(e);
-                              setInterestSent(false);
-                              setInterestError(
-                                (e as Error).message ||
-                                  "Failed to send interest"
-                              );
-                              toast.error(
-                                (e as Error).message ||
-                                  "Failed to send interest"
-                              );
-                            }
+                    {!isOwnProfile && !isBlocked && !isMutualInterest && (
+                      <motion.button
+                        key={
+                          alreadySentInterest
+                            ? "withdraw-interest"
+                            : "express-interest"
+                        }
+                        className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-pink-400 ${alreadySentInterest ? "bg-gray-200 hover:bg-gray-300 text-pink-600 border border-gray-300" : "bg-pink-600 hover:bg-pink-700 text-white"}`}
+                        variants={buttonVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                        whileTap="tap"
+                        onClick={
+                          alreadySentInterest
+                            ? handleWithdrawInterest
+                            : handleSendInterest
+                        }
+                        title={
+                          alreadySentInterest
+                            ? "Withdraw Interest"
+                            : "Express Interest"
+                        }
+                        aria-label={
+                          alreadySentInterest
+                            ? "Withdraw Interest"
+                            : "Express Interest"
+                        }
+                        disabled={interestLoading}
+                      >
+                        <motion.span
+                          initial={{ scale: 0.8, opacity: 0.7 }}
+                          animate={{
+                            scale: 1,
+                            opacity: 1,
+                            transition: { duration: 0.3 },
                           }}
-                          title="Express Interest"
-                          aria-label="Express Interest"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.92 }}
                         >
-                          <motion.span
-                            initial={{ scale: 0.8, opacity: 0.7 }}
-                            animate={{
-                              scale: 1,
-                              opacity: 1,
-                              transition: { duration: 0.3 },
-                            }}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.92 }}
-                          >
+                          {alreadySentInterest ? (
+                            <HeartIcon className="w-10 h-10 fill-pink-600 text-pink-600" />
+                          ) : (
                             <HeartIcon className="w-10 h-10" />
-                          </motion.span>
-                        </motion.button>
-                      )}
-                    {!isOwnProfile &&
-                      !isBlocked &&
-                      !isMutualInterest &&
-                      interestSent && (
-                        <motion.button
-                          key="withdraw-interest"
-                          className="flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 text-pink-600 p-4 border border-gray-300 shadow-lg transition-colors"
-                          variants={buttonVariants}
-                          initial="hidden"
-                          animate="visible"
-                          exit="hidden"
-                          whileTap="tap"
-                          onClick={async () => {
-                            if (!currentUserId || !userId) return;
-                            setInterestSent(false);
-                            setInterestError(null);
-                            try {
-                              const token = await getToken({
-                                template: "convex",
-                              });
-                              const res = await fetch("/api/interests/remove", {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  Authorization: `Bearer ${token}`,
-                                },
-                                body: JSON.stringify({
-                                  fromUserId: currentUserId,
-                                  toUserId: userId,
-                                }),
-                              });
-                              if (!res.ok) {
-                                const err = await res.json();
-                                setInterestSent(true);
-                                setInterestError(
-                                  err?.error || "Failed to remove interest"
-                                );
-                                toast.error(
-                                  err?.error || "Failed to remove interest"
-                                );
-                                return;
-                              }
-                              toast.success("Interest withdrawn.");
-                              await refetchProfile();
-                            } catch (e: unknown) {
-                              setInterestSent(true);
-                              setInterestError(
-                                (e as Error).message ||
-                                  "Failed to remove interest"
-                              );
-                              toast.error(
-                                (e as Error).message ||
-                                  "Failed to remove interest"
-                              );
-                            }
-                          }}
-                          title="Withdraw Interest"
-                          aria-label="Withdraw Interest"
-                        >
-                          <motion.span
-                            initial={{ scale: 0.8, opacity: 0.7 }}
-                            animate={{
-                              scale: 1,
-                              opacity: 1,
-                              transition: { duration: 0.3 },
-                            }}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.92 }}
-                          >
-                            <HeartOffIcon className="w-10 h-10" />
-                          </motion.span>
-                        </motion.button>
-                      )}
+                          )}
+                        </motion.span>
+                      </motion.button>
+                    )}
                   </AnimatePresence>
                 </div>
                 <AnimatePresence>

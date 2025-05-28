@@ -59,10 +59,33 @@ export function BlogPosts({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="flex flex-col items-center gap-4 py-8">
-            <Skeleton className="w-20 h-6 rounded" />
-            <Skeleton className="w-40 h-4 rounded" />
-            <Skeleton className="w-32 h-4 rounded" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 py-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="p-4 bg-white rounded-lg border border-gray-200 flex flex-col gap-3 h-full"
+              >
+                <div className="flex items-start gap-4">
+                  <Skeleton className="w-20 h-20 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-6 w-2/3 rounded" />
+                    <Skeleton className="h-4 w-1/2 rounded" />
+                    <div className="flex gap-4 mt-2">
+                      <Skeleton className="h-3 w-16 rounded" />
+                      <Skeleton className="h-3 w-12 rounded" />
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Skeleton className="h-4 w-10 rounded" />
+                      <Skeleton className="h-4 w-10 rounded" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : posts === undefined ? (
           <div className="text-center py-8 text-gray-500">No posts yet</div>

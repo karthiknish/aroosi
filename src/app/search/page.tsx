@@ -94,6 +94,7 @@ export default function SearchProfilesPage() {
   const [ageMin, setAgeMin] = React.useState("");
   const [ageMax, setAgeMax] = React.useState("");
   const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -122,6 +123,7 @@ export default function SearchProfilesPage() {
 
   useEffect(() => {
     async function fetchProfiles() {
+      setLoading(true);
       const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch(
@@ -133,6 +135,7 @@ export default function SearchProfilesPage() {
         console.log("API /api/search response:", data);
         setProfiles(Array.isArray(data) ? data : data.profiles || []);
       }
+      setLoading(false);
     }
     fetchProfiles();
   }, [getToken, preferredGender]);
@@ -198,8 +201,10 @@ export default function SearchProfilesPage() {
   // Allow null values in userImages
   useEffect(() => {
     async function fetchImages() {
+      setLoading(true);
       if (userIds.length === 0) {
         setUserImages({});
+        setLoading(false);
         return;
       }
       const token = await getToken({ template: "convex" });
@@ -211,6 +216,7 @@ export default function SearchProfilesPage() {
       if (res.ok) {
         setUserImages(await res.json());
       }
+      setLoading(false);
     }
     fetchImages();
   }, [getToken, userIds]);
@@ -304,7 +310,7 @@ export default function SearchProfilesPage() {
             />
           </div>
         </section>
-        {profiles === undefined || userImages === undefined ? (
+        {loading || profiles === undefined || userImages === undefined ? (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
