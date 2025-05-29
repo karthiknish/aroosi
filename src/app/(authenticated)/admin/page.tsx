@@ -42,7 +42,20 @@ type Interest = {
 
 function AdminPageInner() {
   // All hooks at the top
-  const [activeTab, setActiveTab] = useState<string>("contact");
+  // Tab order: contact first
+  const TABS = [
+    { key: "contact", label: "Contact" },
+    { key: "blog", label: "Blog" },
+    { key: "profiles", label: "Profiles" },
+    { key: "matches", label: "Matches" },
+  ];
+  // Read initial tab from localStorage if available
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("adminActiveTab") || "contact";
+    }
+    return "contact";
+  });
   const [title, setTitle] = useState<string>("");
   const [slug, setSlug] = useState<string>("");
   const [excerpt, setExcerpt] = useState<string>("");
@@ -177,6 +190,13 @@ function AdminPageInner() {
   useEffect(() => {
     setPreviewHtml(content);
   }, [content]);
+
+  // Save tab to localStorage on change
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("adminActiveTab", activeTab);
+    }
+  }, [activeTab]);
 
   // Only after all hooks:
   if (!isLoaded) {
@@ -463,13 +483,7 @@ function AdminPageInner() {
           {/* Sidebar */}
           <aside className="md:w-1/4 w-full md:sticky md:top-24">
             <nav className="bg-pink-50 border border-pink-100 rounded-lg shadow p-4 flex md:flex-col gap-2 mb-4 md:mb-0">
-              {[
-                { key: "blog", label: "Blog Posts" },
-                { key: "create-post", label: "Create Post" },
-                { key: "profiles", label: "Profiles" },
-                { key: "matches", label: "Matches" },
-                { key: "contact", label: "Contact" },
-              ].map((tab) => (
+              {TABS.map((tab) => (
                 <Button
                   key={tab.key}
                   variant={activeTab === tab.key ? "default" : "ghost"}

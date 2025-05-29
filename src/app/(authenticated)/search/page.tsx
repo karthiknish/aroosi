@@ -306,7 +306,10 @@ export default function SearchProfilesPage() {
             />
           </div>
         </section>
-        {loading || profiles === undefined || userImages === undefined ? (
+        {loading ||
+        profiles === undefined ||
+        userImages === undefined ||
+        filtered.length === 0 ? (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -319,10 +322,6 @@ export default function SearchProfilesPage() {
                 <Skeleton className="h-4 w-1/3 rounded" />
               </div>
             ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center text-gray-400">
-            No profiles found. Try adjusting your filters.
           </div>
         ) : (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

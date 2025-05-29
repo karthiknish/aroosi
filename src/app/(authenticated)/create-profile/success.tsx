@@ -4,7 +4,6 @@ import { useWindowSize } from "react-use";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@clerk/nextjs";
 import { Profile } from "@/types/profile";
 import { useToken } from "@/components/TokenProvider";
 

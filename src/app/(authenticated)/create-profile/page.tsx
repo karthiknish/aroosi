@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@clerk/nextjs";
 import type { ProfileFormValues } from "@/components/profile/ProfileForm";
 import { useToken } from "@/components/TokenProvider";
 
