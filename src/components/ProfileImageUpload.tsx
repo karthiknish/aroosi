@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@clerk/nextjs";
+import { useToken } from "@/components/TokenProvider";
 
 export interface ImageData {
   _id: string;
@@ -32,7 +32,7 @@ export function ProfileImageUpload({
   profileId,
   onImagesChanged,
 }: ProfileImageUploadProps) {
-  const { getToken } = useAuth();
+  const token = useToken();
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [orderedImages, setOrderedImages] = useState<ImageData[]>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
@@ -43,7 +43,6 @@ export function ProfileImageUpload({
 
   // Fetch images from API
   const fetchImages = useCallback(async () => {
-    const token = await getToken({ template: "convex" });
     if (!token) return;
     const res = await fetch(`/api/profile-detail/${userId}/images`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -58,7 +57,7 @@ export function ProfileImageUpload({
     } else {
       setOrderedImages([]);
     }
-  }, [userId, getToken]);
+  }, [userId, token]);
 
   useEffect(() => {
     fetchImages();
@@ -80,8 +79,6 @@ export function ProfileImageUpload({
     if (!pendingDeleteId) return;
     setIsUploading(true);
     try {
-      const token = await getToken({ template: "convex" });
-      if (!token) throw new Error("No auth token");
       const res = await fetch(`/api/images`, {
         method: "DELETE",
         headers: {
@@ -128,7 +125,7 @@ export function ProfileImageUpload({
     profileId,
     onImagesChanged,
     userId,
-    getToken,
+    token,
   ]);
 
   // Memoize the ordered images
@@ -163,8 +160,6 @@ export function ProfileImageUpload({
 
   // Add generateUploadUrl and uploadImage for ImageUploader
   const generateUploadUrl = useCallback(async () => {
-    const token = await getToken({ template: "convex" });
-    if (!token) return { success: false, error: "No auth token" };
     const res = await fetch("/api/images/upload-url", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -173,7 +168,7 @@ export function ProfileImageUpload({
     }
     const data = await res.json();
     return data.uploadUrl as string;
-  }, [getToken]);
+  }, [token]);
 
   const uploadImage = useCallback(
     async ({
@@ -189,9 +184,6 @@ export function ProfileImageUpload({
       contentType: string;
       fileSize: number;
     }) => {
-      const token = await getToken({ template: "convex" });
-      if (!token)
-        return { success: false, imageId: storageId, message: "No auth token" };
       const res = await fetch("/api/images", {
         method: "POST",
         headers: {
@@ -216,7 +208,7 @@ export function ProfileImageUpload({
       const data = await res.json();
       return data;
     },
-    [getToken]
+    [token]
   );
 
   return (

@@ -17,12 +17,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { User } from "@clerk/nextjs/server";
 import { Profile } from "@/types/profile";
+import { useToken } from "@/components/TokenProvider";
 type Interest = { toUserId: Id<"users"> };
 
 export default function ProfileDetailPage() {
   const params = useParams();
   const { isSignedIn } = useAuth();
-  const { getToken } = useAuth();
+  const token = useToken();
 
   const [localCurrentUserImageOrder, setLocalCurrentUserImageOrder] = useState<
     string[]
@@ -57,7 +58,6 @@ export default function ProfileDetailPage() {
   const refetchProfile = async () => {
     setLoadingProfile(true);
     try {
-      const token = await getToken({ template: "convex" });
       const res = await fetch(`/api/profile-detail/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -91,7 +91,6 @@ export default function ProfileDetailPage() {
     async function fetchImages() {
       setLoadingImages(true);
       try {
-        const token = await getToken({ template: "convex" });
         const res = await fetch(`/api/profile-detail/${userId}/images`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -257,25 +256,20 @@ export default function ProfileDetailPage() {
 
   // Handler for sending interest
   const handleSendInterest = async () => {
-    console.log("clicked");
-    if (!currentUserId || !userId) return;
     setInterestLoading(true);
     setInterestError(null);
     try {
-      const token = await getToken({ template: "convex" });
       const res = await fetch("/api/interests", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          "X-User-Id": currentUserId,
         },
         body: JSON.stringify({
           fromUserId: currentUserId,
           toUserId: userId,
         }),
       });
-      console.log("res", res);
       if (!res.ok) {
         const err = await res.json();
         if (err?.error && err.error.includes("already sent")) {
@@ -306,7 +300,6 @@ export default function ProfileDetailPage() {
     setInterestLoading(true);
     setInterestError(null);
     try {
-      const token = await getToken({ template: "convex" });
       const res = await fetch("/api/interests/remove", {
         method: "POST",
         headers: {

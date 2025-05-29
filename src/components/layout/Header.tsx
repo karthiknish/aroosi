@@ -15,7 +15,7 @@ import {
   X,
   Heart,
 } from "lucide-react";
-
+import Image from "next/image";
 import { useTransition } from "react";
 import { Progress } from "@/components/ui/progress";
 
@@ -244,7 +244,7 @@ export default function Header() {
                 href="/"
                 className="text-3xl sm:text-4xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
               >
-                Aroosi
+                <Image src="/logo.png" alt="Aroosi" width={100} height={100} />
               </Link>
             </motion.div>
 

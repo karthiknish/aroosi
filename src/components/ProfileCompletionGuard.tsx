@@ -1,10 +1,11 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Profile } from "@/types/profile";
+import { useToken } from "@/components/TokenProvider";
 
 interface ProfileCompletionGuardProps {
   children: ReactNode;
@@ -27,7 +28,7 @@ export default function ProfileCompletionGuard({
   children,
 }: ProfileCompletionGuardProps) {
   const { isSignedIn, isLoaded: isClerkLoaded } = useUser();
-  const { getToken } = useAuth();
+  const token = useToken();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,7 +48,6 @@ export default function ProfileCompletionGuard({
       }
       setIsProfileLoading(true);
       try {
-        const token = await getToken({ template: "convex" });
         if (!token) {
           setProfileData(undefined);
           setIsProfileLoading(false);
@@ -74,7 +74,7 @@ export default function ProfileCompletionGuard({
     return () => {
       ignore = true;
     };
-  }, [isClerkLoaded, isSignedIn, getToken]);
+  }, [isClerkLoaded, isSignedIn, token]);
 
   const isProfileComplete = profileData?.isProfileComplete; // TODO: fix this
   const isProfileQueryLoading = isProfileLoading;

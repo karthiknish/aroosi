@@ -14,11 +14,13 @@ import { CreatePost } from "@/components/admin/CreatePost";
 import { ProfileManagement } from "@/components/admin/ProfileManagement";
 import Head from "next/head";
 import { Id } from "@convex/_generated/dataModel";
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import type { Profile } from "@/types/profile";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
 import BlogEditor from "@/components/admin/BlogEditor";
+import { useToken } from "@/components/TokenProvider";
+
 interface BlogPost {
   _id: string;
   title: string;
@@ -62,9 +64,10 @@ function AdminPageInner() {
   const [editSlugManuallyEdited, setEditSlugManuallyEdited] =
     useState<boolean>(false);
   const [editPexelsOpen, setEditPexelsOpen] = useState<boolean>(false);
+  const [editCategories, setEditCategories] = useState<string[]>([]);
 
   const { user, isLoaded, isSignedIn } = useUser();
-  const { getToken } = useAuth();
+  const token = useToken();
 
   // Replace Convex queries with API fetches
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -82,7 +85,6 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchBlogPosts() {
       setLoading(true);
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const blogRes = await fetch("/api/blog", { headers });
@@ -100,7 +102,7 @@ function AdminPageInner() {
     return () => {
       ignore = true;
     };
-  }, [activeTab, getToken]);
+  }, [activeTab, token]);
 
   // Contact messages
   useEffect(() => {
@@ -108,7 +110,6 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchContactMessages() {
       setLoading(true);
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const contactRes = await fetch("/api/contact", { headers });
@@ -121,7 +122,7 @@ function AdminPageInner() {
     return () => {
       ignore = true;
     };
-  }, [activeTab, getToken]);
+  }, [activeTab, token]);
 
   // Profiles
   useEffect(() => {
@@ -129,7 +130,6 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchProfiles() {
       setLoading(true);
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/api/admin/profiles?page=0&pageSize=10", {
@@ -151,7 +151,7 @@ function AdminPageInner() {
     return () => {
       ignore = true;
     };
-  }, [activeTab, getToken]);
+  }, [activeTab, token]);
 
   // Interests
   useEffect(() => {
@@ -159,7 +159,6 @@ function AdminPageInner() {
     let ignore = false;
     async function fetchInterests() {
       setLoading(true);
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const interestsRes = await fetch("/api/admin/interests", { headers });
@@ -172,7 +171,7 @@ function AdminPageInner() {
     return () => {
       ignore = true;
     };
-  }, [activeTab, getToken]);
+  }, [activeTab, token]);
 
   // Live preview effect for create post (must be before any early returns)
   useEffect(() => {
@@ -225,7 +224,6 @@ function AdminPageInner() {
     setCreating(true);
     setError(null);
     try {
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -266,12 +264,12 @@ function AdminPageInner() {
     setEditExcerpt(post.excerpt);
     setEditContent(post.content);
     setEditImageUrl(post.imageUrl || "");
+    setEditCategories(post.categories || []);
     setEditSlugManuallyEdited(false);
   };
 
   const saveEdit = async (id: string) => {
     try {
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -280,12 +278,13 @@ function AdminPageInner() {
         method: "PUT",
         headers,
         body: JSON.stringify({
+          _id: id,
           title: editTitle,
           slug: editSlug,
           excerpt: editExcerpt,
           content: editContent,
           imageUrl: editImageUrl,
-          categories: [],
+          categories: editCategories,
         }),
       });
       if (!res.ok) throw new Error("Failed to update post");
@@ -309,7 +308,6 @@ function AdminPageInner() {
   const confirmDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       (async () => {
-        const token = await getToken({ template: "convex" });
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
         fetch(`/api/blog/${id}`, {
@@ -532,8 +530,8 @@ function AdminPageInner() {
                           slugify={slugify}
                           excerpt={editExcerpt}
                           setExcerpt={setEditExcerpt}
-                          categories={[]}
-                          setCategories={() => {}}
+                          categories={editCategories}
+                          setCategories={setEditCategories}
                           imageUrl={editImageUrl}
                           setImageUrl={setEditImageUrl}
                           pexelsOpen={editPexelsOpen}

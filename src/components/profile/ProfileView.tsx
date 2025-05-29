@@ -31,6 +31,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToken } from "@/components/TokenProvider";
 
 // Helper for displaying profile details
 const ProfileDetailView: React.FC<{
@@ -103,7 +104,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   onDelete,
   deleting,
 }) => {
-  const { getToken } = useAuth();
+  const token = useToken();
   const [images, setImages] = React.useState<
     { url: string; storageId: string; _id: string }[]
   >([]);
@@ -130,8 +131,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     async function fetchImages() {
       setLoadingImages(true);
       if (!userConvexData?._id) return;
-      const token = await getToken({ template: "convex" });
-      if (!token) return;
       const res = await fetch(
         `/api/profile-detail/${userConvexData._id}/images`,
         {
@@ -176,8 +175,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     setImageOrder(imageIds);
     try {
       setLoadingImages(true);
-      const token = await getToken({ template: "convex" });
-      if (!token) throw new Error("No token");
       const res = await fetch(`/api/images/order`, {
         method: "PUT",
         headers: {

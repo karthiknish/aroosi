@@ -1,7 +1,7 @@
 "use client";
 import { Profile } from "@/types/profile";
 import Image from "next/image";
-import { useAuth } from "@clerk/nextjs";
+import { useToken } from "@/components/TokenProvider";
 import React, { useEffect, useState } from "react";
 import {
   User,
@@ -45,7 +45,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
   }
 
   // Fetch profile images from API
-  const { getToken } = useAuth();
+  const token = useToken();
   const [images, setImages] = useState<ProfileImage[] | null | undefined>(
     undefined
   );
@@ -56,7 +56,6 @@ export default function ProfileView({ profile }: { profile: Profile }) {
         return;
       }
       try {
-        const token = await getToken({ template: "convex" });
         if (!token) {
           setImages([]);
           return;
@@ -78,7 +77,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
       }
     }
     fetchImages();
-  }, [profile.userId, getToken]);
+  }, [profile.userId, token]);
 
   // Handle loading state
   if (images === undefined) {

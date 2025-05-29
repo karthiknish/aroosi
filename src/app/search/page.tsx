@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { UserCircle } from "lucide-react";
 import React, { useState, useEffect } from "react";
-import { useUser, SignInButton, useAuth } from "@clerk/nextjs";
+import { useUser, SignInButton } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToken } from "@/components/TokenProvider";
 
 const majorUkCities = [
   "Belfast",
@@ -81,7 +82,7 @@ interface ProfileSearchResult {
 
 export default function SearchProfilesPage() {
   const { user, isLoaded } = useUser();
-  const { getToken } = useAuth();
+  const token = useToken();
   const [currentUserProfile, setCurrentUserProfile] = useState<
     Record<string, unknown> | undefined
   >(undefined);
@@ -98,7 +99,6 @@ export default function SearchProfilesPage() {
 
   useEffect(() => {
     async function fetchProfile() {
-      const token = await getToken({ template: "convex" });
       if (!token) return;
       const res = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
@@ -108,7 +108,7 @@ export default function SearchProfilesPage() {
       }
     }
     fetchProfile();
-  }, [getToken]);
+  }, [token]);
 
   const preferredGender =
     typeof currentUserProfile === "object" &&
@@ -124,8 +124,6 @@ export default function SearchProfilesPage() {
   useEffect(() => {
     async function fetchProfiles() {
       setLoading(true);
-      const token = await getToken({ template: "convex" });
-      if (!token) return;
       const res = await fetch(
         `/api/search?preferredGender=${preferredGender}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -138,7 +136,7 @@ export default function SearchProfilesPage() {
       setLoading(false);
     }
     fetchProfiles();
-  }, [getToken, preferredGender]);
+  }, [token, preferredGender]);
 
   // Only show users with a complete profile and not hidden from search
   const publicProfiles = React.useMemo(() => {
@@ -207,8 +205,6 @@ export default function SearchProfilesPage() {
         setLoading(false);
         return;
       }
-      const token = await getToken({ template: "convex" });
-      if (!token) return;
       const res = await fetch(
         `/api/images/batch?userIds=${userIds.join(",")}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -219,7 +215,7 @@ export default function SearchProfilesPage() {
       setLoading(false);
     }
     fetchImages();
-  }, [getToken, userIds]);
+  }, [token, userIds]);
 
   if (!isLoaded) {
     return (

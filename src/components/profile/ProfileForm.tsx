@@ -26,6 +26,7 @@ import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@clerk/nextjs";
+import { useToken } from "@/components/TokenProvider";
 
 // Hardcoded list of major UK cities
 const majorUkCities = [
@@ -468,7 +469,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     // removed setImagesVersion
   }, []);
 
-  const { getToken } = useAuth();
+  const token = useToken();
   const [convexUserId, setConvexUserId] = React.useState<string | null>(null);
   const [userImages, setUserImages] = React.useState<
     {
@@ -481,8 +482,6 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   React.useEffect(() => {
     async function fetchUserId() {
       if (!clerkUser?.id) return;
-      const token = await getToken({ template: "convex" });
-      if (!token) return;
       const res = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -492,14 +491,12 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
       }
     }
     fetchUserId();
-  }, [clerkUser?.id, getToken]);
+  }, [clerkUser?.id, token]);
 
   React.useEffect(() => {
     async function fetchImages() {
       if (!convexUserId) return;
       setLoadingImages(true);
-      const token = await getToken({ template: "convex" });
-      if (!token) return;
       const res = await fetch(`/api/profile-detail/${convexUserId}/images`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -517,17 +514,10 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
 
   const handleDeleteImage = async (storageId: string) => {
     if (!convexUserId) return;
-    const token = await getToken({ template: "convex" });
-    if (!token) {
-      toast.error("No authentication token");
-      return;
-    }
     await deleteImage(convexUserId, storageId, token);
   };
 
   const handleReorderImages = async (userId: string, imageIds: string[]) => {
-    const token = await getToken({ template: "convex" });
-    if (!token) return;
     try {
       const res = await fetch(`/api/images/order`, {
         method: "PUT",

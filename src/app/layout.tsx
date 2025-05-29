@@ -5,6 +5,7 @@ import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { Toaster } from "sonner";
 import MainLayoutContent from "@/components/layout/MainLayoutContent";
 import ChatBot from "@/components/ChatBot";
+import { TokenProvider } from "@/components/TokenProvider";
 
 export const metadata: Metadata = {
   title: "Aroosi - UK Matrimony for Muslims",
@@ -68,21 +69,23 @@ export default function RootLayout({
         // }
       }}
     >
-      <html lang="en">
-        <head>
-          <link
-            href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Nunito+Sans:wght@400;600;700&display=swap"
-            rel="stylesheet"
-          />
-        </head>
-        <body className={`font-sans antialiased`}>
-          <ProfileCompletionGuard>
-            <MainLayoutContent>{children}</MainLayoutContent>
-          </ProfileCompletionGuard>
-          <Toaster richColors />
-          <ChatBot />
-        </body>
-      </html>
+      <TokenProvider>
+        <html lang="en">
+          <head>
+            <link
+              href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Nunito+Sans:wght@400;600;700&display=swap"
+              rel="stylesheet"
+            />
+          </head>
+          <body className={`font-sans antialiased`}>
+            <ProfileCompletionGuard>
+              <MainLayoutContent>{children}</MainLayoutContent>
+            </ProfileCompletionGuard>
+            <Toaster richColors />
+            <ChatBot />
+          </body>
+        </html>
+      </TokenProvider>
     </ClerkProvider>
   );
 }

@@ -127,24 +127,28 @@ export default function HomePage() {
                   custom={0.4}
                   className="flex flex-col sm:flex-row gap-4"
                 >
-                  <Button
-                    size="lg"
-                    className="bg-rose-600 hover:bg-rose-700 font-nunito text-base font-medium relative overflow-hidden group"
-                  >
-                    <span className="relative z-10 flex items-center">
-                      Start Your Journey
-                      <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                    </span>
-                    <span className="absolute inset-0 bg-gradient-to-r from-rose-600 to-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-rose-200 text-rose-600 hover:bg-rose-50 font-nunito text-base font-medium relative overflow-hidden group"
-                  >
-                    <span className="relative z-10">Browse Profiles</span>
-                    <span className="absolute inset-0 bg-rose-100 opacity-0 group-hover:opacity-30 transition-opacity"></span>
-                  </Button>
+                  <Link href="/signup">
+                    <Button
+                      size="lg"
+                      className="bg-rose-600 hover:bg-rose-700 font-nunito text-base font-medium relative overflow-hidden group"
+                    >
+                      <span className="relative z-10 flex items-center">
+                        Start Your Journey
+                        <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                      </span>
+                      <span className="absolute inset-0 bg-gradient-to-r from-rose-600 to-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                    </Button>
+                  </Link>
+                  <Link href="/contact">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="border-rose-200 text-rose-600 hover:bg-rose-50 font-nunito text-base font-medium relative overflow-hidden group"
+                    >
+                      <span className="relative z-10">Contact Us</span>
+                      <span className="absolute inset-0 bg-rose-100 opacity-0 group-hover:opacity-30 transition-opacity"></span>
+                    </Button>
+                  </Link>
                 </motion.div>
 
                 <motion.div
@@ -154,29 +158,29 @@ export default function HomePage() {
                 >
                   <div className="text-center relative">
                     <div className="absolute -inset-1 bg-rose-50 rounded-lg -z-10 transform rotate-3"></div>
-                    <div className="font-lora text-2xl font-bold text-gray-900">
-                      50K+
+                    <div className="font-lora text-2xl font-bold text-pink-600">
+                      2025
                     </div>
                     <div className="font-nunito text-sm text-gray-600">
-                      Active Members
+                      Relaunch Year
                     </div>
                   </div>
                   <div className="text-center relative">
                     <div className="absolute -inset-1 bg-rose-50 rounded-lg -z-10 transform -rotate-2"></div>
-                    <div className="font-lora text-2xl font-bold text-gray-900">
-                      2,500+
+                    <div className="font-lora text-2xl font-bold text-pink-600">
+                      GDPR-First
                     </div>
                     <div className="font-nunito text-sm text-gray-600">
-                      Success Stories
+                      Privacy & Security
                     </div>
                   </div>
                   <div className="text-center relative">
                     <div className="absolute -inset-1 bg-rose-50 rounded-lg -z-10 transform rotate-1"></div>
-                    <div className="font-lora text-2xl font-bold text-gray-900">
-                      15+
+                    <div className="font-lora text-2xl font-bold text-pink-600">
+                      Community
                     </div>
                     <div className="font-nunito text-sm text-gray-600">
-                      Years Trusted
+                      Built For You
                     </div>
                   </div>
                 </motion.div>
@@ -193,7 +197,7 @@ export default function HomePage() {
                 <div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl transform hover:scale-[1.01] transition-transform">
                   <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-rose-600/20 to-pink-600/20 mix-blend-overlay"></div>
                   <Image
-                    src="/placeholder.svg?height=600&width=500"
+                    src="https://images.pexels.com/photos/17301141/pexels-photo-17301141/free-photo-of-close-up-of-couple-showing-rings-on-hands.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
                     alt="Happy couple"
                     width={500}
                     height={600}
@@ -210,16 +214,6 @@ export default function HomePage() {
         </section>
 
         {/* Decorative Divider */}
-        <div className="relative h-24 overflow-hidden">
-          <div className="absolute inset-0 bg-white"></div>
-          <svg
-            className="absolute bottom-0 w-full h-16 text-gray-50 fill-current"
-            viewBox="0 0 1200 120"
-            preserveAspectRatio="none"
-          >
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"></path>
-          </svg>
-        </div>
 
         {/* How It Works Section */}
         <section
@@ -324,24 +318,6 @@ export default function HomePage() {
         </section>
 
         {/* Decorative Divider */}
-        <div className="relative h-24 overflow-hidden">
-          <div className="absolute inset-0 bg-gray-50"></div>
-          <svg
-            className="absolute bottom-0 w-full h-16 text-white fill-current"
-            viewBox="0 0 1200 120"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z"
-              opacity=".25"
-            ></path>
-            <path
-              d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z"
-              opacity=".5"
-            ></path>
-            <path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z"></path>
-          </svg>
-        </div>
 
         {/* Features Section */}
         <section className="py-20 bg-white relative overflow-hidden">
@@ -447,7 +423,7 @@ export default function HomePage() {
                 <div className="relative z-10 rounded-2xl overflow-hidden shadow-xl">
                   <div className="absolute inset-0 bg-gradient-to-tr from-rose-600/10 to-pink-600/10 mix-blend-overlay"></div>
                   <Image
-                    src="/placeholder.svg?height=500&width=600"
+                    src="https://images.pexels.com/photos/2778436/pexels-photo-2778436.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
                     alt="Features illustration"
                     width={600}
                     height={500}
@@ -527,19 +503,22 @@ export default function HomePage() {
               {[
                 {
                   name: "Sarah & Ahmed",
-                  year: "Married in 2023",
                   quote:
                     "Aroosi helped us find each other when we had almost given up hope. The platform's focus on compatibility made all the difference.",
+                  image:
+                    "https://images.pexels.com/photos/2586346/pexels-photo-2586346.jpeg?auto=compress&cs=tinysrgb&w=800",
                 },
                 {
                   name: "Fatima & Omar",
-                  year: "Married in 2022",
+                  image:
+                    "https://images.pexels.com/photos/8819460/pexels-photo-8819460.jpeg?auto=compress&cs=tinysrgb&w=800",
                   quote:
                     "We connected instantly through Aroosi. The verification process gave us confidence, and now we're happily married with a beautiful family.",
                 },
                 {
                   name: "Aisha & Yusuf",
-                  year: "Married in 2024",
+                  image:
+                    "https://images.pexels.com/photos/30518407/pexels-photo-30518407/free-photo-of-romantic-couple-strolling-on-sandy-beach.jpeg?auto=compress&cs=tinysrgb&w=800",
                   quote:
                     "The support team at Aroosi was incredible. They guided us through every step and we found our perfect match within months.",
                 },
@@ -560,7 +539,7 @@ export default function HomePage() {
                       <div className="flex items-center space-x-4">
                         <div className="relative">
                           <Image
-                            src="/placeholder.svg?height=60&width=60"
+                            src={story.image}
                             alt="Couple"
                             width={60}
                             height={60}
@@ -574,9 +553,6 @@ export default function HomePage() {
                           <h4 className="font-lora font-semibold text-gray-900">
                             {story.name}
                           </h4>
-                          <p className="font-nunito text-sm text-gray-600">
-                            {story.year}
-                          </p>
                         </div>
                       </div>
                       <div className="relative">

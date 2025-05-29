@@ -21,6 +21,7 @@ import { MapPin, Search, UserCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToken } from "@/components/TokenProvider";
 
 const religions = [
   "Any",
@@ -42,7 +43,8 @@ function isAllowedGender(
 }
 
 export default function MatchesPage() {
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn } = useAuth();
+  const token = useToken();
   const [filters, setFilters] = useState({
     distance: "",
     religion: "Any",
@@ -69,7 +71,6 @@ export default function MatchesPage() {
       setLoading(true);
       setError(null);
       try {
-        const token = await getToken({ template: "convex" });
         const params = new URLSearchParams();
         if (isAllowedGender(filters.religion)) {
           params.append("preferredGender", filters.religion);

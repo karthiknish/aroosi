@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
 import { BlogPost } from "@/types/blog";
+import { useToken } from "@/components/TokenProvider";
 
 // Calculate reading time
 function getReadingTime(content: string): number {
@@ -23,13 +24,12 @@ function getReadingTime(content: string): number {
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { getToken } = useAuth();
+  const token = useToken();
   const [post, setPost] = React.useState<BlogPost | undefined>(undefined);
   React.useEffect(() => {
     async function fetchPost() {
       if (!slug) return;
       setPost(undefined);
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`/api/blog/${slug}`, { headers });
@@ -40,7 +40,7 @@ export default function BlogDetailPage() {
       }
     }
     fetchPost();
-  }, [slug, getToken]);
+  }, [slug, token]);
 
   if (post === undefined) {
     return (

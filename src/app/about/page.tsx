@@ -122,7 +122,7 @@ export default function AboutPage() {
                 >
                   <div className="absolute inset-0 bg-gradient-to-tr from-rose-600/10 to-pink-600/10 mix-blend-overlay"></div>
                   <Image
-                    src="/placeholder.svg?height=500&width=600"
+                    src="https://images.pexels.com/photos/28998602/pexels-photo-28998602/free-photo-of-romantic-wedding-in-lush-vietnamese-landscape.jpeg?auto=compress&cs=tinysrgb&w=800"
                     alt="Couple looking at each other"
                     width={600}
                     height={500}
@@ -500,9 +500,9 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Team Section */}
+        {/* Team Section 
         <section className="py-20 bg-gray-50 relative overflow-hidden">
-          {/* Decorative background pattern */}
+       s
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
@@ -613,7 +613,7 @@ export default function AboutPage() {
               ))}
             </motion.div>
           </div>
-        </section>
+        </section>*/}
 
         {/* Trust Indicators Section */}
         <section className="py-20 bg-white relative overflow-hidden">
@@ -631,7 +631,7 @@ export default function AboutPage() {
                   variants={fadeInUp}
                   custom={0}
                 >
-                  Trusted By Thousands
+                  Introducing the New Aroosi Platform
                   <svg
                     className="absolute -bottom-2 left-0 w-full"
                     height="6"
@@ -653,8 +653,10 @@ export default function AboutPage() {
                 variants={fadeInUp}
                 custom={1}
               >
-                Our commitment to excellence has earned us recognition and trust
-                from our community and beyond.
+                Aroosi is relaunching in 2025 with a brand new platform,
+                designed from the ground up to empower British South Asians to
+                find meaningful connections. Experience a modern, secure, and
+                community-driven approach to matrimony.
               </motion.p>
             </motion.div>
 
@@ -666,10 +668,10 @@ export default function AboutPage() {
               variants={fadeIn}
             >
               {[
-                { label: "Active Members", value: "50K+" },
-                { label: "Success Stories", value: "2,500+" },
-                { label: "Years of Experience", value: "15+" },
-                { label: "Customer Rating", value: "4.8/5" },
+                { label: "Launch Year", value: "2025" },
+                { label: "Built for", value: "British South Asians" },
+                { label: "Privacy", value: "GDPR-First" },
+                { label: "Community", value: "You!" },
               ].map((stat, i) => (
                 <motion.div
                   className="flex flex-col items-center space-y-2 p-4 hover:bg-rose-50 rounded-lg transition-colors"
@@ -677,7 +679,7 @@ export default function AboutPage() {
                   variants={fadeInUp}
                   custom={i}
                 >
-                  <div className="text-4xl font-lora font-bold text-rose-600">
+                  <div className="text-4xl font-lora text-center font-bold text-rose-600">
                     {stat.value}
                   </div>
                   <p className="font-nunito text-gray-600 text-center">
@@ -697,18 +699,18 @@ export default function AboutPage() {
               {[
                 {
                   icon: <Award className="h-5 w-5 text-rose-600" />,
-                  title: "New Platform Launch",
-                  desc: "Aroosi launches in 2025 to connect British with purpose and tradition.",
+                  title: "Modern Experience",
+                  desc: "Aroosi's new platform offers a seamless, intuitive, and mobile-friendly experience for all users.",
                 },
                 {
                   icon: <Shield className="h-5 w-5 text-rose-600" />,
-                  title: "Privacy & Security First",
-                  desc: "Built from the ground up with GDPR compliance and advanced security.",
+                  title: "Privacy & Security",
+                  desc: "Your data is protected with industry-leading security and full GDPR compliance from day one.",
                 },
                 {
                   icon: <Star className="h-5 w-5 text-rose-600" />,
-                  title: "Community Focused",
-                  desc: "Shaping the future of matrimony in the UK, together.",
+                  title: "Community-Driven",
+                  desc: "We’re building Aroosi together with our members—your feedback shapes our features and future.",
                 },
               ].map((item, i) => (
                 <motion.div

@@ -20,10 +20,12 @@ import React, { useState, useEffect } from "react";
 import { Id } from "@convex/_generated/dataModel";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Profile } from "@/types/profile";
+import { useToken } from "@/components/TokenProvider";
 
 export default function ProfilePage() {
   const { user: clerkUser } = useUser();
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn } = useAuth();
+  const token = useToken();
   const [profileData, setProfileData] = useState<Profile | undefined>(
     undefined
   );
@@ -48,7 +50,6 @@ export default function ProfilePage() {
       }
       setLoadingProfile(true);
       try {
-        const token = await getToken({ template: "convex" });
         const res = await fetch("/api/profile", {
           method: "GET",
           headers: {
@@ -110,7 +111,6 @@ export default function ProfilePage() {
       const filtered = Object.fromEntries(
         Object.entries(values).filter(([key]) => allowedFields.includes(key))
       );
-      const token = await getToken({ template: "convex" });
       const res = await fetch("/api/profile", {
         method: "PUT",
         headers: {

@@ -66,7 +66,7 @@ import { useDropzone } from "react-dropzone";
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
 import "@/styles/emoji-picker-custom.css";
-import { useAuth } from "@clerk/nextjs";
+import { useToken } from "@/components/TokenProvider";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
@@ -92,7 +92,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPopoverRef = useRef<HTMLDivElement>(null);
-  const { getToken } = useAuth();
+  const token = useToken();
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -102,7 +102,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       try {
         const file = acceptedFiles[0];
         // 1. Get upload URL from backend
-        const token = await getToken({ template: "convex" });
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
         const uploadUrlRes = await fetch("/api/images/upload-url", { headers });
@@ -144,7 +143,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         setUploading(false);
       }
     },
-    [editor, getToken]
+    [editor, token]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

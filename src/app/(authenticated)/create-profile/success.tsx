@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@clerk/nextjs";
 import { Profile } from "@/types/profile";
+import { useToken } from "@/components/TokenProvider";
 
 export default function CreateProfileSuccessPage() {
   const [currentUserProfile, setCurrentUserProfile] = useState<
@@ -13,11 +14,10 @@ export default function CreateProfileSuccessPage() {
   >(undefined);
   const router = useRouter();
   const { width, height } = useWindowSize();
-  const { getToken } = useAuth();
+  const token = useToken();
 
   useEffect(() => {
     async function fetchProfile() {
-      const token = await getToken({ template: "convex" });
       if (!token) {
         setCurrentUserProfile({ profile: null });
         return;
@@ -33,7 +33,7 @@ export default function CreateProfileSuccessPage() {
       }
     }
     fetchProfile();
-  }, [getToken]);
+  }, [token]);
 
   useEffect(() => {
     if (currentUserProfile === undefined) return;

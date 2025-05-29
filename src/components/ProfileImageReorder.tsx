@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
-import { useAuth } from "@clerk/nextjs";
+import { useToken } from "@/components/TokenProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // If you get a type error for react-beautiful-dnd, you may need to install @types/react-beautiful-dnd
@@ -99,7 +99,7 @@ export function ProfileImageReorder({
   renderAction,
   loading,
 }: Props) {
-  const { getToken } = useAuth();
+  const token = useToken();
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -119,7 +119,6 @@ export function ProfileImageReorder({
       .map((img) => img.storageId)
       .filter((id): id is string => Boolean(id));
     try {
-      const token = await getToken({ template: "convex" });
       if (!token) throw new Error("No auth token");
       const res = await fetch("/api/images/order", {
         method: "PUT",

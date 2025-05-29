@@ -6,7 +6,7 @@ import { MapPin, UserCircle } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@clerk/nextjs";
+import { useToken } from "@/components/TokenProvider";
 import { Interest } from "@/types/profile";
 
 type PublicProfile = {
@@ -23,7 +23,7 @@ type PublicProfile = {
 
 export default function MyInterestsPage() {
   const { user: isSignedIn } = useUser();
-  const { getToken } = useAuth();
+  const token = useToken();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [sentInterests, setSentInterests] = useState<Interest[] | undefined>(
     undefined
@@ -33,7 +33,6 @@ export default function MyInterestsPage() {
 
   useEffect(() => {
     async function fetchCurrentUser() {
-      const token = await getToken({ template: "convex" });
       if (!token) {
         setCurrentUserId(null);
         return;
@@ -49,16 +48,11 @@ export default function MyInterestsPage() {
       }
     }
     fetchCurrentUser();
-  }, [getToken]);
+  }, [token]);
 
   useEffect(() => {
     async function fetchSentInterests() {
       if (!currentUserId) {
-        setSentInterests(undefined);
-        return;
-      }
-      const token = await getToken({ template: "convex" });
-      if (!token) {
         setSentInterests(undefined);
         return;
       }
@@ -73,7 +67,7 @@ export default function MyInterestsPage() {
       }
     }
     fetchSentInterests();
-  }, [currentUserId, getToken]);
+  }, [currentUserId, token]);
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -89,12 +83,6 @@ export default function MyInterestsPage() {
       const userIds = sentInterests.map(
         (interest: { toUserId: string }) => interest.toUserId
       );
-      const token = await getToken({ template: "convex" });
-      if (!token) {
-        setProfiles([]);
-        setLoadingProfiles(false);
-        return;
-      }
       const res = await fetch("/api/profile/batch", {
         method: "POST",
         headers: {
@@ -112,7 +100,7 @@ export default function MyInterestsPage() {
       setLoadingProfiles(false);
     }
     fetchProfiles();
-  }, [sentInterests, getToken]);
+  }, [sentInterests, token]);
 
   if (!isSignedIn) {
     return (

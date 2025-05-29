@@ -8,18 +8,18 @@ import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@clerk/nextjs";
 import type { ProfileFormValues } from "@/components/profile/ProfileForm";
+import { useToken } from "@/components/TokenProvider";
 
 export default function CreateProfilePage() {
   const refetchKey = 0;
   const router = useRouter();
-  const { getToken } = useAuth();
+  const token = useToken();
   const [currentUserProfile, setCurrentUserProfile] = useState<
     Record<string, unknown> | null | undefined
   >(undefined);
 
   useEffect(() => {
     async function fetchProfile() {
-      const token = await getToken({ template: "convex" });
       if (!token) {
         setCurrentUserProfile(null);
         return;
@@ -35,7 +35,7 @@ export default function CreateProfilePage() {
       }
     }
     fetchProfile();
-  }, [getToken]);
+  }, [token]);
 
   useEffect(() => {
     if (currentUserProfile && currentUserProfile.userId) {
@@ -181,12 +181,6 @@ export default function CreateProfilePage() {
               physicalStatus,
               profileImageIds,
             };
-            const token = await getToken({ template: "convex" });
-            if (!token) {
-              toast.error("You must be signed in to create a profile.");
-              return;
-            }
-            // Refetch the profile before creating
             const latestProfileRes = await fetch("/api/profile", {
               headers: { Authorization: `Bearer ${token}` },
             });

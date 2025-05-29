@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ["quirky-akita-969.convex.cloud"],
+    domains: ["quirky-akita-969.convex.cloud", "images.pexels.com"],
   },
   webpack: (config) => {
     config.resolve.alias = {

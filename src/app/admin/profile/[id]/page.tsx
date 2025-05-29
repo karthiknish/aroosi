@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { useToken } from "@/components/TokenProvider";
 
 // Define types for images and matches
 interface ImageType {
@@ -34,7 +35,7 @@ interface MatchType {
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useAuth();
-  const { getToken } = useAuth();
+  const token = useToken();
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [images, setImages] = useState<ImageType[]>([]);
   const [matches, setMatches] = useState<MatchType[]>([]);
@@ -47,7 +48,6 @@ export default function AdminProfileDetailPage() {
 
   useEffect(() => {
     async function fetchProfileData() {
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       // Profile
@@ -71,7 +71,7 @@ export default function AdminProfileDetailPage() {
       );
     }
     if (isSignedIn) fetchProfileData();
-  }, [id, isSignedIn, getToken]);
+  }, [id, isSignedIn, token]);
 
   const handleDeleteImage = async () => {
     if (!profile?.userId || !imageToDelete) return;
@@ -79,7 +79,6 @@ export default function AdminProfileDetailPage() {
 
     try {
       setIsDeleting(true);
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const deleteRes = await fetch(`/api/images/${storageId}`, {
@@ -233,7 +232,6 @@ export default function AdminProfileDetailPage() {
   const handleToggleHiddenFromSearch = async (id: string) => {
     if (!profile?._id) return;
     try {
-      const token = await getToken();
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const updateRes = await fetch(
