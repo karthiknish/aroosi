@@ -6,12 +6,14 @@ import {
   type QueryCtx,
   type MutationCtx,
   action,
+  internalAction,
 } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 import { requireAdmin } from "./utils/requireAdmin";
-import { checkRateLimit } from "./utils/rateLimit";
+import { ConvexError } from "convex/values";
+import { internal } from "./_generated/api"; // Ensure internal is imported
 
 // Types based on schema
 export interface User {
@@ -203,93 +205,48 @@ export const internalUpsertUser = internalMutation(
  */
 export const updateProfile = mutation({
   args: {
-    fullName: v.optional(v.string()),
-    dateOfBirth: v.optional(v.string()),
-    gender: v.optional(
-      v.union(v.literal("male"), v.literal("female"), v.literal("other"))
-    ),
-    ukCity: v.optional(v.string()),
-    ukPostcode: v.optional(v.string()),
-    religion: v.optional(v.string()),
-    caste: v.optional(v.string()),
-    motherTongue: v.optional(v.string()),
-    height: v.optional(v.string()),
-    maritalStatus: v.optional(
-      v.union(
-        v.literal("single"),
-        v.literal("divorced"),
-        v.literal("widowed"),
-        v.literal("annulled")
-      )
-    ),
-    education: v.optional(v.string()),
-    occupation: v.optional(v.string()),
-    annualIncome: v.optional(v.number()),
-    aboutMe: v.optional(v.string()),
-    partnerPreferenceAgeMin: v.optional(
-      v.union(v.number(), v.string(), v.literal(""))
-    ),
-    partnerPreferenceAgeMax: v.optional(
-      v.union(v.number(), v.string(), v.literal(""))
-    ),
-    partnerPreferenceReligion: v.optional(v.array(v.string())),
-    partnerPreferenceUkCity: v.optional(v.array(v.string())),
-    profileImageIds: v.optional(v.array(v.id("_storage"))),
-    // New fields for lifestyle/contact
-    phoneNumber: v.optional(v.string()),
-    diet: v.optional(
-      v.union(
-        v.literal("vegetarian"),
-        v.literal("non-vegetarian"),
-        v.literal("vegan"),
-        v.literal("eggetarian"),
-        v.literal("other"),
-        v.literal("")
-      )
-    ),
-    smoking: v.optional(
-      v.union(
-        v.literal("no"),
-        v.literal("occasionally"),
-        v.literal("yes"),
-        v.literal("")
-      )
-    ),
-    drinking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
-    ),
-    physicalStatus: v.optional(
-      v.union(
-        v.literal("normal"),
-        v.literal("differently-abled"),
-        v.literal("other"),
-        v.literal("")
-      )
-    ),
-    preferredGender: v.optional(
-      v.union(
-        v.literal("male"),
-        v.literal("female"),
-        v.literal("other"),
-        v.literal("any")
-      )
-    ),
+    updates: v.object({
+      fullName: v.optional(v.string()),
+      dateOfBirth: v.optional(v.string()),
+      gender: v.optional(
+        v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+      ),
+      ukCity: v.optional(v.string()),
+      aboutMe: v.optional(v.string()),
+      religion: v.optional(v.string()),
+      occupation: v.optional(v.string()),
+      education: v.optional(v.string()),
+      height: v.optional(v.string()),
+      maritalStatus: v.optional(
+        v.union(
+          v.literal("single"),
+          v.literal("divorced"),
+          v.literal("widowed"),
+          v.literal("annulled")
+        )
+      ),
+      smoking: v.optional(
+        v.union(
+          v.literal("no"),
+          v.literal("occasionally"),
+          v.literal("yes"),
+          v.literal("")
+        )
+      ),
+      drinking: v.optional(
+        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      ),
+      profileImageIds: v.optional(v.array(v.id("_storage"))),
+      isProfileComplete: v.optional(v.boolean()),
+    }),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    const rateKey = `users:updateProfile:${identity?.subject || "anon"}`;
-    const rate = await checkRateLimit(ctx.db, rateKey);
-    if (!rate.allowed) {
-      return {
-        success: false,
-        error: `Rate limit exceeded. Try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
-      };
-    }
-
     if (!identity) {
       return { success: false, message: "Not authenticated" };
     }
 
+    // Find user by Clerk ID
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
@@ -299,67 +256,31 @@ export const updateProfile = mutation({
       return { success: false, message: "User not found in Convex" };
     }
 
+    // Find profile by user ID
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .first();
 
     if (!profile) {
-      return { success: false, message: "Profile not found for user" };
+      return { success: false, message: "Profile not found" };
     }
 
-    let newProfileCompleteStatus = profile.isProfileComplete;
-    // Check essential fields only if profile is not already marked complete
-    if (
-      profile.isProfileComplete === false ||
-      profile.isProfileComplete === undefined
-    ) {
-      const essentialFields = [
-        "fullName",
-        "dateOfBirth",
-        "gender",
-        "ukCity",
-        "aboutMe",
-      ];
-      let allEssentialFilled = true;
-
-      const tempProfileDataForCheck = { ...profile, ...args }; // Combine existing and new data for check
-
-      for (const field of essentialFields) {
-        const value =
-          tempProfileDataForCheck[
-            field as keyof typeof tempProfileDataForCheck
-          ];
-        if (
-          value === undefined ||
-          value === null ||
-          (typeof value === "string" && value.trim() === "")
-        ) {
-          allEssentialFilled = false;
-          break;
-        }
-      }
-      if (allEssentialFilled) {
-        newProfileCompleteStatus = true;
-      }
-    }
-
-    const updatePayload: Partial<Profile> = { ...args }; // Start with args
-    if (newProfileCompleteStatus !== profile.isProfileComplete) {
-      updatePayload.isProfileComplete = newProfileCompleteStatus;
-    }
+    // Process updates
+    const processedUpdates: Partial<Omit<Profile, "_id">> = { ...args.updates };
 
     // Ensure updatedAt is always set on any profile modification
-    updatePayload.updatedAt = Date.now();
+    processedUpdates.updatedAt = Date.now();
 
     try {
-      await ctx.db.patch(profile._id, updatePayload);
+      // Update the profile
+      await ctx.db.patch(profile._id, processedUpdates);
+
       return {
         success: true,
         message: "Profile updated successfully",
-        isProfileComplete: newProfileCompleteStatus,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating profile:", error);
       return { success: false, message: "Failed to update profile" };
     }
@@ -563,6 +484,150 @@ export const deleteProfile = mutation({
   },
 });
 
+export const deleteCurrentUserProfile = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("User not authenticated");
+    }
+
+    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    if (!user) {
+      throw new ConvexError("User not found in Convex DB");
+    }
+
+    const clerkId = user.clerkId; // Store clerkId before potentially deleting user document
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (profile) {
+      // Delete associated images from storage
+      if (profile.profileImageIds && profile.profileImageIds.length > 0) {
+        try {
+          await Promise.all(
+            profile.profileImageIds.map((imageId) =>
+              ctx.storage.delete(imageId)
+            )
+          );
+          console.log(
+            `Deleted ${profile.profileImageIds.length} images for profile ${profile._id}`
+          );
+        } catch (error) {
+          console.error(
+            `Error deleting images for profile ${profile._id}:`,
+            error
+          );
+          // Non-fatal, continue with profile and user deletion
+        }
+      }
+      // Delete the profile document
+      await ctx.db.delete(profile._id);
+      console.log(
+        `Successfully deleted profile ${profile._id} for user ${user._id}`
+      );
+    } else {
+      console.log(`No profile found for user ${user._id} to delete.`);
+    }
+
+    // Delete the user document from Convex
+    await ctx.db.delete(user._id);
+    console.log(
+      `Successfully deleted user ${user._id} (Clerk ID: ${clerkId}) from Convex DB.`
+    );
+
+    // Schedule an action to delete the user from Clerk
+    await ctx.scheduler.runAfter(0, internal.users.internalDeleteClerkUser, {
+      clerkId: clerkId,
+    });
+
+    return {
+      success: true,
+      message:
+        "Profile and user deletion from Convex initiated. Clerk deletion scheduled.",
+    };
+  },
+});
+
+// Internal action to delete user from Clerk
+export const internalDeleteClerkUser = internalAction({
+  args: { clerkId: v.string() },
+  handler: async (_ctx, args) => {
+    const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+    if (!clerkSecretKey) {
+      console.error(
+        "CLERK_SECRET_KEY environment variable not set. Cannot delete user from Clerk."
+      );
+      // Not throwing an error here as the Convex part is done.
+      // The user will be orphaned in Clerk but deleted from the app.
+      return {
+        success: false,
+        message:
+          "Clerk secret key not configured. User not deleted from Clerk.",
+      };
+    }
+
+    const clerkUserId = args.clerkId;
+    // Ensure this URL is correct as per Clerk API v1 documentation
+    const clerkApiUrl = `https://api.clerk.com/v1/users/${clerkUserId}`;
+
+    console.log(
+      `Attempting to delete user ${clerkUserId} from Clerk via API: ${clerkApiUrl}`
+    );
+
+    try {
+      const response = await fetch(clerkApiUrl, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${clerkSecretKey}`,
+          "Content-Type": "application/json", // Though not strictly necessary for DELETE with no body
+        },
+      });
+
+      if (response.ok) {
+        // const responseBody = await response.json(); // Clerk delete might return a body
+        console.log(
+          `Successfully deleted user ${clerkUserId} from Clerk. Status: ${response.status}`
+        );
+        return {
+          success: true,
+          message: "User successfully deleted from Clerk.",
+        };
+      } else {
+        let errorBodyText = await response.text(); // Read as text first
+        let errorBodyJson = null;
+        try {
+          errorBodyJson = JSON.parse(errorBodyText);
+        } catch (e) {
+          // ignore if not json
+        }
+        console.error(
+          `Failed to delete user ${clerkUserId} from Clerk. Status: ${response.status} ${response.statusText}. Body:`,
+          errorBodyJson || errorBodyText
+        );
+        return {
+          success: false,
+          message: `Clerk API error: ${response.status} ${response.statusText}`,
+          details: errorBodyJson || errorBodyText,
+        };
+      }
+    } catch (error: any) {
+      console.error(
+        `Network or other error when trying to delete user ${clerkUserId} from Clerk:`,
+        error
+      );
+      return {
+        success: false,
+        message: "Failed to communicate with Clerk API.",
+        details: error.message || String(error),
+      };
+    }
+  },
+});
+
 export const adminUpdateProfile = mutation({
   args: {
     id: v.id("profiles"),
@@ -587,7 +652,7 @@ export const adminUpdateProfile = mutation({
       ),
       education: v.optional(v.string()),
       occupation: v.optional(v.string()),
-      annualIncome: v.optional(v.union(v.number(), v.string())),
+      annualIncome: v.optional(v.number()),
       aboutMe: v.optional(v.string()),
       phoneNumber: v.optional(v.string()),
       diet: v.optional(
@@ -649,22 +714,7 @@ export const adminUpdateProfile = mutation({
     requireAdmin(identity);
 
     // Create a mutable copy of updates to avoid modifying the original args.updates
-    const processedUpdates: any = { ...args.updates };
-
-    // Process annualIncome: convert string to number if necessary
-    if (typeof processedUpdates.annualIncome === "string") {
-      const parsedIncome = parseInt(processedUpdates.annualIncome, 10);
-      if (!isNaN(parsedIncome)) {
-        processedUpdates.annualIncome = parsedIncome;
-      } else {
-        // Handle cases where parsing fails (e.g., empty string, non-numeric)
-        // Setting to undefined will remove the field if it's optional, or you can set a default or error.
-        processedUpdates.annualIncome = undefined;
-      }
-    } else if (processedUpdates.annualIncome === "") {
-      // Handle empty string explicitly if it wasn't caught by typeof string
-      processedUpdates.annualIncome = undefined;
-    }
+    const processedUpdates: Partial<Omit<Profile, "_id">> = { ...args.updates };
 
     const updatesWithTimestamp = {
       ...processedUpdates,
@@ -739,6 +789,8 @@ export const adminListProfiles = query({
     const identity = await ctx.auth.getUserIdentity();
     requireAdmin(identity);
     let allProfiles = await ctx.db.query("profiles").collect();
+    // Only include complete profiles
+    allProfiles = allProfiles.filter((p) => p.isProfileComplete === true);
     // Join with user emails if needed
     const users = await ctx.db.query("users").collect();
     if (search && search.trim() !== "") {
@@ -895,72 +947,34 @@ export const updateProfileImageOrder = mutation({
 
 export const createProfile = mutation({
   args: {
-    fullName: v.optional(v.string()),
-    dateOfBirth: v.optional(v.string()),
-    gender: v.optional(
-      v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+    fullName: v.string(),
+    dateOfBirth: v.string(),
+    gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
+    ukCity: v.string(),
+    aboutMe: v.string(),
+    religion: v.string(),
+    occupation: v.string(),
+    education: v.string(),
+    height: v.string(),
+    maritalStatus: v.union(
+      v.literal("single"),
+      v.literal("divorced"),
+      v.literal("widowed"),
+      v.literal("annulled")
     ),
-    ukCity: v.optional(v.string()),
-    ukPostcode: v.optional(v.string()),
-    religion: v.optional(v.string()),
-    caste: v.optional(v.string()),
-    motherTongue: v.optional(v.string()),
-    height: v.optional(v.string()),
-    maritalStatus: v.optional(
-      v.union(
-        v.literal("single"),
-        v.literal("divorced"),
-        v.literal("widowed"),
-        v.literal("annulled")
-      )
+    smoking: v.union(
+      v.literal("no"),
+      v.literal("occasionally"),
+      v.literal("yes"),
+      v.literal("")
     ),
-    education: v.optional(v.string()),
-    occupation: v.optional(v.string()),
-    annualIncome: v.optional(v.number()),
-    aboutMe: v.optional(v.string()),
-    partnerPreferenceAgeMin: v.optional(v.number()),
-    partnerPreferenceAgeMax: v.optional(v.number()),
-    partnerPreferenceReligion: v.optional(v.array(v.string())),
-    partnerPreferenceUkCity: v.optional(v.array(v.string())),
-    profileImageIds: v.optional(v.array(v.id("_storage"))),
-    phoneNumber: v.optional(v.string()),
-    diet: v.optional(
-      v.union(
-        v.literal("vegetarian"),
-        v.literal("non-vegetarian"),
-        v.literal("vegan"),
-        v.literal("eggetarian"),
-        v.literal("other"),
-        v.literal("")
-      )
+    drinking: v.union(
+      v.literal("no"),
+      v.literal("occasionally"),
+      v.literal("yes")
     ),
-    smoking: v.optional(
-      v.union(
-        v.literal("no"),
-        v.literal("occasionally"),
-        v.literal("yes"),
-        v.literal("")
-      )
-    ),
-    drinking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
-    ),
-    physicalStatus: v.optional(
-      v.union(
-        v.literal("normal"),
-        v.literal("differently-abled"),
-        v.literal("other"),
-        v.literal("")
-      )
-    ),
-    preferredGender: v.optional(
-      v.union(
-        v.literal("male"),
-        v.literal("female"),
-        v.literal("other"),
-        v.literal("any")
-      )
-    ),
+    profileImageIds: v.array(v.id("_storage")),
+    isProfileComplete: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -989,17 +1003,17 @@ export const createProfile = mutation({
     }
 
     // Create new profile
-    const profileData: Partial<Profile> = {
+    const profileData: Omit<Profile, "_id"> = {
       ...args,
       userId: user._id,
       clerkId: identity.subject,
       email: user.email,
-      isProfileComplete: false,
+      isProfileComplete: args.isProfileComplete ?? false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
 
-    // Mark as complete if all essential fields are filled
+    // Mark as complete if all essential fields are filled AND at least one image is present
     const essentialFields = [
       "fullName",
       "dateOfBirth",
@@ -1008,8 +1022,18 @@ export const createProfile = mutation({
       "aboutMe",
     ];
     let allEssentialFilled = true;
+    const profileDataForCheck = profileData as {
+      [key: string]:
+        | string
+        | number
+        | boolean
+        | undefined
+        | Id<"_storage">[]
+        | string[]
+        | Id<"users">;
+    };
     for (const field of essentialFields) {
-      const value = (profileData as Record<string, unknown>)[field];
+      const value = profileDataForCheck[field];
       if (
         value === undefined ||
         value === null ||
@@ -1019,15 +1043,23 @@ export const createProfile = mutation({
         break;
       }
     }
-    if (allEssentialFilled) {
+    // Check for at least one image
+    const images = profileDataForCheck.profileImageIds;
+    const hasImage = Array.isArray(images) && images.length > 0;
+    if (allEssentialFilled && hasImage) {
       profileData.isProfileComplete = true;
+    } else if (!args.isProfileComplete) {
+      profileData.isProfileComplete = false;
     }
 
-    // Ensure clerkId is present (should always be)
-    if (!profileData.clerkId) profileData.clerkId = identity.subject;
-    await ctx.db.insert("profiles", profileData as Omit<Profile, "_id">);
+    // Insert the profile
+    const profileId = await ctx.db.insert("profiles", profileData);
 
-    return { success: true, message: "Profile created successfully" };
+    return {
+      success: true,
+      profileId,
+      message: "Profile created successfully",
+    };
   },
 });
 
@@ -1079,15 +1111,32 @@ export const getMyMatches = query({
   },
 });
 
-type ProfileDetailPageData = {
+export type ProfileDetailPageData = {
   currentUser: User | null;
   profileData: PublicProfile | null;
   isBlocked: boolean;
   isMutualInterest: boolean;
-  sentInterest: unknown[];
-  userProfileImages: unknown;
-  userImages: unknown;
-  currentUserProfileImagesData: unknown[];
+  sentInterest: Array<{
+    fromUserId: Id<"users">;
+    toUserId: Id<"users">;
+    status: "pending" | "accepted" | "rejected";
+    createdAt: number;
+  }>;
+  userProfileImages: Array<{
+    _id: string;
+    storageId: string;
+    url: string | null;
+    fileName: string;
+    uploadedAt: number;
+  }>;
+  userImages: Record<string, string | null>;
+  currentUserProfileImagesData: Array<{
+    _id: string;
+    storageId: string;
+    url: string | null;
+    fileName: string;
+    uploadedAt: number;
+  }>;
   error?: string;
 };
 
@@ -1107,59 +1156,73 @@ export const getProfileDetailPageData = action({
         currentUserProfileImagesData: [],
         error: "Not authenticated",
       };
+
     // Get current user
     const currentUser: User | null = await ctx.runQuery(
       api.users.getCurrentUserWithProfile,
       {}
     );
     const currentUserId = currentUser?._id as Id<"users"> | undefined;
+
     // Get public profile for viewed user
     const publicProfileRes: { profile: PublicProfile } | null =
       await ctx.runQuery(api.users.getUserPublicProfile, {
         userId: viewedUserId,
       });
     const profileData: PublicProfile | null = publicProfileRes?.profile ?? null;
+
     // Blocked status
     let isBlocked: boolean = false;
     let isMutualInterest: boolean = false;
-    let sentInterest: unknown[] = [];
+    let sentInterest: Array<{
+      fromUserId: Id<"users">;
+      toUserId: Id<"users">;
+      status: "pending" | "accepted" | "rejected";
+      createdAt: number;
+    }> = [];
+
     if (currentUserId && viewedUserId && currentUserId !== viewedUserId) {
       isBlocked = await ctx.runQuery(api.users.isBlocked, {
-        blockerUserId: currentUserId as Id<"users">,
-        blockedUserId: viewedUserId as Id<"users">,
+        blockerUserId: currentUserId,
+        blockedUserId: viewedUserId,
       });
       isMutualInterest = await ctx.runQuery(api.interests.isMutualInterest, {
-        userA: currentUserId as Id<"users">,
-        userB: viewedUserId as Id<"users">,
+        userA: currentUserId,
+        userB: viewedUserId,
       });
       sentInterest = await ctx.runQuery(api.interests.getSentInterests, {
-        userId: currentUserId as Id<"users">,
+        userId: currentUserId,
       });
     }
+
     // Images for the profile being viewed
-    const userProfileImages: unknown = await ctx.runQuery(
-      api.images.getProfileImages,
-      {
-        userId: viewedUserId as Id<"users">,
-      }
-    );
+    const userProfileImages = await ctx.runQuery(api.images.getProfileImages, {
+      userId: viewedUserId,
+    });
+
     // Batch get profile images (for one user)
-    const userImages: unknown = await ctx.runQuery(
-      api.images.batchGetProfileImages,
-      {
-        userIds: [viewedUserId as Id<"users">],
-      }
-    );
+    const userImages = await ctx.runQuery(api.images.batchGetProfileImages, {
+      userIds: [viewedUserId],
+    });
+
     // Images for the current logged-in user
-    let currentUserProfileImagesData: unknown[] = [];
+    let currentUserProfileImagesData: Array<{
+      _id: string;
+      storageId: string;
+      url: string | null;
+      fileName: string;
+      uploadedAt: number;
+    }> = [];
+
     if (currentUserId) {
       currentUserProfileImagesData = await ctx.runQuery(
         api.images.getProfileImages,
         {
-          userId: currentUserId as Id<"users">,
+          userId: currentUserId,
         }
       );
     }
+
     return {
       currentUser,
       profileData,
@@ -1173,12 +1236,8 @@ export const getProfileDetailPageData = action({
   },
 });
 
-export const searchPublicProfiles = action({
+export const searchPublicProfiles = query({
   args: {
-    city: v.optional(v.string()),
-    religion: v.optional(v.string()),
-    ageMin: v.optional(v.number()),
-    ageMax: v.optional(v.number()),
     preferredGender: v.optional(
       v.union(
         v.literal("male"),
@@ -1187,65 +1246,129 @@ export const searchPublicProfiles = action({
         v.literal("any")
       )
     ),
+    ukCity: v.optional(v.string()),
+    religion: v.optional(v.string()),
+    ageMin: v.optional(v.number()),
+    ageMax: v.optional(v.number()),
     page: v.optional(v.number()),
     pageSize: v.optional(v.number()),
   },
-  handler: async (
-    ctx,
-    args
-  ): Promise<{
-    profiles: { userId: Id<"users">; profile: PublicProfile }[];
-    total: number;
-  }> => {
-    const users: Array<any> = await ctx.runQuery(
-      api.users.listUsersWithProfiles,
-      {
-        preferredGender: args.preferredGender || "any",
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Not authenticated");
+    }
+
+    // Get current user
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+
+    // Get all users and profiles
+    const users = await ctx.db.query("users").collect();
+    const allProfiles = await ctx.db.query("profiles").collect();
+
+    // Join users and profiles
+    const usersWithProfiles = users.map((u) => ({
+      ...u,
+      profile: allProfiles.find((p) => p.userId === u._id) || null,
+    }));
+
+    // Filter users based on criteria
+    const filteredUsers = usersWithProfiles.filter((u) => {
+      // Skip admin users
+      if (u.role === "admin") return false;
+
+      // Skip banned users
+      if (u.banned) return false;
+
+      // Skip users without profiles
+      if (!u.profile) return false;
+
+      // Skip incomplete profiles
+      if (!u.profile.isProfileComplete) return false;
+
+      // Skip hidden profiles
+      if (u.profile.hiddenFromSearch) return false;
+
+      // Skip banned profiles
+      if (u.profile.banned) return false;
+
+      // Filter by preferred gender
+      if (args.preferredGender && args.preferredGender !== "any") {
+        if (u.profile.gender !== args.preferredGender) return false;
       }
-    );
-    const filtered: Array<any> = users.filter((user: any) => {
-      if (
-        user.role === "admin" ||
-        user.banned === true ||
-        !user.profile ||
-        user.profile.isProfileComplete !== true ||
-        user.profile.hiddenFromSearch === true ||
-        user.profile.banned === true
-      ) {
-        return false;
+
+      // Filter by city
+      if (args.ukCity && args.ukCity !== "any") {
+        if (u.profile.ukCity !== args.ukCity) return false;
       }
-      if (args.city && user.profile.ukCity !== args.city) return false;
-      if (args.religion && user.profile.religion !== args.religion)
-        return false;
-      if (
-        args.preferredGender &&
-        args.preferredGender !== "any" &&
-        user.profile.gender !== args.preferredGender
-      )
-        return false;
+
+      // Filter by religion
+      if (args.religion && args.religion !== "any") {
+        if (u.profile.religion !== args.religion) return false;
+      }
+
+      // Filter by age
       if (args.ageMin || args.ageMax) {
-        const dob = user.profile.dateOfBirth
-          ? new Date(user.profile.dateOfBirth)
-          : null;
-        if (!dob) return false;
-        const age = Math.floor(
-          (Date.now() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
-        );
+        const dob = new Date(u.profile.dateOfBirth || "");
+        if (isNaN(dob.getTime())) return false;
+
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+          age--;
+        }
+
         if (args.ageMin && age < args.ageMin) return false;
         if (args.ageMax && age > args.ageMax) return false;
       }
+
       return true;
     });
-    const total = filtered.length;
-    const page = args.page ?? 0;
-    const pageSize = args.pageSize ?? 12;
-    const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+
+    // Sort by creation date (newest first)
+    filteredUsers.sort((a, b) => {
+      const aTime = a._creationTime;
+      const bTime = b._creationTime;
+      return bTime - aTime;
+    });
+
+    // Apply pagination
+    const page = args.page || 0;
+    const pageSize = args.pageSize || 10;
+    const start = page * pageSize;
+    const end = start + pageSize;
+    const paginatedUsers = filteredUsers.slice(start, end);
+
+    // Map to public profile format
+    const searchResults = paginatedUsers.map((u) => {
+      const profile = u.profile!; // We know it's not null because of the filter
     return {
-      profiles: paginated.map((user: any) => ({
-        userId: user._id,
-        profile: user.profile,
-      })),
-      total,
+        userId: u._id,
+        email: u.email,
+        profile: {
+          fullName: profile.fullName,
+          ukCity: profile.ukCity,
+          dateOfBirth: profile.dateOfBirth,
+          religion: profile.religion,
+          isProfileComplete: profile.isProfileComplete,
+          hiddenFromSearch: profile.hiddenFromSearch,
+          profileImageIds: profile.profileImageIds,
+          createdAt: profile.createdAt,
+        },
+      };
+    });
+
+    return {
+      profiles: searchResults,
+      total: filteredUsers.length,
     };
   },
 });

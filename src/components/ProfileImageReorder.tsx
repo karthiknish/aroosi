@@ -32,6 +32,7 @@ type Props = {
   userId: string;
   onReorder?: (newOrder: string[]) => void;
   renderAction?: (img: Image, idx: number) => React.ReactNode;
+  onDeleteImage?: (imageId: string) => void;
   isAdmin?: boolean;
   profileId?: string;
   loading?: boolean;
@@ -41,10 +42,12 @@ function SortableImage({
   img,
   renderAction,
   idx,
+  onDeleteImage,
 }: {
   img: Image;
   renderAction?: (img: Image, idx: number) => React.ReactNode;
   idx: number;
+  onDeleteImage?: (imageId: string) => void;
 }) {
   const {
     attributes,
@@ -88,6 +91,15 @@ function SortableImage({
           }}
         />
       )}
+      {onDeleteImage && (
+        <button
+          onClick={() => img.storageId && onDeleteImage(img.storageId)}
+          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs opacity-75 hover:opacity-100 transition-opacity z-10"
+          aria-label="Remove image"
+        >
+          X
+        </button>
+      )}
     </div>
   );
 }
@@ -97,7 +109,8 @@ export function ProfileImageReorder({
   userId,
   onReorder,
   renderAction,
-  loading,
+  onDeleteImage,
+  loading = false,
 }: Props) {
   const token = useToken();
   const sensors = useSensors(
@@ -109,6 +122,7 @@ export function ProfileImageReorder({
   );
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (loading) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = images.findIndex((img) => img._id === active.id);
@@ -164,6 +178,7 @@ export function ProfileImageReorder({
               img={img}
               renderAction={renderAction}
               idx={idx}
+              onDeleteImage={onDeleteImage}
             />
           ))}
         </div>

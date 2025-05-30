@@ -52,16 +52,12 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
           return (
             <div className="flex flex-col gap-2 mt-2">
               <Slider
+                value={[numVal]}
+                onValueChange={([val]) => field.onChange(String(val))}
                 min={137}
                 max={198}
                 step={1}
-                value={[
-                  !isNaN(numVal) && numVal >= 137 && numVal <= 198
-                    ? numVal
-                    : 170,
-                ]}
-                onValueChange={([val]) => field.onChange(String(val))}
-                className="w-full my-2  text-pink-700"
+                className="w-full [&>div]:bg-pink-500 [&>div[data-orientation=horizontal]]:bg-pink-500 [&>div[data-orientation=horizontal]>div]:bg-pink-500"
               />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>4&apos;6&quot;</span>

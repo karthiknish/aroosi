@@ -6,14 +6,16 @@ import Footer from "./Footer"; // Assuming Footer.tsx is in the same directory
 
 interface MainLayoutContentProps {
   children: React.ReactNode;
+  hideHeaderLinks?: boolean;
 }
 
 export default function MainLayoutContent({
   children,
+  hideHeaderLinks = false,
 }: MainLayoutContentProps) {
   return (
     <div className="flex flex-col min-h-screen">
-      <Header />
+      <Header hideLinks={hideHeaderLinks} />
       <main className="flex-grow pt-8">
         {/* Added some basic styling for the main content area */}
         {children}

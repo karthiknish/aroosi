@@ -24,7 +24,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { ProfileImageReorder } from "../ProfileImageReorder";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -32,6 +31,22 @@ import { toast } from "sonner";
 import { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToken } from "@/components/TokenProvider";
+import { useQuery } from "@tanstack/react-query";
+import { useProfileCompletion } from "@/components/ProfileCompletionProvider";
+
+// Helper type and function for image mapping
+type ApiImage = { storageId: string; url: string };
+function mapApiImage(img: ApiImage): {
+  _id: string;
+  storageId: string;
+  url: string;
+} {
+  return {
+    _id: img.storageId,
+    storageId: img.storageId,
+    url: img.url,
+  };
+}
 
 // Helper for displaying profile details
 const ProfileDetailView: React.FC<{
@@ -105,10 +120,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   deleting,
 }) => {
   const token = useToken();
-  const [images, setImages] = React.useState<
-    { url: string; storageId: string; _id: string }[]
-  >([]);
-  const [loadingImages, setLoadingImages] = React.useState(true);
+  const { isProfileComplete } = useProfileCompletion();
   // Local image order state for instant UI feedback
   const [imageOrder, setImageOrder] = React.useState<string[]>(
     profileData?.profileImageIds && Array.isArray(profileData.profileImageIds)
@@ -127,36 +139,27 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     }
   }, [profileData?.profileImageIds]);
 
-  React.useEffect(() => {
-    async function fetchImages() {
-      setLoadingImages(true);
-      if (!userConvexData?._id) return;
+  // Use React Query for image fetching
+  const {
+    data: images = [],
+    isLoading: loadingImages,
+    refetch: refetchImages,
+  } = useQuery({
+    queryKey: ["profileImages", userConvexData?._id, token],
+    queryFn: async () => {
+      if (!userConvexData?._id || !token) return [];
       const res = await fetch(
         `/api/profile-detail/${userConvexData._id}/images`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      if (res.ok) {
-        const data = await res.json();
-        // Normalize images: always use storageId as _id
-        type ApiImage = { storageId: string; url: string };
-        const normalized = (data.userProfileImages || []).map(
-          (img: ApiImage) => ({
-            _id: img.storageId,
-            storageId: img.storageId,
-            url: img.url,
-          })
-        );
-        setImages(normalized);
-      } else {
-        setImages([]);
-      }
-      setLoadingImages(false);
-    }
-    fetchImages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userConvexData?._id]);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return ((data.userProfileImages || []) as ApiImage[]).map(mapApiImage);
+    },
+    enabled: !!userConvexData?._id && !!token,
+  });
 
   const handleReorder = async (newOrder: unknown[]) => {
     if (!userConvexData?._id) return;
@@ -174,38 +177,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     // Optimistically update local order
     setImageOrder(imageIds);
     try {
-      setLoadingImages(true);
-      const res = await fetch(`/api/images/order`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId: userConvexData._id, imageIds }),
-      });
-      if (!res.ok) throw new Error("Failed to update image order");
-      // Update local images state to reflect new order
-      setImages((prev) => {
-        if (!prev) return prev;
-        const imageMap = new Map(prev.map((img) => [img._id, img]));
-        return imageIds.map((id) => imageMap.get(id)).filter(Boolean) as {
-          url: string;
-          storageId: string;
-          _id: string;
-        }[];
-      });
+      refetchImages();
       toast.dismiss();
       toast.success("Image order updated");
     } catch (error) {
       toast.dismiss();
       console.error("Error updating image order", error);
       toast.error("Failed to update image order");
-    } finally {
-      setLoadingImages(false);
     }
   };
-
-  console.log("images", images);
 
   // Determine ordered images based on local imageOrder if available
   let orderedImages: { url: string; storageId: string; _id: string }[] = [];

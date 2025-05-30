@@ -1,9 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./utils/rateLimit";
 import { ConvexError } from "convex/values";
 import { requireAdmin, isAdmin } from "./utils/requireAdmin";
+import { Id } from "./_generated/dataModel";
 
 // Constants
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -153,6 +153,7 @@ export const uploadProfileImage = mutation({
   },
   handler: async (ctx, args) => {
     try {
+      console.log("[uploadProfileImage] Called with userId:", args.userId);
       // Input validation
       if (!args.userId) {
         throw new ConvexError("User ID is required");
@@ -163,21 +164,18 @@ export const uploadProfileImage = mutation({
       if (!args.fileName) {
         throw new ConvexError("File name is required");
       }
-
       // Validate file type
       if (!ALLOWED_TYPES.includes(args.contentType.toLowerCase())) {
         throw new ConvexError(
           `Invalid file type. Allowed types: ${ALLOWED_TYPES.join(", ")}`
         );
       }
-
       // Validate file size
       if (args.fileSize > MAX_IMAGE_SIZE) {
         throw new ConvexError(
           `File size exceeds maximum allowed size of ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`
         );
       }
-
       // Rate limiting
       const rateKey = `images:upload:${args.userId}`;
       const rate = await checkRateLimit(
@@ -191,25 +189,22 @@ export const uploadProfileImage = mutation({
           `Too many uploads. Please try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`
         );
       }
-
       // Check if user exists
       const user = await ctx.db.get(args.userId);
+      console.log("[uploadProfileImage] User found:", user?._id);
       if (!user) {
         throw new ConvexError("User not found");
       }
-
       // Check current image count
       const currentImages = await ctx.db
         .query("images")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
         .collect();
-
       if (currentImages.length >= MAX_IMAGES_PER_USER) {
         throw new ConvexError(
           `Maximum of ${MAX_IMAGES_PER_USER} images allowed per user`
         );
       }
-
       // Save to images table
       await ctx.db.insert("images", {
         userId: args.userId,
@@ -218,27 +213,49 @@ export const uploadProfileImage = mutation({
         contentType: args.contentType,
         fileSize: args.fileSize,
       });
-
       // Update profile with the new image ID
       const profile = await ctx.db
         .query("profiles")
         .withIndex("by_userId", (q) => q.eq("userId", args.userId))
         .first();
-
-      if (!profile) {
-        throw new ConvexError("User profile not found");
-      }
-
-      const currentImageIds = profile.profileImageIds || [];
-
-      // Don't add duplicate image IDs
-      if (!currentImageIds.includes(args.storageId)) {
-        await ctx.db.patch(profile._id, {
-          profileImageIds: [...currentImageIds, args.storageId],
+      console.log(
+        "[uploadProfileImage] Profile found:",
+        profile!._id,
+        "Current profileImageIds:",
+        profile!.profileImageIds
+      );
+      const currentImageIds =
+        (profile!.profileImageIds as Id<"_storage">[]) || [];
+      // Initialize profileImageIds if it's empty
+      if (currentImageIds.length === 0) {
+        console.log(
+          "[uploadProfileImage] profileImageIds is empty, initializing with storageId:",
+          args.storageId
+        );
+        await ctx.db.patch(profile!._id, {
+          profileImageIds: [args.storageId],
           updatedAt: Date.now(),
         });
+        console.log("[uploadProfileImage] Profile patched with new image ID.");
+      } else if (!currentImageIds.includes(args.storageId)) {
+        console.log(
+          "[uploadProfileImage] Adding new storageId to existing profileImageIds:",
+          args.storageId
+        );
+        const newImageIds = [...currentImageIds, args.storageId];
+        await ctx.db.patch(profile!._id, {
+          profileImageIds: newImageIds,
+          updatedAt: Date.now(),
+        });
+        console.log(
+          "[uploadProfileImage] Profile patched with updated image IDs."
+        );
+      } else {
+        console.log(
+          "[uploadProfileImage] StorageId already exists in profileImageIds:",
+          args.storageId
+        );
       }
-
       return {
         success: true,
         imageId: args.storageId,
@@ -337,19 +354,25 @@ export const batchGetProfileImages = query({
       );
 
       // Group images by user ID
-      const imagesByUser = new Map<string, any[]>();
+      const imagesByUser = new Map<string, unknown[]>();
       for (const image of allImages) {
-        const userId = image.userId;
+        // Cast image to expected type to access userId
+        const img = image as { userId: string };
+        const userId = img.userId;
         if (!imagesByUser.has(userId)) {
           imagesByUser.set(userId, []);
         }
-        imagesByUser.get(userId)?.push(image);
+        const arr = imagesByUser.get(userId) as
+          | { userId: string; storageId: string }[]
+          | undefined;
+        if (arr) arr.push(image as { userId: string; storageId: string });
       }
 
       // Create result object with user IDs and their first image URL
       const result: Record<string, string | null> = {};
       for (const userId of args.userIds) {
-        const userImages = imagesByUser.get(userId) || [];
+        const userImages =
+          (imagesByUser.get(userId) as { storageId: Id<"_storage"> }[]) || [];
         result[userId] =
           userImages.length > 0
             ? await ctx.storage.getUrl(userImages[0].storageId)

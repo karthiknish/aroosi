@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useTransition } from "react";
-import { Progress } from "@/components/ui/progress";
 
 export default function Header() {
   const { user } = useUser();
@@ -218,14 +217,6 @@ export default function Header() {
 
   return (
     <>
-      {isPending && (
-        <div className="fixed top-0 left-0 right-0 z-[9999]">
-          <Progress
-            value={80}
-            className="h-1 bg-pink-200 [&>div]:bg-pink-600 transition-all duration-300"
-          />
-        </div>
-      )}
       <motion.header
         variants={headerVariants}
         initial="hidden"

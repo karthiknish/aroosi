@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Heart, HeartOff } from "lucide-react";
 import { useToken } from "@/components/TokenProvider";
+import { useQuery } from "@tanstack/react-query";
+
 type Interest = {
   id: string;
   toUserId: string;
@@ -21,160 +23,106 @@ type Interest = {
   createdAt: string;
 };
 
-type ProfileData = {
-  id: string;
-  fullName: string;
-  email?: string;
-  bio?: string;
-  imageUrl?: string;
-  interests: Interest[];
-  profileImageIds?: string[];
-  motherTongue?: string;
-  maritalStatus?: string;
-  education?: string;
-  occupation?: string;
-  height?: string;
-  ukCity?: string;
-  aboutMe?: string;
-  religion?: string;
-  createdAt?: string;
-};
-
 export default function ProfileDetailPage() {
   const params = useParams();
   const token = useToken();
-  const { isLoaded, isSignedIn, userId: clerkUserId } = useAuth();
-
+  const { userId: clerkUserId } = useAuth();
   const [localCurrentUserImageOrder, setLocalCurrentUserImageOrder] = useState<
     string[]
   >([]);
   const [interestError, setInterestError] = useState<string | null>(null);
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [isMutualInterest, setIsMutualInterest] = useState(false);
-  const [sentInterest, setSentInterest] = useState<Interest[]>([]);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [interestLoading, setInterestLoading] = useState(false);
-  const [userProfileImages, setUserProfileImages] = useState<
-    { url: string; storageId: string }[]
-  >([]);
-  const [userImages, setUserImages] = useState<Record<string, string>>({});
-  const [convexUserId, setConvexUserId] = useState<string | null>(null);
+  const [invalidIdError, setInvalidIdError] = useState<string | null>(null);
 
-  // Get the current user ID from Clerk
-  const currentUserId = clerkUserId ? (clerkUserId as Id<"users">) : null;
-
-  // Derived values
-  const id = params?.id as string;
+  const id = params?.id as string; // Convex userId
   const userId = id as Id<"users">;
-  const isOwnProfile = Boolean(
-    currentUserId && userId && currentUserId === userId
-  );
+
+  // React Query for user (Convex) ID
+  const { data: convexUserId } = useQuery({
+    queryKey: ["convexUserId", token],
+    queryFn: async () => {
+      if (!token) return null;
+      const res = await fetch("/api/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?._id || null;
+    },
+    enabled: !!token,
+  });
+
+  // React Query for profile data
+  const { data: profileQueryData, isLoading: loadingProfile } = useQuery({
+    queryKey: ["profileDetail", userId, token],
+    queryFn: async () => {
+      if (!token || !userId) return null;
+      const res = await fetch(`/api/profile-detail/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    },
+    enabled: !!token && !!userId,
+  });
+  const profileData = profileQueryData?.profileData || null;
+  const isBlocked = !!profileQueryData?.isBlocked;
+  const isMutualInterest = !!profileQueryData?.isMutualInterest;
+  const sentInterest = Array.isArray(profileQueryData?.sentInterest)
+    ? profileQueryData.sentInterest
+    : [];
+
+  // React Query for images
+  const { data: imagesQueryData = {} } = useQuery({
+    queryKey: ["profileImages", userId, token],
+    queryFn: async () => {
+      if (!token || !userId) return {};
+      const res = await fetch(`/api/profile-detail/${userId}/images`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return {};
+      return await res.json();
+    },
+    enabled: !!token && !!userId,
+  });
+  const userProfileImages = Array.isArray(imagesQueryData.userProfileImages)
+    ? imagesQueryData.userProfileImages
+    : [];
+  const userImages = imagesQueryData.userImages || {};
+
+  const isOwnProfile = Boolean(clerkUserId && userId && clerkUserId === userId);
+  // Determine the source of image IDs for mapping
+  const imageIdsToRender = isOwnProfile
+    ? localCurrentUserImageOrder
+    : profileData?.profileImageIds || [];
 
   // Memoized value for checking if interest is already sent
   const alreadySentInterest = useMemo(() => {
     return Array.isArray(sentInterest) && sentInterest.length > 0
-      ? sentInterest.some((i) => {
-          if (typeof i === "object" && i !== null && "toUserId" in i) {
-            return i.toUserId === userId;
+      ? sentInterest.some((interest: Interest) => {
+          if (
+            typeof interest === "object" &&
+            interest !== null &&
+            "toUserId" in interest
+          ) {
+            return interest.toUserId === userId;
           }
           return false;
         })
       : false;
   }, [sentInterest, userId]);
 
-  // Fetch Convex user ID and profile data together
   useEffect(() => {
-    const fetchInitialData = async () => {
-      if (!token || !isLoaded || !isSignedIn || !userId) return;
-
-      setLoadingProfile(true);
-      try {
-        // Fetch user data and profile data in parallel
-        const [userResponse, profileResponse] = await Promise.all([
-          fetch("/api/profile", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch(`/api/profile-detail/${userId}`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        ]);
-
-        if (!userResponse.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-
-        if (!profileResponse.ok) {
-          const responseData = await profileResponse.json();
-          throw new Error(responseData.error || "Failed to fetch profile data");
-        }
-
-        const userData = await userResponse.json();
-        const profileData = await profileResponse.json();
-
-        if (userData?._id) {
-          setConvexUserId(userData._id);
-        }
-
-        setProfileData(profileData.profileData || null);
-        setIsBlocked(!!profileData.isBlocked);
-        setIsMutualInterest(!!profileData.isMutualInterest);
-        setSentInterest(
-          Array.isArray(profileData.sentInterest)
-            ? profileData.sentInterest
-            : []
-        );
-
-        // Fetch images if profile data exists
-        if (profileData.profileData) {
-          const imagesResponse = await fetch(
-            `/api/profile-detail/${userId}/images`,
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (!imagesResponse.ok) {
-            throw new Error("Failed to fetch profile images");
-          }
-
-          const imagesData = await imagesResponse.json();
-          setUserProfileImages(
-            Array.isArray(imagesData.userProfileImages)
-              ? imagesData.userProfileImages
-              : []
-          );
-          setUserImages(imagesData.userImages || {});
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to load data";
-        toast.error(errorMessage);
-
-        // Reset states on error
-        setProfileData(null);
-        setIsBlocked(false);
-        setIsMutualInterest(false);
-        setSentInterest([]);
-        setUserProfileImages([]);
-        setUserImages({});
-      } finally {
-        setLoadingProfile(false);
-      }
-    };
-
-    fetchInitialData();
-  }, [token, isLoaded, isSignedIn, userId]);
+    if (userId && userId.startsWith("user_")) {
+      setInvalidIdError(
+        "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID."
+      );
+      toast.error(
+        "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID."
+      );
+    } else {
+      setInvalidIdError(null);
+    }
+  }, [userId]);
 
   // Remove the separate effects for profile and images
   useEffect(() => {
@@ -183,7 +131,23 @@ export default function ProfileDetailPage() {
     }
   }, [isOwnProfile, profileData?.profileImageIds]);
 
-  // Fetch text/profile data
+  // Add state for current image index
+  const [currentImageIdx, setCurrentImageIdx] = useState(0);
+
+  // Update currentImageIdx if imageIdsToRender changes
+  useEffect(() => {
+    setCurrentImageIdx(0);
+  }, [imageIdsToRender]);
+
+  if (invalidIdError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-red-600 text-lg font-semibold">
+          {invalidIdError}
+        </div>
+      </div>
+    );
+  }
 
   // Now safe to use profile data
   const profile = profileData;
@@ -224,19 +188,6 @@ export default function ProfileDetailPage() {
     if (!storageId || !(storageId in storageIdToUrlMap)) return undefined;
     return storageIdToUrlMap[storageId];
   };
-
-  // Determine the source of image IDs for mapping
-  const imageIdsToRender = isOwnProfile
-    ? localCurrentUserImageOrder
-    : profile?.profileImageIds || [];
-
-  // Add state for current image index
-  const [currentImageIdx, setCurrentImageIdx] = useState(0);
-
-  // Update currentImageIdx if imageIdsToRender changes
-  useEffect(() => {
-    setCurrentImageIdx(0);
-  }, [imageIdsToRender]);
 
   const mainProfileImageId =
     imageIdsToRender.length > 0 ? imageIdsToRender[currentImageIdx] : undefined;
@@ -316,7 +267,6 @@ export default function ProfileDetailPage() {
       return;
     }
 
-    setInterestLoading(true);
     setInterestError(null);
 
     try {
@@ -342,29 +292,13 @@ export default function ProfileDetailPage() {
         );
       }
 
-      // Update local state
-      setSentInterest([
-        ...sentInterest,
-        {
-          id: responseData.data?.id || "temp-id",
-          fromUserId: convexUserId,
-          toUserId: userId,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-
       toast.success("Interest sent successfully!");
       return responseData;
     } catch (error) {
-      console.error("Error sending interest:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to send interest";
-      setInterestError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send interest"
+      );
       throw error;
-    } finally {
-      setInterestLoading(false);
     }
   };
 
@@ -375,7 +309,6 @@ export default function ProfileDetailPage() {
       return;
     }
 
-    setInterestLoading(true);
     setInterestError(null);
 
     try {
@@ -401,25 +334,13 @@ export default function ProfileDetailPage() {
         );
       }
 
-      // Update local state
-      setSentInterest(
-        sentInterest.filter(
-          (interest) =>
-            interest.fromUserId !== convexUserId || interest.toUserId !== userId
-        )
-      );
-
       toast.success("Interest withdrawn successfully!");
       return responseData;
     } catch (error) {
-      console.error("Error removing interest:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to remove interest";
-      setInterestError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove interest"
+      );
       throw error;
-    } finally {
-      setInterestLoading(false);
     }
   };
 
@@ -659,7 +580,6 @@ export default function ProfileDetailPage() {
                           ? "Withdraw Interest"
                           : "Express Interest"
                       }
-                      disabled={interestLoading}
                     >
                       <motion.span
                         initial={{ scale: 0.8, opacity: 0.7 }}

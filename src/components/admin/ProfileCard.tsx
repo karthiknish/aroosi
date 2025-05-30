@@ -58,6 +58,10 @@ interface ProfileCardProps {
   setDeleteId: (id: Id<"profiles"> | null) => void;
   onEditFormChange?: (updates: Partial<ProfileEditFormState>) => void;
   images?: ProfileImage[];
+  adminUpdateProfile?: (args: {
+    id: string;
+    updates: { profileImageIds: string[] };
+  }) => Promise<unknown>;
 }
 
 export default function ProfileCard({
@@ -71,6 +75,7 @@ export default function ProfileCard({
   setDeleteId,
   onEditFormChange,
   images = [],
+  adminUpdateProfile,
 }: ProfileCardProps) {
   const router = useRouter();
   const token = useToken();
@@ -87,8 +92,15 @@ export default function ProfileCard({
       async function fetchImages() {
         console.log("[ProfileCard] fetchImages called for profile:", profile);
         console.log("[ProfileCard] token:", token);
+        // Guard: Only fetch if userId and token are present
         if (!profile.userId || !token) {
           setFetchedImages([]);
+          console.warn(
+            "[ProfileCard] Missing userId or token. userId:",
+            profile.userId,
+            "token:",
+            token
+          );
           return;
         }
         setFetchedImages(undefined); // Set to loading state
@@ -141,7 +153,7 @@ export default function ProfileCard({
                 : []
             );
           }
-        } catch (e) {
+        } catch {
           setFetchedImages(null);
         }
       }
@@ -267,6 +279,7 @@ export default function ProfileCard({
             loading={isSaving}
             onImagesChanged={handleImagesChanged}
             fetchedImages={fetchedImages}
+            adminUpdateProfile={adminUpdateProfile}
           />
         ) : (
           <ProfileView profile={profile} images={images} />

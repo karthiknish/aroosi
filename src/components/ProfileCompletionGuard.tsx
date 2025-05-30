@@ -1,11 +1,10 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { Profile } from "@/types/profile";
-import { useToken } from "@/components/TokenProvider";
+import { useProfileCompletion } from "@/components/ProfileCompletionProvider";
 
 interface ProfileCompletionGuardProps {
   children: ReactNode;
@@ -28,97 +27,39 @@ export default function ProfileCompletionGuard({
   children,
 }: ProfileCompletionGuardProps) {
   const { isSignedIn, isLoaded: isClerkLoaded } = useUser();
-  const token = useToken();
   const router = useRouter();
   const pathname = usePathname();
-
-  // State for profile data and loading
-  const [profileData, setProfileData] = useState<Profile | undefined>(
-    undefined
-  );
-  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const { isProfileComplete, isLoading: isProfileLoading } =
+    useProfileCompletion();
 
   useEffect(() => {
-    let ignore = false;
-    async function fetchProfile() {
-      if (!isClerkLoaded || !isSignedIn) {
-        setProfileData(undefined);
-        setIsProfileLoading(false);
-        return;
+    if (!isClerkLoaded) return;
+    if (!isSignedIn) {
+      if (pathname === "/create-profile") {
+        router.replace("/sign-in");
       }
-      setIsProfileLoading(true);
-      try {
-        if (!token) {
-          setProfileData(undefined);
-          setIsProfileLoading(false);
-          return;
-        }
-        const res = await fetch("/api/profile", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Failed to fetch profile");
-        const data = await res.json();
-        if (!ignore) {
-          setProfileData(data);
-          setIsProfileLoading(false);
-        }
-      } catch (e: unknown) {
-        console.error(e);
-        if (!ignore) {
-          setProfileData(undefined);
-          setIsProfileLoading(false);
-        }
-      }
-    }
-    fetchProfile();
-    return () => {
-      ignore = true;
-    };
-  }, [isClerkLoaded, isSignedIn, token]);
-
-  const isProfileComplete = profileData?.isProfileComplete; // TODO: fix this
-  const isProfileQueryLoading = isProfileLoading;
-
-  useEffect(() => {
-    if (!isClerkLoaded) {
-      // Clerk is still loading, don't do anything yet
       return;
     }
-
-    if (isSignedIn) {
-      if (isProfileQueryLoading) {
-        // Profile data is still loading, wait
-        return;
+    if (isProfileLoading) return;
+    if (isProfileComplete === false) {
+      if (
+        pathname !== profileSetupPath &&
+        !publicPaths.some((p) => pathname.startsWith(p))
+      ) {
+        router.replace(profileSetupPath);
       }
-
-      if (isProfileComplete === false) {
-        // Profile is incomplete
-        if (
-          pathname !== profileSetupPath &&
-          !publicPaths.some((p) => pathname.startsWith(p))
-        ) {
-          // User is signed in, profile incomplete, and not on profile page or a public path
-          router.replace(profileSetupPath);
-        }
-      }
-      // If isProfileComplete is true or undefined (error/no profile yet, but handled on profile page),
-      // allow access or let other logic handle it.
-    } else {
-      // User is not signed in. Clerk's <SignedIn> / <SignedOut> or middleware should handle public/private routes.
-      // This guard focuses on *profile completion* for signed-in users.
     }
   }, [
     isClerkLoaded,
     isSignedIn,
-    isProfileQueryLoading,
+    isProfileLoading,
     isProfileComplete,
     pathname,
     router,
   ]);
 
   // Render a loading state while Clerk or the profile query is loading for a signed-in user
-  // to prevent flashing content or incorrect redirects.
-  if (!isClerkLoaded || (isSignedIn && isProfileQueryLoading)) {
+  if (!isClerkLoaded || (isSignedIn && isProfileLoading)) {
     // Avoid showing full page loader if already on a public path or profile path,
     // as those pages have their own content/loading states.
     if (

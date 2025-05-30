@@ -24,9 +24,12 @@ import ProfileFormStepCultural from "./ProfileFormStepCultural";
 import ProfileFormStepEducation from "./ProfileFormStepEducation";
 import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@clerk/nextjs";
 import { useToken } from "@/components/TokenProvider";
+import { useProfileCompletion } from "@/components/ProfileCompletionProvider";
+import {
+  fetchUserProfileImages,
+  submitProfile,
+} from "@/lib/profile/userProfileApi";
 
 // Hardcoded list of major UK cities
 const majorUkCities = [
@@ -72,6 +75,7 @@ const ukCityOptions = majorUkCities
 
 // 1. Define ProfileFormValues
 export interface ProfileFormValues {
+  userId?: string;
   fullName: string;
   dateOfBirth: string;
   gender: "male" | "female" | "other";
@@ -97,6 +101,7 @@ export interface ProfileFormValues {
   partnerPreferenceReligion?: string[];
   partnerPreferenceUkCity?: string[];
   profileImageIds?: string[];
+  isProfileComplete?: boolean;
 }
 
 // Helper components
@@ -119,18 +124,6 @@ export const DisplaySection: React.FC<{
   </div>
 );
 
-// 3. Update UnifiedProfileFormProps
-type ClerkUser = { id: string; [key: string]: unknown };
-export interface UnifiedProfileFormProps {
-  mode: "create" | "edit";
-  initialValues?: Partial<ProfileFormValues>;
-  onSubmit: (values: ProfileFormValues) => Promise<void>;
-  clerkUser?: ClerkUser;
-  loading?: boolean;
-  serverError?: string | null;
-  onEditDone?: () => void;
-}
-
 // Add Zod schema for validation
 const essentialProfileSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -138,6 +131,7 @@ const essentialProfileSchema = z.object({
   gender: z.enum(["male", "female", "other"], {
     required_error: "Gender is required",
   }),
+  height: z.string().min(1, "Height is required"),
   ukCity: z.string().min(1, "City is required"),
   aboutMe: z.string().min(1, "About Me is required"),
 });
@@ -161,15 +155,43 @@ const phoneRegex = /^\+?\d{10,15}$/;
 
 const LOCAL_STORAGE_KEY = "aroosi-profile-draft";
 
-const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
+// TODO: Replace 'any' with the correct type if available
+const ProfileForm: React.FC<{
+  mode: "create" | "edit";
+  initialValues?: ProfileFormValues;
+  onSubmit: (values: ProfileFormValues) => void;
+  loading?: boolean;
+  serverError?: string | null;
+  onEditDone: () => void;
+  onProfileCreated?: () => void;
+}> = ({
   mode,
   initialValues,
   onSubmit,
-  clerkUser,
   loading = false,
   serverError = null,
   onEditDone,
+  onProfileCreated,
 }) => {
+  const token = useToken();
+  const { isProfileComplete, refetchProfile } = useProfileCompletion();
+  const [currentStep, setCurrentStep] = React.useState(0);
+  const [uploadedImageIds, setUploadedImageIds] = React.useState<string[]>(
+    initialValues?.profileImageIds || []
+  );
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [modalIndex, setModalIndex] = React.useState(0);
+  const [deletingImageId, setDeletingImageId] = React.useState<string | null>(
+    null
+  );
+  const [reordering, setReordering] = React.useState(false);
+  const [creatingProfile, setCreatingProfile] = React.useState(false);
+  const [waitForUserId, setWaitForUserId] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] =
+    React.useState(false);
+  const [imageToDelete, setImageToDelete] = React.useState<string | null>(null);
+
   // Step configuration
   const profileStepLogic = [
     {
@@ -212,15 +234,7 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     },
   ];
   const totalSteps = profileStepLogic.length;
-  const [currentStep, setCurrentStep] = React.useState(0);
-  const [uploadedImageIds, setUploadedImageIds] = React.useState<string[]>(
-    initialValues?.profileImageIds || []
-  );
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [modalIndex, setModalIndex] = React.useState(0);
-  const [deletingImageId, setDeletingImageId] = React.useState<string | null>(
-    null
-  );
+
   const deleteImage = async (
     userId: string,
     imageId: string,
@@ -332,145 +346,110 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
         return;
       }
     }
+
+    // If on the About & Preferences step, validate minimum age
+    if (currentStep === 4) {
+      const minAge = form.getValues("partnerPreferenceAgeMin");
+      if (minAge && minAge < 18) {
+        form.setError("partnerPreferenceAgeMin", {
+          type: "manual",
+          message: "Minimum preferred partner age must be 18 or above",
+        });
+        return;
+      }
+    }
+
     const valid = await form.trigger(
       stepFields as (keyof ProfileFormValues)[],
       { shouldFocus: true }
     );
-    if (valid) setCurrentStep((s: number) => Math.min(s + 1, totalSteps - 1));
+    if (!valid) return;
+
+    // If this is the last non-image step, fetch userId
+    if (currentStep === totalSteps - 2 && mode === "create") {
+      setCreatingProfile(true);
+      try {
+        if (onProfileCreated) {
+          onProfileCreated();
+          setWaitForUserId(true);
+          return; // Do not advance step yet
+        }
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to create profile"
+        );
+      } finally {
+        setCreatingProfile(false);
+      }
+      return;
+    }
+
+    if (currentStep < totalSteps - 1) {
+      setCurrentStep((s: number) => Math.min(s + 1, totalSteps - 1));
+    }
   };
+
+  // 2. Use userId only if it exists in image-related effects and handlers
+  const userId = initialValues?.userId;
+
+  // Debug log for userId propagation
+  React.useEffect(() => {
+    console.log("[ProfileForm] userId:", userId);
+  }, [userId]);
+
+  // Effect: when waitForUserId && userId, advance step
+  React.useEffect(() => {
+    if (waitForUserId && userId) {
+      setCurrentStep((s) => Math.min(s + 1, totalSteps - 1));
+      setWaitForUserId(false);
+    }
+  }, [waitForUserId, userId, totalSteps]);
+
   const handlePrevious = () =>
     setCurrentStep((s: number) => Math.max(s - 1, 0));
 
   // 5. Update handleSubmit signature
   const handleSubmit = async (values: ProfileFormValues) => {
-    // Use images from userImages for validation
-    function isValidImage(
-      img: unknown
-    ): img is { url: string; storageId: string } {
-      return (
-        typeof img === "object" &&
-        img !== null &&
-        "url" in img &&
-        typeof (img as { url: unknown }).url === "string" &&
-        "storageId" in img &&
-        typeof (img as { storageId: unknown }).storageId === "string"
+    try {
+      setSaving(true);
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      // Validate minimum age
+      if (
+        values.partnerPreferenceAgeMin &&
+        values.partnerPreferenceAgeMin < 18
+      ) {
+        toast.error("Minimum preferred partner age must be 18 or above");
+        setSaving(false);
+        return;
+      }
+
+      if (mode === "edit") {
+        await submitProfile(token, values, "edit");
+        if (onSubmit) {
+          onSubmit(values);
+        }
+        onEditDone();
+      } else {
+        // In create mode, submit the profile
+        await submitProfile(token, values, "create");
+        if (onProfileCreated) {
+          onProfileCreated();
+        }
+      }
+    } catch (error) {
+      console.error("Error submitting profile:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save profile"
       );
-    }
-    const validImages = (userImages || []).filter(isValidImage);
-    // Check if we're on the image upload step and no images are uploaded
-    if (mode === "create" && currentStep === 4 && validImages.length === 0) {
-      form.setError("profileImageIds", {
-        type: "manual",
-        message: "Please upload at least one profile image",
-      });
-      return;
-    }
-
-    // If we're submitting the final form, ensure we have images
-    if (
-      mode === "create" &&
-      currentStep === totalSteps - 1 &&
-      validImages.length === 0
-    ) {
-      form.setError("profileImageIds", {
-        type: "manual",
-        message: "Please upload at least one profile image before submitting",
-      });
-      setCurrentStep(4); // Go to the images step
-      return;
-    }
-
-    // Convert annualIncome to number if present
-    if (values.annualIncome !== undefined && values.annualIncome !== null) {
-      values.annualIncome = Number(values.annualIncome);
-    }
-
-    // Convert height to '5ft 7in' string if present
-    if (
-      values.height !== undefined &&
-      values.height !== null &&
-      values.height !== ""
-    ) {
-      values.height = cmToFeetInchesString(Number(values.height));
-    }
-
-    // Convert partnerPreferenceAgeMin and partnerPreferenceAgeMax to numbers or undefined
-    if (
-      typeof values.partnerPreferenceAgeMin === "string" &&
-      values.partnerPreferenceAgeMin === ""
-    ) {
-      values.partnerPreferenceAgeMin = undefined;
-    } else if (typeof values.partnerPreferenceAgeMin === "string") {
-      values.partnerPreferenceAgeMin = Number(values.partnerPreferenceAgeMin);
-    }
-    if (
-      typeof values.partnerPreferenceAgeMax === "string" &&
-      values.partnerPreferenceAgeMax === ""
-    ) {
-      values.partnerPreferenceAgeMax = undefined;
-    } else if (typeof values.partnerPreferenceAgeMax === "string") {
-      values.partnerPreferenceAgeMax = Number(values.partnerPreferenceAgeMax);
-    }
-
-    // Convert partnerPreferenceReligion to array of strings or undefined
-    if (
-      values.partnerPreferenceReligion === undefined ||
-      values.partnerPreferenceReligion === null ||
-      (Array.isArray(values.partnerPreferenceReligion) &&
-        values.partnerPreferenceReligion.length === 0) ||
-      (typeof values.partnerPreferenceReligion === "string" &&
-        values.partnerPreferenceReligion === "")
-    ) {
-      values.partnerPreferenceReligion = undefined;
-    } else if (typeof values.partnerPreferenceReligion === "string") {
-      values.partnerPreferenceReligion = (
-        values.partnerPreferenceReligion as string
-      )
-        .split(",")
-        .map((s: string) => s.trim())
-        .filter((s: string) => s.length > 0);
-      if ((values.partnerPreferenceReligion as string[]).length === 0) {
-        values.partnerPreferenceReligion = undefined;
-      }
-    }
-
-    // Convert partnerPreferenceUkCity to array of strings or undefined
-    if (
-      values.partnerPreferenceUkCity === undefined ||
-      values.partnerPreferenceUkCity === null ||
-      (Array.isArray(values.partnerPreferenceUkCity) &&
-        values.partnerPreferenceUkCity.length === 0) ||
-      (typeof values.partnerPreferenceUkCity === "string" &&
-        values.partnerPreferenceUkCity === "")
-    ) {
-      values.partnerPreferenceUkCity = undefined;
-    } else if (typeof values.partnerPreferenceUkCity === "string") {
-      values.partnerPreferenceUkCity = (
-        values.partnerPreferenceUkCity as string
-      )
-        .split(",")
-        .map((s: string) => s.trim())
-        .filter((s: string) => s.length > 0);
-      if ((values.partnerPreferenceUkCity as string[]).length === 0) {
-        values.partnerPreferenceUkCity = undefined;
-      }
-    }
-
-    await onSubmit({ ...values, profileImageIds: uploadedImageIds });
-    // removed setShowSuccessModal
-    // Remove draft from localStorage after successful submit
-    if (mode === "create") {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      throw error;
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleImagesChanged = React.useCallback((newImageIds: string[]) => {
-    setUploadedImageIds(newImageIds);
-    // removed setImagesVersion
-  }, []);
-
-  const token = useToken();
-  const [convexUserId, setConvexUserId] = React.useState<string | null>(null);
   const [userImages, setUserImages] = React.useState<
     {
       url: string;
@@ -479,59 +458,85 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
   >([]);
   const [loadingImages, setLoadingImages] = React.useState(false);
 
+  // 2. Use userId only if it exists in image-related effects and handlers
   React.useEffect(() => {
-    async function fetchUserId() {
-      if (!clerkUser?.id) return;
-      const res = await fetch("/api/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setConvexUserId(data?.profile?.userId || null);
-      }
-    }
-    fetchUserId();
-  }, [clerkUser?.id, token]);
-
-  React.useEffect(() => {
-    async function fetchImages() {
-      if (!convexUserId) return;
-      setLoadingImages(true);
-      const res = await fetch(`/api/profile-detail/${convexUserId}/images`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+    if (!userId) return;
+    setLoadingImages(true);
+    fetchUserProfileImages(token!, userId)
+      .then((data) => {
+        console.log(
+          "[ProfileForm] Fetched userProfileImages after upload:",
+          data.userProfileImages
+        );
         setUserImages(data.userProfileImages || []);
-      } else {
-        setUserImages([]);
-      }
-      setLoadingImages(false);
-    }
-    fetchImages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [convexUserId]);
+      })
+      .catch(() => setUserImages([]))
+      .finally(() => setLoadingImages(false));
+  }, [token, userId]);
 
   const handleDeleteImage = async (storageId: string) => {
-    if (!convexUserId) return;
-    await deleteImage(convexUserId, storageId, token);
+    if (!userId) return;
+    setImageToDelete(storageId);
+    setDeleteConfirmModalOpen(true);
+  };
+
+  const confirmDeleteImage = async () => {
+    if (!userId || !imageToDelete) return;
+    setLoadingImages(true);
+    try {
+      await deleteImage(userId, imageToDelete, token!);
+      // Refetch images after delete
+      const data = await fetchUserProfileImages(token!, userId);
+      console.log(
+        "[ProfileForm] Fetched userProfileImages after delete:",
+        data.userProfileImages
+      );
+      const newImages = data.userProfileImages || [];
+      setUserImages(newImages);
+      // Update the uploadedImageIds to match the new images
+      setUploadedImageIds(
+        newImages.map(
+          (img: { storageId: string; url: string }) => img.storageId
+        )
+      );
+      toast.success("Image deleted successfully");
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      toast.error("Failed to delete image");
+    } finally {
+      setLoadingImages(false);
+      setDeleteConfirmModalOpen(false);
+      setImageToDelete(null);
+    }
   };
 
   const handleReorderImages = async (userId: string, imageIds: string[]) => {
+    if (loadingImages || reordering) return; // Block reorder if loading or already reordering
+    setReordering(true);
+    setLoadingImages(true);
     try {
       const res = await fetch(`/api/images/order`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token!}`,
         },
         body: JSON.stringify({ userId, imageIds }),
       });
       if (!res.ok) throw new Error("Failed to update image order");
       toast.success("Image order updated");
+      // Refetch images after reorder
+      const data = await fetchUserProfileImages(token!, userId);
+      console.log(
+        "[ProfileForm] Fetched userProfileImages after upload:",
+        data.userProfileImages
+      );
+      setUserImages(data.userProfileImages || []);
     } catch {
       toast.error("Failed to update image order");
     }
+    setLoadingImages(false);
+    setReordering(false);
   };
 
   const storageIdToUrlMap = React.useMemo(() => {
@@ -566,6 +571,50 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
     setModalOpen(true);
   };
 
+  const handleImagesChanged = React.useCallback(
+    async (newImageIds: string[]) => {
+      setUploadedImageIds(newImageIds);
+      // After image upload, fetch the latest image URLs from the backend (create mode)
+      if (mode === "create" && userId && newImageIds.length > 0) {
+        try {
+          const data = await fetchUserProfileImages(token!, userId);
+          console.log(
+            "[ProfileForm] Fetched userProfileImages after upload:",
+            data.userProfileImages
+          );
+          // Map newImageIds to their URLs
+          const urlMap: Record<string, string> = {};
+          (data.userProfileImages || []).forEach(
+            (img: { storageId: string; url: string }) => {
+              urlMap[img.storageId] = img.url;
+            }
+          );
+          setUserImages(
+            newImageIds.map((id) => ({
+              storageId: id,
+              url: urlMap[id] || "",
+            }))
+          );
+        } catch {
+          // fallback: just set storageIds
+          setUserImages(newImageIds.map((id) => ({ storageId: id, url: "" })));
+        }
+      }
+    },
+    [mode, userId, token]
+  );
+
+  if (waitForUserId && !userId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+        <span className="ml-2 text-pink-700 font-semibold">
+          Preparing image upload...
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <motion.main
@@ -574,6 +623,42 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
         transition={{ duration: 0.5 }}
         className="max-w-4xl mx-auto"
       >
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Delete Image
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this image? This action cannot
+                be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteConfirmModalOpen(false);
+                    setImageToDelete(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={confirmDeleteImage}
+                  disabled={loadingImages}
+                >
+                  {loadingImages ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="shadow-xl bg-white rounded-lg">
           {/* Progress Bar & Step Indicator */}
           {mode === "create" && (
@@ -610,133 +695,142 @@ const ProfileForm: React.FC<UnifiedProfileFormProps> = ({
           </div>
           <div className="p-6 sm:p-8">
             {/* Step content */}
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={currentStep}
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.35, ease: "easeInOut" }}
-              >
-                {currentStep === 0 && (
-                  <FormSection title="Basic Information">
-                    <ProfileFormStepBasicInfo
-                      form={form}
-                      mode={mode}
-                      cmToFeetInches={cmToFeetInches}
-                    />
-                  </FormSection>
-                )}
-                {currentStep === 1 && (
-                  <FormSection title="Location (UK) & Lifestyle">
-                    <ProfileFormStepLocation
-                      form={form}
-                      ukCityOptions={ukCityOptions}
-                    />
-                  </FormSection>
-                )}
-                {currentStep === 2 && (
-                  <FormSection title="Cultural & Religious Background">
-                    <ProfileFormStepCultural form={form} />
-                  </FormSection>
-                )}
-                {currentStep === 3 && (
-                  <FormSection title="Education & Career">
-                    <ProfileFormStepEducation form={form} />
-                  </FormSection>
-                )}
-                {currentStep === 4 && (
-                  <FormSection title="About & Preferences">
-                    <ProfileFormStepAbout form={form} mode={mode} />
-                  </FormSection>
-                )}
-                {currentStep === totalSteps - 1 && (
-                  <FormSection title="Profile Images">
-                    {convexUserId ? (
-                      <ProfileFormStepImages
+            <form onSubmit={(e) => e.preventDefault()}>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={currentStep}
+                  initial={{ opacity: 0, x: 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -40 }}
+                  transition={{ duration: 0.35, ease: "easeInOut" }}
+                >
+                  {currentStep === 0 && (
+                    <FormSection title="Basic Information">
+                      <ProfileFormStepBasicInfo
                         form={form}
-                        clerkUser={clerkUser}
-                        convexUserId={convexUserId}
-                        handleImagesChanged={handleImagesChanged}
-                        orderedImages={orderedImages}
-                        handleImageClick={handleImageClick}
-                        handleDeleteImage={handleDeleteImage}
-                        deletingImageId={deletingImageId}
-                        modalOpen={modalOpen}
-                        setModalOpen={setModalOpen}
-                        modalIndex={modalIndex}
-                        setModalIndex={setModalIndex}
-                        updateOrder={({ userId, imageIds }) =>
-                          handleReorderImages(userId, imageIds)
-                        }
-                        toast={toast}
-                        loading={loadingImages}
+                        mode={mode}
+                        cmToFeetInches={cmToFeetInches}
                       />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2">
-                        <Skeleton className="w-12 h-12 rounded-full" />
-                        <Skeleton className="h-4 w-24 rounded" />
-                      </div>
-                    )}
-                  </FormSection>
-                )}
-              </motion.div>
-            </AnimatePresence>
-            {/* Navigation */}
-            <div className="flex justify-between pt-6 border-t mt-8">
-              <div className="flex gap-2">
-                {currentStep > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePrevious}
-                    disabled={loading}
-                  >
-                    Previous
-                  </Button>
-                )}
-                {mode === "edit" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onEditDone}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                )}
+                    </FormSection>
+                  )}
+                  {currentStep === 1 && (
+                    <FormSection title="Location (UK) & Lifestyle">
+                      <ProfileFormStepLocation
+                        form={form}
+                        ukCityOptions={ukCityOptions}
+                      />
+                    </FormSection>
+                  )}
+                  {currentStep === 2 && (
+                    <FormSection title="Cultural & Religious Background">
+                      <ProfileFormStepCultural form={form} />
+                    </FormSection>
+                  )}
+                  {currentStep === 3 && (
+                    <FormSection title="Education & Career">
+                      <ProfileFormStepEducation form={form} />
+                    </FormSection>
+                  )}
+                  {currentStep === 4 && (
+                    <FormSection title="About & Preferences">
+                      <ProfileFormStepAbout form={form} mode={mode} />
+                    </FormSection>
+                  )}
+                  {currentStep === totalSteps - 1 && (
+                    <FormSection title="Profile Images">
+                      {/* Only render image upload step if userId is present */}
+                      {!userId ? (
+                        <div className="flex items-center gap-2 text-pink-600">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Waiting for profile to be created...
+                        </div>
+                      ) : (
+                        <ProfileFormStepImages
+                          form={form}
+                          userId={userId}
+                          handleImagesChanged={handleImagesChanged}
+                          orderedImages={orderedImages}
+                          handleImageClick={handleImageClick}
+                          handleDeleteImage={handleDeleteImage}
+                          deletingImageId={deletingImageId}
+                          modalOpen={modalOpen}
+                          setModalOpen={setModalOpen}
+                          modalIndex={modalIndex}
+                          setModalIndex={setModalIndex}
+                          updateOrder={({ userId, imageIds }) =>
+                            handleReorderImages(userId, imageIds)
+                          }
+                          loading={loadingImages}
+                          reordering={reordering}
+                          mode={mode}
+                        />
+                      )}
+                    </FormSection>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+              {/* Navigation */}
+              <div className="flex justify-between pt-6 border-t mt-8">
+                <div className="flex gap-2">
+                  {currentStep > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePrevious}
+                      disabled={loading}
+                    >
+                      Previous
+                    </Button>
+                  )}
+                  {mode === "edit" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onEditDone}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {currentStep < totalSteps - 1 ? (
+                    <Button
+                      type="button"
+                      className="bg-pink-600 hover:bg-pink-700"
+                      onClick={handleNextStep}
+                      disabled={loading || creatingProfile}
+                    >
+                      {creatingProfile ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        "Next"
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      className="bg-pink-600 hover:bg-pink-700"
+                      onClick={() => {
+                        const values = form.getValues();
+                        handleSubmit(values);
+                      }}
+                    >
+                      {loading || saving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        "Save Profile"
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-2">
-                {currentStep < totalSteps - 1 ? (
-                  <Button
-                    type="button"
-                    className="bg-pink-600 hover:bg-pink-700"
-                    onClick={handleNextStep}
-                    disabled={loading}
-                  >
-                    Next
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    className="bg-pink-600 hover:bg-pink-700"
-                    onClick={form.handleSubmit(handleSubmit)}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      "Save Profile"
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-            {serverError && (
-              <p className="text-sm font-medium text-destructive mt-4">
-                {serverError}
-              </p>
-            )}
+              {serverError && (
+                <p className="text-sm font-medium text-destructive mt-4">
+                  {serverError}
+                </p>
+              )}
+            </form>
           </div>
         </div>
       </motion.main>

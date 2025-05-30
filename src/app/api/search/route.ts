@@ -1,32 +1,63 @@
 import { NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
-import type { NextRequest } from "next/server";
+import { api } from "@convex/_generated/api";
 
-export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+type Gender = "any" | "male" | "female" | "other";
+
+export async function GET(request: Request) {
+  try {
+    const token = request.headers.get("Authorization")?.split(" ")[1];
+    if (!token) {
+      console.error("No token provided in request");
+      return NextResponse.json({ error: "No token provided" }, { status: 401 });
+    }
+
+    console.log("Setting auth token for Convex");
+    convexClient.setAuth(token);
+
+    const { searchParams } = new URL(request.url);
+    const ukCity = searchParams.get("city") || undefined;
+    const religion = searchParams.get("religion") || undefined;
+    const ageMin = searchParams.get("ageMin")
+      ? parseInt(searchParams.get("ageMin")!)
+      : undefined;
+    const ageMax = searchParams.get("ageMax")
+      ? parseInt(searchParams.get("ageMax")!)
+      : undefined;
+    const preferredGender = (searchParams.get("preferredGender") ||
+      undefined) as Gender | undefined;
+    const page = parseInt(searchParams.get("page") || "0");
+    const pageSize = parseInt(searchParams.get("pageSize") || "12");
+
+    console.log("Searching profiles with params:", {
+      ukCity,
+      religion,
+      ageMin,
+      ageMax,
+      preferredGender,
+      page,
+      pageSize,
+    });
+
+    const result = await convexClient.query(api.users.searchPublicProfiles, {
+      ukCity,
+      religion,
+      ageMin,
+      ageMax,
+      preferredGender,
+      page,
+      pageSize,
+    });
+
+    console.log("Search results:", result);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("Error in search API route:", error);
+    return NextResponse.json(
+      { error: "Internal server error", details: error },
+      { status: 500 }
+    );
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-  convex.setAuth(token);
-  const { searchParams } = new URL(req.url);
-  const city = searchParams.get("city") || undefined;
-  const religion = searchParams.get("religion") || undefined;
-  const ageMin = searchParams.get("ageMin")
-    ? Number(searchParams.get("ageMin"))
-    : undefined;
-  const ageMax = searchParams.get("ageMax")
-    ? Number(searchParams.get("ageMax"))
-    : undefined;
-  const preferredGender = searchParams.get("preferredGender") || undefined;
-  const result = await convex.action(api.users.searchPublicProfiles, {
-    city,
-    religion,
-    ageMin,
-    ageMax,
-    preferredGender,
-  });
-  return NextResponse.json(result);
 }

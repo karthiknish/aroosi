@@ -16,7 +16,7 @@ function getTokenFromRequest(req: NextRequest): {
 } {
   try {
     const auth = req.headers.get("authorization");
-
+    
     if (!auth) {
       console.log("[API] No authorization header found");
       return { token: null, error: "No authorization header" };
@@ -33,7 +33,7 @@ function getTokenFromRequest(req: NextRequest): {
       console.log("[API] No token provided after Bearer");
       return { token: null, error: "No token provided" };
     }
-
+    
     return { token };
   } catch (error) {
     console.error("[API] Error extracting token:", error);
@@ -73,7 +73,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         { status: 400 }
       );
     }
-
+    
     // Validate required fields
     const { fromUserId, toUserId } = body;
     if (
@@ -90,7 +90,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         { status: 400 }
       );
     }
-
+    
     // Initialize Convex client
     if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
       return NextResponse.json(
@@ -101,10 +101,10 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         { status: 500 }
       );
     }
-
+    
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
     convex.setAuth(token);
-
+    
     try {
       const result = await convex.mutation(
         action === "send"
@@ -172,14 +172,14 @@ export async function GET(req: NextRequest) {
   }
 
   // Auth
-  const { token, error: tokenError } = getTokenFromRequest(req);
-  if (!token) {
-    return NextResponse.json(
-      { success: false, error: "Authentication failed", details: tokenError },
-      { status: 401 }
-    );
-  }
-
+    const { token, error: tokenError } = getTokenFromRequest(req);
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: "Authentication failed", details: tokenError },
+        { status: 401 }
+      );
+    }
+    
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return NextResponse.json(
       { success: false, error: "Server configuration error" },

@@ -13,6 +13,17 @@ import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import { Id } from "@/../convex/_generated/dataModel";
 import type { Profile, ProfileEditFormState } from "@/types/profile";
 import { Slider } from "@/components/ui/slider";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { useToken } from "@/components/TokenProvider";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface ProfileEditFormProps {
   profile: Profile;
@@ -25,6 +36,10 @@ interface ProfileEditFormProps {
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
   loading?: boolean;
   onImagesChanged?: (newImageIds: string[]) => void;
+  adminUpdateProfile?: (args: {
+    id: string;
+    updates: { profileImageIds: string[] };
+  }) => Promise<unknown>;
 }
 
 interface ProfileImage {
@@ -48,9 +63,14 @@ export default function ProfileEditForm({
   loading,
   onImagesChanged,
   fetchedImages,
+  adminUpdateProfile,
 }: ProfileEditFormPropsExtended) {
   // Add state for images for reorder UI
   const [reorderImages, setReorderImages] = useState<ProfileImage[]>([]);
+  // Add image delete support for admin
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const token = useToken();
 
   // Show fetched images initially, then update to reorder images when profileImageIds are set
   useEffect(() => {
@@ -102,6 +122,61 @@ export default function ProfileEditForm({
     }
   };
 
+  // Add image delete support for admin
+  const handleDeleteImage = async (storageId: string) => {
+    if (!profile.userId || !storageId || !token) {
+      console.warn(
+        "[ProfileEditForm] Missing userId, storageId, or token. userId:",
+        profile.userId,
+        "storageId:",
+        storageId,
+        "token:",
+        token
+      );
+      return;
+    }
+    setDeletingImageId(storageId);
+    try {
+      const res = await fetch(`/api/images`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: profile.userId, imageId: storageId }),
+      });
+      if (!res.ok) throw new Error("Failed to delete image");
+      toast.success("Image deleted");
+      // Refetch images from backend to update reorderImages
+      if (!profile.userId || !token) return;
+      const imgRes = await fetch(
+        `/api/profile-detail/${profile.userId}/images`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (imgRes.ok) {
+        const data = await imgRes.json();
+        setReorderImages(
+          (data.userProfileImages || []).filter(
+            (img: ProfileImage) => !!img.url && !!img.storageId
+          )
+        );
+        if (onImagesChanged) {
+          const newOrder = (data.userProfileImages || [])
+            .filter((img: ProfileImage) => !!img.url && !!img.storageId)
+            .map((img: ProfileImage) => img.storageId);
+          onImagesChanged(newOrder);
+        }
+      }
+    } catch {
+      toast.error("Failed to delete image");
+    } finally {
+      setDeletingImageId(null);
+      setConfirmDeleteId(null);
+    }
+  };
+
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
       {/* Show current profile image if available */}
@@ -114,6 +189,7 @@ export default function ProfileEditForm({
             userId={profile.userId as Id<"users">}
             profileId={profile._id as string}
             onImagesChanged={onImagesChanged}
+            adminUpdateProfile={adminUpdateProfile}
           />
           {/* Image Reorder UI for Admin */}
           {Array.isArray(reorderImages) && (
@@ -132,6 +208,29 @@ export default function ProfileEditForm({
                 isAdmin={true}
                 profileId={profile._id as string}
                 onReorder={handleReorder}
+                renderAction={(img) => (
+                  <div className="relative group">
+                    <img
+                      src={img.url}
+                      alt="Profile"
+                      style={{
+                        width: 100,
+                        height: 100,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-600 hover:bg-white z-10"
+                      onClick={() => setConfirmDeleteId(img.storageId!)}
+                      disabled={deletingImageId === img.storageId}
+                      title="Delete image"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               />
             </div>
           )}
@@ -455,6 +554,38 @@ export default function ProfileEditForm({
       >
         {loading ? "Saving..." : "Save Changes"}
       </button>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog
+        open={!!confirmDeleteId}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Image</DialogTitle>
+          </DialogHeader>
+          <div>
+            Are you sure you want to delete this image? This action cannot be
+            undone.
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDeleteId(null)}
+              disabled={!!deletingImageId}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDeleteImage(confirmDeleteId!)}
+              disabled={!!deletingImageId}
+            >
+              {deletingImageId ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

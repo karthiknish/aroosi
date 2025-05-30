@@ -2,6 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useForm, Controller } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query"; // Import useQuery
 import {
   Card,
   CardContent,
@@ -18,7 +19,7 @@ import {
 } from "../../../components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { MapPin, Search, UserCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToken } from "@/components/TokenProvider";
@@ -42,10 +43,48 @@ function isAllowedGender(
   return ["male", "female", "other", "any"].includes(value);
 }
 
+interface FiltersState {
+  distance: string;
+  religion: string;
+  minAge: string;
+  maxAge: string;
+  city: string;
+}
+
+// Define the fetch function outside the component or memoize it if it needs component scope
+async function fetchProfilesAPI(filters: FiltersState, token: string | null) {
+  if (!token) {
+    // Or throw new Error("Token is required to fetch profiles");
+    // Depending on how you want to handle this, useQuery will go into error state
+    return Promise.reject(new Error("Authentication token not available."));
+  }
+  const params = new URLSearchParams();
+  // Build params carefully based on active filters
+  if (filters.city) params.append("city", filters.city);
+  if (filters.religion && filters.religion !== "Any") {
+    // Assuming your API takes 'religion' and not 'preferredGender' for this filter
+    params.append("religion", filters.religion);
+  }
+  if (filters.minAge) params.append("minAge", filters.minAge);
+  if (filters.maxAge) params.append("maxAge", filters.maxAge);
+  // Add other filters like distance if available and needed
+
+  const res = await fetch(`/api/search?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Failed to parse error response" }));
+    throw new Error(err?.error || "Failed to fetch matches");
+  }
+  return res.json();
+}
+
 export default function MatchesPage() {
   const { isSignedIn } = useAuth();
   const token = useToken();
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FiltersState>({
     distance: "",
     religion: "Any",
     minAge: "",
@@ -56,49 +95,25 @@ export default function MatchesPage() {
     defaultValues: filters,
   });
 
-  const [profiles, setProfiles] = useState<Profile[] | undefined>(undefined);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Replace useState for profiles, loading, error with useQuery
+  const {
+    data: profiles,
+    isLoading: loading,
+    error,
+    // refetch, // You can use refetch if you need to trigger it manually for some reason
+  } = useQuery<Profile[], Error>({
+    // Specify Profile[] as TData and Error as TError
+    queryKey: ["searchProfiles", filters, token], // Query key includes filters and token
+    queryFn: () => fetchProfilesAPI(filters, token),
+    enabled: !!isSignedIn && !!token, // Only run query if signed in and token is available
+    // keepPreviousData: true, // Useful if you want to show old data while new data loads on filter change
+  });
 
-  // Fetch profiles from API
-  useEffect(() => {
-    async function fetchProfiles() {
-      if (!isSignedIn) {
-        setProfiles(undefined);
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams();
-        if (isAllowedGender(filters.religion)) {
-          params.append("preferredGender", filters.religion);
-        }
-        // Add more filters as needed
-        // e.g., params.append("city", filters.city);
-        const res = await fetch(`/api/search?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err?.error || "Failed to fetch matches");
-        }
-        const data = await res.json();
-        setProfiles(data || []);
-      } catch (e: unknown) {
-        setError((e as Error).message || "Failed to fetch matches");
-        setProfiles([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchProfiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn, filters]);
+  // The old useEffect for fetching profiles is no longer needed.
+  // useQuery handles fetching based on queryKey changes (e.g. when 'filters' changes).
 
-  const onSubmit = (data: typeof filters) => {
-    setFilters(data);
+  const onSubmit = (data: FiltersState) => {
+    setFilters(data); // This will change the queryKey and trigger useQuery to refetch
   };
 
   if (!isSignedIn) {
@@ -208,7 +223,7 @@ export default function MatchesPage() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-center text-red-500 py-20">{error}</div>
+          <div className="text-center text-red-500 py-20">{error.message}</div> // Use error.message
         ) : profiles && profiles.length === 0 ? (
           <div className="text-center text-gray-500 py-20">
             No matches found. Try adjusting your filters.

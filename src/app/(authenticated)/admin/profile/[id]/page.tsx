@@ -15,12 +15,13 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useToken } from "@/components/TokenProvider";
+import { useQuery } from "@tanstack/react-query";
 
 // Define types for images and matches
 interface ImageType {
@@ -36,61 +37,56 @@ export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { isLoaded, isSignedIn } = useAuth();
   const token = useToken();
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
-  const [images, setImages] = useState<ImageType[]>([]);
-  const [matches, setMatches] = useState<MatchType[]>([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<{
     storageId: string;
     isMain: boolean;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [loadingImages, setLoadingImages] = useState(true);
-  const [loadingMatches, setLoadingMatches] = useState(true);
 
-  useEffect(() => {
-    async function fetchProfileData() {
+  // React Query for profile
+  const { data: profile, isLoading: loadingProfile } = useQuery({
+    queryKey: ["adminProfile", id, token],
+    queryFn: async () => {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      // Profile
-      setLoadingProfile(true);
       const profileRes = await fetch(`/api/admin/profiles/${id}`, { headers });
-      const profileData = profileRes.ok ? await profileRes.json() : null;
-      setProfile(profileData);
-      setLoadingProfile(false);
-      // Images and matches require userId
-      if (profileData && profileData.userId) {
-        setLoadingImages(true);
-        const imagesRes = await fetch(
-          `/api/profile-detail/${profileData.userId}/images`,
-          {
-            headers,
-          }
-        );
-        setImages(
-          imagesRes.ok
-            ? ((await imagesRes.json()).userProfileImages as ImageType[])
-            : []
-        );
-        setLoadingImages(false);
-        setLoadingMatches(true);
-        const matchesRes = await fetch(`/api/admin/profiles/${id}/matches`, {
-          headers,
-        });
-        setMatches(
-          matchesRes.ok ? ((await matchesRes.json()) as MatchType[]) : []
-        );
-        setLoadingMatches(false);
-      } else {
-        setImages([]);
-        setMatches([]);
-        setLoadingImages(false);
-        setLoadingMatches(false);
-      }
-    }
-    if (isSignedIn) fetchProfileData();
-  }, [id, isSignedIn, token]);
+      return profileRes.ok ? await profileRes.json() : null;
+    },
+    enabled: !!id && !!token && isSignedIn,
+  });
+
+  // React Query for images (depends on profile.userId)
+  const userId = profile?.userId;
+  const { data: images = [], isLoading: loadingImages } = useQuery({
+    queryKey: ["adminProfileImages", userId, token],
+    queryFn: async () => {
+      if (!userId) return [];
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const imagesRes = await fetch(`/api/profile-detail/${userId}/images`, {
+        headers,
+      });
+      return imagesRes.ok
+        ? ((await imagesRes.json()).userProfileImages as ImageType[])
+        : [];
+    },
+    enabled: !!userId && !!token && isSignedIn,
+  });
+
+  // React Query for matches (depends on profile.userId)
+  const { data: matches = [] } = useQuery({
+    queryKey: ["adminProfileMatches", id, token],
+    queryFn: async () => {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const matchesRes = await fetch(`/api/admin/profiles/${id}/matches`, {
+        headers,
+      });
+      return matchesRes.ok ? ((await matchesRes.json()) as MatchType[]) : [];
+    },
+    enabled: !!id && !!token && isSignedIn,
+  });
 
   const handleDeleteImage = async () => {
     if (!profile?.userId || !imageToDelete) return;
@@ -139,20 +135,14 @@ export default function AdminProfileDetailPage() {
     };
 
     if (!profile) {
-      console.log("No profile available");
       return defaultReturn;
     }
 
-    console.log("Processing images...");
-    console.log("Raw images:", images);
-
     // Ensure we have a valid images array
     const validImages: ImageType[] = Array.isArray(images) ? images : [];
-    console.log("Valid images:", validImages);
 
     // If no images, return early
     if (validImages.length === 0) {
-      console.log("No images to display");
       return defaultReturn;
     }
 
@@ -160,7 +150,6 @@ export default function AdminProfileDetailPage() {
     const map: Record<string, ImageType> = Object.fromEntries(
       validImages.map((img) => [String(img.storageId), img])
     );
-    console.log("Image map:", map);
 
     // Get all images in their original order
     const all = [...validImages];
@@ -173,17 +162,13 @@ export default function AdminProfileDetailPage() {
     const hasProfileImageIds = profileImageIds.length > 0;
 
     if (hasProfileImageIds) {
-      console.log("Using profileImageIds for ordering:", profileImageIds);
       ordered = profileImageIds.map((id) => map[String(id)]).filter(Boolean);
     }
 
     // If no ordered images from profileImageIds or no profileImageIds, use all images
     if (!hasProfileImageIds || ordered.length === 0) {
-      console.log("Using all images in default order");
       ordered = all;
     }
-
-    console.log("Final ordered images:", ordered);
 
     return {
       orderedImages: Array.isArray(ordered) ? ordered : [],

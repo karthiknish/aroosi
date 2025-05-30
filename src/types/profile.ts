@@ -20,19 +20,19 @@ export interface Profile {
   aboutMe?: string;
   phoneNumber?: string;
   diet?: string;
-  smoking?: string;
-  drinking?: string;
-  physicalStatus?: string;
-  partnerPreferenceAgeMin?: number;
-  partnerPreferenceAgeMax?: number;
+  smoking?: "no" | "occasionally" | "yes" | "";
+  drinking?: "no" | "occasionally" | "yes";
+  physicalStatus?: "normal" | "differently-abled" | "other" | "";
+  partnerPreferenceAgeMin?: string | number | "" | undefined;
+  partnerPreferenceAgeMax?: string | number | "" | undefined;
   partnerPreferenceReligion?: string[];
   partnerPreferenceUkCity?: string[];
   preferredGender?: string;
   profileImageIds?: string[];
   banned?: boolean;
   email?: string;
-  createdAt: string;
-  updatedAt?: string;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export type Interest = {

@@ -2,18 +2,17 @@
 
 import { useState, useRef, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { toast } from "sonner";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
 import { ContactMessages } from "@/components/admin/ContactMessages";
-import type { ContactMessage } from "@/components/admin/ContactMessages";
 import { BlogPosts } from "@/components/admin/BlogPosts";
 import { CreatePost } from "@/components/admin/CreatePost";
 import ProfileManagement from "@/components/admin/ProfileManagement";
 import Head from "next/head";
-import { Id } from "@convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import type { Profile } from "@/types/profile";
@@ -33,11 +32,10 @@ interface BlogPost {
   categories?: string[];
 }
 
-type Interest = {
-  fromUserId: Id<"users">;
-  toUserId: Id<"users">;
-  status: "pending" | "accepted" | "rejected";
-  createdAt: number;
+type MutualMatchInterest = {
+  status: string;
+  profileA?: Profile | null;
+  profileB?: Profile | null;
 };
 
 function AdminPageInner() {
@@ -82,79 +80,53 @@ function AdminPageInner() {
   const { user, isLoaded, isSignedIn } = useUser();
   const token = useToken();
 
-  // Replace Convex queries with API fetches
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [interests, setInterests] = useState<Interest[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [previewHtml, setPreviewHtml] = useState<string>("");
-  const editorResetKey = 0;
-  // Blog posts
-  useEffect(() => {
-    if (activeTab !== "blog") return;
-    let ignore = false;
-    async function fetchBlogPosts() {
-      setLoading(true);
+  // React Query for blog posts
+  const {
+    data: blogPosts = [],
+    isLoading: loadingBlogPosts,
+    refetch: refetchBlogPosts,
+  } = useQuery({
+    queryKey: ["blogPosts", token, activeTab],
+    queryFn: async () => {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const blogRes = await fetch("/api/blog", { headers });
-      if (!ignore) {
-        if (blogRes.ok) {
-          const data = await blogRes.json();
-          setBlogPosts(Array.isArray(data) ? data : data.posts || []);
-        } else {
-          setBlogPosts([]);
-        }
-        setLoading(false);
-      }
-    }
-    fetchBlogPosts();
-    return () => {
-      ignore = true;
-    };
-  }, [activeTab, token]);
+      if (!blogRes.ok) return [];
+      const data = await blogRes.json();
+      return Array.isArray(data) ? data : data.posts || [];
+    },
+    enabled: activeTab === "blog",
+  });
 
-  // Contact messages
-  useEffect(() => {
-    if (activeTab !== "contact") return;
-    let ignore = false;
-    async function fetchContactMessages() {
-      setLoading(true);
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const contactRes = await fetch("/api/contact", { headers });
-      if (!ignore) {
-        setContactMessages(contactRes.ok ? await contactRes.json() : []);
-        setLoading(false);
-      }
-    }
-    fetchContactMessages();
-    return () => {
-      ignore = true;
-    };
-  }, [activeTab, token]);
+  // React Query for contact messages
+  const { data: contactMessages = [], isLoading: loadingContactMessages } =
+    useQuery({
+      queryKey: ["contactMessages", token, activeTab],
+      queryFn: async () => {
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const contactRes = await fetch("/api/contact", { headers });
+        if (!contactRes.ok) return [];
+        return await contactRes.json();
+      },
+      enabled: activeTab === "contact",
+    });
 
-  // Interests
-  useEffect(() => {
-    if (activeTab !== "matches") return;
-    let ignore = false;
-    async function fetchInterests() {
-      setLoading(true);
+  // React Query for interests
+  const { data: interests = [] } = useQuery({
+    queryKey: ["adminInterests", token, activeTab],
+    queryFn: async () => {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const interestsRes = await fetch("/api/admin/interests", { headers });
-      if (!ignore) {
-        setInterests(interestsRes.ok ? await interestsRes.json() : []);
-        setLoading(false);
-      }
-    }
-    fetchInterests();
-    return () => {
-      ignore = true;
-    };
-  }, [activeTab, token]);
+      if (!interestsRes.ok) return [];
+      return await interestsRes.json();
+    },
+    enabled: activeTab === "matches",
+  });
 
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const editorResetKey = 0;
   // Live preview effect for create post (must be before any early returns)
   useEffect(() => {
     setPreviewHtml(content);
@@ -201,12 +173,15 @@ function AdminPageInner() {
 
   // Map Convex data to expected types
   const mutualMatches = interests
-    .filter((i) => i.status === "accepted")
-    .map((i) => ({
+    .filter((i: MutualMatchInterest) => i.status === "accepted")
+    .map(() => ({
       profileA: null,
       profileB: null,
     }))
-    .filter((m) => m.profileA && m.profileB);
+    .filter(
+      (m: { profileA: Profile | null; profileB: Profile | null }) =>
+        m.profileA && m.profileB
+    );
 
   const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -305,7 +280,7 @@ function AdminPageInner() {
         }).then((res) => {
           if (res.ok) {
             toast.success("Post deleted successfully!");
-            setBlogPosts((prev) => prev.filter((p) => p._id !== id));
+            refetchBlogPosts();
           } else {
             toast.error("Failed to delete post");
           }
@@ -472,7 +447,10 @@ function AdminPageInner() {
               <AdminMatches mutualMatches={mutualMatches} />
             )}
             {activeTab === "contact" && (
-              <ContactMessages messages={contactMessages} loading={loading} />
+              <ContactMessages
+                messages={contactMessages}
+                loading={loadingContactMessages}
+              />
             )}
             {activeTab === "blog" && (
               <>
@@ -580,12 +558,12 @@ function AdminPageInner() {
                 <BlogPosts
                   posts={blogPosts}
                   setEditingPost={(id) => {
-                    const post = blogPosts.find((p) => p._id === id);
+                    const post = blogPosts.find((p: BlogPost) => p._id === id);
                     if (post) startEdit(post);
                     else setEditingId(id);
                   }}
                   deletePost={confirmDelete}
-                  loading={loading}
+                  loading={loadingBlogPosts}
                 />
               </>
             )}

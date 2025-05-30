@@ -39,8 +39,6 @@ export default function ProfileView({
 }: ProfileViewProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  console.log("Rendering ProfileView for:", profile);
-  console.log("images", images, "imageUrls", imageUrls);
   // Calculate age from dateOfBirth if possible
   let age: string | number = "-";
   if (profile.dateOfBirth) {
@@ -58,7 +56,6 @@ export default function ProfileView({
 
   // Handle error state
   if (images === null) {
-    console.error("Error loading profile images: null response");
     return (
       <div className="p-4 text-red-500 text-sm">
         Error loading images. Please try again later.
@@ -78,7 +75,6 @@ export default function ProfileView({
 
   // Loading state for main profile image
   const profileImage = displayImages.length > 0 ? displayImages[0] : null;
-  console.log("ProfileView main image:", profileImage);
 
   // If there is a profile image, wait for it to load before rendering the rest
   if (profileImage && !imageLoaded && !imageError) {

@@ -11,11 +11,12 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserCircle } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToken } from "@/components/TokenProvider";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
 const majorUkCities = [
   "Belfast",
@@ -84,38 +85,30 @@ export default function SearchProfilesPage() {
   const { user, isLoaded } = useUser();
   const token = useToken();
   const router = useRouter();
-  const [currentUserProfile, setCurrentUserProfile] = useState<
-    Record<string, unknown> | undefined
-  >(undefined);
-  const [profiles, setProfiles] = useState<ProfileSearchResult[]>([]);
-  const [userImages, setUserImages] = useState<
-    { [userId: string]: string | null } | undefined
-  >(undefined);
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
   const [ageMax, setAgeMax] = React.useState("");
   const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
-  const [loading, setLoading] = useState(true);
-
-  // Pagination state
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize] = useState(12);
   const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    async function fetchProfile() {
-      if (!token) return;
+  // React Query for current user profile
+  const { data: currentUserProfile } = useQuery({
+    queryKey: ["currentUserProfile", token],
+    queryFn: async () => {
+      if (!token) return undefined;
       const res = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        setCurrentUserProfile(await res.json());
-      }
-    }
-    fetchProfile();
-  }, [token]);
+      if (!res.ok) return undefined;
+      return await res.json();
+    },
+    enabled: !!token,
+  });
 
+  // Compute preferredGender before using it in queries
   const preferredGender =
     typeof currentUserProfile === "object" &&
     currentUserProfile &&
@@ -127,9 +120,21 @@ export default function SearchProfilesPage() {
           .preferredGender || "any"
       : "any";
 
-  useEffect(() => {
-    async function fetchProfiles() {
-      setLoading(true);
+  // React Query for profiles
+  const { data: profilesData, isLoading: loadingProfiles } = useQuery({
+    queryKey: [
+      "profiles",
+      token,
+      city,
+      religion,
+      ageMin,
+      ageMax,
+      preferredGender,
+      page,
+      pageSize,
+    ],
+    queryFn: async () => {
+      if (!token) return [];
       const params = new URLSearchParams();
       if (city && city !== "any") params.append("city", city);
       if (religion && religion !== "any") params.append("religion", religion);
@@ -142,15 +147,35 @@ export default function SearchProfilesPage() {
       const res = await fetch(`/api/search?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setProfiles(Array.isArray(data.profiles) ? data.profiles : data);
-        setTotal(data.total ?? 0);
-      }
-      setLoading(false);
-    }
-    fetchProfiles();
-  }, [token, city, religion, ageMin, ageMax, preferredGender, page, pageSize]);
+      if (!res.ok) return [];
+      const data = await res.json();
+      setTotal(data.total ?? 0);
+      return Array.isArray(data.profiles) ? data.profiles : data;
+    },
+    enabled: !!token,
+  });
+  const profiles = profilesData || [];
+
+  // React Query for user images
+  const { data: userImages = {}, isLoading: loadingImages } = useQuery({
+    queryKey: ["userImages", token, profiles],
+    queryFn: async () => {
+      if (!token || !profiles || profiles.length === 0) return {};
+      const userIds = profiles
+        .map((u: ProfileSearchResult) => u.userId)
+        .filter(Boolean);
+      if (userIds.length === 0) return {};
+      const res = await fetch(
+        `/api/images/batch?userIds=${userIds.join(",")}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) return {};
+      return await res.json();
+    },
+    enabled: !!token && profiles.length > 0,
+  });
 
   // Only show users with a complete profile and not hidden from search
   const publicProfiles = React.useMemo(() => {
@@ -166,7 +191,9 @@ export default function SearchProfilesPage() {
     const set = new Set(
       publicProfiles
         .map((u: ProfileSearchResult) => u.profile!.religion)
-        .filter(Boolean)
+        .filter(
+          (v: unknown): v is string => typeof v === "string" && v.length > 0
+        )
     );
     return ["any", ...Array.from(set)];
   }, [publicProfiles]);
@@ -189,32 +216,6 @@ export default function SearchProfilesPage() {
       return true;
     });
   }, [publicProfiles, user]);
-
-  // Collect all userIds from filtered (always an array)
-  const userIds = React.useMemo(
-    () => filtered.map((u: ProfileSearchResult) => u.userId).filter(Boolean),
-    [filtered]
-  );
-  // Allow null values in userImages
-  useEffect(() => {
-    async function fetchImages() {
-      setLoading(true);
-      if (userIds.length === 0) {
-        setUserImages({});
-        setLoading(false);
-        return;
-      }
-      const res = await fetch(
-        `/api/images/batch?userIds=${userIds.join(",")}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (res.ok) {
-        setUserImages(await res.json());
-      }
-      setLoading(false);
-    }
-    fetchImages();
-  }, [token, userIds]);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -280,8 +281,8 @@ export default function SearchProfilesPage() {
                 <SelectValue placeholder="Choose Religion" />
               </SelectTrigger>
               <SelectContent>
-                {religionOptions.map((r) => (
-                  <SelectItem key={r} value={r || ""}>
+                {(religionOptions as string[]).map((r) => (
+                  <SelectItem key={r} value={r}>
                     {r === "any" ? "Any Religion" : r}
                   </SelectItem>
                 ))}
@@ -307,7 +308,8 @@ export default function SearchProfilesPage() {
             />
           </div>
         </section>
-        {loading ||
+        {loadingProfiles ||
+        loadingImages ||
         profiles === undefined ||
         userImages === undefined ||
         filtered.length === 0 ? (
@@ -329,11 +331,18 @@ export default function SearchProfilesPage() {
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((u: ProfileSearchResult, idx: number) => {
                 const p = u.profile!;
-                const firstImageUrl = userImages?.[u.userId] || null;
+                const firstImageUrl =
+                  typeof userImages === "object" &&
+                  userImages !== null &&
+                  typeof u.userId === "string" &&
+                  u.userId in userImages
+                    ? (userImages as Record<string, string | null>)[u.userId] ||
+                      null
+                    : null;
                 const loaded = imgLoaded[u.userId] || false;
                 return (
                   <Card
-                    key={u.userId || idx}
+                    key={typeof u.userId === "string" ? u.userId : String(idx)}
                     className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col"
                   >
                     {firstImageUrl ? (
@@ -344,7 +353,7 @@ export default function SearchProfilesPage() {
                         )}
                         <img
                           src={firstImageUrl}
-                          alt={p.fullName}
+                          alt={typeof p.fullName === "string" ? p.fullName : ""}
                           className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
                           onLoad={() =>
                             setImgLoaded((prev) => ({
@@ -364,35 +373,50 @@ export default function SearchProfilesPage() {
                         className="text-xl font-serif font-bold text-gray-900 mb-1"
                         style={{ fontFamily: "Lora, serif" }}
                       >
-                        {p.fullName}
+                        {typeof p.fullName === "string" ? p.fullName : ""}
                       </div>
                       <div
                         className="text-sm text-gray-600 mb-1"
                         style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                       >
-                        {p.ukCity || "-"}
+                        {typeof p.ukCity === "string" ? p.ukCity : "-"}
                       </div>
                       <div
                         className="text-sm text-gray-600 mb-1"
                         style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                       >
-                        Age: {getAge(p.dateOfBirth || "")}
+                        Age:{" "}
+                        {getAge(
+                          typeof p.dateOfBirth === "string" ? p.dateOfBirth : ""
+                        )}
                       </div>
                       <div
                         className="text-sm text-gray-600 mb-2"
                         style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                       >
-                        {p.religion || "-"}
+                        {typeof p.religion === "string" ? p.religion : "-"}
                       </div>
                       <Button
                         className="bg-pink-600 hover:bg-pink-700 w-full mt-2"
-                        onClick={() =>
-                          router.push(`/profile/${u.userId}`, {
-                            state: { profile: u },
-                          })
-                        }
+                        onClick={() => {
+                          // Convex user IDs are 15+ chars, Clerk IDs start with 'user_'
+                          if (
+                            typeof u.userId !== "string" ||
+                            u.userId.startsWith("user_")
+                          ) {
+                            console.warn(
+                              "Attempted to navigate with Clerk ID instead of Convex user ID:",
+                              u.userId
+                            );
+                            alert(
+                              "Internal error: Invalid user ID for navigation."
+                            );
+                            return;
+                          }
+                          router.push(`/profile/${u.userId}`);
+                        }}
                       >
-                        View Profile
+                        {"View Profile"}
                       </Button>
                     </CardContent>
                   </Card>
