@@ -10,12 +10,12 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { UserCircle } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useUser, SignInButton } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToken } from "@/components/TokenProvider";
+import { useRouter } from "next/navigation";
 
 const majorUkCities = [
   "Belfast",
@@ -83,6 +83,7 @@ interface ProfileSearchResult {
 export default function SearchProfilesPage() {
   const { user, isLoaded } = useUser();
   const token = useToken();
+  const router = useRouter();
   const [currentUserProfile, setCurrentUserProfile] = useState<
     Record<string, unknown> | undefined
   >(undefined);
@@ -96,6 +97,11 @@ export default function SearchProfilesPage() {
   const [ageMax, setAgeMax] = React.useState("");
   const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
   const [loading, setLoading] = useState(true);
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(12);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -124,19 +130,27 @@ export default function SearchProfilesPage() {
   useEffect(() => {
     async function fetchProfiles() {
       setLoading(true);
-      const res = await fetch(
-        `/api/search?preferredGender=${preferredGender}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const params = new URLSearchParams();
+      if (city && city !== "any") params.append("city", city);
+      if (religion && religion !== "any") params.append("religion", religion);
+      if (ageMin) params.append("ageMin", ageMin);
+      if (ageMax) params.append("ageMax", ageMax);
+      if (preferredGender && preferredGender !== "any")
+        params.append("preferredGender", preferredGender);
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+      const res = await fetch(`/api/search?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.ok) {
         const data = await res.json();
-        console.log("API /api/search response:", data);
-        setProfiles(Array.isArray(data) ? data : data.profiles || []);
+        setProfiles(Array.isArray(data.profiles) ? data.profiles : data);
+        setTotal(data.total ?? 0);
       }
       setLoading(false);
     }
     fetchProfiles();
-  }, [token, preferredGender]);
+  }, [token, city, religion, ageMin, ageMax, preferredGender, page, pageSize]);
 
   // Only show users with a complete profile and not hidden from search
   const publicProfiles = React.useMemo(() => {
@@ -172,24 +186,9 @@ export default function SearchProfilesPage() {
         )
           return false;
       }
-      const p = u.profile!;
-      if (
-        (city !== "any" && p.ukCity !== city) ||
-        (religion !== "any" && p.religion !== religion) ||
-        (preferredGender !== "any" && p.gender !== preferredGender)
-      ) {
-        return false;
-      }
-      // Age filter
-      if (ageMin || ageMax) {
-        const age = getAge(p.dateOfBirth!);
-        if (age === "-") return false;
-        if (ageMin && age < Number(ageMin)) return false;
-        if (ageMax && age > Number(ageMax)) return false;
-      }
       return true;
     });
-  }, [publicProfiles, city, religion, ageMin, ageMax, user, preferredGender]);
+  }, [publicProfiles, user]);
 
   // Collect all userIds from filtered (always an array)
   const userIds = React.useMemo(
@@ -216,6 +215,8 @@ export default function SearchProfilesPage() {
     }
     fetchImages();
   }, [token, userIds]);
+
+  const totalPages = Math.ceil(total / pageSize);
 
   if (!isLoaded) {
     return (
@@ -324,75 +325,105 @@ export default function SearchProfilesPage() {
             ))}
           </div>
         ) : (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((u: ProfileSearchResult, idx: number) => {
-              const p = u.profile!;
-              const firstImageUrl = userImages?.[u.userId] || null;
-              const loaded = imgLoaded[u.userId] || false;
-              return (
-                <Card
-                  key={u.userId || idx}
-                  className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col"
-                >
-                  {firstImageUrl ? (
-                    <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                      {/* Skeleton loader */}
-                      {!loaded && (
-                        <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
-                      )}
-                      <img
-                        src={firstImageUrl}
-                        alt={p.fullName}
-                        className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
-                        onLoad={() =>
-                          setImgLoaded((prev) => ({
-                            ...prev,
-                            [u.userId]: true,
-                          }))
+          <>
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((u: ProfileSearchResult, idx: number) => {
+                const p = u.profile!;
+                const firstImageUrl = userImages?.[u.userId] || null;
+                const loaded = imgLoaded[u.userId] || false;
+                return (
+                  <Card
+                    key={u.userId || idx}
+                    className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col"
+                  >
+                    {firstImageUrl ? (
+                      <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                        {/* Skeleton loader */}
+                        {!loaded && (
+                          <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
+                        )}
+                        <img
+                          src={firstImageUrl}
+                          alt={p.fullName}
+                          className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
+                          onLoad={() =>
+                            setImgLoaded((prev) => ({
+                              ...prev,
+                              [u.userId]: true,
+                            }))
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full h-40 flex items-center justify-center bg-gray-100">
+                        <UserCircle className="w-16 h-16 text-gray-300" />
+                      </div>
+                    )}
+                    <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
+                      <div
+                        className="text-xl font-serif font-bold text-gray-900 mb-1"
+                        style={{ fontFamily: "Lora, serif" }}
+                      >
+                        {p.fullName}
+                      </div>
+                      <div
+                        className="text-sm text-gray-600 mb-1"
+                        style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
+                      >
+                        {p.ukCity || "-"}
+                      </div>
+                      <div
+                        className="text-sm text-gray-600 mb-1"
+                        style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
+                      >
+                        Age: {getAge(p.dateOfBirth || "")}
+                      </div>
+                      <div
+                        className="text-sm text-gray-600 mb-2"
+                        style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
+                      >
+                        {p.religion || "-"}
+                      </div>
+                      <Button
+                        className="bg-pink-600 hover:bg-pink-700 w-full mt-2"
+                        onClick={() =>
+                          router.push(`/profile/${u.userId}`, {
+                            state: { profile: u },
+                          })
                         }
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-40 flex items-center justify-center bg-gray-100">
-                      <UserCircle className="w-16 h-16 text-gray-300" />
-                    </div>
-                  )}
-                  <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
-                    <div
-                      className="text-xl font-serif font-bold text-gray-900 mb-1"
-                      style={{ fontFamily: "Lora, serif" }}
-                    >
-                      {p.fullName}
-                    </div>
-                    <div
-                      className="text-sm text-gray-600 mb-1"
-                      style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                    >
-                      {p.ukCity || "-"}
-                    </div>
-                    <div
-                      className="text-sm text-gray-600 mb-1"
-                      style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                    >
-                      Age: {getAge(p.dateOfBirth || "")}
-                    </div>
-                    <div
-                      className="text-sm text-gray-600 mb-2"
-                      style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                    >
-                      {p.religion || "-"}
-                    </div>
-                    <Button
-                      asChild
-                      className="bg-pink-600 hover:bg-pink-700 w-full mt-2"
-                    >
-                      <Link href={`/profile/${u.userId}`}>View Profile</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                      >
+                        View Profile
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-10">
+                <button
+                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  Previous
+                </button>
+                <span>
+                  Page {page + 1} of {totalPages}
+                </span>
+                <button
+                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page >= totalPages - 1}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

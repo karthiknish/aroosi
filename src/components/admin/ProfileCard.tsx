@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Save, X, Eye } from "lucide-react";
@@ -7,6 +7,17 @@ import type { Profile } from "@/types/profile";
 import { useRouter } from "next/navigation";
 import ProfileEditForm from "./ProfileEditForm";
 import ProfileView from "./ProfileView";
+import { useCallback } from "react";
+import { useToken } from "@/components/TokenProvider";
+
+// Local ProfileImage type for admin usage
+type ProfileImage = {
+  _id: string;
+  storageId: string;
+  url: string | null;
+  fileName: string;
+  uploadedAt: number;
+};
 
 export type ProfileEditFormState = {
   fullName?: string;
@@ -45,50 +56,119 @@ interface ProfileCardProps {
   onDelete: (id: Id<"profiles">) => void;
   onToggleBan: (id: Id<"profiles">, banned: boolean) => void;
   setDeleteId: (id: Id<"profiles"> | null) => void;
+  onEditFormChange?: (updates: Partial<ProfileEditFormState>) => void;
+  images?: ProfileImage[];
 }
 
 export default function ProfileCard({
   profile,
   editingId,
+  editForm,
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
   onToggleBan,
   setDeleteId,
+  onEditFormChange,
+  images = [],
 }: ProfileCardProps) {
   const router = useRouter();
+  const token = useToken();
 
-  // Local state for edit form and loading
-  const [localEditForm, setLocalEditForm] = useState<ProfileEditFormState>({});
+  // Loading state for save operation
   const [isSaving, setIsSaving] = useState(false);
+  const [fetchedImages, setFetchedImages] = useState<
+    ProfileImage[] | null | undefined
+  >(undefined);
 
-  // When editingId changes, sync localEditForm with editForm
-  // (in case parent updates editForm)
-  // This is optional, but helps keep things in sync
-  // You may want to use useEffect here if needed
+  // Fetch images on mount and whenever edit mode is entered (editingId === profile._id)
+  useEffect(() => {
+    if (editingId === profile._id) {
+      async function fetchImages() {
+        console.log("[ProfileCard] fetchImages called for profile:", profile);
+        console.log("[ProfileCard] token:", token);
+        if (!profile.userId || !token) {
+          setFetchedImages([]);
+          return;
+        }
+        setFetchedImages(undefined); // Set to loading state
+        try {
+          const res = await fetch(
+            `/api/profile-detail/${profile.userId}/images`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          console.log("[ProfileCard] fetch response status:", res.status);
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error("[ProfileCard] fetch error:", errorText);
+            throw new Error(`Failed to fetch images. Status: ${res.status}`);
+          }
+          const data = await res.json();
+          console.log("[ProfileCard] fetch response data:", data);
+          setFetchedImages(
+            Array.isArray(data.userProfileImages) ? data.userProfileImages : []
+          );
+        } catch {
+          setFetchedImages(null); // Error state
+        }
+      }
+      fetchImages();
+    }
+  }, [editingId, profile.userId, profile._id, token]);
+
+  // Add handler for image changes - now updates parent editForm and re-fetches images
+  const handleImagesChanged = useCallback(
+    async (newImageIds: string[]) => {
+      onEditFormChange?.({
+        profileImageIds: newImageIds,
+      });
+      // Re-fetch images after upload/reorder
+      if (profile.userId && token) {
+        try {
+          const res = await fetch(
+            `/api/profile-detail/${profile.userId}/images`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setFetchedImages(
+              Array.isArray(data.userProfileImages)
+                ? data.userProfileImages
+                : []
+            );
+          }
+        } catch (e) {
+          setFetchedImages(null);
+        }
+      }
+    },
+    [onEditFormChange, profile.userId, token]
+  );
 
   // Handle input change for text/number fields
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    setLocalEditForm((prev) => ({
-      ...prev,
+    onEditFormChange?.({
       [name]: type === "number" ? Number(value) : value,
-    }));
+    });
   };
 
   // Handle select change
-  const handleSelectChange = (name: string, value: string | string[]) => {
-    setLocalEditForm((prev) => ({
-      ...prev,
+  const handleSelectChange = (name: string, value: string | undefined) => {
+    onEditFormChange?.({
       [name]: value,
-    }));
+    });
   };
 
   // Handle checkbox change
   const handleCheckboxChange = (name: string, checked: boolean) => {
-    setLocalEditForm((prev) => ({ ...prev, [name]: checked }));
+    onEditFormChange?.({ [name]: checked });
   };
 
   // Handle form submit
@@ -96,9 +176,6 @@ export default function ProfileCard({
     e.preventDefault();
     setIsSaving(true);
     try {
-      // Call parent onSaveEdit with the profile id and localEditForm
-      // You may want to pass localEditForm up, or update parent state before calling onSaveEdit
-      // For now, just call onSaveEdit
       await onSaveEdit(profile._id as Id<"profiles">);
     } finally {
       setIsSaving(false);
@@ -148,7 +225,6 @@ export default function ProfileCard({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setLocalEditForm(profile);
                   onStartEdit(profile);
                 }}
               >
@@ -183,15 +259,17 @@ export default function ProfileCard({
         {editingId === profile._id ? (
           <ProfileEditForm
             profile={profile}
-            editForm={localEditForm}
+            editForm={editForm}
             onInputChange={handleInputChange}
             onSelectChange={handleSelectChange}
             onCheckboxChange={handleCheckboxChange}
             onSubmit={handleSubmit}
             loading={isSaving}
+            onImagesChanged={handleImagesChanged}
+            fetchedImages={fetchedImages}
           />
         ) : (
-          <ProfileView profile={profile} />
+          <ProfileView profile={profile} images={images} />
         )}
       </CardContent>
     </Card>

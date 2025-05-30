@@ -44,6 +44,7 @@ interface ImageUploaderProps {
   maxFiles?: number;
   className?: string;
   fetchImages: () => Promise<void>;
+  onStartUpload?: () => void;
 }
 
 export function ImageUploader({
@@ -62,6 +63,7 @@ export function ImageUploader({
   isUploading = false,
   className = "",
   fetchImages,
+  onStartUpload,
 }: ImageUploaderProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<File | null>(null);
@@ -98,6 +100,7 @@ export function ImageUploader({
 
   const uploadImageFile = useCallback(
     async (file: File) => {
+      if (onStartUpload) onStartUpload();
       if (!userId) return;
       const currentImages = orderedImages || [];
       const maxProfileImages = 10;
@@ -135,11 +138,10 @@ export function ImageUploader({
           }
         } else {
           if (updateProfile) {
-              await updateProfile({ profileImageIds: newOrder });
+            await updateProfile({ profileImageIds: newOrder });
           }
         }
         if (onImagesChanged) onImagesChanged(newOrder.map(String));
-        toast.success("Image uploaded successfully");
         await fetchImages();
       } catch (error) {
         console.error("Error uploading image:", error);
@@ -168,6 +170,7 @@ export function ImageUploader({
       setIsUploading,
       toast,
       fetchImages,
+      onStartUpload,
     ]
   );
 
@@ -175,19 +178,18 @@ export function ImageUploader({
     <div className={className}>
       <div
         {...getRootProps()}
-        className={`relative group rounded-xl transition-all ${
+        className={`relative group rounded-xl transition-all border-2 border-dashed ${
           disabled
-            ? "opacity-50 cursor-not-allowed"
-            : "cursor-pointer hover:bg-accent/20"
+            ? "opacity-50 cursor-not-allowed border-gray-200"
+            : "cursor-pointer border-pink-600 hover:border-pink-700 bg-pink-50/30 group-hover:bg-pink-50/60"
         }`}
       >
         <input {...getInputProps()} />
         <div
           className={`
-            flex flex-col items-center justify-center p-8 text-center rounded-xl border-2 border-dashed 
-            ${isDragActive ? "border-pink-600 bg-pink-50" : "border-border"}
+            flex flex-col items-center justify-center p-8 text-center rounded-xl
             transition-all duration-200 ease-in-out
-            group-hover:border-pink-400
+            group-hover:border-pink-600
           `}
         >
           {isUploading ? (
@@ -221,10 +223,10 @@ export function ImageUploader({
           ) : (
             <div className="space-y-3">
               <div className="flex justify-center">
-                <Upload className="w-8 h-8 text-muted-foreground" />
+                <Upload className="w-8 h-8 text-pink-600 group-hover:text-pink-700 transition-colors" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-medium text-pink-600 group-hover:text-pink-700 transition-colors">
                   Drag & drop a photo
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -291,6 +293,7 @@ export function ImageUploader({
                 Cancel
               </Button>
               <Button
+                className="bg-pink-600 text-white hover:bg-pink-700"
                 type="button"
                 onClick={async () => {
                   if (!croppedAreaPixels || !imagePreview || !pendingUpload)

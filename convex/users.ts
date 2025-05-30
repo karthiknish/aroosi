@@ -43,12 +43,18 @@ export interface Profile {
   annualIncome?: number;
   aboutMe?: string;
   phoneNumber?: string;
-  diet?: "vegetarian" | "non-vegetarian" | "vegan" | "eggetarian" | "other";
-  smoking?: "no" | "occasionally" | "yes";
+  diet?:
+    | "vegetarian"
+    | "non-vegetarian"
+    | "vegan"
+    | "eggetarian"
+    | "other"
+    | "";
+  smoking?: "no" | "occasionally" | "yes" | "";
   drinking?: "no" | "occasionally" | "yes";
-  physicalStatus?: "normal" | "differently-abled" | "other";
-  partnerPreferenceAgeMin?: number;
-  partnerPreferenceAgeMax?: number;
+  physicalStatus?: "normal" | "differently-abled" | "other" | "";
+  partnerPreferenceAgeMin?: string | number | "" | undefined;
+  partnerPreferenceAgeMax?: string | number | "" | undefined;
   partnerPreferenceReligion?: string[];
   partnerPreferenceUkCity?: string[];
   profileImageIds?: Id<"_storage">[];
@@ -220,8 +226,12 @@ export const updateProfile = mutation({
     occupation: v.optional(v.string()),
     annualIncome: v.optional(v.number()),
     aboutMe: v.optional(v.string()),
-    partnerPreferenceAgeMin: v.optional(v.number()),
-    partnerPreferenceAgeMax: v.optional(v.number()),
+    partnerPreferenceAgeMin: v.optional(
+      v.union(v.number(), v.string(), v.literal(""))
+    ),
+    partnerPreferenceAgeMax: v.optional(
+      v.union(v.number(), v.string(), v.literal(""))
+    ),
     partnerPreferenceReligion: v.optional(v.array(v.string())),
     partnerPreferenceUkCity: v.optional(v.array(v.string())),
     profileImageIds: v.optional(v.array(v.id("_storage"))),
@@ -233,11 +243,17 @@ export const updateProfile = mutation({
         v.literal("non-vegetarian"),
         v.literal("vegan"),
         v.literal("eggetarian"),
-        v.literal("other")
+        v.literal("other"),
+        v.literal("")
       )
     ),
     smoking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      v.union(
+        v.literal("no"),
+        v.literal("occasionally"),
+        v.literal("yes"),
+        v.literal("")
+      )
     ),
     drinking: v.optional(
       v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
@@ -246,7 +262,8 @@ export const updateProfile = mutation({
       v.union(
         v.literal("normal"),
         v.literal("differently-abled"),
-        v.literal("other")
+        v.literal("other"),
+        v.literal("")
       )
     ),
     preferredGender: v.optional(
@@ -536,6 +553,11 @@ export const deleteProfile = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     requireAdmin(identity);
+    const profile = await ctx.db.get(args.id);
+    if (!profile) {
+      // Already deleted or never existed
+      return { success: true };
+    }
     await ctx.db.delete(args.id);
     return { success: true };
   },
@@ -565,7 +587,7 @@ export const adminUpdateProfile = mutation({
       ),
       education: v.optional(v.string()),
       occupation: v.optional(v.string()),
-      annualIncome: v.optional(v.number()),
+      annualIncome: v.optional(v.union(v.number(), v.string())),
       aboutMe: v.optional(v.string()),
       phoneNumber: v.optional(v.string()),
       diet: v.optional(
@@ -574,11 +596,17 @@ export const adminUpdateProfile = mutation({
           v.literal("non-vegetarian"),
           v.literal("vegan"),
           v.literal("eggetarian"),
-          v.literal("other")
+          v.literal("other"),
+          v.literal("")
         )
       ),
       smoking: v.optional(
-        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+        v.union(
+          v.literal("no"),
+          v.literal("occasionally"),
+          v.literal("yes"),
+          v.literal("")
+        )
       ),
       drinking: v.optional(
         v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
@@ -587,22 +615,66 @@ export const adminUpdateProfile = mutation({
         v.union(
           v.literal("normal"),
           v.literal("differently-abled"),
-          v.literal("other")
+          v.literal("other"),
+          v.literal("")
         )
       ),
-      partnerPreferenceAgeMin: v.optional(v.number()),
-      partnerPreferenceAgeMax: v.optional(v.number()),
+      partnerPreferenceAgeMin: v.optional(
+        v.union(v.number(), v.string(), v.literal(""))
+      ),
+      partnerPreferenceAgeMax: v.optional(
+        v.union(v.number(), v.string(), v.literal(""))
+      ),
       partnerPreferenceReligion: v.optional(v.array(v.string())),
       partnerPreferenceUkCity: v.optional(v.array(v.string())),
       profileImageIds: v.optional(v.array(v.id("_storage"))),
       banned: v.optional(v.boolean()),
+      // Added fields based on Profile schema and potential edit form state
+      isProfileComplete: v.optional(v.boolean()),
+      hiddenFromSearch: v.optional(v.boolean()),
+      preferredGender: v.optional(
+        v.union(
+          v.literal("male"),
+          v.literal("female"),
+          v.literal("other"),
+          v.literal("any")
+        )
+      ),
+      ukPostcode: v.optional(v.string()),
+      // email is usually not directly updatable on profile if tied to user account
     }),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     requireAdmin(identity);
-    await ctx.db.patch(args.id, args.updates);
-    return { success: true };
+
+    // Create a mutable copy of updates to avoid modifying the original args.updates
+    const processedUpdates: any = { ...args.updates };
+
+    // Process annualIncome: convert string to number if necessary
+    if (typeof processedUpdates.annualIncome === "string") {
+      const parsedIncome = parseInt(processedUpdates.annualIncome, 10);
+      if (!isNaN(parsedIncome)) {
+        processedUpdates.annualIncome = parsedIncome;
+      } else {
+        // Handle cases where parsing fails (e.g., empty string, non-numeric)
+        // Setting to undefined will remove the field if it's optional, or you can set a default or error.
+        processedUpdates.annualIncome = undefined;
+      }
+    } else if (processedUpdates.annualIncome === "") {
+      // Handle empty string explicitly if it wasn't caught by typeof string
+      processedUpdates.annualIncome = undefined;
+    }
+
+    const updatesWithTimestamp = {
+      ...processedUpdates,
+      updatedAt: Date.now(),
+    };
+
+    await ctx.db.patch(args.id, updatesWithTimestamp);
+    const updatedProfile = await ctx.db.get(args.id);
+
+    return updatedProfile; // Return the full updated profile
   },
 });
 
@@ -858,11 +930,17 @@ export const createProfile = mutation({
         v.literal("non-vegetarian"),
         v.literal("vegan"),
         v.literal("eggetarian"),
-        v.literal("other")
+        v.literal("other"),
+        v.literal("")
       )
     ),
     smoking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      v.union(
+        v.literal("no"),
+        v.literal("occasionally"),
+        v.literal("yes"),
+        v.literal("")
+      )
     ),
     drinking: v.optional(
       v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
@@ -871,7 +949,8 @@ export const createProfile = mutation({
       v.union(
         v.literal("normal"),
         v.literal("differently-abled"),
-        v.literal("other")
+        v.literal("other"),
+        v.literal("")
       )
     ),
     preferredGender: v.optional(
@@ -1090,6 +1169,83 @@ export const getProfileDetailPageData = action({
       userProfileImages,
       userImages,
       currentUserProfileImagesData,
+    };
+  },
+});
+
+export const searchPublicProfiles = action({
+  args: {
+    city: v.optional(v.string()),
+    religion: v.optional(v.string()),
+    ageMin: v.optional(v.number()),
+    ageMax: v.optional(v.number()),
+    preferredGender: v.optional(
+      v.union(
+        v.literal("male"),
+        v.literal("female"),
+        v.literal("other"),
+        v.literal("any")
+      )
+    ),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    profiles: { userId: Id<"users">; profile: PublicProfile }[];
+    total: number;
+  }> => {
+    const users: Array<any> = await ctx.runQuery(
+      api.users.listUsersWithProfiles,
+      {
+        preferredGender: args.preferredGender || "any",
+      }
+    );
+    const filtered: Array<any> = users.filter((user: any) => {
+      if (
+        user.role === "admin" ||
+        user.banned === true ||
+        !user.profile ||
+        user.profile.isProfileComplete !== true ||
+        user.profile.hiddenFromSearch === true ||
+        user.profile.banned === true
+      ) {
+        return false;
+      }
+      if (args.city && user.profile.ukCity !== args.city) return false;
+      if (args.religion && user.profile.religion !== args.religion)
+        return false;
+      if (
+        args.preferredGender &&
+        args.preferredGender !== "any" &&
+        user.profile.gender !== args.preferredGender
+      )
+        return false;
+      if (args.ageMin || args.ageMax) {
+        const dob = user.profile.dateOfBirth
+          ? new Date(user.profile.dateOfBirth)
+          : null;
+        if (!dob) return false;
+        const age = Math.floor(
+          (Date.now() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+        );
+        if (args.ageMin && age < args.ageMin) return false;
+        if (args.ageMax && age > args.ageMax) return false;
+      }
+      return true;
+    });
+    const total = filtered.length;
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 12;
+    const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+    return {
+      profiles: paginated.map((user: any) => ({
+        userId: user._id,
+        profile: user.profile,
+      })),
+      total,
     };
   },
 });

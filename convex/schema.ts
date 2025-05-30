@@ -61,11 +61,17 @@ export default defineSchema({
         v.literal("non-vegetarian"),
         v.literal("vegan"),
         v.literal("eggetarian"),
-        v.literal("other")
+        v.literal("other"),
+        v.literal("")
       )
     ),
     smoking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      v.union(
+        v.literal("no"),
+        v.literal("occasionally"),
+        v.literal("yes"),
+        v.literal("")
+      )
     ),
     drinking: v.optional(
       v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
@@ -74,13 +80,18 @@ export default defineSchema({
       v.union(
         v.literal("normal"),
         v.literal("differently-abled"),
-        v.literal("other")
+        v.literal("other"),
+        v.literal("")
       )
     ),
     // Partner Preferences (can be a separate table or embedded object if complex)
     // For simplicity, keeping a few optional fields here
-    partnerPreferenceAgeMin: v.optional(v.number()),
-    partnerPreferenceAgeMax: v.optional(v.number()),
+    partnerPreferenceAgeMin: v.optional(
+      v.union(v.number(), v.string(), v.literal(""))
+    ),
+    partnerPreferenceAgeMax: v.optional(
+      v.union(v.number(), v.string(), v.literal(""))
+    ),
     partnerPreferenceReligion: v.optional(v.array(v.string())),
     partnerPreferenceUkCity: v.optional(v.array(v.string())),
 

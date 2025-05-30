@@ -45,30 +45,49 @@ export default function AdminProfileDetailPage() {
     isMain: boolean;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingImages, setLoadingImages] = useState(true);
+  const [loadingMatches, setLoadingMatches] = useState(true);
 
   useEffect(() => {
     async function fetchProfileData() {
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       // Profile
+      setLoadingProfile(true);
       const profileRes = await fetch(`/api/admin/profiles/${id}`, { headers });
-      setProfile(profileRes.ok ? await profileRes.json() : null);
-      // Images
-      const imagesRes = await fetch(`/api/profile-detail/${id}/images`, {
-        headers,
-      });
-      setImages(
-        imagesRes.ok
-          ? ((await imagesRes.json()).userProfileImages as ImageType[])
-          : []
-      );
-      // Matches
-      const matchesRes = await fetch(`/api/admin/profiles/${id}/matches`, {
-        headers,
-      });
-      setMatches(
-        matchesRes.ok ? ((await matchesRes.json()) as MatchType[]) : []
-      );
+      const profileData = profileRes.ok ? await profileRes.json() : null;
+      setProfile(profileData);
+      setLoadingProfile(false);
+      // Images and matches require userId
+      if (profileData && profileData.userId) {
+        setLoadingImages(true);
+        const imagesRes = await fetch(
+          `/api/profile-detail/${profileData.userId}/images`,
+          {
+            headers,
+          }
+        );
+        setImages(
+          imagesRes.ok
+            ? ((await imagesRes.json()).userProfileImages as ImageType[])
+            : []
+        );
+        setLoadingImages(false);
+        setLoadingMatches(true);
+        const matchesRes = await fetch(`/api/admin/profiles/${id}/matches`, {
+          headers,
+        });
+        setMatches(
+          matchesRes.ok ? ((await matchesRes.json()) as MatchType[]) : []
+        );
+        setLoadingMatches(false);
+      } else {
+        setImages([]);
+        setMatches([]);
+        setLoadingImages(false);
+        setLoadingMatches(false);
+      }
     }
     if (isSignedIn) fetchProfileData();
   }, [id, isSignedIn, token]);
@@ -212,6 +231,21 @@ export default function AdminProfileDetailPage() {
         Profile not found
       </div>
     );
+
+  // Skeleton loader while loading
+  if (loadingProfile || loadingImages) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white flex flex-col items-center justify-center min-h-[300px] animate-pulse">
+          <div className="w-32 h-32 rounded-lg bg-gray-200 mb-4" />
+          <div className="h-6 w-1/2 bg-gray-200 rounded mb-2" />
+          <div className="h-4 w-1/3 bg-gray-100 rounded mb-2" />
+          <div className="h-4 w-1/4 bg-gray-100 rounded mb-2" />
+          <div className="h-4 w-1/2 bg-gray-100 rounded mb-2" />
+        </div>
+      </div>
+    );
+  }
 
   const renderDeleteConfirmation = () => {
     if (!imageToDelete) return null;

@@ -21,7 +21,7 @@ type PublicProfile = {
   };
 };
 
-const TABS = ["Interests Sent", "Matches"];
+const TABS = ["Interests", "Matches"];
 
 export default function InterestsMatchesPage() {
   const { user: isSignedIn } = useUser();
@@ -41,60 +41,69 @@ export default function InterestsMatchesPage() {
   const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
+    if (!token) return; // Prevent running with undefined token
+    let cancelled = false;
     async function fetchCurrentUser() {
-      if (!token) {
-        setCurrentUserId(null);
-        return;
-      }
       const res = await fetch("/api/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setCurrentUserId(data?._id || null);
-        console.log("Convex user ID:", data?._id);
-      } else {
-        setCurrentUserId(null);
+      if (!cancelled) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data?._id !== currentUserId) {
+            setCurrentUserId(data?._id || null);
+          }
+        } else {
+          setCurrentUserId(null);
+        }
       }
     }
     fetchCurrentUser();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   // Fetch sent interests
   useEffect(() => {
+    if (!token || !currentUserId) return;
+    let cancelled = false;
     async function fetchSentInterests() {
-      if (!currentUserId) {
-        setSentInterests(undefined);
-        return;
-      }
       const res = await fetch(`/api/interests?userId=${currentUserId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setSentInterests(data || []);
-      } else {
-        setSentInterests([]);
+      if (!cancelled) {
+        if (res.ok) {
+          const data = await res.json();
+          setSentInterests(data || []);
+        } else {
+          setSentInterests([]);
+        }
       }
     }
     fetchSentInterests();
+    return () => {
+      cancelled = true;
+    };
   }, [currentUserId, token]);
 
   // Fetch profiles for sent interests
   useEffect(() => {
+    if (
+      !token ||
+      !sentInterests ||
+      !Array.isArray(sentInterests) ||
+      sentInterests.length === 0
+    ) {
+      setSentProfiles([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSentProfiles(true);
+    const userIds = sentInterests.map(
+      (interest: { toUserId: string }) => interest.toUserId
+    );
     async function fetchProfiles() {
-      if (
-        !sentInterests ||
-        !Array.isArray(sentInterests) ||
-        sentInterests.length === 0
-      ) {
-        setSentProfiles([]);
-        return;
-      }
-      setLoadingSentProfiles(true);
-      const userIds = sentInterests.map(
-        (interest: { toUserId: string }) => interest.toUserId
-      );
       const res = await fetch("/api/profile/batch", {
         method: "POST",
         headers: {
@@ -103,41 +112,52 @@ export default function InterestsMatchesPage() {
         },
         body: JSON.stringify({ userIds }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setSentProfiles(data || []);
-      } else {
-        setSentProfiles([]);
+      if (!cancelled) {
+        if (res.ok) {
+          const data = await res.json();
+          setSentProfiles(data || []);
+        } else {
+          setSentProfiles([]);
+        }
+        setLoadingSentProfiles(false);
       }
-      setLoadingSentProfiles(false);
     }
     fetchProfiles();
+    return () => {
+      cancelled = true;
+    };
   }, [sentInterests, token]);
 
   // Fetch matches
   useEffect(() => {
+    if (!token || !currentUserId) return;
+    let cancelled = false;
+    setLoadingMatches(true);
     async function fetchMatches() {
-      if (!currentUserId) {
-        setMatches([]);
-        return;
-      }
-      setLoadingMatches(true);
       try {
         const res = await fetch(`/api/matches?userId=${currentUserId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.ok) {
-          const data = await res.json();
-          setMatches(data || []);
-        } else {
-          setMatches([]);
+        if (!cancelled) {
+          if (res.ok) {
+            const data = await res.json();
+            setMatches(data || []);
+          } else {
+            setMatches([]);
+          }
+          setLoadingMatches(false);
         }
       } catch {
-        setMatches([]);
+        if (!cancelled) {
+          setMatches([]);
+          setLoadingMatches(false);
+        }
       }
-      setLoadingMatches(false);
     }
     fetchMatches();
+    return () => {
+      cancelled = true;
+    };
   }, [currentUserId, token]);
 
   if (!isSignedIn) {
@@ -178,7 +198,7 @@ export default function InterestsMatchesPage() {
         </div>
         {/* Tab Content */}
         {activeTab === 0 ? (
-          // Interests Sent Tab
+          // Interests Tab
           sentInterests === undefined || loadingSentProfiles ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 py-20">
               {Array.from({ length: 6 }).map((_, i) => (

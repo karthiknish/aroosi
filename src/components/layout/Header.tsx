@@ -113,13 +113,13 @@ export default function Header() {
           initial="hidden"
           animate="visible"
         >
-          <Link href="/my-interests" passHref onClick={onClick}>
+          <Link href="/interests-matches" passHref onClick={onClick}>
             <Button
               variant="ghost"
               className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
             >
               <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
-              <span>My Interests</span>
+              <span>Interests / Matches</span>
             </Button>
           </Link>
         </motion.div>

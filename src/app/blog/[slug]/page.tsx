@@ -1,6 +1,4 @@
 "use client";
-
-import { useAuth } from "@clerk/nextjs";
 import { Card, CardContent } from "@/components/ui/card";
 import { useParams } from "next/navigation";
 import Link from "next/link";

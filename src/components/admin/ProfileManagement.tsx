@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,46 +11,76 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-import { useAuth } from "@clerk/nextjs";
+import { useToken } from "@/components/TokenProvider";
 import { toast } from "sonner";
 import ProfileCard, { type ProfileEditFormState } from "./ProfileCard";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Helper for rendering a profile image or fallback
+// Local ProfileImage type for admin usage
+type ProfileImage = {
+  _id: string;
+  storageId: string;
+  url: string | null;
+  fileName: string;
+  uploadedAt: number;
+};
 
-export function ProfileManagement({
-  profiles,
-  setProfiles,
-  total,
-  setTotal,
-  loading,
-  setLoading,
-}: {
-  profiles: Profile[];
-  setProfiles: Dispatch<SetStateAction<Profile[]>>;
-  total: number;
-  setTotal: Dispatch<SetStateAction<number>>;
-  loading: boolean;
-  setLoading: Dispatch<SetStateAction<boolean>>;
-  [key: string]: unknown;
-}) {
-  const { getToken } = useAuth();
+export default function ProfileManagement() {
+  const token = useToken();
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<ProfileEditFormState>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
+  // Map of profileId to image URLs
+  const [profileImages, setProfileImages] = useState<
+    Record<string, ProfileImage[]>
+  >({});
+  const fetchAllProfileImages = useCallback(
+    async (profiles: Profile[]) => {
+      if (!token) return;
+      const newImages: Record<string, ProfileImage[]> = {};
+      await Promise.all(
+        profiles.map(async (profile) => {
+          if (!profile.userId) return;
+          try {
+            const res = await fetch(
+              `/api/profile-detail/${profile.userId}/images`,
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data.userProfileImages)) {
+                newImages[profile._id as string] = data.userProfileImages;
+              }
+            }
+          } catch {}
+        })
+      );
+      setProfileImages(newImages);
+    },
+    [token]
+  );
   // Fetch paginated/searchable profiles from API
   useEffect(() => {
+    if (!token) {
+      // Don't attempt to fetch if token is not available yet
+      return;
+    }
     async function fetchProfiles() {
       setLoading(true);
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(
         `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=10`,
         { headers }
@@ -60,6 +89,10 @@ export function ProfileManagement({
         const data = await res.json();
         setProfiles(data.profiles || []);
         setTotal(data.total || 0);
+        // Fetch image URLs for all profiles
+        if (Array.isArray(data.profiles)) {
+          fetchAllProfileImages(data.profiles);
+        }
       } else {
         setProfiles([]);
         setTotal(0);
@@ -67,35 +100,72 @@ export function ProfileManagement({
       setLoading(false);
     }
     fetchProfiles();
-  }, [search, page, getToken, setProfiles, setTotal, setLoading]);
+  }, [
+    search,
+    page,
+    token,
+    setProfiles,
+    setTotal,
+    setLoading,
+    fetchAllProfileImages,
+  ]);
+
+  // Fetch image URLs for all profiles
 
   // Update profile using API
   const saveEdit = async (id: string) => {
     try {
-      const token = await getToken();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
+      // Omit _id and id from editForm before sending
+      const updates = { ...editForm } as Record<string, unknown>;
+      delete updates._id;
+      delete updates.id;
       const res = await fetch(`/api/admin/profiles/${id}`, {
         method: "PUT",
         headers,
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({ id, updates }),
       });
       if (!res.ok) throw new Error("Failed to update profile");
+      const updatedProfile = await res.json();
+      setProfiles((prev) =>
+        prev.map((p) => (p._id === updatedProfile._id ? updatedProfile : p))
+      );
+      // Refetch image URLs for this profile
+      if (updatedProfile.userId) {
+        try {
+          const res = await fetch(
+            `/api/profile-detail/${updatedProfile.userId}/images`,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setProfileImages((prev) => ({
+              ...prev,
+              [updatedProfile._id]: Array.isArray(data.userProfileImages)
+                ? data.userProfileImages
+                : [],
+            }));
+          }
+        } catch {}
+      }
       setEditingId(null);
       setShowSuccessModal(true);
-      // Optionally refetch profiles
-      setPage(0);
     } catch {
-      // handle error
+      toast.error("Failed to save profile.");
     }
   };
 
   // Delete profile using API
   const handleDelete = async (id: string) => {
     try {
-      const token = await getToken();
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`/api/admin/profiles/${id}`, {
@@ -104,7 +174,19 @@ export function ProfileManagement({
       });
       if (!res.ok) throw new Error("Failed to delete profile");
       setDeleteId(null);
-      setPage(0);
+      // Refetch profiles after delete
+      const headers2: Record<string, string> = {};
+      if (token) headers2["Authorization"] = `Bearer ${token}`;
+      const refetchRes = await fetch(
+        `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=10`,
+        { headers: headers2 }
+      );
+      if (refetchRes.ok) {
+        const data = await refetchRes.json();
+        setProfiles(data.profiles || []);
+        setTotal(data.total || 0);
+      }
+      setShowSuccessModal(true);
     } catch {
       // handle error
     }
@@ -113,7 +195,10 @@ export function ProfileManagement({
   // When starting to edit, pull all editable fields from the profile
   const startEdit = (profile: Profile) => {
     setEditingId(profile._id as string);
+    const rest = { ...profile } as Record<string, unknown>;
+    delete rest._id;
     setEditForm({
+      ...rest,
       fullName: profile.fullName || "",
       ukCity: profile.ukCity || "",
       gender: profile.gender || "",
@@ -146,10 +231,14 @@ export function ProfileManagement({
     setEditForm({});
   };
 
+  // Add handler to update editForm from child components
+  const handleEditFormChange = (updates: Partial<ProfileEditFormState>) => {
+    setEditForm((prev) => ({ ...prev, ...updates }));
+  };
+
   // Ban/unban logic
   const toggleBan = async (id: string, banned: boolean) => {
     try {
-      const token = await getToken({ template: "convex" });
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -160,7 +249,10 @@ export function ProfileManagement({
         body: JSON.stringify({ banned: !banned }),
       });
       if (!res.ok) throw new Error("Failed to update ban status");
-      setPage(0);
+      // Update local state for immediate UI feedback
+      setProfiles((prev) =>
+        prev.map((p) => (p._id === id ? { ...p, banned: !banned } : p))
+      );
       toast.success(banned ? "Profile unbanned" : "Profile banned");
     } catch {
       toast.error("Failed to update ban status");
@@ -225,6 +317,8 @@ export function ProfileManagement({
                 onDelete={handleDelete}
                 onToggleBan={toggleBan}
                 setDeleteId={setDeleteId}
+                onEditFormChange={handleEditFormChange}
+                images={profileImages[profile._id as string] || []}
               />
             );
           })

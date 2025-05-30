@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -8,8 +9,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
+import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import { Id } from "@/../convex/_generated/dataModel";
 import type { Profile, ProfileEditFormState } from "@/types/profile";
+import { Slider } from "@/components/ui/slider";
 
 interface ProfileEditFormProps {
   profile: Profile;
@@ -17,10 +20,23 @@ interface ProfileEditFormProps {
   onInputChange?: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => void;
-  onSelectChange?: (name: string, value: string) => void;
+  onSelectChange?: (name: string, value: string | undefined) => void;
   onCheckboxChange?: (name: string, checked: boolean) => void;
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
   loading?: boolean;
+  onImagesChanged?: (newImageIds: string[]) => void;
+}
+
+interface ProfileImage {
+  _id: string;
+  storageId: string;
+  url: string | null;
+  fileName: string;
+  uploadedAt: number;
+}
+
+interface ProfileEditFormPropsExtended extends ProfileEditFormProps {
+  fetchedImages: ProfileImage[] | null | undefined;
 }
 
 export default function ProfileEditForm({
@@ -30,15 +46,96 @@ export default function ProfileEditForm({
   onSelectChange,
   onSubmit,
   loading,
-}: ProfileEditFormProps) {
+  onImagesChanged,
+  fetchedImages,
+}: ProfileEditFormPropsExtended) {
+  // Add state for images for reorder UI
+  const [reorderImages, setReorderImages] = useState<ProfileImage[]>([]);
+
+  // Show fetched images initially, then update to reorder images when profileImageIds are set
+  useEffect(() => {
+    // If we have fetchedImages, always show them initially
+    if (Array.isArray(fetchedImages) && fetchedImages.length > 0) {
+      // If no profileImageIds, just show all fetchedImages
+      if (!editForm.profileImageIds || editForm.profileImageIds.length === 0) {
+        setReorderImages(fetchedImages);
+        return;
+      }
+      // If profileImageIds exist, order fetchedImages accordingly
+      const imageMap = new Map(
+        fetchedImages.map((img) => [img.storageId, img])
+      );
+      const ordered = editForm.profileImageIds
+        .map((id) => imageMap.get(id))
+        .filter((img): img is ProfileImage => Boolean(img));
+      setReorderImages(ordered);
+      return;
+    }
+    // If no images, clear
+    setReorderImages([]);
+  }, [fetchedImages, editForm.profileImageIds]);
+
+  // Handler for image reorder
+  const handleReorder = (newOrder: string[]) => {
+    // Get a set of current valid storageIds from the reorderImages state
+    const currentValidStorageIds = new Set(
+      reorderImages.map((img) => img.storageId)
+    );
+
+    const storageIdOrder = newOrder
+      .map((idFromReorderComponent) => {
+        // idFromReorderComponent is an '_id' from one of the items in reorderImages.
+        // Recall that we set reorderImages[i]._id = reorderImages[i].storageId.
+        const img = reorderImages.find(
+          (img) => img._id === idFromReorderComponent
+        );
+        return img?.storageId; // Extract the actual storageId
+      })
+      .filter((storageId) => {
+        // Ensure the storageId is not undefined/null and was part of the initial reorderImages
+        return storageId && currentValidStorageIds.has(storageId);
+      });
+
+    if (onImagesChanged) {
+      // Ensure we only pass valid, known storageIds that were present in the reorder UI
+      onImagesChanged(storageIdOrder as string[]);
+    }
+  };
+
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
+      {/* Show current profile image if available */}
+
       {/* Profile Image Management */}
       {profile.userId && (
-        <ProfileImageUpload
-          isAdmin={true}
-          userId={profile.userId as Id<"users">}
-        />
+        <>
+          <ProfileImageUpload
+            isAdmin={true}
+            userId={profile.userId as Id<"users">}
+            profileId={profile._id as string}
+            onImagesChanged={onImagesChanged}
+          />
+          {/* Image Reorder UI for Admin */}
+          {Array.isArray(reorderImages) && (
+            <div className="mt-4">
+              <label className="text-sm font-medium mb-2 block">
+                Profile Images ({reorderImages.length} images)
+              </label>
+              <ProfileImageReorder
+                images={reorderImages
+                  .filter((img) => img.url !== null)
+                  .map((img) => ({
+                    ...img,
+                    url: img.url as string,
+                  }))}
+                userId={profile.userId as string}
+                isAdmin={true}
+                profileId={profile._id as string}
+                onReorder={handleReorder}
+              />
+            </div>
+          )}
+        </>
       )}
       <div>
         <label className="text-sm font-medium">Full Name</label>
@@ -133,11 +230,29 @@ export default function ProfileEditForm({
       </div>
       <div>
         <label className="text-sm font-medium">Height</label>
-        <Input
-          name="height"
-          value={editForm.height || ""}
-          onChange={onInputChange}
-        />
+        <div className="flex items-center gap-4">
+          <Slider
+            min={120}
+            max={220}
+            step={1}
+            value={[Number(editForm.height) || 170]}
+            onValueChange={([val]) => {
+              if (onInputChange) {
+                const syntheticEvent = {
+                  target: {
+                    name: "height",
+                    value: String(val),
+                  },
+                } as React.ChangeEvent<HTMLInputElement>;
+                onInputChange(syntheticEvent);
+              }
+            }}
+            className="w-48"
+          />
+          <span className="text-sm text-gray-700 min-w-[40px]">
+            {editForm.height || 170} cm
+          </span>
+        </div>
       </div>
       <div>
         <label className="text-sm font-medium">Marital Status</label>
@@ -204,7 +319,9 @@ export default function ProfileEditForm({
         <label className="text-sm font-medium">Diet</label>
         <Select
           value={editForm.diet || ""}
-          onValueChange={(v) => onSelectChange && onSelectChange("diet", v)}
+          onValueChange={(v) =>
+            onSelectChange && onSelectChange("diet", v === "" ? undefined : v)
+          }
         >
           <SelectTrigger>
             <SelectValue placeholder="Select diet" />

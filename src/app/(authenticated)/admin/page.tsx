@@ -11,7 +11,7 @@ import { ContactMessages } from "@/components/admin/ContactMessages";
 import type { ContactMessage } from "@/components/admin/ContactMessages";
 import { BlogPosts } from "@/components/admin/BlogPosts";
 import { CreatePost } from "@/components/admin/CreatePost";
-import { ProfileManagement } from "@/components/admin/ProfileManagement";
+import ProfileManagement from "@/components/admin/ProfileManagement";
 import Head from "next/head";
 import { Id } from "@convex/_generated/dataModel";
 import { useUser } from "@clerk/nextjs";
@@ -85,8 +85,6 @@ function AdminPageInner() {
   // Replace Convex queries with API fetches
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [total, setTotal] = useState(0);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -132,35 +130,6 @@ function AdminPageInner() {
       }
     }
     fetchContactMessages();
-    return () => {
-      ignore = true;
-    };
-  }, [activeTab, token]);
-
-  // Profiles
-  useEffect(() => {
-    if (activeTab !== "profiles") return;
-    let ignore = false;
-    async function fetchProfiles() {
-      setLoading(true);
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/admin/profiles?page=0&pageSize=10", {
-        headers,
-      });
-      if (!ignore) {
-        if (res.ok) {
-          const data = await res.json();
-          setProfiles(data.profiles || []);
-          setTotal(data.total || 0);
-        } else {
-          setProfiles([]);
-          setTotal(0);
-        }
-        setLoading(false);
-      }
-    }
-    fetchProfiles();
     return () => {
       ignore = true;
     };
@@ -234,8 +203,8 @@ function AdminPageInner() {
   const mutualMatches = interests
     .filter((i) => i.status === "accepted")
     .map((i) => ({
-      profileA: profiles.find((p) => p.userId === i.fromUserId) as Profile,
-      profileB: profiles.find((p) => p.userId === i.toUserId) as Profile,
+      profileA: null,
+      profileB: null,
     }))
     .filter((m) => m.profileA && m.profileB);
 
@@ -498,16 +467,7 @@ function AdminPageInner() {
 
           {/* Main Content */}
           <main className="flex-1">
-            {activeTab === "profiles" && (
-              <ProfileManagement
-                profiles={profiles}
-                setProfiles={setProfiles}
-                total={total}
-                setTotal={setTotal}
-                loading={loading}
-                setLoading={setLoading}
-              />
-            )}
+            {activeTab === "profiles" && <ProfileManagement />}
             {activeTab === "matches" && (
               <AdminMatches mutualMatches={mutualMatches} />
             )}

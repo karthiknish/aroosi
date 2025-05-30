@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
           return { userId, profile: res.profile };
         }
       } catch (e) {
-        // ignore errors for individual users
+       console.error(`Error fetching profile for userId ${userId}:`, e);
       }
       return null;
     })

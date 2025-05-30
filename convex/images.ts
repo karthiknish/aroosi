@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./utils/rateLimit";
 import { ConvexError } from "convex/values";
-import { requireAdmin } from "./utils/requireAdmin";
+import { requireAdmin, isAdmin } from "./utils/requireAdmin";
 
 // Constants
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -388,13 +388,21 @@ export const updateProfileImageOrder = mutation({
         throw new ConvexError("Not authenticated");
       }
 
-      // Only allow updating your own profile
+      // Get the current user
       const user = await ctx.db
         .query("users")
         .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
         .unique();
 
-      if (!user || user._id !== args.userId) {
+      if (!user) {
+        throw new ConvexError("User not found");
+      }
+
+      // Allow if user is updating their own profile OR if they are an admin
+      const isUserProfile = user._id === args.userId;
+      const isUserAdmin = isAdmin(identity);
+
+      if (!isUserProfile && !isUserAdmin) {
         throw new ConvexError("Unauthorized to update this profile");
       }
 

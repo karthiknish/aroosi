@@ -38,6 +38,11 @@ function getRole(identity: unknown): string | undefined {
   return undefined;
 }
 
+export function isAdmin(identity: unknown): boolean {
+  const role = getRole(identity);
+  return !!(identity && role === "admin");
+}
+
 export function requireAdmin(identity: unknown) {
   const role = getRole(identity);
   console.log("Resolved role:", role);

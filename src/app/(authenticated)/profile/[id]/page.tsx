@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserCircle } from "lucide-react";
+import { UserCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
 import { Id } from "@convex/_generated/dataModel";
@@ -183,26 +183,6 @@ export default function ProfileDetailPage() {
     }
   }, [isOwnProfile, profileData?.profileImageIds]);
 
-  // Loading states for profile data
-  if (loadingProfile) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Skeleton className="w-20 h-20 rounded-full" />
-          <Skeleton className="h-6 w-40 rounded" />
-          <Skeleton className="h-4 w-32 rounded" />
-        </div>
-      </div>
-    );
-  }
-  if (!profileData) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        Profile not found.
-      </div>
-    );
-  }
-
   // Fetch text/profile data
 
   // Now safe to use profile data
@@ -249,13 +229,42 @@ export default function ProfileDetailPage() {
   const imageIdsToRender = isOwnProfile
     ? localCurrentUserImageOrder
     : profile?.profileImageIds || [];
+
+  // Add state for current image index
+  const [currentImageIdx, setCurrentImageIdx] = useState(0);
+
+  // Update currentImageIdx if imageIdsToRender changes
+  useEffect(() => {
+    setCurrentImageIdx(0);
+  }, [imageIdsToRender]);
+
   const mainProfileImageId =
-    imageIdsToRender.length > 0 ? imageIdsToRender[0] : undefined;
+    imageIdsToRender.length > 0 ? imageIdsToRender[currentImageIdx] : undefined;
   const mainProfileImageUrl = isOwnProfile
     ? getImageUrlFromMap(mainProfileImageId)
     : userId
       ? getPublicUserImage(userId)
       : undefined;
+
+  // Loading states for profile data
+  if (loadingProfile) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="w-20 h-20 rounded-full" />
+          <Skeleton className="h-6 w-40 rounded" />
+          <Skeleton className="h-4 w-32 rounded" />
+        </div>
+      </div>
+    );
+  }
+  if (!profileData) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        Profile not found.
+      </div>
+    );
+  }
 
   // Log relevant state for debugging the interest button
   console.log("sentInterest", sentInterest);
@@ -418,12 +427,12 @@ export default function ProfileDetailPage() {
     <>
       <Head>
         <title>
-          {profile.fullName ? `${profile.fullName}'s Profile` : "View Profile"}{" "}
+          {profile?.fullName ? `${profile.fullName}'s Profile` : "View Profile"}{" "}
           | Aroosi
         </title>
         <meta
           name="description"
-          content={`View ${profile.fullName || "user"}'s detailed profile on Aroosi, the UK's trusted Muslim matrimony platform.`}
+          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the UK's trusted Muslim matrimony platform.`}
         />
         {/* ... other meta tags ... */}
       </Head>
@@ -449,13 +458,45 @@ export default function ProfileDetailPage() {
                     className="relative w-full"
                     style={{ aspectRatio: "1 / 1" }}
                   >
+                    {/* Left Arrow */}
+                    {imageIdsToRender.length > 1 && (
+                      <button
+                        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow"
+                        onClick={() =>
+                          setCurrentImageIdx((idx) => Math.max(0, idx - 1))
+                        }
+                        disabled={currentImageIdx === 0}
+                        aria-label="Previous image"
+                        type="button"
+                      >
+                        <ChevronLeft className="w-6 h-6 text-gray-700" />
+                      </button>
+                    )}
                     <Image
                       src={mainProfileImageUrl || "/placeholder.png"}
-                      alt={profile.fullName || "Profile"}
+                      alt={profile?.fullName || "Profile"}
                       fill
                       className="object-cover object-center"
                       priority
                     />
+                    {/* Right Arrow */}
+                    {imageIdsToRender.length > 1 && (
+                      <button
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow"
+                        onClick={() =>
+                          setCurrentImageIdx((idx) =>
+                            Math.min(imageIdsToRender.length - 1, idx + 1)
+                          )
+                        }
+                        disabled={
+                          currentImageIdx === imageIdsToRender.length - 1
+                        }
+                        aria-label="Next image"
+                        type="button"
+                      >
+                        <ChevronRight className="w-6 h-6 text-gray-700" />
+                      </button>
+                    )}
                   </motion.div>
                 ) : (
                   <motion.div
@@ -488,23 +529,23 @@ export default function ProfileDetailPage() {
                   className="text-4xl font-serif font-bold text-gray-900 mb-1"
                   style={{ fontFamily: "Lora, serif" }}
                 >
-                  {profile.fullName}
+                  {profile?.fullName ?? "-"}
                 </div>
                 <div
                   className="text-lg text-gray-600 mb-1"
                   style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                 >
-                  {profile.ukCity || "-"}
+                  {profile?.ukCity || "-"}
                 </div>
                 <div
                   className="text-lg text-gray-600 mb-1"
                   style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                 >
-                  {profile.religion || "-"}
+                  {profile?.religion || "-"}
                 </div>
                 <div className="text-sm text-gray-400 mb-2">
                   Member since:{" "}
-                  {profile.createdAt
+                  {profile?.createdAt
                     ? new Date(profile.createdAt).toLocaleDateString()
                     : "-"}
                 </div>
@@ -535,7 +576,7 @@ export default function ProfileDetailPage() {
                             <div className="relative w-full h-full">
                               <Image
                                 src={effectiveUrl}
-                                alt={`${profile.fullName || "Profile"}'s image ${idx + 1}`}
+                                alt={`${profile?.fullName || "Profile"}'s image ${idx + 1}`}
                                 fill
                                 className="object-cover rounded-lg"
                               />
@@ -565,23 +606,23 @@ export default function ProfileDetailPage() {
                   <h3 className="font-semibold mb-2">
                     Cultural & Religious Background
                   </h3>
-                  <div>Religion: {profile.religion || "-"}</div>
-                  <div>Mother Tongue: {profile.motherTongue || "-"}</div>
-                  <div>Marital Status: {profile.maritalStatus || "-"}</div>
+                  <div>Religion: {profile?.religion || "-"}</div>
+                  <div>Mother Tongue: {profile?.motherTongue || "-"}</div>
+                  <div>Marital Status: {profile?.maritalStatus || "-"}</div>
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2">Education & Career</h3>
-                  <div>Education: {profile.education || "-"}</div>
-                  <div>Occupation: {profile.occupation || "-"}</div>
-                  <div>Height: {profile.height || "-"}</div>
+                  <div>Education: {profile?.education || "-"}</div>
+                  <div>Occupation: {profile?.occupation || "-"}</div>
+                  <div>Height: {profile?.height || "-"}</div>
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2">Location (UK)</h3>
-                  <div>City: {profile.ukCity || "-"}</div>
+                  <div>City: {profile?.ukCity || "-"}</div>
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2">About Me</h3>
-                  <div>{profile.aboutMe || "-"}</div>
+                  <div>{profile?.aboutMe || "-"}</div>
                 </div>
               </motion.div>
               <div className="flex justify-center gap-8 mt-8 mb-2">
@@ -593,7 +634,11 @@ export default function ProfileDetailPage() {
                           ? "withdraw-interest"
                           : "express-interest"
                       }
-                      className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-pink-400 ${alreadySentInterest ? "bg-gray-200 hover:bg-gray-300 text-pink-600 border border-gray-300" : "bg-pink-600 hover:bg-pink-700 text-white"}`}
+                      className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-pink-400 ${
+                        alreadySentInterest
+                          ? "bg-gray-200 hover:bg-gray-300 text-pink-600 border border-gray-300"
+                          : "bg-pink-600 hover:bg-pink-700 text-white"
+                      }`}
                       variants={buttonVariants}
                       initial="hidden"
                       animate="visible"

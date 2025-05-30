@@ -1,8 +1,7 @@
 "use client";
 import { Profile } from "@/types/profile";
 import Image from "next/image";
-import { useToken } from "@/components/TokenProvider";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   User,
   MapPin,
@@ -18,7 +17,6 @@ import {
   Phone,
   PersonStanding,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProfileImage {
   _id: string;
@@ -28,7 +26,21 @@ interface ProfileImage {
   uploadedAt: number;
 }
 
-export default function ProfileView({ profile }: { profile: Profile }) {
+interface ProfileViewProps {
+  profile: Profile;
+  images: ProfileImage[] | null | undefined;
+  imageUrls?: string[];
+}
+
+export default function ProfileView({
+  profile,
+  images,
+  imageUrls = [],
+}: ProfileViewProps) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  console.log("Rendering ProfileView for:", profile);
+  console.log("images", images, "imageUrls", imageUrls);
   // Calculate age from dateOfBirth if possible
   let age: string | number = "-";
   if (profile.dateOfBirth) {
@@ -44,52 +56,6 @@ export default function ProfileView({ profile }: { profile: Profile }) {
     }
   }
 
-  // Fetch profile images from API
-  const token = useToken();
-  const [images, setImages] = useState<ProfileImage[] | null | undefined>(
-    undefined
-  );
-  useEffect(() => {
-    async function fetchImages() {
-      if (!profile.userId) {
-        setImages([]);
-        return;
-      }
-      try {
-        if (!token) {
-          setImages([]);
-          return;
-        }
-        const res = await fetch(
-          `/api/profile-detail/${profile.userId}/images`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!res.ok) throw new Error("Failed to fetch images");
-        const data = await res.json();
-        setImages(
-          Array.isArray(data.userProfileImages) ? data.userProfileImages : []
-        );
-      } catch (e: unknown) {
-        console.error(e);
-        setImages(null);
-      }
-    }
-    fetchImages();
-  }, [profile.userId, token]);
-
-  // Handle loading state
-  if (images === undefined) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 gap-4">
-        <Skeleton className="w-32 h-32 rounded-lg" />
-        <Skeleton className="h-6 w-40 rounded" />
-        <Skeleton className="h-4 w-32 rounded" />
-      </div>
-    );
-  }
-
   // Handle error state
   if (images === null) {
     console.error("Error loading profile images: null response");
@@ -100,30 +66,72 @@ export default function ProfileView({ profile }: { profile: Profile }) {
     );
   }
 
-  // Ensure we have an array of images
-  const profileImages: ProfileImage[] = Array.isArray(images)
-    ? images.filter((img) => img && img._id && img.storageId)
-    : [];
+  // Use imageUrls if provided, otherwise fallback to images prop
+  let displayImages: { url: string }[] = [];
+  if (imageUrls && imageUrls.length > 0) {
+    displayImages = imageUrls.map((url) => ({ url }));
+  } else if (Array.isArray(images)) {
+    displayImages = images
+      .filter((img) => img && img.url)
+      .map((img) => ({ url: img.url! }));
+  }
 
-  // Get the first image as profile image or use placeholder
-  const profileImage = profileImages.length > 0 ? profileImages[0] : null;
+  // Loading state for main profile image
+  const profileImage = displayImages.length > 0 ? displayImages[0] : null;
+  console.log("ProfileView main image:", profileImage);
 
-  // Render all profile images in order
-  const imagesGrid = (profileImages || []).map((img, index) => (
+  // If there is a profile image, wait for it to load before rendering the rest
+  if (profileImage && !imageLoaded && !imageError) {
+    return (
+      <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white flex flex-col items-center justify-center min-h-[300px]">
+        <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white relative flex items-center justify-center">
+          {profileImage ? (
+            <>
+              <img
+                src={profileImage.url}
+                alt={profile.fullName || "Profile image"}
+                width={128}
+                height={128}
+                className="w-full h-full object-cover"
+                onLoad={() => setImageLoaded(true)}
+                onError={(e) => {
+                  setImageError(true);
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null;
+                  target.src = "/placeholder-user.jpg";
+                }}
+              />
+              {!imageLoaded && !imageError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-600" />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+              <User className="w-16 h-16 text-gray-400" />
+            </div>
+          )}
+        </div>
+        <div className="mt-4 text-gray-400">Loading profile image...</div>
+      </div>
+    );
+  }
+
+  const imagesGrid = displayImages.map((img, index) => (
     <div
-      key={img._id}
+      key={img.url}
       className={`relative w-20 h-20 rounded-lg overflow-hidden border mr-2 ${
         index === 0 ? "ring-2 ring-primary" : ""
       }`}
     >
       <Image
-        src={img.url || ""}
+        src={img.url}
         alt={profile.fullName || "Profile image"}
         fill
         className="object-cover"
         sizes="80px"
         onError={(e) => {
-          // Fallback to a placeholder if image fails to load
           const target = e.target as HTMLImageElement;
           target.onerror = null;
           target.src = "/placeholder-user.jpg";
@@ -136,9 +144,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
       )}
     </div>
   ));
-
-  // Add placeholder if no images
-  if (profileImages.length === 0) {
+  if (displayImages.length === 0) {
     imagesGrid.push(
       <div
         key="placeholder"
@@ -154,27 +160,35 @@ export default function ProfileView({ profile }: { profile: Profile }) {
       {/* Profile image and details row */}
       <div className="flex flex-col sm:flex-row gap-6 mb-6">
         {/* Profile image */}
-        <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white">
+        <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white relative flex items-center justify-center">
           {profileImage ? (
-            <Image
-              src={profileImage.url || ""}
-              alt={profile.fullName || "Profile image"}
-              width={128}
-              height={128}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.onerror = null;
-                target.src = "/placeholder-user.jpg";
-              }}
-            />
+            <>
+              <img
+                src={profileImage.url}
+                alt={profile.fullName || "Profile image"}
+                width={128}
+                height={128}
+                className="w-full h-full object-cover"
+                onLoad={() => setImageLoaded(true)}
+                onError={(e) => {
+                  setImageError(true);
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null;
+                  target.src = "/placeholder-user.jpg";
+                }}
+              />
+              {!imageLoaded && !imageError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-600" />
+                </div>
+              )}
+            </>
           ) : (
             <div className="w-full h-full bg-gray-100 flex items-center justify-center">
               <User className="w-16 h-16 text-gray-400" />
             </div>
           )}
         </div>
-
         {/* Profile details */}
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-gray-900">
@@ -185,7 +199,6 @@ export default function ProfileView({ profile }: { profile: Profile }) {
           )}
         </div>
       </div>
-
       {/* Images grid */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-gray-700">Profile Photos</h3>
@@ -195,6 +208,7 @@ export default function ProfileView({ profile }: { profile: Profile }) {
         <div>
           <span className="text-md text-gray-500 flex items-center gap-1">
             <User className="w-3.5 h-3.5 text-gray-400" />
+
             <span className="font-medium text-gray-700">
               {profile.gender
                 ? profile.gender.charAt(0).toUpperCase() +
@@ -209,6 +223,16 @@ export default function ProfileView({ profile }: { profile: Profile }) {
             <span className="font-medium text-gray-700">{age}</span>
           </span>
         </div>
+        {profile.dateOfBirth && (
+          <div>
+            <span className="text-md text-gray-500 flex items-center gap-1">
+              <Cake className="w-3.5 h-3.5 text-gray-400" />
+              <span className="font-medium text-gray-700">
+                {new Date(profile.dateOfBirth).toLocaleDateString()}
+              </span>
+            </span>
+          </div>
+        )}
         <div>
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <MapPin className="w-3.5 h-3.5 text-gray-400" />

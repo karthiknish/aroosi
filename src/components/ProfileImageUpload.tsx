@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+} from "react";
 import { toast } from "sonner";
 import { ImageUploader } from "./ImageUploader";
 import { ImageDeleteConfirmation } from "./ImageDeleteConfirmation";
@@ -40,6 +46,10 @@ export function ProfileImageUpload({
   const [viewImageModalOpen, setViewImageModalOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [selectedImageIdx, setSelectedImageIdx] = useState<number>(-1);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const lastNotifiedImageIds = useRef<string>("");
+  const [uploading, setUploading] = useState(false);
+  const prevImageCount = useRef<number>(0);
 
   // Fetch images from API
   const fetchImages = useCallback(async () => {
@@ -57,7 +67,11 @@ export function ProfileImageUpload({
     } else {
       setOrderedImages([]);
     }
-  }, [userId, token]);
+    // Mark as initialized after first fetch
+    if (!hasInitialized) {
+      setHasInitialized(true);
+    }
+  }, [userId, token, hasInitialized]);
 
   useEffect(() => {
     fetchImages();
@@ -69,10 +83,22 @@ export function ProfileImageUpload({
   }, [orderedImages]);
 
   useEffect(() => {
-    if (onImagesChanged) {
-      onImagesChanged(profileImageIds);
+    // Only call onImagesChanged after initial load, not on mount
+    if (onImagesChanged && hasInitialized) {
+      const imageIdsString = profileImageIds.join(",");
+      // Only notify if the image IDs actually changed
+      if (imageIdsString !== lastNotifiedImageIds.current) {
+        lastNotifiedImageIds.current = imageIdsString;
+        onImagesChanged(profileImageIds);
+        // Show success toast only if uploading and image count increased
+        if (uploading && profileImageIds.length > prevImageCount.current) {
+          toast.success("Image uploaded successfully");
+          setUploading(false);
+        }
+        prevImageCount.current = profileImageIds.length;
+      }
     }
-  }, [profileImageIds, onImagesChanged]);
+  }, [profileImageIds, onImagesChanged, hasInitialized, uploading]);
 
   // Handle image deletion
   const handleDelete = useCallback(async () => {
@@ -211,6 +237,9 @@ export function ProfileImageUpload({
     [token]
   );
 
+  // Track when an upload is in progress
+  const handleStartUpload = () => setUploading(true);
+
   return (
     <div className="space-y-4">
       {/* Image Upload Section */}
@@ -235,6 +264,7 @@ export function ProfileImageUpload({
           fetchImages={fetchImages}
           generateUploadUrl={generateUploadUrl}
           uploadImage={uploadImage}
+          onStartUpload={handleStartUpload}
         />
         {/* Upload limit indicator */}
         <div className="flex justify-between px-1">
