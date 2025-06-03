@@ -131,30 +131,13 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>Your Profile</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProfileView
-            profileData={profile}
-            images={images}
-            isLoadingImages={imagesLoading}
-            onDelete={handleDeleteProfile}
-          />
-          <div className="flex justify-end mt-8">
-            <Button
-              variant="destructive"
-              onClick={handleDeleteProfile}
-              disabled={deleteProfileMutation.status === "pending"}
-            >
-              {deleteProfileMutation.status === "pending"
-                ? "Deleting..."
-                : "Delete Profile"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileView
+        profileData={profile}
+        images={images}
+        isLoadingImages={imagesLoading}
+        onDelete={handleDeleteProfile}
+      />
+
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
