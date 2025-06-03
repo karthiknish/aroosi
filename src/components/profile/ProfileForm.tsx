@@ -1,610 +1,284 @@
 "use client";
 
+import React, { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
-
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-
-import "react-datepicker/dist/react-datepicker.css";
-import "@/styles/react-datepicker-custom.css";
-import { Button } from "@/components/ui/button";
-
 import { Loader2 } from "lucide-react";
 
-import * as z from "zod";
-import React from "react";
+// Import custom hooks for image handling
+import {
+  useProfileImages,
+  useDeleteImage,
+  type ApiImage,
+} from "@/lib/utils/profileImageUtils";
 
+// Import UI components
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
-import { Image } from "@/components/ProfileImageReorder";
-
+// Import step components
 import ProfileFormStepBasicInfo from "./ProfileFormStepBasicInfo";
 import ProfileFormStepLocation from "./ProfileFormStepLocation";
 import ProfileFormStepCultural from "./ProfileFormStepCultural";
 import ProfileFormStepEducation from "./ProfileFormStepEducation";
 import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
-import { useToken } from "@/components/TokenProvider";
-import { useProfileCompletion } from "@/components/ProfileCompletionProvider";
-import {
-  fetchUserProfileImages,
-  submitProfile,
-} from "@/lib/profile/userProfileApi";
 
-// Hardcoded list of major UK cities
-const majorUkCities = [
-  "Belfast",
-  "Birmingham",
-  "Bradford",
-  "Brighton",
-  "Bristol",
-  "Cambridge",
-  "Cardiff",
-  "Coventry",
-  "Derby",
-  "Edinburgh",
-  "Glasgow",
-  "Kingston upon Hull",
-  "Leeds",
-  "Leicester",
-  "Liverpool",
-  "London",
-  "Manchester",
-  "Milton Keynes",
-  "Newcastle upon Tyne",
-  "Newport",
-  "Norwich",
-  "Nottingham",
-  "Oxford",
-  "Plymouth",
-  "Portsmouth",
-  "Preston",
-  "Reading",
-  "Sheffield",
-  "Southampton",
-  "Stoke-on-Trent",
-  "Sunderland",
-  "Swansea",
-  "Wakefield",
-  "Wolverhampton",
-  "York",
-];
-const ukCityOptions = majorUkCities
-  .sort()
-  .map((city) => ({ value: city, label: city }));
+// Import auth context
+import { useAuthContext } from "@/components/AuthProvider";
 
-// 1. Define ProfileFormValues
-export interface ProfileFormValues {
-  userId?: string;
+// Add Next.js router
+import { useRouter } from "next/navigation";
+
+// Types
+type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say" | "other";
+
+export type ProfileFormValues = {
   fullName: string;
-  dateOfBirth: string;
-  gender: "male" | "female" | "other";
-  height?: string;
-  phoneNumber: string;
+  dateOfBirth: Date | string;
+  gender: Gender;
+  height: string;
   ukCity: string;
-  ukPostcode?: string;
-  diet?: string;
-  smoking?: string;
-  drinking?: string;
-  physicalStatus?: string;
-  religion?: string;
-  caste?: string;
-  motherTongue?: string;
-  maritalStatus?: string;
-  education?: string;
-  occupation?: string;
-  annualIncome?: number;
   aboutMe: string;
-  preferredGender?: string;
-  partnerPreferenceAgeMin?: number;
-  partnerPreferenceAgeMax?: number;
-  partnerPreferenceReligion?: string[];
-  partnerPreferenceUkCity?: string[];
-  profileImageIds?: string[];
-  isProfileComplete?: boolean;
+  phoneNumber: string;
+};
+
+interface ProfileFormProps {
+  mode?: "create" | "edit";
+  initialValues?: Partial<ProfileFormValues>;
+  onSubmit?: (
+    values: ProfileFormValues & { profileImageIds: string[] }
+  ) => void | Promise<void>;
+  loading?: boolean;
+  serverError?: string | null;
+  submitButtonText?: string;
+  userId?: string;
+  onEditDone?: () => void;
 }
 
-// Helper components
-export const FormSection: React.FC<{
-  title: string;
-  children: React.ReactNode;
-}> = ({ title, children }) => (
+const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
   <div className="space-y-3 pt-6 border-t first:border-t-0 first:pt-0">
     <h2 className="text-xl font-semibold text-gray-700">{title}</h2>
     {children}
   </div>
 );
-export const DisplaySection: React.FC<{
-  title: string;
-  children: React.ReactNode;
-}> = ({ title, children }) => (
-  <div className="space-y-1 pt-6 border-t first:border-t-0 first:pt-0">
-    <h2 className="text-xl font-semibold text-gray-700 mb-3">{title}</h2>
-    {children}
-  </div>
-);
 
-// Add Zod schema for validation
+// Height constants
+const MIN_HEIGHT_CM = 137;
+const MAX_HEIGHT_CM = 198;
+const DEFAULT_HEIGHT_CM = 170;
+
 const essentialProfileSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
-  gender: z.enum(["male", "female", "other"], {
-    required_error: "Gender is required",
-  }),
+  dateOfBirth: z.union([
+    z.date(),
+    z.string().min(1, "Date of birth is required"),
+  ]),
+  gender: z.enum(
+    ["male", "female", "non-binary", "prefer-not-to-say", "other"] as const,
+    {
+      required_error: "Gender is required",
+    }
+  ),
   height: z.string().min(1, "Height is required"),
   ukCity: z.string().min(1, "City is required"),
   aboutMe: z.string().min(1, "About Me is required"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
 });
 
-function cmToFeetInches(cm: number) {
+// Height conversion utility function
+export const cmToFeetInches = (cm: number): string => {
   const totalInches = Math.round(cm / 2.54);
   const feet = Math.floor(totalInches / 12);
   const inches = totalInches % 12;
-  return `${feet}'${inches}\"`;
-}
+  return `${feet}'${inches}"`;
+};
 
-function cmToFeetInchesString(cm: number) {
-  const totalInches = Math.round(cm / 2.54);
-  const feet = Math.floor(totalInches / 12);
-  const inches = totalInches % 12;
-  return `${feet}ft ${inches}in`;
-}
+const stepTips = [
+  "Tip: Use your real name and accurate details for better matches.",
+  "Tip: Sharing your city helps us find matches near you.",
+  "Tip: Sharing your background helps us personalize your experience.",
+  "Tip: Education and career info helps you stand out.",
+  "Tip: Write a friendly, honest 'About Me' to attract the right matches.",
+  "Tip: A clear profile photo increases your chances by 3x!",
+];
 
-// Phone number validation regex (UK/international)
-const phoneRegex = /^\+?\d{10,15}$/;
+const totalSteps = 6;
 
-const LOCAL_STORAGE_KEY = "aroosi-profile-draft";
-
-// TODO: Replace 'any' with the correct type if available
-const ProfileForm: React.FC<{
-  mode: "create" | "edit";
-  initialValues?: ProfileFormValues;
-  onSubmit: (values: ProfileFormValues) => void;
-  loading?: boolean;
-  serverError?: string | null;
-  onEditDone: () => void;
-  onProfileCreated?: () => void;
-}> = ({
-  mode,
-  initialValues,
+const ProfileForm: React.FC<ProfileFormProps> = ({
+  mode = "create",
+  initialValues = {},
   onSubmit,
   loading = false,
   serverError = null,
-  onEditDone,
-  onProfileCreated,
+  submitButtonText,
+  userId: userIdProp,
 }) => {
-  const token = useToken();
-  const { isProfileComplete, refetchProfile } = useProfileCompletion();
-  const [currentStep, setCurrentStep] = React.useState(0);
-  const [uploadedImageIds, setUploadedImageIds] = React.useState<string[]>(
-    initialValues?.profileImageIds || []
-  );
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [modalIndex, setModalIndex] = React.useState(0);
-  const [deletingImageId, setDeletingImageId] = React.useState<string | null>(
-    null
-  );
-  const [reordering, setReordering] = React.useState(false);
-  const [creatingProfile, setCreatingProfile] = React.useState(false);
-  const [waitForUserId, setWaitForUserId] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] =
-    React.useState(false);
-  const [imageToDelete, setImageToDelete] = React.useState<string | null>(null);
+  const { profile } = useAuthContext();
+  const router = useRouter();
 
-  // Step configuration
-  const profileStepLogic = [
-    {
-      title: "Basic Information",
-      fields: ["fullName", "dateOfBirth", "gender", "height", "phoneNumber"],
-    },
-    {
-      title: "Location (UK) & Lifestyle",
-      fields: [
-        "ukCity",
-        "ukPostcode",
-        "diet",
-        "smoking",
-        "drinking",
-        "physicalStatus",
-      ],
-    },
-    {
-      title: "Cultural & Religious Background",
-      fields: ["religion", "caste", "motherTongue", "maritalStatus"],
-    },
-    {
-      title: "Education & Career",
-      fields: ["education", "occupation", "annualIncome"],
-    },
-    {
-      title: "About & Preferences",
-      fields: [
-        "aboutMe",
-        "preferredGender",
-        "partnerPreferenceAgeMin",
-        "partnerPreferenceAgeMax",
-        "partnerPreferenceReligion",
-        "partnerPreferenceUkCity",
-      ],
-    },
-    {
-      title: "Profile Images",
-      fields: ["profileImageIds"],
-    },
-  ];
-  const totalSteps = profileStepLogic.length;
+  // Use userId from prop if provided, otherwise fallback to profile
+  const profileId: string =
+    userIdProp || (typeof profile?._id === "string" ? profile._id : "");
+  const userId: string =
+    userIdProp || (typeof profile?._id === "string" ? profile._id : "");
 
-  const deleteImage = async (
-    userId: string,
-    imageId: string,
-    token: string
-  ) => {
-    setDeletingImageId(imageId);
-    try {
-      const res = await fetch(`/api/images`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId, imageId }),
-      });
-      if (!res.ok) throw new Error("Failed to delete image");
-      toast.success("Image deleted");
-    } catch {
-      toast.error("Failed to delete image");
-    } finally {
-      setDeletingImageId(null);
-    }
+  // Form state
+  const [currentStep, setCurrentStep] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Form
+  const emptyDefaults = {
+    fullName: "",
+    dateOfBirth: "",
+    gender: "other" as Gender,
+    ukCity: "",
+    aboutMe: "",
+    height: "",
+    phoneNumber: "",
   };
 
-  // Form setup
+  // Use a ref to track if we've initialized the form to prevent unnecessary resets
+  const hasInitialized = React.useRef(false);
+
   const form = useForm<ProfileFormValues>({
-    resolver: async (data) => {
-      try {
-        essentialProfileSchema.parse(data);
-        return { values: data, errors: {} };
-      } catch (err) {
-        return {
-          values: {},
-          errors: (err as z.ZodError).formErrors?.fieldErrors || {},
-        };
-      }
-    },
-    defaultValues: initialValues || {
-      fullName: "",
-      dateOfBirth: "",
-      gender: undefined,
-      ukCity: "",
-      ukPostcode: "",
-      religion: "",
-      caste: "",
-      motherTongue: "",
-      height: undefined,
-      maritalStatus: undefined,
-      education: "",
-      occupation: "",
-      annualIncome: undefined,
-      aboutMe: "",
-      preferredGender: undefined,
-      partnerPreferenceAgeMin: undefined,
-      partnerPreferenceAgeMax: undefined,
-      partnerPreferenceReligion: [],
-      partnerPreferenceUkCity: [],
-      profileImageIds: [],
-      phoneNumber: "",
-      diet: undefined,
-      smoking: undefined,
-      drinking: undefined,
-      physicalStatus: undefined,
-    },
+    resolver: zodResolver(essentialProfileSchema),
+    defaultValues: React.useMemo(
+      () => ({
+        ...emptyDefaults,
+        ...(mode === "edit" ? initialValues : {}),
+      }),
+      [mode]
+    ), // Only depends on mode, not initialValues
+    mode: "onChange",
   });
 
-  // On mount, prefill from localStorage if available (only for create mode)
+  // Handle initial values update when in edit mode
   React.useEffect(() => {
-    if (mode === "create") {
-      const draft = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (draft) {
-        try {
-          const parsed = JSON.parse(draft);
-          Object.entries(parsed).forEach(([key, value]) => {
-            if (form.getValues(key as keyof ProfileFormValues) !== value) {
-              form.setValue(
-                key as keyof ProfileFormValues,
-                value as string | number | string[] | undefined
-              );
-            }
-          });
-        } catch {}
-      }
-    }
-    // eslint-disable-next-line
-  }, []);
-
-  // Persist form data to localStorage on change (only for create mode)
-  React.useEffect(() => {
-    if (mode === "create") {
-      const subscription = form.watch((values) => {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(values));
+    if (
+      mode === "edit" &&
+      !hasInitialized.current &&
+      Object.keys(initialValues).length > 0
+    ) {
+      // Only reset if we have initialValues and haven't initialized yet
+      form.reset({
+        ...emptyDefaults,
+        ...initialValues,
       });
-      return () => subscription.unsubscribe();
+      hasInitialized.current = true;
     }
-  }, [form, mode]);
+  }, [mode, initialValues, form]);
 
-  // Step navigation
-  const handleNextStep = async () => {
-    const stepFields = profileStepLogic[currentStep].fields;
-    // If on the Basic Information step, validate phone number
-    if (currentStep === 0) {
-      const phone = form.getValues("phoneNumber");
-      if (!phoneRegex.test(phone)) {
-        form.setError("phoneNumber", {
-          type: "manual",
-          message: "Please enter a valid phone number (e.g., +447123456789)",
-        });
-        return;
-      }
-    }
+  // UK cities for location step
+  const [ukCityOptions] = useState([
+    { value: "london", label: "London" },
+    { value: "birmingham", label: "Birmingham" },
+    { value: "manchester", label: "Manchester" },
+    { value: "leeds", label: "Leeds" },
+    { value: "liverpool", label: "Liverpool" },
+    { value: "newcastle", label: "Newcastle" },
+    { value: "bradford", label: "Bradford" },
+    { value: "sheffield", label: "Sheffield" },
+    { value: "bristol", label: "Bristol" },
+    { value: "cardiff", label: "Cardiff" },
+    { value: "edinburgh", label: "Edinburgh" },
+    { value: "glasgow", label: "Glasgow" },
+    { value: "belfast", label: "Belfast" },
+  ]);
 
-    // If on the About & Preferences step, validate minimum age
-    if (currentStep === 4) {
-      const minAge = form.getValues("partnerPreferenceAgeMin");
-      if (minAge && minAge < 18) {
-        form.setError("partnerPreferenceAgeMin", {
-          type: "manual",
-          message: "Minimum preferred partner age must be 18 or above",
-        });
-        return;
-      }
-    }
+  // Use only the hook-based approach for images and loading state:
+  const imagesDataRaw = useProfileImages(profileId || "");
+  const deleteImageRaw = useDeleteImage(profileId || "");
+  const images: ApiImage[] = profileId ? imagesDataRaw.data || [] : [];
+  const isLoadingImages: boolean = profileId ? imagesDataRaw.isLoading : false;
+  const deleteImage = profileId ? deleteImageRaw : () => Promise.resolve();
 
-    const valid = await form.trigger(
-      stepFields as (keyof ProfileFormValues)[],
-      { shouldFocus: true }
-    );
-    if (!valid) return;
+  // Get initial image IDs from props or from the fetched images
+  const initialImageIds = React.useMemo(() => {
+    const fromProps = (initialValues as Partial<{ profileImageIds: string[] }>)
+      ?.profileImageIds;
+    if (fromProps?.length) return [...fromProps];
+    if (images.length > 0) return images.map((img) => img.storageId);
+    return [];
+  }, [initialValues, images]);
 
-    // If this is the last non-image step, fetch userId
-    if (currentStep === totalSteps - 2 && mode === "create") {
-      setCreatingProfile(true);
-      try {
-        if (onProfileCreated) {
-          onProfileCreated();
-          setWaitForUserId(true);
-          return; // Do not advance step yet
-        }
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to create profile"
-        );
-      } finally {
-        setCreatingProfile(false);
-      }
-      return;
-    }
+  // Image state - initialize with the correct value
+  const [imageOrder, setImageOrder] = useState<string[]>(initialImageIds);
 
-    if (currentStep < totalSteps - 1) {
-      setCurrentStep((s: number) => Math.min(s + 1, totalSteps - 1));
-    }
+  const {
+    handleSubmit,
+    formState: { isValid },
+  } = form;
+
+  // Handle image upload
+  const handleImageUpload = async (): Promise<void> => {
+    // Placeholder: implement actual upload logic or remove if not needed
+    return Promise.resolve();
   };
 
-  // 2. Use userId only if it exists in image-related effects and handlers
-  const userId = initialValues?.userId;
+  // Handle image delete
+  const handleImageDelete = async (imageId: string) => {
+    // TODO: Implement actual image delete logic here
+    // This is a placeholder - replace with your actual delete implementation
+    setImageOrder((prev) => prev.filter((id) => id !== imageId));
+  };
 
-  // Debug log for userId propagation
-  React.useEffect(() => {
-    console.log("[ProfileForm] userId:", userId);
-  }, [userId]);
+  // Modal state
+  const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] =
+    useState<boolean>(false);
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
 
-  // Effect: when waitForUserId && userId, advance step
-  React.useEffect(() => {
-    if (waitForUserId && userId) {
-      setCurrentStep((s) => Math.min(s + 1, totalSteps - 1));
-      setWaitForUserId(false);
-    }
-  }, [waitForUserId, userId, totalSteps]);
-
-  const handlePrevious = () =>
-    setCurrentStep((s: number) => Math.max(s - 1, 0));
-
-  // 5. Update handleSubmit signature
-  const handleSubmit = async (values: ProfileFormValues) => {
+  // Handle image delete confirmation
+  const confirmDeleteImage = useCallback(async () => {
+    if (!imageToDelete) return;
     try {
-      setSaving(true);
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      // Validate minimum age
-      if (
-        values.partnerPreferenceAgeMin &&
-        values.partnerPreferenceAgeMin < 18
-      ) {
-        toast.error("Minimum preferred partner age must be 18 or above");
-        setSaving(false);
-        return;
-      }
-
-      if (mode === "edit") {
-        await submitProfile(token, values, "edit");
-        if (onSubmit) {
-          onSubmit(values);
-        }
-        onEditDone();
-      } else {
-        // In create mode, submit the profile
-        await submitProfile(token, values, "create");
-        if (onProfileCreated) {
-          onProfileCreated();
-        }
-      }
-    } catch (error) {
-      console.error("Error submitting profile:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save profile"
-      );
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const [userImages, setUserImages] = React.useState<
-    {
-      url: string;
-      storageId: string;
-    }[]
-  >([]);
-  const [loadingImages, setLoadingImages] = React.useState(false);
-
-  // 2. Use userId only if it exists in image-related effects and handlers
-  React.useEffect(() => {
-    if (!userId) return;
-    setLoadingImages(true);
-    fetchUserProfileImages(token!, userId)
-      .then((data) => {
-        console.log(
-          "[ProfileForm] Fetched userProfileImages after upload:",
-          data.userProfileImages
-        );
-        setUserImages(data.userProfileImages || []);
-      })
-      .catch(() => setUserImages([]))
-      .finally(() => setLoadingImages(false));
-  }, [token, userId]);
-
-  const handleDeleteImage = async (storageId: string) => {
-    if (!userId) return;
-    setImageToDelete(storageId);
-    setDeleteConfirmModalOpen(true);
-  };
-
-  const confirmDeleteImage = async () => {
-    if (!userId || !imageToDelete) return;
-    setLoadingImages(true);
-    try {
-      await deleteImage(userId, imageToDelete, token!);
-      // Refetch images after delete
-      const data = await fetchUserProfileImages(token!, userId);
-      console.log(
-        "[ProfileForm] Fetched userProfileImages after delete:",
-        data.userProfileImages
-      );
-      const newImages = data.userProfileImages || [];
-      setUserImages(newImages);
-      // Update the uploadedImageIds to match the new images
-      setUploadedImageIds(
-        newImages.map(
-          (img: { storageId: string; url: string }) => img.storageId
-        )
-      );
+      setIsSubmitting(true);
+      await deleteImage(imageToDelete);
+      setImageOrder((prev) => prev.filter((id) => id !== imageToDelete));
       toast.success("Image deleted successfully");
     } catch (error) {
       console.error("Error deleting image:", error);
       toast.error("Failed to delete image");
     } finally {
-      setLoadingImages(false);
-      setDeleteConfirmModalOpen(false);
       setImageToDelete(null);
+      setDeleteConfirmModalOpen(false);
+      setIsSubmitting(false);
     }
+  }, [imageToDelete, deleteImage]);
+
+  // Form submission: just call onSubmit with form data and imageOrder
+  const handleFormSubmit = handleSubmit((data: ProfileFormValues) => {
+    onSubmit?.({ ...data, profileImageIds: imageOrder });
+  });
+
+  // Step navigation
+  const handleNextStep = () => {
+    if (currentStep < totalSteps - 1) setCurrentStep(currentStep + 1);
+  };
+  const handlePrevStep = () => {
+    if (currentStep > 0) setCurrentStep(currentStep - 1);
   };
 
-  const handleReorderImages = async (userId: string, imageIds: string[]) => {
-    if (loadingImages || reordering) return; // Block reorder if loading or already reordering
-    setReordering(true);
-    setLoadingImages(true);
-    try {
-      const res = await fetch(`/api/images/order`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token!}`,
-        },
-        body: JSON.stringify({ userId, imageIds }),
-      });
-      if (!res.ok) throw new Error("Failed to update image order");
-      toast.success("Image order updated");
-      // Refetch images after reorder
-      const data = await fetchUserProfileImages(token!, userId);
-      console.log(
-        "[ProfileForm] Fetched userProfileImages after upload:",
-        data.userProfileImages
-      );
-      setUserImages(data.userProfileImages || []);
-    } catch {
-      toast.error("Failed to update image order");
-    }
-    setLoadingImages(false);
-    setReordering(false);
-  };
+  // Button text
+  const buttonText =
+    submitButtonText || (mode === "create" ? "Create Profile" : "Save Changes");
 
-  const storageIdToUrlMap = React.useMemo(() => {
-    const map: Record<string, string> = {};
-    if (userImages && Array.isArray(userImages)) {
-      for (const img of userImages) {
-        if (img?.storageId && img?.url) {
-          map[String(img.storageId)] = img.url;
-        }
-      }
-    }
-    return map;
-  }, [userImages]);
-  const orderedImages: Image[] = uploadedImageIds.map((id) => ({
-    _id: id,
-    url: storageIdToUrlMap[id] || "",
-    storageId: id,
+  // Wait for userId if needed for image upload
+  const waitForUserId = mode === "create" && !userId;
+
+  // When passing images to ProfileFormStepImages, map ApiImage[] to ImageType[]
+  const mappedImages = images.map((img) => ({
+    id: img.storageId, // Map storageId to id
+    ...img,
   }));
 
-  const stepTips = [
-    "Tip: Use your real name and accurate details for better matches.",
-    "Tip: Sharing your city helps us find matches near you.",
-    "Tip: Sharing your background helps us personalize your experience.",
-    "Tip: Education and career info helps you stand out.",
-    "Tip: Write a friendly, honest 'About Me' to attract the right matches.",
-    "Tip: A clear profile photo increases your chances by 3x!",
-  ];
-
-  // Add handleImageClick definition
-  const handleImageClick = (idx: number) => {
-    setModalIndex(idx);
-    setModalOpen(true);
-  };
-
-  const handleImagesChanged = React.useCallback(
-    async (newImageIds: string[]) => {
-      setUploadedImageIds(newImageIds);
-      // After image upload, fetch the latest image URLs from the backend (create mode)
-      if (mode === "create" && userId && newImageIds.length > 0) {
-        try {
-          const data = await fetchUserProfileImages(token!, userId);
-          console.log(
-            "[ProfileForm] Fetched userProfileImages after upload:",
-            data.userProfileImages
-          );
-          // Map newImageIds to their URLs
-          const urlMap: Record<string, string> = {};
-          (data.userProfileImages || []).forEach(
-            (img: { storageId: string; url: string }) => {
-              urlMap[img.storageId] = img.url;
-            }
-          );
-          setUserImages(
-            newImageIds.map((id) => ({
-              storageId: id,
-              url: urlMap[id] || "",
-            }))
-          );
-        } catch {
-          // fallback: just set storageIds
-          setUserImages(newImageIds.map((id) => ({ storageId: id, url: "" })));
-        }
-      }
-    },
-    [mode, userId, token]
-  );
-
-  if (waitForUserId && !userId) {
+  if (waitForUserId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
@@ -647,9 +321,9 @@ const ProfileForm: React.FC<{
                 <Button
                   variant="destructive"
                   onClick={confirmDeleteImage}
-                  disabled={loadingImages}
+                  disabled={isLoadingImages}
                 >
-                  {loadingImages ? (
+                  {isLoadingImages ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     "Delete"
@@ -695,7 +369,7 @@ const ProfileForm: React.FC<{
           </div>
           <div className="p-6 sm:p-8">
             {/* Step content */}
-            <form onSubmit={(e) => e.preventDefault()}>
+            <form onSubmit={handleFormSubmit}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={currentStep}
@@ -708,7 +382,6 @@ const ProfileForm: React.FC<{
                     <FormSection title="Basic Information">
                       <ProfileFormStepBasicInfo
                         form={form}
-                        mode={mode}
                         cmToFeetInches={cmToFeetInches}
                       />
                     </FormSection>
@@ -722,7 +395,7 @@ const ProfileForm: React.FC<{
                     </FormSection>
                   )}
                   {currentStep === 2 && (
-                    <FormSection title="Cultural & Religious Background">
+                    <FormSection title="Cultural Background">
                       <ProfileFormStepCultural form={form} />
                     </FormSection>
                   )}
@@ -736,9 +409,8 @@ const ProfileForm: React.FC<{
                       <ProfileFormStepAbout form={form} mode={mode} />
                     </FormSection>
                   )}
-                  {currentStep === totalSteps - 1 && (
-                    <FormSection title="Profile Images">
-                      {/* Only render image upload step if userId is present */}
+                  {currentStep === 5 && (
+                    <FormSection title="Profile Photos">
                       {!userId ? (
                         <div className="flex items-center gap-2 text-pink-600">
                           <Loader2 className="h-5 w-5 animate-spin" />
@@ -747,21 +419,10 @@ const ProfileForm: React.FC<{
                       ) : (
                         <ProfileFormStepImages
                           form={form}
-                          userId={userId}
-                          handleImagesChanged={handleImagesChanged}
-                          orderedImages={orderedImages}
-                          handleImageClick={handleImageClick}
-                          handleDeleteImage={handleDeleteImage}
-                          deletingImageId={deletingImageId}
-                          modalOpen={modalOpen}
-                          setModalOpen={setModalOpen}
-                          modalIndex={modalIndex}
-                          setModalIndex={setModalIndex}
-                          updateOrder={({ userId, imageIds }) =>
-                            handleReorderImages(userId, imageIds)
-                          }
-                          loading={loadingImages}
-                          reordering={reordering}
+                          images={mappedImages}
+                          onImageUpload={handleImageUpload}
+                          onImageDelete={handleImageDelete}
+                          isLoading={isLoadingImages}
                           mode={mode}
                         />
                       )}
@@ -769,58 +430,50 @@ const ProfileForm: React.FC<{
                   )}
                 </motion.div>
               </AnimatePresence>
-              {/* Navigation */}
-              <div className="flex justify-between pt-6 border-t mt-8">
+              {/* Button row: move Next button to the right */}
+              <div className="mt-8 flex flex-col sm:flex-row gap-4 sm:justify-between">
                 <div className="flex gap-2">
                   {currentStep > 0 && (
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={handlePrevious}
-                      disabled={loading}
+                      onClick={handlePrevStep}
+                      disabled={isSubmitting || loading}
                     >
-                      Previous
+                      Back
                     </Button>
                   )}
                   {mode === "edit" && (
                     <Button
                       type="button"
-                      variant="outline"
-                      onClick={onEditDone}
-                      disabled={loading}
+                      variant="ghost"
+                      onClick={() => router.push("/profile")}
+                      disabled={isSubmitting || loading}
                     >
                       Cancel
                     </Button>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex justify-end w-full sm:w-auto">
                   {currentStep < totalSteps - 1 ? (
                     <Button
                       type="button"
                       className="bg-pink-600 hover:bg-pink-700"
                       onClick={handleNextStep}
-                      disabled={loading || creatingProfile}
+                      disabled={isSubmitting || loading}
                     >
-                      {creatingProfile ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        "Next"
-                      )}
+                      Next
                     </Button>
                   ) : (
                     <Button
-                      type="button"
-                      className="bg-pink-600 hover:bg-pink-700"
-                      onClick={() => {
-                        const values = form.getValues();
-                        handleSubmit(values);
-                      }}
+                      type="submit"
+                      className="w-full sm:w-auto px-8 py-6 text-lg font-medium"
+                      disabled={!isValid || isSubmitting || loading}
                     >
-                      {loading || saving ? (
+                      {isSubmitting || loading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        "Save Profile"
-                      )}
+                      ) : null}
+                      {buttonText}
                     </Button>
                   )}
                 </div>

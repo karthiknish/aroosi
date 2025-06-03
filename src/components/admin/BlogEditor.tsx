@@ -66,7 +66,7 @@ import { useDropzone } from "react-dropzone";
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
 import "@/styles/emoji-picker-custom.css";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "../AuthProvider";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
@@ -92,7 +92,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPopoverRef = useRef<HTMLDivElement>(null);
-  const token = useToken();
+  const { token } = useAuthContext();
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -652,6 +652,13 @@ export default function BlogEditor({
       handleDOMEvents: {},
     },
   });
+
+  // Add this effect to sync editor content with value prop
+  React.useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value || "", false);
+    }
+  }, [value, editor]);
 
   // Add custom style for links and tables in the editor
   if (

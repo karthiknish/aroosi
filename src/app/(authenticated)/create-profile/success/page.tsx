@@ -2,51 +2,11 @@
 import { useRouter } from "next/navigation";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import { useCurrentUserProfile } from "@/lib/hooks/useProfileQueries";
 
 export default function CreateProfileSuccessPage() {
   const router = useRouter();
   const { width, height } = useWindowSize();
-  const {
-    data: currentUserProfile,
-    isLoading,
-    error,
-  } = useCurrentUserProfile();
-
-  useEffect(() => {
-    if (error) {
-      console.error("Error fetching profile:", error);
-      toast.error("Failed to load profile. Please try again.");
-      router.replace("/create-profile");
-    }
-  }, [error, router]);
-
-  useEffect(() => {
-    if (currentUserProfile === undefined) return;
-    if (!currentUserProfile || !currentUserProfile.profile) {
-      router.replace("/create-profile");
-    }
-  }, [currentUserProfile, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Skeleton className="w-20 h-20 rounded-full" />
-          <Skeleton className="h-6 w-40 rounded" />
-          <Skeleton className="h-4 w-32 rounded" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentUserProfile || !currentUserProfile.profile) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-pink-50 via-rose-50 to-white p-4">

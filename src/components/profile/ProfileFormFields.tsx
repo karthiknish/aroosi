@@ -1,7 +1,8 @@
 import React from "react";
-import { Controller } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { ProfileFormValues } from "./ProfileForm";
 import {
   Select,
   SelectContent,
@@ -52,22 +53,22 @@ export const FormField: React.FC<FormFieldProps> = ({
   textarea = false,
 }) => (
   <div>
-    <Label htmlFor={name}>
+    <Label htmlFor={String(name)}>
       {label} {isRequired && <span className="text-red-600">*</span>}
     </Label>
     {textarea ? (
       <Textarea
-        id={name}
-        {...form.register(name)}
+        id={String(name)}
+        {...form.register(String(name))}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
         className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-pink-500 focus:border-pink-500 min-h-[100px]"
         rows={5}
       />
     ) : (
       <Input
-        id={name}
+        id={String(name)}
+        {...form.register(String(name))}
         type={type}
-        {...form.register(name)}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
         className="mt-1"
       />
@@ -81,51 +82,72 @@ export const FormField: React.FC<FormFieldProps> = ({
   </div>
 );
 
-export const FormSelectField: React.FC<FormSelectFieldProps> = ({
+const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
   name,
   label,
   form,
-  placeholder,
-  options,
+  placeholder = '',
+  options = [],
   description,
-  isRequired,
-}) => (
-  <div>
-    <Label htmlFor={name}>
-      {label} {isRequired && <span className="text-red-600">*</span>}
-    </Label>
-    <Select
-      onValueChange={(value) =>
-        form.setValue(name, value as string, {
-          shouldDirty: true,
-          shouldValidate: true,
-        })
-      }
-      defaultValue={
-        typeof form.getValues(name) === "string"
-          ? (form.getValues(name) as string)
-          : undefined
-      }
-    >
-      <SelectTrigger id={name} className="mt-1">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-    {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
-    {form.formState.errors[name] && (
-      <p className="text-sm text-red-600 mt-1">
-        {form.formState.errors[name]?.message as string}
-      </p>
-    )}
-  </div>
-);
+  isRequired = false,
+}) => {
+  return (
+    <div>
+      <Label htmlFor={String(name)}>
+        {label} {isRequired && <span className="text-red-600">*</span>}
+      </Label>
+      <Controller
+        control={form.control}
+        name={name}
+        render={({ field }) => {
+          // Ensure we have a valid value from the options or an empty string
+          const fieldValue = typeof field.value === 'string' ? field.value : String(field.value);
+          const selectedValue = options.some(opt => opt.value === fieldValue) ? fieldValue : '';
+          
+          return (
+            <Select
+              value={selectedValue}
+              onValueChange={field.onChange}
+            >
+              <SelectTrigger id={String(name)} className="mt-1">
+                <SelectValue placeholder={placeholder} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        }}
+      />
+      {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+      {form.formState.errors[name] && (
+        <p className="text-sm text-red-600 mt-1">
+          {form.formState.errors[name]?.message as string}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// Memoize the component to prevent unnecessary re-renders
+export const FormSelectField = React.memo(FormSelectFieldComponent, (prevProps, nextProps) => {
+  // Only re-render if the form values or errors have changed
+  const prevValue = prevProps.form.getValues(prevProps.name);
+  const nextValue = nextProps.form.getValues(nextProps.name);
+  
+  return (
+    prevValue === nextValue &&
+    prevProps.form.formState.isDirty === nextProps.form.formState.isDirty &&
+    prevProps.form.formState.errors === nextProps.form.formState.errors
+  );
+});
+
+FormSelectField.displayName = 'FormSelectField';
+
 
 export const DatePickerCustomInput = React.forwardRef<
   HTMLButtonElement,
@@ -161,7 +183,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
   } = form;
   return (
     <div>
-      <Label htmlFor={name}>
+      <Label htmlFor={String(name)}>
         {label} {isRequired && <span className="text-red-600">*</span>}
       </Label>
       <div className="mt-1 w-full">

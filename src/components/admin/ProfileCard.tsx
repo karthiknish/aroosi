@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import ProfileEditForm from "./ProfileEditForm";
 import ProfileView from "./ProfileView";
 import { useCallback } from "react";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "../AuthProvider";
 
 // Local ProfileImage type for admin usage
 type ProfileImage = {
@@ -17,6 +17,16 @@ type ProfileImage = {
   url: string | null;
   fileName: string;
   uploadedAt: number;
+};
+
+// Add at the top, after imports
+type RawImage = {
+  url?: string;
+  storageId?: string;
+  _id?: string;
+  fileName?: string;
+  uploadedAt?: number;
+  [key: string]: unknown;
 };
 
 export type ProfileEditFormState = {
@@ -78,7 +88,8 @@ export default function ProfileCard({
   adminUpdateProfile,
 }: ProfileCardProps) {
   const router = useRouter();
-  const token = useToken();
+  console.log(profile);
+  const { token } = useAuthContext();
 
   // Loading state for save operation
   const [isSaving, setIsSaving] = useState(false);
@@ -119,9 +130,34 @@ export default function ProfileCard({
           }
           const data = await res.json();
           console.log("[ProfileCard] fetch response data:", data);
-          setFetchedImages(
-            Array.isArray(data.userProfileImages) ? data.userProfileImages : []
-          );
+          // Accept any of these keys, fallback to empty array
+          const images =
+            (Array.isArray(data) && data) ||
+            data.userProfileImages ||
+            data.images ||
+            [];
+          // Ensure each image has at least url and storageId
+          const normalized = (images as RawImage[])
+            .filter((img) => img && (img.url || img.storageId))
+            .map((img) => ({
+              url: typeof img.url === "string" ? img.url : "",
+              storageId:
+                typeof img.storageId === "string"
+                  ? img.storageId
+                  : typeof img._id === "string"
+                    ? img._id
+                    : "",
+              _id:
+                typeof img._id === "string"
+                  ? img._id
+                  : typeof img.storageId === "string"
+                    ? img.storageId
+                    : "",
+              fileName: typeof img.fileName === "string" ? img.fileName : "",
+              uploadedAt:
+                typeof img.uploadedAt === "number" ? img.uploadedAt : 0,
+            }));
+          setFetchedImages(normalized as ProfileImage[]);
         } catch {
           setFetchedImages(null); // Error state
         }
@@ -147,11 +183,32 @@ export default function ProfileCard({
           );
           if (res.ok) {
             const data = await res.json();
-            setFetchedImages(
-              Array.isArray(data.userProfileImages)
-                ? data.userProfileImages
-                : []
-            );
+            const images =
+              (Array.isArray(data) && data) ||
+              data.userProfileImages ||
+              data.images ||
+              [];
+            const normalized = (images as RawImage[])
+              .filter((img) => img && (img.url || img.storageId))
+              .map((img) => ({
+                url: typeof img.url === "string" ? img.url : "",
+                storageId:
+                  typeof img.storageId === "string"
+                    ? img.storageId
+                    : typeof img._id === "string"
+                      ? img._id
+                      : "",
+                _id:
+                  typeof img._id === "string"
+                    ? img._id
+                    : typeof img.storageId === "string"
+                      ? img.storageId
+                      : "",
+                fileName: typeof img.fileName === "string" ? img.fileName : "",
+                uploadedAt:
+                  typeof img.uploadedAt === "number" ? img.uploadedAt : 0,
+              }));
+            setFetchedImages(normalized as ProfileImage[]);
           }
         } catch {
           setFetchedImages(null);
@@ -282,7 +339,10 @@ export default function ProfileCard({
             adminUpdateProfile={adminUpdateProfile}
           />
         ) : (
-          <ProfileView profile={profile} images={images} />
+          <ProfileView
+            profiledata={profile}
+            images={fetchedImages || images || []}
+          />
         )}
       </CardContent>
     </Card>

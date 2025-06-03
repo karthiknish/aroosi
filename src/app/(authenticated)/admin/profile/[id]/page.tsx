@@ -13,14 +13,13 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
-import React, { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, Loader2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 
 // Define types for images and matches
@@ -35,8 +34,14 @@ interface MatchType {
 
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { isLoaded, isSignedIn } = useAuth();
-  const token = useToken();
+  const router = useRouter();
+  const { 
+    token, 
+    isLoaded: authIsLoaded, 
+    isSignedIn, 
+    isAdmin 
+  } = useAuthContext();
+  
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<{
     storageId: string;
@@ -44,48 +49,175 @@ export default function AdminProfileDetailPage() {
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // React Query for profile
+  // Redirect if not admin or not loaded yet
+  useEffect(() => {
+    if (authIsLoaded && (!isSignedIn || !isAdmin)) {
+      router.push('/');
+    }
+  }, [authIsLoaded, isSignedIn, isAdmin, router]);
+
+  // Show loading state while checking auth
+  if (!authIsLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      </div>
+    );
+  }
+
+  // If not signed in or not admin, show nothing (will be redirected)
+  if (!isSignedIn || !isAdmin) {
+    return null;
+  }
+
+  // React Query for profile with caching
   const { data: profile, isLoading: loadingProfile } = useQuery({
-    queryKey: ["adminProfile", id, token],
+    queryKey: ["adminProfile", id],
     queryFn: async () => {
-      const headers: Record<string, string> = {};
+      // Check cache first
+      const cacheKey = `adminProfile_${id}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      const now = Date.now();
+      
+      // Return cached data if it's less than 5 minutes old
+      if (cachedData && cacheTimestamp) {
+        const cacheAge = now - parseInt(cacheTimestamp, 10);
+        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+          return JSON.parse(cachedData);
+        }
+      }
+      
+      // Fetch fresh data
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=300, stale-while-revalidate=60'
+      };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const profileRes = await fetch(`/api/admin/profiles/${id}`, { headers });
-      return profileRes.ok ? await profileRes.json() : null;
+      
+      const profileRes = await fetch(`/api/admin/profiles/${id}?nocache=true`, { 
+        headers,
+        next: { revalidate: 300 } // Revalidate every 5 minutes
+      });
+      
+      if (!profileRes.ok) {
+        throw new Error('Failed to fetch profile');
+      }
+      
+      const data = await profileRes.json();
+      
+      // Update cache
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      
+      return data;
     },
-    enabled: !!id && !!token && isSignedIn,
+    enabled: !!id && !!token && isSignedIn && isAdmin,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  // React Query for images (depends on profile.userId)
+  // React Query for images with caching
   const userId = profile?.userId;
-  const { data: images = [], isLoading: loadingImages } = useQuery({
-    queryKey: ["adminProfileImages", userId, token],
+  const { data: images = [], isLoading: loadingImages } = useQuery<ImageType[]>({
+    queryKey: ["adminProfileImages", userId],
     queryFn: async () => {
       if (!userId) return [];
-      const headers: Record<string, string> = {};
+      
+      // Check cache first
+      const cacheKey = `adminProfileImages_${userId}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      const now = Date.now();
+      
+      // Return cached data if it's less than 5 minutes old
+      if (cachedData && cacheTimestamp) {
+        const cacheAge = now - parseInt(cacheTimestamp, 10);
+        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+          return JSON.parse(cachedData);
+        }
+      }
+      
+      // Fetch fresh data
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=300, stale-while-revalidate=60'
+      };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const imagesRes = await fetch(`/api/profile-detail/${userId}/images`, {
+      
+      const imagesRes = await fetch(`/api/profile-detail/${userId}/images?nocache=true`, {
         headers,
+        next: { revalidate: 300 } // Revalidate every 5 minutes
       });
-      return imagesRes.ok
-        ? ((await imagesRes.json()).userProfileImages as ImageType[])
-        : [];
+      
+      if (!imagesRes.ok) {
+        throw new Error('Failed to fetch profile images');
+      }
+      
+      const data = (await imagesRes.json()).userProfileImages as ImageType[];
+      
+      // Update cache
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      
+      return data;
     },
-    enabled: !!userId && !!token && isSignedIn,
+    enabled: !!userId && !!token && isSignedIn && isAdmin,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    retryDelay: 1000,
   });
 
-  // React Query for matches (depends on profile.userId)
-  const { data: matches = [] } = useQuery({
-    queryKey: ["adminProfileMatches", id, token],
+  // React Query for matches with caching
+  const { data: matches = [] } = useQuery<MatchType[]>({
+    queryKey: ["adminProfileMatches", id],
     queryFn: async () => {
-      const headers: Record<string, string> = {};
+      // Check cache first
+      const cacheKey = `adminProfileMatches_${id}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      const now = Date.now();
+      
+      // Return cached data if it's less than 5 minutes old
+      if (cachedData && cacheTimestamp) {
+        const cacheAge = now - parseInt(cacheTimestamp, 10);
+        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+          return JSON.parse(cachedData);
+        }
+      }
+      
+      // Fetch fresh data
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'max-age=300, stale-while-revalidate=60'
+      };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const matchesRes = await fetch(`/api/admin/profiles/${id}/matches`, {
+      
+      const matchesRes = await fetch(`/api/admin/profiles/${id}/matches?nocache=true`, {
         headers,
+        next: { revalidate: 300 } // Revalidate every 5 minutes
       });
-      return matchesRes.ok ? ((await matchesRes.json()) as MatchType[]) : [];
+      
+      if (!matchesRes.ok) {
+        throw new Error('Failed to fetch profile matches');
+      }
+      
+      const data = await matchesRes.json() as MatchType[];
+      
+      // Update cache
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      
+      return data;
     },
-    enabled: !!id && !!token && isSignedIn,
+    enabled: !!id && !!token && isSignedIn && isAdmin,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const handleDeleteImage = async () => {
@@ -162,7 +294,7 @@ export default function AdminProfileDetailPage() {
     const hasProfileImageIds = profileImageIds.length > 0;
 
     if (hasProfileImageIds) {
-      ordered = profileImageIds.map((id) => map[String(id)]).filter(Boolean);
+      ordered = profileImageIds.map((id: string) => map[id]).filter(Boolean);
     }
 
     // If no ordered images from profileImageIds or no profileImageIds, use all images
@@ -191,33 +323,7 @@ export default function AdminProfileDetailPage() {
     );
   };
 
-  // Only after all hooks:
-  if (!isLoaded)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-pink-600">
-        Loading authentication...
-      </div>
-    );
-  if (!isSignedIn)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-red-600">
-        You must be signed in as an admin.
-      </div>
-    );
-  if (profile === undefined)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-pink-600">
-        Loading profile...
-      </div>
-    );
-  if (!profile)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-red-600">
-        Profile not found
-      </div>
-    );
-
-  // Skeleton loader while loading
+  // Loading state for profile data
   if (loadingProfile || loadingImages) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">

@@ -1,10 +1,19 @@
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Upload } from "lucide-react";
 import { Id } from "@/../convex/_generated/dataModel";
 import { ConvexError } from "convex/values";
 import type { ImageData } from "./ProfileImageUpload";
-import { QueryObserverResult } from "@tanstack/react-query";
+import Cropper, { Area } from "react-easy-crop";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ImageUploaderProps {
   userId: string;
@@ -25,10 +34,66 @@ interface ImageUploaderProps {
   isUploading?: boolean;
   maxFiles?: number;
   className?: string;
-  fetchImages: () => Promise<
-    QueryObserverResult<ImageData[] | undefined, Error>
-  >;
+  fetchImages: () => Promise<unknown>;
   onStartUpload?: () => void;
+}
+
+// Utility: read file as data URL
+function readFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Utility: create HTMLImageElement from src
+function createImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Utility: crop image using canvas
+async function getCroppedImg(
+  image: HTMLImageElement,
+  crop: Area,
+  fileName: string,
+  quality = 1
+): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2d context");
+  ctx.drawImage(
+    image,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Canvas is empty"));
+          return;
+        }
+        resolve(blob);
+      },
+      "image/jpeg",
+      quality
+    );
+  });
 }
 
 export function ImageUploader({
@@ -44,77 +109,25 @@ export function ImageUploader({
   fetchImages,
   onStartUpload,
 }: ImageUploaderProps) {
-  console.log("[ImageUploader] received orderedImages:", orderedImages);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<File | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0];
-      if (!file) return;
+  useEffect(() => setIsClient(true), []);
 
-      // Handle file upload directly
-      if (onStartUpload) onStartUpload();
-      if (!userId) return;
-
-      const uploadFile = async () => {
-        try {
-          setIsUploading(true);
-          const uploadUrl = await generateUploadUrl();
-          if (typeof uploadUrl !== "string") {
-            throw new Error("Failed to get upload URL");
-          }
-
-          const result = await fetch(uploadUrl, {
-            method: "POST",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-
-          if (!result.ok) {
-            throw new Error("Failed to upload image");
-          }
-
-          const { storageId } = await result.json();
-
-          const mutationResult = await uploadImage({
-            userId: userId as Id<"users">,
-            storageId: storageId as Id<"_storage">,
-            fileName: file.name,
-            contentType: file.type,
-            fileSize: file.size,
-          });
-
-          if (!mutationResult.success) {
-            throw new Error(mutationResult.message || "Upload failed");
-          }
-
-          await fetchImages();
-          toast.success("Image uploaded successfully");
-        } catch (error) {
-          console.error("Error uploading image:", error);
-          if (error instanceof ConvexError) {
-            toast.error(
-              "Something went wrong while uploading your image. Please try again."
-            );
-          } else {
-            toast.error("Failed to upload image");
-          }
-        } finally {
-          setIsUploading(false);
-        }
-      };
-
-      uploadFile();
-    },
-    [
-      userId,
-      generateUploadUrl,
-      uploadImage,
-      fetchImages,
-      toast,
-      setIsUploading,
-      onStartUpload,
-    ]
-  );
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+    setPendingUpload(file);
+    readFile(file).then((preview) => {
+      setImagePreview(preview);
+      setIsCropping(true);
+    });
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -128,22 +141,116 @@ export function ImageUploader({
     disabled: disabled || isUploading,
   });
 
+  const uploadImageFile = useCallback(
+    async (file: File) => {
+      if (!userId) return;
+      const currentImages = orderedImages || [];
+      const maxProfileImages = 10;
+      if (currentImages.length >= maxProfileImages) {
+        toast.error(
+          `You can only display up to ${maxProfileImages} images on your profile`
+        );
+        return;
+      }
+      try {
+        setIsUploading(true);
+        if (onStartUpload) onStartUpload();
+        
+        // Step 1: Get upload URL
+        const uploadUrl = await generateUploadUrl();
+        if (typeof uploadUrl !== "string") {
+          throw new Error("Failed to get upload URL");
+        }
+        
+        // Step 2: Upload the file to storage
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        
+        if (!result.ok) {
+          throw new Error("Failed to upload image");
+        }
+        
+        const { storageId } = await result.json();
+        
+        // Step 3: Save the image reference in the database
+        const mutationResult = await uploadImage({
+          userId: userId as Id<"users">,
+          storageId: storageId as Id<"_storage">,
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+        });
+        
+        if (!mutationResult.success) {
+          throw new Error(mutationResult.message || "Upload failed");
+        }
+        
+        // Show success message
+        toast.success("Image uploaded successfully");
+        
+        // Return the result so the parent component can handle it
+        return mutationResult;
+        
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        if (error instanceof ConvexError) {
+          toast.error(
+            "Something went wrong while uploading your image. Please try again."
+          );
+        } else {
+          toast.error("Failed to upload image");
+        }
+        throw error;
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [
+      userId,
+      orderedImages,
+      generateUploadUrl,
+      uploadImage,
+      setIsUploading,
+      toast,
+      onStartUpload,
+    ]
+  );
+
   return (
     <div className={className}>
       <div
         {...getRootProps()}
-        className={`relative group rounded-xl transition-all border-2 border-dashed ${
+        className={`relative group rounded-xl transition-all ${
           disabled
-            ? "opacity-50 cursor-not-allowed border-gray-200"
-            : "cursor-pointer border-pink-600 hover:border-pink-700 bg-pink-50/30 group-hover:bg-pink-50/60"
+            ? "opacity-50 cursor-not-allowed"
+            : "cursor-pointer hover:bg-accent/20"
         }`}
       >
         <input {...getInputProps()} />
-        <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div
+          className={`
+            flex flex-col items-center justify-center p-8 text-center rounded-xl border-2 border-dashed 
+            ${isDragActive ? "border-pink-600 bg-pink-50" : "border-border"}
+            transition-all duration-200 ease-in-out
+            group-hover:border-pink-400
+          `}
+        >
           {isUploading ? (
             <div className="flex flex-col items-center justify-center space-y-3 w-full">
-              <div className="w-8 h-8 border-4 border-pink-600 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-pink-600">Uploading...</p>
+              <Skeleton className="w-8 h-8 rounded-full" />
+              <div className="w-full space-y-2">
+                <Skeleton className="h-4 w-1/2 rounded" />
+                <div className="w-full bg-muted rounded-full h-1.5">
+                  <div
+                    className="bg-pink-600 h-1.5 rounded-full animate-pulse"
+                    style={{ width: "70%" }}
+                  ></div>
+                </div>
+                <Skeleton className="h-3 w-1/3 rounded" />
+              </div>
             </div>
           ) : isDragActive ? (
             <div className="space-y-3">
@@ -162,10 +269,10 @@ export function ImageUploader({
           ) : (
             <div className="space-y-3">
               <div className="flex justify-center">
-                <Upload className="w-8 h-8 text-pink-600 group-hover:text-pink-700 transition-colors" />
+                <Upload className="w-8 h-8 text-muted-foreground" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-pink-600 group-hover:text-pink-700 transition-colors">
+                <p className="text-sm font-medium text-foreground">
                   Drag & drop a photo
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -176,6 +283,123 @@ export function ImageUploader({
           )}
         </div>
       </div>
+
+      <Dialog open={isCropping} onOpenChange={setIsCropping}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Crop Image</DialogTitle>
+            <DialogDescription>
+              Adjust the crop area and click &apos;Upload&apos; when done
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            {isClient && imagePreview && (
+              <div className="relative max-h-[60vh] h-[400px] w-full bg-muted/20 rounded-lg border border-border">
+                <Cropper
+                  image={imagePreview}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  minZoom={1}
+                  maxZoom={3}
+                  cropShape="rect"
+                  showGrid={true}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={(_, croppedAreaPixels) =>
+                    setCroppedAreaPixels(croppedAreaPixels)
+                  }
+                  style={{
+                    containerStyle: { borderRadius: "0.75rem" },
+                    cropAreaStyle: {
+                      border: "2px solid #6366f1",
+                      borderRadius: "0.75rem",
+                      boxShadow: "0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,0.12)",
+                      cursor: "move",
+                      background: "rgba(255,255,255,0.02)",
+                    },
+                  }}
+                />
+              </div>
+            )}
+            <div className="flex justify-end space-x-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCropping(false);
+                  setImagePreview(null);
+                  setPendingUpload(null);
+                  setCrop({ x: 0, y: 0 });
+                  setZoom(1);
+                  setCroppedAreaPixels(null);
+                }}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={async () => {
+                  if (!croppedAreaPixels || !imagePreview || !pendingUpload)
+                    return;
+                  try {
+                    const timestamp = Date.now();
+                    const image = await createImage(imagePreview);
+                    const croppedBlob = await getCroppedImg(
+                      image,
+                      croppedAreaPixels,
+                      `cropped_${timestamp}.jpg`,
+                      1
+                    );
+                    const croppedFile = new File(
+                      [croppedBlob],
+                      `cropped_${timestamp}.jpg`,
+                      {
+                        type: "image/jpeg",
+                      }
+                    );
+                    const result = await uploadImageFile(croppedFile);
+                    if (result?.success) {
+                      // Only fetch images if the upload was successful
+                      await fetchImages();
+                    }
+                    setIsCropping(false);
+                    setImagePreview(null);
+                    setPendingUpload(null);
+                    setCrop({ x: 0, y: 0 });
+                    setZoom(1);
+                    setCroppedAreaPixels(null);
+                  } catch (error) {
+                    console.error("Error cropping image:", error);
+                    if (error instanceof ConvexError) {
+                      toast.error(
+                        "Something went wrong while processing your image. Please try again."
+                      );
+                    } else {
+                      toast.error("Failed to crop image. Please try again.");
+                    }
+                  }
+                }}
+                className="bg-pink-600 hover:bg-pink-500"
+                disabled={!croppedAreaPixels || isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

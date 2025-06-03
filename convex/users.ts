@@ -98,6 +98,23 @@ const getUserByClerkIdInternal = async (
 /**
  * Retrieves the user record and their profile for the currently authenticated Clerk user.
  */
+/**
+ * Get a profile by its ID (for internal use)
+ */
+export const getProfile = query({
+  args: { id: v.id("profiles") },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.id);
+    if (!profile) {
+      throw new Error(`Profile with ID ${args.id} not found`);
+    }
+    return profile;
+  },
+});
+
+/**
+ * Retrieves the user record and their profile for the currently authenticated Clerk user.
+ */
 export const getCurrentUserWithProfile = query({
   args: {},
   handler: async (ctx) => {
@@ -123,7 +140,15 @@ export const getCurrentUserWithProfile = query({
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .unique();
 
-    return { ...user, profile: profile || null }; // Profile might not exist if webhook created user but not profile yet
+    // Ensure profileImageIds is included in the response
+    const profileWithImages = profile
+      ? {
+          ...profile,
+          profileImageIds: profile.profileImageIds || [],
+        }
+      : null;
+
+    return { ...user, profile: profileWithImages }; // Profile might not exist if webhook created user but not profile yet
   },
 });
 
@@ -273,6 +298,45 @@ export const updateProfile = mutation({
     processedUpdates.updatedAt = Date.now();
 
     try {
+      // Recalculate isProfileComplete and isOnboardingComplete
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updatedProfile = { ...profile, ...processedUpdates } as any;
+      let allEssentialFilled2 = true;
+      for (const field of [
+        "fullName",
+        "dateOfBirth",
+        "gender",
+        "ukCity",
+        "aboutMe",
+      ]) {
+        const value = updatedProfile[field];
+        if (
+          value === undefined ||
+          value === null ||
+          (typeof value === "string" && value.trim() === "")
+        ) {
+          allEssentialFilled2 = false;
+          break;
+        }
+      }
+      const images2 = updatedProfile.profileImageIds;
+      const hasImage2 = Array.isArray(images2) && images2.length > 0;
+      if (allEssentialFilled2 && hasImage2) {
+        processedUpdates.isProfileComplete = true;
+        (
+          processedUpdates as Partial<Omit<Profile, "_id">> & {
+            isOnboardingComplete?: boolean;
+          }
+        ).isOnboardingComplete = true;
+      } else {
+        processedUpdates.isProfileComplete = false;
+        (
+          processedUpdates as Partial<Omit<Profile, "_id">> & {
+            isOnboardingComplete?: boolean;
+          }
+        ).isOnboardingComplete = false;
+      }
+
       // Update the profile
       await ctx.db.patch(profile._id, processedUpdates);
 
@@ -597,11 +661,12 @@ export const internalDeleteClerkUser = internalAction({
           message: "User successfully deleted from Clerk.",
         };
       } else {
-        let errorBodyText = await response.text(); // Read as text first
+        const errorBodyText = await response.text(); // Read as text first
         let errorBodyJson = null;
         try {
           errorBodyJson = JSON.parse(errorBodyText);
         } catch (e) {
+          console.error("errorBodyText:", e);
           // ignore if not json
         }
         console.error(
@@ -614,15 +679,15 @@ export const internalDeleteClerkUser = internalAction({
           details: errorBodyJson || errorBodyText,
         };
       }
-    } catch (error: any) {
+    } catch (e) {
       console.error(
         `Network or other error when trying to delete user ${clerkUserId} from Clerk:`,
-        error
+        e
       );
       return {
         success: false,
         message: "Failed to communicate with Clerk API.",
-        details: error.message || String(error),
+        details: e instanceof Error ? e.message : String(e),
       };
     }
   },
@@ -788,11 +853,25 @@ export const adminListProfiles = query({
   handler: async (ctx, { search, page, pageSize }) => {
     const identity = await ctx.auth.getUserIdentity();
     requireAdmin(identity);
+
+    // Fetch all profiles and users
     let allProfiles = await ctx.db.query("profiles").collect();
-    // Only include complete profiles
-    allProfiles = allProfiles.filter((p) => p.isProfileComplete === true);
-    // Join with user emails if needed
     const users = await ctx.db.query("users").collect();
+
+    // Only include complete profiles (example: must have fullName, ukCity, religion, phoneNumber)
+    allProfiles = allProfiles.filter(
+      (p) =>
+        p.fullName &&
+        p.ukCity &&
+        p.religion &&
+        p.phoneNumber &&
+        typeof p.fullName === "string" &&
+        typeof p.ukCity === "string" &&
+        typeof p.religion === "string" &&
+        typeof p.phoneNumber === "string"
+    );
+
+    // Apply search filter if provided
     if (search && search.trim() !== "") {
       const s = search.trim().toLowerCase();
       allProfiles = allProfiles.filter((p) => {
@@ -806,14 +885,18 @@ export const adminListProfiles = query({
         );
       });
     }
+
     // Sort by createdAt desc
     allProfiles = allProfiles.sort(
       (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
     );
+    console.log("allProfiles:", allProfiles);
     const total = allProfiles.length;
-    const start = page * pageSize;
+    const safePage = Math.max(1, page);
+    const start = (safePage - 1) * pageSize;
     const end = start + pageSize;
     const profiles = allProfiles.slice(start, end);
+
     return { profiles, total, page, pageSize };
   },
 });
@@ -1022,16 +1105,8 @@ export const createProfile = mutation({
       "aboutMe",
     ];
     let allEssentialFilled = true;
-    const profileDataForCheck = profileData as {
-      [key: string]:
-        | string
-        | number
-        | boolean
-        | undefined
-        | Id<"_storage">[]
-        | string[]
-        | Id<"users">;
-    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileDataForCheck = profileData as any;
     for (const field of essentialFields) {
       const value = profileDataForCheck[field];
       if (
@@ -1048,8 +1123,20 @@ export const createProfile = mutation({
     const hasImage = Array.isArray(images) && images.length > 0;
     if (allEssentialFilled && hasImage) {
       profileData.isProfileComplete = true;
-    } else if (!args.isProfileComplete) {
-      profileData.isProfileComplete = false;
+      (
+        profileData as Partial<Omit<Profile, "_id">> & {
+          isOnboardingComplete?: boolean;
+        }
+      ).isOnboardingComplete = true;
+    } else {
+      if (!args.isProfileComplete) {
+        profileData.isProfileComplete = false;
+      }
+      (
+        profileData as Partial<Omit<Profile, "_id">> & {
+          isOnboardingComplete?: boolean;
+        }
+      ).isOnboardingComplete = false;
     }
 
     // Insert the profile
@@ -1335,8 +1422,8 @@ export const searchPublicProfiles = query({
 
     // Sort by creation date (newest first)
     filteredUsers.sort((a, b) => {
-      const aTime = a._creationTime;
-      const bTime = b._creationTime;
+      const aTime = a.profile?.createdAt || 0;
+      const bTime = b.profile?.createdAt || 0;
       return bTime - aTime;
     });
 
@@ -1350,7 +1437,7 @@ export const searchPublicProfiles = query({
     // Map to public profile format
     const searchResults = paginatedUsers.map((u) => {
       const profile = u.profile!; // We know it's not null because of the filter
-    return {
+      return {
         userId: u._id,
         email: u.email,
         profile: {

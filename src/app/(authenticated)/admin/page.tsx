@@ -1,703 +1,163 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
-
+import { useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PexelsImageModal } from "@/components/PexelsImageModal";
-import { toast } from "sonner";
-import { DashboardOverview } from "@/components/admin/DashboardOverview";
-import { ContactMessages } from "@/components/admin/ContactMessages";
-import { BlogPosts } from "@/components/admin/BlogPosts";
-import { CreatePost } from "@/components/admin/CreatePost";
-import ProfileManagement from "@/components/admin/ProfileManagement";
-import Head from "next/head";
-import { useUser } from "@clerk/nextjs";
+import { FileText, Users, Mail } from "lucide-react";
 import Link from "next/link";
-import type { Profile } from "@/types/profile";
-import { BlogPostFields } from "@/components/admin/BlogPostFields";
-import BlogEditor from "@/components/admin/BlogEditor";
-import { useToken } from "@/components/TokenProvider";
-
-interface BlogPost {
-  _id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-  imageUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-  categories?: string[];
-}
-
-type MutualMatchInterest = {
-  status: string;
-  profileA?: Profile | null;
-  profileB?: Profile | null;
-};
+import { Loader2 } from "lucide-react";
+import { useAuthContext } from "@/components/AuthProvider";
+import { useRouter } from "next/navigation";
 
 function AdminPageInner() {
-  // All hooks at the top
-  // Tab order: contact first
-  const TABS = [
-    { key: "contact", label: "Contact" },
-    { key: "blog", label: "Blog" },
-    { key: "profiles", label: "Profiles" },
-    { key: "matches", label: "Matches" },
-  ];
-  // Read initial tab from localStorage if available
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("adminActiveTab") || "contact";
-    }
-    return "contact";
-  });
-  const [title, setTitle] = useState<string>("");
-  const [slug, setSlug] = useState<string>("");
-  const [excerpt, setExcerpt] = useState<string>("");
-  const [content, setContent] = useState<string>("");
-  const [imageUrl, setImageUrl] = useState<string>("");
-  const [creating, setCreating] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(false);
-  const [pexelsOpen, setPexelsOpen] = useState<boolean>(false);
-  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const router = useRouter();
+  const { isAdmin: userIsAdmin } = useAuthContext();
 
-  // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState<string>("");
-  const [editSlug, setEditSlug] = useState<string>("");
-  const [editExcerpt, setEditExcerpt] = useState<string>("");
-  const [editContent, setEditContent] = useState<string>("");
-  const [editImageUrl, setEditImageUrl] = useState<string>("");
-  const [editSlugManuallyEdited, setEditSlugManuallyEdited] =
-    useState<boolean>(false);
-  const [editPexelsOpen, setEditPexelsOpen] = useState<boolean>(false);
-  const [editCategories, setEditCategories] = useState<string[]>([]);
+  if (!userIsAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      </div>
+    );
+  }
 
-  const { user, isLoaded, isSignedIn } = useUser();
-  const token = useToken();
+  if (!userIsAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            Access Denied
+          </h2>
+          <p className="text-gray-600 mb-6">
+            You do not have permission to access this page.
+          </p>
+          <Link
+            href="/"
+            className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+          >
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  // React Query for blog posts
-  const {
-    data: blogPosts = [],
-    isLoading: loadingBlogPosts,
-    refetch: refetchBlogPosts,
-  } = useQuery({
-    queryKey: ["blogPosts", token, activeTab],
-    queryFn: async () => {
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const blogRes = await fetch("/api/blog", { headers });
-      if (!blogRes.ok) return [];
-      const data = await blogRes.json();
-      return Array.isArray(data) ? data : data.posts || [];
-    },
-    enabled: activeTab === "blog",
-  });
+  return (
+    <div className="min-h-screen bg-gray-50 pt-20">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold text-pink-700 mb-10 text-center">
+          Admin Dashboard
+        </h1>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Blog Box */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer group"
+            onClick={() => router.push("/admin/blog")}
+          >
+            <CardHeader className="flex flex-col items-center">
+              <FileText className="w-10 h-10 text-pink-600 mb-2 group-hover:scale-110 transition-transform" />
+              <CardTitle className="text-xl font-semibold text-pink-800">
+                Blog
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center text-gray-600">
+              Manage, create, and edit blog posts for your site.
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  className="w-full group-hover:bg-pink-50 group-hover:text-pink-700"
+                  asChild
+                >
+                  <Link href="/admin/blog">Go to Blog</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          {/* Profiles Box */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer group"
+            onClick={() => router.push("/admin/profile")}
+          >
+            <CardHeader className="flex flex-col items-center">
+              <Users className="w-10 h-10 text-pink-600 mb-2 group-hover:scale-110 transition-transform" />
+              <CardTitle className="text-xl font-semibold text-pink-800">
+                Profiles
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center text-gray-600">
+              View and manage user profiles and admin accounts.
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  className="w-full group-hover:bg-pink-50 group-hover:text-pink-700"
+                  asChild
+                >
+                  <Link href="/admin/profiles">Go to Profiles</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+          {/* Contact Box */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer group"
+            onClick={() => router.push("/admin/contact")}
+          >
+            <CardHeader className="flex flex-col items-center">
+              <Mail className="w-10 h-10 text-pink-600 mb-2 group-hover:scale-110 transition-transform" />
+              <CardTitle className="text-xl font-semibold text-pink-800">
+                Contact
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center text-gray-600">
+              Review and respond to contact form messages from users.
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  className="w-full group-hover:bg-pink-50 group-hover:text-pink-700"
+                  asChild
+                >
+                  <Link href="/admin/contact">Go to Contact</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  // React Query for contact messages
-  const { data: contactMessages = [], isLoading: loadingContactMessages } =
-    useQuery({
-      queryKey: ["contactMessages", token, activeTab],
-      queryFn: async () => {
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const contactRes = await fetch("/api/contact", { headers });
-        if (!contactRes.ok) return [];
-        return await contactRes.json();
-      },
-      enabled: activeTab === "contact",
-    });
+// Admin page with proper authentication and caching
+function AdminPage() {
+  const router = useRouter();
+  const { isLoaded, isSignedIn, isAdmin } = useAuthContext();
 
-  // React Query for interests
-  const { data: interests = [] } = useQuery({
-    queryKey: ["adminInterests", token, activeTab],
-    queryFn: async () => {
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const interestsRes = await fetch("/api/admin/interests", { headers });
-      if (!interestsRes.ok) return [];
-      return await interestsRes.json();
-    },
-    enabled: activeTab === "matches",
-  });
-
-  const [previewHtml, setPreviewHtml] = useState<string>("");
-  const editorResetKey = 0;
-  // Live preview effect for create post (must be before any early returns)
+  // Redirect if not admin or not loaded yet
   useEffect(() => {
-    setPreviewHtml(content);
-  }, [content]);
-
-  // Save tab to localStorage on change
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("adminActiveTab", activeTab);
+    if (isLoaded && (!isSignedIn || !isAdmin)) {
+      router.push("/");
     }
-  }, [activeTab]);
+  }, [isLoaded, isSignedIn, isAdmin, router]);
 
-  // Only after all hooks:
+  // Show loading state while checking auth
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-600" />
-        <span className="ml-4 text-pink-600 font-semibold">
-          Loading authentication...
-        </span>
-      </div>
-    );
-  }
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto text-center">
-          <strong>Error:</strong> You must be signed in as an admin to view this
-          page.
-        </div>
-      </div>
-    );
-  }
-  const isAdmin = user?.publicMetadata?.role === "admin";
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto text-center">
-          <strong>Error:</strong> You must be an admin to view this page.
-        </div>
+        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
       </div>
     );
   }
 
-  // Map Convex data to expected types
-  const mutualMatches = interests
-    .filter((i: MutualMatchInterest) => i.status === "accepted")
-    .map(() => ({
-      profileA: null,
-      profileB: null,
-    }))
-    .filter(
-      (m: { profileA: Profile | null; profileB: Profile | null }) =>
-        m.profileA && m.profileB
-    );
-
-  const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setCreating(true);
-    setError(null);
-    try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch("/api/blog", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          title,
-          slug,
-          excerpt,
-          content,
-          imageUrl,
-          categories: [],
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to create post");
-      const post = await res.json();
-      setTitle(post.title);
-      setSlug(post.slug);
-      setExcerpt(post.excerpt);
-      setContent(post.content);
-      setImageUrl(post.imageUrl || "");
-      setError(null);
-      toast.success("Post created successfully!");
-    } catch {
-      setError("Failed to create post");
-      toast.error("Failed to create post");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const startEdit = (post: BlogPost) => {
-    setEditingId(post._id);
-    setEditTitle(post.title);
-    setEditSlug(post.slug);
-    setEditExcerpt(post.excerpt);
-    setEditContent(post.content);
-    setEditImageUrl(post.imageUrl || "");
-    setEditCategories(post.categories || []);
-    setEditSlugManuallyEdited(false);
-  };
-
-  const saveEdit = async (id: string) => {
-    try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const res = await fetch(`/api/blog/${id}`, {
-        method: "PUT",
-        headers,
-        body: JSON.stringify({
-          _id: id,
-          title: editTitle,
-          slug: editSlug,
-          excerpt: editExcerpt,
-          content: editContent,
-          imageUrl: editImageUrl,
-          categories: editCategories,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to update post");
-      setEditingId(null);
-      toast.success("Post updated successfully!");
-    } catch {
-      toast.error("Failed to update post");
-    }
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditTitle("");
-    setEditSlug("");
-    setEditExcerpt("");
-    setEditContent("");
-    setEditImageUrl("");
-    setEditSlugManuallyEdited(false);
-  };
-
-  const confirmDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
-      (async () => {
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        fetch(`/api/blog/${id}`, {
-          method: "DELETE",
-          headers,
-        }).then((res) => {
-          if (res.ok) {
-            toast.success("Post deleted successfully!");
-            refetchBlogPosts();
-          } else {
-            toast.error("Failed to delete post");
-          }
-        });
-      })();
-    }
-  };
-
-  const slugify = (str: string): string => {
-    return str
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  };
-
-  const insertMarkdown = (
-    text: string,
-    setText: (value: string) => void,
-    ref: React.MutableRefObject<HTMLTextAreaElement | null>,
-    md: string,
-    wrap?: string,
-    block?: boolean
-  ) => {
-    if (!ref.current) return;
-
-    const start = ref.current.selectionStart ?? 0;
-    const end = ref.current.selectionEnd ?? 0;
-    const selectedText = text.substring(start, end);
-    const before = text.substring(0, start);
-    const after = text.substring(end);
-
-    let newText = text;
-    if (wrap) {
-      newText = before + md + selectedText + wrap + after;
-    } else if (block) {
-      const lines = text.split("\n");
-      const currentLine = before.split("\n").length - 1;
-      lines.splice(currentLine, 0, md);
-      newText = lines.join("\n");
-    } else {
-      newText = before + md + after;
-    }
-
-    setText(newText);
-    setTimeout(() => {
-      if (ref.current) {
-        const newCursorPos = wrap
-          ? start + md.length + selectedText.length + wrap.length
-          : start + md.length;
-        ref.current.selectionStart = newCursorPos;
-        ref.current.selectionEnd = newCursorPos;
-        ref.current.focus();
-      }
-    }, 0);
-  };
-
-  const convertToMarkdownWithGemini = async (
-    text: string,
-    prompt?: string
-  ): Promise<string> => {
-    try {
-      const response = await fetch("/api/convert-markdown", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, prompt }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to convert to markdown");
-      }
-
-      const data = await response.json();
-      return data.markdown;
-    } catch (error) {
-      console.error("Error converting to markdown:", error);
-      toast.error("Failed to convert to markdown");
-      return text;
-    }
-  };
-
-  // Utility for AI excerpt/category (plain text)
-  async function aiText(text: string, field: "excerpt" | "category") {
-    try {
-      const res = await fetch("/api/convert-ai-text-to-html", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, type: field }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI error");
-      // Extract plain text from HTML
-      const temp = document.createElement("div");
-      temp.innerHTML = data.html;
-      const plain = temp.textContent || temp.innerText || "";
-      return plain.trim();
-    } catch (err: unknown) {
-      const message =
-        typeof err === "object" && err && "message" in err
-          ? String((err as { message?: unknown }).message)
-          : "AI error";
-      toast.error(message);
-      return "";
-    }
+  // If not signed in or not admin, show nothing (will be redirected)
+  if (!isSignedIn || !isAdmin) {
+    return null;
   }
 
-  // Markdown shortcuts
-  type MarkdownShortcut = {
-    label: string;
-    title: string;
-    md: string;
-    wrap?: string;
-    block?: boolean;
-  };
-  const markdownShortcuts: MarkdownShortcut[] = [
-    { label: "H1", title: "Heading 1", md: "# " },
-    { label: "H2", title: "Heading 2", md: "## " },
-    { label: "H3", title: "Heading 3", md: "### " },
-    { label: "B", title: "Bold", md: "**", wrap: "**" },
-    { label: "I", title: "Italic", md: "_", wrap: "_" },
-    { label: "Link", title: "Link", md: "[", wrap: "](url)" },
-    { label: "Img", title: "Image", md: "![alt](", wrap: ")" },
-    { label: "Code", title: "Code", md: "```\n", wrap: "\n```", block: true },
-    { label: "List", title: "List", md: "- ", block: true },
-    {
-      label: "Table",
-      title: "Table",
-      md: "| Header | Header |\n| ------ | ------ |\n| Cell | Cell |",
-      block: true,
-    },
-  ];
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Bar */}
-
-      <div className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Overview Cards */}
-        <DashboardOverview
-          totalPosts={blogPosts.length}
-          totalMessages={contactMessages.length}
-        />
-
-        <div className="mt-8 flex flex-col md:flex-row gap-8 min-h-[60vh]">
-          {/* Sidebar */}
-          <aside className="md:w-1/4 w-full md:sticky md:top-24">
-            <nav className="bg-pink-50 border border-pink-100 rounded-lg shadow p-4 flex md:flex-col gap-2 mb-4 md:mb-0">
-              {TABS.map((tab) => (
-                <Button
-                  key={tab.key}
-                  variant={activeTab === tab.key ? "default" : "ghost"}
-                  className={`w-full justify-start rounded font-semibold transition-colors ${activeTab === tab.key ? "bg-pink-600 text-white hover:bg-pink-700" : "text-pink-700 hover:bg-pink-100"}`}
-                  onClick={() => setActiveTab(tab.key)}
-                >
-                  {tab.label}
-                </Button>
-              ))}
-            </nav>
-          </aside>
-
-          {/* Main Content */}
-          <main className="flex-1">
-            {activeTab === "profiles" && <ProfileManagement />}
-            {activeTab === "matches" && (
-              <AdminMatches mutualMatches={mutualMatches} />
-            )}
-            {activeTab === "contact" && (
-              <ContactMessages
-                messages={contactMessages}
-                loading={loadingContactMessages}
-              />
-            )}
-            {activeTab === "blog" && (
-              <>
-                {/* Search/Filter Bar */}
-                <div className="flex items-center gap-2 mb-4">
-                  <input
-                    type="text"
-                    placeholder="Search posts..."
-                    className="w-full md:w-1/3 px-3 py-2 border rounded focus:ring-2 focus:ring-pink-200 bg-white"
-                    // Add search logic if desired
-                  />
-                  {/* <Button variant="outline">Filter</Button> */}
-                </div>
-                {/* Edit Blog Form (separate from list) */}
-                {editingId && (
-                  <div className="mb-8">
-                    <div className="max-w-2xl mx-auto">
-                      <div className="bg-white rounded-lg shadow-lg p-6 border border-pink-200">
-                        <h2 className="text-xl font-bold mb-4 text-pink-700">
-                          Edit Blog Post
-                        </h2>
-                        <BlogPostFields
-                          title={editTitle}
-                          setTitle={setEditTitle}
-                          slug={editSlug}
-                          setSlug={setEditSlug}
-                          slugManuallyEdited={editSlugManuallyEdited}
-                          setSlugManuallyEdited={setEditSlugManuallyEdited}
-                          slugify={slugify}
-                          excerpt={editExcerpt}
-                          setExcerpt={setEditExcerpt}
-                          categories={editCategories}
-                          setCategories={setEditCategories}
-                          imageUrl={editImageUrl}
-                          setImageUrl={setEditImageUrl}
-                          pexelsOpen={editPexelsOpen}
-                          setPexelsOpen={setEditPexelsOpen}
-                          aiLoading={{}}
-                          aiText={aiText}
-                          content={editContent}
-                          disabled={false}
-                        />
-                        <div className="md:flex gap-6 mt-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-medium">Content</span>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="text-pink-600 border-pink-300"
-                                onClick={async () => {
-                                  const ai = await (async () => {
-                                    const res = await fetch(
-                                      "/api/convert-ai-text-to-html",
-                                      {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({
-                                          text: `${editTitle}\n${editExcerpt}`,
-                                          type: "blog",
-                                        }),
-                                      }
-                                    );
-                                    const data = await res.json();
-                                    if (!res.ok)
-                                      throw new Error(data.error || "AI error");
-                                    return data.html;
-                                  })();
-                                  if (ai) setEditContent(ai);
-                                }}
-                              >
-                                AI
-                              </Button>
-                            </div>
-                            <BlogEditor
-                              key={editingId}
-                              value={editContent}
-                              onChange={setEditContent}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-2 mt-4">
-                          <Button
-                            size="sm"
-                            className="bg-pink-600 hover:bg-pink-700"
-                            onClick={() => saveEdit(editingId)}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={cancelEdit}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <BlogPosts
-                  posts={blogPosts}
-                  setEditingPost={(id) => {
-                    const post = blogPosts.find((p: BlogPost) => p._id === id);
-                    if (post) startEdit(post);
-                    else setEditingId(id);
-                  }}
-                  deletePost={confirmDelete}
-                  loading={loadingBlogPosts}
-                />
-              </>
-            )}
-            {activeTab === "create-post" && (
-              <CreatePost
-                title={title}
-                setTitle={setTitle}
-                slug={slug}
-                setSlug={setSlug}
-                excerpt={excerpt}
-                setExcerpt={setExcerpt}
-                content={content}
-                setContent={setContent}
-                imageUrl={imageUrl}
-                setImageUrl={setImageUrl}
-                creating={creating}
-                error={error}
-                onSubmit={handleCreatePost}
-                slugManuallyEdited={slugManuallyEdited}
-                setSlugManuallyEdited={setSlugManuallyEdited}
-                pexelsOpen={pexelsOpen}
-                setPexelsOpen={setPexelsOpen}
-                markdownShortcuts={markdownShortcuts}
-                insertMarkdown={insertMarkdown}
-                contentRef={contentRef}
-                convertToMarkdownWithGemini={convertToMarkdownWithGemini}
-                slugify={slugify}
-                categories={[]}
-                setCategories={() => {}}
-                aiLoading={{}}
-                aiText={aiText}
-                previewHtml={previewHtml}
-                editorResetKey={editorResetKey}
-              />
-            )}
-          </main>
-        </div>
-      </div>
-
-      {/* Modals */}
-      <PexelsImageModal
-        isOpen={pexelsOpen}
-        onClose={() => setPexelsOpen(false)}
-        onSelect={(url: string) => {
-          setImageUrl(url);
-          setPexelsOpen(false);
-        }}
-      />
-      <PexelsImageModal
-        isOpen={editPexelsOpen}
-        onClose={() => setEditPexelsOpen(false)}
-        onSelect={(url: string) => {
-          setEditImageUrl(url);
-          setEditPexelsOpen(false);
-        }}
-      />
-    </div>
-  );
-}
-
-function AdminMatches({
-  mutualMatches,
-}: {
-  mutualMatches: { profileA: Profile; profileB: Profile }[];
-}) {
-  return (
-    <div className="p-6 bg-white rounded-lg shadow text-center">
-      <h2 className="text-2xl font-bold mb-4">Mutual Matches</h2>
-      {mutualMatches.length === 0 ? (
-        <p className="text-gray-600">No mutual matches found.</p>
-      ) : (
-        <table className="min-w-full border">
-          <thead>
-            <tr className="bg-pink-50">
-              <th className="py-2 px-4 border">User A</th>
-              <th className="py-2 px-4 border">User B</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mutualMatches.map((m, idx) => (
-              <tr key={idx} className="border-t">
-                <td className="py-2 px-4 border">
-                  <Link
-                    href={`/admin/profile/${m.profileA._id}`}
-                    className="text-pink-600 hover:underline"
-                  >
-                    {m.profileA.fullName || m.profileA._id}
-                  </Link>
-                </td>
-                <td className="py-2 px-4 border">
-                  <Link
-                    href={`/admin/profile/${m.profileB._id}`}
-                    className="text-pink-600 hover:underline"
-                  >
-                    {m.profileB.fullName || m.profileB._id}
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-export default function AdminPage() {
   return (
     <>
-      <Head>
-        <title>Admin Dashboard | Aroosi</title>
-        <meta
-          name="description"
-          content="Admin dashboard for Aroosi, the UK's trusted Muslim matrimony platform."
-        />
-        <meta property="og:title" content="Admin Dashboard | Aroosi" />
-        <meta
-          property="og:description"
-          content="Admin dashboard for Aroosi, the UK's trusted Muslim matrimony platform."
-        />
-        <meta property="og:image" content="/og-image.png" />
-        <meta property="og:url" content="https://aroosi.co.uk/admin" />
-        <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Admin Dashboard | Aroosi" />
-        <meta
-          name="twitter:description"
-          content="Admin dashboard for Aroosi, the UK's trusted Muslim matrimony platform."
-        />
-        <meta name="twitter:image" content="/og-image.png" />
-      </Head>
-      <QueryClientProvider client={new QueryClient()}>
-        <AdminPageInner />
-      </QueryClientProvider>
+      <AdminPageInner />
     </>
   );
 }
+
+export default AdminPage;

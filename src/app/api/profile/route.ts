@@ -7,95 +7,113 @@ const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get("Authorization")?.split(" ")[1];
+    // Validate Authorization header
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.error(
+        "Invalid or missing Authorization header in GET /api/profile"
+      );
+      return NextResponse.json(
+        { error: "Invalid or missing Authorization header" },
+        { status: 401 }
+      );
+    }
+
+    // Extract token
+    const token = authHeader.split(" ")[1];
     if (!token) {
-      console.error("No token provided in GET /api/profile");
+      console.error("No token provided in Authorization header");
       return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    convexClient.setAuth(token);
+    try {
+      // Set auth token for Convex client
+      convexClient.setAuth(token);
 
-    console.log("Fetching current user with profile in GET /api/profile");
-    const currentUser = await convexClient.query(
-      api.users.getCurrentUserWithProfile,
-      {}
-    );
+      // Fetch user profile from Convex
+      console.log("Fetching current user with profile in GET /api/profile");
+      const currentUser = await convexClient.query(
+        api.users.getCurrentUserWithProfile,
+        {}
+      );
 
-    if (!currentUser) {
-      console.log(
-        "User record not found in Convex for the given token. Signaling logout."
-      );
-      // This case means the token is likely invalid, or the user was deleted from Convex
-      // but the client still has an old token.
-      return NextResponse.json(
-        { error: "User session invalid or expired. Please log in again." },
-        { status: 401 } // Unauthorized, client should clear session and redirect to login
-      );
-    }
-
-    // Case: User record exists, but the profile sub-document is null.
-    // This indicates an incomplete or corrupted state that needs cleanup.
-    if (currentUser.profile === null) {
-      console.warn(
-        `User record found (ID: ${currentUser._id}), but profile is null. ` +
-          `This indicates an incomplete profile state. Deleting user record and signaling logout.`
-      );
-      try {
-        // This mutation should handle deleting the Convex user document,
-        // associated images, and trigger Clerk user deletion via an internal action.
-        await convexClient.mutation(api.users.deleteCurrentUserProfile, {});
-        console.log(
-          `User record (ID: ${currentUser._id}) deleted successfully due to null profile.`
-        );
-        // Signal to client to logout. A 401 is appropriate here as the user's session
-        // is effectively invalidated by deleting their record.
+      // Handle case where user is not found
+      if (!currentUser) {
+        console.log("User record not found in Convex for the given token");
         return NextResponse.json(
-          {
-            error:
-              "User profile was incomplete and has been cleared. Please log in again to create a new profile.",
-          },
+          { error: "User session invalid or expired. Please log in again." },
           { status: 401 }
         );
-      } catch (deleteError) {
-        console.error(
-          `Error deleting user record (ID: ${currentUser._id}) with null profile:`,
-          deleteError
+      }
+
+      // Handle case where profile is null (incomplete/corrupted state)
+      if (currentUser.profile === null) {
+        console.warn(
+          `User record found (ID: ${currentUser._id}), but profile is null. ` +
+            `This indicates an incomplete profile state.`
         );
-        // If deletion fails, this is a server-side issue.
+
+        try {
+          // Attempt to clean up the incomplete user record
+          if (currentUser.profile?._id) {
+            await convexClient.mutation(api.users.deleteProfile, {
+              id: currentUser.profile._id as Id<"profiles">,
+            });
+            console.log(
+              `User record (ID: ${currentUser._id}) deleted successfully due to null profile.`
+            );
+          }
+          return NextResponse.json(
+            {
+              error:
+                "Your profile was incomplete or corrupted. Please sign up again.",
+            },
+            { status: 401 }
+          );
+        } catch (deleteError) {
+          console.error(
+            `Failed to clean up user record (ID: ${currentUser._id}):`,
+            deleteError
+          );
+          return NextResponse.json(
+            {
+              error:
+                "Profile error. Please sign out and try again or contact support.",
+            },
+            { status: 401 }
+          );
+        }
+      }
+
+      // Return the valid user profile
+      console.log("Valid profile found for user:", currentUser._id);
+      return NextResponse.json(currentUser);
+    } catch (error) {
+      console.error("Error in Convex query:", error);
+
+      // Handle Convex authentication errors
+      if (
+        error instanceof Error &&
+        error.message.includes("AUTHENTICATION_ERROR")
+      ) {
         return NextResponse.json(
-          {
-            error:
-              "Failed to clean up incomplete user profile. Please contact support.",
-            details:
-              deleteError instanceof Error
-                ? deleteError.message
-                : String(deleteError),
-          },
-          { status: 500 }
+          { error: "Authentication failed. Please log in again." },
+          { status: 401 }
         );
       }
-    }
 
-    console.log("Valid profile found for user:", currentUser._id);
-    return NextResponse.json(currentUser);
+      throw error; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
     console.error("Error in GET /api/profile route:", error);
+
     // General error handling
-    let errorMessage = "Internal server error";
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    // Check if the error is from Convex and has a specific structure
-    // (e.g., if Convex throws an object with a `data` field for auth errors)
-    // This part is speculative and depends on how ConvexHttpClient surfaces errors.
-    // For instance, if an auth error from Convex has a specific code or message:
-    // if (typeof error === 'object' && error !== null && (error as any).data?.code === 'AUTHENTICATION_ERROR') {
-    //   return NextResponse.json({ error: "Authentication failed with Convex." }, { status: 401 });
-    // }
+    const errorMessage =
+      error instanceof Error ? error.message : "Internal server error";
 
     return NextResponse.json(
       {
-        error: "Internal server error processing profile request.",
+        error: "Failed to process profile request",
         details: errorMessage,
       },
       { status: 500 }
@@ -312,31 +330,49 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "No token provided" }, { status: 401 });
     }
 
-    console.log("Setting auth token for Convex (DELETE)");
     convexClient.setAuth(token);
 
-    console.log("Attempting to delete current user profile");
+    // Get the current user with profile to find profile _id
+    const currentUser = await convexClient.query(
+      api.users.getCurrentUserWithProfile,
+      {}
+    );
+    if (!currentUser || !currentUser.profile?._id) {
+      console.error("No user or profile found for deletion");
+      return NextResponse.json(
+        { error: "No user or profile found for deletion" },
+        { status: 404 }
+      );
+    }
+
     const result: { success: boolean; message?: string } =
-      await convexClient.mutation(api.users.deleteCurrentUserProfile, {});
+      await convexClient.mutation(api.users.deleteProfile, {
+        id: currentUser.profile._id as Id<"profiles">,
+      });
 
     if (result && result.success) {
-      console.log("Profile deletion successful:", result.message);
+      console.log("User and profile deletion successful:", result.message);
       return NextResponse.json({
         success: true,
-        message: result.message || "Profile deleted successfully",
+        message: result.message || "User and profile deleted successfully",
       });
     } else {
-      console.error("Profile deletion failed:", result?.message);
+      console.error("User and profile deletion failed:", result?.message);
       return NextResponse.json(
-        { error: "Failed to delete profile", details: result?.message },
+        {
+          error: "Failed to delete user and profile",
+          details: result?.message,
+        },
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in profile DELETE API route:", error);
     const errorMessage =
-      error.data?.message || error.message || "Internal server error";
-    const errorDetails = error.data || error;
+      (error as { data?: { message?: string } }).data?.message ||
+      (error as { message?: string }).message ||
+      "Internal server error";
+    const errorDetails = (error as { data?: unknown }).data || error;
     return NextResponse.json(
       { error: errorMessage, details: errorDetails },
       { status: 500 }

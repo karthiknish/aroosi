@@ -1,88 +1,205 @@
 import { Profile } from "@/types/profile";
 import type { ProfileImage } from "./types";
 
-export async function fetchAdminProfiles(
-  token: string,
-  search: string,
-  page: number
-) {
+type AdminProfile = Profile & { _id: string; userId: string };
+
+export async function fetchAdminProfiles({
+  token,
+  search,
+  page,
+  pageSize = 10,
+}: {
+  token: string;
+  search: string;
+  page: number;
+  pageSize?: number;
+}): Promise<{ profiles: AdminProfile[]; total: number }> {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-  const res = await fetch(
-    `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=10`,
-    { headers }
-  );
-  if (!res.ok) throw new Error("Failed to fetch profiles");
-  return res.json();
+  try {
+    const res = await fetch(
+      `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=${pageSize}`,
+      { headers }
+    );
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch profiles: ${errorText}`);
+    }
+    const data = await res.json();
+    console.log("data:", data);
+    return data;
+  } catch (error) {
+    throw new Error(
+      `Error fetching admin profiles: ${(error as Error).message}`
+    );
+  }
 }
 
-export async function fetchAdminProfileImages(token: string, userId: string) {
+export async function fetchAdminProfileImages({
+  token,
+  userId,
+}: {
+  token: string;
+  userId: string;
+}): Promise<{ userProfileImages: ProfileImage[] }> {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-  const res = await fetch(`/api/profile-detail/${userId}/images`, { headers });
-  if (!res.ok) throw new Error("Failed to fetch profile images");
-  return res.json();
+  try {
+    const res = await fetch(`/api/profile-detail/${userId}/images`, {
+      headers,
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch profile images: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error fetching profile images: ${(error as Error).message}`
+    );
+  }
 }
 
-export async function updateAdminProfile(
-  token: string,
-  id: string,
-  updates: Partial<Profile>
-) {
+export async function updateAdminProfile({
+  token,
+  id,
+  updates,
+}: {
+  token: string;
+  id: string;
+  updates: Partial<Profile>;
+}): Promise<AdminProfile> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
-  const res = await fetch(`/api/admin/profiles/${id}`, {
-    method: "PUT",
-    headers,
-    body: JSON.stringify(updates),
-  });
-  if (!res.ok) throw new Error("Failed to update profile");
-  return res.json();
+  try {
+    const res = await fetch(`/api/admin/profiles/${id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to update profile: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error updating admin profile: ${(error as Error).message}`
+    );
+  }
 }
 
-export async function deleteAdminProfile(token: string, id: string) {
+export async function deleteAdminProfile({
+  token,
+  id,
+}: {
+  token: string;
+  id: string;
+}): Promise<{ success: boolean; message?: string }> {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-  const res = await fetch(`/api/admin/profiles/${id}`, {
-    method: "DELETE",
-    headers,
-  });
-  if (!res.ok) throw new Error("Failed to delete profile");
-  return res.json();
+  try {
+    const res = await fetch(`/api/admin/profiles/${id}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to delete profile: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error deleting admin profile: ${(error as Error).message}`
+    );
+  }
 }
 
-export async function banAdminProfile(
-  token: string,
-  id: string,
-  banned: boolean
-) {
+export async function banAdminProfile({
+  token,
+  id,
+  banned,
+}: {
+  token: string;
+  id: string;
+  banned: boolean;
+}): Promise<{ success: boolean; message?: string }> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
-  const res = await fetch(`/api/admin/profiles/${id}/ban`, {
-    method: "PUT",
-    headers,
-    body: JSON.stringify({ banned }),
-  });
-  if (!res.ok) throw new Error("Failed to update ban status");
-  return res.json();
+  try {
+    const res = await fetch(`/api/admin/profiles/${id}/ban`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ banned }),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to update ban status: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(`Error updating ban status: ${(error as Error).message}`);
+  }
 }
 
-export async function fetchAllAdminProfileImages(
-  token: string,
-  profiles: { _id: string; userId: string }[]
-) {
+export async function fetchAllAdminProfileImages({
+  token,
+  profiles,
+}: {
+  token: string;
+  profiles: { _id: string; userId: string }[];
+}): Promise<Record<string, ProfileImage[]>> {
   const newImages: Record<string, ProfileImage[]> = {};
   await Promise.all(
     profiles.map(async (profile) => {
       if (!profile.userId) return;
       try {
-        const data = await fetchAdminProfileImages(token, profile.userId);
+        const data = await fetchAdminProfileImages({
+          token,
+          userId: profile.userId,
+        });
         if (Array.isArray(data.userProfileImages)) {
-          newImages[profile._id as string] = data.userProfileImages;
+          newImages[profile._id] = data.userProfileImages;
         }
-      } catch {}
+      } catch (error) {
+        console.error(
+          `Error fetching images for userId ${profile.userId}:`,
+          error
+        );
+        // Optionally log error for each profile, but don't throw to allow others to continue
+      }
     })
   );
   return newImages;
+}
+
+// Create a new admin profile
+export async function createAdminProfile({
+  token,
+  profile,
+}: {
+  token: string;
+  profile: Partial<Profile> & { [key: string]: unknown };
+}): Promise<AdminProfile> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  try {
+    const res = await fetch(`/api/admin/profiles`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(profile),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to create profile: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error creating admin profile: ${(error as Error).message}`
+    );
+  }
 }

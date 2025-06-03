@@ -1,4 +1,4 @@
-"use client"; // Ensure this is a client component if it uses hooks or event handlers
+"use client";
 
 import { SignIn } from "@clerk/nextjs";
 import { motion } from "framer-motion";
@@ -11,7 +11,12 @@ export default function SignInPage() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+        <SignIn
+          path="/sign-in"
+          routing="path"
+          signUpUrl="/sign-up"
+          // Let ProtectedRoute handle the redirect after sign-in
+        />
       </motion.div>
     </div>
   );

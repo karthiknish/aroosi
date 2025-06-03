@@ -15,7 +15,7 @@ import type { Profile, ProfileEditFormState } from "@/types/profile";
 import { Slider } from "@/components/ui/slider";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "../AuthProvider";
 import {
   Dialog,
   DialogContent,
@@ -70,7 +70,7 @@ export default function ProfileEditForm({
   // Add image delete support for admin
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const token = useToken();
+  const { token } = useAuthContext();
 
   // Show fetched images initially, then update to reorder images when profileImageIds are set
   useEffect(() => {

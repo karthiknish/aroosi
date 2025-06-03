@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import ProfileCompletionGuard from "@/components/ProfileCompletionGuard";
 import { Toaster } from "sonner";
-import MainLayoutContent from "@/components/layout/MainLayoutContent";
 import ChatBot from "@/components/ChatBot";
-import { TokenProvider } from "@/components/TokenProvider";
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
-import { ProfileCompletionProvider } from "@/components/ProfileCompletionProvider";
 import { Inter } from "next/font/google";
+import { AuthProvider } from "@/components/AuthProvider";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -44,7 +43,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Define client-side only components
+function ClientLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <Header />
+      <main className="min-h-screen">{children}</main>
+      <Footer />
+      <Toaster position="bottom-right" />
+      <ChatBot />
+    </AuthProvider>
+  );
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -75,9 +91,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               colorDanger: "#ef4444",
               colorSuccess: "#22c55e",
               colorWarning: "#f59e0b",
-              colorTextOnDangerBackground: "#ffffff",
-              colorTextOnSuccessBackground: "#ffffff",
-              colorTextOnWarningBackground: "#ffffff",
               borderRadius: "0.5rem",
               fontFamily: inter.style.fontFamily,
             },
@@ -133,18 +146,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             },
           }}
         >
-          <TokenProvider>
-            <ReactQueryProvider>
-              <ProfileCompletionProvider>
-                <ProfileCompletionGuard>
-                  {/* By default, do not hide header links. Pages can override via props/context. */}
-                  <MainLayoutContent>{children}</MainLayoutContent>
-                </ProfileCompletionGuard>
-                <Toaster position="top-center" />
-                <ChatBot />
-              </ProfileCompletionProvider>
-            </ReactQueryProvider>
-          </TokenProvider>
+          <ReactQueryProvider>
+            <ClientLayout>{children}</ClientLayout>
+          </ReactQueryProvider>
         </ClerkProvider>
       </body>
     </html>

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -11,12 +12,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserCircle } from "lucide-react";
-import React, { useState } from "react";
-import { useUser, SignInButton } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToken } from "@/components/TokenProvider";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { useAuthContext } from "@/components/AuthProvider";
 
 const majorUkCities = [
   "Belfast",
@@ -82,8 +82,7 @@ interface ProfileSearchResult {
 }
 
 export default function SearchProfilesPage() {
-  const { user, isLoaded } = useUser();
-  const token = useToken();
+  const { token, isLoaded, isSignedIn } = useAuthContext();
   const router = useRouter();
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
@@ -94,34 +93,57 @@ export default function SearchProfilesPage() {
   const [pageSize] = useState(12);
   const [total, setTotal] = useState(0);
 
-  // React Query for current user profile
-  const { data: currentUserProfile } = useQuery({
-    queryKey: ["currentUserProfile", token],
-    queryFn: async () => {
-      if (!token) return undefined;
-      const res = await fetch("/api/profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return undefined;
-      return await res.json();
-    },
-    enabled: !!token,
-  });
+  // Redirect to sign-in if not signed in
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, isSignedIn, router]);
 
-  // Compute preferredGender before using it in queries
-  const preferredGender =
-    typeof currentUserProfile === "object" &&
-    currentUserProfile &&
-    "profile" in currentUserProfile &&
-    typeof currentUserProfile.profile === "object" &&
-    currentUserProfile.profile &&
-    "preferredGender" in currentUserProfile.profile
-      ? (currentUserProfile.profile as { preferredGender?: string })
-          .preferredGender || "any"
-      : "any";
+  // Fetch search results function
+  const fetchSearchResults = async () => {
+    if (!token) return { profiles: [], total: 0 };
+    
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (city && city !== "any") params.append("city", city);
+      if (religion && religion !== "any") params.append("religion", religion);
+      if (ageMin) params.append("ageMin", ageMin);
+      if (ageMax) params.append("ageMax", ageMax);
+
+      const response = await fetch(
+        `/api/search?${params.toString()}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          cache: 'no-store'
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch search results");
+      }
+
+      const data = await response.json();
+      console.log('Search API response:', data);
+      return { 
+        profiles: Array.isArray(data.profiles) ? data.profiles : [],
+        total: typeof data.total === 'number' ? data.total : 0 
+      };
+    } catch (error) {
+      console.error("Error fetching search results:", error);
+      return { profiles: [], total: 0 };
+    }
+  };
 
   // React Query for profiles
-  const { data: profilesData, isLoading: loadingProfiles } = useQuery({
+  const { data: searchResults, isLoading: loadingProfiles } = useQuery({
     queryKey: [
       "profiles",
       token,
@@ -129,52 +151,80 @@ export default function SearchProfilesPage() {
       religion,
       ageMin,
       ageMax,
-      preferredGender,
       page,
       pageSize,
     ],
-    queryFn: async () => {
-      if (!token) return [];
-      const params = new URLSearchParams();
-      if (city && city !== "any") params.append("city", city);
-      if (religion && religion !== "any") params.append("religion", religion);
-      if (ageMin) params.append("ageMin", ageMin);
-      if (ageMax) params.append("ageMax", ageMax);
-      if (preferredGender && preferredGender !== "any")
-        params.append("preferredGender", preferredGender);
-      params.append("page", String(page));
-      params.append("pageSize", String(pageSize));
-      const res = await fetch(`/api/search?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      setTotal(data.total ?? 0);
-      return Array.isArray(data.profiles) ? data.profiles : data;
-    },
-    enabled: !!token,
+    queryFn: fetchSearchResults,
+    enabled: !!token && isSignedIn,
   });
-  const profiles = profilesData || [];
+  
+  // Extract profiles and total from search results
+  const { profiles = [], total: totalResults = 0 } = searchResults || {};
+  
+  // Update total count for pagination
+  useEffect(() => {
+    if (typeof totalResults === 'number') {
+      setTotal(totalResults);
+    }
+  }, [totalResults]);
 
   // React Query for user images
   const { data: userImages = {}, isLoading: loadingImages } = useQuery({
     queryKey: ["userImages", token, profiles],
     queryFn: async () => {
-      if (!token || !profiles || profiles.length === 0) return {};
-      const userIds = profiles
-        .map((u: ProfileSearchResult) => u.userId)
-        .filter(Boolean);
-      if (userIds.length === 0) return {};
-      const res = await fetch(
-        `/api/images/batch?userIds=${userIds.join(",")}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
+      try {
+        if (!token) {
+          console.warn('No auth token available for images batch request');
+          return {};
         }
-      );
-      if (!res.ok) return {};
-      return await res.json();
+        
+        if (!profiles || profiles.length === 0) {
+          console.log('No profiles available to fetch images for');
+          return {};
+        }
+        
+        const userIds = profiles
+          .map((u: ProfileSearchResult) => u.userId)
+          .filter(Boolean);
+          
+        if (userIds.length === 0) {
+          console.log('No valid user IDs found for image batch request');
+          return {};
+        }
+        
+        console.log('Fetching images for user IDs:', userIds);
+        const res = await fetch(
+          `/api/images/batch?userIds=${userIds.join(",")}`,
+          {
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            cache: 'no-store'
+          }
+        );
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('Batch images API error:', {
+            status: res.status,
+            statusText: res.statusText,
+            error: errorText,
+            userIds,
+            hasAuthHeader: !!token
+          });
+          return {};
+        }
+        
+        return await res.json();
+      } catch (error) {
+        console.error('Error in images batch request:', error);
+        return {};
+      }
     },
     enabled: !!token && profiles.length > 0,
+    retry: 2, // Retry failed requests
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   // Only show users with a complete profile and not hidden from search
@@ -198,57 +248,30 @@ export default function SearchProfilesPage() {
     return ["any", ...Array.from(set)];
   }, [publicProfiles]);
 
-  // Filtering logic (exclude logged-in user's own profile by Clerk ID or email)
-  const filtered = React.useMemo(() => {
-    return publicProfiles.filter((u: ProfileSearchResult) => {
-      // Exclude the logged-in user's own profile by Clerk ID or email
-      if (user) {
-        if (u.userId === user.id) return false;
+  // Get current user from auth context
+  const { profile: currentUser } = useAuthContext();
+
+  // Filter out current user and incomplete profiles
+  const filtered = useMemo(() => {
+    return (publicProfiles || []).filter((u: ProfileSearchResult) => {
+      if (!u.profile?.isProfileComplete || u.profile?.hiddenFromSearch) return false;
+      if (currentUser) {
+        if (u.userId === currentUser.userId) return false;
         if (
           u.email &&
-          user.emailAddresses?.some(
-            (e: { emailAddress: string }) =>
-              e.emailAddress.toLowerCase() === (u.email?.toLowerCase() ?? "")
-          )
-        )
+          currentUser.email &&
+          u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ) {
           return false;
+        }
       }
       return true;
     });
-  }, [publicProfiles, user]);
+  }, [publicProfiles, currentUser]);
 
   const totalPages = Math.ceil(total / pageSize);
 
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 via-rose-50 to-white">
-        <div className="flex flex-col items-center gap-4">
-          <Skeleton className="w-24 h-24 rounded-full" />
-          <Skeleton className="h-6 w-40 rounded" />
-          <Skeleton className="h-4 w-32 rounded" />
-        </div>
-      </div>
-    );
-  }
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-pink-50 via-rose-50 to-white px-4">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-pink-600 mb-2">
-            Sign in to search profiles
-          </h1>
-          <p className="text-lg text-gray-600 mb-6">
-            You must be logged in to view and search profiles on Aroosi.
-          </p>
-          <SignInButton mode="modal">
-            <span className="inline-block bg-pink-600 hover:bg-pink-700 text-white font-semibold px-6 py-3 rounded-lg shadow transition cursor-pointer">
-              Sign In
-            </span>
-          </SignInButton>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12">
@@ -308,11 +331,8 @@ export default function SearchProfilesPage() {
             />
           </div>
         </section>
-        {loadingProfiles ||
-        loadingImages ||
-        profiles === undefined ||
-        userImages === undefined ||
-        filtered.length === 0 ? (
+        {loadingProfiles || loadingImages || profiles === undefined || userImages === undefined ? (
+          // Show loading skeleton when data is being fetched
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
@@ -325,6 +345,34 @@ export default function SearchProfilesPage() {
                 <Skeleton className="h-4 w-1/3 rounded" />
               </div>
             ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          // Show 'No profiles found' message when there are no results
+          <div className="text-center py-12">
+            <div className="mx-auto w-24 h-24 text-gray-300 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-medium text-gray-700 mb-2">No profiles found</h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              {city !== 'any' || religion !== 'any' || ageMin || ageMax
+                ? 'Try adjusting your search criteria to see more results.'
+                : 'There are currently no profiles available. Please check back later.'}
+            </p>
+            {(city !== 'any' || religion !== 'any' || ageMin || ageMax) && (
+              <button
+                onClick={() => {
+                  setCity('any');
+                  setReligion('any');
+                  setAgeMin('');
+                  setAgeMax('');
+                }}
+                className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           <>

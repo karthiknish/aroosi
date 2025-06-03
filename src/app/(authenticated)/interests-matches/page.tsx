@@ -6,7 +6,7 @@ import { MapPin, UserCircle } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 
 const TABS = ["Interests", "Matches"];
@@ -23,7 +23,7 @@ type ProfileShape = {
 export default function InterestsMatchesPage() {
   const { user: isSignedIn } = useUser();
   const [activeTab, setActiveTab] = useState(0);
-  const token = useToken();
+  const { token } = useAuthContext();
 
   // Fetch current userId
   const { data: currentUserData, isLoading: loadingCurrentUser } = useQuery({

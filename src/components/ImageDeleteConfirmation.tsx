@@ -20,7 +20,7 @@ interface ImageDeleteConfirmationProps {
   isLoading?: boolean;
 }
 
-export function ImageDeleteConfirmation({
+export default function ImageDeleteConfirmation({
   isOpen,
   onClose,
   onConfirm,

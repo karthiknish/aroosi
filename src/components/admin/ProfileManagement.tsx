@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "../AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import ProfileCard from "./ProfileCard";
@@ -44,7 +44,7 @@ interface ProfilesResponse {
 }
 
 export default function ProfileManagement() {
-  const token = useToken();
+  const { token } = useAuthContext();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<ProfileEditFormState>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);

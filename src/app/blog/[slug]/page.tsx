@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
 import { BlogPost } from "@/types/blog";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 
 // Calculate reading time
@@ -56,7 +56,7 @@ const BlogDetailSkeleton = () => (
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const token = useToken();
+  const { token } = useAuthContext();
 
   const queryKey = ["blogPost", slug, token];
 

@@ -27,22 +27,31 @@ interface ProfileImage {
 }
 
 interface ProfileViewProps {
-  profile: Profile;
+  profiledata: Profile;
   images: ProfileImage[] | null | undefined;
   imageUrls?: string[];
 }
 
 export default function ProfileView({
-  profile,
+  profiledata,
   images,
   imageUrls = [],
 }: ProfileViewProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // Safely handle undefined profile with default values
+  const safeProfile =
+    profiledata ||
+    ({
+      dateOfBirth: "",
+      // Add other required properties with default values as needed
+    } as Profile);
+
   // Calculate age from dateOfBirth if possible
   let age: string | number = "-";
-  if (profile.dateOfBirth) {
-    const dob = new Date(profile.dateOfBirth);
+  if (profiledata.dateOfBirth) {
+    const dob = new Date(profiledata.dateOfBirth);
     if (!isNaN(dob.getTime())) {
       const today = new Date();
       let years = today.getFullYear() - dob.getFullYear();
@@ -54,7 +63,16 @@ export default function ProfileView({
     }
   }
 
-  // Handle error state
+  // Handle missing or invalid profile
+  if (!safeProfile) {
+    return (
+      <div className="p-4 text-red-500 text-sm">
+        Error: Profile information is missing or invalid.
+      </div>
+    );
+  }
+
+  // Handle error state for images
   if (images === null) {
     return (
       <div className="p-4 text-red-500 text-sm">
@@ -85,7 +103,7 @@ export default function ProfileView({
             <>
               <img
                 src={profileImage.url}
-                alt={profile.fullName || "Profile image"}
+                alt={profiledata.fullName || "Profile image"}
                 width={128}
                 height={128}
                 className="w-full h-full object-cover"
@@ -123,7 +141,7 @@ export default function ProfileView({
     >
       <Image
         src={img.url}
-        alt={profile.fullName || "Profile image"}
+        alt={profiledata.fullName || "Profile image"}
         fill
         className="object-cover"
         sizes="80px"
@@ -161,7 +179,7 @@ export default function ProfileView({
             <>
               <img
                 src={profileImage.url}
-                alt={profile.fullName || "Profile image"}
+                alt={profile?.fullName || "Profile image"}
                 width={128}
                 height={128}
                 className="w-full h-full object-cover"
@@ -188,10 +206,10 @@ export default function ProfileView({
         {/* Profile details */}
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-gray-900">
-            {profile.fullName || "No Name"}
+            {profiledata.fullName || "No Name"}
           </h2>
-          {profile.aboutMe && (
-            <p className="mt-1 text-gray-600">{profile.aboutMe}</p>
+          {profiledata.aboutMe && (
+            <p className="mt-1 text-gray-600">{profiledata.aboutMe}</p>
           )}
         </div>
       </div>
@@ -206,9 +224,9 @@ export default function ProfileView({
             <User className="w-3.5 h-3.5 text-gray-400" />
 
             <span className="font-medium text-gray-700">
-              {profile.gender
-                ? profile.gender.charAt(0).toUpperCase() +
-                  profile.gender.slice(1)
+              {profiledata.gender
+                ? profiledata.gender.charAt(0).toUpperCase() +
+                  profiledata.gender.slice(1)
                 : "-"}
             </span>
           </span>
@@ -219,12 +237,12 @@ export default function ProfileView({
             <span className="font-medium text-gray-700">{age}</span>
           </span>
         </div>
-        {profile.dateOfBirth && (
+        {profiledata.dateOfBirth && (
           <div>
             <span className="text-md text-gray-500 flex items-center gap-1">
               <Cake className="w-3.5 h-3.5 text-gray-400" />
               <span className="font-medium text-gray-700">
-                {new Date(profile.dateOfBirth).toLocaleDateString()}
+                {new Date(profiledata.dateOfBirth).toLocaleDateString()}
               </span>
             </span>
           </div>
@@ -233,7 +251,7 @@ export default function ProfileView({
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <MapPin className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.ukCity || "-"}
+              {profiledata.ukCity || "-"}
             </span>
           </span>
         </div>
@@ -242,7 +260,7 @@ export default function ProfileView({
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <HeartHandshake className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.religion || "-"}
+              {profiledata.religion || "-"}
             </span>
           </span>
         </div>
@@ -250,7 +268,7 @@ export default function ProfileView({
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <HandHelping className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.caste || "-"}
+              {profiledata.caste || "-"}
             </span>
           </span>
         </div>
@@ -259,7 +277,7 @@ export default function ProfileView({
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <Ruler className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.height || "-"}
+              {profiledata.height || "-"}
             </span>
           </span>
         </div>
@@ -267,7 +285,7 @@ export default function ProfileView({
           <span className="text-md text-gray-500 flex items-center gap-1">
             <PersonStanding className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.maritalStatus || "-"}
+              {profiledata.maritalStatus || "-"}
             </span>
           </span>
         </div>
@@ -275,7 +293,7 @@ export default function ProfileView({
           <span className="text-md text-gray-500 flex items-center gap-1">
             <GraduationCap className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.education || "-"}
+              {profiledata.education || "-"}
             </span>
           </span>
         </div>
@@ -283,7 +301,7 @@ export default function ProfileView({
           <span className="text-md text-gray-500 flex items-center gap-1">
             <Briefcase className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.occupation || "-"}
+              {profiledata.occupation || "-"}
             </span>
           </span>
         </div>
@@ -292,21 +310,21 @@ export default function ProfileView({
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <Phone className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profile.phoneNumber || "-"}
+              {profiledata.phoneNumber || "-"}
             </span>
           </span>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <span className="text-xs text-gray-400">
-          Created: {new Date(profile.createdAt).toLocaleDateString()}
+          Created: {new Date(profiledata.createdAt).toLocaleDateString()}
         </span>
-        {profile.updatedAt && (
+        {profiledata.updatedAt && (
           <span className="text-xs text-gray-400">
-            Updated: {new Date(profile.updatedAt).toLocaleDateString()}
+            Updated: {new Date(profiledata.updatedAt).toLocaleDateString()}
           </span>
         )}
-        {profile.banned && (
+        {profiledata.banned && (
           <span className="text-xs text-red-500 font-semibold ml-2">
             BANNED
           </span>

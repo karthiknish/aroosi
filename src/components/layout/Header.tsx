@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { UserButton, SignedIn, SignedOut, useUser } from "@clerk/nextjs";
+import { useAuthContext } from "@/components/AuthProvider";
 import {
   LogIn,
   UserPlus,
@@ -14,16 +14,20 @@ import {
   Menu,
   X,
   Heart,
+  LogOut,
 } from "lucide-react";
 import Image from "next/image";
-import { useTransition } from "react";
 
 export default function Header() {
-  const { user } = useUser();
-  const isAdmin = user?.publicMetadata?.role === "admin";
+  const [hydrated, setHydrated] = React.useState(false);
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  const { isAdmin, isSignedIn, signOut } = useAuthContext();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
-  const [isPending] = useTransition();
+  if (!hydrated) return null;
 
   const headerVariants = {
     hidden: { y: -100, opacity: 0 },
@@ -46,172 +50,154 @@ export default function Header() {
   // Navigation items as a function for reuse
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
-      <motion.div
-        custom={0.5}
-        variants={navItemVariants}
-        initial="hidden"
-        animate="visible"
-      ></motion.div>
-      <SignedIn>
-        <motion.div
-          custom={0.7}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/search" onClick={onClick}>
-            <Button
-              variant="ghost"
-              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-            >
-              <Search className="h-5 w-5 mr-1 sm:mr-2" />
-              {/* Show text on all screen sizes */}
-              <span>Search Profiles</span>
-            </Button>
-          </Link>
-        </motion.div>
-        {isAdmin && (
+      {isSignedIn ? (
+        <>
           <motion.div
-            custom={0.8}
+            custom={0.7}
             variants={navItemVariants}
             initial="hidden"
             animate="visible"
           >
-            <Link href="/admin" onClick={onClick}>
+            <Link href="/search" onClick={onClick}>
               <Button
                 variant="ghost"
-                className="w-full cursor-pointer text-left text-pink-700 hover:text-pink-800 hover:bg-pink-50 font-semibold"
+                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
               >
-                <Shield className="h-5 w-5 mr-1 sm:mr-2" />
-                {/* Show text on all screen sizes */}
-                <span>Admin</span>
+                <Search className="h-5 w-5 mr-1 sm:mr-2" />
+                <span>Search Profiles</span>
               </Button>
             </Link>
           </motion.div>
-        )}
-        <motion.div
-          custom={1}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/profile" passHref onClick={onClick}>
+
+          {isAdmin && (
+            <motion.div
+              custom={0.8}
+              variants={navItemVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <Link href="/admin" onClick={onClick}>
+                <Button
+                  variant="ghost"
+                  className="w-full cursor-pointer text-left text-pink-700 hover:text-pink-800 hover:bg-pink-50 font-semibold"
+                >
+                  <Shield className="h-5 w-5 mr-1 sm:mr-2" />
+                  <span>Admin</span>
+                </Button>
+              </Link>
+            </motion.div>
+          )}
+
+          <motion.div
+            custom={1}
+            variants={navItemVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <Link href="/profile" onClick={onClick}>
+              <Button
+                variant="ghost"
+                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              >
+                <LayoutDashboard className="h-5 w-5 mr-1 sm:mr-2" />
+                <span>My Profile</span>
+              </Button>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            custom={1.5}
+            variants={navItemVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <Link href="/interests-matches" onClick={onClick}>
+              <Button
+                variant="ghost"
+                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              >
+                <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
+                <span>Interests / Matches</span>
+              </Button>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            custom={2}
+            variants={navItemVariants}
+            initial="hidden"
+            animate="visible"
+            className="flex items-center"
+          >
             <Button
               variant="ghost"
               className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              onClick={() => signOut()}
             >
-              <LayoutDashboard className="h-5 w-5 mr-1 sm:mr-2" />
-              {/* Show text on all screen sizes */}
-              <span>My Profile</span>
+              <LogOut className="h-5 w-5 mr-1 sm:mr-2" />
+              <span>Sign Out</span>
             </Button>
-          </Link>
-        </motion.div>
-        <motion.div
-          custom={1.5}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/interests-matches" passHref onClick={onClick}>
-            <Button
-              variant="ghost"
-              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-            >
-              <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
-              <span>Interests / Matches</span>
-            </Button>
-          </Link>
-        </motion.div>
-        <motion.div
-          custom={2}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex items-center"
-        >
-          <div className="pl-2">
-            <UserButton afterSignOutUrl="/" />
-          </div>
-        </motion.div>
-      </SignedIn>
-      <SignedOut>
-        <motion.div
-          custom={0.5}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/about" onClick={onClick}>
-            <Button
-              variant="ghost"
-              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-            >
-              <span>About</span>
-            </Button>
-          </Link>
-        </motion.div>
-        <motion.div
-          custom={0.7}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/how-it-works" onClick={onClick}>
-            <Button
-              variant="ghost"
-              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-            >
-              <span>How It Works</span>
-            </Button>
-          </Link>
-        </motion.div>
-        <motion.div
-          custom={1}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/sign-in" onClick={onClick}>
-            <Button
-              variant="ghost"
-              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-            >
-              <LogIn className="h-5 w-5 mr-1 sm:mr-2" />{" "}
-              {/* Show text on all screen sizes */}
-              <span>Sign In</span>
-            </Button>
-          </Link>
-        </motion.div>
-        <motion.div
-          custom={2}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/sign-up" onClick={onClick}>
-            <Button className="w-full text-left bg-pink-600 hover:bg-pink-700 text-white">
-              <UserPlus className="h-5 w-5 mr-1 sm:mr-2" />{" "}
-              {/* Show text on all screen sizes */}
-              <span>Sign Up</span>
-            </Button>
-          </Link>
-        </motion.div>
-        <motion.div
-          custom={2.5}
-          variants={navItemVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Link href="/contact" onClick={onClick}>
-            <Button
-              variant="outline"
-              className="w-full cursor-pointer text-left border-pink-300 text-pink-700 hover:bg-pink-50 hover:text-pink-800"
-            >
-              <span>Contact Us</span>
-            </Button>
-          </Link>
-        </motion.div>
-      </SignedOut>
+          </motion.div>
+        </>
+      ) : (
+        <>
+          <motion.div
+            custom={0.5}
+            variants={navItemVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <Link href="/about" onClick={onClick}>
+              <Button
+                variant="ghost"
+                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              >
+                <span>About</span>
+              </Button>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            custom={0.7}
+            variants={navItemVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <Link href="/how-it-works" onClick={onClick}>
+              <Button
+                variant="ghost"
+                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+              >
+                <span>How It Works</span>
+              </Button>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            custom={1.2}
+            variants={navItemVariants}
+            initial="hidden"
+            animate="visible"
+            className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0"
+          >
+            <Link href="/sign-in" onClick={onClick}>
+              <Button
+                variant="outline"
+                className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>Sign In</span>
+              </Button>
+            </Link>
+            <Link href="/sign-up" onClick={onClick}>
+              <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
+                <UserPlus className="h-4 w-4" />
+                <span>Sign Up</span>
+              </Button>
+            </Link>
+          </motion.div>
+        </>
+      )}
     </>
   );
 
@@ -221,42 +207,42 @@ export default function Header() {
         variants={headerVariants}
         initial="hidden"
         animate="visible"
-        className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm"
       >
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            <motion.div
-              custom={0}
-              variants={navItemVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <Link
-                href="/"
-                className="text-3xl sm:text-4xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
-              >
-                <Image src="/logo.png" alt="Aroosi" width={100} height={100} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/logo.png"
+                  alt="Aroosi Logo"
+                  width={150}
+                  height={150}
+                  className="h-8 w-auto"
+                />
               </Link>
-            </motion.div>
+            </div>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-1">
               <NavLinks />
             </nav>
 
-            {/* Mobile Hamburger */}
-            <div className="md:hidden flex items-center">
-              <button
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className="text-gray-600 hover:text-pink-600 p-2 rounded-md hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
-                onClick={() => setMobileOpen((open) => !open)}
-                className="p-2 rounded-md text-pink-600 hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
               >
                 {mobileOpen ? (
                   <X className="h-7 w-7" />
                 ) : (
                   <Menu className="h-7 w-7" />
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -22,7 +22,7 @@ import { MapPin, Search, UserCircle } from "lucide-react";
 import { useState } from "react";
 import type { Profile } from "@/types/profile";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToken } from "@/components/TokenProvider";
+import { useAuthContext } from "@/components/AuthProvider";
 
 const religions = [
   "Any",
@@ -83,7 +83,7 @@ async function fetchProfilesAPI(filters: FiltersState, token: string | null) {
 
 export default function MatchesPage() {
   const { isSignedIn } = useAuth();
-  const token = useToken();
+  const { token } = useAuthContext();
   const [filters, setFilters] = useState<FiltersState>({
     distance: "",
     religion: "Any",

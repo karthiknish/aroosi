@@ -1,99 +1,117 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Calendar,
+  MapPin,
+  Mail,
+  Phone,
+  Heart,
+  Camera,
+  UserCircle,
+  GraduationCap,
+  Briefcase,
+  Info,
+  Edit3,
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
 } from "@/components/ui/card";
-import {
-  Camera,
-  UserCircle,
-  Edit3,
-  MapPin,
-  Calendar,
-  Mail,
-  Phone,
-  GraduationCap,
-  Briefcase,
-  Heart,
-  Info,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { ProfileImageReorder } from "../ProfileImageReorder";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { toast } from "sonner";
 import { Profile } from "@/types/profile";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useToken } from "@/components/TokenProvider";
-import { useQuery } from "@tanstack/react-query";
-import { useProfileCompletion } from "@/components/ProfileCompletionProvider";
+import { ProfileImageReorder } from "@/components/ProfileImageReorder";
+import type { FC } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-// Helper type and function for image mapping
-type ApiImage = { storageId: string; url: string };
-function mapApiImage(img: ApiImage): {
-  _id: string;
-  storageId: string;
-  url: string;
-} {
-  return {
-    _id: img.storageId,
-    storageId: img.storageId,
-    url: img.url,
-  };
-}
+// Re-export types for backward compatibility
+type ApiImage = unknown;
+type MappedImage = unknown;
 
-// Helper for displaying profile details
-const ProfileDetailView: React.FC<{
+export type { ApiImage, MappedImage };
+
+// Types for components
+interface ProfileDetailViewProps {
   label: string;
   value?: string | null | number;
   isTextArea?: boolean;
   isSubtle?: boolean;
   icon?: React.ReactNode;
-}> = ({ label, value, isTextArea, isSubtle, icon }) => {
-  const displayValue =
-    value === null || value === undefined || value === "" ? "-" : String(value);
-  const textClass = isSubtle
-    ? "text-sm text-gray-500"
-    : "text-md text-gray-800";
-  return (
-    <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4">
-      <dt className="text-sm font-medium text-gray-500 flex items-center gap-2">
-        {icon}
-        {label}
-      </dt>
-      {isTextArea ? (
-        <dd
-          className={`mt-1 sm:mt-0 sm:col-span-2 ${textClass} whitespace-pre-wrap`}
-        >
-          {displayValue}
-        </dd>
-      ) : (
-        <dd className={`mt-1 sm:mt-0 sm:col-span-2 ${textClass}`}>
-          {displayValue}
-        </dd>
-      )}
-    </div>
-  );
-};
+  className?: string;
+}
 
-const DisplaySection: React.FC<{
+interface DisplaySectionProps {
   title: string;
   children: React.ReactNode;
   icon?: React.ReactNode;
   noBorder?: boolean;
   fullWidth?: boolean;
-}> = ({ title, children, icon, noBorder, fullWidth }) => (
+  className?: string;
+}
+
+/**
+ * Reusable component for displaying profile details in a consistent format
+ */
+const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
+  label,
+  value,
+  isTextArea = false,
+  isSubtle = false,
+  icon,
+  className = "",
+}) => {
+  const displayValue = value == null || value === "" ? "-" : String(value);
+  const textClass = isSubtle
+    ? "text-sm text-gray-500"
+    : "text-md text-gray-800";
+
+  return (
+    <div className={`py-2 sm:grid sm:grid-cols-3 sm:gap-4 ${className}`}>
+      <dt className="text-sm font-medium text-gray-500 flex items-center gap-2">
+        {icon}
+        {label}
+      </dt>
+      <dd
+        className={`mt-1 sm:mt-0 sm:col-span-2 ${
+          isTextArea ? "whitespace-pre-wrap" : ""
+        } ${textClass}`}
+      >
+        {displayValue}
+      </dd>
+    </div>
+  );
+};
+
+/**
+ * Section component for grouping related profile information
+ */
+const DisplaySection: React.FC<DisplaySectionProps> = ({
+  title,
+  children,
+  icon,
+  noBorder = false,
+  fullWidth = false,
+  className = "",
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`space-y-1 pt-6 pb-8 ${!noBorder && "border-b border-gray-100"} first:border-t-0 first:pt-0 ${fullWidth ? "w-full" : ""}`}
+    className={`space-y-1 pt-6 pb-8 ${!noBorder ? "border-b border-gray-100" : ""} ${
+      fullWidth ? "w-full" : ""
+    } first:border-t-0 first:pt-0 ${className}`}
   >
     <h2 className="text-xl font-semibold text-gray-700 mb-3 flex items-center gap-2">
       {icon}
@@ -105,115 +123,97 @@ const DisplaySection: React.FC<{
 
 export interface ProfileViewProps {
   profileData: Profile;
-  clerkUser: unknown;
-  userConvexData: { _id?: string; _creationTime?: number } | null | undefined;
-  onEdit: () => void;
-  onDelete: () => void;
-  deleting: boolean;
+  userConvexData?: { _id?: string; _creationTime?: number } | null;
+  imageOrder?: string[];
+  setImageOrder?: (order: string[]) => void;
+  isLoadingImages?: boolean;
+  onDelete?: () => void;
+  deleting?: boolean;
+  images?: Array<string | { _id: string; url?: string; storageId?: string }>;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({
+const ProfileView: FC<ProfileViewProps> = ({
   profileData,
-  userConvexData,
-  onEdit,
-  onDelete,
-  deleting,
+  images,
+  userConvexData = null,
 }) => {
-  const token = useToken();
-  const { isProfileComplete } = useProfileCompletion();
-  // Local image order state for instant UI feedback
-  const [imageOrder, setImageOrder] = React.useState<string[]>(
-    profileData?.profileImageIds && Array.isArray(profileData.profileImageIds)
-      ? [...profileData.profileImageIds]
-      : []
-  );
-  // Keep imageOrder in sync with profileData.profileImageIds
-  React.useEffect(() => {
-    if (
-      profileData?.profileImageIds &&
-      Array.isArray(profileData.profileImageIds)
-    ) {
-      setImageOrder([...profileData.profileImageIds]);
-    } else {
-      setImageOrder([]);
-    }
-  }, [profileData?.profileImageIds]);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const router = useRouter();
 
-  // Use React Query for image fetching
-  const {
-    data: images = [],
-    isLoading: loadingImages,
-    refetch: refetchImages,
-  } = useQuery({
-    queryKey: ["profileImages", userConvexData?._id, token],
-    queryFn: async () => {
-      if (!userConvexData?._id || !token) return [];
-      const res = await fetch(
-        `/api/profile-detail/${userConvexData._id}/images`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
+  // Format images for the image reorder component
+  const imageList = React.useMemo(() => {
+    if (Array.isArray(images)) {
+      const formattedImages = images.map(
+        (
+          img: string | { _id: string; url?: string; storageId?: string },
+          index: number
+        ) => {
+          const imageId =
+            typeof img === "string" ? img : img._id || `img-${index}`;
+          let imageUrl =
+            typeof img === "string"
+              ? `/api/profile/image/${img}`
+              : img.url || `/api/profile/image/${imageId}`;
+
+          // Ensure URL is absolute if it's not already
+          if (
+            imageUrl &&
+            !imageUrl.startsWith("http") &&
+            !imageUrl.startsWith("blob:") &&
+            !imageUrl.startsWith("data:")
+          ) {
+            imageUrl = new URL(imageUrl, window.location.origin).toString();
+          }
+
+          return {
+            _id: imageId,
+            url: imageUrl,
+            storageId:
+              typeof img === "string" ? img : img.storageId || img._id || "",
+          };
         }
       );
-      if (!res.ok) return [];
-      const data = await res.json();
-      return ((data.userProfileImages || []) as ApiImage[]).map(mapApiImage);
-    },
-    enabled: !!userConvexData?._id && !!token,
-  });
+      return formattedImages;
+    }
 
-  const handleReorder = async (newOrder: unknown[]) => {
-    if (!userConvexData?._id) return;
-    let imageIds: string[] = [];
-    if (Array.isArray(newOrder) && typeof newOrder[0] === "string") {
-      imageIds = newOrder as string[];
-    } else if (
-      Array.isArray(newOrder) &&
-      typeof newOrder[0] === "object" &&
-      newOrder[0] !== null &&
-      "_id" in (newOrder[0] as object)
+    if (
+      Array.isArray(profileData?.profileImageIds) &&
+      profileData.profileImageIds.length > 0
     ) {
-      imageIds = (newOrder as { _id: string }[]).map((img) => img._id);
+      return profileData.profileImageIds
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => ({
+          _id: id,
+          url: `/api/profile/image/${id}`,
+          storageId: id,
+        }));
     }
-    // Optimistically update local order
-    setImageOrder(imageIds);
+
+    return [];
+  }, [images, profileData?.profileImageIds]);
+  console.log(profileData);
+  // Delete profile handler
+  const handleDeleteProfile = async () => {
+    setDeleteError(null);
+    setDeleteLoading(true);
     try {
-      refetchImages();
-      toast.dismiss();
-      toast.success("Image order updated");
-    } catch (error) {
-      toast.dismiss();
-      console.error("Error updating image order", error);
-      toast.error("Failed to update image order");
+      const res = await fetch("/api/profile/delete", {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete profile.");
+      }
+      router.push("/");
+    } catch (err: any) {
+      setDeleteError(
+        err?.message || "An error occurred while deleting your profile."
+      );
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteDialog(false);
     }
-  };
-
-  // Determine ordered images based on local imageOrder if available
-  let orderedImages: { url: string; storageId: string; _id: string }[] = [];
-  if (imageOrder && imageOrder.length > 0) {
-    orderedImages = imageOrder
-      .map((storageId) => {
-        const img = images.find((img) => img.storageId === storageId);
-        if (img) {
-          return { url: img.url, storageId, _id: storageId };
-        }
-        return null;
-      })
-      .filter(Boolean) as { url: string; storageId: string; _id: string }[];
-  } else {
-    orderedImages = images.map((img) => ({
-      url: img.url,
-      storageId: img.storageId,
-      _id: img.storageId,
-    }));
-  }
-
-  // Modal state for image preview
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [modalIndex, setModalIndex] = React.useState(0);
-
-  const handleImageClick = (idx: number) => {
-    setModalIndex(idx);
-    setModalOpen(true);
   };
 
   return (
@@ -231,75 +231,50 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={onEdit}
+                onClick={() => router.push("/profile/edit")}
                 variant="outline"
                 className="border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700"
               >
                 <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
               </Button>
               <Button
-                onClick={onDelete}
+                onClick={() => setShowDeleteDialog(true)}
                 variant="destructive"
-                disabled={deleting}
+                disabled={deleteLoading}
               >
                 Delete Profile
               </Button>
             </div>
           </CardHeader>
           <CardContent className="p-6 sm:p-8">
+            {deleteError && (
+              <div className="mb-4 text-red-600 text-sm">{deleteError}</div>
+            )}
             {profileData ? (
               <>
-                <DisplaySection
-                  title="Account Information"
-                  icon={<Mail className="h-5 w-5" />}
-                >
-                  <ProfileDetailView
-                    label="Email"
-                    value={profileData.email}
-                    icon={<Mail className="h-4 w-4" />}
-                  />
-                  <ProfileDetailView
-                    label="Joined Aroosi"
-                    value={
-                      userConvexData?._creationTime
-                        ? new Date(
-                            userConvexData._creationTime
-                          ).toLocaleDateString()
-                        : "-"
-                    }
-                    icon={<Calendar className="h-4 w-4" />}
-                  />
-                </DisplaySection>
+                {/* Profile Images section */}
                 <DisplaySection
                   title="Profile Images"
                   icon={<Camera className="h-5 w-5" />}
                   noBorder
                   fullWidth
                 >
-                  {userConvexData?._id && (
-                    <ProfileImageReorder
-                      images={orderedImages}
-                      userId={userConvexData._id}
-                      onReorder={handleReorder}
-                      loading={loadingImages}
-                      renderAction={(_, idx) => (
-                        <img
-                          src={orderedImages[idx].url}
-                          alt=""
-                          style={{
-                            width: 100,
-                            height: 100,
-                            objectFit: "cover",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                          }}
-                          onClick={() => handleImageClick(idx)}
-                        />
-                      )}
-                    />
-                  )}
+                  <div className="mt-2">
+                    {imageList.length > 0 ? (
+                      <ProfileImageReorder
+                        images={imageList}
+                        userId={profileData.userId}
+                        renderAction={() => null}
+                      />
+                    ) : (
+                      <div className="text-center py-6 text-gray-500">
+                        No profile images uploaded yet.
+                      </div>
+                    )}
+                  </div>
                 </DisplaySection>
 
+                {/* Basic Information section follows */}
                 <DisplaySection
                   title="Basic Information"
                   icon={<UserCircle className="h-5 w-5" />}
@@ -331,6 +306,28 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     label="Phone Number"
                     value={profileData.phoneNumber}
                     icon={<Phone className="h-4 w-4" />}
+                  />
+                </DisplaySection>
+
+                <DisplaySection
+                  title="Account Information"
+                  icon={<Mail className="h-5 w-5" />}
+                >
+                  <ProfileDetailView
+                    label="Email"
+                    value={profileData.email}
+                    icon={<Mail className="h-4 w-4" />}
+                  />
+                  <ProfileDetailView
+                    label="Joined Aroosi"
+                    value={
+                      userConvexData?._creationTime
+                        ? new Date(
+                            userConvexData._creationTime
+                          ).toLocaleDateString()
+                        : "-"
+                    }
+                    icon={<Calendar className="h-4 w-4" />}
                   />
                 </DisplaySection>
 
@@ -441,47 +438,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     }
                   />
                 </DisplaySection>
-
-                <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                  <DialogContent className="max-w-2xl flex flex-col items-center justify-center bg-black/90 p-0">
-                    <div className="relative w-full flex items-center justify-center min-h-[400px]">
-                      <button
-                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
-                        onClick={() =>
-                          setModalIndex(
-                            (modalIndex - 1 + orderedImages.length) %
-                              orderedImages.length
-                          )
-                        }
-                        aria-label="Previous image"
-                        disabled={orderedImages.length <= 1}
-                        style={{ opacity: orderedImages.length > 1 ? 1 : 0.5 }}
-                      >
-                        <ChevronLeft className="w-6 h-6" />
-                      </button>
-                      <img
-                        src={orderedImages[modalIndex]?.url}
-                        alt="Profile large preview"
-                        className="w-full h-[70vh] rounded-lg object-cover bg-black"
-                        style={{ margin: "0 auto" }}
-                      />
-                      <button
-                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow-lg z-10"
-                        onClick={() =>
-                          setModalIndex((modalIndex + 1) % orderedImages.length)
-                        }
-                        aria-label="Next image"
-                        disabled={orderedImages.length <= 1}
-                        style={{ opacity: orderedImages.length > 1 ? 1 : 0.5 }}
-                      >
-                        <ChevronRight className="w-6 h-6" />
-                      </button>
-                    </div>
-                    <div className="text-white text-center py-2 w-full bg-black/60 rounded-b-lg">
-                      {modalIndex + 1} / {orderedImages.length}
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </>
             ) : (
               <div className="space-y-6">
@@ -510,8 +466,36 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           </CardContent>
         </Card>
       </div>
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Profile?</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            Are you sure you want to delete your profile? This action cannot be
+            undone.
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProfile}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default ProfileView;
+export { ProfileView };

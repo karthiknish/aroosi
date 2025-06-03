@@ -8,10 +8,17 @@ type Gender = "any" | "male" | "female" | "other";
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get("Authorization")?.split(" ")[1];
-    if (!token) {
-      console.error("No token provided in request");
+    // Get the token from the Authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error("No Bearer token provided in request");
       return NextResponse.json({ error: "No token provided" }, { status: 401 });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      console.error("Invalid token format");
+      return NextResponse.json({ error: "Invalid token format" }, { status: 401 });
     }
 
     console.log("Setting auth token for Convex");
