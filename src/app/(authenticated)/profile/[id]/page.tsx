@@ -37,6 +37,7 @@ import {
   removeInterest,
   getSentInterests,
 } from "@/lib/interestUtils";
+import type { Profile } from "@/types/profile";
 
 // Helper: theme color for toast
 const toastTheme = {
@@ -67,7 +68,7 @@ export default function ProfileDetailPage() {
   const id = params?.id as string;
   const userId = id as Id<"users">;
 
-  // Simplified: Save profileData?.data?.profileData directly to 'profile'
+  // Fetch profile data
   const {
     data: profileData,
     isLoading: loadingProfile,
@@ -77,13 +78,14 @@ export default function ProfileDetailPage() {
     queryFn: async () => {
       if (!token || !userId) return null;
       const result = await fetchUserProfile(token, userId);
-      if (!result || typeof result !== "object") return null;
       return result;
     },
     enabled: !!token && !!userId,
     retry: false,
   });
-  const profile = profileData?.data?.profileData;
+
+  // Fix: Use .data, not .data.profileData
+  const profile: Profile | null = profileData?.data ?? null;
 
   const { data: userProfileImagesResponse } = useQuery({
     queryKey: ["userProfileImages", userId, token],
@@ -477,43 +479,28 @@ export default function ProfileDetailPage() {
                   style={{ fontFamily: "Lora, serif" }}
                 >
                   <UserCircle className="w-8 h-8 text-pink-500" />
-                  {typeof profile === "object" &&
-                  profile &&
-                  "fullName" in profile
-                    ? ((profile as { fullName?: string }).fullName ?? "-")
-                    : "-"}
+                  {profile?.fullName ?? "-"}
                 </div>
                 <div
                   className="flex items-center gap-2 text-lg text-gray-600 mb-1"
                   style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                 >
                   <MapPin className="w-5 h-5 text-pink-400" />
-                  {typeof profile === "object" && profile && "ukCity" in profile
-                    ? ((profile as { ukCity?: string }).ukCity ?? "-")
-                    : "-"}
+                  {profile?.ukCity ?? "-"}
                 </div>
                 <div
                   className="flex items-center gap-2 text-lg text-gray-600 mb-1"
                   style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                 >
                   <Church className="w-5 h-5 text-pink-400" />
-                  {typeof profile === "object" &&
-                  profile &&
-                  "religion" in profile
-                    ? ((profile as { religion?: string }).religion ?? "-")
-                    : "-"}
+                  {profile?.religion ?? "-"}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
                   <Calendar className="w-4 h-4 text-pink-300" />
                   <span>Member since:</span>
                   <span>
-                    {typeof profile === "object" &&
-                    profile &&
-                    "createdAt" in profile &&
-                    (profile as { createdAt?: number }).createdAt
-                      ? new Date(
-                          (profile as { createdAt?: number }).createdAt!
-                        ).toLocaleDateString()
+                    {profile?.createdAt
+                      ? new Date(profile.createdAt).toLocaleDateString()
                       : "-"}
                   </span>
                 </div>
@@ -541,7 +528,7 @@ export default function ProfileDetailPage() {
                           <div className="relative w-full h-full">
                             <Image
                               src={url}
-                              alt={`${typeof profile === "object" && profile && "fullName" in profile ? ((profile as { fullName?: string }).fullName ?? "Profile") : "Profile"}'s image ${idx + 1}`}
+                              alt={`${profile?.fullName ?? "Profile"}'s image ${idx + 1}`}
                               fill
                               sizes="(max-width: 768px) 50vw, 25vw"
                               className="object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
@@ -581,35 +568,17 @@ export default function ProfileDetailPage() {
                   <IconRow
                     icon={<Church className="w-4 h-4" />}
                     label="Religion"
-                    value={
-                      typeof profile === "object" &&
-                      profile &&
-                      "religion" in profile
-                        ? (profile as { religion?: string }).religion
-                        : "-"
-                    }
+                    value={profile?.religion ?? "-"}
                   />
                   <IconRow
                     icon={<Languages className="w-4 h-4" />}
                     label="Mother Tongue"
-                    value={
-                      typeof profile === "object" &&
-                      profile &&
-                      "motherTongue" in profile
-                        ? (profile as { motherTongue?: string }).motherTongue
-                        : "-"
-                    }
+                    value={profile?.motherTongue ?? "-"}
                   />
                   <IconRow
                     icon={<Users className="w-4 h-4" />}
                     label="Marital Status"
-                    value={
-                      typeof profile === "object" &&
-                      profile &&
-                      "maritalStatus" in profile
-                        ? (profile as { maritalStatus?: string }).maritalStatus
-                        : "-"
-                    }
+                    value={profile?.maritalStatus ?? "-"}
                   />
                 </div>
                 <div>
@@ -620,35 +589,17 @@ export default function ProfileDetailPage() {
                   <IconRow
                     icon={<BookOpen className="w-4 h-4" />}
                     label="Education"
-                    value={
-                      typeof profile === "object" &&
-                      profile &&
-                      "education" in profile
-                        ? (profile as { education?: string }).education
-                        : "-"
-                    }
+                    value={profile?.education ?? "-"}
                   />
                   <IconRow
                     icon={<Briefcase className="w-4 h-4" />}
                     label="Occupation"
-                    value={
-                      typeof profile === "object" &&
-                      profile &&
-                      "occupation" in profile
-                        ? (profile as { occupation?: string }).occupation
-                        : "-"
-                    }
+                    value={profile?.occupation ?? "-"}
                   />
                   <IconRow
                     icon={<Ruler className="w-4 h-4" />}
                     label="Height"
-                    value={
-                      typeof profile === "object" &&
-                      profile &&
-                      "height" in profile
-                        ? (profile as { height?: string }).height
-                        : "-"
-                    }
+                    value={profile?.height ?? "-"}
                   />
                 </div>
                 <div>
@@ -659,13 +610,7 @@ export default function ProfileDetailPage() {
                   <IconRow
                     icon={<MapPin className="w-4 h-4" />}
                     label="City"
-                    value={
-                      typeof profile === "object" &&
-                      profile &&
-                      "ukCity" in profile
-                        ? (profile as { ukCity?: string }).ukCity
-                        : "-"
-                    }
+                    value={profile?.ukCity ?? "-"}
                   />
                 </div>
                 <div>
@@ -675,13 +620,7 @@ export default function ProfileDetailPage() {
                   </h3>
                   <div className="flex items-start gap-2 text-gray-700">
                     <Info className="w-4 h-4 mt-0.5 text-pink-400" />
-                    <span>
-                      {typeof profile === "object" &&
-                      profile &&
-                      "aboutMe" in profile
-                        ? ((profile as { aboutMe?: string }).aboutMe ?? "-")
-                        : "-"}
-                    </span>
+                    <span>{profile?.aboutMe ?? "-"}</span>
                   </div>
                 </div>
               </motion.div>
