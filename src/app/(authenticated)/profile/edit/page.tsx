@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import type { ProfileFormValues, Profile } from "@/types/profile";
+import type { Profile } from "@/types/profile";
 import type { ProfileFormValues as FormProfileFormValues } from "@/components/profile/ProfileForm";
 import ProfileFormComponent from "@/components/profile/ProfileForm";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -56,111 +56,75 @@ const defaultProfile: Profile = {
 };
 
 // Type conversion functions
+type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say" | "other";
+
 function convertProfileToFormValues(
   profile: Partial<Profile>
-): ProfileFormValues {
+): FormProfileFormValues {
   return {
-    _id: profile._id,
-    userId: profile.userId,
-    clerkId: profile.clerkId,
-    email: profile.email,
-    role: profile.role,
-    fullName: profile.fullName || "",
-    dateOfBirth: profile.dateOfBirth || "",
-    gender: profile.gender || "",
-    ukCity: profile.ukCity || "",
-    ukPostcode: profile.ukPostcode || "",
-    phoneNumber: profile.phoneNumber || "",
-    aboutMe: profile.aboutMe || "",
-    religion: profile.religion || "",
-    caste: profile.caste || "",
-    motherTongue: profile.motherTongue || "",
-    height: profile.height || "",
-    maritalStatus: profile.maritalStatus || "",
-    education: profile.education || "",
-    occupation: profile.occupation || "",
-    annualIncome: profile.annualIncome || "",
-    diet: profile.diet || "",
-    smoking: profile.smoking || "",
-    drinking: profile.drinking || "",
-    physicalStatus: profile.physicalStatus || "",
-    partnerPreferenceAgeMin: profile.partnerPreferenceAgeMin || "",
-    partnerPreferenceAgeMax: profile.partnerPreferenceAgeMax || "",
-    partnerPreferenceReligion: profile.partnerPreferenceReligion || [],
-    partnerPreferenceUkCity: profile.partnerPreferenceUkCity || [],
-    preferredGender: profile.preferredGender || "",
-    profileImageIds: profile.profileImageIds || [],
-    isProfileComplete: profile.isProfileComplete,
-    hiddenFromSearch: profile.hiddenFromSearch,
-    banned: profile.banned,
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt,
+    fullName: String(profile.fullName ?? ""),
+    dateOfBirth: String(profile.dateOfBirth ?? ""),
+    gender: (profile.gender as Gender) || "other",
+    height: String(profile.height ?? ""),
+    ukCity: String(profile.ukCity ?? ""),
+    aboutMe: String(profile.aboutMe ?? ""),
+    phoneNumber: String(profile.phoneNumber ?? ""),
+    preferredGender: String(profile.preferredGender ?? ""),
+    partnerPreferenceAgeMin: String(profile.partnerPreferenceAgeMin ?? ""),
+    partnerPreferenceAgeMax: String(profile.partnerPreferenceAgeMax ?? ""),
+    partnerPreferenceReligion: Array.isArray(profile.partnerPreferenceReligion)
+      ? profile.partnerPreferenceReligion.join(", ")
+      : String(profile.partnerPreferenceReligion ?? ""),
+    partnerPreferenceUkCity: Array.isArray(profile.partnerPreferenceUkCity)
+      ? profile.partnerPreferenceUkCity.join(", ")
+      : String(profile.partnerPreferenceUkCity ?? ""),
   };
 }
 
 function convertFormValuesToProfile(
-  formValues: ProfileFormValues,
+  formValues: FormProfileFormValues,
   existingProfile: Partial<Profile> = {}
 ): Profile {
-  // Ensure numeric fields are properly handled
-  const annualIncome =
-    formValues.annualIncome !== undefined
-      ? typeof formValues.annualIncome === "string"
-        ? parseFloat(formValues.annualIncome) || 0
-        : formValues.annualIncome
-      : 0;
-
-  const partnerPreferenceAgeMin =
-    typeof formValues.partnerPreferenceAgeMin === "number"
-      ? formValues.partnerPreferenceAgeMin
-      : typeof formValues.partnerPreferenceAgeMin === "string"
-        ? parseInt(formValues.partnerPreferenceAgeMin, 10) || 18
-        : 18;
-  const partnerPreferenceAgeMax =
-    typeof formValues.partnerPreferenceAgeMax === "number"
-      ? formValues.partnerPreferenceAgeMax
-      : typeof formValues.partnerPreferenceAgeMax === "string"
-        ? parseInt(formValues.partnerPreferenceAgeMax, 10) || 80
-        : 80;
-
-  // Ensure maritalStatus is one of the allowed values
-  const maritalStatus =
-    formValues.maritalStatus === "single" ||
-    formValues.maritalStatus === "divorced" ||
-    formValues.maritalStatus === "widowed"
-      ? formValues.maritalStatus
-      : "single";
-
-  // Ensure preferredGender is one of the allowed values
-  const preferredGender =
-    formValues.preferredGender === "male" ||
-    formValues.preferredGender === "female" ||
-    formValues.preferredGender === "any"
-      ? formValues.preferredGender
-      : "any";
-
-  // Ensure gender is one of the allowed values
-  const gender: "male" | "female" | "other" =
-    formValues.gender === "male" ||
-    formValues.gender === "female" ||
-    formValues.gender === "other"
-      ? formValues.gender
-      : "other";
-
+  const partnerPreferenceReligion =
+    typeof formValues.partnerPreferenceReligion === "string"
+      ? formValues.partnerPreferenceReligion
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      : [];
+  const partnerPreferenceUkCity =
+    typeof formValues.partnerPreferenceUkCity === "string"
+      ? formValues.partnerPreferenceUkCity
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      : [];
   return {
     ...defaultProfile,
     ...existingProfile,
     ...formValues,
-    maritalStatus,
-    preferredGender,
-    gender,
-    annualIncome: annualIncome.toString(), // Convert to string to match Profile type
+    gender: (formValues.gender as Gender) || "other",
+    partnerPreferenceAgeMin: formValues.partnerPreferenceAgeMin
+      ? parseInt(formValues.partnerPreferenceAgeMin, 10)
+      : 18,
+    partnerPreferenceAgeMax: formValues.partnerPreferenceAgeMax
+      ? parseInt(formValues.partnerPreferenceAgeMax, 10)
+      : 80,
+    partnerPreferenceReligion,
+    partnerPreferenceUkCity,
+    preferredGender: (["male", "female", "any"].includes(
+      formValues.preferredGender
+    )
+      ? formValues.preferredGender
+      : "any") as "male" | "female" | "any",
     height: formValues.height?.toString() || "",
-    partnerPreferenceAgeMin,
-    partnerPreferenceAgeMax,
-    isProfileComplete: true,
+    aboutMe: formValues.aboutMe || "",
+    phoneNumber: formValues.phoneNumber || "",
+    dateOfBirth:
+      typeof formValues.dateOfBirth === "string"
+        ? formValues.dateOfBirth
+        : (formValues.dateOfBirth as Date)?.toISOString() || "",
     updatedAt: Date.now(),
-    userId: (formValues.userId as Id<"users">) || defaultProfile.userId,
   };
 }
 
@@ -232,7 +196,7 @@ export default function EditProfilePage() {
 
   // Profile update mutation using react-query
   const updateProfileMutation = useMutation({
-    mutationFn: async (values: ProfileFormValues) => {
+    mutationFn: async (values: FormProfileFormValues) => {
       if (!token)
         throw new Error("Authentication required. Please sign in again.");
       const updatedProfile = convertFormValuesToProfile(values, profileData);
@@ -266,7 +230,7 @@ export default function EditProfilePage() {
     async (values: FormProfileFormValues & { profileImageIds: string[] }) => {
       setServerError(null);
       await updateProfileMutation.mutateAsync(
-        values as unknown as ProfileFormValues
+        values as unknown as FormProfileFormValues
       );
     },
     [updateProfileMutation]
