@@ -78,6 +78,10 @@ function convertProfileToFormValues(
     partnerPreferenceUkCity: Array.isArray(profile.partnerPreferenceUkCity)
       ? profile.partnerPreferenceUkCity.join(", ")
       : String(profile.partnerPreferenceUkCity ?? ""),
+    religion: String(profile.religion ?? ""),
+    caste: String(profile.caste ?? ""),
+    motherTongue: String(profile.motherTongue ?? ""),
+    maritalStatus: String(profile.maritalStatus ?? ""),
   };
 }
 
@@ -117,6 +121,11 @@ function convertFormValuesToProfile(
     )
       ? formValues.preferredGender
       : "any") as "male" | "female" | "any",
+    maritalStatus: (["single", "divorced", "widowed"].includes(
+      formValues.maritalStatus
+    )
+      ? formValues.maritalStatus
+      : "single") as "single" | "divorced" | "widowed",
     height: formValues.height?.toString() || "",
     aboutMe: formValues.aboutMe || "",
     phoneNumber: formValues.phoneNumber || "",
