@@ -35,7 +35,6 @@ const religions = [
 interface FiltersState {
   distance: string;
   religion: string;
-  s;
   minAge: string;
   maxAge: string;
   city: string;
