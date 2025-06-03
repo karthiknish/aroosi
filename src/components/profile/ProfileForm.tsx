@@ -57,6 +57,10 @@ export type ProfileFormValues = {
   education: string;
   occupation: string;
   annualIncome: string;
+  diet: string;
+  smoking: string;
+  drinking: string;
+  physicalStatus: string;
 };
 
 interface ProfileFormProps {
@@ -111,6 +115,10 @@ const essentialProfileSchema = z.object({
   education: z.string(),
   occupation: z.string(),
   annualIncome: z.string(),
+  diet: z.string(),
+  smoking: z.string(),
+  drinking: z.string(),
+  physicalStatus: z.string(),
 });
 
 // Height conversion utility function
@@ -176,6 +184,10 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     education: "",
     occupation: "",
     annualIncome: "",
+    diet: "",
+    smoking: "",
+    drinking: "",
+    physicalStatus: "",
   };
 
   // Use a ref to track if we've initialized the form to prevent unnecessary resets
