@@ -65,6 +65,7 @@ export default function AdminCreateProfilePage() {
           mode="create"
           onSubmit={async (values) => {
             if (isSubmitting) return;
+            if (!token) return;
             setIsSubmitting(true);
             try {
               // Remove cache clearing logic for values.userId (not guaranteed to exist)
