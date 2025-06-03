@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { fetchBlogPosts, deleteBlogPost, BlogPost } from "@/lib/blogUtil";
+import { fetchBlogPosts, deleteBlogPost } from "@/lib/blogUtil";
+import type { BlogPost } from "@/types/blog";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
