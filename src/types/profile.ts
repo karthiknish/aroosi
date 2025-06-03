@@ -32,6 +32,7 @@ export interface Profile {
   preferredGender: "male" | "female" | "any";
   profileImageIds: string[];
   isProfileComplete: boolean;
+  isOnboardingComplete: boolean;
   hiddenFromSearch: boolean;
   banned: boolean;
   createdAt: number;
@@ -71,6 +72,7 @@ export interface ProfileFormValues {
   preferredGender: string;
   profileImageIds?: string[];
   isProfileComplete?: boolean;
+  isOnboardingComplete?: boolean;
   hiddenFromSearch?: boolean;
   banned?: boolean;
   createdAt?: number;

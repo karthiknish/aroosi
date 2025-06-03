@@ -21,18 +21,13 @@ import { Loader2, Trash2, Grip } from "lucide-react";
 // Use the correct import for the modal
 import ImageDeleteConfirmation from "@/components/ImageDeleteConfirmation";
 import ProfileImageModal from "@/components/ProfileImageModal";
-
-export type Image = {
-  _id: string;
-  url: string;
-  storageId?: string;
-};
+import type { ImageType } from "@/types/image";
 
 type Props = {
-  images: Image[];
+  images: ImageType[];
   userId: string;
-  onReorder?: (newOrder: string[]) => void;
-  renderAction?: (img: Image, idx: number) => React.ReactNode;
+  onReorder?: (newOrder: ImageType[]) => void;
+  renderAction?: (img: ImageType, idx: number) => React.ReactNode;
   onDeleteImage?: (imageId: string) => void;
   isAdmin?: boolean;
   profileId?: string;
@@ -43,14 +38,13 @@ const SortableImage = ({
   img,
   onDeleteImage,
   isDragging = false,
-  allImages,
   imageIndex,
   setModalState,
 }: {
-  img: Image;
+  img: ImageType;
   onDeleteImage?: (id: string) => void;
   isDragging?: boolean;
-  allImages: Image[];
+  allImages: ImageType[];
   imageIndex: number;
   setModalState: React.Dispatch<
     React.SetStateAction<{ open: boolean; index: number }>
@@ -63,7 +57,7 @@ const SortableImage = ({
     transform,
     transition,
     isDragging: dndDragging,
-  } = useSortable({ id: img._id });
+  } = useSortable({ id: img.id });
 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
@@ -110,10 +104,10 @@ const SortableImage = ({
       )}
       {/* Use the correct modal import and props */}
       <ImageDeleteConfirmation
-        open={showDeleteConfirmation}
+        isOpen={showDeleteConfirmation}
         onClose={() => setShowDeleteConfirmation(false)}
-        onConfirm={() => {
-          onDeleteImage?.(img.storageId || img._id);
+        onConfirm={async () => {
+          await onDeleteImage?.(img.id);
           setShowDeleteConfirmation(false);
         }}
       />
@@ -125,14 +119,13 @@ export function ProfileImageReorder({
   images,
   userId,
   onReorder,
-  renderAction,
   onDeleteImage,
   loading = false,
 }: Props) {
   const { token } = useAuthContext();
   const [isReordering, setIsReordering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [orderedImages, setOrderedImages] = useState(images);
+  const [orderedImages, setOrderedImages] = useState<ImageType[]>(images);
 
   // Modal state for swiping through images
   const [modalState, setModalState] = useState<{
@@ -158,15 +151,15 @@ export function ProfileImageReorder({
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
-      const oldIndex = orderedImages.findIndex((img) => img._id === active.id);
-      const newIndex = orderedImages.findIndex((img) => img._id === over.id);
+      const oldIndex = orderedImages.findIndex((img) => img.id === active.id);
+      const newIndex = orderedImages.findIndex((img) => img.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
 
       const newOrdered = arrayMove(orderedImages, oldIndex, newIndex);
-      const newStorageOrder = newOrdered.map((img) => img.storageId || img._id);
+      const newStorageOrder = newOrdered.map((img) => img.id);
 
       setOrderedImages(newOrdered);
-      if (onReorder) onReorder(newOrdered.map((img) => img._id));
+      if (onReorder) onReorder(newOrdered);
 
       try {
         setIsReordering(true);
@@ -199,7 +192,7 @@ export function ProfileImageReorder({
         toast.error(`Failed to update order: ${errorMessage}`);
 
         setOrderedImages(images);
-        if (onReorder) onReorder(images.map((img) => img._id));
+        if (onReorder) onReorder(images);
       } finally {
         setIsReordering(false);
       }
@@ -246,12 +239,12 @@ export function ProfileImageReorder({
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={orderedImages.map((img) => img._id)}
+          items={orderedImages.map((img) => img.id)}
           strategy={horizontalListSortingStrategy}
         >
           <div className="flex flex-wrap gap-4">
             {orderedImages.map((img, idx) => (
-              <div key={img._id} style={{ width: 100, height: 100 }}>
+              <div key={img.id} style={{ width: 100, height: 100 }}>
                 <SortableImage
                   img={img}
                   onDeleteImage={onDeleteImage}

@@ -13,18 +13,17 @@ import {
 import { useUser, useAuth } from "@clerk/nextjs";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import { useQuery, useQueryClient } from "@tanstack/react-query"; // Added: useQueryClient
-import { usePathname, useRouter } from "next/navigation";
-import { checkProfileCompletion } from "@/lib/profile/profileUtils";
+// import { usePathname, useRouter } from "next/navigation";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { setCachedProfileComplete } from "@/lib/cache";
 import { Loader2 } from "lucide-react";
 // import { toast } from "sonner"; // Or your preferred toast library
 
 // Placeholder for toast if not using a specific library for this example
-const toast = {
-  success: (message: string) => console.log("Toast Success:", message),
-  error: (message: string) => console.error("Toast Error:", message),
-};
+// const toast = {
+//   success: (message: string) => console.log("Toast Success:", message),
+//   error: (message: string) => console.error("Toast Error:", message),
+// };
 
 interface ProfileType {
   id: string;
@@ -67,6 +66,26 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const TOKEN_STORAGE_KEY = "aroosi_auth_token";
 
+// Type for expected profile API response shape
+type ProfileApiResponseData = {
+  _id?: string;
+  id?: string;
+  userId?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string | Date | number;
+  gender?: string;
+  profileImageUrl?: string;
+  bio?: string;
+  location?: string;
+  createdAt?: string | Date | number;
+  updatedAt?: string | Date | number;
+  isOnboardingComplete?: boolean;
+};
+
 export function AuthProvider({
   children,
 }: {
@@ -79,8 +98,6 @@ export function AuthProvider({
     signOut: clerkSignOut,
   } = useAuth();
   const { user: clerkUser, isLoaded: isUserLoaded = false } = useUser();
-  const router = useRouter();
-  const pathname = usePathname();
   const queryClient = useQueryClient(); // Added
 
   // Token state
@@ -191,46 +208,43 @@ export function AuthProvider({
   );
 
   // Sign out function
-  const signOut = useCallback(
-    async (redirectToSignIn = true) => {
-      console.log("AuthContext: Signing out...");
-      try {
-        // Clear local auth state immediately
-        setToken(null); // This will also clear from localStorage and parts of queryClient
-        setProfile(null);
-        setIsProfileComplete(false);
-        setIsOnboardingComplete(false);
-        setAuthError(null);
+  const signOut = useCallback(async () => {
+    console.log("AuthContext: Signing out...");
+    try {
+      // Clear local auth state immediately
+      setToken(null); // This will also clear from localStorage and parts of queryClient
+      setProfile(null);
+      setIsProfileComplete(false);
+      setIsOnboardingComplete(false);
+      setAuthError(null);
 
-        // Reset token refresh mechanism
-        isRefreshingTokenRef.current = false;
-        tokenRefreshPromiseRef.current = null;
+      // Reset token refresh mechanism
+      isRefreshingTokenRef.current = false;
+      tokenRefreshPromiseRef.current = null;
 
-        // Sign out from Clerk
-        if (clerkSignOut) {
-          await clerkSignOut();
-          console.log("AuthContext: Clerk sign out complete");
-        }
-
-        // Clear any remaining sensitive data
-        if (queryClient) {
-          queryClient.clear();
-        }
-      } catch (error) {
-        console.error("Error during sign out:", error);
-        setAuthError(
-          error instanceof Error ? error : new Error("Failed to sign out")
-        );
-        throw error;
-      } finally {
-        console.log("AuthContext: Sign out process completed");
+      // Sign out from Clerk
+      if (clerkSignOut) {
+        await clerkSignOut();
+        console.log("AuthContext: Clerk sign out complete");
       }
-    },
-    [clerkSignOut, setToken, queryClient, clerkIsSignedIn]
-  );
+
+      // Clear any remaining sensitive data
+      if (queryClient) {
+        queryClient.clear();
+      }
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      setAuthError(
+        error instanceof Error ? error : new Error("Failed to sign out")
+      );
+      throw error;
+    } finally {
+      console.log("AuthContext: Sign out process completed");
+    }
+  }, [clerkSignOut, setToken, queryClient]);
 
   // Fetch user profile when token changes
-  const { data: profileData, isLoading: isProfileLoading } = useQuery({
+  const { isLoading: isProfileLoading } = useQuery({
     queryKey: ["userProfile", token],
     queryFn: async () => {
       if (!token) return null;
@@ -238,7 +252,7 @@ export function AuthProvider({
         const response = await getCurrentUserWithProfile(token);
         if (response.success && response.data) {
           // Safely extract data from the response
-          const profileResponse = response.data as Record<string, any>;
+          const profileResponse = response.data as ProfileApiResponseData;
 
           // Create a properly typed profile object with defaults
           const profileData: ProfileType = {
@@ -337,7 +351,7 @@ export function AuthProvider({
             console.warn(
               "AuthProvider: Clerk session active but no token. Signing out."
             );
-            await signOut(true);
+            await signOut();
           }
         } else if (savedToken) {
           // Clear token if user is not signed in but we have a saved token
@@ -346,7 +360,7 @@ export function AuthProvider({
       } catch (error) {
         console.error("AuthProvider: Error initializing auth:", error);
         setAuthError(error as Error);
-        await signOut(true);
+        await signOut();
       } finally {
         setAuthProviderLoading(false);
       }

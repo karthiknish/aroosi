@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Upload } from "lucide-react";
 import { Id } from "@/../convex/_generated/dataModel";
 import { ConvexError } from "convex/values";
-import type { ImageData } from "./ProfileImageUpload";
+import type { ImageType } from "@/types/image";
 import Cropper, { Area } from "react-easy-crop";
 import {
   Dialog,
@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface ImageUploaderProps {
   userId: string;
-  orderedImages: ImageData[];
+  orderedImages: ImageType[];
   generateUploadUrl: () => Promise<
     string | { success: boolean; error: string }
   >;

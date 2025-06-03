@@ -166,6 +166,7 @@ export default function ProtectedRoute({
     requireProfileComplete,
     requireOnboardingComplete,
     searchParams,
+    getSignInUrl,
     // add isProfileEditRoute to dependencies
     // (technically not needed since it's derived from pathname, but for clarity)
 

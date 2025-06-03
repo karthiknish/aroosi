@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { ProfileFormValues, type Profile } from "@/types/profile";
+import type { ProfileFormValues, Profile } from "@/types/profile";
 import type { ProfileFormValues as FormProfileFormValues } from "@/components/profile/ProfileForm";
 import ProfileFormComponent from "@/components/profile/ProfileForm";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -15,7 +15,6 @@ import {
   getCurrentUserWithProfile,
   updateUserProfile,
 } from "@/lib/profile/userProfileApi";
-const defaultGender = ["male", "female", "other"] as const;
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
@@ -49,6 +48,7 @@ const defaultProfile: Profile = {
   preferredGender: "any",
   profileImageIds: [],
   isProfileComplete: false,
+  isOnboardingComplete: false,
   hiddenFromSearch: false,
   banned: false,
   createdAt: Date.now(),
@@ -58,61 +58,39 @@ const defaultProfile: Profile = {
 // Type conversion functions
 function convertProfileToFormValues(
   profile: Partial<Profile>
-): FormProfileFormValues {
-  // Ensure numeric fields are properly handled
-  const partnerPreferenceAgeMin =
-    typeof profile.partnerPreferenceAgeMin === "number"
-      ? profile.partnerPreferenceAgeMin
-      : typeof profile.partnerPreferenceAgeMin === "string"
-        ? parseInt(profile.partnerPreferenceAgeMin, 10) || 18
-        : 18;
-
-  const partnerPreferenceAgeMax =
-    typeof profile.partnerPreferenceAgeMax === "number"
-      ? profile.partnerPreferenceAgeMax
-      : typeof profile.partnerPreferenceAgeMax === "string"
-        ? parseInt(profile.partnerPreferenceAgeMax, 10) || 80
-        : 80;
-
-  const annualIncome =
-    typeof profile.annualIncome === "number"
-      ? profile.annualIncome
-      : typeof profile.annualIncome === "string"
-        ? parseFloat(profile.annualIncome) || 0
-        : 0;
-
+): ProfileFormValues {
   return {
-    userId: (profile.userId as Id<"users">) || ("" as Id<"users">),
+    _id: profile._id,
+    userId: profile.userId,
+    clerkId: profile.clerkId,
+    email: profile.email,
+    role: profile.role,
     fullName: profile.fullName || "",
     dateOfBirth: profile.dateOfBirth || "",
-    gender: (profile.gender as (typeof defaultGender)[number]) || "other",
-    height: profile.height?.toString() || "",
-    phoneNumber: profile.phoneNumber || "",
+    gender: profile.gender || "",
     ukCity: profile.ukCity || "",
     ukPostcode: profile.ukPostcode || "",
+    phoneNumber: profile.phoneNumber || "",
     aboutMe: profile.aboutMe || "",
     religion: profile.religion || "",
     caste: profile.caste || "",
     motherTongue: profile.motherTongue || "",
-    maritalStatus: profile.maritalStatus || "single",
+    height: profile.height || "",
+    maritalStatus: profile.maritalStatus || "",
     education: profile.education || "",
     occupation: profile.occupation || "",
-    annualIncome,
+    annualIncome: profile.annualIncome || "",
     diet: profile.diet || "",
-    smoking: profile.smoking || "no",
-    drinking: profile.drinking || "no",
-    physicalStatus: profile.physicalStatus || "normal",
-    preferredGender: profile.preferredGender || "any",
-    partnerPreferenceAgeMin,
-    partnerPreferenceAgeMax,
+    smoking: profile.smoking || "",
+    drinking: profile.drinking || "",
+    physicalStatus: profile.physicalStatus || "",
+    partnerPreferenceAgeMin: profile.partnerPreferenceAgeMin || "",
+    partnerPreferenceAgeMax: profile.partnerPreferenceAgeMax || "",
     partnerPreferenceReligion: profile.partnerPreferenceReligion || [],
     partnerPreferenceUkCity: profile.partnerPreferenceUkCity || [],
+    preferredGender: profile.preferredGender || "",
     profileImageIds: profile.profileImageIds || [],
-    isProfileComplete: profile.isProfileComplete || false,
-    _id: profile._id,
-    clerkId: profile.clerkId,
-    email: profile.email,
-    role: profile.role,
+    isProfileComplete: profile.isProfileComplete,
     hiddenFromSearch: profile.hiddenFromSearch,
     banned: profile.banned,
     createdAt: profile.createdAt,
@@ -290,7 +268,6 @@ export default function EditProfilePage() {
       await updateProfileMutation.mutateAsync(
         values as unknown as ProfileFormValues
       );
-      return { success: true };
     },
     [updateProfileMutation]
   );

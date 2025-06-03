@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useAuthContext } from "./AuthProvider";
+import type { ImageType } from "@/types/image";
 
 // Types
 type UploadImageResponse = {
@@ -19,15 +20,6 @@ type UploadImageResponse = {
   imageId: Id<"_storage">;
   message: string;
 };
-
-export interface ImageData {
-  _id: string;
-  _creationTime?: number;
-  storageId: string;
-  url: string;
-  fileName?: string;
-  uploadedAt?: number;
-}
 
 // Base props that are always available
 type ProfileImageUploadBaseProps = {
@@ -61,13 +53,9 @@ type ProfileImageUploadProps = ProfileImageUploadBaseProps &
 
 export function ProfileImageUpload({
   userId,
-  isAdmin = false,
-  profileId,
   onImagesChanged,
   onFileSelect,
-  adminUpdateProfile,
   mode = "edit",
-  uploadImageFn,
   className = "",
 }: ProfileImageUploadProps) {
   // Hooks must be called unconditionally at the top level
@@ -75,65 +63,15 @@ export function ProfileImageUpload({
   const queryClient = useQueryClient();
   const { token, refreshProfile } = useAuthContext();
 
-  // If onFileSelect is provided, use a simplified version of the component
-  if (onFileSelect) {
-    return (
-      <div
-        className={`relative flex items-center justify-center ${className || ""}`}
-      >
-        <label className="flex flex-col items-center justify-center w-full h-full p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
-          <svg
-            className="w-8 h-8 mb-2 text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <p className="text-sm text-gray-500 text-center">
-            Click to upload or drag and drop
-          </p>
-          <input
-            type="file"
-            className="hidden"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                onFileSelect(file);
-              }
-              // Reset the input to allow selecting the same file again
-              e.target.value = "";
-            }}
-          />
-        </label>
-      </div>
-    );
-  }
-
-  // Original component logic for backward compatibility
-  if (!userId) {
-    return null;
-  }
-
-  // State management
+  // State management (moved to top)
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
-  const [selectedImageIdx, setSelectedImageIdx] = useState<number>(-1);
   const [hasInitialized] = useState(false);
   const lastNotifiedImageIds = useRef<string>("");
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const prevImageCount = useRef<number>(0);
   const MAX_IMAGES_PER_USER = 5;
-
   // Track if we're currently updating the order to prevent loops
   const isUpdatingOrder = useRef(false);
 
@@ -151,8 +89,6 @@ export function ProfileImageUpload({
       prevIds.every((id, idx) => id === newIds[idx])
     );
   }, []);
-
-  // --- END Helper ---
 
   // Mutation for updating image order - moved up to avoid reference issues
   const updateImageOrderMutation = useMutation<
@@ -210,8 +146,8 @@ export function ProfileImageUpload({
       if (!res.ok) return [];
       const data = await res.json();
       return (data.userProfileImages || []).filter(
-        (img: ImageData) => !!img?.url && !!img?.storageId
-      ) as ImageData[];
+        (img: ImageType) => !!img?.url && !!img?.id
+      ) as ImageType[];
     },
     enabled: mode === "edit" && !!token && !!userId,
     staleTime: 60 * 1000, // Consider data fresh for 1 minute
@@ -247,8 +183,8 @@ export function ProfileImageUpload({
     if (!orderedImages?.length || isUpdatingOrder.current) return;
 
     const newImageIds = orderedImages
-      .filter((img) => img?.storageId)
-      .map((img) => img.storageId);
+      .filter((img) => img?.id)
+      .map((img) => img.id);
 
     // Only update if order has changed
     if (hasImageOrderChanged(newImageIds)) {
@@ -276,39 +212,11 @@ export function ProfileImageUpload({
     userId,
   ]);
 
-  // Handler for when ProfileImageReorder reports image order changes
-  const handleImagesReordered = useCallback(
-    (newImageIds: string[]) => {
-      if (isUpdatingOrder.current) return;
-
-      // Only call the mutation if the order has changed
-      if (hasImageOrderChanged(newImageIds)) {
-        isUpdatingOrder.current = true;
-        updateImageOrderMutation.mutate(newImageIds, {
-          onSuccess: () => {
-            lastNotifiedImageIds.current = newImageIds.join(",");
-            isUpdatingOrder.current = false;
-          },
-          onError: () => {
-            isUpdatingOrder.current = false;
-          },
-        });
-      }
-    },
-    [hasImageOrderChanged, updateImageOrderMutation]
-  );
-
-  // Handler for deleting an image via ProfileImageReorder
-  const handleDeleteImage = useCallback((imageId: string) => {
-    setPendingDeleteId(imageId);
-    setDeleteModalOpen(true);
-  }, []);
-
   // Memoize the profile image IDs
   const profileImageIds = useMemo(() => {
     return (orderedImages || [])
-      .filter((img): img is ImageData => Boolean(img?.storageId))
-      .map((img) => img.storageId);
+      .filter((img): img is ImageType => Boolean(img?.id))
+      .map((img) => img.id);
   }, [orderedImages]);
 
   useEffect(() => {
@@ -334,36 +242,18 @@ export function ProfileImageUpload({
 
   // Memoize the ordered images with proper typing
   const memoizedOrderedImages = useMemo(() => {
-    const validImages = (orderedImages || []).filter((img): img is ImageData =>
-      Boolean(img?.url && img.storageId)
+    const validImages = (orderedImages || []).filter((img): img is ImageType =>
+      Boolean(img?.url && img.id)
     );
 
     if (!profileImageIds?.length) return validImages;
 
-    const imageMap = new Map(validImages.map((img) => [img.storageId, img]));
+    const imageMap = new Map(validImages.map((img) => [img.id, img]));
 
     return profileImageIds
       .map((id) => imageMap.get(id))
-      .filter((img): img is ImageData => Boolean(img));
+      .filter((img): img is ImageType => Boolean(img));
   }, [orderedImages, profileImageIds]);
-
-  // Helper to go to previous/next image
-  const goToPrevImage = useCallback(() => {
-    if (selectedImageIdx > 0) {
-      setSelectedImageIdx(selectedImageIdx - 1);
-      setSelectedImageUrl(
-        memoizedOrderedImages[selectedImageIdx - 1]?.url || null
-      );
-    }
-  }, [selectedImageIdx, memoizedOrderedImages]);
-  const goToNextImage = useCallback(() => {
-    if (selectedImageIdx < memoizedOrderedImages.length - 1) {
-      setSelectedImageIdx(selectedImageIdx + 1);
-      setSelectedImageUrl(
-        memoizedOrderedImages[selectedImageIdx + 1]?.url || null
-      );
-    }
-  }, [selectedImageIdx, memoizedOrderedImages]);
 
   useEffect(() => {
     if (currentUserProfile && currentUserProfile.isProfileComplete) {
@@ -371,7 +261,6 @@ export function ProfileImageUpload({
     }
   }, [currentUserProfile, router]);
 
-  // Track when an upload is in progress
   const handleStartUpload = () => setIsUploadingFile(true);
 
   const generateUploadUrl = useCallback(async () => {
@@ -458,7 +347,7 @@ export function ProfileImageUpload({
       try {
         await refetchImages();
         toast.success("Image deleted successfully");
-      } catch (err) {
+      } catch {
         toast.error("Failed to update image order after delete");
       }
       setIsUploading(false);
@@ -480,8 +369,50 @@ export function ProfileImageUpload({
     deleteImageMutation.mutate(pendingDeleteId);
   }, [pendingDeleteId, deleteImageMutation]);
 
-  // Guard: Only render if userId and token are present
-  if (!userId || !token) {
+  // If onFileSelect is provided, use a simplified version of the component
+  if (onFileSelect) {
+    return (
+      <div
+        className={`relative flex items-center justify-center ${className || ""}`}
+      >
+        <label className="flex flex-col items-center justify-center w-full h-full p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+          <svg
+            className="w-8 h-8 mb-2 text-gray-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          <p className="text-sm text-gray-500 text-center">
+            Click to upload or drag and drop
+          </p>
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onFileSelect(file);
+              }
+              // Reset the input to allow selecting the same file again
+              e.target.value = "";
+            }}
+          />
+        </label>
+      </div>
+    );
+  }
+
+  // Original component logic for backward compatibility
+  if (!userId) {
     return null;
   }
 
@@ -506,10 +437,6 @@ export function ProfileImageUpload({
             uploadImage={uploadImage}
             setIsUploading={setIsUploading}
             toast={toast}
-            disabled={
-              isUploading ||
-              (memoizedOrderedImages?.length ?? 0) >= MAX_IMAGES_PER_USER
-            }
             isUploading={isUploading}
             fetchImages={refetchImages}
             onStartUpload={handleStartUpload}
