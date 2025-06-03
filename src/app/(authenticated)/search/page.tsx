@@ -12,7 +12,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserCircle } from "lucide-react";
-import { SignInButton } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";

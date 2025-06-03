@@ -35,13 +35,14 @@ interface MatchType {
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { 
-    token, 
-    isLoaded: authIsLoaded, 
-    isSignedIn, 
-    isAdmin 
+  const {
+    token,
+    isLoaded: authIsLoaded,
+    isSignedIn,
+    isAdmin,
   } = useAuthContext();
-  
+
+  // All hooks must be called unconditionally
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<{
     storageId: string;
@@ -52,11 +53,163 @@ export default function AdminProfileDetailPage() {
   // Redirect if not admin or not loaded yet
   useEffect(() => {
     if (authIsLoaded && (!isSignedIn || !isAdmin)) {
-      router.push('/');
+      router.push("/");
     }
   }, [authIsLoaded, isSignedIn, isAdmin, router]);
 
-  // Show loading state while checking auth
+  // React Query for profile with caching
+  const { data: profile, isLoading: loadingProfile } = useQuery({
+    queryKey: ["adminProfile", id],
+    queryFn: async () => {
+      const cacheKey = `adminProfile_${id}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      const now = Date.now();
+      if (cachedData && cacheTimestamp) {
+        const cacheAge = now - parseInt(cacheTimestamp, 10);
+        if (cacheAge < 5 * 60 * 1000) {
+          return JSON.parse(cachedData);
+        }
+      }
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Cache-Control": "max-age=300, stale-while-revalidate=60",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const profileRes = await fetch(`/api/admin/profiles/${id}?nocache=true`, {
+        headers,
+        next: { revalidate: 300 },
+      });
+      if (!profileRes.ok) {
+        throw new Error("Failed to fetch profile");
+      }
+      const data = await profileRes.json();
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      return data;
+    },
+    enabled: !!id && !!token && isSignedIn && isAdmin,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 2,
+    retryDelay: 1000,
+  });
+
+  const userId = profile?.userId;
+  const { data: images = [], isLoading: loadingImages } = useQuery<ImageType[]>(
+    {
+      queryKey: ["adminProfileImages", userId],
+      queryFn: async () => {
+        if (!userId) return [];
+        const cacheKey = `adminProfileImages_${userId}`;
+        const cachedData = sessionStorage.getItem(cacheKey);
+        const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+        const now = Date.now();
+        if (cachedData && cacheTimestamp) {
+          const cacheAge = now - parseInt(cacheTimestamp, 10);
+          if (cacheAge < 5 * 60 * 1000) {
+            return JSON.parse(cachedData);
+          }
+        }
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "Cache-Control": "max-age=300, stale-while-revalidate=60",
+        };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const imagesRes = await fetch(
+          `/api/profile-detail/${userId}/images?nocache=true`,
+          {
+            headers,
+            next: { revalidate: 300 },
+          }
+        );
+        if (!imagesRes.ok) {
+          throw new Error("Failed to fetch profile images");
+        }
+        const data = (await imagesRes.json()).userProfileImages as ImageType[];
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+        return data;
+      },
+      enabled: !!userId && !!token && isSignedIn && isAdmin,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 2,
+      retryDelay: 1000,
+    }
+  );
+
+  const { data: matches = [] } = useQuery<MatchType[]>({
+    queryKey: ["adminProfileMatches", id],
+    queryFn: async () => {
+      const cacheKey = `adminProfileMatches_${id}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      const now = Date.now();
+      if (cachedData && cacheTimestamp) {
+        const cacheAge = now - parseInt(cacheTimestamp, 10);
+        if (cacheAge < 5 * 60 * 1000) {
+          return JSON.parse(cachedData);
+        }
+      }
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Cache-Control": "max-age=300, stale-while-revalidate=60",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const matchesRes = await fetch(
+        `/api/admin/profiles/${id}/matches?nocache=true`,
+        {
+          headers,
+          next: { revalidate: 300 },
+        }
+      );
+      if (!matchesRes.ok) {
+        throw new Error("Failed to fetch profile matches");
+      }
+      const data = (await matchesRes.json()) as MatchType[];
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      return data;
+    },
+    enabled: !!id && !!token && isSignedIn && isAdmin,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 2,
+    retryDelay: 1000,
+  });
+
+  const { orderedImages: orderedImagesRaw } = React.useMemo(() => {
+    const defaultReturn = { orderedImages: [] as ImageType[] };
+    if (!profile) return defaultReturn;
+    const validImages: ImageType[] = Array.isArray(images) ? images : [];
+    if (validImages.length === 0) return defaultReturn;
+    const map: Record<string, ImageType> = Object.fromEntries(
+      validImages.map((img) => [String(img.storageId), img])
+    );
+    const all = [...validImages];
+    let ordered: ImageType[] = [];
+    const profileImageIds = Array.isArray(profile.profileImageIds)
+      ? profile.profileImageIds
+      : [];
+    const hasProfileImageIds = profileImageIds.length > 0;
+    if (hasProfileImageIds) {
+      ordered = profileImageIds.map((id: string) => map[id]).filter(Boolean);
+    }
+    if (!hasProfileImageIds || ordered.length === 0) {
+      ordered = all;
+    }
+    return {
+      orderedImages: Array.isArray(ordered) ? ordered : [],
+    };
+  }, [images, profile]);
+
+  const orderedImages: ImageType[] = Array.isArray(orderedImagesRaw)
+    ? orderedImagesRaw
+    : [];
+  const [currentImageIdx, setCurrentImageIdx] = useState(0);
+
+  // Early return logic moved below hooks
   if (!authIsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -64,161 +217,22 @@ export default function AdminProfileDetailPage() {
       </div>
     );
   }
-
-  // If not signed in or not admin, show nothing (will be redirected)
   if (!isSignedIn || !isAdmin) {
     return null;
   }
-
-  // React Query for profile with caching
-  const { data: profile, isLoading: loadingProfile } = useQuery({
-    queryKey: ["adminProfile", id],
-    queryFn: async () => {
-      // Check cache first
-      const cacheKey = `adminProfile_${id}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
-      const now = Date.now();
-      
-      // Return cached data if it's less than 5 minutes old
-      if (cachedData && cacheTimestamp) {
-        const cacheAge = now - parseInt(cacheTimestamp, 10);
-        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
-          return JSON.parse(cachedData);
-        }
-      }
-      
-      // Fetch fresh data
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'max-age=300, stale-while-revalidate=60'
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      
-      const profileRes = await fetch(`/api/admin/profiles/${id}?nocache=true`, { 
-        headers,
-        next: { revalidate: 300 } // Revalidate every 5 minutes
-      });
-      
-      if (!profileRes.ok) {
-        throw new Error('Failed to fetch profile');
-      }
-      
-      const data = await profileRes.json();
-      
-      // Update cache
-      sessionStorage.setItem(cacheKey, JSON.stringify(data));
-      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
-      
-      return data;
-    },
-    enabled: !!id && !!token && isSignedIn && isAdmin,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
-    retryDelay: 1000,
-  });
-
-  // React Query for images with caching
-  const userId = profile?.userId;
-  const { data: images = [], isLoading: loadingImages } = useQuery<ImageType[]>({
-    queryKey: ["adminProfileImages", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      
-      // Check cache first
-      const cacheKey = `adminProfileImages_${userId}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
-      const now = Date.now();
-      
-      // Return cached data if it's less than 5 minutes old
-      if (cachedData && cacheTimestamp) {
-        const cacheAge = now - parseInt(cacheTimestamp, 10);
-        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
-          return JSON.parse(cachedData);
-        }
-      }
-      
-      // Fetch fresh data
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'max-age=300, stale-while-revalidate=60'
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      
-      const imagesRes = await fetch(`/api/profile-detail/${userId}/images?nocache=true`, {
-        headers,
-        next: { revalidate: 300 } // Revalidate every 5 minutes
-      });
-      
-      if (!imagesRes.ok) {
-        throw new Error('Failed to fetch profile images');
-      }
-      
-      const data = (await imagesRes.json()).userProfileImages as ImageType[];
-      
-      // Update cache
-      sessionStorage.setItem(cacheKey, JSON.stringify(data));
-      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
-      
-      return data;
-    },
-    enabled: !!userId && !!token && isSignedIn && isAdmin,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
-    retryDelay: 1000,
-  });
-
-  // React Query for matches with caching
-  const { data: matches = [] } = useQuery<MatchType[]>({
-    queryKey: ["adminProfileMatches", id],
-    queryFn: async () => {
-      // Check cache first
-      const cacheKey = `adminProfileMatches_${id}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
-      const now = Date.now();
-      
-      // Return cached data if it's less than 5 minutes old
-      if (cachedData && cacheTimestamp) {
-        const cacheAge = now - parseInt(cacheTimestamp, 10);
-        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
-          return JSON.parse(cachedData);
-        }
-      }
-      
-      // Fetch fresh data
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'max-age=300, stale-while-revalidate=60'
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      
-      const matchesRes = await fetch(`/api/admin/profiles/${id}/matches?nocache=true`, {
-        headers,
-        next: { revalidate: 300 } // Revalidate every 5 minutes
-      });
-      
-      if (!matchesRes.ok) {
-        throw new Error('Failed to fetch profile matches');
-      }
-      
-      const data = await matchesRes.json() as MatchType[];
-      
-      // Update cache
-      sessionStorage.setItem(cacheKey, JSON.stringify(data));
-      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
-      
-      return data;
-    },
-    enabled: !!id && !!token && isSignedIn && isAdmin,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
-    retryDelay: 1000,
-  });
+  if (loadingProfile || loadingImages) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white flex flex-col items-center justify-center min-h-[300px] animate-pulse">
+          <div className="w-32 h-32 rounded-lg bg-gray-200 mb-4" />
+          <div className="h-6 w-1/2 bg-gray-200 rounded mb-2" />
+          <div className="h-4 w-1/3 bg-gray-100 rounded mb-2" />
+          <div className="h-4 w-1/4 bg-gray-100 rounded mb-2" />
+          <div className="h-4 w-1/2 bg-gray-100 rounded mb-2" />
+        </div>
+      </div>
+    );
+  }
 
   const handleDeleteImage = async () => {
     if (!profile?.userId || !imageToDelete) return;
@@ -259,59 +273,6 @@ export default function AdminProfileDetailPage() {
     setImageToDelete(null);
   };
 
-  // Process images for display
-  const { orderedImages: orderedImagesRaw } = React.useMemo(() => {
-    // Default return values
-    const defaultReturn = {
-      orderedImages: [] as ImageType[],
-    };
-
-    if (!profile) {
-      return defaultReturn;
-    }
-
-    // Ensure we have a valid images array
-    const validImages: ImageType[] = Array.isArray(images) ? images : [];
-
-    // If no images, return early
-    if (validImages.length === 0) {
-      return defaultReturn;
-    }
-
-    // Create a map of storageId to image
-    const map: Record<string, ImageType> = Object.fromEntries(
-      validImages.map((img) => [String(img.storageId), img])
-    );
-
-    // Get all images in their original order
-    const all = [...validImages];
-
-    // Get ordered images based on profileImageIds if available
-    let ordered: ImageType[] = [];
-    const profileImageIds = Array.isArray(profile.profileImageIds)
-      ? profile.profileImageIds
-      : [];
-    const hasProfileImageIds = profileImageIds.length > 0;
-
-    if (hasProfileImageIds) {
-      ordered = profileImageIds.map((id: string) => map[id]).filter(Boolean);
-    }
-
-    // If no ordered images from profileImageIds or no profileImageIds, use all images
-    if (!hasProfileImageIds || ordered.length === 0) {
-      ordered = all;
-    }
-
-    return {
-      orderedImages: Array.isArray(ordered) ? ordered : [],
-    };
-  }, [images, profile]);
-
-  const orderedImages: ImageType[] = Array.isArray(orderedImagesRaw)
-    ? orderedImagesRaw
-    : [];
-
-  const [currentImageIdx, setCurrentImageIdx] = useState(0);
   const handlePrev = () => {
     setCurrentImageIdx((prev) =>
       prev === 0 ? orderedImages.length - 1 : prev - 1
@@ -322,21 +283,6 @@ export default function AdminProfileDetailPage() {
       prev === orderedImages.length - 1 ? 0 : prev + 1
     );
   };
-
-  // Loading state for profile data
-  if (loadingProfile || loadingImages) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white flex flex-col items-center justify-center min-h-[300px] animate-pulse">
-          <div className="w-32 h-32 rounded-lg bg-gray-200 mb-4" />
-          <div className="h-6 w-1/2 bg-gray-200 rounded mb-2" />
-          <div className="h-4 w-1/3 bg-gray-100 rounded mb-2" />
-          <div className="h-4 w-1/4 bg-gray-100 rounded mb-2" />
-          <div className="h-4 w-1/2 bg-gray-100 rounded mb-2" />
-        </div>
-      </div>
-    );
-  }
 
   const renderDeleteConfirmation = () => {
     if (!imageToDelete) return null;

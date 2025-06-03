@@ -168,6 +168,7 @@ const ProfileView: FC<ProfileViewProps> = ({
           }
 
           return {
+            id: imageId,
             _id: imageId,
             url: imageUrl,
             storageId:
@@ -185,6 +186,7 @@ const ProfileView: FC<ProfileViewProps> = ({
       return profileData.profileImageIds
         .filter((id): id is string => typeof id === "string")
         .map((id) => ({
+          id,
           _id: id,
           url: `/api/profile/image/${id}`,
           storageId: id,
@@ -206,10 +208,14 @@ const ProfileView: FC<ProfileViewProps> = ({
         throw new Error("Failed to delete profile.");
       }
       router.push("/");
-    } catch (err: any) {
-      setDeleteError(
-        err?.message || "An error occurred while deleting your profile."
-      );
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setDeleteError(err.message);
+      } else if (typeof err === "string") {
+        setDeleteError(err);
+      } else {
+        setDeleteError("An error occurred while deleting your profile.");
+      }
     } finally {
       setDeleteLoading(false);
       setShowDeleteDialog(false);

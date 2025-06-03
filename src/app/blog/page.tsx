@@ -7,7 +7,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlogPost } from "@/types/blog";
-import { useQuery, QueryKey } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 // Explicit return type for the fetch function
 const fetchBlogPostsAPI = async (
