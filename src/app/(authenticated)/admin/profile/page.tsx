@@ -22,10 +22,8 @@ import { Button } from "@/components/ui/button";
 import ProfileCard, {
   ProfileEditFormState,
 } from "@/components/admin/ProfileCard";
-import { useSearchParams } from "next/navigation";
 const AdminProfilePage = () => {
   const { token } = useAuthContext();
-  const searchParams = useSearchParams();
   const {
     data: profiles,
     isLoading: loading,

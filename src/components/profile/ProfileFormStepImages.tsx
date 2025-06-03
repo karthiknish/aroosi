@@ -1,11 +1,9 @@
 import React from "react";
 import { Trash2 } from "lucide-react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
-import type { ProfileFormValues } from "./ProfileForm";
-import { ProfileImageReorder } from "@/components/ProfileImageReorder";
-import type { UseFormReturn } from "react-hook-form";
 import type { ImageType } from "@/types/image";
 import { useAuthContext } from "@/components/AuthProvider";
+import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 
 interface Props {
   images: ImageType[];

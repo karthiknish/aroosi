@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { QueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
 import ProfileForm from "@/components/profile/ProfileForm";
 import { Button } from "@/components/ui/button";

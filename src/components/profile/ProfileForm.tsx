@@ -69,11 +69,6 @@ const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({
   </div>
 );
 
-// Height constants
-const MIN_HEIGHT_CM = 137;
-const MAX_HEIGHT_CM = 198;
-const DEFAULT_HEIGHT_CM = 170;
-
 const essentialProfileSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   dateOfBirth: z.union([
