@@ -12,10 +12,7 @@ export async function PUT(req: NextRequest) {
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
   const url = new URL(req.url);
-  // The [id] param is the parent folder name
-  const segments = url.pathname.split("/");
-  // Find the profile id (second to last segment)
-  const id = segments[segments.length - 2];
+  const id = url.pathname.split("/").slice(-2, -1)[0]!; // get the [id] param from /profiles/[id]/ban
   let body: { banned?: boolean } = {};
   try {
     body = await req.json();
