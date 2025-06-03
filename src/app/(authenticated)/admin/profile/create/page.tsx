@@ -85,6 +85,37 @@ export default function AdminCreateProfilePage() {
                     typeof values.dateOfBirth === "string"
                       ? values.dateOfBirth
                       : values.dateOfBirth.toISOString(),
+                  partnerPreferenceAgeMin: Number(
+                    values.partnerPreferenceAgeMin
+                  ),
+                  partnerPreferenceAgeMax: Number(
+                    values.partnerPreferenceAgeMax
+                  ),
+                  partnerPreferenceReligion: Array.isArray(
+                    values.partnerPreferenceReligion
+                  )
+                    ? values.partnerPreferenceReligion
+                    : values.partnerPreferenceReligion
+                      ? values.partnerPreferenceReligion
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                  partnerPreferenceUkCity: Array.isArray(
+                    values.partnerPreferenceUkCity
+                  )
+                    ? values.partnerPreferenceUkCity
+                    : values.partnerPreferenceUkCity
+                      ? values.partnerPreferenceUkCity
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                  preferredGender: (["male", "female", "any"].includes(
+                    values.preferredGender
+                  )
+                    ? values.preferredGender
+                    : "any") as "male" | "female" | "any",
                 },
               });
               // Invalidate the profiles list cache
