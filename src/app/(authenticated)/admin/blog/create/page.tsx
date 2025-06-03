@@ -172,17 +172,14 @@ export default function CreateBlogPage() {
     setCreating(true);
     setError(null);
     try {
-      await createBlogPost(
-        {
-          title,
-          slug,
-          excerpt,
-          content,
-          imageUrl,
-          categories: [],
-        } as BlogPost,
-        token
-      );
+      await createBlogPost(token, {
+        title,
+        slug,
+        excerpt,
+        content,
+        imageUrl,
+        categories: [],
+      });
       // Optionally reset form or redirect
     } catch (err: unknown) {
       const error = err as Error;
