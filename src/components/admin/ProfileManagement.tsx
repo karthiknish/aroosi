@@ -60,7 +60,7 @@ export default function ProfileManagement() {
     queryKey: ["adminProfiles", token, search, page],
     queryFn: async () => {
       if (!token) return { profiles: [], total: 0 };
-      const data = await fetchAdminProfiles(token, search, page);
+      const data = await fetchAdminProfiles({ token: token!, search, page });
       if (Array.isArray(data.profiles)) {
         fetchAllProfileImages(data.profiles);
       }
@@ -107,14 +107,18 @@ export default function ProfileManagement() {
       const updates = Object.fromEntries(
         Object.entries(editForm).filter(([key]) => allowedFields.includes(key))
       );
-      const updatedProfile = await updateAdminProfile(token!, id, updates);
+      const updatedProfile = await updateAdminProfile({
+        token: token!,
+        id,
+        updates,
+      });
       // Refetch image URLs for this profile
       if (updatedProfile.userId) {
         try {
-          const data = await fetchAdminProfileImages(
-            token!,
-            updatedProfile.userId
-          );
+          const data = await fetchAdminProfileImages({
+            token: token!,
+            userId: updatedProfile.userId,
+          });
           setProfileImages((prev) => ({
             ...prev,
             [updatedProfile._id]: Array.isArray(data.userProfileImages)
@@ -138,14 +142,18 @@ export default function ProfileManagement() {
     id: string;
     updates: { profileImageIds: string[] };
   }) => {
-    const updatedProfile = await updateAdminProfile(token!, id, updates);
+    const updatedProfile = await updateAdminProfile({
+      token: token!,
+      id,
+      updates,
+    });
     // Update local images state for this profile
     if (updatedProfile.userId) {
       try {
-        const data = await fetchAdminProfileImages(
-          token!,
-          updatedProfile.userId
-        );
+        const data = await fetchAdminProfileImages({
+          token: token!,
+          userId: updatedProfile.userId,
+        });
         setProfileImages((prev) => ({
           ...prev,
           [updatedProfile._id]: Array.isArray(data.userProfileImages)
@@ -166,11 +174,11 @@ export default function ProfileManagement() {
   // Delete profile using API
   const handleDelete = async (id: string) => {
     try {
-      await deleteAdminProfile(token!, id);
+      await deleteAdminProfile({ token: token!, id });
       setDeleteId(null);
       // Refetch profiles after delete
       try {
-        const data = await fetchAdminProfiles(token!, search, page);
+        const data = await fetchAdminProfiles({ token: token!, search, page });
         setProfileImages(
           data.profiles.reduce(
             (acc: Record<string, ImageType[]>, profile: Profile) => ({
@@ -245,7 +253,7 @@ export default function ProfileManagement() {
   const handleToggleBan = async (id: Id<"profiles">, banned: boolean) => {
     if (!token) return;
     try {
-      await banAdminProfile(token, id, !banned);
+      await banAdminProfile({ token: token!, id, banned: !banned });
       // Update local state for immediate UI feedback
       setProfileImages((prev) => {
         const newImages = { ...prev };
@@ -311,12 +319,16 @@ export default function ProfileManagement() {
               ...profile,
               createdAt:
                 typeof profile.createdAt === "number"
-                  ? new Date(profile.createdAt).toISOString()
-                  : profile.createdAt,
+                  ? profile.createdAt
+                  : typeof profile.createdAt === "string"
+                    ? Date.parse(profile.createdAt)
+                    : 0,
               updatedAt:
                 typeof profile.updatedAt === "number"
-                  ? new Date(profile.updatedAt).toISOString()
-                  : profile.updatedAt,
+                  ? profile.updatedAt
+                  : typeof profile.updatedAt === "string"
+                    ? Date.parse(profile.updatedAt)
+                    : 0,
             };
             return (
               <ProfileCard
