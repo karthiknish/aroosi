@@ -171,6 +171,10 @@ function toProfileFormComponentValues(
     education: values.education ?? "",
     occupation: values.occupation ?? "",
     annualIncome: String(values.annualIncome ?? ""),
+    diet: values.diet ?? "",
+    smoking: values.smoking ?? "",
+    drinking: values.drinking ?? "",
+    physicalStatus: values.physicalStatus ?? "",
   };
 }
 
