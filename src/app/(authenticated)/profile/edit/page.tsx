@@ -152,6 +152,7 @@ function toProfileFormComponentValues(
         | "other") || "other",
     height: values.height ?? "",
     ukCity: values.ukCity ?? "",
+    ukPostcode: values.ukPostcode ?? "",
     aboutMe: values.aboutMe ?? "",
     phoneNumber: values.phoneNumber ?? "",
     preferredGender: values.preferredGender ?? "",
