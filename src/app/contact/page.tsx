@@ -9,6 +9,7 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState } from "react";
+import { submitContactPublic } from "@/lib/contactUtil";
 
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -39,17 +40,14 @@ export default function ContactPage() {
   const onSubmit: SubmitHandler<ContactFormValues> = async (data) => {
     setSubmitError(null);
     try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const result = await res.json();
-      if (res.ok && result.success) {
+      const result = await submitContactPublic(data);
+      if (result.success) {
         setIsSubmitted(true);
         reset();
       } else {
-        setSubmitError("Failed to send message. Please try again.");
+        setSubmitError(
+          result.error || "Failed to send message. Please try again."
+        );
       }
     } catch (error: unknown) {
       setSubmitError(

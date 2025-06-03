@@ -3,20 +3,15 @@
 import { useAuth } from "@clerk/nextjs";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query"; // Import useQuery
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/card";
-import { Input } from "../../../components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
+} from "@/components/ui/select";
 import { Button } from "../../../components/ui/button";
 import { MapPin, Search, UserCircle } from "lucide-react";
 import { useState } from "react";
