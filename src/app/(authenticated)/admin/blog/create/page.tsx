@@ -6,8 +6,6 @@ import { CreatePost } from "@/components/admin/CreatePost";
 import { toast } from "sonner";
 import { useAuthContext } from "@/components/AuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
-import type { BlogPost } from "@/types/blog";
-
 export default function CreateBlogPage() {
   const { token } = useAuthContext();
   const [title, setTitle] = useState<string>("");
@@ -172,7 +170,7 @@ export default function CreateBlogPage() {
     setCreating(true);
     setError(null);
     try {
-      await createBlogPost(token, {
+      await createBlogPost(token!, {
         title,
         slug,
         excerpt,
