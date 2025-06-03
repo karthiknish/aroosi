@@ -8,9 +8,10 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
-import { BlogPost } from "@/types/blog";
+import type { BlogPost } from "@/types/blog";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
+import { fetchBlogPostBySlug } from "@/lib/blogUtil";
 
 // Calculate reading time
 function getReadingTime(content: string): number {
@@ -18,22 +19,6 @@ function getReadingTime(content: string): number {
   const words = content.trim().split(/\s+/).length;
   return Math.ceil(words / wordsPerMinute);
 }
-
-// API fetching function
-const fetchBlogPostAPI = async (
-  slug: string,
-  token: string | null
-): Promise<BlogPost | null> => {
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`/api/blog/${slug}`, { headers });
-  if (!res.ok) {
-    if (res.status === 404) return null; // Specific handling for 404
-    throw new Error(res.statusText || "Failed to fetch blog post");
-  }
-  const data = await res.json();
-  return data.post || data; // Adjust based on actual API response structure, assuming it might be { post: BlogPost } or just BlogPost
-};
 
 // Skeleton component for loading state
 const BlogDetailSkeleton = () => (
@@ -67,8 +52,8 @@ export default function BlogDetailPage() {
     error,
   } = useQuery<BlogPost | null, Error, BlogPost | null, (string | null)[]>({
     queryKey: queryKey,
-    queryFn: () => fetchBlogPostAPI(slug, token),
-    enabled: !!slug, // Only run query if slug is available
+    queryFn: () => fetchBlogPostBySlug(slug, token ?? undefined),
+    enabled: !!slug,
   });
 
   if (isLoading) {

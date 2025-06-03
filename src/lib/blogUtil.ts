@@ -1,16 +1,6 @@
 // Blog utility functions for public and admin blog APIs
 
-export type BlogPost = {
-  _id?: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-  imageUrl: string;
-  categories: string[];
-  createdAt?: number;
-  updatedAt?: number;
-};
+import type { BlogPost } from "@/types/blog";
 
 type BlogApiResponse<T> = {
   success?: boolean;

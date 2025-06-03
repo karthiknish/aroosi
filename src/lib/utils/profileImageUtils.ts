@@ -20,7 +20,6 @@ export type MappedImage = {
  */
 export const useProfileImages = (profileId: string) => {
   const { token } = useAuthContext();
-  const queryClient = useQueryClient();
 
   const queryOptions = {
     queryKey: ['profile-images', profileId] as const,
