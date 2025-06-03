@@ -49,6 +49,10 @@ export type ProfileFormValues = {
   partnerPreferenceAgeMax: string;
   partnerPreferenceReligion: string;
   partnerPreferenceUkCity: string;
+  religion: string;
+  caste: string;
+  motherTongue: string;
+  maritalStatus: string;
 };
 
 interface ProfileFormProps {
@@ -95,6 +99,10 @@ const essentialProfileSchema = z.object({
   partnerPreferenceAgeMax: z.string(),
   partnerPreferenceReligion: z.string(),
   partnerPreferenceUkCity: z.string(),
+  religion: z.string(),
+  caste: z.string(),
+  motherTongue: z.string(),
+  maritalStatus: z.string(),
 });
 
 // Height conversion utility function
@@ -152,6 +160,10 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     partnerPreferenceAgeMax: "",
     partnerPreferenceReligion: "",
     partnerPreferenceUkCity: "",
+    religion: "",
+    caste: "",
+    motherTongue: "",
+    maritalStatus: "",
   };
 
   // Use a ref to track if we've initialized the form to prevent unnecessary resets
