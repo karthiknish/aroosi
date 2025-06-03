@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
 import BlogEditor from "@/components/admin/BlogEditor";
 import { useAuthContext } from "@/components/AuthProvider";
-import { fetchBlogPostBySlug, editBlogPost, BlogPost } from "@/lib/blogUtil";
+import { fetchBlogPostBySlug, editBlogPost } from "@/lib/blogUtil";
+import type { BlogPost } from "@/types/blog";
 import { Loader2 } from "lucide-react";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 
