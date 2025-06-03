@@ -1,5 +1,5 @@
 import { Profile } from "@/types/profile";
-import type { ProfileImage } from "./types";
+import type { ImageType } from "@/types/image";
 
 type AdminProfile = Profile & { _id: string; userId: string };
 
@@ -40,7 +40,7 @@ export async function fetchAdminProfileImages({
 }: {
   token: string;
   userId: string;
-}): Promise<{ userProfileImages: ProfileImage[] }> {
+}): Promise<{ userProfileImages: ImageType[] }> {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   try {
     const res = await fetch(`/api/profile-detail/${userId}/images`, {
@@ -149,8 +149,8 @@ export async function fetchAllAdminProfileImages({
 }: {
   token: string;
   profiles: { _id: string; userId: string }[];
-}): Promise<Record<string, ProfileImage[]>> {
-  const newImages: Record<string, ProfileImage[]> = {};
+}): Promise<Record<string, ImageType[]>> {
+  const newImages: Record<string, ImageType[]> = {};
   await Promise.all(
     profiles.map(async (profile) => {
       if (!profile.userId) return;

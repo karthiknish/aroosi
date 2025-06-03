@@ -4,20 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Save, X, Eye } from "lucide-react";
 import { Id } from "@/../convex/_generated/dataModel";
 import type { Profile } from "@/types/profile";
+import type { ImageType } from "@/types/image";
 import { useRouter } from "next/navigation";
 import ProfileEditForm from "./ProfileEditForm";
 import ProfileView from "./ProfileView";
 import { useCallback } from "react";
 import { useAuthContext } from "../AuthProvider";
-
-// Local ProfileImage type for admin usage
-type ProfileImage = {
-  _id: string;
-  storageId: string;
-  url: string | null;
-  fileName: string;
-  uploadedAt: number;
-};
 
 // Add at the top, after imports
 type RawImage = {
@@ -67,7 +59,7 @@ interface ProfileCardProps {
   onToggleBan: (id: Id<"profiles">, banned: boolean) => void;
   setDeleteId: (id: Id<"profiles"> | null) => void;
   onEditFormChange?: (updates: Partial<ProfileEditFormState>) => void;
-  images?: ProfileImage[];
+  images?: ImageType[];
   adminUpdateProfile?: (args: {
     id: string;
     updates: { profileImageIds: string[] };
@@ -94,7 +86,7 @@ export default function ProfileCard({
   // Loading state for save operation
   const [isSaving, setIsSaving] = useState(false);
   const [fetchedImages, setFetchedImages] = useState<
-    ProfileImage[] | null | undefined
+    ImageType[] | null | undefined
   >(undefined);
 
   // Fetch images on mount and whenever edit mode is entered (editingId === profile._id)
@@ -147,17 +139,17 @@ export default function ProfileCard({
                   : typeof img._id === "string"
                     ? img._id
                     : "",
-              _id:
-                typeof img._id === "string"
-                  ? img._id
-                  : typeof img.storageId === "string"
-                    ? img.storageId
-                    : "",
               fileName: typeof img.fileName === "string" ? img.fileName : "",
               uploadedAt:
                 typeof img.uploadedAt === "number" ? img.uploadedAt : 0,
+              id:
+                typeof img.storageId === "string"
+                  ? img.storageId
+                  : typeof img._id === "string"
+                    ? img._id
+                    : "",
             }));
-          setFetchedImages(normalized as ProfileImage[]);
+          setFetchedImages(normalized);
         } catch {
           setFetchedImages(null); // Error state
         }
@@ -198,17 +190,17 @@ export default function ProfileCard({
                     : typeof img._id === "string"
                       ? img._id
                       : "",
-                _id:
-                  typeof img._id === "string"
-                    ? img._id
-                    : typeof img.storageId === "string"
-                      ? img.storageId
-                      : "",
                 fileName: typeof img.fileName === "string" ? img.fileName : "",
                 uploadedAt:
                   typeof img.uploadedAt === "number" ? img.uploadedAt : 0,
+                id:
+                  typeof img.storageId === "string"
+                    ? img.storageId
+                    : typeof img._id === "string"
+                      ? img._id
+                      : "",
               }));
-            setFetchedImages(normalized as ProfileImage[]);
+            setFetchedImages(normalized);
           }
         } catch {
           setFetchedImages(null);

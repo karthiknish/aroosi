@@ -17,18 +17,11 @@ import {
   Phone,
   PersonStanding,
 } from "lucide-react";
-
-interface ProfileImage {
-  _id: string;
-  storageId: string;
-  url: string | null;
-  fileName: string;
-  uploadedAt: number;
-}
+import type { ImageType } from "@/types/image";
 
 interface ProfileViewProps {
   profiledata: Profile;
-  images: ProfileImage[] | null | undefined;
+  images: ImageType[] | null | undefined;
   imageUrls?: string[];
 }
 
