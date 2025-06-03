@@ -119,6 +119,7 @@ export default function AdminEditProfilePage() {
               ? profile.partnerPreferenceUkCity.join(", ")
               : (profile.partnerPreferenceUkCity ?? ""),
             preferredGender: String(profile.preferredGender ?? ""),
+            annualIncome: String(profile.annualIncome ?? ""),
           }}
           onSubmit={async (values) => {
             if (isSubmitting || !id) return;
