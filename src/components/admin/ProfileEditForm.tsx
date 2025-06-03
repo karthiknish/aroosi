@@ -12,6 +12,7 @@ import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import { Id } from "@/../convex/_generated/dataModel";
 import type { Profile, ProfileEditFormState } from "@/types/profile";
+import type { ImageType } from "@/types/image";
 import { Slider } from "@/components/ui/slider";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,16 +43,8 @@ interface ProfileEditFormProps {
   }) => Promise<unknown>;
 }
 
-interface ProfileImage {
-  _id: string;
-  storageId: string;
-  url: string | null;
-  fileName: string;
-  uploadedAt: number;
-}
-
 interface ProfileEditFormPropsExtended extends ProfileEditFormProps {
-  fetchedImages: ProfileImage[] | null | undefined;
+  fetchedImages: ImageType[] | null | undefined;
 }
 
 export default function ProfileEditForm({
@@ -66,7 +59,7 @@ export default function ProfileEditForm({
   adminUpdateProfile,
 }: ProfileEditFormPropsExtended) {
   // Add state for images for reorder UI
-  const [reorderImages, setReorderImages] = useState<ProfileImage[]>([]);
+  const [reorderImages, setReorderImages] = useState<ImageType[]>([]);
   // Add image delete support for admin
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -87,7 +80,7 @@ export default function ProfileEditForm({
       );
       const ordered = editForm.profileImageIds
         .map((id) => imageMap.get(id))
-        .filter((img): img is ProfileImage => Boolean(img));
+        .filter((img): img is ImageType => Boolean(img));
       setReorderImages(ordered);
       return;
     }
@@ -96,29 +89,13 @@ export default function ProfileEditForm({
   }, [fetchedImages, editForm.profileImageIds]);
 
   // Handler for image reorder
-  const handleReorder = (newOrder: string[]) => {
-    // Get a set of current valid storageIds from the reorderImages state
-    const currentValidStorageIds = new Set(
-      reorderImages.map((img) => img.storageId)
-    );
-
+  const handleReorder = (newOrder: ImageType[]) => {
+    // Extract storageIds from the reordered images
     const storageIdOrder = newOrder
-      .map((idFromReorderComponent) => {
-        // idFromReorderComponent is an '_id' from one of the items in reorderImages.
-        // Recall that we set reorderImages[i]._id = reorderImages[i].storageId.
-        const img = reorderImages.find(
-          (img) => img._id === idFromReorderComponent
-        );
-        return img?.storageId; // Extract the actual storageId
-      })
-      .filter((storageId) => {
-        // Ensure the storageId is not undefined/null and was part of the initial reorderImages
-        return storageId && currentValidStorageIds.has(storageId);
-      });
-
+      .map((img) => img.storageId)
+      .filter((id): id is string => !!id);
     if (onImagesChanged) {
-      // Ensure we only pass valid, known storageIds that were present in the reorder UI
-      onImagesChanged(storageIdOrder as string[]);
+      onImagesChanged(storageIdOrder);
     }
   };
 
@@ -159,13 +136,13 @@ export default function ProfileEditForm({
         const data = await imgRes.json();
         setReorderImages(
           (data.userProfileImages || []).filter(
-            (img: ProfileImage) => !!img.url && !!img.storageId
+            (img: ImageType) => !!img.url && !!img.storageId
           )
         );
         if (onImagesChanged) {
           const newOrder = (data.userProfileImages || [])
-            .filter((img: ProfileImage) => !!img.url && !!img.storageId)
-            .map((img: ProfileImage) => img.storageId);
+            .filter((img: ImageType) => !!img.url && !!img.storageId)
+            .map((img: ImageType) => img.storageId);
           onImagesChanged(newOrder);
         }
       }
@@ -203,6 +180,7 @@ export default function ProfileEditForm({
                   .map((img) => ({
                     ...img,
                     url: img.url as string,
+                    id: img.storageId ?? "",
                   }))}
                 userId={profile.userId as string}
                 isAdmin={true}
@@ -223,7 +201,9 @@ export default function ProfileEditForm({
                     <button
                       type="button"
                       className="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-600 hover:bg-white z-10"
-                      onClick={() => setConfirmDeleteId(img.storageId!)}
+                      onClick={() =>
+                        img.storageId && setConfirmDeleteId(img.storageId)
+                      }
                       disabled={deletingImageId === img.storageId}
                       title="Delete image"
                     >
