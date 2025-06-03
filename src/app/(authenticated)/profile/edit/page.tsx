@@ -3,8 +3,7 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import type { Profile } from "@/types/profile";
-import type { ProfileFormValues as FormProfileFormValues } from "@/components/profile/ProfileForm";
+import type { Profile, ProfileFormValues } from "@/types/profile";
 import ProfileFormComponent from "@/components/profile/ProfileForm";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import {
   getCurrentUserWithProfile,
   updateUserProfile,
 } from "@/lib/profile/userProfileApi";
+import { ProfileFormValues as ProfileFormComponentValues } from "@/components/profile/ProfileForm";
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
@@ -56,83 +56,173 @@ const defaultProfile: Profile = {
 };
 
 // Type conversion functions
-type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say" | "other";
-
 function convertProfileToFormValues(
   profile: Partial<Profile>
-): FormProfileFormValues {
+): ProfileFormValues {
   return {
+    _id: profile._id,
+    userId: profile.userId,
+    clerkId: profile.clerkId,
+    email: profile.email,
+    role: profile.role,
     fullName: String(profile.fullName ?? ""),
     dateOfBirth: String(profile.dateOfBirth ?? ""),
-    gender: (profile.gender as Gender) || "other",
-    height: String(profile.height ?? ""),
+    gender: String(profile.gender ?? ""),
     ukCity: String(profile.ukCity ?? ""),
-    aboutMe: String(profile.aboutMe ?? ""),
+    ukPostcode: String(profile.ukPostcode ?? ""),
     phoneNumber: String(profile.phoneNumber ?? ""),
-    preferredGender: String(profile.preferredGender ?? ""),
-    partnerPreferenceAgeMin: String(profile.partnerPreferenceAgeMin ?? ""),
-    partnerPreferenceAgeMax: String(profile.partnerPreferenceAgeMax ?? ""),
-    partnerPreferenceReligion: Array.isArray(profile.partnerPreferenceReligion)
-      ? profile.partnerPreferenceReligion.join(", ")
-      : String(profile.partnerPreferenceReligion ?? ""),
-    partnerPreferenceUkCity: Array.isArray(profile.partnerPreferenceUkCity)
-      ? profile.partnerPreferenceUkCity.join(", ")
-      : String(profile.partnerPreferenceUkCity ?? ""),
+    aboutMe: String(profile.aboutMe ?? ""),
     religion: String(profile.religion ?? ""),
     caste: String(profile.caste ?? ""),
     motherTongue: String(profile.motherTongue ?? ""),
+    height: String(profile.height ?? ""),
     maritalStatus: String(profile.maritalStatus ?? ""),
+    education: String(profile.education ?? ""),
+    occupation: String(profile.occupation ?? ""),
+    annualIncome: profile.annualIncome ?? "",
+    diet: String(profile.diet ?? ""),
+    smoking: String(profile.smoking ?? ""),
+    drinking: String(profile.drinking ?? ""),
+    physicalStatus: String(profile.physicalStatus ?? ""),
+    partnerPreferenceAgeMin: profile.partnerPreferenceAgeMin ?? "",
+    partnerPreferenceAgeMax: profile.partnerPreferenceAgeMax ?? "",
+    partnerPreferenceReligion: Array.isArray(profile.partnerPreferenceReligion)
+      ? profile.partnerPreferenceReligion
+      : [],
+    partnerPreferenceUkCity: Array.isArray(profile.partnerPreferenceUkCity)
+      ? profile.partnerPreferenceUkCity
+      : [],
+    preferredGender: String(profile.preferredGender ?? ""),
+    profileImageIds: Array.isArray(profile.profileImageIds)
+      ? profile.profileImageIds
+      : [],
+    isProfileComplete: profile.isProfileComplete ?? false,
+    isOnboardingComplete: profile.isOnboardingComplete ?? false,
+    hiddenFromSearch: profile.hiddenFromSearch ?? false,
+    banned: profile.banned ?? false,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
   };
 }
 
 function convertFormValuesToProfile(
-  formValues: FormProfileFormValues,
+  formValues: ProfileFormValues,
   existingProfile: Partial<Profile> = {}
 ): Profile {
-  const partnerPreferenceReligion =
-    typeof formValues.partnerPreferenceReligion === "string"
-      ? formValues.partnerPreferenceReligion
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean)
-      : [];
-  const partnerPreferenceUkCity =
-    typeof formValues.partnerPreferenceUkCity === "string"
-      ? formValues.partnerPreferenceUkCity
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean)
-      : [];
   return {
     ...defaultProfile,
     ...existingProfile,
     ...formValues,
-    gender: (formValues.gender as Gender) || "other",
-    partnerPreferenceAgeMin: formValues.partnerPreferenceAgeMin
-      ? parseInt(formValues.partnerPreferenceAgeMin, 10)
-      : 18,
-    partnerPreferenceAgeMax: formValues.partnerPreferenceAgeMax
-      ? parseInt(formValues.partnerPreferenceAgeMax, 10)
-      : 80,
-    partnerPreferenceReligion,
-    partnerPreferenceUkCity,
-    preferredGender: (["male", "female", "any"].includes(
-      formValues.preferredGender
-    )
-      ? formValues.preferredGender
-      : "any") as "male" | "female" | "any",
+    gender: String(formValues.gender ?? "other"),
+    partnerPreferenceAgeMin:
+      typeof formValues.partnerPreferenceAgeMin === "string"
+        ? parseInt(formValues.partnerPreferenceAgeMin, 10) || 18
+        : (formValues.partnerPreferenceAgeMin ?? 18),
+    partnerPreferenceAgeMax:
+      typeof formValues.partnerPreferenceAgeMax === "string"
+        ? parseInt(formValues.partnerPreferenceAgeMax, 10) || 80
+        : (formValues.partnerPreferenceAgeMax ?? 80),
     maritalStatus: (["single", "divorced", "widowed"].includes(
       formValues.maritalStatus
     )
       ? formValues.maritalStatus
       : "single") as "single" | "divorced" | "widowed",
-    height: formValues.height?.toString() || "",
-    aboutMe: formValues.aboutMe || "",
-    phoneNumber: formValues.phoneNumber || "",
+    preferredGender: (["male", "female", "any"].includes(
+      formValues.preferredGender
+    )
+      ? formValues.preferredGender
+      : "any") as "male" | "female" | "any",
+    updatedAt: Date.now(),
+  };
+}
+
+// Utility to map canonical ProfileFormValues to ProfileForm's expected shape
+function toProfileFormComponentValues(
+  values: ProfileFormValues
+): ProfileFormComponentValues {
+  return {
+    fullName: values.fullName ?? "",
+    dateOfBirth: values.dateOfBirth ?? "",
+    gender:
+      (values.gender as
+        | "male"
+        | "female"
+        | "non-binary"
+        | "prefer-not-to-say"
+        | "other") || "other",
+    height: values.height ?? "",
+    ukCity: values.ukCity ?? "",
+    aboutMe: values.aboutMe ?? "",
+    phoneNumber: values.phoneNumber ?? "",
+    preferredGender: values.preferredGender ?? "",
+    partnerPreferenceAgeMin: String(values.partnerPreferenceAgeMin ?? ""),
+    partnerPreferenceAgeMax: String(values.partnerPreferenceAgeMax ?? ""),
+    partnerPreferenceReligion: Array.isArray(values.partnerPreferenceReligion)
+      ? values.partnerPreferenceReligion.join(", ")
+      : String(values.partnerPreferenceReligion ?? ""),
+    partnerPreferenceUkCity: Array.isArray(values.partnerPreferenceUkCity)
+      ? values.partnerPreferenceUkCity.join(", ")
+      : String(values.partnerPreferenceUkCity ?? ""),
+    religion: values.religion ?? "",
+    caste: values.caste ?? "",
+    motherTongue: values.motherTongue ?? "",
+    maritalStatus: values.maritalStatus ?? "",
+    education: values.education ?? "",
+    occupation: values.occupation ?? "",
+    annualIncome: String(values.annualIncome ?? ""),
+  };
+}
+
+// Utility to map ProfileFormComponentValues (with string fields for arrays) back to canonical ProfileFormValues
+function fromProfileFormComponentValues(
+  values: ProfileFormComponentValues & { profileImageIds: string[] }
+): ProfileFormValues & { profileImageIds: string[] } {
+  return {
+    fullName: values.fullName ?? "",
     dateOfBirth:
-      typeof formValues.dateOfBirth === "string"
-        ? formValues.dateOfBirth
-        : (formValues.dateOfBirth as Date)?.toISOString() || "",
+      values.dateOfBirth instanceof Date
+        ? values.dateOfBirth.toISOString()
+        : ((values.dateOfBirth as string) ?? ""),
+    gender: values.gender ?? "other",
+    height: values.height ?? "",
+    ukCity: values.ukCity ?? "",
+    ukPostcode: "", // default, as not present in form
+    phoneNumber: values.phoneNumber ?? "",
+    aboutMe: values.aboutMe ?? "",
+    religion: values.religion ?? "",
+    caste: values.caste ?? "",
+    motherTongue: values.motherTongue ?? "",
+    maritalStatus: values.maritalStatus ?? "",
+    education: values.education ?? "",
+    occupation: values.occupation ?? "",
+    annualIncome: values.annualIncome ?? "",
+    diet: "", // default, as not present in form
+    smoking: "", // default, as not present in form
+    drinking: "", // default, as not present in form
+    physicalStatus: "", // default, as not present in form
+    partnerPreferenceAgeMin: values.partnerPreferenceAgeMin ?? "",
+    partnerPreferenceAgeMax: values.partnerPreferenceAgeMax ?? "",
+    partnerPreferenceReligion:
+      typeof values.partnerPreferenceReligion === "string"
+        ? values.partnerPreferenceReligion
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+    partnerPreferenceUkCity:
+      typeof values.partnerPreferenceUkCity === "string"
+        ? values.partnerPreferenceUkCity
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+    preferredGender: values.preferredGender ?? "",
+    profileImageIds: values.profileImageIds ?? [],
+    isProfileComplete: false,
+    isOnboardingComplete: false,
+    hiddenFromSearch: false,
+    banned: false,
+    createdAt: Date.now(),
     updatedAt: Date.now(),
   };
 }
@@ -205,7 +295,7 @@ export default function EditProfilePage() {
 
   // Profile update mutation using react-query
   const updateProfileMutation = useMutation({
-    mutationFn: async (values: FormProfileFormValues) => {
+    mutationFn: async (values: ProfileFormValues) => {
       if (!token)
         throw new Error("Authentication required. Please sign in again.");
       const updatedProfile = convertFormValuesToProfile(values, profileData);
@@ -236,13 +326,19 @@ export default function EditProfilePage() {
 
   // Form submit handler
   const handleProfileSubmit = useCallback(
-    async (values: FormProfileFormValues & { profileImageIds: string[] }) => {
+    async (values: ProfileFormValues) => {
       setServerError(null);
-      await updateProfileMutation.mutateAsync(
-        values as unknown as FormProfileFormValues
-      );
+      await updateProfileMutation.mutateAsync(values);
     },
     [updateProfileMutation]
+  );
+
+  // Wrapper for onSubmit to map values back to canonical shape
+  const handleProfileFormComponentSubmit = useCallback(
+    (values: ProfileFormComponentValues & { profileImageIds: string[] }) => {
+      return handleProfileSubmit(fromProfileFormComponentValues(values));
+    },
+    [handleProfileSubmit]
   );
 
   const formValues = useMemo(
@@ -308,8 +404,8 @@ export default function EditProfilePage() {
         <div className="px-4 py-5 sm:p-6">
           <ProfileFormComponent
             mode="edit"
-            initialValues={formValues as Partial<FormProfileFormValues>}
-            onSubmit={handleProfileSubmit}
+            initialValues={toProfileFormComponentValues(formValues)}
+            onSubmit={handleProfileFormComponentSubmit}
             loading={updateProfileMutation.status === "pending"}
             serverError={serverError || undefined}
             onEditDone={() => router.push("/profile")}
