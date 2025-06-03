@@ -116,6 +116,11 @@ export default function AdminCreateProfilePage() {
                   )
                     ? values.preferredGender
                     : "any") as "male" | "female" | "any",
+                  maritalStatus: (["single", "divorced", "widowed"].includes(
+                    values.maritalStatus
+                  )
+                    ? values.maritalStatus
+                    : "single") as "single" | "divorced" | "widowed",
                 },
               });
               // Invalidate the profiles list cache
