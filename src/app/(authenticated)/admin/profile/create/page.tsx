@@ -81,6 +81,10 @@ export default function AdminCreateProfilePage() {
                   ...values,
                   createdByAdmin: true,
                   adminNotes: "Created via admin dashboard",
+                  dateOfBirth:
+                    typeof values.dateOfBirth === "string"
+                      ? values.dateOfBirth
+                      : values.dateOfBirth.toISOString(),
                 },
               });
               // Invalidate the profiles list cache
