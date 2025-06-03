@@ -42,6 +42,7 @@ export type ProfileFormValues = {
   gender: Gender;
   height: string;
   ukCity: string;
+  ukPostcode: string;
   aboutMe: string;
   phoneNumber: string;
   preferredGender: string;
@@ -95,6 +96,7 @@ const essentialProfileSchema = z.object({
   ),
   height: z.string().min(1, "Height is required"),
   ukCity: z.string().min(1, "City is required"),
+  ukPostcode: z.string().min(1, "Postcode is required"),
   aboutMe: z.string().min(1, "About Me is required"),
   phoneNumber: z.string().min(1, "Phone number is required"),
   preferredGender: z.string().min(1, "Preferred gender is required"),
@@ -158,6 +160,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     dateOfBirth: "",
     gender: "other" as Gender,
     ukCity: "",
+    ukPostcode: "",
     aboutMe: "",
     height: "",
     phoneNumber: "",
