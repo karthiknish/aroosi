@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-export default function Header() {
+export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
   React.useEffect(() => {
     setHydrated(true);
@@ -50,152 +50,157 @@ export default function Header() {
   // Navigation items as a function for reuse
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
-      {isSignedIn ? (
+      {/* Only render links if hideLinks is false */}
+      {!hideLinks && (
         <>
-          <motion.div
-            custom={0.7}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <Link href="/search" onClick={onClick}>
-              <Button
-                variant="ghost"
-                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+          {isSignedIn ? (
+            <>
+              <motion.div
+                custom={0.7}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
               >
-                <Search className="h-5 w-5 mr-1 sm:mr-2" />
-                <span>Search Profiles</span>
-              </Button>
-            </Link>
-          </motion.div>
+                <Link href="/search" onClick={onClick}>
+                  <Button
+                    variant="ghost"
+                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                  >
+                    <Search className="h-5 w-5 mr-1 sm:mr-2" />
+                    <span>Search Profiles</span>
+                  </Button>
+                </Link>
+              </motion.div>
 
-          {isAdmin && (
-            <motion.div
-              custom={0.8}
-              variants={navItemVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <Link href="/admin" onClick={onClick}>
+              {isAdmin && (
+                <motion.div
+                  custom={0.8}
+                  variants={navItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  <Link href="/admin" onClick={onClick}>
+                    <Button
+                      variant="ghost"
+                      className="w-full cursor-pointer text-left text-pink-700 hover:text-pink-800 hover:bg-pink-50 font-semibold"
+                    >
+                      <Shield className="h-5 w-5 mr-1 sm:mr-2" />
+                      <span>Admin</span>
+                    </Button>
+                  </Link>
+                </motion.div>
+              )}
+
+              <motion.div
+                custom={1}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <Link href="/profile" onClick={onClick}>
+                  <Button
+                    variant="ghost"
+                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                  >
+                    <LayoutDashboard className="h-5 w-5 mr-1 sm:mr-2" />
+                    <span>My Profile</span>
+                  </Button>
+                </Link>
+              </motion.div>
+
+              <motion.div
+                custom={1.5}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <Link href="/interests-matches" onClick={onClick}>
+                  <Button
+                    variant="ghost"
+                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                  >
+                    <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
+                    <span>Interests / Matches</span>
+                  </Button>
+                </Link>
+              </motion.div>
+
+              <motion.div
+                custom={2}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+                className="flex items-center"
+              >
                 <Button
                   variant="ghost"
-                  className="w-full cursor-pointer text-left text-pink-700 hover:text-pink-800 hover:bg-pink-50 font-semibold"
+                  className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                  onClick={() => signOut()}
                 >
-                  <Shield className="h-5 w-5 mr-1 sm:mr-2" />
-                  <span>Admin</span>
+                  <LogOut className="h-5 w-5 mr-1 sm:mr-2" />
+                  <span>Sign Out</span>
                 </Button>
-              </Link>
-            </motion.div>
+              </motion.div>
+            </>
+          ) : (
+            <>
+              <motion.div
+                custom={0.5}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <Link href="/about" onClick={onClick}>
+                  <Button
+                    variant="ghost"
+                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                  >
+                    <span>About</span>
+                  </Button>
+                </Link>
+              </motion.div>
+
+              <motion.div
+                custom={0.7}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <Link href="/how-it-works" onClick={onClick}>
+                  <Button
+                    variant="ghost"
+                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                  >
+                    <span>How It Works</span>
+                  </Button>
+                </Link>
+              </motion.div>
+
+              <motion.div
+                custom={1.2}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+                className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0"
+              >
+                <Link href="/sign-in" onClick={onClick}>
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    <span>Sign In</span>
+                  </Button>
+                </Link>
+                <Link href="/sign-up" onClick={onClick}>
+                  <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
+                    <UserPlus className="h-4 w-4" />
+                    <span>Sign Up</span>
+                  </Button>
+                </Link>
+              </motion.div>
+            </>
           )}
-
-          <motion.div
-            custom={1}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <Link href="/profile" onClick={onClick}>
-              <Button
-                variant="ghost"
-                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-              >
-                <LayoutDashboard className="h-5 w-5 mr-1 sm:mr-2" />
-                <span>My Profile</span>
-              </Button>
-            </Link>
-          </motion.div>
-
-          <motion.div
-            custom={1.5}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <Link href="/interests-matches" onClick={onClick}>
-              <Button
-                variant="ghost"
-                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-              >
-                <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
-                <span>Interests / Matches</span>
-              </Button>
-            </Link>
-          </motion.div>
-
-          <motion.div
-            custom={2}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-            className="flex items-center"
-          >
-            <Button
-              variant="ghost"
-              className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-              onClick={() => signOut()}
-            >
-              <LogOut className="h-5 w-5 mr-1 sm:mr-2" />
-              <span>Sign Out</span>
-            </Button>
-          </motion.div>
-        </>
-      ) : (
-        <>
-          <motion.div
-            custom={0.5}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <Link href="/about" onClick={onClick}>
-              <Button
-                variant="ghost"
-                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-              >
-                <span>About</span>
-              </Button>
-            </Link>
-          </motion.div>
-
-          <motion.div
-            custom={0.7}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <Link href="/how-it-works" onClick={onClick}>
-              <Button
-                variant="ghost"
-                className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
-              >
-                <span>How It Works</span>
-              </Button>
-            </Link>
-          </motion.div>
-
-          <motion.div
-            custom={1.2}
-            variants={navItemVariants}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0"
-          >
-            <Link href="/sign-in" onClick={onClick}>
-              <Button
-                variant="outline"
-                className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-200 hover:bg-pink-50 hover:border-pink-300"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>Sign In</span>
-              </Button>
-            </Link>
-            <Link href="/sign-up" onClick={onClick}>
-              <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
-                <UserPlus className="h-4 w-4" />
-                <span>Sign Up</span>
-              </Button>
-            </Link>
-          </motion.div>
         </>
       )}
     </>
