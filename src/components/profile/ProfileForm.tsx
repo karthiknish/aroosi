@@ -53,6 +53,9 @@ export type ProfileFormValues = {
   caste: string;
   motherTongue: string;
   maritalStatus: string;
+  education: string;
+  occupation: string;
+  annualIncome: string;
 };
 
 interface ProfileFormProps {
@@ -103,6 +106,9 @@ const essentialProfileSchema = z.object({
   caste: z.string(),
   motherTongue: z.string(),
   maritalStatus: z.string(),
+  education: z.string(),
+  occupation: z.string(),
+  annualIncome: z.string(),
 });
 
 // Height conversion utility function
@@ -164,6 +170,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     caste: "",
     motherTongue: "",
     maritalStatus: "",
+    education: "",
+    occupation: "",
+    annualIncome: "",
   };
 
   // Use a ref to track if we've initialized the form to prevent unnecessary resets
@@ -176,7 +185,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
         ...emptyDefaults,
         ...(mode === "edit" ? initialValues : {}),
       }),
-      [mode]
+      [mode, emptyDefaults, initialValues]
     ), // Only depends on mode, not initialValues
     mode: "onChange",
   });
@@ -195,7 +204,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       });
       hasInitialized.current = true;
     }
-  }, [mode, initialValues, form]);
+  }, [mode, initialValues, form, emptyDefaults]);
 
   // UK cities for location step
   const [ukCityOptions] = useState([
@@ -217,9 +226,15 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   // Use only the hook-based approach for images and loading state:
   const imagesDataRaw = useProfileImages(profileId || "");
   const deleteImageRaw = useDeleteImage(profileId || "");
-  const images: ApiImage[] = profileId ? imagesDataRaw.data || [] : [];
+  const images: ApiImage[] = React.useMemo(
+    () => (profileId ? imagesDataRaw.data || [] : []),
+    [profileId, imagesDataRaw.data]
+  );
   const isLoadingImages: boolean = profileId ? imagesDataRaw.isLoading : false;
-  const deleteImage = profileId ? deleteImageRaw : () => Promise.resolve();
+  const deleteImage = React.useMemo(
+    () => (profileId ? deleteImageRaw : () => Promise.resolve()),
+    [profileId, deleteImageRaw]
+  );
 
   // Get initial image IDs from props or from the fetched images
   const initialImageIds = React.useMemo(() => {
