@@ -413,12 +413,10 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                         </div>
                       ) : (
                         <ProfileFormStepImages
-                          form={form}
                           images={mappedImages}
                           onImageUpload={handleImageUpload}
                           onImageDelete={handleImageDelete}
                           isLoading={isLoadingImages}
-                          mode={mode}
                         />
                       )}
                     </FormSection>
