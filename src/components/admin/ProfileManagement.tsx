@@ -17,6 +17,7 @@ import {
   fetchAllAdminProfileImages,
 } from "@/lib/profile/adminProfileApi";
 import type { ProfileEditFormState } from "@/types/profile";
+import type { ImageType } from "@/types/image";
 import {
   Dialog,
   DialogContent,
@@ -27,16 +28,6 @@ import {
 import { Id } from "@/../convex/_generated/dataModel";
 import { Profile } from "@/types/profile";
 import { useRouter } from "next/navigation";
-
-// Local ProfileImage type for admin usage
-type AdminProfileImage = {
-  _id: string;
-  storageId: string;
-  url: string | null;
-  fileName: string;
-  uploadedAt: number;
-  banned?: boolean;
-};
 
 interface ProfilesResponse {
   profiles: Profile[];
@@ -52,14 +43,14 @@ export default function ProfileManagement() {
   const [page, setPage] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [profileImages, setProfileImages] = useState<
-    Record<string, AdminProfileImage[]>
+    Record<string, ImageType[]>
   >({});
   const router = useRouter();
 
   const fetchAllProfileImages = useCallback(
     async (profiles: Profile[]) => {
       if (!token) return;
-      const newImages = await fetchAllAdminProfileImages(token, profiles);
+      const newImages = await fetchAllAdminProfileImages({ token, profiles });
       setProfileImages(newImages);
     },
     [token]
@@ -182,19 +173,19 @@ export default function ProfileManagement() {
         const data = await fetchAdminProfiles(token!, search, page);
         setProfileImages(
           data.profiles.reduce(
-            (acc: Record<string, AdminProfileImage[]>, profile: Profile) => ({
+            (acc: Record<string, ImageType[]>, profile: Profile) => ({
               ...acc,
               [profile._id]: (profile.profileImageIds || []).map(
                 (id: string) => ({
-                  _id: id,
-                  storageId: "",
-                  url: null,
+                  id,
+                  storageId: id,
+                  url: "",
                   fileName: "",
                   uploadedAt: 0,
                 })
               ),
             }),
-            {} as Record<string, AdminProfileImage[]>
+            {} as Record<string, ImageType[]>
           )
         );
       } catch {
