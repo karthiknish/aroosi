@@ -203,3 +203,34 @@ export async function createAdminProfile({
     );
   }
 }
+
+/**
+ * Ban or unban a user profile by profileId (admin only)
+ * @param token - Admin authentication token
+ * @param profileId - The profile's ID
+ * @param banned - true to ban, false to unban
+ * @returns { success: boolean; error?: string }
+ */
+export async function setProfileBannedStatus(
+  token: string,
+  profileId: string,
+  banned: boolean
+): Promise<{ success: boolean; error?: string }> {
+  if (!token) return { success: false, error: "No token provided" };
+  if (!profileId) return { success: false, error: "No profileId provided" };
+
+  const res = await fetch(`/api/admin/profiles/${profileId}/ban`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ banned }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { success: false, error: data.error || "Failed to update ban status" };
+  }
+  return { success: true };
+}

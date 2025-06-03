@@ -6,7 +6,7 @@ import {
   fetchAdminProfiles,
   updateAdminProfile,
   deleteAdminProfile,
-  banAdminProfile,
+  setProfileBannedStatus,
 } from "@/lib/profile/adminProfileApi";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
@@ -111,7 +111,7 @@ const AdminProfilePage = () => {
   // Handler: Ban/unban profile
   const onToggleBan = async (id: string, banned: boolean) => {
     if (!token) return;
-    await banAdminProfile({ token, id, banned: !banned });
+    await setProfileBannedStatus(token, id, !banned);
     loadProfiles();
   };
 
