@@ -31,12 +31,6 @@ const religions = [
   "Other",
 ];
 
-// Type guard for allowed genders
-function isAllowedGender(
-  value: string
-): value is "male" | "female" | "other" | "any" {
-  return ["male", "female", "other", "any"].includes(value);
-}
 
 interface FiltersState {
   distance: string;
