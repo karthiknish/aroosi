@@ -102,6 +102,23 @@ export default function AdminEditProfilePage() {
                   | "prefer-not-to-say"
                   | "other")
               : "other",
+            partnerPreferenceAgeMin: String(
+              profile.partnerPreferenceAgeMin ?? ""
+            ),
+            partnerPreferenceAgeMax: String(
+              profile.partnerPreferenceAgeMax ?? ""
+            ),
+            partnerPreferenceReligion: Array.isArray(
+              profile.partnerPreferenceReligion
+            )
+              ? profile.partnerPreferenceReligion.join(", ")
+              : (profile.partnerPreferenceReligion ?? ""),
+            partnerPreferenceUkCity: Array.isArray(
+              profile.partnerPreferenceUkCity
+            )
+              ? profile.partnerPreferenceUkCity.join(", ")
+              : (profile.partnerPreferenceUkCity ?? ""),
+            preferredGender: String(profile.preferredGender ?? ""),
           }}
           onSubmit={async (values) => {
             if (isSubmitting || !id) return;
@@ -121,6 +138,37 @@ export default function AdminEditProfilePage() {
                     typeof values.dateOfBirth === "string"
                       ? values.dateOfBirth
                       : values.dateOfBirth.toISOString(),
+                  partnerPreferenceAgeMin: Number(
+                    values.partnerPreferenceAgeMin
+                  ),
+                  partnerPreferenceAgeMax: Number(
+                    values.partnerPreferenceAgeMax
+                  ),
+                  partnerPreferenceReligion: Array.isArray(
+                    values.partnerPreferenceReligion
+                  )
+                    ? values.partnerPreferenceReligion
+                    : values.partnerPreferenceReligion
+                      ? values.partnerPreferenceReligion
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                  partnerPreferenceUkCity: Array.isArray(
+                    values.partnerPreferenceUkCity
+                  )
+                    ? values.partnerPreferenceUkCity
+                    : values.partnerPreferenceUkCity
+                      ? values.partnerPreferenceUkCity
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : [],
+                  preferredGender: (["male", "female", "any"].includes(
+                    values.preferredGender
+                  )
+                    ? values.preferredGender
+                    : "any") as "male" | "female" | "any",
                 },
               });
               // Invalidate the profiles list cache
