@@ -179,7 +179,7 @@ export default function ProfileView({
             <>
               <img
                 src={profileImage.url}
-                alt={profile?.fullName || "Profile image"}
+                alt={profiledata.fullName || "Profile image"}
                 width={128}
                 height={128}
                 className="w-full h-full object-cover"

@@ -32,10 +32,15 @@ export async function GET(request: Request) {
 
       // Fetch user profile from Convex
       console.log("Fetching current user with profile in GET /api/profile");
-      const currentUser = await convexClient.query(
+      type UserWithProfile = {
+        _id: string;
+        profile?: { _id: string } | null;
+        // ...add other fields as needed
+      };
+      const currentUser = (await convexClient.query(
         api.users.getCurrentUserWithProfile,
         {}
-      );
+      )) as UserWithProfile;
 
       // Handle case where user is not found
       if (!currentUser) {
@@ -55,9 +60,13 @@ export async function GET(request: Request) {
 
         try {
           // Attempt to clean up the incomplete user record
-          if (currentUser.profile?._id) {
+          if (
+            currentUser.profile &&
+            typeof (currentUser.profile as { _id?: unknown })._id === "string"
+          ) {
+            const profileWithId = currentUser.profile as { _id: string };
             await convexClient.mutation(api.users.deleteProfile, {
-              id: currentUser.profile._id as Id<"profiles">,
+              id: profileWithId._id as Id<"profiles">,
             });
             console.log(
               `User record (ID: ${currentUser._id}) deleted successfully due to null profile.`

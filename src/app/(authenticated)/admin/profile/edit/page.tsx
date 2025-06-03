@@ -30,9 +30,11 @@ export default function AdminEditProfilePage() {
     queryFn: async () => {
       if (!id || !token) return null;
       // Use fetchAdminProfiles with search param as id
-      const result = await fetchAdminProfiles(token, id, 1);
+      const result = await fetchAdminProfiles({ token, search: id, page: 1 });
       if (result && Array.isArray(result.profiles)) {
-        return result.profiles.find((p) => p._id === id || p.userId === id) || null;
+        return (
+          result.profiles.find((p) => p._id === id || p.userId === id) || null
+        );
       }
       return null;
     },
@@ -84,15 +86,43 @@ export default function AdminEditProfilePage() {
         </div>
         <ProfileForm
           mode="edit"
-          initialValues={profile}
+          initialValues={{
+            ...profile,
+            gender: [
+              "male",
+              "female",
+              "non-binary",
+              "prefer-not-to-say",
+              "other",
+            ].includes(profile?.gender ?? "")
+              ? (profile?.gender as
+                  | "male"
+                  | "female"
+                  | "non-binary"
+                  | "prefer-not-to-say"
+                  | "other")
+              : "other",
+          }}
           onSubmit={async (values) => {
             if (isSubmitting || !id) return;
             setIsSubmitting(true);
             try {
               // Invalidate related queries
               const queryClient = new QueryClient();
-              await queryClient.invalidateQueries({ queryKey: ["adminProfiles"] });
-              await updateAdminProfile(token!, id, values);
+              await queryClient.invalidateQueries({
+                queryKey: ["adminProfiles"],
+              });
+              await updateAdminProfile({
+                token: token!,
+                id,
+                updates: {
+                  ...values,
+                  dateOfBirth:
+                    typeof values.dateOfBirth === "string"
+                      ? values.dateOfBirth
+                      : values.dateOfBirth.toISOString(),
+                },
+              });
               // Invalidate the profiles list cache
               const profilesCacheKey = "adminProfiles";
               sessionStorage.removeItem(profilesCacheKey);

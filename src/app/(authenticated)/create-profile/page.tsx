@@ -1,7 +1,7 @@
 "use client";
 
 import ProfileForm from "@/components/profile/ProfileForm";
-import type { EssentialProfileFormValues } from "@/components/profile/ProfileForm";
+import type { ProfileFormValues } from "@/components/profile/ProfileForm";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useCallback, useMemo } from "react";
@@ -10,7 +10,7 @@ import { useAuthContext } from "@/components/AuthProvider";
 // Helper to map context profile to ProfileForm initial values
 function mapProfileToInitialValues(
   profile: unknown
-): Partial<EssentialProfileFormValues> {
+): Partial<ProfileFormValues> {
   if (!profile || typeof profile !== "object") return {};
   const p = profile as Record<string, unknown>;
   return {
@@ -18,7 +18,7 @@ function mapProfileToInitialValues(
       (p.fullName as string) ||
       `${(p.firstName as string) || ""} ${(p.lastName as string) || ""}`.trim(),
     dateOfBirth: (p.dateOfBirth as string) || "",
-    gender: (p.gender as EssentialProfileFormValues["gender"]) || "other",
+    gender: (p.gender as ProfileFormValues["gender"]) || "other",
     height: (p.height as string) || "",
     ukCity: (p.ukCity as string) || "",
     aboutMe: (p.bio as string) || (p.aboutMe as string) || "",
@@ -33,16 +33,15 @@ export default function CreateProfilePage() {
   // Memoize initialValues with a stable dependency
   const initialValues = useMemo(
     () => mapProfileToInitialValues(profile),
-    // Use a stringified version of profile to prevent unnecessary recalculations
-    [JSON.stringify(profile)]
+    [profile]
   );
-  
+
   // Create a stable form key based on the user ID to ensure proper remounting
-  const formKey = useMemo(() => `create-profile-${userId || 'new'}`, [userId]);
+  const formKey = useMemo(() => `create-profile-${userId || "new"}`, [userId]);
 
   // Handle form submission
   const handleSubmit = useCallback(
-    async (values: EssentialProfileFormValues) => {
+    async (values: ProfileFormValues) => {
       if (!token) {
         toast.error("Authentication token is missing. Please sign in again.");
         return;

@@ -58,7 +58,7 @@ export const FormField: React.FC<FormFieldProps> = ({
     {textarea ? (
       <Textarea
         id={String(name)}
-        {...form.register(String(name))}
+        {...form.register(name)}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
         className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-pink-500 focus:border-pink-500 min-h-[100px]"
         rows={5}
@@ -66,7 +66,7 @@ export const FormField: React.FC<FormFieldProps> = ({
     ) : (
       <Input
         id={String(name)}
-        {...form.register(String(name))}
+        {...form.register(name)}
         type={type}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
         className="mt-1"
@@ -85,7 +85,7 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
   name,
   label,
   form,
-  placeholder = '',
+  placeholder = "",
   options = [],
   description,
   isRequired = false,
@@ -97,17 +97,17 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
       </Label>
       <Controller
         control={form.control}
-        name={name}
+        name={name as keyof ProfileFormValues}
         render={({ field }) => {
           // Ensure we have a valid value from the options or an empty string
-          const fieldValue = typeof field.value === 'string' ? field.value : String(field.value);
-          const selectedValue = options.some(opt => opt.value === fieldValue) ? fieldValue : '';
-          
+          const fieldValue =
+            typeof field.value === "string" ? field.value : String(field.value);
+          const selectedValue = options.some((opt) => opt.value === fieldValue)
+            ? fieldValue
+            : "";
+
           return (
-            <Select
-              value={selectedValue}
-              onValueChange={field.onChange}
-            >
+            <Select value={selectedValue} onValueChange={field.onChange}>
               <SelectTrigger id={String(name)} className="mt-1">
                 <SelectValue placeholder={placeholder} />
               </SelectTrigger>
@@ -122,7 +122,9 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
           );
         }}
       />
-      {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+      {description && (
+        <p className="text-xs text-gray-500 mt-1">{description}</p>
+      )}
       {form.formState.errors[name] && (
         <p className="text-sm text-red-600 mt-1">
           {form.formState.errors[name]?.message as string}
@@ -133,20 +135,26 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
 };
 
 // Memoize the component to prevent unnecessary re-renders
-export const FormSelectField = React.memo(FormSelectFieldComponent, (prevProps, nextProps) => {
-  // Only re-render if the form values or errors have changed
-  const prevValue = prevProps.form.getValues(prevProps.name);
-  const nextValue = nextProps.form.getValues(nextProps.name);
-  
-  return (
-    prevValue === nextValue &&
-    prevProps.form.formState.isDirty === nextProps.form.formState.isDirty &&
-    prevProps.form.formState.errors === nextProps.form.formState.errors
-  );
-});
+export const FormSelectField = React.memo(
+  FormSelectFieldComponent,
+  (prevProps, nextProps) => {
+    // Only re-render if the form values or errors have changed
+    const prevValue = prevProps.form.getValues(
+      prevProps.name as keyof ProfileFormValues
+    );
+    const nextValue = nextProps.form.getValues(
+      nextProps.name as keyof ProfileFormValues
+    );
 
-FormSelectField.displayName = 'FormSelectField';
+    return (
+      prevValue === nextValue &&
+      prevProps.form.formState.isDirty === nextProps.form.formState.isDirty &&
+      prevProps.form.formState.errors === nextProps.form.formState.errors
+    );
+  }
+);
 
+FormSelectField.displayName = "FormSelectField";
 
 export const DatePickerCustomInput = React.forwardRef<
   HTMLButtonElement,
@@ -188,7 +196,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
       <div className="mt-1 w-full">
         <Controller
           control={control}
-          name={name}
+          name={name as keyof ProfileFormValues}
           render={({ field }) => {
             const selectedDate =
               field.value && typeof field.value === "string"

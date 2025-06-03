@@ -90,13 +90,6 @@ export default function ProtectedRoute({
     [pathname]
   );
 
-  // Build redirect URL with current path as return URL
-  const getSignInUrl = () => {
-    const params = new URLSearchParams(searchParams);
-    params.set("redirect_url", pathname);
-    return `/sign-in?${params.toString()}`;
-  };
-
   // Handle all redirections
   useEffect(() => {
     // Don't do anything until we're on the client
@@ -111,6 +104,11 @@ export default function ProtectedRoute({
         // Only show toast if we're not already on the sign-in page
         if (!pathname.startsWith("/sign-in")) {
           toast.info("Please sign in to continue");
+          const getSignInUrl = () => {
+            const params = new URLSearchParams(searchParams);
+            params.set("redirect_url", pathname);
+            return `/sign-in?${params.toString()}`;
+          };
           router.replace(redirectTo || getSignInUrl());
         }
       }
@@ -166,10 +164,6 @@ export default function ProtectedRoute({
     requireProfileComplete,
     requireOnboardingComplete,
     searchParams,
-    getSignInUrl,
-    // add isProfileEditRoute to dependencies
-    // (technically not needed since it's derived from pathname, but for clarity)
-
     isProfileEditRoute,
   ]);
 
