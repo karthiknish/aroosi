@@ -74,10 +74,13 @@ export default function AdminCreateProfilePage() {
                 queryKey: ["adminProfiles"],
               });
               // Use the adminProfileApi util for creation
-              await createAdminProfile(token, {
-                ...values,
-                createdByAdmin: true,
-                adminNotes: "Created via admin dashboard",
+              await createAdminProfile({
+                token,
+                profile: {
+                  ...values,
+                  createdByAdmin: true,
+                  adminNotes: "Created via admin dashboard",
+                },
               });
               // Invalidate the profiles list cache
               const profilesCacheKey = "adminProfiles";
