@@ -118,7 +118,7 @@ export async function fetchUserProfile(
     const data = await response.json();
     return {
       success: true,
-      data: data.profile || data,
+      data: data.profileData || data.profile || data.data || data,
       isProfileComplete: data.isProfileComplete,
     };
   } catch (error) {

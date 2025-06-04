@@ -16,6 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
+import { motion } from "framer-motion";
+import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
 
 const majorUkCities = [
   "London",
@@ -87,7 +89,7 @@ function getAge(dateOfBirth: string) {
 }
 
 // Types for search results
-interface ProfileData {
+export interface ProfileData {
   fullName: string;
   ukCity?: string;
   dateOfBirth?: string;
@@ -96,14 +98,14 @@ interface ProfileData {
   hiddenFromSearch?: boolean;
   [key: string]: unknown;
 }
-interface ProfileSearchResult {
+export interface ProfileSearchResult {
   userId: string;
   email?: string;
   profile: ProfileData;
 }
 
 export default function SearchProfilesPage() {
-  const { token, isLoaded, isSignedIn } = useAuthContext();
+  const { token, isSignedIn } = useAuthContext();
   const router = useRouter();
   const [city, setCity] = React.useState("any");
   const [religion, setReligion] = React.useState("any");
@@ -114,51 +116,9 @@ export default function SearchProfilesPage() {
   const [pageSize] = useState(12);
   const [total, setTotal] = useState(0);
 
-  // Redirect to sign-in if not signed in
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in");
-    }
-  }, [isLoaded, isSignedIn, router]);
-
-  // Fetch search results function
-  const fetchSearchResults = async () => {
-    if (!token) return { profiles: [], total: 0 };
-
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-      });
-
-      if (city && city !== "any") params.append("city", city);
-      if (religion && religion !== "any") params.append("religion", religion);
-      if (ageMin) params.append("ageMin", ageMin);
-      if (ageMax) params.append("ageMax", ageMax);
-
-      const response = await fetch(`/api/search?${params.toString()}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch search results");
-      }
-
-      const data = await response.json();
-      console.log("Search API response:", data);
-      return {
-        profiles: Array.isArray(data.profiles) ? data.profiles : [],
-        total: typeof data.total === "number" ? data.total : 0,
-      };
-    } catch (error) {
-      console.error("Error fetching search results:", error);
-      return { profiles: [], total: 0 };
-    }
-  };
+  // Use util for search results
+  // (token, page, pageSize, city, religion, ageMin, ageMax)
+  // All params are already in state
 
   // React Query for profiles
   const { data: searchResults, isLoading: loadingProfiles } = useQuery({
@@ -172,7 +132,16 @@ export default function SearchProfilesPage() {
       page,
       pageSize,
     ],
-    queryFn: fetchSearchResults,
+    queryFn: () =>
+      fetchProfileSearchResults({
+        token: token!,
+        page,
+        pageSize,
+        city,
+        religion,
+        ageMin,
+        ageMax,
+      }),
     enabled: !!token && isSignedIn,
   });
 
@@ -291,38 +260,67 @@ export default function SearchProfilesPage() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="min-h-screen w-full bg-green-50 pt-24 sm:pt-28 md:pt-32 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full bg-base-light pt-24 sm:pt-28 md:pt-32 pb-12 relative overflow-x-hidden">
+      {/* Decorative color pop circles */}
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      {/* Subtle SVG background pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      ></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <section className="mb-10 text-center">
-          <h1
-            className="text-4xl sm:text-5xl font-serif font-bold text-red-600 mb-4"
-            style={{ fontFamily: "Lora, serif" }}
-          >
-            Search Profiles
-          </h1>
-          <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-6">
+          <div className="inline-block relative mb-4">
+            <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2">
+              Search Profiles
+            </h1>
+            {/* Pink wavy SVG underline */}
+            <svg
+              className="absolute -bottom-2 left-0 w-full"
+              height="6"
+              viewBox="0 0 200 6"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M0 3C50 0.5 150 0.5 200 3"
+                stroke="#FDA4AF"
+                strokeWidth="5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <p className="text-lg text-neutral-light max-w-2xl mx-auto mb-8 font-nunito">
             Browse and filter profiles to find your ideal match on Aroosi.
           </p>
-          <div className="flex flex-wrap gap-3 justify-center mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="flex flex-wrap gap-3 justify-center mb-10 bg-white/80 rounded-xl shadow p-4"
+          >
             <Select value={city} onValueChange={setCity}>
-              <SelectTrigger className="w-40 bg-white">
+              <SelectTrigger className="w-40 bg-white rounded-lg shadow-sm font-nunito">
                 <SelectValue placeholder="Choose City" />
               </SelectTrigger>
               <SelectContent>
                 {cityOptions.map((c) => (
-                  <SelectItem key={c} value={c}>
+                  <SelectItem key={c} value={c} className="font-nunito">
                     {c === "any" ? "Any City" : c}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={religion} onValueChange={setReligion}>
-              <SelectTrigger className="w-40 bg-white">
+              <SelectTrigger className="w-40 bg-white rounded-lg shadow-sm font-nunito">
                 <SelectValue placeholder="Choose Religion" />
               </SelectTrigger>
               <SelectContent>
                 {(religionOptions as string[]).map((r) => (
-                  <SelectItem key={r} value={r}>
+                  <SelectItem key={r} value={r} className="font-nunito">
                     {r === "any" ? "Any Religion" : r}
                   </SelectItem>
                 ))}
@@ -335,7 +333,7 @@ export default function SearchProfilesPage() {
               placeholder="Min Age"
               value={ageMin || ""}
               onChange={(e) => setAgeMin(e.target.value)}
-              className="w-24 bg-white"
+              className="w-24 bg-white rounded-lg shadow-sm font-nunito"
             />
             <Input
               type="number"
@@ -344,9 +342,9 @@ export default function SearchProfilesPage() {
               placeholder="Max Age"
               value={ageMax || ""}
               onChange={(e) => setAgeMax(e.target.value)}
-              className="w-24 bg-white"
+              className="w-24 bg-white rounded-lg shadow-sm font-nunito"
             />
-          </div>
+          </motion.div>
         </section>
         {loadingProfiles ||
         loadingImages ||
@@ -421,85 +419,99 @@ export default function SearchProfilesPage() {
                     : null;
                 const loaded = imgLoaded[u.userId] || false;
                 return (
-                  <Card
+                  <motion.div
                     key={typeof u.userId === "string" ? u.userId : String(idx)}
-                    className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.7, delay: idx * 0.05 }}
                   >
-                    {firstImageUrl ? (
-                      <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                        {/* Skeleton loader */}
-                        {!loaded && (
-                          <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
-                        )}
-                        <img
-                          src={firstImageUrl}
-                          alt={typeof p.fullName === "string" ? p.fullName : ""}
-                          className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
-                          onLoad={() =>
-                            setImgLoaded((prev) => ({
-                              ...prev,
-                              [u.userId]: true,
-                            }))
-                          }
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-full h-40 flex items-center justify-center bg-gray-100">
-                        <UserCircle className="w-16 h-16 text-gray-300" />
-                      </div>
-                    )}
-                    <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
-                      <div
-                        className="text-xl font-serif font-bold text-gray-900 mb-1"
-                        style={{ fontFamily: "Lora, serif" }}
-                      >
-                        {typeof p.fullName === "string" ? p.fullName : ""}
-                      </div>
-                      <div
-                        className="text-sm text-gray-600 mb-1"
-                        style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                      >
-                        {typeof p.ukCity === "string" ? p.ukCity : "-"}
-                      </div>
-                      <div
-                        className="text-sm text-gray-600 mb-1"
-                        style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                      >
-                        Age:{" "}
-                        {getAge(
-                          typeof p.dateOfBirth === "string" ? p.dateOfBirth : ""
-                        )}
-                      </div>
-                      <div
-                        className="text-sm text-gray-600 mb-2"
-                        style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                      >
-                        {typeof p.religion === "string" ? p.religion : "-"}
-                      </div>
-                      <Button
-                        className="bg-red-600 hover:bg-red-700 w-full mt-2"
-                        onClick={() => {
-                          // Convex user IDs are 15+ chars, Clerk IDs start with 'user_'
-                          if (
-                            typeof u.userId !== "string" ||
-                            u.userId.startsWith("user_")
-                          ) {
-                            console.warn(
-                              "Attempted to navigate with Clerk ID instead of Convex user ID:",
-                              u.userId
-                            );
-                            alert(
-                              "Internal error: Invalid user ID for navigation."
-                            );
-                            return;
-                          }
-                          router.push(`/profile/${u.userId}`);
-                        }}
-                      >
-                        {"View Profile"}
-                      </Button>
-                    </CardContent>
-                  </Card>
+                    <Card className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col">
+                      {firstImageUrl ? (
+                        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                          {/* Skeleton loader */}
+                          {!loaded && (
+                            <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
+                          )}
+                          <img
+                            src={firstImageUrl}
+                            alt={
+                              typeof p.fullName === "string" ? p.fullName : ""
+                            }
+                            className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
+                            onLoad={() =>
+                              setImgLoaded((prev) => ({
+                                ...prev,
+                                [u.userId]: true,
+                              }))
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-40 flex items-center justify-center bg-gray-100">
+                          <UserCircle className="w-16 h-16 text-gray-300" />
+                        </div>
+                      )}
+                      <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
+                        <div
+                          className="text-xl font-serif font-bold text-gray-900 mb-1"
+                          style={{ fontFamily: "Lora, serif" }}
+                        >
+                          {typeof p.fullName === "string" ? p.fullName : ""}
+                        </div>
+                        <div
+                          className="text-sm text-gray-600 mb-1"
+                          style={{
+                            fontFamily: "Nunito Sans, Arial, sans-serif",
+                          }}
+                        >
+                          {typeof p.ukCity === "string" ? p.ukCity : "-"}
+                        </div>
+                        <div
+                          className="text-sm text-gray-600 mb-1"
+                          style={{
+                            fontFamily: "Nunito Sans, Arial, sans-serif",
+                          }}
+                        >
+                          Age:{" "}
+                          {getAge(
+                            typeof p.dateOfBirth === "string"
+                              ? p.dateOfBirth
+                              : ""
+                          )}
+                        </div>
+                        <div
+                          className="text-sm text-gray-600 mb-2"
+                          style={{
+                            fontFamily: "Nunito Sans, Arial, sans-serif",
+                          }}
+                        >
+                          {typeof p.religion === "string" ? p.religion : "-"}
+                        </div>
+                        <Button
+                          className="bg-primary hover:bg-primary/90 text-white w-full mt-2"
+                          onClick={() => {
+                            // Convex user IDs are 15+ chars, Clerk IDs start with 'user_'
+                            if (
+                              typeof u.userId !== "string" ||
+                              u.userId.startsWith("user_")
+                            ) {
+                              console.warn(
+                                "Attempted to navigate with Clerk ID instead of Convex user ID:",
+                                u.userId
+                              );
+                              alert(
+                                "Internal error: Invalid user ID for navigation."
+                              );
+                              return;
+                            }
+                            router.push(`/profile/${u.userId}`);
+                          }}
+                        >
+                          {"View Profile"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 );
               })}
             </div>

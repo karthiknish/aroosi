@@ -84,9 +84,9 @@ export default function ProfileDetailPage() {
     retry: false,
   });
 
-  // Fix: Use .data, not .data.profileData
+  // Use .data from API response (as per fetchUserProfile return type)
   const profile: Profile | null = profileData?.data ?? null;
-
+  console.log(profile);
   const { data: userProfileImagesResponse } = useQuery({
     queryKey: ["userProfileImages", userId, token],
     queryFn: async () => {
@@ -372,11 +372,21 @@ export default function ProfileDetailPage() {
         </title>
         <meta
           name="description"
-          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans in the UK.`}
+          content={`View ${profileData?.data?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans in the UK.`}
         />
         {/* ... other meta tags ... */}
       </Head>
-      <div className="min-h-screen flex items-center justify-center bg-green-50 py-16 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-base-light py-16 px-4 relative overflow-x-hidden">
+        {/* Decorative color pop circles */}
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        {/* Subtle SVG background pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        ></div>
         <motion.div
           key="profile-card"
           variants={cardVariants}
@@ -385,7 +395,7 @@ export default function ProfileDetailPage() {
           exit="exit"
           className="max-w-3xl w-full mx-auto"
         >
-          <Card className="shadow-2xl rounded-2xl overflow-hidden">
+          <Card className="shadow-xl rounded-2xl overflow-hidden bg-white/90 backdrop-blur-md border-0">
             <CardHeader className="p-0">
               <AnimatePresence>
                 {mainProfileImageUrl ? (
@@ -464,7 +474,7 @@ export default function ProfileDetailPage() {
                 )}
               </AnimatePresence>
             </CardHeader>
-            <CardContent className="p-10">
+            <CardContent className="p-10 font-nunito bg-transparent">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{
@@ -475,28 +485,22 @@ export default function ProfileDetailPage() {
                 className="flex flex-col items-center mb-8"
               >
                 <div
-                  className="flex items-center gap-2 text-4xl font-serif font-bold text-gray-900 mb-1"
-                  style={{ fontFamily: "Lora, serif" }}
+                  className="flex items-center gap-2 text-4xl font-serif font-bold text-primary mb-1"
+                  style={{ fontFamily: "var(--font-serif)" }}
                 >
-                  <UserCircle className="w-8 h-8 text-red-600" />
-                  {profile?.fullName ?? "-"}
+                  <UserCircle className="w-8 h-8 text-primary" />
+                  {profileData?.data?.fullName ?? "-"}
                 </div>
-                <div
-                  className="flex items-center gap-2 text-lg text-gray-600 mb-1"
-                  style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                >
-                  <MapPin className="w-5 h-5 text-red-400" />
+                <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
+                  <MapPin className="w-5 h-5 text-accent" />
                   UK City: {profile?.ukCity ?? "-"}
                 </div>
-                <div
-                  className="flex items-center gap-2 text-lg text-gray-600 mb-1"
-                  style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
-                >
-                  <Church className="w-5 h-5 text-red-400" />
+                <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
+                  <Church className="w-5 h-5 text-accent" />
                   {profile?.religion ?? "-"}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                  <Calendar className="w-4 h-4 text-red-300" />
+                <div className="flex items-center gap-2 text-sm text-accent-600 mb-2 font-nunito">
+                  <Calendar className="w-4 h-4 text-accent-200" />
                   <span>Member since:</span>
                   <span>
                     {profile?.createdAt
@@ -561,8 +565,8 @@ export default function ProfileDetailPage() {
                 className="grid grid-cols-1 md:grid-cols-2 gap-8"
               >
                 <div>
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <Church className="w-5 h-5 text-red-400" />
+                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
+                    <Church className="w-5 h-5 text-accent" />
                     Cultural & Religious Background
                   </h3>
                   <IconRow
@@ -582,8 +586,8 @@ export default function ProfileDetailPage() {
                   />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-red-400" />
+                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
+                    <BookOpen className="w-5 h-5 text-accent" />
                     Education & Career
                   </h3>
                   <IconRow
@@ -603,8 +607,8 @@ export default function ProfileDetailPage() {
                   />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-red-400" />
+                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
+                    <MapPin className="w-5 h-5 text-accent" />
                     Location (UK)
                   </h3>
                   <IconRow
@@ -614,12 +618,12 @@ export default function ProfileDetailPage() {
                   />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <Info className="w-5 h-5 text-red-400" />
+                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
+                    <Info className="w-5 h-5 text-accent" />
                     About Me
                   </h3>
-                  <div className="flex items-start gap-2 text-gray-700">
-                    <Info className="w-4 h-4 mt-0.5 text-red-400" />
+                  <div className="flex items-start gap-2 text-neutral">
+                    <Info className="w-4 h-4 mt-0.5 text-accent" />
                     <span>{profile?.aboutMe ?? "-"}</span>
                   </div>
                 </div>
@@ -633,10 +637,10 @@ export default function ProfileDetailPage() {
                           ? "withdraw-interest"
                           : "express-interest"
                       }
-                      className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 ${
+                      className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 font-nunito text-lg font-semibold ${
                         alreadySentInterest
-                          ? "bg-gray-200 hover:bg-gray-300 text-red-600 border border-gray-300"
-                          : "bg-red-600 hover:bg-red-700 text-white"
+                          ? "bg-accent-100 hover:bg-accent-200 text-primary border border-accent-200"
+                          : "bg-primary hover:bg-primary-dark text-white"
                       }`}
                       variants={buttonVariants}
                       initial="hidden"
@@ -669,10 +673,10 @@ export default function ProfileDetailPage() {
                       >
                         {alreadySentInterest ? (
                           <div className="relative">
-                            <HeartOff className="w-10 h-10 fill-red-600 text-red-600" />
+                            <HeartOff className="w-10 h-10 fill-primary text-primary" />
                           </div>
                         ) : (
-                          <Heart className="w-10 h-10" />
+                          <Heart className="w-10 h-10 text-white" />
                         )}
                       </motion.span>
                     </motion.button>
