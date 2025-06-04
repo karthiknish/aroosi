@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
-import { requireAdmin } from "../../../../../../convex/utils/requireAdmin";
+import { requireAdmin } from "@convex/utils/requireAdmin";
 import { Id } from "@convex/_generated/dataModel";
 
 export async function POST(
