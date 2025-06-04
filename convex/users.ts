@@ -1459,3 +1459,20 @@ export const searchPublicProfiles = query({
     };
   },
 });
+
+export const adminUpdateProfileImageOrder = mutation({
+  args: {
+    profileId: v.id("profiles"),
+    imageIds: v.array(v.id("_storage")),
+  },
+  handler: async (ctx, { profileId, imageIds }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
+    const profile = await ctx.db.get(profileId);
+    if (!profile) {
+      throw new Error("Profile not found");
+    }
+    await ctx.db.patch(profileId, { profileImageIds: imageIds });
+    return { success: true };
+  },
+});

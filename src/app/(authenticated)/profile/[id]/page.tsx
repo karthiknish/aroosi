@@ -356,7 +356,7 @@ export default function ProfileDetailPage() {
       <div
         className={`flex items-center gap-2 mb-1 text-gray-700 ${className}`}
       >
-        <span className="text-pink-500">{icon}</span>
+        <span className="text-red-600">{icon}</span>
         <span className="font-medium">{label}:</span>
         <span className="text-gray-800">{value ?? "-"}</span>
       </div>
@@ -372,11 +372,11 @@ export default function ProfileDetailPage() {
         </title>
         <meta
           name="description"
-          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the UK's trusted Muslim matrimony platform.`}
+          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans in the UK.`}
         />
         {/* ... other meta tags ... */}
       </Head>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 via-rose-50 to-white py-16 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-green-50 py-16 px-4">
         <motion.div
           key="profile-card"
           variants={cardVariants}
@@ -478,25 +478,25 @@ export default function ProfileDetailPage() {
                   className="flex items-center gap-2 text-4xl font-serif font-bold text-gray-900 mb-1"
                   style={{ fontFamily: "Lora, serif" }}
                 >
-                  <UserCircle className="w-8 h-8 text-pink-500" />
+                  <UserCircle className="w-8 h-8 text-red-600" />
                   {profile?.fullName ?? "-"}
                 </div>
                 <div
                   className="flex items-center gap-2 text-lg text-gray-600 mb-1"
                   style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                 >
-                  <MapPin className="w-5 h-5 text-pink-400" />
-                  {profile?.ukCity ?? "-"}
+                  <MapPin className="w-5 h-5 text-red-400" />
+                  UK City: {profile?.ukCity ?? "-"}
                 </div>
                 <div
                   className="flex items-center gap-2 text-lg text-gray-600 mb-1"
                   style={{ fontFamily: "Nunito Sans, Arial, sans-serif" }}
                 >
-                  <Church className="w-5 h-5 text-pink-400" />
+                  <Church className="w-5 h-5 text-red-400" />
                   {profile?.religion ?? "-"}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                  <Calendar className="w-4 h-4 text-pink-300" />
+                  <Calendar className="w-4 h-4 text-red-300" />
                   <span>Member since:</span>
                   <span>
                     {profile?.createdAt
@@ -562,7 +562,7 @@ export default function ProfileDetailPage() {
               >
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <Church className="w-5 h-5 text-pink-400" />
+                    <Church className="w-5 h-5 text-red-400" />
                     Cultural & Religious Background
                   </h3>
                   <IconRow
@@ -583,7 +583,7 @@ export default function ProfileDetailPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-pink-400" />
+                    <BookOpen className="w-5 h-5 text-red-400" />
                     Education & Career
                   </h3>
                   <IconRow
@@ -604,22 +604,22 @@ export default function ProfileDetailPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-pink-400" />
+                    <MapPin className="w-5 h-5 text-red-400" />
                     Location (UK)
                   </h3>
                   <IconRow
                     icon={<MapPin className="w-4 h-4" />}
-                    label="City"
+                    label="UK City"
                     value={profile?.ukCity ?? "-"}
                   />
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
-                    <Info className="w-5 h-5 text-pink-400" />
+                    <Info className="w-5 h-5 text-red-400" />
                     About Me
                   </h3>
                   <div className="flex items-start gap-2 text-gray-700">
-                    <Info className="w-4 h-4 mt-0.5 text-pink-400" />
+                    <Info className="w-4 h-4 mt-0.5 text-red-400" />
                     <span>{profile?.aboutMe ?? "-"}</span>
                   </div>
                 </div>
@@ -633,10 +633,10 @@ export default function ProfileDetailPage() {
                           ? "withdraw-interest"
                           : "express-interest"
                       }
-                      className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-pink-400 ${
+                      className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 ${
                         alreadySentInterest
-                          ? "bg-gray-200 hover:bg-gray-300 text-pink-600 border border-gray-300"
-                          : "bg-pink-600 hover:bg-pink-700 text-white"
+                          ? "bg-gray-200 hover:bg-gray-300 text-red-600 border border-gray-300"
+                          : "bg-red-600 hover:bg-red-700 text-white"
                       }`}
                       variants={buttonVariants}
                       initial="hidden"
@@ -669,7 +669,7 @@ export default function ProfileDetailPage() {
                       >
                         {alreadySentInterest ? (
                           <div className="relative">
-                            <HeartOff className="w-10 h-10 fill-pink-600 text-pink-600" />
+                            <HeartOff className="w-10 h-10 fill-red-600 text-red-600" />
                           </div>
                         ) : (
                           <Heart className="w-10 h-10" />

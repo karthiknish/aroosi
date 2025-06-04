@@ -13,6 +13,11 @@ import { useRouter } from "next/navigation";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useAuthContext } from "./AuthProvider";
 import type { ImageType } from "@/types/image";
+import {
+  fetchAdminProfileImagesById,
+  deleteAdminProfileImageById,
+  adminUploadProfileImage,
+} from "@/lib/profile/adminProfileApi";
 
 // Types
 type UploadImageResponse = {
@@ -57,11 +62,13 @@ export function ProfileImageUpload({
   onFileSelect,
   mode = "edit",
   className = "",
+  profileId,
+  isAdmin,
 }: ProfileImageUploadProps) {
   // Hooks must be called unconditionally at the top level
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { token, refreshProfile } = useAuthContext();
+  const { token, refreshProfile, isAdmin: authIsAdmin } = useAuthContext();
 
   // State management (moved to top)
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -134,12 +141,17 @@ export function ProfileImageUpload({
   });
 
   const { data: orderedImages = [], refetch: _refetchImages } = useQuery({
-    queryKey: ["profileImages", userId, token],
+    queryKey: ["profileImages", userId, token, authIsAdmin, profileId],
     queryFn: async () => {
       if (!token || !userId) {
         console.warn("Missing token or userId when fetching images");
         return [];
       }
+      if (authIsAdmin && profileId) {
+        // Use admin util for fetching images
+        return await fetchAdminProfileImagesById({ token, profileId });
+      }
+      // Default user fetch
       const res = await fetch(`/api/profile-detail/${userId}/images`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -277,7 +289,7 @@ export function ProfileImageUpload({
     return data.uploadUrl as string;
   }, [token]);
 
-  // Define uploadImage to call our API route (this will be passed to ImageUploader)
+  // Move uploadImage definition above uploadImageToUse
   const uploadImage = useCallback(
     async (args: {
       userId: string;
@@ -323,14 +335,33 @@ export function ProfileImageUpload({
         message: data.message,
       };
     },
-    [token] // Removed refetchImages from dependencies
+    [token]
   );
+
+  // For admin, override uploadImageFile in ImageUploader to use adminUploadProfileImage
+  const uploadImageFileAdmin = async (file: File) => {
+    if (!token) throw new Error("Authentication token not available.");
+    if (!profileId)
+      throw new Error("Profile ID not available for admin upload.");
+    await adminUploadProfileImage({ token, profileId, file });
+    toast.success("Image uploaded successfully");
+    await refetchImages();
+  };
+
+  // For admin, pass a dummy uploadImage (never called), and override uploadImageFile
+  const isAdminMode = isAdmin && profileId;
 
   // --- REWRITE: deleteImageMutation to fetch new images and send them to reorder after delete ---
 
   const deleteImageMutation = useMutation<string, Error, string>({
     mutationFn: async (imageId: string) => {
       if (!userId || !token) throw new Error("Missing userId or token");
+      if (authIsAdmin && profileId) {
+        // Use admin util for deleting images
+        await deleteAdminProfileImageById({ token, profileId, imageId });
+        return imageId;
+      }
+      // Default user delete
       const res = await fetch(`/api/images`, {
         method: "DELETE",
         headers: {
@@ -415,7 +446,7 @@ export function ProfileImageUpload({
   if (!userId) {
     return null;
   }
-
+  console.log(isAdmin, profileId);
   return (
     <div className="space-y-4">
       {/* Render ProfileImageReorder component for displaying and reordering existing images */}
@@ -433,13 +464,21 @@ export function ProfileImageUpload({
           <ImageUploader
             userId={userId}
             orderedImages={memoizedOrderedImages}
-            generateUploadUrl={generateUploadUrl}
-            uploadImage={uploadImage}
+            generateUploadUrl={isAdminMode ? async () => "" : generateUploadUrl}
+            uploadImage={
+              isAdminMode
+                ? async () => {
+                    throw new Error("Should not be called in admin mode");
+                  }
+                : uploadImage
+            }
             setIsUploading={setIsUploading}
             toast={toast}
             isUploading={isUploading}
             fetchImages={refetchImages}
             onStartUpload={handleStartUpload}
+            className="w-full"
+            {...(isAdminMode ? { uploadImageFile: uploadImageFileAdmin } : {})}
           />
           {/* Upload limit indicator */}
           <div className="flex justify-between px-1">

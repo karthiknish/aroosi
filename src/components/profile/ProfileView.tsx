@@ -222,6 +222,17 @@ const ProfileView: FC<ProfileViewProps> = ({
     }
   };
 
+  // Utility to refresh localStorage values (customize keys as needed)
+  function refreshProfileLocalStorage() {
+    // Only update 'onboarding' key, do not save 'profile' or any _id/clerkId/userId
+    if (profileData && profileData.isOnboardingComplete !== undefined) {
+      localStorage.setItem(
+        "onboarding",
+        profileData.isOnboardingComplete ? "complete" : "incomplete"
+      );
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -237,7 +248,10 @@ const ProfileView: FC<ProfileViewProps> = ({
             </div>
             <div className="flex gap-2">
               <Button
-                onClick={() => router.push("/profile/edit")}
+                onClick={() => {
+                  refreshProfileLocalStorage();
+                  router.push("/profile/edit");
+                }}
                 variant="outline"
                 className="border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700"
               >

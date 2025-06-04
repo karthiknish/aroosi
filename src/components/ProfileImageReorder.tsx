@@ -121,6 +121,7 @@ export function ProfileImageReorder({
   onReorder,
   onDeleteImage,
   loading = false,
+  isAdmin,
 }: Props) {
   const { token } = useAuthContext();
   const [isReordering, setIsReordering] = useState(false);

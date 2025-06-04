@@ -57,18 +57,35 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-base-light pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Pink color pop circles */}
+      <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
       <motion.main
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-2xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
+        className="max-w-2xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl relative z-20"
       >
         <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
+          <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-neutral relative inline-block">
             Contact Us
+            <svg
+              className="absolute -bottom-2 left-0 w-full"
+              height="6"
+              viewBox="0 0 200 6"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M0 3C50 0.5 150 0.5 200 3"
+                stroke="#FDA4AF"
+                strokeWidth="5"
+                strokeLinecap="round"
+              />
+            </svg>
           </h1>
-          <p className="mt-2 text-lg text-gray-600">
+          <p className="mt-2 text-lg font-sans text-neutral-light">
             We&apos;d love to hear from you! Send us a message using the form
             below.
           </p>
@@ -78,18 +95,18 @@ export default function ContactPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center p-6 bg-green-50 border border-green-200 rounded-lg"
+            className="text-center p-6 bg-primary-light border border-primary-200 rounded-lg"
           >
-            <h2 className="text-2xl font-semibold text-green-700">
+            <h2 className="text-2xl font-serif font-bold text-primary-700">
               Thank You!
             </h2>
-            <p className="mt-2 text-green-600">
+            <p className="mt-2 font-sans text-primary-600">
               Your message has been sent successfully. We&apos;ll get back to
               you soon.
             </p>
             <Button
               onClick={() => setIsSubmitted(false)}
-              className="mt-6 bg-pink-600 hover:bg-pink-700"
+              className="mt-6 bg-danger hover:bg-danger/90"
             >
               Send Another Message
             </Button>
@@ -105,7 +122,7 @@ export default function ContactPage() {
             <div>
               <Label
                 htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-neutral mb-1"
               >
                 Full Name
               </Label>
@@ -113,10 +130,10 @@ export default function ContactPage() {
                 id="name"
                 {...register("name")}
                 placeholder="Your Name"
-                className={`${errors.name ? "border-red-500" : ""}`}
+                className={`${errors.name ? "border-danger" : ""}`}
               />
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-danger">
                   {errors.name.message}
                 </p>
               )}
@@ -125,7 +142,7 @@ export default function ContactPage() {
             <div>
               <Label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-neutral mb-1"
               >
                 Email Address
               </Label>
@@ -134,10 +151,10 @@ export default function ContactPage() {
                 type="email"
                 {...register("email")}
                 placeholder="you@example.com"
-                className={`${errors.email ? "border-red-500" : ""}`}
+                className={`${errors.email ? "border-danger" : ""}`}
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-danger">
                   {errors.email.message}
                 </p>
               )}
@@ -146,7 +163,7 @@ export default function ContactPage() {
             <div>
               <Label
                 htmlFor="subject"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-neutral mb-1"
               >
                 Subject
               </Label>
@@ -154,10 +171,10 @@ export default function ContactPage() {
                 id="subject"
                 {...register("subject")}
                 placeholder="Regarding..."
-                className={`${errors.subject ? "border-red-500" : ""}`}
+                className={`${errors.subject ? "border-danger" : ""}`}
               />
               {errors.subject && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-danger">
                   {errors.subject.message}
                 </p>
               )}
@@ -166,7 +183,7 @@ export default function ContactPage() {
             <div>
               <Label
                 htmlFor="message"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-neutral mb-1"
               >
                 Message
               </Label>
@@ -175,17 +192,17 @@ export default function ContactPage() {
                 {...register("message")}
                 placeholder="Your message here..."
                 rows={5}
-                className={`${errors.message ? "border-red-500" : ""}`}
+                className={`${errors.message ? "border-danger" : ""}`}
               />
               {errors.message && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-danger">
                   {errors.message.message}
                 </p>
               )}
             </div>
 
             {submitError && (
-              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <p className="text-sm text-danger bg-danger/10 p-3 rounded-md">
                 {submitError}
               </p>
             )}
@@ -194,7 +211,7 @@ export default function ContactPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-pink-600 hover:bg-pink-700 disabled:bg-pink-300"
+                className="w-full bg-primary-dark hover:bg-primary-light disabled:bg-primary-light text-white"
               >
                 {isSubmitting ? "Sending..." : "Send Message"}
               </Button>
@@ -210,7 +227,7 @@ export default function ContactPage() {
             Email:{" "}
             <a
               href="mailto:contact@aroosi.co.uk"
-              className="text-pink-600 hover:underline"
+              className="text-primary-light hover:underline"
             >
               contact@aroosi.co.uk
             </a>

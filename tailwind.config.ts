@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 export default {
   content: [
@@ -13,6 +14,36 @@ export default {
         serif: ["var(--font-lora)", "serif"],
       },
       colors: {
+        primary: {
+          DEFAULT: "#EC4899", // Softer Pink
+          light: "#F9A8D4",
+          dark: "#BE185D",
+        },
+        secondary: {
+          DEFAULT: "#5F92AC", // Deeper dusty blue
+          light: "#A2C4DB", // Moved this down from DEFAULT
+          dark: "#3E647A", // Muted steel blue
+        },
+        accent: {
+          DEFAULT: "#D6B27C", // Muted Gold / Warm Sand
+          light: "#EDD6A4", // Pale Warm Beige
+          dark: "#B28E5F", // Rich Caramel Bronze
+        },
+        base: {
+          DEFAULT: "#F9F7F5", // Clean soft off-white
+          light: "#FFFFFF",
+          dark: "#E7E3DF",
+        },
+        neutral: {
+          DEFAULT: "#4A4A4A", // Muted charcoal for text
+          light: "#7A7A7A",
+        },
+        success: {
+          DEFAULT: "#7BA17D", // Gentle Green
+        },
+        danger: {
+          DEFAULT: "#B45E5E", // Subtle Terracotta Red
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -23,21 +54,9 @@ export default {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -83,5 +102,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [animate],
 } satisfies Config;

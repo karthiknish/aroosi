@@ -133,6 +133,11 @@ export function AuthProvider({
 
   // Derived states
   const isAdmin = useMemo(() => {
+    console.log("clerkUser:", clerkUser);
+    console.log(
+      "clerkUser?.publicMetadata?.role:",
+      clerkUser?.publicMetadata?.role
+    );
     return clerkUser?.publicMetadata?.role === "admin" || false;
   }, [clerkUser]);
 
@@ -184,7 +189,6 @@ export function AuthProvider({
       if (typeof window !== "undefined") {
         try {
           if (newToken) {
-            console.log("AuthProvider raw token:", newToken);
             try {
               const decoded = jwtDecode<JwtPayload>(newToken);
               console.log("AuthProvider decoded token payload:", decoded);

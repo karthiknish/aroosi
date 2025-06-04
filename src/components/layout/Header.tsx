@@ -16,7 +16,6 @@ import {
   Heart,
   LogOut,
 } from "lucide-react";
-import Image from "next/image";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
@@ -64,7 +63,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 <Link href="/search" onClick={onClick}>
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
                   >
                     <Search className="h-5 w-5 mr-1 sm:mr-2" />
                     <span>Search Profiles</span>
@@ -82,7 +81,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   <Link href="/admin" onClick={onClick}>
                     <Button
                       variant="ghost"
-                      className="w-full cursor-pointer text-left text-pink-700 hover:text-pink-800 hover:bg-pink-50 font-semibold"
+                      className="w-full cursor-pointer text-left text-primary-dark hover:text-primary hover:bg-primary-light font-semibold"
                     >
                       <Shield className="h-5 w-5 mr-1 sm:mr-2" />
                       <span>Admin</span>
@@ -100,7 +99,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 <Link href="/profile" onClick={onClick}>
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
                   >
                     <LayoutDashboard className="h-5 w-5 mr-1 sm:mr-2" />
                     <span>My Profile</span>
@@ -117,7 +116,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 <Link href="/interests-matches" onClick={onClick}>
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
                   >
                     <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
                     <span>Interests / Matches</span>
@@ -134,7 +133,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               >
                 <Button
                   variant="ghost"
-                  className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                  className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
                   onClick={() => signOut()}
                 >
                   <LogOut className="h-5 w-5 mr-1 sm:mr-2" />
@@ -153,7 +152,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 <Link href="/about" onClick={onClick}>
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
                   >
                     <span>About</span>
                   </Button>
@@ -169,7 +168,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 <Link href="/how-it-works" onClick={onClick}>
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-gray-600 hover:text-pink-600 hover:bg-pink-50"
+                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
                   >
                     <span>How It Works</span>
                   </Button>
@@ -186,14 +185,14 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 <Link href="/sign-in" onClick={onClick}>
                   <Button
                     variant="outline"
-                    className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+                    className="w-full flex items-center justify-center gap-1.5 text-primary border-primary hover:bg-primary-light hover:border-primary-dark"
                   >
                     <LogIn className="h-4 w-4" />
                     <span>Sign In</span>
                   </Button>
                 </Link>
                 <Link href="/sign-up" onClick={onClick}>
-                  <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
+                  <Button className="w-full flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-dark text-base-light">
                     <UserPlus className="h-4 w-4" />
                     <span>Sign Up</span>
                   </Button>
@@ -212,19 +211,13 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         variants={headerVariants}
         initial="hidden"
         animate="visible"
-        className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm"
+        className="fixed top-0 left-0 right-0 z-50 bg-base-light/80 border-b border-base-200 backdrop-blur-md"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center">
-                <Image
-                  src="/logo.png"
-                  alt="Aroosi Logo"
-                  width={150}
-                  height={150}
-                  className="h-8 w-auto"
-                />
+                <h2 className="text-2xl text-primary-dark font-bold">Aroosi</h2>
               </Link>
             </div>
 
@@ -239,7 +232,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="text-gray-600 hover:text-pink-600 p-2 rounded-md hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-red-400"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
                 {mobileOpen ? (
@@ -261,7 +254,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -30, opacity: 0 }}
               transition={{ type: "spring", stiffness: 120, damping: 18 }}
-              className="md:hidden absolute top-full left-0 right-0 bg-white/95 shadow-lg backdrop-blur-md border-b border-pink-100"
+              className="md:hidden absolute top-full left-0 right-0 bg-base-light/90 backdrop-blur-md border-b border-base-200"
             >
               <div className="px-4 py-4 flex flex-col space-y-2">
                 <NavLinks onClick={() => setMobileOpen(false)} />

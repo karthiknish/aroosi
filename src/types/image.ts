@@ -7,3 +7,4 @@ export interface ImageType {
   fileName?: string;
   uploadedAt?: number;
 }
+ 

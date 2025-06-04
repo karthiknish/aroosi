@@ -15,11 +15,9 @@ const ProfileFormStepCultural: React.FC<Props> = ({ form }) => (
       placeholder="Select religion"
       options={[
         { value: "islam", label: "Islam" },
-        { value: "hinduism", label: "Hinduism" },
         { value: "christianity", label: "Christianity" },
+        { value: "hinduism", label: "Hinduism" },
         { value: "sikhism", label: "Sikhism" },
-        { value: "jainism", label: "Jainism" },
-        { value: "buddhism", label: "Buddhism" },
         { value: "judaism", label: "Judaism" },
         { value: "other", label: "Other" },
       ]}
@@ -27,7 +25,7 @@ const ProfileFormStepCultural: React.FC<Props> = ({ form }) => (
     />
     <FormField
       name="caste"
-      label="Sect/Caste"
+      label="Sect (e.g., Sunni, Shia)"
       form={form}
       placeholder="Optional"
     />
@@ -35,7 +33,7 @@ const ProfileFormStepCultural: React.FC<Props> = ({ form }) => (
       name="motherTongue"
       label="Mother Tongue"
       form={form}
-      placeholder="e.g., Urdu"
+      placeholder="e.g., Dari, Pashto, Uzbek"
     />
     <FormSelectField
       name="maritalStatus"

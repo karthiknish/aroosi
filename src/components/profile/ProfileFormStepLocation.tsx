@@ -11,9 +11,9 @@ const ProfileFormStepLocation: React.FC<Props> = ({ form, ukCityOptions }) => (
   <>
     <FormSelectField
       name="ukCity"
-      label="City"
+      label="UK City"
       form={form}
-      placeholder="Select city"
+      placeholder="Select UK city"
       options={ukCityOptions}
       isRequired
     />

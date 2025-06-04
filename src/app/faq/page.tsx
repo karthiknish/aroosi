@@ -14,7 +14,7 @@ const faqData = [
   {
     question: "What is Aroosi?",
     answer:
-      "Aroosi is a matrimony platform specifically designed for Muslims in the UK to find their life partners. We focus on providing a safe, secure, and culturally sensitive environment for individuals to connect.",
+      "Aroosi is a matrimony platform specifically designed for Afghans in the UK to find their life partners. We focus on providing a safe, secure, and culturally sensitive environment for the Afghan community in the UK to connect.",
   },
   {
     question: "Is Aroosi free to use?",
@@ -29,7 +29,7 @@ const faqData = [
   {
     question: "How is Aroosi different from other matrimonial sites?",
     answer:
-      "Aroosi is tailored for the UK Muslim community, taking into account cultural nuances and preferences. We aim to provide a more focused and relevant matchmaking experience by offering specific search criteria and fostering a community built on shared values.",
+      "Aroosi is tailored for the Afghan community in the UK, taking into account cultural nuances and preferences. We aim to provide a more focused and relevant matchmaking experience by offering specific search criteria and fostering a community built on shared Afghan values.",
   },
   {
     question: "How can I create a profile?",
@@ -55,12 +55,12 @@ export default function FaqPage() {
         <title>FAQ | Aroosi</title>
         <meta
           name="description"
-          content="Frequently asked questions about Aroosi, the UK's trusted Muslim matrimony platform."
+          content="Frequently asked questions about Aroosi, the trusted Afghan matrimony platform."
         />
         <meta property="og:title" content="FAQ | Aroosi" />
         <meta
           property="og:description"
-          content="Frequently asked questions about Aroosi, the UK's trusted Muslim matrimony platform."
+          content="Frequently asked questions about Aroosi, the trusted Afghan matrimony platform."
         />
         <meta property="og:image" content="/og-image.png" />
         <meta property="og:url" content="https://aroosi.co.uk/faq" />
@@ -69,7 +69,7 @@ export default function FaqPage() {
         <meta name="twitter:title" content="FAQ | Aroosi" />
         <meta
           name="twitter:description"
-          content="Frequently asked questions about Aroosi, the UK's trusted Muslim matrimony platform."
+          content="Frequently asked questions about Aroosi, the trusted Afghan matrimony platform."
         />
         <meta name="twitter:image" content="/og-image.png" />
       </Head>

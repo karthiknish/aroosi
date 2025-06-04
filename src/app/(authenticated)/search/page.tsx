@@ -18,41 +18,63 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
 
 const majorUkCities = [
-  "Belfast",
+  "London",
   "Birmingham",
-  "Bradford",
-  "Brighton",
+  "Manchester",
+  "Leeds",
+  "Glasgow",
+  "Liverpool",
+  "Newcastle",
+  "Sheffield",
   "Bristol",
-  "Cambridge",
+  "Leicester",
+  "Edinburgh",
+  "Nottingham",
+  "Southampton",
   "Cardiff",
   "Coventry",
-  "Derby",
-  "Edinburgh",
-  "Glasgow",
-  "Kingston upon Hull",
-  "Leeds",
-  "Leicester",
-  "Liverpool",
-  "London",
-  "Manchester",
-  "Milton Keynes",
-  "Newcastle upon Tyne",
-  "Newport",
-  "Norwich",
-  "Nottingham",
-  "Oxford",
-  "Plymouth",
-  "Portsmouth",
-  "Preston",
-  "Reading",
-  "Sheffield",
-  "Southampton",
+  "Bradford",
+  "Belfast",
   "Stoke-on-Trent",
-  "Sunderland",
-  "Swansea",
-  "Wakefield",
   "Wolverhampton",
+  "Plymouth",
+  "Derby",
+  "Swansea",
+  "Sunderland",
+  "Luton",
+  "Preston",
+  "Aberdeen",
+  "Norwich",
+  "Portsmouth",
   "York",
+  "Milton Keynes",
+  "Reading",
+  "Huddersfield",
+  "Peterborough",
+  "Blackpool",
+  "Bolton",
+  "Ipswich",
+  "Middlesbrough",
+  "Woking",
+  "Slough",
+  "Cambridge",
+  "Exeter",
+  "Bath",
+  "Oxford",
+  "Chelmsford",
+  "Colchester",
+  "Crawley",
+  "Gillingham",
+  "Hastings",
+  "High Wycombe",
+  "Maidstone",
+  "Poole",
+  "Rochdale",
+  "Solihull",
+  "Stockport",
+  "Warrington",
+  "Watford",
+  "Wokingham",
 ];
 const cityOptions = ["any", ...majorUkCities.sort()];
 
@@ -95,14 +117,14 @@ export default function SearchProfilesPage() {
   // Redirect to sign-in if not signed in
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
-      router.push('/sign-in');
+      router.push("/sign-in");
     }
   }, [isLoaded, isSignedIn, router]);
 
   // Fetch search results function
   const fetchSearchResults = async () => {
     if (!token) return { profiles: [], total: 0 };
-    
+
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -114,26 +136,23 @@ export default function SearchProfilesPage() {
       if (ageMin) params.append("ageMin", ageMin);
       if (ageMax) params.append("ageMax", ageMax);
 
-      const response = await fetch(
-        `/api/search?${params.toString()}`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          cache: 'no-store'
-        }
-      );
+      const response = await fetch(`/api/search?${params.toString()}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch search results");
       }
 
       const data = await response.json();
-      console.log('Search API response:', data);
-      return { 
+      console.log("Search API response:", data);
+      return {
         profiles: Array.isArray(data.profiles) ? data.profiles : [],
-        total: typeof data.total === 'number' ? data.total : 0 
+        total: typeof data.total === "number" ? data.total : 0,
       };
     } catch (error) {
       console.error("Error fetching search results:", error);
@@ -156,13 +175,13 @@ export default function SearchProfilesPage() {
     queryFn: fetchSearchResults,
     enabled: !!token && isSignedIn,
   });
-  
+
   // Extract profiles and total from search results
   const { profiles = [], total: totalResults = 0 } = searchResults || {};
-  
+
   // Update total count for pagination
   useEffect(() => {
-    if (typeof totalResults === 'number') {
+    if (typeof totalResults === "number") {
       setTotal(totalResults);
     }
   }, [totalResults]);
@@ -173,51 +192,51 @@ export default function SearchProfilesPage() {
     queryFn: async () => {
       try {
         if (!token) {
-          console.warn('No auth token available for images batch request');
+          console.warn("No auth token available for images batch request");
           return {};
         }
-        
+
         if (!profiles || profiles.length === 0) {
-          console.log('No profiles available to fetch images for');
+          console.log("No profiles available to fetch images for");
           return {};
         }
-        
+
         const userIds = profiles
           .map((u: ProfileSearchResult) => u.userId)
           .filter(Boolean);
-          
+
         if (userIds.length === 0) {
-          console.log('No valid user IDs found for image batch request');
+          console.log("No valid user IDs found for image batch request");
           return {};
         }
-        
-        console.log('Fetching images for user IDs:', userIds);
+
+        console.log("Fetching images for user IDs:", userIds);
         const res = await fetch(
           `/api/images/batch?userIds=${userIds.join(",")}`,
           {
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}` 
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
             },
-            cache: 'no-store'
+            cache: "no-store",
           }
         );
-        
+
         if (!res.ok) {
           const errorText = await res.text();
-          console.error('Batch images API error:', {
+          console.error("Batch images API error:", {
             status: res.status,
             statusText: res.statusText,
             error: errorText,
             userIds,
-            hasAuthHeader: !!token
+            hasAuthHeader: !!token,
           });
           return {};
         }
-        
+
         return await res.json();
       } catch (error) {
-        console.error('Error in images batch request:', error);
+        console.error("Error in images batch request:", error);
         return {};
       }
     },
@@ -253,7 +272,8 @@ export default function SearchProfilesPage() {
   // Filter out current user and incomplete profiles
   const filtered = useMemo(() => {
     return (publicProfiles || []).filter((u: ProfileSearchResult) => {
-      if (!u.profile?.isProfileComplete || u.profile?.hiddenFromSearch) return false;
+      if (!u.profile?.isProfileComplete || u.profile?.hiddenFromSearch)
+        return false;
       if (currentUser) {
         if (u.userId === currentUser.userId) return false;
         if (
@@ -270,14 +290,12 @@ export default function SearchProfilesPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
-
-
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12">
+    <div className="min-h-screen w-full bg-green-50 pt-24 sm:pt-28 md:pt-32 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <section className="mb-10 text-center">
           <h1
-            className="text-4xl sm:text-5xl font-serif font-bold text-pink-600 mb-4"
+            className="text-4xl sm:text-5xl font-serif font-bold text-red-600 mb-4"
             style={{ fontFamily: "Lora, serif" }}
           >
             Search Profiles
@@ -330,7 +348,10 @@ export default function SearchProfilesPage() {
             />
           </div>
         </section>
-        {loadingProfiles || loadingImages || profiles === undefined || userImages === undefined ? (
+        {loadingProfiles ||
+        loadingImages ||
+        profiles === undefined ||
+        userImages === undefined ? (
           // Show loading skeleton when data is being fetched
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -349,25 +370,37 @@ export default function SearchProfilesPage() {
           // Show 'No profiles found' message when there are no results
           <div className="text-center py-12">
             <div className="mx-auto w-24 h-24 text-gray-300 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
-            <h3 className="text-xl font-medium text-gray-700 mb-2">No profiles found</h3>
+            <h3 className="text-xl font-medium text-gray-700 mb-2">
+              No profiles found
+            </h3>
             <p className="text-gray-500 max-w-md mx-auto">
-              {city !== 'any' || religion !== 'any' || ageMin || ageMax
-                ? 'Try adjusting your search criteria to see more results.'
-                : 'There are currently no profiles available. Please check back later.'}
+              {city !== "any" || religion !== "any" || ageMin || ageMax
+                ? "Try adjusting your search criteria to see more results."
+                : "There are currently no profiles available. Please check back later."}
             </p>
-            {(city !== 'any' || religion !== 'any' || ageMin || ageMax) && (
+            {(city !== "any" || religion !== "any" || ageMin || ageMax) && (
               <button
                 onClick={() => {
-                  setCity('any');
-                  setReligion('any');
-                  setAgeMin('');
-                  setAgeMax('');
+                  setCity("any");
+                  setReligion("any");
+                  setAgeMin("");
+                  setAgeMax("");
                 }}
-                className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
+                className="mt-4 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
               >
                 Clear all filters
               </button>
@@ -444,7 +477,7 @@ export default function SearchProfilesPage() {
                         {typeof p.religion === "string" ? p.religion : "-"}
                       </div>
                       <Button
-                        className="bg-pink-600 hover:bg-pink-700 w-full mt-2"
+                        className="bg-red-600 hover:bg-red-700 w-full mt-2"
                         onClick={() => {
                           // Convex user IDs are 15+ chars, Clerk IDs start with 'user_'
                           if (

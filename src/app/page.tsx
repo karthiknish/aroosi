@@ -42,18 +42,19 @@ const fadeIn = {
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-base-light">
       {/* Header */}
 
       <main className="flex-1">
         {/* Hero Section with Pattern */}
-        <section className="relative py-20 lg:py-32 overflow-hidden">
+        <section className="relative py-20 lg:py-32 overflow-hidden bg-base-light">
+          {/* Pink color pop circle */}
+          <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0"></div>
           {/* Decorative background patterns */}
-          <div className="absolute inset-0 bg-gradient-to-br from-rose-50 to-pink-50 z-0"></div>
           <div
             className="absolute inset-0 opacity-[0.03] z-0"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23e11d48' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             }}
           ></div>
 
@@ -62,21 +63,21 @@ export default function HomePage() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 0.2, scale: 1 }}
             transition={{ duration: 1.2, delay: 0.2 }}
-            className="absolute top-20 left-10 w-24 h-24 bg-rose-200 rounded-full animate-pulse"
+            className="absolute top-20 left-10 w-24 h-24 bg-primary-light rounded-full animate-pulse"
             style={{ opacity: 0.2 }}
           ></motion.div>
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 0.2, scale: 1 }}
             transition={{ duration: 1.2, delay: 0.6 }}
-            className="absolute bottom-20 right-10 w-32 h-32 bg-pink-200 rounded-full animate-pulse"
+            className="absolute bottom-20 right-10 w-32 h-32 bg-primary-light rounded-full animate-pulse"
             style={{ animationDelay: "1s", opacity: 0.2 }}
           ></motion.div>
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 0.1, scale: 1 }}
             transition={{ duration: 1.2, delay: 1.0 }}
-            className="absolute top-1/3 right-1/4 w-16 h-16 bg-rose-300 rounded-full animate-pulse"
+            className="absolute top-1/3 right-1/4 w-16 h-16 bg-primary rounded-full animate-pulse"
             style={{ animationDelay: "2s", opacity: 0.1 }}
           ></motion.div>
 
@@ -92,33 +93,31 @@ export default function HomePage() {
               >
                 <div className="space-y-4">
                   <motion.div variants={fadeInUp} custom={0.1}>
-                    <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 font-nunito px-4 py-1.5 rounded-full shadow-sm">
-                      Top Matrimony Site in the UK
+                    <Badge className="bg-primary-dark text-base-light font-nunito px-4 py-1.5 rounded-full shadow-sm">
+                      Top Matrimony Site for Afghans
                     </Badge>
                   </motion.div>
                   <motion.h1
                     variants={fadeInUp}
                     custom={0.2}
-                    className="font-lora text-4xl lg:text-6xl font-bold text-gray-900 leading-tight"
+                    className="font-serif text-3xl lg:text-6xl font-bold text-white font- leading-tight"
                   >
                     Find Your Perfect
                     <div className="relative inline-block">
-                      <span className="relative z-10 text-rose-600">
+                      <span className="relative z-10 text-primary">
                         {" "}
                         Life Partner
                       </span>
-                      <span className="absolute -bottom-2 left-0 right-0 h-3 bg-rose-100 opacity-50 -z-10 transform -rotate-1"></span>
                     </div>
                   </motion.h1>
                   <motion.p
                     variants={fadeInUp}
                     custom={0.3}
-                    className="font-nunito text-lg text-gray-600 leading-relaxed"
+                    className="font-nunito text-lg text-neutral-light leading-relaxed"
                   >
-                    Join thousands of British South Asians who have found their
-                    soulmate through Aroosi. Our trusted platform connects
-                    compatible individuals for meaningful relationships and
-                    marriage.
+                    Join thousands of Afghans who have found their soulmate
+                    through Aroosi. Our trusted platform connects Afghan singles
+                    and families for meaningful relationships and marriage.
                   </motion.p>
                 </div>
 
@@ -130,23 +129,22 @@ export default function HomePage() {
                   <Link href="/signup">
                     <Button
                       size="lg"
-                      className="bg-rose-600 hover:bg-rose-700 font-nunito text-base font-medium relative overflow-hidden group"
+                      className="bg-primary-dark hover:bg-primary-light font-nunito text-base font-medium relative overflow-hidden group"
                     >
-                      <span className="relative z-10 flex items-center">
+                      <span className="relative z-10 flex items-center hover:text-primary-dark">
                         Start Your Journey
                         <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                       </span>
-                      <span className="absolute inset-0 bg-gradient-to-r from-rose-600 to-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"></span>
                     </Button>
                   </Link>
                   <Link href="/contact">
                     <Button
                       size="lg"
                       variant="outline"
-                      className="border-rose-200 text-rose-600 hover:bg-rose-50 font-nunito text-base font-medium relative overflow-hidden group"
+                      className="border-primary text-primary-dark hover:bg-primary-light font-nunito text-base font-medium relative overflow-hidden group"
                     >
                       <span className="relative z-10">Contact Us</span>
-                      <span className="absolute inset-0 bg-rose-100 opacity-0 group-hover:opacity-30 transition-opacity"></span>
+                      <span className="absolute inset-0 bg-primary-light opacity-0 group-hover:opacity-30 transition-opacity"></span>
                     </Button>
                   </Link>
                 </motion.div>
@@ -156,30 +154,30 @@ export default function HomePage() {
                   custom={0.5}
                   className="flex items-center space-x-8 pt-4"
                 >
-                  <div className="text-center relative">
-                    <div className="absolute -inset-1 bg-rose-50 rounded-lg -z-10 transform rotate-3"></div>
-                    <div className="font-lora text-2xl font-bold text-pink-600">
+                  <div className="text-center relative flex-1 min-w-[120px]">
+                    <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
+                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm">
                       2025
                     </div>
-                    <div className="font-nunito text-sm text-gray-600">
-                      Relaunch Year
+                    <div className="font-nunito text-sm text-white">
+                      Launch Year
                     </div>
                   </div>
-                  <div className="text-center relative">
-                    <div className="absolute -inset-1 bg-rose-50 rounded-lg -z-10 transform -rotate-2"></div>
-                    <div className="font-lora text-2xl font-bold text-pink-600">
+                  <div className="text-center relative flex-1 min-w-[120px]">
+                    <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
+                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm">
                       GDPR-First
                     </div>
-                    <div className="font-nunito text-sm text-gray-600">
+                    <div className="font-nunito text-sm text-white">
                       Privacy & Security
                     </div>
                   </div>
-                  <div className="text-center relative">
-                    <div className="absolute -inset-1 bg-rose-50 rounded-lg -z-10 transform rotate-1"></div>
-                    <div className="font-lora text-2xl font-bold text-pink-600">
+                  <div className="text-center relative flex-1 min-w-[120px]">
+                    <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
+                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm">
                       Community
                     </div>
-                    <div className="font-nunito text-sm text-gray-600">
+                    <div className="font-nunito text-sm text-white">
                       Built For You
                     </div>
                   </div>
@@ -193,9 +191,9 @@ export default function HomePage() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className="relative"
               >
-                <div className="absolute -inset-4 bg-[radial-gradient(#e11d48_1px,transparent_1px)] [background-size:20px_20px] opacity-10"></div>
+                <div className="absolute -inset-4 bg-[radial-gradient(#BFA67A_1px,transparent_1px)] [background-size:20px_20px] opacity-10"></div>
                 <div className="relative z-10 rounded-2xl overflow-hidden shadow-2xl transform hover:scale-[1.01] transition-transform">
-                  <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-rose-600/20 to-pink-600/20 mix-blend-overlay"></div>
+                  <div className="absolute top-0 left-0 w-full h-full bg-primary-light/60 mix-blend-overlay"></div>
                   <Image
                     src="https://images.pexels.com/photos/17301141/pexels-photo-17301141/free-photo-of-close-up-of-couple-showing-rings-on-hands.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
                     alt="Happy couple"
@@ -203,11 +201,11 @@ export default function HomePage() {
                     height={600}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-rose-600/20 rounded-bl-full backdrop-blur-sm"></div>
-                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-pink-600/20 rounded-tr-full backdrop-blur-sm"></div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-primary rounded-bl-full backdrop-blur-sm"></div>
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-light rounded-tr-full backdrop-blur-sm"></div>
                 </div>
-                <div className="absolute -top-4 -right-4 w-full h-full bg-rose-200 rounded-2xl -z-10 transform rotate-2"></div>
-                <div className="absolute -bottom-4 -left-4 w-full h-full border-2 border-dashed border-rose-300 rounded-2xl -z-10 transform -rotate-1"></div>
+                <div className="absolute -top-4 -right-4 w-full h-full bg-primary-light rounded-2xl -z-10 transform rotate-2"></div>
+                <div className="absolute -bottom-4 -left-4 w-full h-full border-2 border-dashed border-primary rounded-2xl -z-10 transform -rotate-1"></div>
               </motion.div>
             </div>
           </div>
@@ -218,13 +216,15 @@ export default function HomePage() {
         {/* How It Works Section */}
         <section
           id="how-it-works"
-          className="py-20 bg-gray-50 relative overflow-hidden"
+          className="py-20 bg-base-light relative overflow-hidden"
         >
+          {/* Pink color pop circle */}
+          <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
           {/* Decorative background */}
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23e11d48' fillOpacity='1' fillRule='evenodd'/%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23BFA67A' fillOpacity='1' fillRule='evenodd'/%3E%3C/g%3E%3C/svg%3E")`,
             }}
           ></div>
 
@@ -240,17 +240,29 @@ export default function HomePage() {
                 <motion.h2
                   variants={fadeInUp}
                   custom={0}
-                  className="font-lora text-3xl lg:text-4xl font-bold text-gray-900 relative"
+                  className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative"
                 >
                   How Aroosi Works
-                  <div className="absolute -bottom-2 left-0 right-0 h-1 bg-rose-200"></div>
-                  <div className="absolute -bottom-2 left-1/4 right-1/4 h-1 bg-rose-400"></div>
+                  <svg
+                    className="absolute -bottom-2 left-0 w-full"
+                    height="6"
+                    viewBox="0 0 200 6"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M0 3C50 0.5 150 0.5 200 3"
+                      stroke="#FDA4AF"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </motion.h2>
               </div>
               <motion.p
                 variants={fadeInUp}
                 custom={0.1}
-                className="font-nunito text-lg text-gray-600 max-w-2xl mx-auto"
+                className="font-nunito text-lg text-neutral-light max-w-2xl mx-auto"
               >
                 Finding your life partner has never been easier. Follow these
                 simple steps to begin your journey.
@@ -259,29 +271,29 @@ export default function HomePage() {
 
             <div className="grid md:grid-cols-3 gap-8 relative">
               {/* Connecting line between cards */}
-              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-rose-200 hidden md:block"></div>
-              <div className="absolute top-1/2 left-1/4 right-3/4 h-0.5 bg-rose-300 hidden md:block"></div>
-              <div className="absolute top-1/2 left-2/4 right-2/4 h-0.5 bg-rose-400 hidden md:block"></div>
-              <div className="absolute top-1/2 left-3/4 right-1/4 h-0.5 bg-rose-500 hidden md:block"></div>
+              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-accent-200 hidden md:block"></div>
+              <div className="absolute top-1/2 left-1/4 right-3/4 h-0.5 bg-accent-300 hidden md:block"></div>
+              <div className="absolute top-1/2 left-2/4 right-2/4 h-0.5 bg-accent-400 hidden md:block"></div>
+              <div className="absolute top-1/2 left-3/4 right-1/4 h-0.5 bg-accent-500 hidden md:block"></div>
 
               {[
                 // Cards for "How it works"
                 {
-                  icon: <Users className="h-8 w-8 text-rose-600" />,
+                  icon: <Users className="h-8 w-8 text-accent-600" />,
                   title: "Create Your Profile",
                   desc: "Sign up and create a detailed profile with your preferences, values, and what you're looking for in a partner.",
                   ringClass: "animate-spin-slow",
                   ringStyle: {},
                 },
                 {
-                  icon: <Heart className="h-8 w-8 text-rose-600" />,
+                  icon: <Heart className="h-8 w-8 text-accent-600" />,
                   title: "Find Matches",
                   desc: "Our advanced matching algorithm suggests compatible profiles based on your preferences and values.",
                   ringClass: "animate-pulse",
                   ringStyle: {},
                 },
                 {
-                  icon: <CheckCircle className="h-8 w-8 text-rose-600" />,
+                  icon: <CheckCircle className="h-8 w-8 text-accent-600" />,
                   title: "Connect & Meet",
                   desc: "Start conversations, get to know each other, and take the next step towards your happily ever after.",
                   ringClass: "animate-spin-slow",
@@ -296,19 +308,19 @@ export default function HomePage() {
                   viewport={{ once: true, amount: 0.2 }}
                   custom={i}
                 >
-                  <Card className="text-center p-8 border-rose-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10">
+                  <Card className="text-center p-8 border-primary-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10">
                     <CardContent className="space-y-4">
-                      <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto relative">
+                      <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto relative">
                         {card.icon}
                         <div
-                          className={`absolute -inset-1 border-2 border-dashed border-rose-200 rounded-full ${card.ringClass}`}
+                          className={`absolute -inset-1 border-2 border-dashed border-primary-200 rounded-full ${card.ringClass}`}
                           style={card.ringStyle}
                         ></div>
                       </div>
-                      <h3 className="font-lora text-xl font-semibold text-gray-900">
+                      <h3 className="font-serif text-xl font-semibold text-primary-dark">
                         {card.title}
                       </h3>
-                      <p className="font-nunito text-gray-600">{card.desc}</p>
+                      <p className="font-nunito text-primary">{card.desc}</p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -320,10 +332,10 @@ export default function HomePage() {
         {/* Decorative Divider */}
 
         {/* Features Section */}
-        <section className="py-20 bg-white relative overflow-hidden">
+        <section className="py-20 bg-base-light relative overflow-hidden">
+          {/* Pink color pop circle */}
+          <div className="absolute -top-24 -left-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
           {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50 rounded-full opacity-70 transform translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-pink-50 rounded-full opacity-70 transform -translate-x-1/2 translate-y-1/2"></div>
 
           <div className="container mx-auto px-4 lg:px-6 relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -338,7 +350,7 @@ export default function HomePage() {
                   <motion.h2
                     variants={fadeInUp}
                     custom={0}
-                    className="font-lora text-3xl lg:text-4xl font-bold text-gray-900 relative inline-block"
+                    className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative inline-block"
                   >
                     Why Choose Aroosi?
                     <svg
@@ -359,7 +371,7 @@ export default function HomePage() {
                   <motion.p
                     variants={fadeInUp}
                     custom={0.1}
-                    className="font-nunito text-lg text-gray-600"
+                    className="font-nunito text-lg text-neutral-light"
                   >
                     We understand the importance of finding the right life
                     partner. That&apos;s why we&apos;ve built a platform that
@@ -370,22 +382,22 @@ export default function HomePage() {
                 <div className="space-y-6">
                   {[
                     {
-                      icon: <Shield className="h-6 w-6 text-rose-600" />,
+                      icon: <Shield className="h-6 w-6 text-accent-600" />,
                       title: "Verified Profiles",
                       desc: "All profiles are manually verified to ensure authenticity and safety.",
                     },
                     {
-                      icon: <Star className="h-6 w-6 text-rose-600" />,
+                      icon: <Star className="h-6 w-6 text-accent-600" />,
                       title: "Advanced Matching",
                       desc: "Our algorithm considers compatibility factors beyond just basic preferences.",
                     },
                     {
-                      icon: <Users className="h-6 w-6 text-rose-600" />,
+                      icon: <Users className="h-6 w-6 text-accent-600" />,
                       title: "Family Involvement",
                       desc: "We respect traditional values and welcome family participation in the process.",
                     },
                     {
-                      icon: <Heart className="h-6 w-6 text-rose-600" />,
+                      icon: <Heart className="h-6 w-6 text-accent-600" />,
                       title: "Success Support",
                       desc: "Our dedicated team provides guidance and support throughout your journey.",
                     },
@@ -394,16 +406,16 @@ export default function HomePage() {
                       key={feature.title}
                       variants={fadeInUp}
                       custom={i}
-                      className="flex items-start space-x-4 p-4 rounded-lg hover:bg-rose-50 transition-colors"
+                      className="flex items-start space-x-4 p-4 rounded-lg hover:bg-primary-light/30 transition-colors"
                     >
-                      <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         {feature.icon}
                       </div>
                       <div>
-                        <h3 className="font-lora text-lg font-semibold text-gray-900">
+                        <h3 className="font-serif text-xl font-semibold text-neutral">
                           {feature.title}
                         </h3>
-                        <p className="font-nunito text-gray-600">
+                        <p className="font-nunito text-neutral-600">
                           {feature.desc}
                         </p>
                       </div>
@@ -421,7 +433,7 @@ export default function HomePage() {
               >
                 <div className="absolute inset-0 bg-[radial-gradient(#fda4af_1px,transparent_1px)] [background-size:16px_16px] opacity-20"></div>
                 <div className="relative z-10 rounded-2xl overflow-hidden shadow-xl">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-rose-600/10 to-pink-600/10 mix-blend-overlay"></div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-accent-600/10 to-primary-600/10 mix-blend-overlay"></div>
                   <Image
                     src="https://images.pexels.com/photos/2778436/pexels-photo-2778436.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
                     alt="Features illustration"
@@ -431,30 +443,136 @@ export default function HomePage() {
                   />
 
                   {/* Decorative corner elements */}
-                  <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-rose-400 opacity-70"></div>
-                  <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-rose-400 opacity-70"></div>
-                  <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-rose-400 opacity-70"></div>
-                  <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-rose-400 opacity-70"></div>
+                  <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-accent-400 opacity-70"></div>
+                  <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-accent-400 opacity-70"></div>
+                  <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-accent-400 opacity-70"></div>
+                  <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-accent-400 opacity-70"></div>
                 </div>
 
                 {/* Decorative elements */}
-                <div className="absolute -top-6 -left-6 w-24 h-24 bg-rose-100 rounded-full opacity-50 -z-10"></div>
-                <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-pink-100 rounded-full opacity-50 -z-10"></div>
+                <div className="absolute -top-6 -left-6 w-24 h-24 bg-primary-100 rounded-full opacity-50 -z-10"></div>
+                <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-primary-light rounded-full opacity-50 -z-10"></div>
               </motion.div>
             </div>
+          </div>
+        </section>
+
+        {/* Afghan Community Values Section */}
+        <section className="py-20 bg-accent-100 relative overflow-hidden">
+          {/* Pink color pop circle */}
+          <div className="absolute -top-24 -left-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
+          {/* Decorative background */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23e11d48' fillOpacity='1' fillRule='evenodd'/%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          ></div>
+          <div className="container mx-auto px-4 lg:px-6 relative z-10">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              variants={fadeIn}
+              className="grid lg:grid-cols-2 gap-12 items-center"
+            >
+              {/* Left: Image and heading/description */}
+              <div className="space-y-8">
+                <div className="inline-block relative mb-6">
+                  <motion.h2
+                    variants={fadeInUp}
+                    custom={0}
+                    className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
+                  >
+                    Afghan Community Values
+                  </motion.h2>
+                  <svg
+                    className="absolute -bottom-2 left-0 w-full"
+                    height="6"
+                    viewBox="0 0 200 6"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M0 3C50 0.5 150 0.5 200 3"
+                      stroke="#FDA4AF"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+                <motion.p
+                  variants={fadeInUp}
+                  custom={0.1}
+                  className="font-nunito text-lg text-neutral-light max-w-xl"
+                >
+                  Our platform is built around Afghan values—family, faith, and
+                  community. Here&apos;s how we honor what matters most to you.
+                </motion.p>
+                <div className="rounded-2xl overflow-hidden shadow-xl mt-8">
+                  <Image
+                    src="/afghan.jpg"
+                    alt="Afghan family gathering"
+                    width={500}
+                    height={400}
+                    className="w-full h-72 object-cover"
+                  />
+                </div>
+              </div>
+              {/* Right: Value cards */}
+              <div className="grid md:grid-cols-2 gap-8">
+                {[
+                  {
+                    icon: <Heart className="h-8 w-8 text-primary" />,
+                    title: "Family Involvement",
+                    desc: "We welcome and encourage family participation in the matchmaking process.",
+                  },
+                  {
+                    icon: <Shield className="h-8 w-8 text-accent-600" />,
+                    title: "Cultural Sensitivity",
+                    desc: "Profiles and matches are reviewed with respect for Afghan traditions and values.",
+                  },
+                  {
+                    icon: <Star className="h-8 w-8 text-primary-dark" />,
+                    title: "Halal Matchmaking",
+                    desc: "We ensure all connections and communications are respectful and halal.",
+                  },
+                  {
+                    icon: <Users className="h-8 w-8 text-accent-600" />,
+                    title: "Community Support",
+                    desc: "Our team and community are here to support you every step of the way.",
+                  },
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.title}
+                    variants={fadeInUp}
+                    custom={i}
+                    className="flex flex-col items-center text-center p-6 rounded-lg bg-white shadow-lg hover:shadow-xl transition-all"
+                  >
+                    <div className="mb-4">{item.icon}</div>
+                    <h3 className="font-serif text-xl font-semibold text-primary-dark mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="font-nunito text-neutral">{item.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </div>
         </section>
 
         {/* Success Stories Section */}
         <section
           id="success-stories"
-          className="py-20 bg-gray-50 relative overflow-hidden"
+          className="py-20 bg-base-light relative overflow-hidden"
         >
+          {/* Pink color pop circle */}
+          <div className="absolute -bottom-24 -left-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
           {/* Decorative background pattern */}
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23e11d48' fillOpacity='1'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             }}
           ></div>
 
@@ -470,7 +588,7 @@ export default function HomePage() {
                 <motion.h2
                   variants={fadeInUp}
                   custom={0}
-                  className="font-lora text-3xl lg:text-4xl font-bold text-gray-900"
+                  className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
                 >
                   Success Stories
                 </motion.h2>
@@ -492,7 +610,7 @@ export default function HomePage() {
               <motion.p
                 variants={fadeInUp}
                 custom={0.1}
-                className="font-nunito text-lg text-gray-600 max-w-2xl mx-auto"
+                className="font-nunito text-lg text-neutral-light max-w-2xl mx-auto"
               >
                 Real couples who found their perfect match through Aroosi. Their
                 happiness could be your inspiration.
@@ -531,9 +649,9 @@ export default function HomePage() {
                   viewport={{ once: true, amount: 0.2 }}
                   custom={i}
                 >
-                  <Card className="p-6 border-rose-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-rose-100 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-pink-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <Card className="p-6 border-primary-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary-light rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-primary-light rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                     <CardContent className="space-y-4 relative z-10">
                       <div className="flex items-center space-x-4">
@@ -543,26 +661,26 @@ export default function HomePage() {
                             alt="Couple"
                             width={60}
                             height={60}
-                            className="rounded-full border-2 border-rose-200"
+                            className="rounded-full border-2 border-primary-200"
                           />
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-rose-100 rounded-full flex items-center justify-center">
-                            <Heart className="h-3 w-3 text-rose-600" />
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary-100 rounded-full flex items-center justify-center">
+                            <Heart className="h-3 w-3 text-primary-700" />
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-lora font-semibold text-gray-900">
+                          <h4 className="font-serif font-semibold text-neutral-900">
                             {story.name}
                           </h4>
                         </div>
                       </div>
                       <div className="relative">
-                        <div className="absolute -left-2 -top-2 text-4xl text-rose-200 opacity-50">
+                        <div className="absolute -left-2 -top-2 text-4xl text-primary-200 opacity-50">
                           &quot;
                         </div>
-                        <div className="absolute -right-2 -bottom-6 text-4xl text-rose-200 opacity-50">
+                        <div className="absolute -right-2 -bottom-6 text-4xl text-primary-200 opacity-50">
                           &quot;
                         </div>
-                        <p className="font-nunito text-gray-600 italic relative z-10 px-4">
+                        <p className="font-nunito text-primary-700 italic relative z-10 px-4">
                           {story.quote}
                         </p>
                       </div>
@@ -575,8 +693,10 @@ export default function HomePage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-rose-600 to-pink-600"></div>
+        <section className="py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark">
+          {/* Pink color pop circle */}
+          <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-secondary to-secondary-dark"></div>
 
           {/* Decorative patterns */}
           <div
@@ -648,7 +768,7 @@ export default function HomePage() {
                 <motion.h2
                   variants={fadeInUp}
                   custom={0}
-                  className="font-lora text-3xl lg:text-4xl font-bold text-white"
+                  className="font-serif text-2xl lg:text-3xl font-bold text-white"
                 >
                   Ready to Find Your Life Partner?
                 </motion.h2>
@@ -657,10 +777,10 @@ export default function HomePage() {
               <motion.p
                 variants={fadeInUp}
                 custom={0.1}
-                className="font-nunito text-lg text-rose-100"
+                className="font-nunito text-lg text-white"
               >
-                Join thousands of British South Asians who have found love
-                through Aroosi. Your perfect match is waiting for you.
+                Join thousands of Afghans who have found love through Aroosi.
+                Your perfect Afghan match is waiting for you.
               </motion.p>
 
               <motion.div
@@ -668,7 +788,7 @@ export default function HomePage() {
                 custom={0.2}
                 className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               >
-                <Button className="bg-white text-rose-600 hover:bg-rose-50 font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all">
+                <Button className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all">
                   <Link href="/sign-up">Get Started Free</Link>
                 </Button>
               </motion.div>
@@ -682,7 +802,7 @@ export default function HomePage() {
                   <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
                     <CheckCircle className="h-3 w-3 text-white" />
                   </div>
-                  <span className="font-nunito text-sm text-rose-100">
+                  <span className="font-nunito text-sm text-white">
                     Free to join
                   </span>
                 </div>
@@ -690,7 +810,7 @@ export default function HomePage() {
                   <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
                     <CheckCircle className="h-3 w-3 text-white" />
                   </div>
-                  <span className="font-nunito text-sm text-rose-100">
+                  <span className="font-nunito text-sm text-white">
                     No hidden fees
                   </span>
                 </div>
@@ -698,7 +818,7 @@ export default function HomePage() {
                   <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
                     <CheckCircle className="h-3 w-3 text-white" />
                   </div>
-                  <span className="font-nunito text-sm text-rose-100">
+                  <span className="font-nunito text-sm text-white">
                     Cancel anytime
                   </span>
                 </div>

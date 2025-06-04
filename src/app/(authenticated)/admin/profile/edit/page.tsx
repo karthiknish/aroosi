@@ -1,45 +1,69 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
 import ProfileForm from "@/components/profile/ProfileForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { fetchAdminProfiles, updateAdminProfile } from "@/lib/profile/adminProfileApi";
+import {
+  fetchAdminProfileById,
+  updateAdminProfileById,
+  fetchAdminProfileImagesById,
+} from "@/lib/profile/adminProfileApi";
+import type { Profile } from "@/types/profile";
+import { mapProfileToFormValues } from "@/components/profile/ProfileForm";
+import { useQuery } from "@tanstack/react-query";
+import type { ApiImage, MappedImage } from "@/lib/utils/profileImageUtils";
 
 export default function AdminEditProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const { token, isLoaded: authIsLoaded, isSignedIn, isAdmin } = useAuthContext();
+  console.log("id:", id);
+  const {
+    token,
+    isLoaded: authIsLoaded,
+    isSignedIn,
+    isAdmin,
+  } = useAuthContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if not admin or not loaded yet
-  useEffect(() => {
-    if (authIsLoaded && (!isSignedIn || !isAdmin)) {
-      router.push("/");
-    }
-  }, [authIsLoaded, isSignedIn, isAdmin, router]);
-
   // Fetch the profile by id
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading } = useQuery<Profile | null>({
     queryKey: ["adminProfile", id, token],
     queryFn: async () => {
       if (!id || !token) return null;
-      // Use fetchAdminProfiles with search param as id
-      const result = await fetchAdminProfiles({ token, search: id, page: 1 });
-      if (result && Array.isArray(result.profiles)) {
-        return (
-          result.profiles.find((p) => p._id === id || p.userId === id) || null
-        );
-      }
-      return null;
+      return await fetchAdminProfileById({ token, id });
     },
     enabled: !!id && !!token,
   });
+
+  // Fetch admin images for the profile being edited
+  const [adminImages, setAdminImages] = useState<MappedImage[]>([]);
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (profile && token) {
+        const raw = await fetchAdminProfileImagesById({
+          token,
+          profileId: profile._id,
+        });
+        const apiImages: ApiImage[] = Array.isArray(raw)
+          ? (raw as unknown as ApiImage[])
+          : [];
+        const mapped: MappedImage[] = apiImages.map((img) => ({
+          _id: img._id || img.storageId,
+          storageId: img.storageId,
+          url: img.url,
+        }));
+        setAdminImages(mapped);
+      } else {
+        setAdminImages([]);
+      }
+    };
+    fetchImages();
+  }, [profile, token]);
 
   if (!authIsLoaded) {
     return (
@@ -77,7 +101,7 @@ export default function AdminEditProfilePage() {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.back()}
+            onClick={() => router.push("/admin/profile")}
             className="text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -86,51 +110,13 @@ export default function AdminEditProfilePage() {
         </div>
         <ProfileForm
           mode="edit"
-          initialValues={{
-            ...profile,
-            gender: [
-              "male",
-              "female",
-              "non-binary",
-              "prefer-not-to-say",
-              "other",
-            ].includes(profile?.gender ?? "")
-              ? (profile?.gender as
-                  | "male"
-                  | "female"
-                  | "non-binary"
-                  | "prefer-not-to-say"
-                  | "other")
-              : "other",
-            partnerPreferenceAgeMin: String(
-              profile.partnerPreferenceAgeMin ?? ""
-            ),
-            partnerPreferenceAgeMax: String(
-              profile.partnerPreferenceAgeMax ?? ""
-            ),
-            partnerPreferenceReligion: Array.isArray(
-              profile.partnerPreferenceReligion
-            )
-              ? profile.partnerPreferenceReligion.join(", ")
-              : (profile.partnerPreferenceReligion ?? ""),
-            partnerPreferenceUkCity: Array.isArray(
-              profile.partnerPreferenceUkCity
-            )
-              ? profile.partnerPreferenceUkCity.join(", ")
-              : (profile.partnerPreferenceUkCity ?? ""),
-            preferredGender: String(profile.preferredGender ?? ""),
-            annualIncome: String(profile.annualIncome ?? ""),
-          }}
+          initialValues={profile ? mapProfileToFormValues(profile) : {}}
+          adminImages={adminImages}
           onSubmit={async (values) => {
             if (isSubmitting || !id) return;
             setIsSubmitting(true);
             try {
-              // Invalidate related queries
-              const queryClient = new QueryClient();
-              await queryClient.invalidateQueries({
-                queryKey: ["adminProfiles"],
-              });
-              await updateAdminProfile({
+              await updateAdminProfileById({
                 token: token!,
                 id,
                 updates: {
@@ -177,10 +163,6 @@ export default function AdminEditProfilePage() {
                     : "single") as "single" | "divorced" | "widowed",
                 },
               });
-              // Invalidate the profiles list cache
-              const profilesCacheKey = "adminProfiles";
-              sessionStorage.removeItem(profilesCacheKey);
-              sessionStorage.removeItem(`${profilesCacheKey}_timestamp`);
               toast.success("Profile updated successfully");
               router.push("/admin");
             } catch (error) {
@@ -194,7 +176,7 @@ export default function AdminEditProfilePage() {
               setIsSubmitting(false);
             }
           }}
-          onEditDone={() => router.back()}
+          onEditDone={() => router.push("/admin/profile")}
           submitButtonText={isSubmitting ? "Saving..." : "Save Changes"}
         />
       </div>

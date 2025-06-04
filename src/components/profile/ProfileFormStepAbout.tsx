@@ -54,7 +54,7 @@ const ProfileFormStepAbout: React.FC<Props> = ({ form, mode }) => (
       name="partnerPreferenceUkCity"
       label="Preferred Partner UK City/Cities"
       form={form}
-      placeholder="e.g., London, Manchester"
+      placeholder="e.g., London, Birmingham"
     />
   </>
 );

@@ -7,30 +7,24 @@ import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 
 interface Props {
   images: ImageType[];
-  onImageUpload: (file: File) => Promise<void>;
-  onImageDelete: (imageId: string) => Promise<void>;
+  onImageDelete?: (imageId: string) => Promise<void>;
   onImageReorder?: (newOrder: ImageType[]) => void;
   isLoading: boolean;
+  isAdmin?: boolean;
+  profileId?: string;
 }
 
 const ProfileFormStepImages: React.FC<Props> = ({
   images = [],
-  onImageUpload,
   onImageDelete,
   onImageReorder,
   isLoading,
+  profileId,
 }) => {
-  const { profile } = useAuthContext();
+  const { profile, isAdmin } = useAuthContext();
   const userId = profile?.id || "user-id-placeholder";
-
-  const handleFileSelect = async (file: File) => {
-    try {
-      await onImageUpload(file);
-    } catch (error: unknown) {
-      console.error("Error uploading image:", error as Error);
-      // Handle error (e.g., show toast notification)
-    }
-  };
+  console.log("ProfileFormStepImages profileId:", profileId);
+  console.log("isAdmin:", isAdmin);
 
   if (isLoading) {
     return (
@@ -48,11 +42,12 @@ const ProfileFormStepImages: React.FC<Props> = ({
         images={images}
         userId={userId}
         onReorder={onImageReorder}
+        isAdmin={isAdmin}
         renderAction={(image: ImageType) => (
           <button
             type="button"
             className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => onImageDelete(image.id)}
+            onClick={() => onImageDelete?.(image.id)}
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -61,7 +56,9 @@ const ProfileFormStepImages: React.FC<Props> = ({
       {images.length < 6 && (
         <div className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
           <ProfileImageUpload
-            onFileSelect={handleFileSelect}
+            userId={userId}
+            isAdmin={isAdmin}
+            profileId={profileId}
             className="w-full h-48"
           />
         </div>

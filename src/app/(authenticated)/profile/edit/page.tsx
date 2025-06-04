@@ -15,6 +15,9 @@ import {
   updateUserProfile,
 } from "@/lib/profile/userProfileApi";
 import { ProfileFormValues as ProfileFormComponentValues } from "@/components/profile/ProfileForm";
+import { fetchAdminProfileImagesById } from "@/lib/profile/adminProfileApi";
+import type { ApiImage, MappedImage } from "@/lib/utils/profileImageUtils";
+import { Loader2 } from "lucide-react";
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
@@ -68,7 +71,7 @@ function convertProfileToFormValues(
     fullName: String(profile.fullName ?? ""),
     dateOfBirth: String(profile.dateOfBirth ?? ""),
     gender: String(profile.gender ?? ""),
-    ukCity: String(profile.ukCity ?? ""),
+    ukCity: String(profile.ukCity ?? "").toLowerCase(),
     ukPostcode: String(profile.ukPostcode ?? ""),
     phoneNumber: String(profile.phoneNumber ?? ""),
     aboutMe: String(profile.aboutMe ?? ""),
@@ -109,10 +112,21 @@ function convertFormValuesToProfile(
   formValues: ProfileFormValues,
   existingProfile: Partial<Profile> = {}
 ): Profile {
+  // Remove _creationTime, _id, and clerkId from both formValues and existingProfile
+  const cleanFormValues = Object.fromEntries(
+    Object.entries(formValues).filter(
+      ([k]) => k !== "_creationTime" && k !== "_id" && k !== "clerkId"
+    )
+  );
+  const cleanExistingProfile = Object.fromEntries(
+    Object.entries(existingProfile).filter(
+      ([k]) => k !== "_creationTime" && k !== "_id" && k !== "clerkId"
+    )
+  );
   return {
     ...defaultProfile,
-    ...existingProfile,
-    ...formValues,
+    ...cleanExistingProfile,
+    ...cleanFormValues,
     gender: String(formValues.gender ?? "other"),
     partnerPreferenceAgeMin:
       typeof formValues.partnerPreferenceAgeMin === "string"
@@ -132,6 +146,10 @@ function convertFormValuesToProfile(
     )
       ? formValues.preferredGender
       : "any") as "male" | "female" | "any",
+    drinking: formValues.drinking || "no",
+    smoking: formValues.smoking || "no",
+    diet: formValues.diet || "vegetarian",
+    physicalStatus: formValues.physicalStatus || "healthy",
     updatedAt: Date.now(),
   };
 }
@@ -182,7 +200,12 @@ function toProfileFormComponentValues(
 function fromProfileFormComponentValues(
   values: ProfileFormComponentValues & { profileImageIds: string[] }
 ): ProfileFormValues & { profileImageIds: string[] } {
+  // Remove _creationTime and _id from values
+  const cleanValues = Object.fromEntries(
+    Object.entries(values).filter(([k]) => k !== "_creationTime" && k !== "_id")
+  );
   return {
+    ...cleanValues,
     fullName: values.fullName ?? "",
     dateOfBirth:
       values.dateOfBirth instanceof Date
@@ -191,7 +214,7 @@ function fromProfileFormComponentValues(
     gender: values.gender ?? "other",
     height: values.height ?? "",
     ukCity: values.ukCity ?? "",
-    ukPostcode: "", // default, as not present in form
+    ukPostcode: values.ukPostcode ?? "",
     phoneNumber: values.phoneNumber ?? "",
     aboutMe: values.aboutMe ?? "",
     religion: values.religion ?? "",
@@ -201,10 +224,10 @@ function fromProfileFormComponentValues(
     education: values.education ?? "",
     occupation: values.occupation ?? "",
     annualIncome: values.annualIncome ?? "",
-    diet: "", // default, as not present in form
-    smoking: "", // default, as not present in form
-    drinking: "", // default, as not present in form
-    physicalStatus: "", // default, as not present in form
+    diet: values.diet || "vegetarian",
+    smoking: values.smoking || "no",
+    drinking: values.drinking || "no",
+    physicalStatus: values.physicalStatus || "healthy",
     partnerPreferenceAgeMin: values.partnerPreferenceAgeMin ?? "",
     partnerPreferenceAgeMax: values.partnerPreferenceAgeMax ?? "",
     partnerPreferenceReligion:
@@ -303,7 +326,14 @@ export default function EditProfilePage() {
     mutationFn: async (values: ProfileFormValues) => {
       if (!token)
         throw new Error("Authentication required. Please sign in again.");
-      const updatedProfile = convertFormValuesToProfile(values, profileData);
+      // Remove _id and clerkId from values before conversion
+      const rest = Object.fromEntries(
+        Object.entries(values).filter(([k]) => k !== "_id" && k !== "clerkId")
+      );
+      const updatedProfile = convertFormValuesToProfile(
+        rest as ProfileFormValues,
+        profileData
+      );
       const result = await updateUserProfile(token, updatedProfile);
       if (!result.success) {
         throw new Error(result.error || "Profile update was not successful");
@@ -350,6 +380,66 @@ export default function EditProfilePage() {
     () => convertProfileToFormValues(profileData),
     [JSON.stringify(profileData)]
   );
+
+  // Determine if the user is an admin (adjust this logic as needed)
+  const isAdmin = authProfile?.role === "admin";
+
+  // Fetch admin images if admin
+  const [adminImages, setAdminImages] = useState<MappedImage[]>([]);
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (isAdmin && profileData?._id && token) {
+        const raw = await fetchAdminProfileImagesById({
+          token,
+          profileId: profileData._id,
+        });
+        const apiImages: ApiImage[] = Array.isArray(raw)
+          ? (raw as ApiImage[])
+          : [];
+        const mapped: MappedImage[] = apiImages.map((img) => ({
+          _id: img._id || img.storageId,
+          storageId: img.storageId,
+          url: img.url,
+        }));
+        setAdminImages(mapped);
+      } else {
+        setAdminImages([]);
+      }
+    };
+    fetchImages();
+  }, [isAdmin, profileData?._id, token]);
+
+  // Fetch user images (not admin)
+  const userProfileId = profileData?._id;
+  const { data: userImagesRaw = [] } = useQuery({
+    queryKey: ["profile-images", userProfileId],
+    queryFn: async () => {
+      if (!token || !userProfileId) return [];
+      const response = await fetch(
+        `/api/profile-detail/${userProfileId}/images`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch profile images");
+      const data = await response.json();
+      return Array.isArray(data)
+        ? (data as unknown as ApiImage[])
+        : Array.isArray(data.images)
+          ? (data.images as unknown as ApiImage[])
+          : [];
+    },
+    enabled: !!token && !!userProfileId && !isAdmin,
+    retry: 1,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userImages: MappedImage[] = userImagesRaw.map((img: any) => ({
+    _id: img._id || img.storageId,
+    storageId: img.storageId,
+    url: img.url,
+  }));
 
   // Loading state
   if (isLoadingProfile) {
@@ -403,6 +493,17 @@ export default function EditProfilePage() {
   }
 
   // Main form
+  if (!profileData || !profileData._id) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <Loader2 className="animate-spin w-8 h-8 text-pink-600" />
+        <span className="ml-3 text-pink-700 font-semibold">
+          Loading profile...
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="py-8">
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -414,7 +515,11 @@ export default function EditProfilePage() {
             loading={updateProfileMutation.status === "pending"}
             serverError={serverError || undefined}
             onEditDone={() => router.push("/profile")}
-            key={profileData?._id || "create"}
+            key={profileData._id}
+            isAdmin={isAdmin}
+            profileId={profileData._id}
+            adminImages={adminImages as unknown as MappedImage[]}
+            userImages={!isAdmin ? userImages : undefined}
           />
         </div>
       </div>

@@ -43,15 +43,27 @@ export async function fetchAdminProfileImages({
 }): Promise<{ userProfileImages: ImageType[] }> {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   try {
+    console.log(
+      "[fetchAdminProfileImages] Fetching images for userId:",
+      userId
+    );
     const res = await fetch(`/api/profile-detail/${userId}/images`, {
       headers,
     });
     if (!res.ok) {
       const errorText = await res.text();
+      console.error("[fetchAdminProfileImages] Error response:", errorText);
       throw new Error(`Failed to fetch profile images: ${errorText}`);
     }
-    return await res.json();
+    const data = await res.json();
+    console.log("[fetchAdminProfileImages] Response for", userId, data);
+    return data;
   } catch (error) {
+    console.error(
+      "[fetchAdminProfileImages] Error fetching profile images for",
+      userId,
+      error
+    );
     throw new Error(
       `Error fetching profile images: ${(error as Error).message}`
     );
@@ -153,24 +165,48 @@ export async function fetchAllAdminProfileImages({
   const newImages: Record<string, ImageType[]> = {};
   await Promise.all(
     profiles.map(async (profile) => {
-      if (!profile.userId) return;
+      if (!profile.userId) {
+        console.warn(
+          "[fetchAllAdminProfileImages] Missing userId for profile",
+          profile
+        );
+        return;
+      }
       try {
+        console.log(
+          "[fetchAllAdminProfileImages] Fetching images for",
+          profile.userId
+        );
         const data = await fetchAdminProfileImages({
           token,
           userId: profile.userId,
         });
-        if (Array.isArray(data.userProfileImages)) {
+        console.log(
+          "[fetchAllAdminProfileImages] Data for",
+          profile.userId,
+          data
+        );
+        if (Array.isArray(data)) {
+          newImages[profile._id] = data;
+        } else if (Array.isArray(data.userProfileImages)) {
           newImages[profile._id] = data.userProfileImages;
+        } else {
+          console.warn(
+            "[fetchAllAdminProfileImages] No images array for",
+            profile.userId,
+            data
+          );
         }
       } catch (error) {
         console.error(
-          `Error fetching images for userId ${profile.userId}:`,
+          `[fetchAllAdminProfileImages] Error fetching images for userId ${profile.userId}:`,
           error
         );
         // Optionally log error for each profile, but don't throw to allow others to continue
       }
     })
   );
+  console.log("[fetchAllAdminProfileImages] Final newImages:", newImages);
   return newImages;
 }
 
@@ -222,7 +258,7 @@ export async function setProfileBannedStatus(
   const res = await fetch(`/api/admin/profiles/${profileId}/ban`, {
     method: "PUT",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ banned }),
@@ -230,7 +266,264 @@ export async function setProfileBannedStatus(
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    return { success: false, error: data.error || "Failed to update ban status" };
+    return {
+      success: false,
+      error: data.error || "Failed to update ban status",
+    };
   }
   return { success: true };
+}
+
+export type AdminProfileMatchesResult = {
+  profileId: string;
+  matches: Profile[];
+  error?: string;
+}[];
+
+export async function fetchAdminAllMatches({
+  token,
+}: {
+  token: string;
+}): Promise<AdminProfileMatchesResult> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  try {
+    const res = await fetch(`/api/admin/matches`, { headers });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch all matches: ${errorText}`);
+    }
+    const data = await res.json();
+    return data.matches || [];
+  } catch (error) {
+    throw new Error(`Error fetching all matches: ${(error as Error).message}`);
+  }
+}
+
+// Fetch a single admin profile by ID
+export async function fetchAdminProfileById({
+  token,
+  id,
+}: {
+  token: string;
+  id: string;
+}): Promise<AdminProfile | null> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  try {
+    const res = await fetch(`/api/admin/profiles/${id}`, { headers });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch profile: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error fetching admin profile: ${(error as Error).message}`
+    );
+  }
+}
+
+// Update a single admin profile by ID
+export async function updateAdminProfileById({
+  token,
+  id,
+  updates,
+}: {
+  token: string;
+  id: string;
+  updates: Partial<Profile>;
+}): Promise<AdminProfile> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  try {
+    const res = await fetch(`/api/admin/profiles/${id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to update profile: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error updating admin profile: ${(error as Error).message}`
+    );
+  }
+}
+
+// Fetch images for a given profileId with admin token
+export async function fetchAdminProfileImagesById({
+  token,
+  profileId,
+}: {
+  token: string;
+  profileId: string;
+}): Promise<ImageType[]> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  try {
+    const res = await fetch(`/api/profile-detail/${profileId}/images`, {
+      headers,
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch profile images: ${errorText}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data)
+      ? data
+      : Array.isArray(data.images)
+        ? data.images
+        : [];
+  } catch (error) {
+    throw new Error(
+      `Error fetching profile images: ${(error as Error).message}`
+    );
+  }
+}
+
+// Update a profile image by imageId for a given profileId (admin)
+export async function updateAdminProfileImageById({
+  token,
+  profileId,
+  imageId,
+  updates,
+}: {
+  token: string;
+  profileId: string;
+  imageId: string;
+  updates: Partial<ImageType>;
+}): Promise<ImageType> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  try {
+    const res = await fetch(
+      `/api/profile-detail/${profileId}/images/${imageId}`,
+      {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(updates),
+      }
+    );
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to update profile image: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error updating profile image: ${(error as Error).message}`
+    );
+  }
+}
+
+// Delete a profile image by imageId for a given profileId (admin)
+export async function deleteAdminProfileImageById({
+  token,
+  profileId,
+  imageId,
+}: {
+  token: string;
+  profileId: string;
+  imageId: string;
+}): Promise<{ success: boolean; message?: string }> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  try {
+    const res = await fetch(
+      `/api/profile-detail/${profileId}/images/${imageId}`,
+      {
+        method: "DELETE",
+        headers,
+      }
+    );
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to delete profile image: ${errorText}`);
+    }
+    return await res.json();
+  } catch (error) {
+    throw new Error(
+      `Error deleting profile image: ${(error as Error).message}`
+    );
+  }
+}
+
+// Upload a profile image for a given profileId (admin)
+export async function adminUploadProfileImage({
+  token,
+  profileId,
+  file,
+}: {
+  token: string;
+  profileId: string;
+  file: File;
+}): Promise<ImageType> {
+  if (!token) throw new Error("Authentication required");
+  if (!profileId) throw new Error("Profile ID required");
+  if (!file) throw new Error("File required");
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("profileId", profileId);
+
+  const response = await fetch(`/api/admin/profiles/${profileId}/images`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to upload image");
+  }
+
+  const data = await response.json();
+  // Optionally validate shape here
+  return data as ImageType;
+}
+
+/**
+ * Update the order of profile images for an admin profile
+ * @param token - Admin authentication token
+ * @param profileId - The profile's ID
+ * @param imageIds - Array of image IDs in the new order
+ * @returns { success: boolean; message?: string }
+ */
+export async function updateAdminProfileImageOrder({
+  token,
+  profileId,
+  imageIds,
+}: {
+  token: string;
+  profileId: string;
+  imageIds: string[];
+}): Promise<{ success: boolean; message?: string }> {
+  if (!token) throw new Error("Authentication required");
+  if (!profileId) throw new Error("Profile ID required");
+  if (!Array.isArray(imageIds)) throw new Error("Image IDs array required");
+
+  const response = await fetch(
+    `/api/admin/profiles/${profileId}/images/order`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ imageIds }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to update image order");
+  }
+
+  return response.json();
 }

@@ -28,18 +28,21 @@ const fadeIn = {
 
 export default function AboutPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-base-light">
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 overflow-hidden">
+        <section className="relative py-20 lg:py-32 overflow-hidden bg-primary-dark">
           {/* Decorative background patterns */}
-          <div className="absolute inset-0 bg-gradient-to-br from-rose-50 to-pink-50 z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-accent-light to-primary-light z-0"></div>
           <div
             className="absolute inset-0 opacity-[0.03] z-0"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23e11d48' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23006E5C' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             }}
           ></div>
+
+          {/* Pink color pop circle */}
+          <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-30 z-0"></div>
 
           <div className="container mx-auto px-4 lg:px-6 relative z-10">
             <motion.div
@@ -50,59 +53,43 @@ export default function AboutPage() {
               variants={fadeInUp}
             >
               <motion.div variants={fadeInUp} custom={0}>
-                <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 font-nunito px-4 py-1.5 rounded-full shadow-sm">
+                <Badge className="bg-primary-dark text-base-light font-nunito px-4 py-1.5 rounded-full shadow-sm">
                   About Aroosi
                 </Badge>
               </motion.div>
               <motion.h1
-                className="font-lora text-4xl lg:text-5xl font-bold text-gray-900 leading-tight"
+                className="font-serif text-4xl lg:text-5xl font-bold text-neutral leading-tight"
                 variants={fadeInUp}
                 custom={1}
               >
                 Connecting Hearts with
                 <span className="relative inline-block mx-2">
-                  <span className="relative z-10 text-rose-600">Purpose</span>
-                  <span className="absolute -bottom-2 left-0 right-0 h-3 bg-rose-100 opacity-50 -z-10 transform -rotate-1"></span>
+                  <span className="relative z-10 text-white">Purpose</span>
                 </span>
                 and
                 <span className="relative inline-block mx-2">
-                  <span className="relative z-10 text-rose-600">Tradition</span>
-                  <span className="absolute -bottom-2 left-0 right-0 h-3 bg-rose-100 opacity-50 -z-10 transform -rotate-1"></span>
+                  <span className="relative z-10 text-white">Tradition</span>
                 </span>
               </motion.h1>
               <motion.p
-                className="font-nunito text-lg text-gray-600 leading-relaxed max-w-3xl mx-auto"
+                className="font-sans text-lg text-white leading-relaxed max-w-3xl mx-auto"
                 variants={fadeInUp}
                 custom={2}
               >
-                Aroosi was founded with a simple mission: to help British find
-                their perfect life partner while honoring cultural values and
-                traditions. Our journey began in 2008, and we&apos;ve been
-                bringing hearts together ever since.
+                Aroosi was founded with a simple mission: to help Afghans in the
+                UK find their perfect life partner while honoring Afghan
+                cultural values and traditions. Our journey began to bring the
+                Afghan community in the UK together for meaningful marriages.
               </motion.p>
             </motion.div>
           </div>
-
-          {/* Decorative elements */}
-          <motion.div
-            className="absolute top-20 left-10 w-24 h-24 bg-rose-200 rounded-full opacity-20 animate-pulse"
-            initial={{ scale: 0, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 0.2 }}
-            transition={{ duration: 1, delay: 0.2, type: "spring" }}
-            viewport={{ once: true }}
-          ></motion.div>
-          <motion.div
-            className="absolute bottom-20 right-10 w-32 h-32 bg-pink-200 rounded-full opacity-20 animate-pulse"
-            style={{ animationDelay: "1s" }}
-            initial={{ scale: 0, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 0.2 }}
-            transition={{ duration: 1, delay: 0.4, type: "spring" }}
-            viewport={{ once: true }}
-          ></motion.div>
         </section>
 
         {/* Our Mission Section */}
-        <section className="py-20 bg-white relative overflow-hidden">
+        <section className="py-20 bg-base-light relative overflow-hidden">
+          {/* Accent color pop circle */}
+          <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0"></div>
+
           <div className="container mx-auto px-4 lg:px-6">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <motion.div
@@ -120,7 +107,7 @@ export default function AboutPage() {
                   transition={{ duration: 0.7, delay: 0.2 }}
                   viewport={{ once: true }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-tr from-rose-600/10 to-pink-600/10 mix-blend-overlay"></div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-accent-600/10 to-primary-600/10 mix-blend-overlay"></div>
                   <Image
                     src="https://images.pexels.com/photos/28998602/pexels-photo-28998602/free-photo-of-romantic-wedding-in-lush-vietnamese-landscape.jpeg?auto=compress&cs=tinysrgb&w=800"
                     alt="Couple looking at each other"
@@ -130,27 +117,11 @@ export default function AboutPage() {
                   />
 
                   {/* Decorative corner elements */}
-                  <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-rose-400 opacity-70"></div>
-                  <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-rose-400 opacity-70"></div>
-                  <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-rose-400 opacity-70"></div>
-                  <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-rose-400 opacity-70"></div>
+                  <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-accent-400 opacity-70"></div>
+                  <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-accent-400 opacity-70"></div>
+                  <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-accent-400 opacity-70"></div>
+                  <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-accent-400 opacity-70"></div>
                 </motion.div>
-
-                {/* Decorative elements */}
-                <motion.div
-                  className="absolute -top-6 -left-6 w-24 h-24 bg-rose-100 rounded-full opacity-50 -z-10"
-                  initial={{ scale: 0, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 0.5 }}
-                  transition={{ duration: 0.7, delay: 0.3 }}
-                  viewport={{ once: true }}
-                ></motion.div>
-                <motion.div
-                  className="absolute -bottom-8 -right-8 w-32 h-32 bg-pink-100 rounded-full opacity-50 -z-10"
-                  initial={{ scale: 0, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 0.5 }}
-                  transition={{ duration: 0.7, delay: 0.5 }}
-                  viewport={{ once: true }}
-                ></motion.div>
               </motion.div>
 
               <motion.div
@@ -165,7 +136,7 @@ export default function AboutPage() {
                   variants={fadeInUp}
                   custom={0}
                 >
-                  <h2 className="font-lora text-3xl lg:text-4xl font-bold text-gray-900 relative inline-block">
+                  <h2 className="font-serif text-3xl lg:text-4xl font-bold text-neutral relative inline-block">
                     Our Mission
                     <svg
                       className="absolute -bottom-2 left-0 w-full"
@@ -182,17 +153,16 @@ export default function AboutPage() {
                       />
                     </svg>
                   </h2>
-                  <p className="font-nunito text-lg text-gray-600">
+                  <p className="font-sans text-lg text-neutral-light">
                     At Aroosi, we&apos;re dedicated to creating a safe,
-                    respectful platform where British South Asians can find
-                    their perfect match. We believe in marriages built on shared
-                    values, mutual respect, and genuine connection.
+                    respectful platform where Afghans in the UK can find their
+                    perfect match. We believe in marriages built on shared
+                    Afghan values, mutual respect, and genuine connection.
                   </p>
-                  <p className="font-nunito text-lg text-gray-600">
-                    Our approach combines traditional matchmaking wisdom with
-                    modern technology, creating a unique experience that honors
-                    cultural heritage while embracing contemporary life in the
-                    UK.
+                  <p className="font-sans text-lg text-neutral-light">
+                    Our approach combines Afghan matchmaking wisdom with modern
+                    technology, creating a unique experience that honors Afghan
+                    heritage while embracing contemporary life in the UK.
                   </p>
                 </motion.div>
 
@@ -205,22 +175,22 @@ export default function AboutPage() {
                 >
                   {[
                     {
-                      icon: <Heart className="h-5 w-5 text-rose-600" />,
+                      icon: <Heart className="h-5 w-5 text-primary-dark" />,
                       title: "Meaningful Connections",
                       desc: "We focus on compatibility beyond surface-level attributes.",
                     },
                     {
-                      icon: <Shield className="h-5 w-5 text-rose-600" />,
+                      icon: <Shield className="h-5 w-5 text-primary-dark" />,
                       title: "Safety & Privacy",
                       desc: "Your security and privacy are our top priorities at every step.",
                     },
                     {
-                      icon: <Users className="h-5 w-5 text-rose-600" />,
+                      icon: <Users className="h-5 w-5 text-primary-dark" />,
                       title: "Family Involvement",
                       desc: "We welcome family participation in the matchmaking process.",
                     },
                     {
-                      icon: <Star className="h-5 w-5 text-rose-600" />,
+                      icon: <Star className="h-5 w-5 text-primary-dark" />,
                       title: "Cultural Sensitivity",
                       desc: "We respect diverse backgrounds within the community.",
                     },
@@ -233,11 +203,11 @@ export default function AboutPage() {
                     >
                       <div className="flex items-center space-x-2">
                         {item.icon}
-                        <h3 className="font-lora text-lg font-semibold text-gray-900">
+                        <h3 className="font-serif text-lg font-semibold text-primary-dark">
                           {item.title}
                         </h3>
                       </div>
-                      <p className="font-nunito text-gray-600">{item.desc}</p>
+                      <p className="font-sans text-primary">{item.desc}</p>
                     </motion.div>
                   ))}
                 </motion.div>
@@ -247,7 +217,10 @@ export default function AboutPage() {
         </section>
 
         {/* Our Values Section */}
-        <section className="py-20 bg-gray-50 relative overflow-hidden">
+        <section className="py-20 bg-accent-100 relative overflow-hidden">
+          {/* Pink color pop circle */}
+          <div className="absolute -top-24 -left-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
+
           {/* Decorative background */}
           <div
             className="absolute inset-0 opacity-[0.03]"
@@ -266,17 +239,29 @@ export default function AboutPage() {
             >
               <div className="inline-block">
                 <motion.h2
-                  className="font-lora text-3xl lg:text-4xl font-bold text-gray-900 relative"
+                  className="font-serif text-3xl lg:text-4xl font-bold text-neutral relative"
                   variants={fadeInUp}
                   custom={0}
                 >
                   Our Core Values
-                  <div className="absolute -bottom-2 left-0 right-0 h-1 bg-rose-200"></div>
-                  <div className="absolute -bottom-2 left-1/4 right-1/4 h-1 bg-rose-400"></div>
+                  <svg
+                    className="absolute -bottom-2 left-0 w-full"
+                    height="6"
+                    viewBox="0 0 200 6"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M0 3C50 0.5 150 0.5 200 3"
+                      stroke="#FDA4AF"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </motion.h2>
               </div>
               <motion.p
-                className="font-nunito text-lg text-gray-600 max-w-2xl mx-auto"
+                className="font-sans text-lg text-neutral-light max-w-2xl mx-auto"
                 variants={fadeInUp}
                 custom={1}
               >
@@ -294,7 +279,7 @@ export default function AboutPage() {
             >
               {[
                 {
-                  icon: <Heart className="h-8 w-8 text-rose-600" />,
+                  icon: <Heart className="h-8 w-8 text-accent-700" />,
                   ringClass: "animate-spin-slow",
                   title: "Respect",
                   desc: (
@@ -306,7 +291,7 @@ export default function AboutPage() {
                   ),
                 },
                 {
-                  icon: <Shield className="h-8 w-8 text-rose-600" />,
+                  icon: <Shield className="h-8 w-8 text-primary-600" />,
                   ringClass: "animate-pulse",
                   title: "Trust",
                   desc: (
@@ -318,7 +303,7 @@ export default function AboutPage() {
                   ),
                 },
                 {
-                  icon: <Smile className="h-8 w-8 text-rose-600" />,
+                  icon: <Smile className="h-8 w-8 text-primary-600" />,
                   ringClass: "animate-spin-slow",
                   ringStyle: { animationDirection: "reverse" },
                   title: "Empathy",
@@ -335,22 +320,22 @@ export default function AboutPage() {
                   key={item.title}
                   variants={fadeInUp}
                   custom={i}
-                  className="text-center p-8 border-rose-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10 overflow-hidden group"
+                  className="text-center p-8 border-accent-100 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white relative z-10 overflow-hidden group"
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-rose-100 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-accent-100 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <CardContent className="space-y-6 relative z-10">
-                    <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto relative">
+                    <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto relative">
                       {item.icon}
                       <div
-                        className={`absolute -inset-1 border-2 border-dashed border-rose-200 rounded-full ${item.ringClass}`}
+                        className={`absolute -inset-1 border-2 border-dashed border-primary-200 rounded-full ${item.ringClass}`}
                         style={item.ringStyle}
                       ></div>
                     </div>
                     <div>
-                      <h3 className="font-lora text-xl font-semibold text-gray-900 mb-2">
+                      <h3 className="font-serif text-xl font-semibold text-primary-dark mb-2">
                         {item.title}
                       </h3>
-                      <p className="font-nunito text-gray-600">{item.desc}</p>
+                      <p className="font-sans text-primary">{item.desc}</p>
                     </div>
                   </CardContent>
                 </motion.div>
@@ -360,7 +345,10 @@ export default function AboutPage() {
         </section>
 
         {/* Our Story Section */}
-        <section className="py-20 bg-white relative overflow-hidden">
+        <section className="py-20 bg-base-light relative overflow-hidden">
+          {/* Accent color pop circle */}
+          <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0"></div>
+
           <div className="container mx-auto px-4 lg:px-6 relative z-10">
             <div className="max-w-4xl mx-auto">
               <motion.div
@@ -372,7 +360,7 @@ export default function AboutPage() {
               >
                 <div className="inline-block">
                   <motion.h2
-                    className="font-lora text-3xl lg:text-4xl font-bold text-gray-900 relative"
+                    className="font-serif text-3xl lg:text-4xl font-bold text-neutral relative"
                     variants={fadeInUp}
                     custom={0}
                   >
@@ -394,45 +382,45 @@ export default function AboutPage() {
                   </motion.h2>
                 </div>
                 <motion.p
-                  className="font-nunito text-lg text-gray-600 max-w-3xl mx-auto"
+                  className="font-sans text-lg text-neutral-light max-w-3xl mx-auto"
                   variants={fadeInUp}
                   custom={1}
                 >
                   From a small idea to the UK&apos;s leading matrimony platform
-                  for British South Asians.
+                  for Afghans in the UK.
                 </motion.p>
               </motion.div>
 
               <div className="space-y-12">
                 {[
                   {
-                    icon: <Calendar className="h-6 w-6 text-rose-600" />,
+                    icon: <Calendar className="h-6 w-6 text-accent-600" />,
                     title: "2025: A New Beginning",
                     desc: (
                       <>
-                        Aroosi was launched in 2025 with a vision to help
-                        British South Asians find meaningful connections while
-                        honouring faith and tradition. Our journey is just
-                        beginning, and we&apos;re excited to build a welcoming
-                        community from the ground up.
+                        Aroosi was launched to help Afghans in the UK find
+                        meaningful connections while honouring Afghan faith and
+                        tradition. Our journey is just beginning, and we&apos;re
+                        excited to build a welcoming Afghan community in the UK
+                        from the ground up.
                       </>
                     ),
                   },
                   {
-                    icon: <Users className="h-6 w-6 text-rose-600" />,
+                    icon: <Users className="h-6 w-6 text-accent-600" />,
                     title: "Building Our Community",
                     desc: (
                       <>
                         As a new platform, we&apos;re focused on creating a
                         safe, supportive space for singles to meet and connect.
                         Every member is part of our story, and together
-                        we&apos;re shaping the future of South Asian matrimony
-                        in the UK.
+                        we&apos;re shaping the future of Afghan matrimony for
+                        Afghans in the UK.
                       </>
                     ),
                   },
                   {
-                    icon: <Award className="h-6 w-6 text-rose-600" />,
+                    icon: <Award className="h-6 w-6 text-accent-600" />,
                     title: "Our Commitment",
                     desc: (
                       <>
@@ -444,7 +432,7 @@ export default function AboutPage() {
                     ),
                   },
                   {
-                    icon: <Heart className="h-6 w-6 text-rose-600" />,
+                    icon: <Heart className="h-6 w-6 text-accent-600" />,
                     title: "Looking Ahead",
                     desc: (
                       <>
@@ -470,7 +458,7 @@ export default function AboutPage() {
                     <div className="grid md:grid-cols-[64px_1fr] gap-6 relative">
                       <div className="relative">
                         <motion.div
-                          className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center relative z-10"
+                          className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center relative z-10"
                           initial={{ scale: 0, opacity: 0 }}
                           whileInView={{ scale: 1, opacity: 1 }}
                           transition={{ duration: 0.5, delay: 0.1 + i * 0.1 }}
@@ -480,17 +468,17 @@ export default function AboutPage() {
                         </motion.div>
                       </div>
                       <motion.div
-                        className="bg-rose-50 rounded-lg p-6 shadow-sm relative"
+                        className="bg-primary-50 rounded-lg p-6 shadow-sm relative"
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7, delay: 0.2 + i * 0.1 }}
                         viewport={{ once: true }}
                       >
-                        <div className="absolute top-6 -left-2 w-4 h-4 bg-rose-50 transform rotate-45 hidden md:block"></div>
-                        <h3 className="font-lora text-xl font-semibold text-gray-900 mb-2">
+                        <div className="absolute top-6 -left-2 w-4 h-4 bg-primary-50 transform rotate-45 hidden md:block"></div>
+                        <h3 className="font-serif text-xl font-semibold text-primary-dark mb-2">
                           {item.title}
                         </h3>
-                        <p className="font-nunito text-gray-600">{item.desc}</p>
+                        <p className="font-sans text-primary">{item.desc}</p>
                       </motion.div>
                     </div>
                   </motion.div>
@@ -499,121 +487,6 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
-
-        {/* Team Section 
-        <section className="py-20 bg-gray-50 relative overflow-hidden">
-       s
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23e11d48' fillOpacity='1'%3E%3Cpath d='M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          ></div>
-
-          <div className="container mx-auto px-4 lg:px-6 relative z-10">
-            <motion.div
-              className="text-center space-y-4 mb-16"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.5 }}
-              variants={fadeInUp}
-            >
-              <div className="inline-block">
-                <motion.h2
-                  className="font-lora text-3xl lg:text-4xl font-bold text-gray-900 relative"
-                  variants={fadeInUp}
-                  custom={0}
-                >
-                  Meet Our Team
-                  <div className="absolute -bottom-2 left-0 right-0 h-1 bg-rose-200"></div>
-                  <div className="absolute -bottom-2 left-1/4 right-1/4 h-1 bg-rose-400"></div>
-                </motion.h2>
-              </div>
-              <motion.p
-                className="font-nunito text-lg text-gray-600 max-w-2xl mx-auto"
-                variants={fadeInUp}
-                custom={1}
-              >
-                The passionate individuals behind Aroosi who work tirelessly to
-                help you find your perfect match.
-              </motion.p>
-            </motion.div>
-
-            <motion.div
-              className="grid md:grid-cols-2 lg:grid-cols-4 gap-8"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.3 }}
-              variants={fadeIn}
-            >
-              {[
-                {
-                  name: "Fatima Khan",
-                  role: "Co-Founder & CEO",
-                  img: "/placeholder.svg?height=300&width=300",
-                },
-                {
-                  name: "Ahmed Khan",
-                  role: "Co-Founder & CTO",
-                  img: "/placeholder.svg?height=300&width=300",
-                },
-                {
-                  name: "Zainab Ali",
-                  role: "Head of Matchmaking",
-                  img: "/placeholder.svg?height=300&width=300",
-                },
-                {
-                  name: "Omar Patel",
-                  role: "Community Manager",
-                  img: "/placeholder.svg?height=300&width=300",
-                },
-              ].map((member, i) => (
-                <motion.div
-                  className="group"
-                  key={member.name}
-                  variants={fadeInUp}
-                  custom={i}
-                >
-                  <motion.div
-                    className="relative overflow-hidden rounded-lg shadow-md mb-4"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.1 + i * 0.1 }}
-                    viewport={{ once: true }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <Image
-                      src={member.img}
-                      alt={member.name}
-                      width={300}
-                      height={300}
-                      className="w-full h-auto object-cover aspect-square"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform">
-                      <div className="flex justify-center space-x-3">
-                        <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-rose-600 transition-colors">
-                          <span className="text-xs text-white">in</span>
-                        </div>
-                        <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-rose-600 transition-colors">
-                          <span className="text-xs text-white">t</span>
-                        </div>
-                        <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-rose-600 transition-colors">
-                          <span className="text-xs text-white">e</span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                  <div className="text-center">
-                    <h3 className="font-lora text-lg font-semibold text-gray-900">
-                      {member.name}
-                    </h3>
-                    <p className="font-nunito text-rose-600">{member.role}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>*/}
 
         {/* Trust Indicators Section */}
         <section className="py-20 bg-white relative overflow-hidden">
@@ -627,7 +500,7 @@ export default function AboutPage() {
             >
               <div className="inline-block">
                 <motion.h2
-                  className="font-lora text-3xl lg:text-4xl font-bold text-gray-900 relative"
+                  className="font-serif text-3xl lg:text-4xl font-bold text-neutral relative"
                   variants={fadeInUp}
                   custom={0}
                 >
@@ -649,14 +522,14 @@ export default function AboutPage() {
                 </motion.h2>
               </div>
               <motion.p
-                className="font-nunito text-lg text-gray-600 max-w-2xl mx-auto"
+                className="font-sans text-lg text-neutral-light max-w-2xl mx-auto"
                 variants={fadeInUp}
                 custom={1}
               >
-                Aroosi is relaunching in 2025 with a brand new platform,
-                designed from the ground up to empower British South Asians to
-                find meaningful connections. Experience a modern, secure, and
-                community-driven approach to matrimony.
+                Aroosi is relaunching with a brand new platform, designed from
+                the ground up to empower Afghans to find meaningful connections.
+                Experience a modern, secure, and community-driven approach to
+                Afghan matrimony.
               </motion.p>
             </motion.div>
 
@@ -669,20 +542,20 @@ export default function AboutPage() {
             >
               {[
                 { label: "Launch Year", value: "2025" },
-                { label: "Built for", value: "British South Asians" },
+                { label: "Built for", value: "Afghans" },
                 { label: "Privacy", value: "GDPR-First" },
                 { label: "Community", value: "You!" },
               ].map((stat, i) => (
                 <motion.div
-                  className="flex flex-col items-center space-y-2 p-4 hover:bg-rose-50 rounded-lg transition-colors"
+                  className="flex flex-col items-center space-y-2 p-4 hover:bg-accent-50 rounded-lg transition-colors"
                   key={stat.label}
                   variants={fadeInUp}
                   custom={i}
                 >
-                  <div className="text-4xl font-lora text-center font-bold text-rose-600">
+                  <div className="text-4xl font-serif text-center font-bold text-neutral">
                     {stat.value}
                   </div>
-                  <p className="font-nunito text-gray-600 text-center">
+                  <p className="font-sans text-neutral-light text-center">
                     {stat.label}
                   </p>
                 </motion.div>
@@ -698,36 +571,36 @@ export default function AboutPage() {
             >
               {[
                 {
-                  icon: <Award className="h-5 w-5 text-rose-600" />,
+                  icon: <Award className="h-5 w-5 text-accent-600" />,
                   title: "Modern Experience",
                   desc: "Aroosi's new platform offers a seamless, intuitive, and mobile-friendly experience for all users.",
                 },
                 {
-                  icon: <Shield className="h-5 w-5 text-rose-600" />,
+                  icon: <Shield className="h-5 w-5 text-accent-600" />,
                   title: "Privacy & Security",
                   desc: "Your data is protected with industry-leading security and full GDPR compliance from day one.",
                 },
                 {
-                  icon: <Star className="h-5 w-5 text-rose-600" />,
+                  icon: <Star className="h-5 w-5 text-accent-600" />,
                   title: "Community-Driven",
-                  desc: "We’re building Aroosi together with our members—your feedback shapes our features and future.",
+                  desc: "We're building Aroosi together with our members—your feedback shapes our features and future.",
                 },
               ].map((item, i) => (
                 <motion.div
                   key={item.title}
-                  className="p-6 border-rose-100 hover:shadow-xl transition-all duration-300 bg-white relative overflow-hidden group"
+                  className="p-6 border-accent-100 hover:shadow-xl transition-all duration-300 bg-white relative overflow-hidden group"
                   variants={fadeInUp}
                   custom={i}
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-rose-100 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-accent-100 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <CardContent className="space-y-4 relative z-10">
                     <div className="flex items-center space-x-2">
                       {item.icon}
-                      <h3 className="font-lora text-lg font-semibold text-gray-900">
+                      <h3 className="font-serif text-lg font-semibold text-primary-dark">
                         {item.title}
                       </h3>
                     </div>
-                    <p className="font-nunito text-gray-600">{item.desc}</p>
+                    <p className="font-sans text-primary">{item.desc}</p>
                   </CardContent>
                 </motion.div>
               ))}
@@ -736,8 +609,10 @@ export default function AboutPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-rose-600 to-pink-600"></div>
+        <section className="py-20 relative overflow-hidden bg-gradient-to-r from-secondary to-secondary-dark">
+          {/* Pink color pop circle */}
+          <div className="absolute -top-24 -right-24 w-[32rem] h-[32rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-secondary to-secondary-dark"></div>
 
           {/* Decorative patterns */}
           <div
@@ -807,7 +682,7 @@ export default function AboutPage() {
             >
               <div className="inline-block relative">
                 <motion.h2
-                  className="font-lora text-3xl lg:text-4xl font-bold text-white"
+                  className="font-serif text-3xl lg:text-4xl font-bold text-white"
                   variants={fadeInUp}
                   custom={0}
                 >
@@ -816,22 +691,22 @@ export default function AboutPage() {
                 <div className="absolute -bottom-2 left-0 right-0 h-1 bg-white opacity-30"></div>
               </div>
               <motion.p
-                className="font-nunito text-lg text-rose-100"
+                className="font-sans text-lg text-white"
                 variants={fadeInUp}
                 custom={1}
               >
-                Join our community of British and take the first step towards
-                finding your perfect life partner.
+                Join our Afghan community and take the first step towards
+                finding your perfect Afghan life partner.
               </motion.p>
 
               <motion.div
-                className="flex flex-col sm:flex-row gap-4 justify-center"
+                className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                 variants={fadeInUp}
                 custom={2}
               >
                 <Button
                   size="lg"
-                  className="bg-white text-rose-600 hover:bg-rose-50 font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
                 >
                   <Link href="/sign-up">Create Your Profile</Link>
                   <ArrowRight className="ml-2 h-5 w-5" />

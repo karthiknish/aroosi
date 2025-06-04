@@ -3,12 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { QueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
 import ProfileForm from "@/components/profile/ProfileForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { createAdminProfile } from "@/lib/profile/adminProfileApi";
+import { submitProfile } from "@/lib/profile/userProfileApi";
 
 // Extend the ProfileForm props to include submitButtonText
 declare module "@/components/profile/ProfileForm" {
@@ -68,67 +67,48 @@ export default function AdminCreateProfilePage() {
             if (!token) return;
             setIsSubmitting(true);
             try {
-              // Remove cache clearing logic for values.userId (not guaranteed to exist)
-              // Invalidate related queries
-              const queryClient = new QueryClient();
-              await queryClient.invalidateQueries({
-                queryKey: ["adminProfiles"],
-              });
-              // Use the adminProfileApi util for creation
-              await createAdminProfile({
-                token,
-                profile: {
-                  ...values,
-                  createdByAdmin: true,
-                  adminNotes: "Created via admin dashboard",
-                  dateOfBirth:
-                    typeof values.dateOfBirth === "string"
-                      ? values.dateOfBirth
-                      : values.dateOfBirth.toISOString(),
-                  partnerPreferenceAgeMin: Number(
-                    values.partnerPreferenceAgeMin
-                  ),
-                  partnerPreferenceAgeMax: Number(
-                    values.partnerPreferenceAgeMax
-                  ),
-                  partnerPreferenceReligion: Array.isArray(
-                    values.partnerPreferenceReligion
-                  )
+              // Ensure dateOfBirth is a string
+              const submitValues: Partial<
+                import("@/types/profile").ProfileFormValues
+              > = {
+                ...values,
+                dateOfBirth:
+                  typeof values.dateOfBirth === "string"
+                    ? values.dateOfBirth
+                    : values.dateOfBirth instanceof Date
+                      ? values.dateOfBirth.toISOString()
+                      : "",
+                // Fix: ensure these are arrays of strings
+                partnerPreferenceReligion: Array.isArray(
+                  values.partnerPreferenceReligion
+                )
+                  ? values.partnerPreferenceReligion
+                  : typeof values.partnerPreferenceReligion === "string"
                     ? values.partnerPreferenceReligion
-                    : values.partnerPreferenceReligion
-                      ? values.partnerPreferenceReligion
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean)
-                      : [],
-                  partnerPreferenceUkCity: Array.isArray(
-                    values.partnerPreferenceUkCity
-                  )
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    : [],
+                partnerPreferenceUkCity: Array.isArray(
+                  values.partnerPreferenceUkCity
+                )
+                  ? values.partnerPreferenceUkCity
+                  : typeof values.partnerPreferenceUkCity === "string"
                     ? values.partnerPreferenceUkCity
-                    : values.partnerPreferenceUkCity
-                      ? values.partnerPreferenceUkCity
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean)
-                      : [],
-                  preferredGender: (["male", "female", "any"].includes(
-                    values.preferredGender
-                  )
-                    ? values.preferredGender
-                    : "any") as "male" | "female" | "any",
-                  maritalStatus: (["single", "divorced", "widowed"].includes(
-                    values.maritalStatus
-                  )
-                    ? values.maritalStatus
-                    : "single") as "single" | "divorced" | "widowed",
-                },
-              });
-              // Invalidate the profiles list cache
-              const profilesCacheKey = "adminProfiles";
-              sessionStorage.removeItem(profilesCacheKey);
-              sessionStorage.removeItem(`${profilesCacheKey}_timestamp`);
-              toast.success("Profile created successfully");
-              router.push("/admin");
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    : [],
+              };
+              // Remove profileImageIds if present
+              const { ...restValues } = submitValues;
+              const response = await submitProfile(token, restValues, "create");
+              if (response.success) {
+                toast.success("Profile created successfully");
+                router.push("/admin");
+              } else {
+                toast.error(response.error || "Failed to create profile");
+              }
             } catch (error) {
               console.error("Profile creation error:", error);
               toast.error(

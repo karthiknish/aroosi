@@ -84,7 +84,7 @@ const ChatBot: React.FC = () => {
       {/* Floating Button */}
       {!open && (
         <button
-          className="fixed bottom-6 right-6 z-50 bg-pink-600 hover:bg-pink-700 text-white rounded-full p-4 shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
+          className="fixed bottom-6 right-6 z-50 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
           onClick={() => setOpen(true)}
           aria-label="Open chat bot"
         >
@@ -93,8 +93,8 @@ const ChatBot: React.FC = () => {
       )}
       {/* Chat Window */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[95vw] bg-white rounded-2xl shadow-2xl border border-pink-200 flex flex-col overflow-hidden animate-fade-in">
-          <div className="flex items-center justify-between bg-pink-600 text-white px-4 py-3">
+        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[95vw] bg-background rounded-2xl shadow-2xl border border-primary-500 flex flex-col overflow-hidden animate-fade-in">
+          <div className="flex items-center justify-between bg-primary-600 text-primary-foreground px-4 py-3">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5" />
               <span className="font-bold text-lg">Aroosi AI Assistant</span>
@@ -102,32 +102,32 @@ const ChatBot: React.FC = () => {
             <button
               onClick={() => setOpen(false)}
               aria-label="Close chat"
-              className="hover:bg-white/10 p-1 rounded-full transition-colors"
+              className="hover:bg-primary-700/10 p-1 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
           {!email ? (
             <form
-              className="flex flex-col gap-3 p-6 bg-pink-50"
+              className="flex flex-col gap-3 p-6 bg-muted"
               onSubmit={handleEmailSubmit}
             >
-              <label className="text-sm font-semibold text-gray-700">
+              <label className="text-sm font-semibold text-foreground">
                 Enter your email to start chatting:
               </label>
               <input
-                className="rounded-md border border-pink-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 transition-all"
+                className="rounded-md border border-primary-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all bg-background text-foreground"
                 placeholder="you@example.com"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 autoFocus
               />
               {emailError && (
-                <div className="text-red-600 text-xs">{emailError}</div>
+                <div className="text-destructive text-xs">{emailError}</div>
               )}
               <button
                 type="submit"
-                className="bg-pink-600 hover:bg-pink-700 text-white rounded-md px-4 py-2 mt-2 transition-all duration-300 hover:scale-[1.02]"
+                className="bg-primary-600 hover:bg-primary-700 text-primary-foreground rounded-md px-4 py-2 mt-2 transition-all duration-300 hover:scale-[1.02]"
               >
                 Start Chat
               </button>
@@ -135,7 +135,7 @@ const ChatBot: React.FC = () => {
           ) : (
             <>
               <div
-                className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-pink-50"
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-muted"
                 style={{ minHeight: 300, maxHeight: 500 }}
               >
                 {messages.map((msg, i) => (
@@ -146,8 +146,8 @@ const ChatBot: React.FC = () => {
                     <div
                       className={`group relative rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm transition-all duration-300 ${
                         msg.role === "user"
-                          ? "bg-pink-600 text-white"
-                          : "bg-white text-gray-800 border border-pink-100 hover:border-pink-200"
+                          ? "bg-primary-600 text-primary-foreground"
+                          : "bg-background text-foreground border border-primary-100 hover:border-primary-200"
                       }`}
                     >
                       <div className="whitespace-pre-wrap">
@@ -183,7 +183,7 @@ const ChatBot: React.FC = () => {
                                 <em className="italic">{children}</em>
                               ),
                               code: ({ children }) => (
-                                <code className="bg-gray-100 rounded px-1 py-0.5 text-xs font-mono">
+                                <code className="bg-muted rounded px-1 py-0.5 text-xs font-mono">
                                   {children}
                                 </code>
                               ),
@@ -203,7 +203,7 @@ const ChatBot: React.FC = () => {
                                 </h3>
                               ),
                               blockquote: ({ children }) => (
-                                <blockquote className="border-l-2 border-pink-200 pl-3 my-2 italic">
+                                <blockquote className="border-l-2 border-primary-200 pl-3 my-2 italic">
                                   {children}
                                 </blockquote>
                               ),
@@ -214,7 +214,7 @@ const ChatBot: React.FC = () => {
                         )}
                       </div>
                       <div
-                        className={`text-xs mt-1 ${msg.role === "user" ? "text-pink-100" : "text-gray-400"}`}
+                        className={`text-xs mt-1 ${msg.role === "user" ? "text-primary-100" : "text-muted-foreground"}`}
                       >
                         {formatTime(msg.timestamp)}
                       </div>
@@ -223,7 +223,7 @@ const ChatBot: React.FC = () => {
                 ))}
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="bg-white text-gray-800 border border-pink-100 rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm flex items-center gap-2">
+                    <div className="bg-background text-foreground border border-primary-100 rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm flex items-center gap-2">
                       <Skeleton className="w-4 h-4 rounded-full" />
                       <Skeleton className="h-4 w-20 rounded" />
                     </div>
@@ -232,14 +232,14 @@ const ChatBot: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
               <form
-                className="flex items-center gap-2 border-t border-pink-100 bg-white p-3"
+                className="flex items-center gap-2 border-t border-primary-100 bg-background p-3"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!loading) sendMessage();
                 }}
               >
                 <input
-                  className="flex-1 rounded-full border border-pink-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 transition-all"
+                  className="flex-1 rounded-full border border-primary-500 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all bg-background text-foreground"
                   placeholder="Type your message..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -248,7 +248,7 @@ const ChatBot: React.FC = () => {
                 />
                 <button
                   type="submit"
-                  className="bg-pink-600 hover:bg-pink-700 text-white rounded-full p-2 disabled:opacity-50 transition-all duration-300 hover:scale-110 disabled:hover:scale-100"
+                  className="bg-primary-600 hover:bg-primary-700 text-primary-foreground rounded-full p-2 disabled:opacity-50 transition-all duration-300 hover:scale-110 disabled:hover:scale-100"
                   disabled={loading || !input.trim()}
                   aria-label="Send"
                 >

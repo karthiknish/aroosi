@@ -12,14 +12,15 @@ import Footer from "@/components/layout/Footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Aroosi - Find Your Perfect Match",
-  description: "Find your perfect match with Aroosi",
+  title: "Aroosi - Afghan Matrimony Platform",
+  description:
+    "Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform.",
   keywords:
-    "matrimony, muslim matrimony, uk muslim, marriage, islamic marriage, aroosi, matrimonial site, rishta, uk rishta",
+    "matrimony, afghan matrimony, afghan marriage, aroosi, matrimonial site, rishta, afghan community, afghan singles, afghan wedding",
   openGraph: {
-    title: "Aroosi - UK Matrimony for Muslims",
+    title: "Aroosi - Afghan Matrimony Platform",
     description:
-      "Find your ideal Muslim life partner in the UK with Aroosi. Secure, private, and community-focused matrimonial services.",
+      "Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
     url: "https://aroosi.co.uk/",
     siteName: "Aroosi",
     images: [
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Aroosi - UK Matrimony for Muslims",
+        alt: "Aroosi - Afghan Matrimony Platform",
       },
     ],
     locale: "en_GB",
@@ -35,9 +36,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Aroosi - UK Matrimony for Muslims",
+    title: "Aroosi - Afghan Matrimony Platform",
     description:
-      "Find your ideal Muslim life partner in the UK with Aroosi. Secure, private, and community-focused matrimonial services.",
+      "Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
     images: ["/og-image.png"],
     site: "@aroosiuk",
   },
@@ -65,7 +66,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Nunito+Sans:wght@400;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Boldonse:wght@400;700&family=Nunito+Sans:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
@@ -81,38 +82,41 @@ export default function RootLayout({
               termsPageUrl: "/terms",
             },
             variables: {
-              colorPrimary: "#ec4899",
-              colorText: "#1f2937",
+              colorPrimary: "#d90012",
+              colorText: "#000000",
               colorBackground: "#ffffff",
               colorInputBackground: "#f9fafb",
-              colorInputText: "#1f2937",
-              colorTextSecondary: "#6b7280",
+              colorInputText: "#000000",
+              colorTextSecondary: "#1eb53a",
               colorTextOnPrimaryBackground: "#ffffff",
-              colorDanger: "#ef4444",
-              colorSuccess: "#22c55e",
+              colorDanger: "#d90012",
+              colorSuccess: "#1eb53a",
               colorWarning: "#f59e0b",
               borderRadius: "0.5rem",
               fontFamily: inter.style.fontFamily,
             },
             elements: {
               formButtonPrimary: {
-                backgroundColor: "#ec4899",
+                backgroundColor: "#d90012",
+                color: "#fff",
                 "&:hover": {
-                  backgroundColor: "#db2777",
+                  backgroundColor: "#b8000b",
                 },
               },
               card: {
                 boxShadow:
                   "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
                 borderRadius: "1rem",
+                border: "1.5px solid #1eb53a",
               },
               headerTitle: {
                 fontSize: "1.5rem",
                 fontWeight: "600",
+                color: "#d90012",
               },
               headerSubtitle: {
                 fontSize: "1rem",
-                color: "#6b7280",
+                color: "#1eb53a",
               },
               socialButtonsBlockButton: {
                 border: "1px solid #e5e7eb",
@@ -123,24 +127,24 @@ export default function RootLayout({
               formFieldInput: {
                 border: "1px solid #e5e7eb",
                 "&:focus": {
-                  borderColor: "#ec4899",
-                  boxShadow: "0 0 0 1px #ec4899",
+                  borderColor: "#d90012",
+                  boxShadow: "0 0 0 1px #d90012",
                 },
               },
               formFieldLabel: {
-                color: "#4b5563",
+                color: "#000000",
                 fontSize: "0.875rem",
               },
               formFieldInputShowPasswordButton: {
-                color: "#6b7280",
+                color: "#1eb53a",
                 "&:hover": {
-                  color: "#4b5563",
+                  color: "#d90012",
                 },
               },
               footerActionLink: {
-                color: "#ec4899",
+                color: "#1eb53a",
                 "&:hover": {
-                  color: "#db2777",
+                  color: "#d90012",
                 },
               },
             },

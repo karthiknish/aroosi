@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery, useQueryClient} from "@tanstack/react-query";
 import { useEffect } from "react";
+import { updateAdminProfileImageOrder } from "@/lib/profile/adminProfileApi";
 
 export type ApiImage = {
   _id: string;
@@ -22,22 +23,26 @@ export const useProfileImages = (profileId: string) => {
   const { token } = useAuthContext();
 
   const queryOptions = {
-    queryKey: ['profile-images', profileId] as const,
+    queryKey: ["profile-images", profileId] as const,
     queryFn: async (): Promise<ApiImage[]> => {
-      if (!token) throw new Error('No authentication token');
-      
+      if (!token) throw new Error("No authentication token");
+
       const response = await fetch(`/api/profile-detail/${profileId}/images`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch profile images');
+        throw new Error("Failed to fetch profile images");
       }
-      
+
       const data = await response.json();
-      return Array.isArray(data.images) ? data.images : [];
+      return Array.isArray(data)
+        ? data
+        : Array.isArray(data.images)
+          ? data.images
+          : [];
     },
     enabled: !!token,
     retry: 1,
@@ -50,8 +55,8 @@ export const useProfileImages = (profileId: string) => {
   // Add error handling with useEffect to avoid type issues with onError in options
   useEffect(() => {
     if (query.isError) {
-      console.error('Error fetching profile images:', query.error);
-      toast.error('Failed to load profile images');
+      console.error("Error fetching profile images:", query.error);
+      toast.error("Failed to load profile images");
     }
   }, [query.error, query.isError]);
 
@@ -67,19 +72,19 @@ export const useImageReorder = (profileId: string) => {
 
   return async (newOrder: (string | { _id: string | undefined })[]) => {
     if (!profileId || !token) return;
-    
+
     // Extract string IDs from the order array which can contain strings or objects with _id
-    const imageIds = newOrder.map((item) =>
-      typeof item === "string" ? item : item._id
-    ).filter(Boolean) as string[];
-    
+    const imageIds = newOrder
+      .map((item) => (typeof item === "string" ? item : item._id))
+      .filter(Boolean) as string[];
+
     try {
       // Update the order on the server
       const res = await fetch(`/api/images/order`, {
         method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           profileId,
@@ -88,15 +93,15 @@ export const useImageReorder = (profileId: string) => {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to update image order');
+        throw new Error("Failed to update image order");
       }
 
       // Invalidate and refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: ['profile-images', profileId] 
+      await queryClient.invalidateQueries({
+        queryKey: ["profile-images", profileId],
       });
-      
-      toast.success('Image order updated successfully');
+
+      toast.success("Image order updated successfully");
       return true;
     } catch (error) {
       console.error("Error updating image order", error);
@@ -137,10 +142,10 @@ export const useDeleteImage = (profileId: string) => {
       }
 
       // Invalidate and refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: ['profile-images', profileId] 
+      await queryClient.invalidateQueries({
+        queryKey: ["profile-images", profileId],
       });
-      
+
       toast.success("Image deleted successfully");
       return true;
     } catch (error) {
@@ -186,10 +191,10 @@ export const useImageUpload = (userId: string) => {
       }
 
       const data = await response.json();
-      
+
       // Invalidate and refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: ['profile-images', userId] 
+      await queryClient.invalidateQueries({
+        queryKey: ["profile-images", userId],
       });
 
       toast.success("Image uploaded successfully");
@@ -239,4 +244,42 @@ export const getOrderedImages = (
       return null;
     })
     .filter(Boolean) as { url: string; storageId: string; _id: string }[];
+};
+
+/**
+ * Handles reordering of admin profile images
+ */
+export const useAdminImageReorder = (profileId: string) => {
+  const { token } = useAuthContext();
+  const queryClient = useQueryClient();
+
+  return async (newOrder: (string | { _id: string | undefined })[]) => {
+    if (!profileId || !token) return;
+
+    // Extract string IDs from the order array which can contain strings or objects with _id
+    const imageIds = newOrder
+      .map((item) => (typeof item === "string" ? item : item._id))
+      .filter(Boolean) as string[];
+
+    try {
+      // Update the order on the server (admin endpoint)
+      await updateAdminProfileImageOrder({
+        token,
+        profileId,
+        imageIds,
+      });
+
+      // Invalidate and refetch
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-profile-images", profileId],
+      });
+
+      toast.success("Image order updated successfully");
+      return true;
+    } catch (error) {
+      console.error("Error updating admin image order", error);
+      toast.error("Failed to update image order");
+      throw error;
+    }
+  };
 };

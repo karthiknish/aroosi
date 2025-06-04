@@ -11,12 +11,12 @@ export default function PrivacyPage() {
         <title>Privacy Policy | Aroosi</title>
         <meta
           name="description"
-          content="Read the privacy policy for Aroosi, the UK's trusted Muslim matrimony platform."
+          content="Read the privacy policy for Aroosi, the trusted Afghan matrimony platform for Afghans in the UK."
         />
         <meta property="og:title" content="Privacy Policy | Aroosi" />
         <meta
           property="og:description"
-          content="Read the privacy policy for Aroosi, the UK's trusted Muslim matrimony platform."
+          content="Read the privacy policy for Aroosi, the trusted Afghan matrimony platform for Afghans in the UK."
         />
         <meta property="og:image" content="/og-image.png" />
         <meta property="og:url" content="https://aroosi.co.uk/privacy" />
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
         <meta name="twitter:title" content="Privacy Policy | Aroosi" />
         <meta
           name="twitter:description"
-          content="Read the privacy policy for Aroosi, the UK's trusted Muslim matrimony platform."
+          content="Read the privacy policy for Aroosi, the trusted Afghan matrimony platform for Afghans in the UK."
         />
         <meta name="twitter:image" content="/og-image.png" />
       </Head>
@@ -52,8 +52,8 @@ export default function PrivacyPage() {
             <p className="lead">
               Your privacy is important to us. It is Aroosi&apos;s policy to
               respect your privacy regarding any information we may collect from
-              you across our website, [Your Website URL], and other sites we own
-              and operate.
+              you across our website and other sites we own and operate as a
+              trusted Afghan matrimony platform for Afghans in the UK.
             </p>
 
             <h2>1. Information We Collect</h2>
@@ -66,8 +66,8 @@ export default function PrivacyPage() {
             <p>
               The types of personal information we may collect include your
               name, email address, date of birth, location, and other details
-              relevant to creating your matrimony profile and facilitating
-              matches.
+              relevant to creating your Afghan matrimony profile and
+              facilitating matches for Afghans in the UK.
             </p>
 
             <h2>2. How We Use Your Information</h2>
