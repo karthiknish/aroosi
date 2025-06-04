@@ -3,6 +3,7 @@ import { getMatchMessages, sendMatchMessage } from "./matchMessagesApi";
 
 // Message type for match messages
 type Message = {
+  _id: string;
   conversationId: string;
   fromUserId: string;
   toUserId: string;
