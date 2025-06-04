@@ -84,25 +84,27 @@ const ChatBot: React.FC = () => {
       {/* Floating Button */}
       {!open && (
         <button
-          className="fixed bottom-6 right-6 z-50 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
+          className="fixed bottom-6 right-6 z-50 bg-primary-dark hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
           onClick={() => setOpen(true)}
           aria-label="Open chat bot"
         >
-          <MessageCircle className="w-7 h-7" />
+          <MessageCircle className="w-7 h-7 text-white" />
         </button>
       )}
       {/* Chat Window */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[95vw] bg-background rounded-2xl shadow-2xl border border-primary-500 flex flex-col overflow-hidden animate-fade-in">
-          <div className="flex items-center justify-between bg-primary-600 text-primary-foreground px-4 py-3">
+        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[95vw] bg-background rounded-2xl shadow-2xl border border-primary flex flex-col overflow-hidden animate-fade-in">
+          <div className="flex items-center justify-between bg-primary text-primary-foreground px-4 py-3">
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
-              <span className="font-bold text-lg">Aroosi AI Assistant</span>
+              <MessageCircle className="w-5 h-5 text-white" />
+              <span className="font-bold text-md text-white font-serif">
+                Aroosi AI Assistant
+              </span>
             </div>
             <button
               onClick={() => setOpen(false)}
               aria-label="Close chat"
-              className="hover:bg-primary-700/10 p-1 rounded-full transition-colors"
+              className="hover:bg-primary/10 p-1 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -116,7 +118,7 @@ const ChatBot: React.FC = () => {
                 Enter your email to start chatting:
               </label>
               <input
-                className="rounded-md border border-primary-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 transition-all bg-background text-foreground"
+                className="rounded-md border border-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all bg-background text-foreground"
                 placeholder="you@example.com"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
@@ -127,7 +129,7 @@ const ChatBot: React.FC = () => {
               )}
               <button
                 type="submit"
-                className="bg-primary-600 hover:bg-primary-700 text-primary-foreground rounded-md px-4 py-2 mt-2 transition-all duration-300 hover:scale-[1.02]"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-md px-4 py-2 mt-2 transition-all duration-300 hover:scale-[1.02]"
               >
                 Start Chat
               </button>
@@ -146,8 +148,8 @@ const ChatBot: React.FC = () => {
                     <div
                       className={`group relative rounded-2xl px-4 py-2 max-w-[85%] text-sm shadow-sm transition-all duration-300 ${
                         msg.role === "user"
-                          ? "bg-primary-600 text-primary-foreground"
-                          : "bg-background text-foreground border border-primary-100 hover:border-primary-200"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-foreground border border-primary hover:border-primary/80"
                       }`}
                     >
                       <div className="whitespace-pre-wrap">
@@ -157,30 +159,32 @@ const ChatBot: React.FC = () => {
                           <ReactMarkdown
                             components={{
                               p: ({ children }) => (
-                                <p className="mb-2 last:mb-0 leading-relaxed">
+                                <p className="mb-2 last:mb-0 leading-relaxed font-sans">
                                   {children}
                                 </p>
                               ),
                               ul: ({ children }) => (
-                                <ul className="list-disc pl-4 mb-2 space-y-1">
+                                <ul className="list-disc pl-4 mb-2 space-y-1 font-sans">
                                   {children}
                                 </ul>
                               ),
                               ol: ({ children }) => (
-                                <ol className="list-decimal pl-4 mb-2 space-y-1">
+                                <ol className="list-decimal pl-4 mb-2 space-y-1 font-sans">
                                   {children}
                                 </ol>
                               ),
                               li: ({ children }) => (
-                                <li className="leading-relaxed">{children}</li>
+                                <li className="leading-relaxed font-sans">
+                                  {children}
+                                </li>
                               ),
                               strong: ({ children }) => (
-                                <strong className="font-semibold">
+                                <strong className="font-semibold font-sans">
                                   {children}
                                 </strong>
                               ),
                               em: ({ children }) => (
-                                <em className="italic">{children}</em>
+                                <em className="italic font-sans">{children}</em>
                               ),
                               code: ({ children }) => (
                                 <code className="bg-muted rounded px-1 py-0.5 text-xs font-mono">
@@ -188,17 +192,17 @@ const ChatBot: React.FC = () => {
                                 </code>
                               ),
                               h1: ({ children }) => (
-                                <h1 className="text-lg font-bold mb-2">
+                                <h1 className="text-lg font-bold mb-2 font-serif">
                                   {children}
                                 </h1>
                               ),
                               h2: ({ children }) => (
-                                <h2 className="text-base font-bold mb-2">
+                                <h2 className="text-base font-bold mb-2 font-serif">
                                   {children}
                                 </h2>
                               ),
                               h3: ({ children }) => (
-                                <h3 className="text-sm font-bold mb-2">
+                                <h3 className="text-sm font-bold mb-2 font-serif">
                                   {children}
                                 </h3>
                               ),

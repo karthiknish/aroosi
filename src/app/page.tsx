@@ -152,7 +152,7 @@ export default function HomePage() {
                 <motion.div
                   variants={fadeInUp}
                   custom={0.5}
-                  className="flex items-center space-x-8 pt-4"
+                  className="items-center space-x-8 md:flex hidden pt-4"
                 >
                   <div className="text-center relative flex-1 min-w-[120px]">
                     <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>

@@ -117,19 +117,36 @@ export default function BlogDetailPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="relative w-full h-64 sm:h-80 md:h-96 mb-8 rounded-2xl overflow-hidden shadow-lg"
+              className="relative w-full h-64 sm:h-80 md:h-96 mb-8 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r from-pink-100 via-rose-50 to-yellow-50"
             >
+              <div className="absolute left-6 top-6 w-16 h-16 bg-pink-200 rounded-full opacity-30 blur-2xl animate-pulse z-0" />
+              <div className="absolute right-6 bottom-6 w-20 h-20 bg-yellow-100 rounded-full opacity-20 blur-2xl animate-pulse z-0" />
               <img
                 src={post.imageUrl}
                 alt={post.title}
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full object-cover object-center relative z-10"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-end p-8">
                 <h1
-                  className="text-3xl sm:text-4xl font-serif font-bold text-white drop-shadow mb-2"
+                  className="text-3xl sm:text-4xl font-serif font-bold text-white drop-shadow mb-2 relative"
                   style={{ fontFamily: "Lora, serif" }}
                 >
                   {post.title}
+                  {/* Homepage-style wavy underline */}
+                  <svg
+                    className="absolute -bottom-2 left-0 w-full"
+                    height="6"
+                    viewBox="0 0 200 6"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M0 3C50 0.5 150 0.5 200 3"
+                      stroke="#fff"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </h1>
                 <div className="flex items-center gap-4 text-sm text-gray-200">
                   <div className="flex items-center gap-1">
@@ -152,13 +169,30 @@ export default function BlogDetailPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="w-full h-48 sm:h-64 mb-8 rounded-2xl bg-gradient-to-r from-pink-200 via-rose-100 to-white flex flex-col justify-end p-8 shadow"
+              className="w-full h-48 sm:h-64 mb-8 rounded-2xl bg-gradient-to-r from-pink-200 via-rose-100 to-white flex flex-col justify-end p-8 shadow relative"
             >
+              <div className="absolute left-6 top-6 w-16 h-16 bg-pink-200 rounded-full opacity-30 blur-2xl animate-pulse z-0" />
+              <div className="absolute right-6 bottom-6 w-20 h-20 bg-yellow-100 rounded-full opacity-20 blur-2xl animate-pulse z-0" />
               <h1
-                className="text-3xl sm:text-4xl font-serif font-bold text-pink-700 mb-2"
+                className="text-3xl sm:text-4xl font-serif font-bold text-pink-700 mb-2 relative"
                 style={{ fontFamily: "Lora, serif" }}
               >
                 {post.title}
+                {/* Homepage-style wavy underline */}
+                <svg
+                  className="absolute -bottom-2 left-0 w-full"
+                  height="6"
+                  viewBox="0 0 200 6"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M0 3C50 0.5 150 0.5 200 3"
+                    stroke="#FDA4AF"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </h1>
               <div className="flex items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
@@ -191,7 +225,7 @@ export default function BlogDetailPage() {
           </div>
         )}
 
-        <Card className="mb-8 shadow-xl rounded-2xl">
+        <Card className="mb-8 shadow-xl rounded-2xl border-l-8 border-pink-200 bg-white/90">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-6">
               <Button

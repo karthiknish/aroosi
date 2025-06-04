@@ -2,10 +2,9 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
 
-
 #blog-content h1{
-  @apply text-2xl font-bold;
-  margin-bottom: 1rem;
+  @apply text-4xl font-bold;
+  margin-bottom: 2rem !important;
 }
 
 #blog-content h2{

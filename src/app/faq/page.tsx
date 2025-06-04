@@ -81,12 +81,6 @@ export default function FaqPage() {
           className="max-w-3xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
         >
           <div className="text-center mb-10 sm:mb-16">
-            <Link
-              href="/"
-              className="inline-block mb-4 text-4xl sm:text-5xl font-serif font-bold text-pink-600 hover:text-pink-700 transition-colors"
-            >
-              Aroosi
-            </Link>
             <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
               Frequently Asked Questions
             </h1>

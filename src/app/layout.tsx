@@ -93,7 +93,7 @@ export default function RootLayout({
               colorSuccess: "#1eb53a",
               colorWarning: "#f59e0b",
               borderRadius: "0.5rem",
-              fontFamily: inter.style.fontFamily,
+              fontFamily: "'Open Sans', Arial, sans-serif",
             },
             elements: {
               formButtonPrimary: {
@@ -110,11 +110,13 @@ export default function RootLayout({
                 border: "1.5px solid #1eb53a",
               },
               headerTitle: {
+                fontFamily: "'Boldonse', serif",
                 fontSize: "1.5rem",
-                fontWeight: "600",
+                fontWeight: "700",
                 color: "#d90012",
               },
               headerSubtitle: {
+                fontFamily: "'Open Sans', Arial, sans-serif",
                 fontSize: "1rem",
                 color: "#1eb53a",
               },
@@ -134,6 +136,7 @@ export default function RootLayout({
               formFieldLabel: {
                 color: "#000000",
                 fontSize: "0.875rem",
+                fontFamily: "'Open Sans', Arial, sans-serif",
               },
               formFieldInputShowPasswordButton: {
                 color: "#1eb53a",
