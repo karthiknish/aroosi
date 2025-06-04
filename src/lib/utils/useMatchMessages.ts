@@ -1,8 +1,17 @@
 import { useState, useCallback } from "react";
 import { getMatchMessages, sendMatchMessage } from "./matchMessagesApi";
 
+// Message type for match messages
+type Message = {
+  conversationId: string;
+  fromUserId: string;
+  toUserId: string;
+  text: string;
+  createdAt: number;
+};
+
 export function useMatchMessages(conversationId: string, token: string) {
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -12,8 +21,12 @@ export function useMatchMessages(conversationId: string, token: string) {
     try {
       const msgs = await getMatchMessages({ conversationId, token });
       setMessages(msgs);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch messages");
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || "Failed to fetch messages");
+      } else {
+        setError("Failed to fetch messages");
+      }
     } finally {
       setLoading(false);
     }
@@ -40,8 +53,12 @@ export function useMatchMessages(conversationId: string, token: string) {
           token,
         });
         await fetchMessages(); // Refresh after sending
-      } catch (err: any) {
-        setError(err.message || "Failed to send message");
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message || "Failed to send message");
+        } else {
+          setError("Failed to send message");
+        }
       } finally {
         setLoading(false);
       }
