@@ -105,11 +105,11 @@ export default function FaqPage() {
               >
                 <AccordionItem value={`item-${index}`}>
                   <AccordionTrigger className="text-left hover:no-underline">
-                    <span className="font-medium text-lg text-gray-700">
+                    <span className="font-medium text-md text-gray-700">
                       {item.question}
                     </span>
                   </AccordionTrigger>
-                  <AccordionContent className="text-gray-600 text-base leading-relaxed pt-2">
+                  <AccordionContent className="text-gray-600  leading-relaxed pt-2">
                     {item.answer}
                   </AccordionContent>
                 </AccordionItem>

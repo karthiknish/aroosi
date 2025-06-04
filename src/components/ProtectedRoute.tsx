@@ -79,6 +79,9 @@ export default function ProtectedRoute({
         "/privacy",
         "/terms",
         "/about",
+        "/pricing",
+        "/how-it-works",
+        "/faq",
         "/contact",
       ].some((route) => pathname === route || pathname.startsWith(`${route}/`)),
       isOnboardingRoute: ["/create-profile", "/profile/onboarding"].some(
