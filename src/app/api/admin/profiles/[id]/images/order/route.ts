@@ -5,10 +5,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { requireAdmin } from "@convex/utils/requireAdmin";
 import { Id } from "@convex/_generated/dataModel";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
@@ -23,7 +20,14 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   const { imageIds } = body;
-  const profileId = params.id;
+  // Extract profileId from the URL
+  const url = req.nextUrl || new URL(req.url);
+  // The pathname will be something like /api/admin/profiles/[id]/images/order
+  // Split and get the id
+  const segments = url.pathname.split("/");
+  // Find the index of 'profiles' and get the next segment as id
+  const profilesIdx = segments.findIndex((s) => s === "profiles");
+  const profileId = profilesIdx !== -1 ? segments[profilesIdx + 1] : undefined;
   if (
     !profileId ||
     !Array.isArray(imageIds) ||
