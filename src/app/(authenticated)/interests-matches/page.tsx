@@ -126,23 +126,49 @@ export default function InterestsMatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
-        <h1
-          className="text-4xl font-bold mb-8 text-center"
-          style={{ fontFamily: "var(--font-lora)" }}
-        >
-          Interests &amp; Matches
-        </h1>
+    <div className="min-h-screen w-full bg-base-light pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden">
+      {/* Decorative color pop circles */}
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      {/* Subtle SVG background pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      ></div>
+      <div className="max-w-5xl mx-auto relative z-10">
+        <div className="text-center mb-10">
+          <div className="inline-block relative mb-4">
+            <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2">
+              Interests & Matches
+            </h1>
+            {/* Pink wavy SVG underline */}
+            <svg
+              className="absolute -bottom-2 left-0 w-full"
+              height="6"
+              viewBox="0 0 200 6"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M0 3C50 0.5 150 0.5 200 3"
+                stroke="#FDA4AF"
+                strokeWidth="5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+        </div>
         {/* Tabs */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-8 gap-2">
           {TABS.map((tab, idx) => (
             <button
               key={tab}
-              className={`px-6 py-2 rounded-t-lg font-semibold transition-colors duration-200 focus:outline-none ${
+              className={`px-6 py-2 rounded-t-xl font-semibold font-nunito shadow transition-colors duration-200 focus:outline-none border-b-4 ${
                 activeTab === idx
-                  ? "bg-white text-pink-600 border-b-2 border-pink-600"
-                  : "bg-gray-100 text-gray-500 hover:text-pink-600"
+                  ? "bg-white/90 text-primary border-primary"
+                  : "bg-accent-100 text-neutral hover:text-primary border-transparent"
               }`}
               onClick={() => setActiveTab(idx)}
             >
@@ -154,7 +180,7 @@ export default function InterestsMatchesPage() {
         {activeTab === 0 ? (
           // Interests Tab
           sentInterests === undefined || loadingSentProfiles ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 py-20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 py-20">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
@@ -172,7 +198,7 @@ export default function InterestsMatchesPage() {
               You haven&apos;t expressed interest in any profiles yet.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
               {sentProfiles.map(
                 ({
                   userId,
@@ -181,8 +207,11 @@ export default function InterestsMatchesPage() {
                   userId: string;
                   profile: ProfileShape;
                 }) => (
-                  <Card key={userId} className="shadow-md">
-                    <CardHeader>
+                  <Card
+                    key={userId}
+                    className="bg-white/90 rounded-2xl shadow-xl border-0 overflow-hidden"
+                  >
+                    <CardHeader className="bg-white/80 border-b-0 p-6 flex items-center">
                       <div className="flex items-center gap-3">
                         {profile.profileImageIds &&
                         profile.profileImageIds.length > 0 ? (
@@ -198,25 +227,29 @@ export default function InterestsMatchesPage() {
                         )}
                         <div>
                           <CardTitle
-                            className="text-lg font-semibold"
-                            style={{ fontFamily: "var(--font-lora)" }}
+                            className="text-lg font-serif font-bold text-primary-dark"
+                            style={{ fontFamily: "var(--font-serif)" }}
                           >
                             {profile.fullName || "Anonymous"}
                           </CardTitle>
-                          <div className="text-sm text-gray-500 flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />{" "}
+                          <div className="text-sm text-neutral flex items-center gap-1 font-nunito">
+                            <MapPin className="w-4 h-4 text-accent" />{" "}
                             {profile.ukCity || "-"}
                           </div>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="text-sm text-gray-700 mb-2">
-                        <span className="font-semibold">Religion:</span>{" "}
+                    <CardContent className="font-nunito bg-transparent">
+                      <div className="text-sm text-neutral mb-2">
+                        <span className="font-semibold text-primary">
+                          Religion:
+                        </span>{" "}
                         {profile.religion || "-"}
                       </div>
-                      <div className="text-sm text-gray-700 mb-2">
-                        <span className="font-semibold">About:</span>{" "}
+                      <div className="text-sm text-neutral mb-2">
+                        <span className="font-semibold text-primary">
+                          About:
+                        </span>{" "}
                         {profile.aboutMe
                           ? profile.aboutMe.slice(0, 80) +
                             (profile.aboutMe.length > 80 ? "..." : "")
@@ -247,7 +280,7 @@ export default function InterestsMatchesPage() {
                             );
                           }
                         }}
-                        className="inline-block mt-2 text-pink-600 hover:underline font-semibold"
+                        className="inline-block mt-2 text-primary hover:underline font-semibold"
                       >
                         View Full Profile
                       </Link>
@@ -259,7 +292,7 @@ export default function InterestsMatchesPage() {
           )
         ) : // Matches Tab
         loadingMatches ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 py-20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 py-20">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -277,7 +310,7 @@ export default function InterestsMatchesPage() {
             You don&apos;t have any matches yet.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
             {matches.map(
               ({
                 userId,
@@ -286,8 +319,11 @@ export default function InterestsMatchesPage() {
                 userId: string;
                 profile: ProfileShape;
               }) => (
-                <Card key={userId} className="shadow-md">
-                  <CardHeader>
+                <Card
+                  key={userId}
+                  className="bg-white/90 rounded-2xl shadow-xl border-0 overflow-hidden"
+                >
+                  <CardHeader className="bg-white/80 border-b-0 p-6 flex items-center">
                     <div className="flex items-center gap-3">
                       {profile.profileImageIds &&
                       profile.profileImageIds.length > 0 ? (
@@ -303,24 +339,27 @@ export default function InterestsMatchesPage() {
                       )}
                       <div>
                         <CardTitle
-                          className="text-lg font-semibold"
-                          style={{ fontFamily: "var(--font-lora)" }}
+                          className="text-lg font-serif font-bold text-primary-dark"
+                          style={{ fontFamily: "var(--font-serif)" }}
                         >
                           {profile.fullName || "Anonymous"}
                         </CardTitle>
-                        <div className="text-sm text-gray-500 flex items-center gap-1">
-                          <MapPin className="w-4 h-4" /> {profile.ukCity || "-"}
+                        <div className="text-sm text-neutral flex items-center gap-1 font-nunito">
+                          <MapPin className="w-4 h-4 text-accent" />{" "}
+                          {profile.ukCity || "-"}
                         </div>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-sm text-gray-700 mb-2">
-                      <span className="font-semibold">Religion:</span>{" "}
+                  <CardContent className="font-nunito bg-transparent">
+                    <div className="text-sm text-neutral mb-2">
+                      <span className="font-semibold text-primary">
+                        Religion:
+                      </span>{" "}
                       {profile.religion || "-"}
                     </div>
-                    <div className="text-sm text-gray-700 mb-2">
-                      <span className="font-semibold">About:</span>{" "}
+                    <div className="text-sm text-neutral mb-2">
+                      <span className="font-semibold text-primary">About:</span>{" "}
                       {profile.aboutMe
                         ? profile.aboutMe.slice(0, 80) +
                           (profile.aboutMe.length > 80 ? "..." : "")
@@ -349,7 +388,7 @@ export default function InterestsMatchesPage() {
                           );
                         }
                       }}
-                      className="inline-block mt-2 text-pink-600 hover:underline font-semibold"
+                      className="inline-block mt-2 text-primary hover:underline font-semibold"
                     >
                       View Full Profile
                     </Link>
