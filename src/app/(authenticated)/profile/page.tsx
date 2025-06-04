@@ -92,7 +92,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
   if (authLoading || profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
+      <div className="flex items-center justify-center w-full bg-base-light">
         <Card className="w-full max-w-md p-8">
           <CardHeader>
             <CardTitle>
@@ -114,7 +114,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
+      <div className="flex items-center justify-center w-full bg-base-light">
         <Card className="w-full max-w-md p-8">
           <CardHeader>
             <CardTitle>Profile Not Found</CardTitle>
@@ -130,8 +130,9 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
+    <div className="flex items-center justify-center w-full bg-base-light">
       <ProfileView
+        className="mt-16"
         profileData={profile}
         images={images}
         isLoadingImages={imagesLoading}

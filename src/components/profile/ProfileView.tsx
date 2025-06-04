@@ -53,9 +53,8 @@ interface ProfileDetailViewProps {
 }
 
 interface DisplaySectionProps {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
-  icon?: React.ReactNode;
   noBorder?: boolean;
   fullWidth?: boolean;
   className?: string;
@@ -100,7 +99,6 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
 const DisplaySection: React.FC<DisplaySectionProps> = ({
   title,
   children,
-  icon,
   noBorder = false,
   fullWidth = false,
   className = "",
@@ -113,8 +111,7 @@ const DisplaySection: React.FC<DisplaySectionProps> = ({
       fullWidth ? "w-full" : ""
     } first:border-t-0 first:pt-0 ${className}`}
   >
-    <h2 className="text-xl font-semibold text-gray-700 mb-3 flex items-center gap-2">
-      {icon}
+    <h2 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
       {title}
     </h2>
     {children}
@@ -130,12 +127,14 @@ export interface ProfileViewProps {
   onDelete?: () => void;
   deleting?: boolean;
   images?: Array<string | { _id: string; url?: string; storageId?: string }>;
+  className?: string;
 }
 
 const ProfileView: FC<ProfileViewProps> = ({
   profileData,
   images,
   userConvexData = null,
+  className = "",
 }) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -234,12 +233,24 @@ const ProfileView: FC<ProfileViewProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <Card className="shadow-xl">
+    <div
+      className={`w-full pt-12 pb-8 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}
+    >
+      {/* Decorative color pop circles */}
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      {/* Subtle SVG background pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      ></div>
+      <div className="max-w-4xl mx-auto relative z-10">
+        <Card className="bg-white/90 rounded-2xl shadow-xl border-0 overflow-hidden">
           <CardHeader className="border-b pb-4 flex flex-row items-center justify-between gap-2">
             <div>
-              <CardTitle className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
+              <CardTitle className="text-3xl font-serif mb-4 text-neutral sm:text-4xl font-semibold tracking-tight ">
                 My Profile
               </CardTitle>
               <CardDescription className="text-gray-600">
@@ -274,8 +285,12 @@ const ProfileView: FC<ProfileViewProps> = ({
               <>
                 {/* Profile Images section */}
                 <DisplaySection
-                  title="Profile Images"
-                  icon={<Camera className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <Camera className="h-5 w-5 text-accent" />
+                      Profile Images
+                    </span>
+                  }
                   noBorder
                   fullWidth
                 >
@@ -296,8 +311,12 @@ const ProfileView: FC<ProfileViewProps> = ({
 
                 {/* Basic Information section follows */}
                 <DisplaySection
-                  title="Basic Information"
-                  icon={<UserCircle className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <UserCircle className="h-5 w-5 text-accent" />
+                      Basic Information
+                    </span>
+                  }
                 >
                   <ProfileDetailView
                     label="Full Name"
@@ -330,8 +349,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                 </DisplaySection>
 
                 <DisplaySection
-                  title="Account Information"
-                  icon={<Mail className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-accent" />
+                      Account Information
+                    </span>
+                  }
                 >
                   <ProfileDetailView
                     label="Email"
@@ -352,8 +375,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                 </DisplaySection>
 
                 <DisplaySection
-                  title="Location (UK) & Lifestyle"
-                  icon={<MapPin className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-accent" />
+                      Location (UK) & Lifestyle
+                    </span>
+                  }
                 >
                   <ProfileDetailView label="City" value={profileData.ukCity} />
                   <ProfileDetailView
@@ -376,8 +403,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                 </DisplaySection>
 
                 <DisplaySection
-                  title="Cultural & Religious Background"
-                  icon={<Heart className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <Heart className="h-5 w-5 text-accent" />
+                      Cultural & Religious Background
+                    </span>
+                  }
                 >
                   <ProfileDetailView
                     label="Religion"
@@ -398,8 +429,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                 </DisplaySection>
 
                 <DisplaySection
-                  title="Education & Career"
-                  icon={<GraduationCap className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5 text-accent" />
+                      Education & Career
+                    </span>
+                  }
                 >
                   <ProfileDetailView
                     label="Education"
@@ -417,8 +452,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                 </DisplaySection>
 
                 <DisplaySection
-                  title="About Me"
-                  icon={<Info className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <Info className="h-5 w-5 text-accent" />
+                      About Me
+                    </span>
+                  }
                 >
                   <ProfileDetailView
                     label="Bio"
@@ -428,8 +467,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                 </DisplaySection>
 
                 <DisplaySection
-                  title="Partner Preferences"
-                  icon={<Heart className="h-5 w-5" />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <Heart className="h-5 w-5 text-accent" />
+                      Partner Preferences
+                    </span>
+                  }
                 >
                   <ProfileDetailView
                     label="Min Preferred Partner Age"
