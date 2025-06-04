@@ -18,6 +18,7 @@ import { ProfileFormValues as ProfileFormComponentValues } from "@/components/pr
 import { fetchAdminProfileImagesById } from "@/lib/profile/adminProfileApi";
 import type { ApiImage, MappedImage } from "@/lib/utils/profileImageUtils";
 import { Loader2 } from "lucide-react";
+import { ImageType } from "@/types/image";
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
@@ -394,7 +395,11 @@ export default function EditProfilePage() {
           profileId: profileData._id,
         });
         const apiImages: ApiImage[] = Array.isArray(raw)
-          ? (raw as ApiImage[])
+          ? (raw as ImageType[]).map((img) => ({
+              _id: img.id,
+              storageId: img.storageId || img.id,
+              url: img.url,
+            }))
           : [];
         const mapped: MappedImage[] = apiImages.map((img) => ({
           _id: img._id || img.storageId,
