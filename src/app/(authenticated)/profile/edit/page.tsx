@@ -14,7 +14,10 @@ import {
   getCurrentUserWithProfile,
   updateUserProfile,
 } from "@/lib/profile/userProfileApi";
-import { ProfileFormValues as ProfileFormComponentValues } from "@/components/profile/ProfileForm";
+import {
+  ProfileFormValues as ProfileFormComponentValues,
+  mapProfileToFormValues,
+} from "@/components/profile/ProfileForm";
 import { fetchAdminProfileImagesById } from "@/lib/profile/adminProfileApi";
 import type { ApiImage, MappedImage } from "@/lib/utils/profileImageUtils";
 import { Loader2 } from "lucide-react";
@@ -377,11 +380,6 @@ export default function EditProfilePage() {
     [handleProfileSubmit]
   );
 
-  const formValues = useMemo(
-    () => convertProfileToFormValues(profileData),
-    [JSON.stringify(profileData)]
-  );
-
   // Determine if the user is an admin (adjust this logic as needed)
   const isAdmin = authProfile?.role === "admin";
 
@@ -510,12 +508,12 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="py-8">
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
+    <div className="flex items-center justify-center w-full min-h-screen bg-base-light">
+      <div className="bg-white/90 shadow-xl rounded-2xl mt-16 w-full  overflow-hidden">
+        <div className="px-4 py-8 sm:p-10">
           <ProfileFormComponent
             mode="edit"
-            initialValues={toProfileFormComponentValues(formValues)}
+            initialValues={mapProfileToFormValues(profileData)}
             onSubmit={handleProfileFormComponentSubmit}
             loading={updateProfileMutation.status === "pending"}
             serverError={serverError || undefined}

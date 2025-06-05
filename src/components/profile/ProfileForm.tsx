@@ -226,8 +226,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     Partial<ProfileFormValues>
   >({});
 
-  // Fetch user profile on mount (for both create and edit)
+  // Only fetch user profile if initialValues is empty (for create mode)
   React.useEffect(() => {
+    if (initialValues && Object.keys(initialValues).length > 0) {
+      setFetchedProfile({});
+      setProfileLoading(false);
+      return;
+    }
     let isMounted = true;
     async function fetchProfile() {
       if (!token) {
@@ -248,7 +253,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [token, initialValues]);
 
   // Form
   const emptyDefaults = {
