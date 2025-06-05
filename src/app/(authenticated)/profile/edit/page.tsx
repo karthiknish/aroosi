@@ -62,55 +62,7 @@ const defaultProfile: Profile = {
   updatedAt: Date.now(),
 };
 
-// Type conversion functions
-function convertProfileToFormValues(
-  profile: Partial<Profile>
-): ProfileFormValues {
-  return {
-    _id: profile._id,
-    userId: profile.userId,
-    clerkId: profile.clerkId,
-    email: profile.email,
-    role: profile.role,
-    fullName: String(profile.fullName ?? ""),
-    dateOfBirth: String(profile.dateOfBirth ?? ""),
-    gender: String(profile.gender ?? ""),
-    ukCity: String(profile.ukCity ?? "").toLowerCase(),
-    ukPostcode: String(profile.ukPostcode ?? ""),
-    phoneNumber: String(profile.phoneNumber ?? ""),
-    aboutMe: String(profile.aboutMe ?? ""),
-    religion: String(profile.religion ?? ""),
-    caste: String(profile.caste ?? ""),
-    motherTongue: String(profile.motherTongue ?? ""),
-    height: String(profile.height ?? ""),
-    maritalStatus: String(profile.maritalStatus ?? ""),
-    education: String(profile.education ?? ""),
-    occupation: String(profile.occupation ?? ""),
-    annualIncome: profile.annualIncome ?? "",
-    diet: String(profile.diet ?? ""),
-    smoking: String(profile.smoking ?? ""),
-    drinking: String(profile.drinking ?? ""),
-    physicalStatus: String(profile.physicalStatus ?? ""),
-    partnerPreferenceAgeMin: profile.partnerPreferenceAgeMin ?? "",
-    partnerPreferenceAgeMax: profile.partnerPreferenceAgeMax ?? "",
-    partnerPreferenceReligion: Array.isArray(profile.partnerPreferenceReligion)
-      ? profile.partnerPreferenceReligion
-      : [],
-    partnerPreferenceUkCity: Array.isArray(profile.partnerPreferenceUkCity)
-      ? profile.partnerPreferenceUkCity
-      : [],
-    preferredGender: String(profile.preferredGender ?? ""),
-    profileImageIds: Array.isArray(profile.profileImageIds)
-      ? profile.profileImageIds
-      : [],
-    isProfileComplete: profile.isProfileComplete ?? false,
-    isOnboardingComplete: profile.isOnboardingComplete ?? false,
-    hiddenFromSearch: profile.hiddenFromSearch ?? false,
-    banned: profile.banned ?? false,
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt,
-  };
-}
+
 
 function convertFormValuesToProfile(
   formValues: ProfileFormValues,
@@ -158,47 +110,7 @@ function convertFormValuesToProfile(
   };
 }
 
-// Utility to map canonical ProfileFormValues to ProfileForm's expected shape
-function toProfileFormComponentValues(
-  values: ProfileFormValues
-): ProfileFormComponentValues {
-  return {
-    fullName: values.fullName ?? "",
-    dateOfBirth: values.dateOfBirth ?? "",
-    gender:
-      (values.gender as
-        | "male"
-        | "female"
-        | "non-binary"
-        | "prefer-not-to-say"
-        | "other") || "other",
-    height: values.height ?? "",
-    ukCity: values.ukCity ?? "",
-    ukPostcode: values.ukPostcode ?? "",
-    aboutMe: values.aboutMe ?? "",
-    phoneNumber: values.phoneNumber ?? "",
-    preferredGender: values.preferredGender ?? "",
-    partnerPreferenceAgeMin: String(values.partnerPreferenceAgeMin ?? ""),
-    partnerPreferenceAgeMax: String(values.partnerPreferenceAgeMax ?? ""),
-    partnerPreferenceReligion: Array.isArray(values.partnerPreferenceReligion)
-      ? values.partnerPreferenceReligion.join(", ")
-      : String(values.partnerPreferenceReligion ?? ""),
-    partnerPreferenceUkCity: Array.isArray(values.partnerPreferenceUkCity)
-      ? values.partnerPreferenceUkCity.join(", ")
-      : String(values.partnerPreferenceUkCity ?? ""),
-    religion: values.religion ?? "",
-    caste: values.caste ?? "",
-    motherTongue: values.motherTongue ?? "",
-    maritalStatus: values.maritalStatus ?? "",
-    education: values.education ?? "",
-    occupation: values.occupation ?? "",
-    annualIncome: String(values.annualIncome ?? ""),
-    diet: values.diet ?? "",
-    smoking: values.smoking ?? "",
-    drinking: values.drinking ?? "",
-    physicalStatus: values.physicalStatus ?? "",
-  };
-}
+
 
 // Utility to map ProfileFormComponentValues (with string fields for arrays) back to canonical ProfileFormValues
 function fromProfileFormComponentValues(
