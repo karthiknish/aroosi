@@ -25,6 +25,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { api } from "@/../convex/_generated/api";
+import { useMutation } from "convex/react";
 
 interface ProfileEditFormProps {
   profile: Profile;
@@ -64,6 +66,12 @@ export default function ProfileEditForm({
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const { token } = useAuthContext();
+
+  // Manual match state
+  const [matchUserId, setMatchUserId] = useState("");
+  const [isMatching, setIsMatching] = useState(false);
+  const sendInterest = useMutation(api.interests.sendInterest);
+  const respondToInterest = useMutation(api.interests.respondToInterest);
 
   // Show fetched images initially, then update to reorder images when profileImageIds are set
   useEffect(() => {
@@ -151,6 +159,63 @@ export default function ProfileEditForm({
     } finally {
       setDeletingImageId(null);
       setConfirmDeleteId(null);
+    }
+  };
+
+  // Manual match handler
+  const handleManualMatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile?.userId || !matchUserId) {
+      toast.error("Both user IDs are required");
+      return;
+    }
+    setIsMatching(true);
+    try {
+      // Send interest from A to B
+      const interestA = await sendInterest({
+        fromUserId: profile.userId,
+        toUserId: matchUserId as Id<"users">,
+      });
+      if (typeof interestA !== "string") {
+        toast.error(interestA?.error || "Failed to send interest (A→B)");
+        setIsMatching(false);
+        return;
+      }
+      // Accept interest from A to B
+      await respondToInterest({
+        interestId: interestA,
+        status: "accepted",
+      });
+      // Send interest from B to A
+      const interestB = await sendInterest({
+        fromUserId: matchUserId as Id<"users">,
+        toUserId: profile.userId,
+      });
+      if (typeof interestB !== "string") {
+        toast.error(interestB?.error || "Failed to send interest (B→A)");
+        setIsMatching(false);
+        return;
+      }
+      // Accept interest from B to A
+      await respondToInterest({
+        interestId: interestB,
+        status: "accepted",
+      });
+      toast.success("Profiles matched successfully!");
+      setMatchUserId("");
+    } catch (err: unknown) {
+      let message = "Failed to match profiles";
+      if (
+        err &&
+        typeof err === "object" &&
+        "message" in err &&
+        typeof (err as { message?: unknown }).message === "string"
+      ) {
+        message = (err as { message: string }).message;
+      }
+      toast.error(message);
+    } finally {
+      setIsMatching(false);
     }
   };
 
@@ -282,22 +347,6 @@ export default function ProfileEditForm({
             <SelectItem value="any">Any</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      <div>
-        <label className="text-sm font-medium">Religion</label>
-        <Input
-          name="religion"
-          value={editForm.religion || ""}
-          onChange={onInputChange}
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium">Caste</label>
-        <Input
-          name="caste"
-          value={editForm.caste || ""}
-          onChange={onInputChange}
-        />
       </div>
       <div>
         <label className="text-sm font-medium">Mother Tongue</label>
@@ -566,6 +615,28 @@ export default function ProfileEditForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Manual Match Section (Admin) */}
+      <div className="mt-8 border-t pt-6">
+        <h3 className="text-lg font-semibold mb-2">
+          Manually Match With Another Profile
+        </h3>
+        <form className="flex gap-2 items-end" onSubmit={handleManualMatch}>
+          <Input
+            placeholder="Enter other user's ID"
+            value={matchUserId}
+            onChange={(e) => setMatchUserId(e.target.value)}
+            className="w-64"
+          />
+          <Button type="submit" disabled={isMatching || !matchUserId}>
+            {isMatching ? "Matching..." : "Create Match"}
+          </Button>
+        </form>
+        <p className="text-xs text-gray-500 mt-1">
+          Enter the user ID of the profile you want to match with this user.
+          (Future: add search by email/name)
+        </p>
+      </div>
     </form>
   );
 }

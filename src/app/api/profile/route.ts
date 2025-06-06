@@ -231,6 +231,7 @@ export async function POST(req: NextRequest) {
   try {
     // Format the data for createProfile mutation
     const profileData: {
+      profileFor: "self" | "friend" | "family";
       fullName: string;
       dateOfBirth: string;
       gender: "male" | "female" | "other";
@@ -246,6 +247,7 @@ export async function POST(req: NextRequest) {
       profileImageIds: Id<"_storage">[];
       isProfileComplete?: boolean;
     } = {
+      profileFor: body.profileFor as "self" | "friend" | "family",
       fullName: body.fullName as string,
       dateOfBirth: body.dateOfBirth as string,
       gender: body.gender as "male" | "female" | "other",
@@ -266,7 +268,9 @@ export async function POST(req: NextRequest) {
       isProfileComplete: Boolean(body.isProfileComplete),
     };
 
-    const result = await convex.mutation(api.users.createProfile, profileData);
+    const result = await convex.mutation(api.users.createProfile, {
+      ...profileData,
+    });
     if (result && result.success === false) {
       console.error("Profile creation failed:", result.message);
       return NextResponse.json(
@@ -290,6 +294,7 @@ export async function POST(req: NextRequest) {
       success: true,
       userId: userResult._id,
       profile: {
+        profileFor: userResult.profile?.profileFor,
         fullName: userResult.profile?.fullName,
         dateOfBirth: userResult.profile?.dateOfBirth,
         gender: userResult.profile?.gender,

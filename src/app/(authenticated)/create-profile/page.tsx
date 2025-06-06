@@ -11,9 +11,10 @@ import { useAuthContext } from "@/components/AuthProvider";
 function mapProfileToInitialValues(
   profile: unknown
 ): Partial<ProfileFormValues> {
-  if (!profile || typeof profile !== "object") return {};
+  if (!profile || typeof profile !== "object") return { profileFor: "self" };
   const p = profile as Record<string, unknown>;
   return {
+    profileFor: "self",
     fullName:
       (p.fullName as string) ||
       `${(p.firstName as string) || ""} ${(p.lastName as string) || ""}`.trim(),

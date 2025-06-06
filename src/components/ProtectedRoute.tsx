@@ -44,6 +44,7 @@ export default function ProtectedRoute({
     isProfileComplete,
     isOnboardingComplete,
     isLoading: isAuthLoading,
+    isApproved,
   } = useAuthContext();
 
   // Use state to track if we've checked localStorage
@@ -224,6 +225,23 @@ export default function ProtectedRoute({
     !isProfileEditRoute
   ) {
     return null;
+  }
+
+  // Block access if user is signed in but not approved
+  if (isSignedIn && isLoaded && isApproved === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-yellow-100 text-yellow-800 p-6 rounded shadow max-w-md mx-auto text-center">
+          <h2 className="text-xl font-semibold mb-2">
+            Profile Pending Approval
+          </h2>
+          <p>
+            Your profile is pending admin approval. You will be notified when
+            approved.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Return children wrapped in a fragment to maintain consistent structure

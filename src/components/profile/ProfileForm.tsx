@@ -45,6 +45,7 @@ import type { ImageType } from "@/types/image";
 type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say" | "other";
 
 export type ProfileFormValues = {
+  profileFor: "self" | "friend" | "family";
   fullName: string;
   dateOfBirth: Date | string;
   gender: Gender;
@@ -58,8 +59,6 @@ export type ProfileFormValues = {
   partnerPreferenceAgeMax: string;
   partnerPreferenceReligion: string;
   partnerPreferenceUkCity: string;
-  religion: string;
-  caste: string;
   motherTongue: string;
   maritalStatus: string;
   education: string;
@@ -99,6 +98,9 @@ const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({
 );
 
 const essentialProfileSchema = z.object({
+  profileFor: z.enum(["self", "friend", "family"], {
+    required_error: "Please select who you are creating this profile for.",
+  }),
   fullName: z.string().min(2, "Full name is required"),
   dateOfBirth: z.union([
     z.date(),
@@ -120,8 +122,6 @@ const essentialProfileSchema = z.object({
   partnerPreferenceAgeMax: z.string(),
   partnerPreferenceReligion: z.string(),
   partnerPreferenceUkCity: z.string(),
-  religion: z.string(),
-  caste: z.string(),
   motherTongue: z.string(),
   maritalStatus: z.string(),
   education: z.string(),
@@ -256,10 +256,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   }, [token, initialValues]);
 
   // Form
-  const emptyDefaults = {
+  const emptyDefaults: ProfileFormValues = {
+    profileFor: "self",
     fullName: "",
     dateOfBirth: "",
-    gender: "other" as Gender,
+    gender: "other",
     ukCity: "",
     ukPostcode: "",
     aboutMe: "",
@@ -270,8 +271,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     partnerPreferenceAgeMax: "",
     partnerPreferenceReligion: "",
     partnerPreferenceUkCity: "",
-    religion: "",
-    caste: "",
     motherTongue: "",
     maritalStatus: "",
     education: "",
@@ -487,6 +486,30 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
         className="max-w-4xl mx-auto"
       >
         <div className="shadow-xl bg-white rounded-lg">
+          {mode === "create" && (
+            <div className="px-6 pt-6 mb-2">
+              <label
+                htmlFor="profileFor"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Who are you creating this profile for?
+              </label>
+              <select
+                id="profileFor"
+                {...form.register("profileFor", { required: true })}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm"
+              >
+                <option value="self">Myself</option>
+                <option value="friend">A Friend</option>
+                <option value="family">A Family Member</option>
+              </select>
+              {form.formState.errors.profileFor && (
+                <span className="text-red-500 text-xs mt-1">
+                  {form.formState.errors.profileFor.message as string}
+                </span>
+              )}
+            </div>
+          )}
           {/* Progress Bar & Step Indicator */}
           {mode === "create" && (
             <div className="px-6 pt-6">

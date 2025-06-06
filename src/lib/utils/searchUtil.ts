@@ -59,3 +59,4 @@ export async function fetchProfileSearchResults({
     return { profiles: [], total: 0 };
   }
 }
+ 

@@ -6,6 +6,7 @@ export interface Profile {
   clerkId: string;
   email: string;
   role?: string;
+  profileFor: "self" | "friend" | "family";
   fullName: string;
   dateOfBirth: string;
   gender: string;
@@ -13,8 +14,6 @@ export interface Profile {
   ukPostcode: string;
   phoneNumber: string;
   aboutMe: string;
-  religion: string;
-  caste: string;
   motherTongue: string;
   height: string;
   maritalStatus: "single" | "divorced" | "widowed";
@@ -38,6 +37,7 @@ export interface Profile {
   createdAt: number;
   updatedAt: number;
   _creationTime?: number | string | Date;
+  isApproved: boolean;
 }
 
 export interface ProfileFormValues {
@@ -53,8 +53,6 @@ export interface ProfileFormValues {
   ukPostcode: string;
   phoneNumber: string;
   aboutMe: string;
-  religion: string;
-  caste: string;
   motherTongue: string;
   height: string;
   maritalStatus: string;
@@ -77,6 +75,8 @@ export interface ProfileFormValues {
   banned?: boolean;
   createdAt?: number;
   updatedAt?: number;
+  isApproved?: boolean;
+  profileFor: "self" | "friend" | "family";
 }
 
 export interface ProfileContextType {
@@ -99,13 +99,11 @@ export type Interest = {
   createdAt: number;
 };
 
-export type ProfileEditFormState = {
+export interface ProfileEditFormState {
   fullName?: string;
   ukCity?: string;
   gender?: string;
   dateOfBirth?: string;
-  religion?: string;
-  caste?: string;
   motherTongue?: string;
   height?: string;
   maritalStatus?: string;
@@ -126,4 +124,5 @@ export type ProfileEditFormState = {
   banned?: boolean;
   ukPostcode?: string;
   preferredGender?: string;
-};
+  isApproved?: boolean;
+}

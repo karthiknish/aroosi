@@ -252,17 +252,11 @@ export default function ProfileView({
         <div>
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <HeartHandshake className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
-              {profiledata.religion || "-"}
-            </span>
           </span>
         </div>
         <div>
           <span className=" text-md text-gray-500 flex items-center gap-1">
             <HandHelping className="w-3.5 h-3.5 text-gray-400" />
-            <span className="font-medium text-gray-700">
-              {profiledata.caste || "-"}
-            </span>
           </span>
         </div>
 
@@ -376,7 +370,6 @@ export function ProfileMinifiedView({ profile }: { profile: Profile }) {
         </div>
         <div className="flex items-center gap-1 text-gray-700 text-xs">
           <Heart className="w-4 h-4 text-pink-400" />
-          {profile.religion || "-"}
         </div>
         <div className="flex items-center gap-1 text-gray-700 text-xs">
           <BadgeCheck className="w-4 h-4 text-green-400" />

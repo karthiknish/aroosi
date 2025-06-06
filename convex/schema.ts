@@ -17,6 +17,7 @@ export default defineSchema({
     clerkId: v.string(), // For easier linking from Clerk data if needed directly in profile queries
     isProfileComplete: v.optional(v.boolean()), // ADDED: Flag to indicate profile completion
     isOnboardingComplete: v.optional(v.boolean()), // ADDED: Flag to indicate onboarding completion
+    isApproved: v.optional(v.boolean()), // Admin must approve before access
     fullName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()), // Consider v.float64() for timestamp if more precision needed
     gender: v.optional(

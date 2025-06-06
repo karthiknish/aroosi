@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthContext } from "@/components/AuthProvider";
-import ProfileForm from "@/components/profile/ProfileForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import {
@@ -12,16 +11,16 @@ import {
   updateAdminProfileById,
   fetchAdminProfileImagesById,
 } from "@/lib/profile/adminProfileApi";
-import type { Profile } from "@/types/profile";
-import { mapProfileToFormValues } from "@/components/profile/ProfileForm";
+import type { Profile, ProfileEditFormState } from "@/types/profile";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiImage, MappedImage } from "@/lib/utils/profileImageUtils";
+import type { ApiImage } from "@/lib/utils/profileImageUtils";
+import type { ImageType } from "@/types/image";
+import ProfileEditForm from "@/components/admin/ProfileEditForm";
 
 export default function AdminEditProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  console.log("id:", id);
   const {
     token,
     isLoaded: authIsLoaded,
@@ -29,9 +28,12 @@ export default function AdminEditProfilePage() {
     isAdmin,
   } = useAuthContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editForm, setEditForm] = useState<ProfileEditFormState>({});
+  const [fetchedImages, setFetchedImages] = useState<ImageType[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   // Fetch the profile by id
-  const { data: profile, isLoading } = useQuery<Profile | null>({
+  const { data: profileData, isLoading } = useQuery<Profile | null>({
     queryKey: ["adminProfile", id, token],
     queryFn: async () => {
       if (!id || !token) return null;
@@ -41,29 +43,132 @@ export default function AdminEditProfilePage() {
   });
 
   // Fetch admin images for the profile being edited
-  const [adminImages, setAdminImages] = useState<MappedImage[]>([]);
   useEffect(() => {
     const fetchImages = async () => {
-      if (profile && token) {
+      if (profileData && token) {
         const raw = await fetchAdminProfileImagesById({
           token,
-          profileId: profile._id,
+          profileId: profileData._id,
         });
         const apiImages: ApiImage[] = Array.isArray(raw)
           ? (raw as unknown as ApiImage[])
           : [];
-        const mapped: MappedImage[] = apiImages.map((img) => ({
-          _id: img._id || img.storageId,
-          storageId: img.storageId,
-          url: img.url,
-        }));
-        setAdminImages(mapped);
+        setFetchedImages(
+          apiImages.map((img) => ({
+            id: img._id || img.storageId,
+            url: img.url,
+            storageId: img.storageId,
+          }))
+        );
       } else {
-        setAdminImages([]);
+        setFetchedImages([]);
       }
     };
     fetchImages();
-  }, [profile, token]);
+  }, [profileData, token]);
+
+  // Initialize form state from profile
+  useEffect(() => {
+    if (profileData) {
+      setProfile(profileData);
+      setEditForm({
+        ...profileData,
+        partnerPreferenceReligion: Array.isArray(
+          profileData.partnerPreferenceReligion
+        )
+          ? profileData.partnerPreferenceReligion
+          : [],
+        partnerPreferenceUkCity: Array.isArray(
+          profileData.partnerPreferenceUkCity
+        )
+          ? profileData.partnerPreferenceUkCity
+          : [],
+        profileImageIds: Array.isArray(profileData.profileImageIds)
+          ? profileData.profileImageIds
+          : [],
+      });
+    }
+  }, [profileData]);
+
+  // Handle input changes
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle select changes
+  const handleSelectChange = (name: string, value: string | undefined) => {
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle images changed
+  const handleImagesChanged = (newImageIds: string[]) => {
+    setEditForm((prev) => ({ ...prev, profileImageIds: newImageIds }));
+  };
+
+  // Handle form submit
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isSubmitting || !id) return;
+    setIsSubmitting(true);
+    try {
+      const updates = {
+        ...editForm,
+        partnerPreferenceAgeMin: Number(editForm.partnerPreferenceAgeMin),
+        partnerPreferenceAgeMax: Number(editForm.partnerPreferenceAgeMax),
+        annualIncome:
+          typeof editForm.annualIncome === "string"
+            ? Number(editForm.annualIncome)
+            : editForm.annualIncome,
+        partnerPreferenceReligion: Array.isArray(
+          editForm.partnerPreferenceReligion
+        )
+          ? editForm.partnerPreferenceReligion
+          : typeof editForm.partnerPreferenceReligion === "string"
+            ? (editForm.partnerPreferenceReligion as string)
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [],
+        partnerPreferenceUkCity: Array.isArray(editForm.partnerPreferenceUkCity)
+          ? editForm.partnerPreferenceUkCity
+          : typeof editForm.partnerPreferenceUkCity === "string"
+            ? (editForm.partnerPreferenceUkCity as string)
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [],
+        preferredGender: (["male", "female", "any"].includes(
+          editForm.preferredGender as string
+        )
+          ? editForm.preferredGender
+          : "any") as "male" | "female" | "any",
+        maritalStatus: (["single", "divorced", "widowed"].includes(
+          editForm.maritalStatus as string
+        )
+          ? editForm.maritalStatus
+          : "single") as "single" | "divorced" | "widowed",
+      };
+      await updateAdminProfileById({
+        token: token!,
+        id,
+        updates,
+      });
+      toast.success("Profile updated successfully");
+      router.push("/admin");
+    } catch (error) {
+      console.error("Profile update error:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message || "Failed to update profile"
+          : "An unexpected error occurred"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!authIsLoaded) {
     return (
@@ -77,7 +182,7 @@ export default function AdminEditProfilePage() {
     return null;
   }
 
-  if (isLoading) {
+  if (isLoading || !editForm || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
@@ -108,76 +213,15 @@ export default function AdminEditProfilePage() {
             Back to Profile Management
           </Button>
         </div>
-        <ProfileForm
-          mode="edit"
-          initialValues={profile ? mapProfileToFormValues(profile) : {}}
-          adminImages={adminImages}
-          onSubmit={async (values) => {
-            if (isSubmitting || !id) return;
-            setIsSubmitting(true);
-            try {
-              await updateAdminProfileById({
-                token: token!,
-                id,
-                updates: {
-                  ...values,
-                  dateOfBirth:
-                    typeof values.dateOfBirth === "string"
-                      ? values.dateOfBirth
-                      : values.dateOfBirth.toISOString(),
-                  partnerPreferenceAgeMin: Number(
-                    values.partnerPreferenceAgeMin
-                  ),
-                  partnerPreferenceAgeMax: Number(
-                    values.partnerPreferenceAgeMax
-                  ),
-                  partnerPreferenceReligion: Array.isArray(
-                    values.partnerPreferenceReligion
-                  )
-                    ? values.partnerPreferenceReligion
-                    : values.partnerPreferenceReligion
-                      ? values.partnerPreferenceReligion
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean)
-                      : [],
-                  partnerPreferenceUkCity: Array.isArray(
-                    values.partnerPreferenceUkCity
-                  )
-                    ? values.partnerPreferenceUkCity
-                    : values.partnerPreferenceUkCity
-                      ? values.partnerPreferenceUkCity
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean)
-                      : [],
-                  preferredGender: (["male", "female", "any"].includes(
-                    values.preferredGender
-                  )
-                    ? values.preferredGender
-                    : "any") as "male" | "female" | "any",
-                  maritalStatus: (["single", "divorced", "widowed"].includes(
-                    values.maritalStatus
-                  )
-                    ? values.maritalStatus
-                    : "single") as "single" | "divorced" | "widowed",
-                },
-              });
-              toast.success("Profile updated successfully");
-              router.push("/admin");
-            } catch (error) {
-              console.error("Profile update error:", error);
-              toast.error(
-                error instanceof Error
-                  ? error.message || "Failed to update profile"
-                  : "An unexpected error occurred"
-              );
-            } finally {
-              setIsSubmitting(false);
-            }
-          }}
-          onEditDone={() => router.push("/admin/profile")}
-          submitButtonText={isSubmitting ? "Saving..." : "Save Changes"}
+        <ProfileEditForm
+          profile={profile}
+          editForm={editForm}
+          onInputChange={handleInputChange}
+          onSelectChange={handleSelectChange}
+          onSubmit={handleSubmit}
+          loading={isSubmitting}
+          onImagesChanged={handleImagesChanged}
+          fetchedImages={fetchedImages}
         />
       </div>
     </div>

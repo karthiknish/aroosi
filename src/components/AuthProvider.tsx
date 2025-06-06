@@ -40,6 +40,7 @@ interface ProfileType {
   createdAt?: string | Date | number;
   updatedAt?: string | Date | number;
   isOnboardingComplete?: boolean;
+  isApproved?: boolean;
   // Add other profile fields as needed
   [key: string]: unknown;
 }
@@ -50,6 +51,7 @@ interface AuthContextType {
   profile: ProfileType | null;
   isProfileComplete: boolean;
   isOnboardingComplete: boolean;
+  isApproved: boolean;
   isLoading: boolean; // Consolidated loading state for consumer
   isSignedIn: boolean; // Stricter isSignedIn status
   isLoaded: boolean; // Clerk and AuthProvider fully initialized
@@ -84,6 +86,7 @@ type ProfileApiResponseData = {
   createdAt?: string | Date | number;
   updatedAt?: string | Date | number;
   isOnboardingComplete?: boolean;
+  isApproved?: boolean;
 };
 
 export function AuthProvider({
@@ -283,6 +286,10 @@ export function AuthProvider({
             createdAt: profileResponse.createdAt,
             updatedAt: profileResponse.updatedAt,
             isOnboardingComplete: Boolean(profileResponse.isOnboardingComplete),
+            isApproved:
+              typeof profileResponse.isApproved === "boolean"
+                ? profileResponse.isApproved
+                : false,
           };
 
           setProfile(profileData);
@@ -404,6 +411,7 @@ export function AuthProvider({
       profile,
       isProfileComplete,
       isOnboardingComplete,
+      isApproved: profile?.isApproved ?? false,
       isLoading: !isFullyLoaded || isProfileLoading, // Overall loading state
       isSignedIn, // Uses the stricter memoized version
       isLoaded: isFullyLoaded, // Clerk and AuthProvider are ready

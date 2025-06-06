@@ -29,14 +29,13 @@ export interface Profile {
   userId: Id<"users">;
   clerkId: string;
   isProfileComplete?: boolean;
+  isApproved?: boolean;
   fullName?: string;
   dateOfBirth?: string;
   gender?: "male" | "female" | "other";
   preferredGender?: "male" | "female" | "other" | "any";
   ukCity?: string;
   ukPostcode?: string;
-  religion?: string;
-  caste?: string;
   motherTongue?: string;
   height?: string;
   maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
@@ -1030,6 +1029,11 @@ export const updateProfileImageOrder = mutation({
 
 export const createProfile = mutation({
   args: {
+    profileFor: v.union(
+      v.literal("self"),
+      v.literal("friend"),
+      v.literal("family")
+    ),
     fullName: v.string(),
     dateOfBirth: v.string(),
     gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
@@ -1092,6 +1096,7 @@ export const createProfile = mutation({
       clerkId: identity.subject,
       email: user.email,
       isProfileComplete: args.isProfileComplete ?? false,
+      isApproved: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };

@@ -1,55 +1,13 @@
 "use client";
 
 import { useAuthContext } from "@/components/AuthProvider";
-import { useForm, Controller } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { useMatchMessages } from "@/lib/utils/useMatchMessages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserCircle, MapPin, Search, Send } from "lucide-react";
+import { UserCircle, MapPin } from "lucide-react";
 import { useState } from "react";
 import type { Profile } from "@/types/profile";
-
-const religions = [
-  "Any",
-  "Islam",
-  "Christianity",
-  "Hinduism",
-  "Sikhism",
-  "Judaism",
-  "Other",
-];
-
-interface FiltersState {
-  distance: string;
-  religion: string;
-  minAge: string;
-  maxAge: string;
-  city: string;
-}
-
-async function fetchProfilesAPI(filters: FiltersState, token: string | null) {
-  if (!token)
-    return Promise.reject(new Error("Authentication token not available."));
-  const params = new URLSearchParams();
-  if (filters.city) params.append("city", filters.city);
-  if (filters.religion && filters.religion !== "Any")
-    params.append("religion", filters.religion);
-  if (filters.minAge) params.append("minAge", filters.minAge);
-  if (filters.maxAge) params.append("maxAge", filters.maxAge);
-  const res = await fetch(`/api/search?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const err = await res
-      .json()
-      .catch(() => ({ error: "Failed to parse error response" }));
-    throw new Error(err?.error || "Failed to fetch matches");
-  }
-  return res.json();
-}
+import { useMatchMessages } from "@/lib/utils/useMatchMessages";
 
 function getConversationId(userId1: string, userId2: string): string {
   return [userId1, userId2].sort().join("_");
@@ -114,19 +72,18 @@ function ModernChat({
           }
         }}
       >
-        <Input
+        <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type your message..."
-          className="flex-1"
+          className="flex-1 border rounded px-2 py-1"
         />
-        <Button
+        <button
           type="submit"
-          size="icon"
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-1 rounded"
         >
-          <Send className="w-5 h-5" />
-        </Button>
+          Send
+        </button>
       </form>
       {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
     </div>
@@ -183,106 +140,86 @@ function ProfileCard({
 
 export default function MatchesPage() {
   const { token, userId } = useAuthContext();
-  const [filters, setFilters] = useState<FiltersState>({
-    distance: "",
-    religion: "Any",
-    minAge: "",
-    maxAge: "",
-    city: "",
-  });
-  const form = useForm({ defaultValues: filters });
 
-  const { data: profiles, isLoading: loading } = useQuery<Profile[], Error>({
-    queryKey: ["searchProfiles", filters, token],
-    queryFn: () => fetchProfilesAPI(filters, token),
-    enabled: !!token,
-  });
+  const { data: matches = [], isLoading: loadingMatches } = useQuery<Profile[]>(
+    {
+      queryKey: ["matches", userId, token],
+      queryFn: async () => {
+        if (!token || !userId) return [];
+        const res = await fetch(`/api/matches?userId=${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return [];
+        return await res.json();
+      },
+      enabled: Boolean(token && userId),
+    }
+  );
 
-  const onSubmit = (data: FiltersState) => {
-    setFilters(data);
-  };
+  if (!token || !userId) {
+    return null;
+  }
+
+  if (loadingMatches) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Skeleton className="w-20 h-20 rounded-full" />
+        <Skeleton className="h-6 w-40 rounded ml-4" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-100 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-5xl font-extrabold text-center mb-10 text-green-800 drop-shadow-lg">
-          Your Matches
-        </h1>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="mb-10 flex flex-wrap gap-4 justify-center items-end bg-white/60 backdrop-blur rounded-xl shadow p-6"
-        >
-          <Controller
-            control={form.control}
-            name="city"
-            render={({ field }) => (
-              <Input {...field} placeholder="UK City" className="w-40" />
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="religion"
-            render={({ field }) => (
-              <select {...field} className="w-40 rounded-md border px-3 py-2">
-                {religions.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="minAge"
-            render={({ field }) => (
-              <Input
-                {...field}
-                type="number"
-                min={18}
-                placeholder="Min Age"
-                className="w-28"
+    <div className="min-h-screen w-full bg-base-light pt-24 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden">
+      {/* Decorative color pop circles */}
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      {/* Subtle SVG background pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      ></div>
+      <div className="max-w-5xl mx-auto relative z-10">
+        <div className="text-center mb-10">
+          <div className="inline-block relative mb-4">
+            <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2">
+              Matches
+            </h1>
+            {/* Pink wavy SVG underline */}
+            <svg
+              className="absolute -bottom-2 left-0 w-full"
+              height="6"
+              viewBox="0 0 200 6"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M0 3C50 0.5 150 0.5 200 3"
+                stroke="#FDA4AF"
+                strokeWidth="5"
+                strokeLinecap="round"
               />
-            )}
-          />
-          <Controller
-            control={form.control}
-            name="maxAge"
-            render={({ field }) => (
-              <Input
-                {...field}
-                type="number"
-                min={18}
-                placeholder="Max Age"
-                className="w-28"
-              />
-            )}
-          />
-          <Button type="submit" className="bg-green-600 hover:bg-green-700">
-            <Search className="mr-2 h-4 w-4" /> Filter
-          </Button>
-        </form>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {loading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-80 w-full rounded-2xl" />
-            ))
-          ) : profiles?.length ? (
-            profiles.map((profile) => (
+            </svg>
+          </div>
+        </div>
+        {matches.length === 0 ? (
+          <div className="text-center text-gray-500 py-20">
+            No matches found yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+            {matches.map((profile) => (
               <ProfileCard
-                key={profile._id}
+                key={profile.userId}
                 profile={profile}
                 currentUserId={userId}
-                token={token!}
+                token={token}
               />
-            ))
-          ) : (
-            <div className="col-span-full text-center text-gray-400 py-20">
-              <UserCircle className="mx-auto w-16 h-16 mb-4" />
-              <div>No matches found. Try adjusting your filters.</div>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
