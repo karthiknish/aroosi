@@ -497,7 +497,7 @@ export default function ProfileDetailPage() {
                 </div>
                 <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
                   <Church className="w-5 h-5 text-accent" />
-                  {profile?.religion ?? "-"}
+                  {"-"}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-accent-600 mb-2 font-nunito">
                   <Calendar className="w-4 h-4 text-accent-200" />
@@ -572,7 +572,7 @@ export default function ProfileDetailPage() {
                   <IconRow
                     icon={<Church className="w-4 h-4" />}
                     label="Religion"
-                    value={profile?.religion ?? "-"}
+                    value="-"
                   />
                   <IconRow
                     icon={<Languages className="w-4 h-4" />}
