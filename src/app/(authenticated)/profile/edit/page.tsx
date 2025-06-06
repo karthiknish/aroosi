@@ -36,8 +36,6 @@ const defaultProfile: Profile = {
   ukPostcode: "",
   phoneNumber: "",
   aboutMe: "",
-  religion: "",
-  caste: "",
   motherTongue: "",
   height: "",
   maritalStatus: "single",
@@ -60,9 +58,9 @@ const defaultProfile: Profile = {
   banned: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
+  profileFor: "self",
+  isApproved: false,
 };
-
-
 
 function convertFormValuesToProfile(
   formValues: ProfileFormValues,
@@ -110,8 +108,6 @@ function convertFormValuesToProfile(
   };
 }
 
-
-
 // Utility to map ProfileFormComponentValues (with string fields for arrays) back to canonical ProfileFormValues
 function fromProfileFormComponentValues(
   values: ProfileFormComponentValues & { profileImageIds: string[] }
@@ -133,8 +129,6 @@ function fromProfileFormComponentValues(
     ukPostcode: values.ukPostcode ?? "",
     phoneNumber: values.phoneNumber ?? "",
     aboutMe: values.aboutMe ?? "",
-    religion: values.religion ?? "",
-    caste: values.caste ?? "",
     motherTongue: values.motherTongue ?? "",
     maritalStatus: values.maritalStatus ?? "",
     education: values.education ?? "",
@@ -168,6 +162,7 @@ function fromProfileFormComponentValues(
     banned: false,
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    profileFor: values.profileFor ?? "self",
   };
 }
 
