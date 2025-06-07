@@ -58,7 +58,6 @@ export type ProfileFormValues = {
   partnerPreferenceAgeMin: string;
   partnerPreferenceAgeMax: string;
   partnerPreferenceUkCity: string;
-  motherTongue: string;
   maritalStatus: string;
   education: string;
   occupation: string;
@@ -120,7 +119,6 @@ const essentialProfileSchema = z.object({
   partnerPreferenceAgeMin: z.string(),
   partnerPreferenceAgeMax: z.string(),
   partnerPreferenceUkCity: z.string(),
-  motherTongue: z.string(),
   maritalStatus: z.string(),
   education: z.string(),
   occupation: z.string(),
@@ -263,7 +261,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     partnerPreferenceAgeMin: "",
     partnerPreferenceAgeMax: "",
     partnerPreferenceUkCity: "",
-    motherTongue: "",
     maritalStatus: "",
     education: "",
     occupation: "",

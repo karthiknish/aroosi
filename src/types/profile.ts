@@ -14,7 +14,6 @@ export interface Profile {
   ukPostcode: string;
   phoneNumber: string;
   aboutMe: string;
-  motherTongue: string;
   height: string;
   maritalStatus: "single" | "divorced" | "widowed";
   education: string;
@@ -52,7 +51,6 @@ export interface ProfileFormValues {
   ukPostcode: string;
   phoneNumber: string;
   aboutMe: string;
-  motherTongue: string;
   height: string;
   maritalStatus: string;
   education: string;
@@ -102,7 +100,6 @@ export interface ProfileEditFormState {
   ukCity?: string;
   gender?: string;
   dateOfBirth?: string;
-  motherTongue?: string;
   height?: string;
   maritalStatus?: string;
   education?: string;

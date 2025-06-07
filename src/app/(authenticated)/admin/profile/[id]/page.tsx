@@ -567,10 +567,6 @@ export default function AdminProfileDetailPage() {
                 : "-"}
             </div>
             <div>
-              <span className="font-semibold">Caste:</span>{" "}
-              {typeof profile?.caste === "string" ? profile.caste : "-"}
-            </div>
-            <div>
               <span className="font-semibold">Height:</span>{" "}
               {typeof profile?.height === "string" ? profile.height : "-"}
             </div>

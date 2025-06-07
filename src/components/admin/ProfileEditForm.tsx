@@ -349,14 +349,6 @@ export default function ProfileEditForm({
         </Select>
       </div>
       <div>
-        <label className="text-sm font-medium">Mother Tongue</label>
-        <Input
-          name="motherTongue"
-          value={editForm.motherTongue || ""}
-          onChange={onInputChange}
-        />
-      </div>
-      <div>
         <label className="text-sm font-medium">Height</label>
         <div className="flex items-center gap-4">
           <Slider

@@ -411,14 +411,6 @@ const ProfileView: FC<ProfileViewProps> = ({
                   }
                 >
                   <ProfileDetailView
-                    label="Sect/Caste"
-                    value={profileData.caste}
-                  />
-                  <ProfileDetailView
-                    label="Mother Tongue"
-                    value={profileData.motherTongue}
-                  />
-                  <ProfileDetailView
                     label="Marital Status"
                     value={profileData.maritalStatus}
                   />

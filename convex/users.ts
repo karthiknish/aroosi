@@ -37,7 +37,6 @@ export interface Profile {
   preferredGender?: "male" | "female" | "other" | "any";
   ukCity?: string;
   ukPostcode?: string;
-  motherTongue?: string;
   height?: string;
   maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
   education?: string;
@@ -70,8 +69,6 @@ export interface Profile {
 export interface PublicProfile {
   fullName?: string;
   ukCity?: string;
-  religion?: string;
-  motherTongue?: string;
   height?: string;
   maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
   education?: string;
@@ -393,8 +390,6 @@ export const getUserPublicProfile = query({
       profile: {
         fullName: profile.fullName,
         ukCity: profile.ukCity,
-        religion: profile.religion,
-        motherTongue: profile.motherTongue,
         height: profile.height,
         maritalStatus: profile.maritalStatus,
         education: profile.education,
@@ -402,8 +397,6 @@ export const getUserPublicProfile = query({
         aboutMe: profile.aboutMe,
         profileImageIds: profile.profileImageIds, // Assuming these are safe and you handle their URLs correctly
         createdAt: profile.createdAt, // Useful for 'Member since'
-        // Explicitly DO NOT include: dateOfBirth, ukPostcode, caste (unless desired for your community),
-        // annualIncome, partner preferences, or other sensitive details.
       },
     };
   },
@@ -704,8 +697,6 @@ export const adminUpdateProfile = mutation({
         v.union(v.literal("male"), v.literal("female"), v.literal("other"))
       ),
       dateOfBirth: v.optional(v.string()),
-      caste: v.optional(v.string()),
-      motherTongue: v.optional(v.string()),
       height: v.optional(v.string()),
       maritalStatus: v.optional(
         v.union(
@@ -864,11 +855,9 @@ export const adminListProfiles = query({
       (p) =>
         p.fullName &&
         p.ukCity &&
-        p.religion &&
         p.phoneNumber &&
         typeof p.fullName === "string" &&
         typeof p.ukCity === "string" &&
-        typeof p.religion === "string" &&
         typeof p.phoneNumber === "string"
     );
 
@@ -1443,7 +1432,6 @@ export const searchPublicProfiles = query({
           fullName: profile.fullName,
           ukCity: profile.ukCity,
           dateOfBirth: profile.dateOfBirth,
-          religion: profile.religion,
           isProfileComplete: profile.isProfileComplete,
           hiddenFromSearch: profile.hiddenFromSearch,
           profileImageIds: profile.profileImageIds,
