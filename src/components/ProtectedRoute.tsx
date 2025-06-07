@@ -70,7 +70,12 @@ export default function ProtectedRoute({
   const onboardingComplete = isOnboardingComplete ?? localOnboardingComplete;
 
   // Memoize route checks to prevent unnecessary recalculations
-  const { isPublicRoute, isOnboardingRoute, isProfileEditRoute } = useMemo(
+  const {
+    isPublicRoute,
+    isOnboardingRoute,
+    isProfileEditRoute,
+    isCreateProfileRoute,
+  } = useMemo(
     () => ({
       isPublicRoute: [
         "/",
@@ -90,6 +95,9 @@ export default function ProtectedRoute({
       ),
       isProfileEditRoute:
         pathname === "/profile/edit" || pathname.startsWith("/profile/edit/"),
+      isCreateProfileRoute:
+        pathname === "/create-profile" ||
+        pathname.startsWith("/create-profile"),
     }),
     [pathname]
   );
@@ -227,8 +235,14 @@ export default function ProtectedRoute({
     return null;
   }
 
-  // Block access if user is signed in but not approved
-  if (isSignedIn && isLoaded && isApproved === false) {
+  // Block access if user is signed in but not approved, but allow create-profile and edit-profile routes
+  if (
+    isSignedIn &&
+    isLoaded &&
+    isApproved === false &&
+    !isCreateProfileRoute &&
+    !isProfileEditRoute
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-yellow-100 text-yellow-800 p-6 rounded shadow max-w-md mx-auto text-center">

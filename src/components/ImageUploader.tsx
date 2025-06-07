@@ -155,26 +155,26 @@ export function ImageUploader({
       try {
         setIsUploading(true);
         if (onStartUpload) onStartUpload();
-        
+
         // Step 1: Get upload URL
         const uploadUrl = await generateUploadUrl();
         if (typeof uploadUrl !== "string") {
           throw new Error("Failed to get upload URL");
         }
-        
+
         // Step 2: Upload the file to storage
         const result = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": file.type },
           body: file,
         });
-        
+
         if (!result.ok) {
           throw new Error("Failed to upload image");
         }
-        
-        const { storageId } = await result.json();
-        
+        // Convex storage returns storageId as plain text, not JSON
+        const storageId = await result.text();
+
         // Step 3: Save the image reference in the database
         const mutationResult = await uploadImage({
           userId: userId as Id<"users">,
@@ -183,17 +183,16 @@ export function ImageUploader({
           contentType: file.type,
           fileSize: file.size,
         });
-        
+
         if (!mutationResult.success) {
           throw new Error(mutationResult.message || "Upload failed");
         }
-        
+
         // Show success message
         toast.success("Image uploaded successfully");
-        
+
         // Return the result so the parent component can handle it
         return mutationResult;
-        
       } catch (error) {
         console.error("Error uploading image:", error);
         if (error instanceof ConvexError) {
