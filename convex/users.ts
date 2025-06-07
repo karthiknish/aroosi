@@ -28,6 +28,7 @@ export interface Profile {
   _id: Id<"profiles">;
   userId: Id<"users">;
   clerkId: string;
+  profileFor?: "self" | "friend" | "family";
   isProfileComplete?: boolean;
   isApproved?: boolean;
   fullName?: string;
@@ -204,6 +205,7 @@ export const internalUpsertUser = internalMutation(
         clerkId,
         isProfileComplete: false,
         createdAt: Date.now(),
+        profileFor: "self",
         // Initialize other fields as undefined or with defaults if necessary
         fullName: undefined,
         dateOfBirth: undefined,
@@ -490,6 +492,7 @@ export const batchGetPublicProfiles = action({
             user.role !== "admin" &&
             user.banned !== true &&
             user.profile &&
+            user.profile.profileFor !== undefined &&
             user.profile.isProfileComplete === true &&
             user.profile.hiddenFromSearch !== true &&
             user.profile.banned !== true

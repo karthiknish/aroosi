@@ -12,7 +12,6 @@ const mockProfile = {
     "user1" as unknown as import("@convex/_generated/dataModel").Id<"users">,
   fullName: "Test User",
   ukCity: "London",
-  religion: "Islam",
   createdAt: Date.now(),
   profileImageIds: ["img1", "img2"],
   motherTongue: "Urdu",

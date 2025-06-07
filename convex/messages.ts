@@ -33,7 +33,9 @@ export const sendMessage = mutation({
     // Check if fromUserId and toUserId are mutual matches
     // (You may want to optimize this by storing matches in a table, but for now, use getMyMatches)
     const matches = await ctx.runQuery(api.users.getMyMatches, {});
-    const isMatched = matches.some((p: Profile) => p.userId === args.toUserId);
+    const isMatched = matches.some(
+      (p: Profile) => p.userId === args.toUserId && p.profileFor !== undefined
+    );
     if (!isMatched)
       throw new Error("You can only message users you are matched with.");
     await ctx.db.insert("messages", {

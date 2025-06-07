@@ -108,7 +108,6 @@ export default function SearchProfilesPage() {
   const { token, isSignedIn } = useAuthContext();
   const router = useRouter();
   const [city, setCity] = React.useState("any");
-  const [religion, setReligion] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
   const [ageMax, setAgeMax] = React.useState("");
   const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
@@ -122,23 +121,13 @@ export default function SearchProfilesPage() {
 
   // React Query for profiles
   const { data: searchResults, isLoading: loadingProfiles } = useQuery({
-    queryKey: [
-      "profiles",
-      token,
-      city,
-      religion,
-      ageMin,
-      ageMax,
-      page,
-      pageSize,
-    ],
+    queryKey: ["profiles", token, city, ageMin, ageMax, page, pageSize],
     queryFn: () =>
       fetchProfileSearchResults({
         token: token!,
         page,
         pageSize,
         city,
-        religion,
         ageMin,
         ageMax,
       }),
@@ -223,18 +212,6 @@ export default function SearchProfilesPage() {
     );
   }, [profiles]);
 
-  // Get unique cities and religions for filter dropdowns
-  const religionOptions = React.useMemo(() => {
-    const set = new Set(
-      publicProfiles
-        .map((u: ProfileSearchResult) => u.profile!.religion)
-        .filter(
-          (v: unknown): v is string => typeof v === "string" && v.length > 0
-        )
-    );
-    return ["any", ...Array.from(set)];
-  }, [publicProfiles]);
-
   // Get current user from auth context
   const { profile: currentUser } = useAuthContext();
 
@@ -314,18 +291,6 @@ export default function SearchProfilesPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={religion} onValueChange={setReligion}>
-              <SelectTrigger className="w-40 bg-white rounded-lg shadow-sm font-nunito">
-                <SelectValue placeholder="Choose Religion" />
-              </SelectTrigger>
-              <SelectContent>
-                {(religionOptions as string[]).map((r) => (
-                  <SelectItem key={r} value={r} className="font-nunito">
-                    {r === "any" ? "Any Religion" : r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Input
               type="number"
               min={18}
@@ -386,15 +351,14 @@ export default function SearchProfilesPage() {
               No profiles found
             </h3>
             <p className="text-gray-500 max-w-md mx-auto">
-              {city !== "any" || religion !== "any" || ageMin || ageMax
+              {city !== "any" || ageMin || ageMax
                 ? "Try adjusting your search criteria to see more results."
                 : "There are currently no profiles available. Please check back later."}
             </p>
-            {(city !== "any" || religion !== "any" || ageMin || ageMax) && (
+            {(city !== "any" || ageMin || ageMax) && (
               <button
                 onClick={() => {
                   setCity("any");
-                  setReligion("any");
                   setAgeMin("");
                   setAgeMax("");
                 }}
@@ -478,14 +442,6 @@ export default function SearchProfilesPage() {
                               ? p.dateOfBirth
                               : ""
                           )}
-                        </div>
-                        <div
-                          className="text-sm text-gray-600 mb-2"
-                          style={{
-                            fontFamily: "Nunito Sans, Arial, sans-serif",
-                          }}
-                        >
-                          {typeof p.religion === "string" ? p.religion : "-"}
                         </div>
                         <Button
                           className="bg-primary hover:bg-primary/90 text-white w-full mt-2"

@@ -5,17 +5,15 @@ export const checkProfileCompletion = (profile: Profile): boolean => {
   
   // List of required fields for a complete profile
   const requiredFields: (keyof Profile)[] = [
-    'fullName',
-    'gender',
-    'dateOfBirth',
-    'maritalStatus',
-    'religion',
-    'caste',
-    'ukCity',
-    'occupation',
-    'education',
-    'aboutMe',
-    'profileImageIds'
+    "fullName",
+    "gender",
+    "dateOfBirth",
+    "maritalStatus",
+    "ukCity",
+    "occupation",
+    "education",
+    "aboutMe",
+    "profileImageIds",
   ];
 
   return requiredFields.every(field => {

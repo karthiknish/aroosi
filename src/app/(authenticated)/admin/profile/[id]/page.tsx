@@ -572,12 +572,6 @@ export default function AdminProfileDetailPage() {
               {typeof profile?.caste === "string" ? profile.caste : "-"}
             </div>
             <div>
-              <span className="font-semibold">Mother Tongue:</span>{" "}
-              {typeof profile?.motherTongue === "string"
-                ? profile.motherTongue
-                : "-"}
-            </div>
-            <div>
               <span className="font-semibold">Height:</span>{" "}
               {typeof profile?.height === "string" ? profile.height : "-"}
             </div>
@@ -628,14 +622,6 @@ export default function AdminProfileDetailPage() {
               {typeof profile?.partnerPreferenceAgeMax === "number" ||
               typeof profile?.partnerPreferenceAgeMax === "string"
                 ? profile.partnerPreferenceAgeMax
-                : "-"}
-            </div>
-            <div className="md:col-span-2">
-              <span className="font-semibold">
-                Partner Preference Religion:
-              </span>{" "}
-              {Array.isArray(profile?.partnerPreferenceReligion)
-                ? profile.partnerPreferenceReligion.join(", ")
                 : "-"}
             </div>
             <div className="md:col-span-2">

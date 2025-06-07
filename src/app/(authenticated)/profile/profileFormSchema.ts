@@ -37,9 +37,6 @@ export function getProfileFormSchema(isOnboarding: boolean) {
         ? z.string().min(1, "City is required")
         : z.string().optional().or(z.literal("")),
       ukPostcode: z.string().max(10).optional().or(z.literal("")),
-      religion: z.string().max(50).optional().or(z.literal("")),
-      caste: z.string().max(50).optional().or(z.literal("")),
-      motherTongue: z.string().max(50).optional().or(z.literal("")),
       height: z.string().max(20).optional().or(z.literal("")),
       maritalStatus: z
         .enum(["single", "divorced", "widowed", "annulled"])
@@ -65,7 +62,6 @@ export function getProfileFormSchema(isOnboarding: boolean) {
         (val) => (val ? Number(val) : undefined),
         z.number().max(99).optional()
       ),
-      partnerPreferenceReligion: z.array(z.string()).optional(),
       partnerPreferenceUkCity: z.array(z.string()).optional(),
       preferredGender: z.enum(["male", "female", "other", "any"], {
         required_error: "Preferred gender is required",

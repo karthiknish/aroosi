@@ -15,6 +15,9 @@ export default defineSchema({
   profiles: defineTable({
     userId: v.id("users"), // This will now link to the user record identified by Clerk ID
     clerkId: v.string(), // For easier linking from Clerk data if needed directly in profile queries
+    profileFor: v.optional(
+      v.union(v.literal("self"), v.literal("friend"), v.literal("family"))
+    ),
     isProfileComplete: v.optional(v.boolean()), // ADDED: Flag to indicate profile completion
     isOnboardingComplete: v.optional(v.boolean()), // ADDED: Flag to indicate onboarding completion
     isApproved: v.optional(v.boolean()), // Admin must approve before access
@@ -36,7 +39,6 @@ export default defineSchema({
     ukPostcode: v.optional(v.string()),
     // Religious and cultural background
     religion: v.optional(v.string()), // e.g., "Islam"
-    caste: v.optional(v.string()), // Optional, as some may not identify with a caste
     motherTongue: v.optional(v.string()),
     // Physical attributes
     height: v.optional(v.string()), // store as '5ft 7in'

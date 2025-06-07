@@ -537,26 +537,6 @@ export default function ProfileEditForm({
       </div>
       <div>
         <label className="text-sm font-medium">
-          Partner Preference Religion (comma separated)
-        </label>
-        <Input
-          name="partnerPreferenceReligion"
-          value={editForm.partnerPreferenceReligion?.join(",") || ""}
-          onChange={(e) =>
-            onInputChange &&
-            onInputChange({
-              ...e,
-              target: {
-                ...e.target,
-                name: "partnerPreferenceReligion",
-                value: e.target.value,
-              },
-            })
-          }
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium">
           Partner Preference UK City (comma separated)
         </label>
         <Input

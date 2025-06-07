@@ -26,7 +26,6 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const ukCity = searchParams.get("city") || undefined;
-    const religion = searchParams.get("religion") || undefined;
     const ageMin = searchParams.get("ageMin")
       ? parseInt(searchParams.get("ageMin")!)
       : undefined;
@@ -40,7 +39,6 @@ export async function GET(request: Request) {
 
     console.log("Searching profiles with params:", {
       ukCity,
-      religion,
       ageMin,
       ageMax,
       preferredGender,
@@ -50,7 +48,6 @@ export async function GET(request: Request) {
 
     const result = await convexClient.query(api.users.searchPublicProfiles, {
       ukCity,
-      religion,
       ageMin,
       ageMax,
       preferredGender,

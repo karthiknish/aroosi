@@ -13,7 +13,6 @@ describe("ProfileView", () => {
     userId: "user1",
     fullName: "Test User",
     ukCity: "London",
-    religion: "Islam",
     createdAt: Date.now(),
     profileImageIds: ["img1", "img2"],
     motherTongue: "Urdu",

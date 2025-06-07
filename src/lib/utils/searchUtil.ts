@@ -7,7 +7,6 @@ import type { ProfileSearchResult } from "@/app/(authenticated)/search/page";
  * @param {number} params.page - The current page number.
  * @param {number} params.pageSize - The number of results per page.
  * @param {string} [params.city] - The city to filter by.
- * @param {string} [params.religion] - The religion to filter by.
  * @param {string} [params.ageMin] - The minimum age to filter by.
  * @param {string} [params.ageMax] - The maximum age to filter by.
  * @returns {Promise<{ profiles: ProfileSearchResult[]; total: number }>} The search results.
@@ -17,7 +16,6 @@ export async function fetchProfileSearchResults({
   page,
   pageSize,
   city,
-  religion,
   ageMin,
   ageMax,
 }: {
@@ -25,7 +23,6 @@ export async function fetchProfileSearchResults({
   page: number;
   pageSize: number;
   city?: string;
-  religion?: string;
   ageMin?: string;
   ageMax?: string;
 }): Promise<{ profiles: ProfileSearchResult[]; total: number }> {
@@ -36,7 +33,6 @@ export async function fetchProfileSearchResults({
       pageSize: pageSize.toString(),
     });
     if (city && city !== "any") params.append("city", city);
-    if (religion && religion !== "any") params.append("religion", religion);
     if (ageMin) params.append("ageMin", ageMin);
     if (ageMax) params.append("ageMax", ageMax);
     const response = await fetch(`/api/search?${params.toString()}`, {

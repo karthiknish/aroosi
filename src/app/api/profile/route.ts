@@ -189,7 +189,6 @@ export async function POST(req: NextRequest) {
     "gender",
     "ukCity",
     "aboutMe",
-    "religion",
     "occupation",
     "education",
     "height",
@@ -237,7 +236,6 @@ export async function POST(req: NextRequest) {
       gender: "male" | "female" | "other";
       ukCity: string;
       aboutMe: string;
-      religion: string;
       occupation: string;
       education: string;
       height: string;
@@ -253,7 +251,6 @@ export async function POST(req: NextRequest) {
       gender: body.gender as "male" | "female" | "other",
       ukCity: body.ukCity as string,
       aboutMe: body.aboutMe as string,
-      religion: body.religion as string,
       occupation: body.occupation as string,
       education: body.education as string,
       height: body.height as string,
@@ -300,7 +297,6 @@ export async function POST(req: NextRequest) {
         gender: userResult.profile?.gender,
         ukCity: userResult.profile?.ukCity,
         aboutMe: userResult.profile?.aboutMe,
-        religion: userResult.profile?.religion,
         occupation: userResult.profile?.occupation,
         education: userResult.profile?.education,
         height: userResult.profile?.height,
