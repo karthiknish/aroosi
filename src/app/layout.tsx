@@ -82,32 +82,32 @@ export default function RootLayout({
               termsPageUrl: "/terms",
             },
             variables: {
-              colorPrimary: "#d90012",
+              colorPrimary: "#BFA67A",
               colorText: "#000000",
               colorBackground: "#ffffff",
               colorInputBackground: "#f9fafb",
               colorInputText: "#000000",
-              colorTextSecondary: "#1eb53a",
+              colorTextSecondary: "#BFA67A",
               colorTextOnPrimaryBackground: "#ffffff",
               colorDanger: "#d90012",
-              colorSuccess: "#1eb53a",
+              colorSuccess: "#BFA67A",
               colorWarning: "#f59e0b",
               borderRadius: "0.5rem",
               fontFamily: "'Open Sans', Arial, sans-serif",
             },
             elements: {
               formButtonPrimary: {
-                backgroundColor: "#d90012",
+                backgroundColor: "#BFA67A",
                 color: "#fff",
                 "&:hover": {
-                  backgroundColor: "#b8000b",
+                  backgroundColor: "#a68d54",
                 },
               },
               card: {
                 boxShadow:
                   "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
                 borderRadius: "1rem",
-                border: "1.5px solid #1eb53a",
+                border: "1.5px solid #BFA67A",
               },
               headerTitle: {
                 fontFamily: "'Boldonse', serif",
@@ -118,7 +118,7 @@ export default function RootLayout({
               headerSubtitle: {
                 fontFamily: "'Open Sans', Arial, sans-serif",
                 fontSize: "1rem",
-                color: "#1eb53a",
+                color: "#BFA67A",
               },
               socialButtonsBlockButton: {
                 border: "1px solid #e5e7eb",
@@ -129,8 +129,8 @@ export default function RootLayout({
               formFieldInput: {
                 border: "1px solid #e5e7eb",
                 "&:focus": {
-                  borderColor: "#d90012",
-                  boxShadow: "0 0 0 1px #d90012",
+                  borderColor: "#BFA67A",
+                  boxShadow: "0 0 0 1px #BFA67A",
                 },
               },
               formFieldLabel: {
@@ -139,13 +139,13 @@ export default function RootLayout({
                 fontFamily: "'Open Sans', Arial, sans-serif",
               },
               formFieldInputShowPasswordButton: {
-                color: "#1eb53a",
+                color: "#BFA67A",
                 "&:hover": {
                   color: "#d90012",
                 },
               },
               footerActionLink: {
-                color: "#1eb53a",
+                color: "#BFA67A",
                 "&:hover": {
                   color: "#d90012",
                 },

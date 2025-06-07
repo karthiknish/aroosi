@@ -48,7 +48,6 @@ const defaultProfile: Profile = {
   physicalStatus: "",
   partnerPreferenceAgeMin: 18,
   partnerPreferenceAgeMax: 80,
-  partnerPreferenceReligion: [],
   partnerPreferenceUkCity: [],
   preferredGender: "any",
   profileImageIds: [],
