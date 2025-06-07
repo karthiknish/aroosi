@@ -45,12 +45,6 @@ const ProfileFormStepAbout: React.FC<Props> = ({ form, mode }) => (
       placeholder="e.g., 35"
     />
     <FormField
-      name="partnerPreferenceReligion"
-      label="Preferred Partner Religion(s)"
-      form={form}
-      placeholder="e.g., Islam, Christianity"
-    />
-    <FormField
       name="partnerPreferenceUkCity"
       label="Preferred Partner UK City/Cities"
       form={form}

@@ -26,7 +26,6 @@ export interface Profile {
   physicalStatus: string;
   partnerPreferenceAgeMin: number;
   partnerPreferenceAgeMax: number;
-  partnerPreferenceReligion: string[];
   partnerPreferenceUkCity: string[];
   preferredGender: "male" | "female" | "any";
   profileImageIds: string[];
@@ -65,7 +64,6 @@ export interface ProfileFormValues {
   physicalStatus: string;
   partnerPreferenceAgeMin: number | string;
   partnerPreferenceAgeMax: number | string;
-  partnerPreferenceReligion: string[];
   partnerPreferenceUkCity: string[];
   preferredGender: string;
   profileImageIds?: string[];
@@ -118,7 +116,6 @@ export interface ProfileEditFormState {
   physicalStatus?: string;
   partnerPreferenceAgeMin?: number | string;
   partnerPreferenceAgeMax?: number | string;
-  partnerPreferenceReligion?: string[];
   partnerPreferenceUkCity?: string[];
   profileImageIds?: string[];
   banned?: boolean;

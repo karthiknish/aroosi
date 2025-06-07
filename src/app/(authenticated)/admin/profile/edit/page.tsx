@@ -73,11 +73,6 @@ export default function AdminEditProfilePage() {
       setProfile(profileData);
       setEditForm({
         ...profileData,
-        partnerPreferenceReligion: Array.isArray(
-          profileData.partnerPreferenceReligion
-        )
-          ? profileData.partnerPreferenceReligion
-          : [],
         partnerPreferenceUkCity: Array.isArray(
           profileData.partnerPreferenceUkCity
         )
@@ -122,16 +117,6 @@ export default function AdminEditProfilePage() {
           typeof editForm.annualIncome === "string"
             ? Number(editForm.annualIncome)
             : editForm.annualIncome,
-        partnerPreferenceReligion: Array.isArray(
-          editForm.partnerPreferenceReligion
-        )
-          ? editForm.partnerPreferenceReligion
-          : typeof editForm.partnerPreferenceReligion === "string"
-            ? (editForm.partnerPreferenceReligion as string)
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-            : [],
         partnerPreferenceUkCity: Array.isArray(editForm.partnerPreferenceUkCity)
           ? editForm.partnerPreferenceUkCity
           : typeof editForm.partnerPreferenceUkCity === "string"

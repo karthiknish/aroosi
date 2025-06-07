@@ -57,7 +57,6 @@ export interface Profile {
   physicalStatus?: "normal" | "differently-abled" | "other" | "";
   partnerPreferenceAgeMin?: string | number | "" | undefined;
   partnerPreferenceAgeMax?: string | number | "" | undefined;
-  partnerPreferenceReligion?: string[];
   partnerPreferenceUkCity?: string[];
   profileImageIds?: Id<"_storage">[];
   banned?: boolean;
@@ -757,13 +756,14 @@ export const adminUpdateProfile = mutation({
       partnerPreferenceAgeMax: v.optional(
         v.union(v.number(), v.string(), v.literal(""))
       ),
-      partnerPreferenceReligion: v.optional(v.array(v.string())),
       partnerPreferenceUkCity: v.optional(v.array(v.string())),
       profileImageIds: v.optional(v.array(v.id("_storage"))),
-      banned: v.optional(v.boolean()),
-      // Added fields based on Profile schema and potential edit form state
       isProfileComplete: v.optional(v.boolean()),
+      isOnboardingComplete: v.optional(v.boolean()),
+      isApproved: v.optional(v.boolean()),
       hiddenFromSearch: v.optional(v.boolean()),
+      banned: v.optional(v.boolean()),
+      ukPostcode: v.optional(v.string()),
       preferredGender: v.optional(
         v.union(
           v.literal("male"),
@@ -772,8 +772,8 @@ export const adminUpdateProfile = mutation({
           v.literal("any")
         )
       ),
-      ukPostcode: v.optional(v.string()),
-      // email is usually not directly updatable on profile if tied to user account
+      email: v.optional(v.string()),
+      updatedAt: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {

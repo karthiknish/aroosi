@@ -483,15 +483,6 @@ const ProfileView: FC<ProfileViewProps> = ({
                     value={profileData.partnerPreferenceAgeMax?.toString()}
                   />
                   <ProfileDetailView
-                    label="Preferred Partner Religion(s)"
-                    value={
-                      Array.isArray(profileData.partnerPreferenceReligion) &&
-                      profileData.partnerPreferenceReligion.length > 0
-                        ? profileData.partnerPreferenceReligion.join(", ")
-                        : "-"
-                    }
-                  />
-                  <ProfileDetailView
                     label="Preferred Partner UK City/Cities"
                     value={
                       Array.isArray(profileData.partnerPreferenceUkCity) &&

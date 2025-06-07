@@ -57,7 +57,6 @@ export type ProfileFormValues = {
   preferredGender: string;
   partnerPreferenceAgeMin: string;
   partnerPreferenceAgeMax: string;
-  partnerPreferenceReligion: string[];
   partnerPreferenceUkCity: string;
   motherTongue: string;
   maritalStatus: string;
@@ -120,7 +119,6 @@ const essentialProfileSchema = z.object({
   preferredGender: z.string().min(1, "Preferred gender is required"),
   partnerPreferenceAgeMin: z.string(),
   partnerPreferenceAgeMax: z.string(),
-  partnerPreferenceReligion: z.array(z.string()),
   partnerPreferenceUkCity: z.string(),
   motherTongue: z.string(),
   maritalStatus: z.string(),
@@ -178,12 +176,11 @@ export function mapProfileToFormValues(
       profile.partnerPreferenceAgeMax !== null
         ? String(profile.partnerPreferenceAgeMax)
         : "",
-    partnerPreferenceReligion: Array.isArray(profile.partnerPreferenceReligion)
-      ? profile.partnerPreferenceReligion.map(String)
-      : [],
     partnerPreferenceUkCity: Array.isArray(profile.partnerPreferenceUkCity)
-      ? profile.partnerPreferenceUkCity.map(String)
-      : "",
+      ? profile.partnerPreferenceUkCity.join(", ")
+      : typeof profile.partnerPreferenceUkCity === "string"
+        ? profile.partnerPreferenceUkCity
+        : "",
     annualIncome:
       typeof profile.annualIncome === "number"
         ? String(profile.annualIncome)
@@ -265,7 +262,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     preferredGender: "",
     partnerPreferenceAgeMin: "",
     partnerPreferenceAgeMax: "",
-    partnerPreferenceReligion: [],
     partnerPreferenceUkCity: "",
     motherTongue: "",
     maritalStatus: "",

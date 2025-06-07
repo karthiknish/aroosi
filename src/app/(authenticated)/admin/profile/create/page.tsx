@@ -78,17 +78,7 @@ export default function AdminCreateProfilePage() {
                     : values.dateOfBirth instanceof Date
                       ? values.dateOfBirth.toISOString()
                       : "",
-                // Fix: ensure these are arrays of strings
-                partnerPreferenceReligion: Array.isArray(
-                  values.partnerPreferenceReligion
-                )
-                  ? values.partnerPreferenceReligion
-                  : typeof values.partnerPreferenceReligion === "string"
-                    ? values.partnerPreferenceReligion
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                    : [],
+                // Only keep partnerPreferenceUkCity logic
                 partnerPreferenceUkCity: Array.isArray(
                   values.partnerPreferenceUkCity
                 )

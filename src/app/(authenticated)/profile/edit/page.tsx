@@ -140,15 +140,9 @@ function fromProfileFormComponentValues(
     physicalStatus: values.physicalStatus || "healthy",
     partnerPreferenceAgeMin: values.partnerPreferenceAgeMin ?? "",
     partnerPreferenceAgeMax: values.partnerPreferenceAgeMax ?? "",
-    partnerPreferenceReligion:
-      typeof values.partnerPreferenceReligion === "string"
-        ? values.partnerPreferenceReligion
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
-    partnerPreferenceUkCity:
-      typeof values.partnerPreferenceUkCity === "string"
+    partnerPreferenceUkCity: Array.isArray(values.partnerPreferenceUkCity)
+      ? values.partnerPreferenceUkCity
+      : typeof values.partnerPreferenceUkCity === "string"
         ? values.partnerPreferenceUkCity
             .split(",")
             .map((s) => s.trim())
@@ -156,12 +150,6 @@ function fromProfileFormComponentValues(
         : [],
     preferredGender: values.preferredGender ?? "",
     profileImageIds: values.profileImageIds ?? [],
-    isProfileComplete: false,
-    isOnboardingComplete: false,
-    hiddenFromSearch: false,
-    banned: false,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
     profileFor: values.profileFor ?? "self",
   };
 }
