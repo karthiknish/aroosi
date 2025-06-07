@@ -14,7 +14,6 @@ import {
   BookOpen,
   Briefcase,
   Ruler,
-  Languages,
   Church,
   Users,
   Info,
@@ -569,11 +568,6 @@ export default function ProfileDetailPage() {
                     <Church className="w-5 h-5 text-accent" />
                     Cultural & Religious Background
                   </h3>
-                  <IconRow
-                    icon={<Languages className="w-4 h-4" />}
-                    label="Mother Tongue"
-                    value={profile?.motherTongue ?? "-"}
-                  />
                   <IconRow
                     icon={<Users className="w-4 h-4" />}
                     label="Marital Status"
