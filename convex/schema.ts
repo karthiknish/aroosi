@@ -38,7 +38,6 @@ export default defineSchema({
     ukCity: v.optional(v.string()),
     ukPostcode: v.optional(v.string()),
     // Religious and cultural background
-    religion: v.optional(v.string()), // e.g., "Islam"
     motherTongue: v.optional(v.string()),
     // Physical attributes
     height: v.optional(v.string()), // store as '5ft 7in'

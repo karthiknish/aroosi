@@ -93,7 +93,6 @@ export interface ProfileData {
   fullName: string;
   ukCity?: string;
   dateOfBirth?: string;
-  religion?: string;
   isProfileComplete?: boolean;
   hiddenFromSearch?: boolean;
   [key: string]: unknown;

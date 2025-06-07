@@ -308,8 +308,6 @@ export async function submitProfile(
     gender: values.gender,
     ukCity: values.ukCity,
     aboutMe: values.aboutMe,
-    religion: values.religion,
-    caste: values.caste || "",
     occupation: values.occupation,
     education: values.education,
     height: values.height,

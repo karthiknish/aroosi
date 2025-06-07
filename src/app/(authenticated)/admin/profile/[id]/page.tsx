@@ -513,7 +513,6 @@ export default function AdminProfileDetailPage() {
           <div className="flex flex-wrap gap-4 justify-center mb-4">
             <div className="flex items-center gap-1 text-gray-500">
               <Heart className="w-4 h-4" />{" "}
-              {typeof profile?.religion === "string" ? profile.religion : "-"}
             </div>
             <div className="flex items-center gap-1 text-gray-500">
               <GraduationCap className="w-4 h-4" />{" "}

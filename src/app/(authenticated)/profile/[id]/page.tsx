@@ -570,11 +570,6 @@ export default function ProfileDetailPage() {
                     Cultural & Religious Background
                   </h3>
                   <IconRow
-                    icon={<Church className="w-4 h-4" />}
-                    label="Religion"
-                    value="-"
-                  />
-                  <IconRow
                     icon={<Languages className="w-4 h-4" />}
                     label="Mother Tongue"
                     value={profile?.motherTongue ?? "-"}

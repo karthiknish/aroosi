@@ -704,7 +704,6 @@ export const adminUpdateProfile = mutation({
         v.union(v.literal("male"), v.literal("female"), v.literal("other"))
       ),
       dateOfBirth: v.optional(v.string()),
-      religion: v.optional(v.string()),
       caste: v.optional(v.string()),
       motherTongue: v.optional(v.string()),
       height: v.optional(v.string()),
@@ -881,7 +880,6 @@ export const adminListProfiles = query({
         return (
           (p.fullName && p.fullName.toLowerCase().includes(s)) ||
           (p.ukCity && p.ukCity.toLowerCase().includes(s)) ||
-          (p.religion && p.religion.toLowerCase().includes(s)) ||
           (p.phoneNumber && p.phoneNumber.toLowerCase().includes(s)) ||
           (user && user.email && user.email.toLowerCase().includes(s))
         );
@@ -1042,7 +1040,6 @@ export const createProfile = mutation({
     gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
     ukCity: v.string(),
     aboutMe: v.string(),
-    religion: v.string(),
     occupation: v.string(),
     education: v.string(),
     height: v.string(),
@@ -1342,7 +1339,6 @@ export const searchPublicProfiles = query({
       )
     ),
     ukCity: v.optional(v.string()),
-    religion: v.optional(v.string()),
     ageMin: v.optional(v.number()),
     ageMax: v.optional(v.number()),
     page: v.optional(v.number()),
@@ -1402,11 +1398,6 @@ export const searchPublicProfiles = query({
       // Filter by city
       if (args.ukCity && args.ukCity !== "any") {
         if (u.profile.ukCity !== args.ukCity) return false;
-      }
-
-      // Filter by religion
-      if (args.religion && args.religion !== "any") {
-        if (u.profile.religion !== args.religion) return false;
       }
 
       // Filter by age
