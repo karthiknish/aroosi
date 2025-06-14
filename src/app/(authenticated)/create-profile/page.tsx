@@ -4,7 +4,7 @@ import ProfileForm from "@/components/profile/ProfileForm";
 import type { ProfileFormValues } from "@/components/profile/ProfileForm";
 import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
 import { submitProfile } from "@/lib/profile/userProfileApi";
 
@@ -47,9 +47,13 @@ export default function CreateProfilePage() {
     [profileId]
   );
 
+  const [isSaving, setIsSaving] = useState(false);
+
   // Handle form submission
   const handleSubmit = useCallback(
     async (values: ProfileFormValues) => {
+      if (isSaving) return; // duplicate guard
+
       if (!token) {
         showErrorToast(
           null,
@@ -58,33 +62,75 @@ export default function CreateProfilePage() {
         return;
       }
 
+      // Basic age ≥ 18 check
       try {
-        const apiResult = await submitProfile(token, values, "create");
-
-        if (!apiResult.success) {
-          throw new Error(apiResult.error || "Failed to create profile");
+        const dob = new Date(values.dateOfBirth);
+        const ageMs = Date.now() - dob.getTime();
+        const age = new Date(ageMs).getUTCFullYear() - 1970;
+        if (isNaN(age) || age < 18) {
+          showErrorToast(
+            null,
+            "You must be at least 18 years old to create a profile."
+          );
+          return;
         }
-
-        // Refresh profile (fetch updated flags) then update local storage via AuthProvider.
-        await refreshProfile();
-
-        showSuccessToast(
-          "Profile created successfully! You can now browse matches."
-        );
-
-        // Redirect to dashboard
-        router.push("/dashboard");
-
+      } catch {
+        showErrorToast(null, "Please provide a valid date of birth.");
         return;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to create profile";
-        showErrorToast(errorMessage);
-        throw error;
       }
+
+      setIsSaving(true);
+
+      const attemptSubmit = async () => {
+        try {
+          const apiResult = await submitProfile(token, values, "create");
+
+          if (!apiResult.success) {
+            // token expired?
+            if (
+              apiResult.error?.includes("Unauthorized") ||
+              apiResult.error?.includes("401")
+            ) {
+              showErrorToast(null, "Session expired. Please sign in again.");
+              return;
+            }
+            throw new Error(apiResult.error || "Failed to create profile");
+          }
+
+          await refreshProfile();
+          showSuccessToast(
+            "Profile created successfully! You can now browse matches."
+          );
+          router.push("/dashboard");
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to create profile";
+          // Display the error using the standard helper (no action options supported)
+          showErrorToast(errorMessage);
+        } finally {
+          setIsSaving(false);
+        }
+      };
+
+      await attemptSubmit();
     },
-    [token, router, refreshProfile]
+    [isSaving, token, router, refreshProfile]
   );
+
+  // Unsaved changes prompt
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isSaving) {
+        e.preventDefault();
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isSaving]);
 
   // Render the profile form for new profiles, pre-filling with context profile if available
   return (

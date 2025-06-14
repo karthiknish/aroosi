@@ -160,6 +160,8 @@ export default function EditProfilePage() {
   const [profileDataState, setProfileDataState] = useState<Profile | null>(
     null
   );
+  // Track saving state to prevent duplicate submits and for "beforeunload" guard
+  const [isSaving, setIsSaving] = useState(false);
 
   // Memoize the query key to prevent unnecessary refetches
   const profileQueryKey = useMemo(() => ["profile", userId], [userId]);
@@ -197,9 +199,27 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (isProfileError) {
       console.error("Error fetching profile:", profileError);
-      showErrorToast(null, "Failed to load profile data");
+      const errMsg =
+        profileError instanceof Error
+          ? profileError.message
+          : "Failed to load profile data";
+      showErrorToast(errMsg);
     }
   }, [isProfileError, profileError]);
+
+  // Warn users about navigating away with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isSaving) {
+        e.preventDefault();
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isSaving]);
 
   // Memoized profile data for type safety and consistency
   const profileData: Profile = useMemo(() => {
@@ -226,6 +246,7 @@ export default function EditProfilePage() {
         throw new Error("Authentication required. Please sign in again.");
       const apiResult = await submitProfile(token, values, "edit");
       if (!apiResult.success) {
+        // Bubble up specific errors for better UX
         throw new Error(apiResult.error || "Profile update was not successful");
       }
       return apiResult.data as Profile;
@@ -240,22 +261,56 @@ export default function EditProfilePage() {
       await refetchProfile();
       showSuccessToast("Profile updated successfully!");
       router.push("/profile");
+      setIsSaving(false);
     },
     onError: (error: unknown) => {
       const errorMessage =
         error instanceof Error ? error.message : "An unknown error occurred";
       setServerError(errorMessage);
-      showErrorToast(null, "Failed to update profile");
+
+      // Token expiry / unauthorized detection
+      if (
+        errorMessage.toLowerCase().includes("unauthorized") ||
+        errorMessage.includes("401")
+      ) {
+        showErrorToast("Session expired. Please sign in again.");
+      } else {
+        showErrorToast(errorMessage);
+      }
+      setIsSaving(false);
     },
   });
 
   // Form submit handler
   const handleProfileSubmit = useCallback(
     async (values: ProfileFormValues) => {
-      setServerError(null);
-      await updateProfileMutation.mutateAsync(values);
+      if (isSaving || updateProfileMutation.isPending) return; // duplicate guard
+
+      // Basic age ≥ 18 validation
+      try {
+        const dob = new Date(values.dateOfBirth);
+        const ageMs = Date.now() - dob.getTime();
+        const age = new Date(ageMs).getUTCFullYear() - 1970;
+        if (isNaN(age) || age < 18) {
+          showErrorToast(
+            "You must be at least 18 years old to edit your profile."
+          );
+          return;
+        }
+      } catch {
+        showErrorToast("Please provide a valid date of birth.");
+        return;
+      }
+
+      setIsSaving(true);
+
+      try {
+        await updateProfileMutation.mutateAsync(values);
+      } finally {
+        setIsSaving(false);
+      }
     },
-    [updateProfileMutation]
+    [isSaving, updateProfileMutation]
   );
 
   // Wrapper for onSubmit to map values back to canonical shape

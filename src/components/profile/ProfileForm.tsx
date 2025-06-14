@@ -68,6 +68,7 @@ interface ProfileFormProps {
   onEditDone?: () => void;
   profileId?: string;
   userImages?: MappedImage[];
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const FormSection: React.FC<{
@@ -183,6 +184,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   userId: userIdProp,
   profileId,
   userImages,
+  onDirtyChange,
 }) => {
   const { token, profile: authProfile } = useAuthContext();
   const router = useRouter();
@@ -282,7 +284,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     };
   }, [emptyDefaults, initialValues, fetchedProfile]);
 
-  const form = useForm<ProfileFormValues, unknown, ProfileFormValues>({
+  const { register, handleSubmit, trigger, formState, watch } = useForm<
+    ProfileFormValues,
+    unknown,
+    ProfileFormValues
+  >({
     resolver: zodResolver(essentialProfileSchema) as unknown as Resolver<
       ProfileFormValues,
       unknown
@@ -297,10 +303,10 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       !hasInitialized.current &&
       Object.keys(mergedInitialValues).length > 0
     ) {
-      form.reset(mergedInitialValues as unknown as ProfileFormValues);
+      register(mergedInitialValues as unknown as ProfileFormValues);
       hasInitialized.current = true;
     }
-  }, [mergedInitialValues, form]);
+  }, [mergedInitialValues, register]);
 
   // Restore form state from localStorage on mount
   useEffect(() => {
@@ -309,24 +315,21 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
-        form.reset({
-          ...mergedInitialValues,
-          ...parsed,
-        } as unknown as ProfileFormValues);
+        register(parsed as unknown as ProfileFormValues);
       } catch {
         // Ignore parse errors
       }
     }
-  }, []); // Only run on mount
+  }, [register]);
 
   // Save form state to localStorage on every change
   useEffect(() => {
-    const subscription = form.watch((values) => {
+    const subscription = watch((values) => {
       if (typeof window === "undefined") return;
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(values));
     });
     return () => subscription.unsubscribe();
-  }, [form]);
+  }, [watch]);
 
   // UK cities for location step
   const [ukCityOptions] = useState([
@@ -345,10 +348,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     { value: "belfast", label: "Belfast" },
   ]);
 
-  const {
-    handleSubmit,
-    formState: { isValid },
-  } = form;
+  const { isValid } = formState;
 
   // Form submission: just call onSubmit with form data and imageOrder
   const handleFormSubmit = handleSubmit((data: ProfileFormValues) => {
@@ -495,6 +495,12 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     );
   }
 
+  // Notify parent about dirty state changes
+  React.useEffect(() => {
+    if (onDirtyChange) onDirtyChange(formState.isDirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState.isDirty]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <motion.main
@@ -514,16 +520,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               </label>
               <select
                 id="profileFor"
-                {...form.register("profileFor", { required: true })}
+                {...register("profileFor", { required: true })}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm"
               >
                 <option value="self">Myself</option>
                 <option value="friend">A Friend</option>
                 <option value="family">A Family Member</option>
               </select>
-              {form.formState.errors.profileFor && (
+              {formState.errors.profileFor && (
                 <span className="text-red-500 text-xs mt-1">
-                  {form.formState.errors.profileFor.message as string}
+                  {formState.errors.profileFor.message as string}
                 </span>
               )}
             </div>
@@ -581,7 +587,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                   {currentStep === 0 && (
                     <FormSection title="Basic Information">
                       <ProfileFormStepBasicInfo
-                        form={form}
+                        register={register}
                         cmToFeetInches={cmToFeetInches}
                       />
                     </FormSection>
@@ -589,24 +595,24 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                   {currentStep === 1 && (
                     <FormSection title="Location (UK) & Lifestyle">
                       <ProfileFormStepLocation
-                        form={form}
+                        register={register}
                         ukCityOptions={ukCityOptions}
                       />
                     </FormSection>
                   )}
                   {currentStep === 2 && (
                     <FormSection title="Cultural Background">
-                      <ProfileFormStepCultural form={form} />
+                      <ProfileFormStepCultural register={register} />
                     </FormSection>
                   )}
                   {currentStep === 3 && (
                     <FormSection title="Education & Career">
-                      <ProfileFormStepEducation form={form} />
+                      <ProfileFormStepEducation register={register} />
                     </FormSection>
                   )}
                   {currentStep === 4 && (
                     <FormSection title="About & Preferences">
-                      <ProfileFormStepAbout form={form} mode={mode} />
+                      <ProfileFormStepAbout register={register} mode={mode} />
                     </FormSection>
                   )}
                   {currentStep === 5 && (
