@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useEffect, useMemo, useState } from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { toast } from "sonner";
+import { showInfoToast } from "@/lib/ui/toast";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -90,7 +90,7 @@ export default function ProtectedRoute({
       if (requireAuth && !isPublicRoute) {
         // Only show toast if we're not already on the sign-in page
         if (!pathname.startsWith("/sign-in")) {
-          toast.info("Please sign in to continue");
+          showInfoToast("Please sign in to continue");
           const getSignInUrl = () => {
             const params = new URLSearchParams(searchParams);
             params.set("redirect_url", pathname);

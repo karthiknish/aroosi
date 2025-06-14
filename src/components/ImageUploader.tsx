@@ -35,6 +35,7 @@ interface ImageUploaderProps {
   className?: string;
   fetchImages: () => Promise<unknown>;
   onStartUpload?: () => void;
+  customUploadFile?: (file: File) => Promise<void>;
 }
 
 // Utility: read file as data URL
@@ -106,6 +107,7 @@ export function ImageUploader({
   className = "",
   fetchImages,
   onStartUpload,
+  customUploadFile,
 }: ImageUploaderProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<File | null>(null);
@@ -113,7 +115,7 @@ export function ImageUploader({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const [isClient, setIsClient] = useState(typeof window !== "undefined");
 
   useEffect(() => setIsClient(true), []);
 
@@ -154,6 +156,18 @@ export function ImageUploader({
       try {
         setIsUploading(true);
         if (onStartUpload) onStartUpload();
+
+        // Use custom uploader if provided (e.g., admin flow)
+        if (customUploadFile) {
+          await customUploadFile(file);
+          showSuccessToast("Image uploaded successfully");
+          await fetchImages();
+          return {
+            success: true,
+            imageId: "custom",
+            message: "Uploaded",
+          };
+        }
 
         // Step 1: Get upload URL
         const uploadUrl = await generateUploadUrl();
@@ -214,6 +228,7 @@ export function ImageUploader({
       uploadImage,
       setIsUploading,
       onStartUpload,
+      customUploadFile,
     ]
   );
 

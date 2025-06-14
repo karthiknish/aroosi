@@ -186,11 +186,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   profileId,
   userImages,
 }) => {
-  const { token } = useAuthContext();
+  const { token, profile: authProfile } = useAuthContext();
   const router = useRouter();
 
   // Use userId from prop if provided, otherwise fallback to profile
-  const [internalProfileId] = useState<string>(userIdProp || profileId || "");
+  const [internalProfileId] = useState<string>(
+    userIdProp || profileId || authProfile?.userId || ""
+  );
 
   // Form state
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -393,6 +395,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   const resolvedProfileId =
     profileId ||
     userIdProp ||
+    authProfile?.userId ||
     (fetchedProfile as unknown as Profile)?._id ||
     "";
 

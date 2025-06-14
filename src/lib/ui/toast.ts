@@ -27,3 +27,8 @@ export function showErrorToast(
 export function showSuccessToast(message: string) {
   toast.success(message);
 }
+
+// Informational toast (e.g., prompts or neutral messages)
+export function showInfoToast(message: string) {
+  toast.info(message);
+}

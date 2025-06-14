@@ -8,8 +8,8 @@ import React, {
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useRouter, usePathname } from "next/navigation";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useAuthContext } from "./AuthProvider";
 import type { ImageType } from "@/types/image";
@@ -67,7 +67,7 @@ export function ProfileImageUpload({
 }: ProfileImageUploadProps) {
   // Hooks must be called unconditionally at the top level
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const pathname = usePathname();
   const { token, refreshProfile, isAdmin: authIsAdmin } = useAuthContext();
 
   // State management (moved to top)
@@ -79,66 +79,6 @@ export function ProfileImageUpload({
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const prevImageCount = useRef<number>(0);
   const MAX_IMAGES_PER_USER = 5;
-  // Track if we're currently updating the order to prevent loops
-  const isUpdatingOrder = useRef(false);
-
-  // Helper to check if image order has changed
-  const hasImageOrderChanged = useCallback((newImageIds: string[]): boolean => {
-    if (!lastNotifiedImageIds.current) return true;
-    if (isUpdatingOrder.current) return false;
-
-    const prevIds = lastNotifiedImageIds.current.split(",").filter(Boolean);
-    const newIds = newImageIds.filter(Boolean);
-
-    // Check if arrays are different
-    return !(
-      prevIds.length === newIds.length &&
-      prevIds.every((id, idx) => id === newIds[idx])
-    );
-  }, []);
-
-  // Mutation for updating image order - moved up to avoid reference issues
-  const updateImageOrderMutation = useMutation<
-    { success: boolean; message: string },
-    Error,
-    string[]
-  >({
-    mutationFn: async (newImageIds: string[]) => {
-      if (!userId || !token) throw new Error("Missing userId or token");
-
-      // Only call the API if the order has changed
-      if (!hasImageOrderChanged(newImageIds)) {
-        return { success: true, message: "Order unchanged" };
-      }
-
-      const res = await fetch("/api/images/order", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId, imageIds: newImageIds }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(
-          errorData.error || "Failed to update image order via API"
-        );
-      }
-
-      return await res.json();
-    },
-    onSuccess: (data) => {
-      if (data?.message !== "Order unchanged") {
-        showSuccessToast("Image order updated successfully");
-      }
-    },
-    onError: (error) => {
-      showErrorToast(null, "Failed to update image order");
-      console.error("Update image order error:", error);
-    },
-  });
 
   const { data: orderedImages = [], refetch: _refetchImages } = useQuery({
     queryKey: ["profileImages", userId, token, authIsAdmin, profileId],
@@ -195,40 +135,6 @@ export function ProfileImageUpload({
     },
     enabled: !!token,
   });
-
-  // Effect to handle image reordering when orderedImages changes
-  useEffect(() => {
-    if (!orderedImages?.length || isUpdatingOrder.current) return;
-
-    const newImageIds = orderedImages
-      .filter((img) => img?.id)
-      .map((img) => img.id);
-
-    // Only update if order has changed
-    if (hasImageOrderChanged(newImageIds)) {
-      isUpdatingOrder.current = true;
-      updateImageOrderMutation.mutate(newImageIds, {
-        onSuccess: () => {
-          lastNotifiedImageIds.current = newImageIds.join(",");
-          isUpdatingOrder.current = false;
-          // Invalidate relevant queries to ensure UI is in sync
-          queryClient.invalidateQueries({
-            queryKey: ["profileImages", userId],
-          });
-        },
-        onError: (error) => {
-          console.error("Failed to update image order:", error);
-          isUpdatingOrder.current = false;
-        },
-      });
-    }
-  }, [
-    orderedImages,
-    hasImageOrderChanged,
-    updateImageOrderMutation,
-    queryClient,
-    userId,
-  ]);
 
   // Memoize the profile image IDs
   const profileImageIds = useMemo(() => {
@@ -355,7 +261,8 @@ export function ProfileImageUpload({
   };
 
   // For admin, pass a dummy uploadImage (never called), and override uploadImageFile
-  const isAdminMode = isAdmin && profileId;
+  const isAdminRoute = pathname?.startsWith("/admin");
+  const isAdminMode = isAdmin && profileId && isAdminRoute;
 
   // --- REWRITE: deleteImageMutation to fetch new images and send them to reorder after delete ---
 
@@ -472,9 +379,11 @@ export function ProfileImageUpload({
             generateUploadUrl={isAdminMode ? async () => "" : generateUploadUrl}
             uploadImage={
               isAdminMode
-                ? async () => {
-                    throw new Error("Should not be called in admin mode");
-                  }
+                ? async () => ({
+                    success: true,
+                    imageId: "dummy" as Id<"_storage">,
+                    message: "noop",
+                  })
                 : uploadImage
             }
             setIsUploading={setIsUploading}
@@ -482,7 +391,7 @@ export function ProfileImageUpload({
             fetchImages={refetchImages}
             onStartUpload={handleStartUpload}
             className="w-full"
-            {...(isAdminMode ? { uploadImageFile: uploadImageFileAdmin } : {})}
+            {...(isAdminMode ? { customUploadFile: uploadImageFileAdmin } : {})}
           />
           {/* Upload limit indicator */}
           <div className="flex justify-between px-1">

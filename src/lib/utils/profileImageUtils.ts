@@ -1,6 +1,6 @@
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
-import { useQuery, useQueryClient} from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { updateAdminProfileImageOrder } from "@/lib/profile/adminProfileApi";
 
@@ -56,7 +56,7 @@ export const useProfileImages = (profileId: string) => {
   useEffect(() => {
     if (query.isError) {
       console.error("Error fetching profile images:", query.error);
-      toast.error("Failed to load profile images");
+      showErrorToast(query.error, "Failed to load profile images");
     }
   }, [query.error, query.isError]);
 
@@ -101,11 +101,11 @@ export const useImageReorder = (profileId: string) => {
         queryKey: ["profile-images", profileId],
       });
 
-      toast.success("Image order updated successfully");
+      showSuccessToast("Image order updated successfully");
       return true;
     } catch (error) {
       console.error("Error updating image order", error);
-      toast.error("Failed to update image order");
+      showErrorToast(error, "Failed to update image order");
       throw error;
     }
   };
@@ -146,15 +146,11 @@ export const useDeleteImage = (profileId: string) => {
         queryKey: ["profile-images", profileId],
       });
 
-      toast.success("Image deleted successfully");
+      showSuccessToast("Image deleted successfully");
       return true;
     } catch (error) {
       console.error("Error deleting image:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to delete image. Please try again."
-      );
+      showErrorToast(error, "Failed to delete image. Please try again.");
       throw error;
     }
   };
@@ -197,15 +193,11 @@ export const useImageUpload = (userId: string) => {
         queryKey: ["profile-images", userId],
       });
 
-      toast.success("Image uploaded successfully");
+      showSuccessToast("Image uploaded successfully");
       return data;
     } catch (error) {
       console.error("Error uploading image:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to upload image. Please try again."
-      );
+      showErrorToast(error, "Failed to upload image. Please try again.");
       throw error;
     }
   };
@@ -274,11 +266,11 @@ export const useAdminImageReorder = (profileId: string) => {
         queryKey: ["admin-profile-images", profileId],
       });
 
-      toast.success("Image order updated successfully");
+      showSuccessToast("Image order updated successfully");
       return true;
     } catch (error) {
       console.error("Error updating admin image order", error);
-      toast.error("Failed to update image order");
+      showErrorToast(error, "Failed to update image order");
       throw error;
     }
   };
