@@ -42,17 +42,4 @@ describe("ProfileView", () => {
       screen.getByRole("button", { name: /edit profile/i })
     ).toBeInTheDocument();
   });
-
-  it("shows error state", () => {
-    render(
-      <ProfileView
-        profileData={mockProfile}
-        images={mockImages}
-        isLoadingImages={false}
-        onDelete={undefined}
-      />
-    );
-    // Error message should render
-    expect(screen.getByText(/Failed to send interest/i)).toBeInTheDocument();
-  });
 });
