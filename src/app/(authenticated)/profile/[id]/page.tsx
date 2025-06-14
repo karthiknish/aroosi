@@ -36,6 +36,9 @@ import {
 } from "@/lib/interestUtils";
 import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useOffline } from "@/hooks/useOffline";
 
 type Interest = {
   id: string;
@@ -48,6 +51,7 @@ type Interest = {
 export default function ProfileDetailPage() {
   const params = useParams();
   const { token, profile: currentUserProfile } = useAuthContext();
+  const offline = useOffline();
 
   const id = params?.id as string;
   const userId = id as Id<"users">;
@@ -190,17 +194,22 @@ export default function ProfileDetailPage() {
     }
   }, [isOwnProfile, token, profile?._id]);
 
-  if (invalidIdError) {
+  if (offline) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-red-600 text-lg font-semibold">
-          {invalidIdError}
-        </div>
+        <ErrorState />
       </div>
     );
   }
 
-  // Fix: Show skeleton while loading, and only show "Profile Not Found" if not loading and error or missing data
+  if (profileError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <ErrorState onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
   if (loadingProfile) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -213,38 +222,18 @@ export default function ProfileDetailPage() {
     );
   }
 
-  if (
-    !loadingProfile &&
-    (profileError || profile === null || profile === undefined)
-  ) {
+  if (!profile) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Card className="shadow-2xl rounded-2xl overflow-hidden max-w-lg w-full">
-          <CardHeader className="p-0">
-            <div
-              className="w-full flex items-center justify-center bg-gray-100"
-              style={{ aspectRatio: "1 / 1" }}
-            >
-              <UserCircle className="w-28 h-28 text-gray-300" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-10 flex flex-col items-center">
-            <div className="text-2xl font-bold text-gray-800 mb-2">
-              Profile Not Found
-            </div>
-            <div className="text-gray-600 mb-4 text-center">
-              Sorry, we couldn&apos;t find the profile you were looking for.
-              <br />
-              It may have been removed, or the link is incorrect.
-            </div>
-            <Link
-              href="/"
-              className="mt-2 px-6 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 transition-colors"
-            >
-              Go back to Home
-            </Link>
-          </CardContent>
-        </Card>
+        <ErrorState message="Profile not found." />
+      </div>
+    );
+  }
+
+  if (invalidIdError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <ErrorState message={invalidIdError} />
       </div>
     );
   }

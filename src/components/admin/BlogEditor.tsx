@@ -664,12 +664,12 @@ export default function BlogEditor({
     style.id = "tiptap-link-style";
     style.innerHTML = `
       .tiptap-editor-content a {
-        color: #db2777;
+        color: #FDA4AF;
         text-decoration: underline;
         transition: color 0.2s;
       }
       .tiptap-editor-content a:hover {
-        color: #a21caf;
+        color: #BFA67A;
       }
       .tiptap-editor-content table {
         border-collapse: collapse;
@@ -677,9 +677,9 @@ export default function BlogEditor({
         margin: 1em 0;
       }
       .tiptap-editor-content th {
-        border: 1.5px solid #e11d48;
-        background: #ffe4e6;
-        color: #be185d;
+        border: 1.5px solid #FDA4AF;
+        background: #fff7f9;
+        color: #BFA67A;
         font-weight: 700;
         padding: 0.6em 0.9em;
         text-align: left;
@@ -694,9 +694,9 @@ export default function BlogEditor({
         background: #f3f4f6;
       }
       .tiptap-editor-content blockquote {
-        border-left: 4px solid #db2777;
-        background: #fdf2f8;
-        color: #a21caf;
+        border-left: 4px solid #FDA4AF;
+        background: #fff7f9;
+        color: #BFA67A;
         margin: 1em 0;
         padding: 0.75em 1.25em;
         font-style: italic;
@@ -704,7 +704,7 @@ export default function BlogEditor({
       }
       .tiptap-editor-content pre {
         background: #f3f4f6;
-        color: #be185d;
+        color: #BFA67A;
         font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
         padding: 1em;
         border-radius: 0.375em;
@@ -713,8 +713,8 @@ export default function BlogEditor({
         font-size: 0.97em;
       }
       .tiptap-editor-content code {
-        background: #fef3c7;
-        color: #b45309;
+        background: #faf5ef;
+        color: #BFA67A;
         font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
         padding: 0.15em 0.4em;
         border-radius: 0.3em;
@@ -754,7 +754,7 @@ export default function BlogEditor({
       }
       .tiptap-editor-content hr {
         border: none;
-        border-top: 2px solid #db2777;
+        border-top: 2px solid #FDA4AF;
         margin: 2em 0;
         height: 0;
         background: none;

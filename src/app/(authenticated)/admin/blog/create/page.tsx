@@ -10,6 +10,7 @@ import { CreatePost } from "@/components/admin/CreatePost";
 import { showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function CreateBlogPage() {
   const { token } = useAuthContext();
@@ -156,16 +157,12 @@ export default function CreateBlogPage() {
             Create New Blog Post
           </h1>
           {creating && (
-            <span className="ml-4 text-blue-600 animate-pulse">
+            <span className="ml-4 text-pink-600 animate-pulse">
               Creating...
             </span>
           )}
         </div>
-        {error && (
-          <div className="mb-4 p-3 rounded bg-red-100 text-red-700 border border-red-200">
-            {error}
-          </div>
-        )}
+        {error && <ErrorState message={error} className="mb-4" />}
         <div className="my-8">
           <CreatePost
             title={title}

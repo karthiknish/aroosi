@@ -103,11 +103,11 @@ export default function HowItWorksPage() {
               </CardContent>
             </Card>
             <Card className="shadow-lg relative overflow-visible">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shadow-md">
-                <Globe2 className="w-7 h-7 text-blue-600" />
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center shadow-md">
+                <Globe2 className="w-7 h-7 text-pink-600" />
               </div>
               <CardHeader className="pt-10 pb-2">
-                <CardTitle className="text-center font-serif text-lg text-blue-700">
+                <CardTitle className="text-center font-serif text-lg text-pink-700">
                   Global Reach
                 </CardTitle>
               </CardHeader>
@@ -116,11 +116,11 @@ export default function HowItWorksPage() {
               </CardContent>
             </Card>
             <Card className="shadow-lg relative overflow-visible">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shadow-md">
-                <ShieldCheck className="w-7 h-7 text-green-600" />
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center shadow-md">
+                <ShieldCheck className="w-7 h-7 text-pink-600" />
               </div>
               <CardHeader className="pt-10 pb-2">
-                <CardTitle className="text-center font-serif text-lg text-green-700">
+                <CardTitle className="text-center font-serif text-lg text-pink-700">
                   Safe & Private
                 </CardTitle>
               </CardHeader>
@@ -210,11 +210,11 @@ export default function HowItWorksPage() {
       {/* Safety & Privacy Section */}
       <section className="py-16 bg-white/90 border-y border-rose-100 relative">
         <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center gap-10">
-          <div className="flex-shrink-0 flex items-center justify-center w-32 h-32 rounded-full bg-green-100 shadow-md mb-6 md:mb-0">
-            <ShieldCheck className="w-16 h-16 text-green-600" />
+          <div className="flex-shrink-0 flex items-center justify-center w-32 h-32 rounded-full bg-pink-100 shadow-md mb-6 md:mb-0">
+            <ShieldCheck className="w-16 h-16 text-pink-600" />
           </div>
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-green-700 mb-3 font-serif flex items-center gap-2">
+            <h2 className="text-2xl md:text-3xl font-bold text-pink-700 mb-3 font-serif flex items-center gap-2">
               Safety & Privacy
               <span>
                 <svg
@@ -226,7 +226,7 @@ export default function HowItWorksPage() {
                 >
                   <path
                     d="M2 6C12 2 24 10 58 2"
-                    stroke="#22c55e"
+                    stroke="#FDA4AF"
                     strokeWidth="2"
                     strokeLinecap="round"
                     fill="none"
@@ -292,14 +292,14 @@ export default function HowItWorksPage() {
                   Profiles are verified and privacy is protected at every step.
                 </p>
               </div>
-              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-blue-300">
-                <span className="font-bold text-blue-600">Openness</span>
+              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-pink-300">
+                <span className="font-bold text-pink-600">Openness</span>
                 <p className="text-gray-700 text-sm mt-1">
                   We welcome all Afghans, regardless of background or location.
                 </p>
               </div>
-              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-green-300">
-                <span className="font-bold text-green-600">Support</span>
+              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-pink-300">
+                <span className="font-bold text-pink-600">Support</span>
                 <p className="text-gray-700 text-sm mt-1">
                   Our team is here to help you every step of the way.
                 </p>

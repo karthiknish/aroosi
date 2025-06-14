@@ -337,7 +337,7 @@ export function ImageUploader({
                   style={{
                     containerStyle: { borderRadius: "0.75rem" },
                     cropAreaStyle: {
-                      border: "2px solid #6366f1",
+                      border: "2px solid #BFA67A",
                       borderRadius: "0.75rem",
                       boxShadow: "0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,0.12)",
                       cursor: "move",

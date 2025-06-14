@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlogPost } from "@/types/blog";
 import { useQuery } from "@tanstack/react-query";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // Explicit return type for the fetch function
 const fetchBlogPostsAPI = async (
@@ -44,16 +46,15 @@ export default function BlogPage() {
     data: blogData,
     isLoading,
     isError,
+    refetch,
   } = useQuery<
-    { posts: BlogPost[]; total: number }, // TQueryFnData: type returned by queryFn
-    Error, // TError
-    { posts: BlogPost[]; total: number }, // TData: type of 'data'
-    BlogQueryKey // TQueryKey
+    { posts: BlogPost[]; total: number },
+    Error,
+    { posts: BlogPost[]; total: number },
+    BlogQueryKey
   >({
     queryKey: queryKey,
     queryFn: () => fetchBlogPostsAPI(page, pageSize, category),
-    // placeholderData: (previousData) => previousData, // Or keepPreviousData: true for TanStack Query v4/v5
-    // Adding this back once base logic is confirmed
   });
 
   const posts: BlogPost[] = blogData?.posts || [];
@@ -85,9 +86,11 @@ export default function BlogPage() {
 
   if (isError) {
     return (
-      <div className="text-center py-10 text-red-600">
-        Failed to load blog posts. Please try again later.
-      </div>
+      <ErrorState
+        message="Failed to load blog posts."
+        onRetry={() => refetch()}
+        className="min-h-[50vh]"
+      />
     );
   }
 
@@ -176,9 +179,10 @@ export default function BlogPage() {
               </Card>
             ))
           ) : filteredPosts.length === 0 && !isLoading ? (
-            <div className="col-span-full text-center py-10 text-gray-600">
-              No posts found for this search or category.
-            </div>
+            <EmptyState
+              message="No posts found for this search or category."
+              className="col-span-full"
+            />
           ) : (
             filteredPosts.map((post: BlogPost) => (
               <Link

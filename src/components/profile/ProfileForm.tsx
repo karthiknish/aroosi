@@ -27,7 +27,6 @@ import ProfileFormStepCultural from "./ProfileFormStepCultural";
 import ProfileFormStepEducation from "./ProfileFormStepEducation";
 import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
-import ProfileFormStepPlans from "./ProfileFormStepPlans";
 
 // Import auth context
 import { useAuthContext } from "@/components/AuthProvider";
@@ -129,10 +128,9 @@ const stepTips = [
   "Tip: Education and career info helps you stand out.",
   "Tip: Write a friendly, honest 'About Me' to attract the right matches.",
   "Tip: A clear profile photo increases your chances by 3x!",
-  "Tip: Choose the right plan for your needs - you can upgrade anytime.",
 ];
 
-const totalSteps = 7;
+const totalSteps = 6;
 
 // Helper to map Profile to ProfileFormValues
 export function mapProfileToFormValues(
@@ -391,8 +389,12 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 
   // Step navigation
   const handleNextStep = async () => {
-    // Only handle step navigation, do not create the profile here
-    if (currentStep < totalSteps - 1) setCurrentStep(currentStep + 1);
+    // Validate current step before moving forward
+    if (currentStep === totalSteps - 1) {
+      // last step will submit via parent
+      return;
+    }
+    setCurrentStep(currentStep + 1);
   };
   const handlePrevStep = () => {
     if (currentStep > 0) setCurrentStep(currentStep - 1);
@@ -472,8 +474,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   if (profileLoading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <LoadingSpinner size={32} colorClassName="text-green-600" />
-        <span className="ml-3 text-green-700 font-semibold">
+        <LoadingSpinner size={32} colorClassName="text-pink-600" />
+        <span className="ml-3 text-pink-700 font-semibold">
           Loading profile...
         </span>
       </div>
@@ -622,14 +624,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                           profileId={resolvedProfileId}
                         />
                       )}
-                    </FormSection>
-                  )}
-                  {currentStep === 6 && (
-                    <FormSection
-                      title="Subscription Plan"
-                      gridClassName="grid grid-cols-1"
-                    >
-                      <ProfileFormStepPlans form={form} />
                     </FormSection>
                   )}
                 </motion.div>

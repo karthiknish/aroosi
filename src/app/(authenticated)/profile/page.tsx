@@ -23,6 +23,8 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import type { Profile } from "@/types/profile";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type ImageType = {
   _id: string;
@@ -161,39 +163,19 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
   if (authLoading || profileLoading) {
     return (
-      <div className="flex items-center justify-center w-full bg-base-light">
-        <Card className="w-full max-w-md p-8">
-          <CardHeader>
-            <CardTitle>
-              <Skeleton className="h-8 w-1/2 mb-2" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center space-y-4">
-              <Skeleton className="h-24 w-24 rounded-full" />
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-6 w-1/2" />
-              <Skeleton className="h-10 w-full mt-4" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center w-full bg-base-light min-h-screen">
+        <Skeleton className="w-full max-w-md h-64" />
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="flex items-center justify-center w-full bg-base-light">
-        <Card className="w-full max-w-md p-8">
-          <CardHeader>
-            <CardTitle>Profile Not Found</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={() => router.push("/")}>
-              Go Home
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center w-full bg-base-light min-h-screen">
+        <ErrorState
+          message="Profile not found."
+          onRetry={() => router.refresh()}
+        />
       </div>
     );
   }
@@ -208,6 +190,11 @@ const ProfilePage: React.FC = (): React.ReactElement => {
         onDelete={handleDeleteProfile}
       />
 
+      {profile.subscriptionPlan === "premiumPlus" &&
+        viewers.length === 0 &&
+        !viewersLoading && (
+          <EmptyState message="No one has viewed your profile yet." />
+        )}
       {profile.subscriptionPlan === "premiumPlus" && (
         <Card className="w-full max-w-md mt-8">
           <CardHeader>

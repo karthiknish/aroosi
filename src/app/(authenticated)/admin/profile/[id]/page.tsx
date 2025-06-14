@@ -22,6 +22,8 @@ import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // Define types for images and matches
 interface ImageType {
@@ -59,7 +61,13 @@ export default function AdminProfileDetailPage() {
   }, [authIsLoaded, isSignedIn, isAdmin, router]);
 
   // React Query for profile with caching
-  const { data: profile, isLoading: loadingProfile } = useQuery({
+  const {
+    data: profile,
+    isLoading: loadingProfile,
+    isError: profileError,
+    error: profileErrObj,
+    refetch: refetchProfile,
+  } = useQuery({
     queryKey: ["adminProfile", id],
     queryFn: async () => {
       const cacheKey = `adminProfile_${id}`;
@@ -97,48 +105,46 @@ export default function AdminProfileDetailPage() {
   });
 
   const userId = profile?.userId;
-  const { data: images = [], isLoading: loadingImages } = useQuery<ImageType[]>(
-    {
-      queryKey: ["adminProfileImages", userId],
-      queryFn: async () => {
-        if (!userId) return [];
-        const cacheKey = `adminProfileImages_${userId}`;
-        const cachedData = sessionStorage.getItem(cacheKey);
-        const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
-        const now = Date.now();
-        if (cachedData && cacheTimestamp) {
-          const cacheAge = now - parseInt(cacheTimestamp, 10);
-          if (cacheAge < 5 * 60 * 1000) {
-            return JSON.parse(cachedData);
-          }
+  const { data: images = [] } = useQuery<ImageType[]>({
+    queryKey: ["adminProfileImages", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const cacheKey = `adminProfileImages_${userId}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+      const now = Date.now();
+      if (cachedData && cacheTimestamp) {
+        const cacheAge = now - parseInt(cacheTimestamp, 10);
+        if (cacheAge < 5 * 60 * 1000) {
+          return JSON.parse(cachedData);
         }
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          "Cache-Control": "max-age=300, stale-while-revalidate=60",
-        };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const imagesRes = await fetch(
-          `/api/profile-detail/${userId}/images?nocache=true`,
-          {
-            headers,
-            next: { revalidate: 300 },
-          }
-        );
-        if (!imagesRes.ok) {
-          throw new Error("Failed to fetch profile images");
+      }
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Cache-Control": "max-age=300, stale-while-revalidate=60",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const imagesRes = await fetch(
+        `/api/profile-detail/${userId}/images?nocache=true`,
+        {
+          headers,
+          next: { revalidate: 300 },
         }
-        const data = (await imagesRes.json()).userProfileImages as ImageType[];
-        sessionStorage.setItem(cacheKey, JSON.stringify(data));
-        sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
-        return data;
-      },
-      enabled: !!userId && !!token && isSignedIn && isAdmin,
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
-      retry: 2,
-      retryDelay: 1000,
-    }
-  );
+      );
+      if (!imagesRes.ok) {
+        throw new Error("Failed to fetch profile images");
+      }
+      const data = (await imagesRes.json()).userProfileImages as ImageType[];
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+      return data;
+    },
+    enabled: !!userId && !!token && isSignedIn && isAdmin,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 2,
+    retryDelay: 1000,
+  });
 
   const { data: matches = [] } = useQuery<MatchType[]>({
     queryKey: ["adminProfileMatches", id],
@@ -210,29 +216,32 @@ export default function AdminProfileDetailPage() {
     : [];
   const [currentImageIdx, setCurrentImageIdx] = useState(0);
 
-  // Early return logic moved below hooks
-  if (!authIsLoaded) {
+  // Loading state
+  if (loadingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size={32} />
       </div>
     );
   }
-  if (!isSignedIn || !isAdmin) {
-    return null;
-  }
-  if (loadingProfile || loadingImages) {
+
+  // Error state for main profile fetch
+  if (profileError) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="w-full max-w-2xl p-6 border rounded-lg shadow-sm bg-white flex flex-col items-center justify-center min-h-[300px] animate-pulse">
-          <div className="w-32 h-32 rounded-lg bg-gray-200 mb-4" />
-          <div className="h-6 w-1/2 bg-gray-200 rounded mb-2" />
-          <div className="h-4 w-1/3 bg-gray-100 rounded mb-2" />
-          <div className="h-4 w-1/4 bg-gray-100 rounded mb-2" />
-          <div className="h-4 w-1/2 bg-gray-100 rounded mb-2" />
-        </div>
-      </div>
+      <ErrorState
+        message={
+          profileErrObj instanceof Error
+            ? profileErrObj.message
+            : "Failed to load profile."
+        }
+        onRetry={() => refetchProfile()}
+        className="min-h-screen"
+      />
     );
+  }
+
+  if (!profile) {
+    return <EmptyState message="Profile not found." className="min-h-screen" />;
   }
 
   const handleDeleteImage = async () => {
@@ -327,6 +336,58 @@ export default function AdminProfileDetailPage() {
       showErrorToast(null, "Failed to update search visibility");
     }
   };
+
+  const matchesSection =
+    matches.length === 0 ? (
+      <EmptyState message="No matches found." />
+    ) : (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {matches.map((m: Record<string, unknown>, idx: number) => {
+          const profileImageIds = Array.isArray(m.profileImageIds)
+            ? m.profileImageIds
+            : [];
+          const matchImageUrl =
+            profileImageIds.length > 0
+              ? `/api/storage/${String(profileImageIds[0])}`
+              : null;
+          const fullName =
+            typeof m.fullName === "string" ? m.fullName : "Unnamed";
+          const ukCity = typeof m.ukCity === "string" ? m.ukCity : "-";
+          const id =
+            typeof m._id === "string" || typeof m._id === "number"
+              ? m._id
+              : idx;
+          return (
+            <div
+              key={id}
+              className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border hover:shadow transition"
+            >
+              {matchImageUrl ? (
+                <img
+                  src={matchImageUrl}
+                  alt={fullName}
+                  className="w-16 h-16 rounded-full object-cover border"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border">
+                  <UserCircle className="w-10 h-10 text-gray-300" />
+                </div>
+              )}
+              <div className="flex-1">
+                <div className="font-semibold text-gray-900">{fullName}</div>
+                <div className="text-sm text-gray-500">{ukCity}</div>
+              </div>
+              <Link
+                href={`/admin/profile/${id}`}
+                className="text-pink-600 hover:text-pink-800 font-semibold text-xs flex items-center gap-1"
+              >
+                <Eye className="w-4 h-4" /> View
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+    );
 
   return (
     <div className="max-w-3xl  mx-auto py-10 px-2">
@@ -649,60 +710,7 @@ export default function AdminProfileDetailPage() {
         <CardHeader>
           <CardTitle>Matches</CardTitle>
         </CardHeader>
-        <CardContent>
-          {matches && matches.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {matches.map((m: Record<string, unknown>, idx: number) => {
-                const profileImageIds = Array.isArray(m.profileImageIds)
-                  ? m.profileImageIds
-                  : [];
-                const matchImageUrl =
-                  profileImageIds.length > 0
-                    ? `/api/storage/${String(profileImageIds[0])}`
-                    : null;
-                const fullName =
-                  typeof m.fullName === "string" ? m.fullName : "Unnamed";
-                const ukCity = typeof m.ukCity === "string" ? m.ukCity : "-";
-                const id =
-                  typeof m._id === "string" || typeof m._id === "number"
-                    ? m._id
-                    : idx;
-                return (
-                  <div
-                    key={id}
-                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border hover:shadow transition"
-                  >
-                    {matchImageUrl ? (
-                      <img
-                        src={matchImageUrl}
-                        alt={fullName}
-                        className="w-16 h-16 rounded-full object-cover border"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border">
-                        <UserCircle className="w-10 h-10 text-gray-300" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">
-                        {fullName}
-                      </div>
-                      <div className="text-sm text-gray-500">{ukCity}</div>
-                    </div>
-                    <Link
-                      href={`/admin/profile/${id}`}
-                      className="text-pink-600 hover:text-pink-800 font-semibold text-xs flex items-center gap-1"
-                    >
-                      <Eye className="w-4 h-4" /> View
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-gray-400">No matches found.</div>
-          )}
-        </CardContent>
+        <CardContent>{matchesSection}</CardContent>
       </Card>
       {renderDeleteConfirmation()}
     </div>

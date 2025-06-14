@@ -9,6 +9,8 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserCircle } from "lucide-react";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function AdminMatchesPage() {
   const { token } = useAuthContext();
@@ -16,7 +18,7 @@ export default function AdminMatchesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadData = () => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -24,11 +26,15 @@ export default function AdminMatchesPage() {
       .then((data) => setMatches(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, [token]);
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
-      <h1 className="text-3xl font-bold mb-8 text-green-800">
+      <h1 className="text-3xl font-bold mb-8 text-pink-700">
         All Matches (Admin)
       </h1>
       {loading ? (
@@ -38,11 +44,11 @@ export default function AdminMatchesPage() {
           ))}
         </div>
       ) : error ? (
-        <div className="text-red-600 font-semibold">{error}</div>
+        <ErrorState message={error} onRetry={loadData} className="py-16" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {matches.length === 0 ? (
-            <div className="text-gray-500">No matches found.</div>
+            <EmptyState message="No matches found." />
           ) : (
             matches.map((item) => (
               <Card key={item.profileId} className="bg-white/80 shadow-lg">

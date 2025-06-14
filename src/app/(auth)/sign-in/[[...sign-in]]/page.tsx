@@ -46,6 +46,14 @@ export default function SignInPage() {
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
           <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+          <p className="text-center text-sm mt-4">
+            <a
+              href="/forgot-password"
+              className="text-pink-600 hover:text-pink-700 underline"
+            >
+              Forgot password?
+            </a>
+          </p>
         </motion.div>
       </div>
     </div>

@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Contact } from "@/lib/contactUtil";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // Simple Modal component
 function Modal({
@@ -70,6 +72,7 @@ export default function AdminContactPage() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["admin-contacts", token],
     queryFn: () => fetchAllContactsAdmin(token ?? ""),
@@ -96,9 +99,11 @@ export default function AdminContactPage() {
           <Skeleton className="h-8 w-full" />
         </div>
       ) : isError ? (
-        <p className="text-red-500">
-          Error loading contacts: {error?.message || "Unknown error"}
-        </p>
+        <ErrorState
+          message={error?.message ?? "Failed to load contacts."}
+          onRetry={() => refetch()}
+          className="py-16"
+        />
       ) : contacts && contacts.length > 0 ? (
         <div className="overflow-x-auto">
           <Table>
@@ -142,7 +147,7 @@ export default function AdminContactPage() {
           />
         </div>
       ) : (
-        <p>No contact form submissions found.</p>
+        <EmptyState message="No contact form submissions found." />
       )}
     </div>
   );

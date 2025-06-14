@@ -38,11 +38,13 @@ export default function ProtectedRoute({
     isOnboardingComplete,
     isLoading: isAuthLoading,
     isApproved,
+    profile,
   } = useAuthContext();
 
   // Directly use context values; undefined indicates still loading
   const profileComplete = isProfileComplete;
   const onboardingComplete = isOnboardingComplete;
+  const userPlan = profile?.subscriptionPlan || "free";
 
   // Memoize route checks to prevent unnecessary recalculations
   const {
@@ -77,6 +79,11 @@ export default function ProtectedRoute({
     [pathname]
   );
 
+  // Define premium page paths
+  const premiumAnyPlanRoutes = ["/premium-settings"];
+  const premiumPlusRoutes = ["/profile/viewers"];
+  const planManagementRoute = "/plans";
+
   // Handle all redirections
   useEffect(() => {
     // Don't do anything until we're on the client
@@ -109,6 +116,23 @@ export default function ProtectedRoute({
     if (isSignedIn === true) {
       // If we're still loading profile data, wait
       if (profileComplete === undefined) return;
+
+      // Restrict premium-only routes based on subscription
+      if (premiumAnyPlanRoutes.some((p) => pathname.startsWith(p))) {
+        if (userPlan === "free") {
+          showInfoToast("Upgrade to Premium to access this feature.");
+          router.replace(planManagementRoute);
+          return;
+        }
+      }
+
+      if (premiumPlusRoutes.some((p) => pathname.startsWith(p))) {
+        if (userPlan !== "premiumPlus") {
+          showInfoToast("Requires Premium Plus plan.");
+          router.replace(planManagementRoute);
+          return;
+        }
+      }
 
       // If profile and onboarding are complete, redirect to search if on a public or onboarding route,
       // BUT do NOT redirect if on /profile/edit
@@ -159,6 +183,10 @@ export default function ProtectedRoute({
     requireOnboardingComplete,
     searchParams,
     isProfileEditRoute,
+    userPlan,
+    premiumAnyPlanRoutes,
+    premiumPlusRoutes,
+    planManagementRoute,
   ]);
 
   // Determine if we should show a loading state

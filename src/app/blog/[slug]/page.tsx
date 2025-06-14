@@ -1,5 +1,7 @@
 "use client";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,7 @@ export default function BlogDetailPage() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery<BlogPost | null, Error, BlogPost | null, (string | null)[]>({
     queryKey: queryKey,
     queryFn: () => fetchBlogPostBySlug(slug, token ?? undefined),
@@ -62,43 +65,16 @@ export default function BlogDetailPage() {
 
   if (isError) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-red-600 mb-4">
-          Error Loading Post
-        </h1>
-        <p className="text-gray-600 mb-4">
-          {error?.message ||
-            "Sorry, we couldn't load the blog post. Please try again later."}
-        </p>
-        <Button
-          asChild
-          variant="outline"
-          className="text-pink-600 border-pink-300 hover:bg-pink-50"
-        >
-          <Link href="/blog">Back to Blog</Link>
-        </Button>
-      </div>
+      <ErrorState
+        message={error?.message ?? "Sorry, we couldn't load the blog post."}
+        onRetry={() => refetch()}
+        className="min-h-[60vh]"
+      />
     );
   }
 
   if (post === null && !isLoading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-pink-700 mb-4">
-          Post Not Found
-        </h1>
-        <p className="text-gray-600 mb-4">
-          Sorry, we couldn&apos;t find that blog post.
-        </p>
-        <Button
-          asChild
-          variant="outline"
-          className="text-pink-600 border-pink-300 hover:bg-pink-50"
-        >
-          <Link href="/blog">Back to Blog</Link>
-        </Button>
-      </div>
-    );
+    return <EmptyState message="Post not found." className="min-h-[60vh]" />;
   }
 
   if (post) {

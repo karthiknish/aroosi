@@ -17,7 +17,12 @@ export function showErrorToast(
       message = error.message;
     }
   }
-  toast.error(message);
+  toast.error(message, {
+    style: {
+      background: "#FDA4AF", // brand pink
+      color: "#ffffff",
+    },
+  });
   // Always log the raw error for diagnostics
   if (error) {
     console.error("[ToastError]", error);
@@ -25,10 +30,20 @@ export function showErrorToast(
 }
 
 export function showSuccessToast(message: string) {
-  toast.success(message);
+  toast.success(message, {
+    style: {
+      background: "#BFA67A", // brand gold
+      color: "#ffffff",
+    },
+  });
 }
 
 // Informational toast (e.g., prompts or neutral messages)
 export function showInfoToast(message: string) {
-  toast.info(message);
+  toast.info(message, {
+    style: {
+      background: "#f5f5f5",
+      color: "#000000",
+    },
+  });
 }

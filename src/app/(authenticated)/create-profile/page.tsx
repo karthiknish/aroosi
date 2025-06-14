@@ -68,18 +68,8 @@ export default function CreateProfilePage() {
         // Refresh profile (fetch updated flags) then update local storage via AuthProvider.
         await refreshProfile();
 
-        // Create subscription message based on the plan selected
-        let subscriptionMessage = "";
-        if (values.subscriptionPlan === "premium") {
-          subscriptionMessage =
-            "Premium Plan trial activated! Enjoy unlimited features for 30 days.";
-        } else if (values.subscriptionPlan === "premiumPlus") {
-          subscriptionMessage =
-            "Premium Plus trial activated! Enjoy all premium features for 30 days.";
-        }
-
         showSuccessToast(
-          `Profile created successfully! ${subscriptionMessage ? subscriptionMessage : "You can now browse matches."}`
+          "Profile created successfully! You can now browse matches."
         );
 
         // Redirect to dashboard

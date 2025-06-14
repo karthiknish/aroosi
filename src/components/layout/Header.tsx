@@ -253,7 +253,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-red-400"
+                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
                 {mobileOpen ? (

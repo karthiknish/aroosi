@@ -30,6 +30,8 @@ import Link from "next/link";
 import { showSuccessToast } from "@/lib/ui/toast";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const statusOptions = [
   { label: "All", value: "all" },
@@ -155,16 +157,11 @@ export default function AdminProfilePage() {
 
   if (error)
     return (
-      <div className="max-w-md mx-auto mt-8">
-        <Dialog open={true}>
-          <DialogContent>
-            <DialogTitle>Error</DialogTitle>
-            <DialogDescription>
-              {error instanceof Error ? error.message : "An error occurred."}
-            </DialogDescription>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <ErrorState
+        message={error instanceof Error ? error.message : "An error occurred."}
+        onRetry={() => loadProfiles()}
+        className="min-h-[60vh]"
+      />
     );
 
   return (
@@ -218,18 +215,10 @@ export default function AdminProfilePage() {
       </div>
       {/* Profile Grid */}
       {filteredProfiles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
-          <UserX className="w-12 h-12 mb-2 text-gray-300" />
-          <div className="text-lg font-semibold mb-1">No profiles found</div>
-          <div className="mb-4">
-            Try adjusting your search or filters, or create a new profile.
-          </div>
-          <Link href="/admin/profile/create">
-            <Button variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" /> Create Profile
-            </Button>
-          </Link>
-        </div>
+        <EmptyState
+          message="No profiles match your search/filter."
+          className="py-8"
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredProfiles.map((profile) => (
@@ -271,14 +260,14 @@ export default function AdminProfilePage() {
                       <Ban className="w-3 h-3" /> Banned
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-pink-100 text-pink-700">
                       <CheckCircle className="w-3 h-3" /> Active
                     </span>
                   )}
                 </div>
                 {/* Approval badge */}
                 {profile.isApproved ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-50 text-green-700 border border-green-200">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-pink-50 text-pink-700 border border-pink-200">
                     <CheckCircle className="w-3 h-3" /> Approved
                   </span>
                 ) : (

@@ -18,6 +18,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
 import { motion } from "framer-motion";
 import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useOffline } from "@/hooks/useOffline";
 
 const majorUkCities = [
   "London",
@@ -122,7 +125,12 @@ export default function SearchProfilesPage() {
   // All params are already in state
 
   // React Query for profiles
-  const { data: searchResults, isLoading: loadingProfiles } = useQuery({
+  const {
+    data: searchResults,
+    isLoading: loadingProfiles,
+    isError: profilesError,
+    refetch: refetchProfiles,
+  } = useQuery({
     queryKey: ["profiles", token, city, ageMin, ageMax, page, pageSize],
     queryFn: () =>
       fetchProfileSearchResults({
@@ -147,7 +155,11 @@ export default function SearchProfilesPage() {
   }, [totalResults]);
 
   // React Query for user images
-  const { data: userImages = {}, isLoading: loadingImages } = useQuery({
+  const {
+    data: userImages = {},
+    isLoading: loadingImages,
+    // image query errors currently ignored for brevity
+  } = useQuery({
     queryKey: ["userImages", token, profiles],
     queryFn: async () => {
       try {
@@ -239,6 +251,33 @@ export default function SearchProfilesPage() {
   }, [publicProfiles, currentUser]);
 
   const totalPages = Math.ceil(total / pageSize);
+
+  const offline = useOffline();
+
+  // Edge cases – offline or errors
+  if (offline) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <ErrorState />
+      </div>
+    );
+  }
+
+  if (profilesError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <ErrorState onRetry={() => refetchProfiles()} />
+      </div>
+    );
+  }
+
+  if (!loadingProfiles && profiles.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <EmptyState message="No profiles match your search." />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-base-light pt-24 sm:pt-28 md:pt-32 pb-12 relative overflow-x-hidden">
@@ -366,7 +405,7 @@ export default function SearchProfilesPage() {
                   setAgeMin("");
                   setAgeMax("");
                 }}
-                className="mt-4 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
               >
                 Clear all filters
               </button>

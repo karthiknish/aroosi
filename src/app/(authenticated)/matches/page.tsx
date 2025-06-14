@@ -10,6 +10,9 @@ import { useMatches } from "@/lib/hooks/useMatches";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
 import Link from "next/link";
 import type { Profile } from "@/types/profile";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useOffline } from "@/hooks/useOffline";
 
 function MatchCard({
   match,
@@ -61,11 +64,25 @@ function MatchCard({
 
 export default function MatchesPage() {
   const { token, userId } = useAuthContext();
+  const offline = useOffline();
   const [search, setSearch] = useState("");
 
   const { matches, loading } = useMatches(userId ?? "", token ?? "", search);
 
-  if (!token || !userId) return null;
+  if (!token || !userId)
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <ErrorState message="You must be signed in to view matches." />
+      </div>
+    );
+
+  if (offline) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <ErrorState />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -93,7 +110,7 @@ export default function MatchesPage() {
       </div>
 
       {matches.length === 0 ? (
-        <p className="text-center text-muted-foreground">No matches found.</p>
+        <EmptyState message="No matches found." />
       ) : (
         <div className="space-y-4">
           {matches.map((m) => (

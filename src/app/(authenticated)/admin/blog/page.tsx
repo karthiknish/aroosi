@@ -15,6 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function AdminBlogPage() {
   const { token, isAdmin, isLoaded } = useAuthContext();
@@ -24,6 +26,8 @@ export default function AdminBlogPage() {
   const {
     data: blogs = [],
     isLoading,
+    isError,
+    error,
     refetch,
   } = useQuery<BlogPost[]>({
     queryKey: ["adminBlogs", token],
@@ -52,8 +56,24 @@ export default function AdminBlogPage() {
   }
 
   if (!isAdmin) {
-    return <div>You must be an admin to view this page.</div>;
+    return (
+      <ErrorState
+        message="You must be an admin to view this page."
+        className="min-h-[60vh]"
+      />
+    );
   }
+
+  if (isError) {
+    return (
+      <ErrorState
+        message={error?.message ?? "Failed to load blog posts."}
+        onRetry={() => refetch()}
+        className="min-h-[60vh]"
+      />
+    );
+  }
+
   return (
     <div className="max-w-5xl my-8 mx-auto py-10 px-4">
       <h1 className="text-3xl font-bold mb-6 text-pink-700">
@@ -63,9 +83,7 @@ export default function AdminBlogPage() {
         <Link href="/admin/blog/create">+ Create Blog</Link>
       </Button>
       {blogs.length === 0 ? (
-        <div className="text-gray-500 text-center py-16">
-          No blog posts found.
-        </div>
+        <EmptyState message="No blog posts found." className="py-16" />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {blogs

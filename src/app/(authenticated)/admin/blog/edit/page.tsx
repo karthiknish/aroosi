@@ -11,6 +11,8 @@ import { fetchBlogPostBySlug, editBlogPost } from "@/lib/blogUtil";
 import type { BlogPost } from "@/types/blog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function AdminEditBlogPage() {
   const router = useRouter();
@@ -102,11 +104,20 @@ export default function AdminEditBlogPage() {
     },
   });
 
-  if (!isLoaded || !isSignedIn || !isAdmin) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size={32} />
       </div>
+    );
+  }
+
+  if (!isSignedIn || !isAdmin) {
+    return (
+      <ErrorState
+        message="You must be an admin to view this page."
+        className="min-h-screen"
+      />
     );
   }
 
@@ -120,11 +131,7 @@ export default function AdminEditBlogPage() {
 
   if (!blogPost) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-red-100 text-red-700 p-4 rounded shadow max-w-xl mx-auto text-center">
-          <strong>Error:</strong> Blog post not found.
-        </div>
-      </div>
+      <EmptyState message="Blog post not found." className="min-h-screen" />
     );
   }
 
