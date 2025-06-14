@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 
 export default function HowItWorksPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-0 px-0 relative overflow-x-clip">
+    <div className="bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-0 px-0 relative overflow-x-clip">
       {/* Hero Section */}
       <section className="w-full text-center bg-white/90 p-8 md:p-16 border-b border-rose-100 relative">
         <h1

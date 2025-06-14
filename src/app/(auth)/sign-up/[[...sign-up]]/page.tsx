@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen w-full bg-base-light flex items-center justify-center relative overflow-x-hidden">
+    <div className="w-full bg-base-light flex items-center justify-center relative overflow-x-hidden">
       {/* Decorative color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>

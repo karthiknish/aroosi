@@ -1,5 +1,3 @@
-"use client";
-
 import ProfileForm from "@/components/profile/ProfileForm";
 import type { ProfileFormValues } from "@/components/profile/ProfileForm";
 import { useRouter } from "next/navigation";
@@ -134,7 +132,7 @@ export default function CreateProfilePage() {
 
   // Render the profile form for new profiles, pre-filling with context profile if available
   return (
-    <div className="min-h-screen w-full bg-base-light flex items-center justify-center relative overflow-x-hidden py-12">
+    <div className="w-full bg-base-light flex items-center justify-center relative overflow-x-hidden py-12">
       {/* Decorative color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>

@@ -1,5 +1,3 @@
-"use client";
-
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
@@ -402,7 +400,7 @@ export default function EditProfilePage() {
   // Not signed in state
   if (!isSignedIn && typeof window !== "undefined") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
+      <div className="flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           Please Sign In
         </h2>
@@ -415,7 +413,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="flex items-center justify-center w-full min-h-screen bg-base-light">
+    <div className="flex items-center justify-center w-full bg-base-light">
       <div className="bg-white/90 shadow-xl rounded-2xl mt-16 w-full  overflow-hidden">
         <div className="px-4 py-8 sm:p-10">
           <ProfileFormComponent

@@ -1,8 +1,6 @@
-import Link from "next/link";
-
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-pink-50 px-4">
+    <div className="flex flex-col items-center justify-center bg-pink-50 px-4">
       <div className="text-center">
         <div className="text-7xl font-extrabold text-pink-600 mb-4">404</div>
         <h1 className="text-3xl font-bold text-gray-800 mb-2">

@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Users, Heart, Shield, Star } from "lucide-react";
@@ -28,7 +26,7 @@ const fadeIn = {
 
 export default function AboutPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-base-light">
+    <div className="flex flex-col bg-base-light">
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative py-20 lg:py-32 overflow-hidden bg-primary-dark">

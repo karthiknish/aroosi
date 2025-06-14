@@ -41,7 +41,7 @@ const fadeIn = {
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col min-h-screen bg-base-light">
+    <div className="flex flex-col bg-base-light">
       {/* Header */}
 
       <main className="flex-1">
