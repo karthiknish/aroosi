@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +34,7 @@ import {
   removeInterest,
   getSentInterests,
 } from "@/lib/interestUtils";
+import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
 
 type Interest = {
@@ -181,6 +182,13 @@ export default function ProfileDetailPage() {
   const imagesKey = imagesToShow.join(",");
 
   const [interestError, setInterestError] = useState<string | null>(null);
+
+  // Record profile view when this component mounts (only if viewing someone else's profile)
+  useEffect(() => {
+    if (!isOwnProfile && token && profile?._id) {
+      recordProfileView({ token, profileId: profile._id as unknown as string });
+    }
+  }, [isOwnProfile, token, profile?._id]);
 
   if (invalidIdError) {
     return (
