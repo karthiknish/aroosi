@@ -43,7 +43,29 @@ const ProfilePage: React.FC = (): React.ReactElement => {
     queryFn: async () => {
       if (!token) return undefined;
       const result = await getCurrentUserWithProfile(token);
-      return result.success ? (result.data as Profile) : undefined;
+      console.log("result", result);
+      if (!result.success || !result.data) return undefined;
+
+      // Unwrap potential nested envelopes { success: true, data: {...} }
+      let envelope: unknown = result.data;
+      if (
+        envelope &&
+        typeof envelope === "object" &&
+        "success" in envelope &&
+        "data" in envelope
+      ) {
+        envelope = (envelope as { data: unknown }).data;
+      }
+
+      const profileObj =
+        envelope &&
+        typeof envelope === "object" &&
+        envelope !== null &&
+        "profile" in envelope
+          ? (envelope as { profile: Profile | null }).profile
+          : (envelope as Profile | null);
+
+      return profileObj ?? undefined;
     },
     enabled: !!token,
   });
@@ -55,9 +77,40 @@ const ProfilePage: React.FC = (): React.ReactElement => {
       queryFn: async () => {
         if (!token || !profile?.userId) return [];
         const result = await fetchUserProfileImages(token, profile.userId);
-        return result.success && Array.isArray(result.data)
-          ? (result.data as ImageType[])
-          : [];
+        if (
+          !result.success ||
+          result.data === undefined ||
+          result.data === null
+        ) {
+          return [];
+        }
+
+        // Unwrap one extra envelope if present
+        let payload: unknown = result.data;
+        if (
+          payload &&
+          typeof payload === "object" &&
+          "success" in payload &&
+          "data" in payload
+        ) {
+          payload = (payload as { data: unknown }).data;
+        }
+
+        if (Array.isArray(payload)) {
+          return payload as ImageType[];
+        }
+
+        if (
+          payload &&
+          typeof payload === "object" &&
+          payload !== null &&
+          "images" in payload &&
+          Array.isArray((payload as { images: unknown }).images)
+        ) {
+          return (payload as { images: ImageType[] }).images;
+        }
+
+        return [];
       },
       enabled: !!token && !!profile?.userId,
     }

@@ -113,13 +113,13 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/interests-matches" onClick={onClick}>
+                <Link href="/matches" onClick={onClick}>
                   <Button
                     variant="ghost"
                     className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
                   >
                     <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
-                    <span>Interests / Matches</span>
+                    <span>Matches</span>
                   </Button>
                 </Link>
               </motion.div>

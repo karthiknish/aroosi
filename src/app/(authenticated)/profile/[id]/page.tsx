@@ -14,8 +14,6 @@ import {
   BookOpen,
   Briefcase,
   Ruler,
-  Church,
-  Users,
   Info,
   Calendar,
 } from "lucide-react";
@@ -69,8 +67,15 @@ export default function ProfileDetailPage() {
     retry: false,
   });
 
-  // Use .data from API response (as per fetchUserProfile return type)
-  const profile: Profile | null = profileData?.data ?? null;
+  // Handle nested profile object from API. If profileData?.data has a .profile key, use that, else use data directly.
+  const profileRaw = profileData?.data;
+  const profile: Profile | null =
+    profileRaw &&
+    typeof profileRaw === "object" &&
+    profileRaw !== null &&
+    "profile" in profileRaw
+      ? (profileRaw as { profile: Profile | null }).profile
+      : (profileRaw as Profile | null);
 
   const { data: userProfileImagesResponse } = useQuery({
     queryKey: ["userProfileImages", userId, token],
@@ -357,7 +362,7 @@ export default function ProfileDetailPage() {
         </title>
         <meta
           name="description"
-          content={`View ${profileData?.data?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans in the UK.`}
+          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans in the UK.`}
         />
         {/* ... other meta tags ... */}
       </Head>
@@ -474,16 +479,13 @@ export default function ProfileDetailPage() {
                   style={{ fontFamily: "var(--font-serif)" }}
                 >
                   <UserCircle className="w-8 h-8 text-primary" />
-                  {profileData?.data?.fullName ?? "-"}
+                  {profile?.fullName ?? "-"}
                 </div>
                 <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
                   <MapPin className="w-5 h-5 text-accent" />
                   UK City: {profile?.ukCity ?? "-"}
                 </div>
-                <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
-                  <Church className="w-5 h-5 text-accent" />
-                  {"-"}
-                </div>
+
                 <div className="flex items-center gap-2 text-sm text-accent-600 mb-2 font-nunito">
                   <Calendar className="w-4 h-4 text-accent-200" />
                   <span>Member since:</span>
@@ -540,28 +542,9 @@ export default function ProfileDetailPage() {
                   </AnimatePresence>
                 </motion.div>
               )}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                  transition: { delay: 0.25, duration: 0.5 },
-                }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-8"
-              >
-                <div>
-                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
-                    <Church className="w-5 h-5 text-accent" />
-                    Cultural & Religious Background
-                  </h3>
-                  <IconRow
-                    icon={<Users className="w-4 h-4" />}
-                    label="Marital Status"
-                    value={profile?.maritalStatus ?? "-"}
-                  />
-                </div>
-                <div>
-                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-8 mb-8">
+                <div className="space-y-6">
+                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
                     <BookOpen className="w-5 h-5 text-accent" />
                     Education & Career
                   </h3>
@@ -581,8 +564,8 @@ export default function ProfileDetailPage() {
                     value={profile?.height ?? "-"}
                   />
                 </div>
-                <div>
-                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
+                <div className="space-y-6">
+                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
                     <MapPin className="w-5 h-5 text-accent" />
                     Location (UK)
                   </h3>
@@ -591,9 +574,7 @@ export default function ProfileDetailPage() {
                     label="UK City"
                     value={profile?.ukCity ?? "-"}
                   />
-                </div>
-                <div>
-                  <h3 className="font-serif font-semibold mb-2 flex items-center gap-2 text-primary-dark">
+                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg mt-8">
                     <Info className="w-5 h-5 text-accent" />
                     About Me
                   </h3>
@@ -602,7 +583,7 @@ export default function ProfileDetailPage() {
                     <span>{profile?.aboutMe ?? "-"}</span>
                   </div>
                 </div>
-              </motion.div>
+              </div>
               <div className="flex justify-center gap-8 mt-8 mb-2">
                 <AnimatePresence>
                   {!isOwnProfile && (

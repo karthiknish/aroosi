@@ -92,7 +92,7 @@ function AdminPageInner() {
                   className="w-full group-hover:bg-pink-50 group-hover:text-pink-700"
                   asChild
                 >
-                  <Link href="/admin/profiles">Go to Profiles</Link>
+                  <Link href="/admin/profile">Go to Profiles</Link>
                 </Button>
               </div>
             </CardContent>

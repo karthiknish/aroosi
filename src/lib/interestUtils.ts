@@ -42,3 +42,19 @@ export async function getSentInterests(token: string, userId: string) {
   );
   return res.json();
 }
+
+export async function respondToInterest(
+  token: string,
+  interestId: string,
+  status: "accepted" | "rejected"
+) {
+  const res = await fetch("/api/interests/respond", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ interestId, status }),
+  });
+  return res.json();
+}

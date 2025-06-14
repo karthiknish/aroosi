@@ -45,10 +45,11 @@ export async function fetchProfileSearchResults({
     if (!response.ok) {
       throw new Error("Failed to fetch search results");
     }
-    const data = await response.json();
+    const json = await response.json();
+    const envelope = json?.data ?? json;
     return {
-      profiles: Array.isArray(data.profiles) ? data.profiles : [],
-      total: typeof data.total === "number" ? data.total : 0,
+      profiles: Array.isArray(envelope.profiles) ? envelope.profiles : [],
+      total: typeof envelope.total === "number" ? envelope.total : 0,
     };
   } catch (error) {
     console.error("Error fetching search results:", error);

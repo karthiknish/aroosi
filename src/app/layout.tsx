@@ -49,7 +49,9 @@ function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <Header />
-      <main className="min-h-screen">{children}</main>
+      <main className="pt-20 pb-12 min-h-[calc(100vh-theme(spacing.20)-theme(spacing.12))]">
+        {children}
+      </main>
       <Footer />
       <Toaster position="bottom-right" />
       <ChatBot />

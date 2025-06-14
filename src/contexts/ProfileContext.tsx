@@ -25,8 +25,10 @@ export const ProfileProvider = ({
       setIsLoading(true);
       const res = await fetch("/api/user/me");
       const json = await res.json();
-      if (res.ok) {
-        setProfile(json?.profile ?? null);
+      if (res.ok && json?.success) {
+        // API shape: { success: true, data: { ...user, profile: {...} } }
+        const envelope = json.data ?? {};
+        setProfile(envelope.profile ?? null);
       } else {
         setError(new Error(json.error || "Failed to load profile"));
       }

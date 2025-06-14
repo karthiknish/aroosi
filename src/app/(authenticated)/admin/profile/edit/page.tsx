@@ -16,7 +16,7 @@ import type { Profile, ProfileEditFormState } from "@/types/profile";
 import { useQuery } from "@tanstack/react-query";
 import type { ApiImage } from "@/lib/utils/profileImageUtils";
 import type { ImageType } from "@/types/image";
-import ProfileEditForm from "@/components/admin/ProfileEditForm";
+import ProfileForm from "@/components/profile/ProfileForm";
 
 export default function AdminEditProfilePage() {
   const router = useRouter();
@@ -152,6 +152,30 @@ export default function AdminEditProfilePage() {
     }
   };
 
+  // Admin profile update handler
+  const handleAdminProfileUpdate = async (values: any) => {
+    if (!token || !id) return;
+    // Map form values to Profile shape
+    const updates = {
+      ...values,
+      maritalStatus: ["single", "divorced", "widowed", "annulled"].includes(
+        values.maritalStatus
+      )
+        ? values.maritalStatus
+        : "single",
+    };
+    try {
+      await updateAdminProfileById({ token, id, updates });
+      showSuccessToast("Profile updated successfully!");
+      router.push(`/admin/profile/[id]?id=${id}`);
+    } catch (error) {
+      showErrorToast(
+        null,
+        (error as Error).message || "Failed to update profile"
+      );
+    }
+  };
+
   if (!authIsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -195,15 +219,11 @@ export default function AdminEditProfilePage() {
             Back to Profile Management
           </Button>
         </div>
-        <ProfileEditForm
-          profile={profile}
-          editForm={editForm}
-          onInputChange={handleInputChange}
-          onSelectChange={handleSelectChange}
-          onSubmit={handleSubmit}
-          loading={isSubmitting}
-          onImagesChanged={handleImagesChanged}
-          fetchedImages={fetchedImages}
+        <ProfileForm
+          mode="edit"
+          initialValues={profile}
+          onSubmit={handleAdminProfileUpdate}
+          submitButtonText="Save Changes"
         />
       </div>
     </div>

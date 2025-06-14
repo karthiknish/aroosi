@@ -77,7 +77,9 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
     : "text-md text-gray-800";
 
   return (
-    <div className={`py-2 sm:grid sm:grid-cols-3 sm:gap-4 ${className}`}>
+    <div
+      className={`py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-gray-100 last:border-b-0 ${className}`}
+    >
       <dt className="text-sm font-medium text-gray-500 flex items-center gap-2">
         {icon}
         {label}
@@ -107,7 +109,7 @@ const DisplaySection: React.FC<DisplaySectionProps> = ({
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`space-y-1 pt-6 pb-8 ${!noBorder ? "border-b border-gray-100" : ""} ${
+    className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-gray-100" : ""} ${
       fullWidth ? "w-full" : ""
     } first:border-t-0 first:pt-0 ${className}`}
   >
@@ -135,6 +137,7 @@ const ProfileView: FC<ProfileViewProps> = ({
   images,
   userConvexData = null,
   className = "",
+  isLoadingImages,
 }) => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -301,11 +304,16 @@ const ProfileView: FC<ProfileViewProps> = ({
                         userId={profileData.userId}
                         renderAction={() => null}
                       />
-                    ) : (
-                      <div className="text-center py-6 text-gray-500">
-                        No profile images uploaded yet.
+                    ) : isLoadingImages ? (
+                      <div className="grid grid-cols-3 gap-4">
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                          <Skeleton
+                            key={idx}
+                            className="w-full aspect-square rounded-xl"
+                          />
+                        ))}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </DisplaySection>
 
@@ -399,20 +407,6 @@ const ProfileView: FC<ProfileViewProps> = ({
                   <ProfileDetailView
                     label="Physical Status"
                     value={profileData.physicalStatus}
-                  />
-                </DisplaySection>
-
-                <DisplaySection
-                  title={
-                    <span className="flex items-center gap-2">
-                      <Heart className="h-5 w-5 text-accent" />
-                      Cultural & Religious Background
-                    </span>
-                  }
-                >
-                  <ProfileDetailView
-                    label="Marital Status"
-                    value={profileData.maritalStatus}
                   />
                 </DisplaySection>
 
