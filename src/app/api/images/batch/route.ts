@@ -17,10 +17,29 @@ export async function GET(req: NextRequest) {
   if (!userIdsParam) {
     return NextResponse.json({});
   }
-  const userIds = userIdsParam.split(",").filter(Boolean) as Id<"users">[];
-  if (userIds.length === 0) {
+  const rawIds = userIdsParam.split(",").filter(Boolean);
+  const MAX_BATCH = 50;
+  if (rawIds.length === 0) {
     return NextResponse.json({});
   }
+
+  if (rawIds.length > MAX_BATCH) {
+    return NextResponse.json(
+      { error: `You can request up to ${MAX_BATCH} users at a time` },
+      { status: 400 }
+    );
+  }
+
+  // Validate each ID format (basic Convex ID regex)
+  const invalidId = rawIds.find((id) => !/^[a-z0-9]+$/.test(id));
+  if (invalidId) {
+    return NextResponse.json(
+      { error: `Invalid user ID: ${invalidId}` },
+      { status: 400 }
+    );
+  }
+
+  const userIds = rawIds as Id<"users">[];
   const result = await convex.query(api.images.batchGetProfileImages, {
     userIds,
   });

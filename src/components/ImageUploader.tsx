@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, FileRejection } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Upload } from "lucide-react";
@@ -108,6 +108,7 @@ export function ImageUploader({
   fetchImages,
   onStartUpload,
   customUploadFile,
+  maxFiles,
 }: ImageUploaderProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<File | null>(null);
@@ -119,18 +120,73 @@ export function ImageUploader({
 
   useEffect(() => setIsClient(true), []);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-    setPendingUpload(file);
-    readFile(file).then((preview) => {
-      setImagePreview(preview);
-      setIsCropping(true);
-    });
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (!acceptedFiles?.length) return;
+
+      // Guard against the user exceeding the max allowed images for their profile
+      const currentImagesCount = orderedImages?.length ?? 0;
+      const maxAllowed = maxFiles ?? 5;
+      if (currentImagesCount >= maxAllowed) {
+        showErrorToast(
+          null,
+          `You can only display up to ${maxAllowed} images on your profile`
+        );
+        return;
+      }
+
+      const file = acceptedFiles[0];
+      if (!file) return;
+
+      // Extra guard: ensure MIME starts with image/
+      if (!file.type.startsWith("image/")) {
+        showErrorToast(null, "Only image files are allowed (JPG, PNG, WebP)");
+        return;
+      }
+
+      setPendingUpload(file);
+      readFile(file)
+        .then((preview) => {
+          setImagePreview(preview);
+          setIsCropping(true);
+        })
+        .catch(() => {
+          showErrorToast(
+            null,
+            "Failed to read image. Please try another file."
+          );
+        });
+    },
+    [orderedImages, maxFiles]
+  );
+
+  const onDropRejected = useCallback((fileRejections: FileRejection[]) => {
+    if (!fileRejections?.length) return;
+    const rejection = fileRejections[0];
+    const { errors } = rejection;
+    if (!errors?.length) {
+      showErrorToast(null, "File cannot be uploaded.");
+      return;
+    }
+    const code = errors[0].code;
+    switch (code) {
+      case "file-too-large":
+        showErrorToast(null, "Image is too large (max 5 MB).");
+        break;
+      case "file-invalid-type":
+        showErrorToast(
+          null,
+          "Invalid file type. Only JPG, PNG, or WebP allowed."
+        );
+        break;
+      default:
+        showErrorToast(null, errors[0].message || "File cannot be uploaded.");
+    }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: {
       "image/jpeg": [],
       "image/png": [],
@@ -151,7 +207,7 @@ export function ImageUploader({
         return;
       }
       const currentImages = orderedImages || [];
-      const maxProfileImages = 5;
+      const maxProfileImages = maxFiles ?? 5;
       if (currentImages.length >= maxProfileImages) {
         showErrorToast(
           null,
@@ -241,6 +297,7 @@ export function ImageUploader({
       setIsUploading,
       onStartUpload,
       customUploadFile,
+      maxFiles,
     ]
   );
 

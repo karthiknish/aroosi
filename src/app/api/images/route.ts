@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
 
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
   const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+  const MAX_IMAGES_PER_USER = 5;
 
   if (!ALLOWED_TYPES.includes(contentType as string)) {
     return errorResponse("Unsupported image type", 400);
@@ -70,6 +71,25 @@ export async function POST(req: NextRequest) {
 
   if (typeof fileSize !== "number" || fileSize > MAX_SIZE_BYTES) {
     return errorResponse("File too large. Max 5MB allowed.", 400);
+  }
+
+  // Guard against exceeding maximum number of images per user
+  try {
+    const existingImages = await convex.query(api.images.getProfileImages, {
+      userId: userId as Id<"users">,
+    });
+    if (
+      Array.isArray(existingImages) &&
+      existingImages.length >= MAX_IMAGES_PER_USER
+    ) {
+      return errorResponse(
+        `You can only display up to ${MAX_IMAGES_PER_USER} images on your profile`,
+        400
+      );
+    }
+  } catch (err) {
+    console.error("Error checking existing images count", err);
+    // Not fatal – continue, but still log.
   }
 
   try {
@@ -93,7 +113,8 @@ export async function POST(req: NextRequest) {
     return successResponse(result);
   } catch (err) {
     console.error("/api/images POST error", err);
-    const message = err instanceof Error ? err.message : "Failed to upload image";
+    const message =
+      err instanceof Error ? err.message : "Failed to upload image";
     return errorResponse(message, 500);
   }
 }
