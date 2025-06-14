@@ -246,30 +246,33 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   }, [token, initialValues]);
 
   // Form
-  const emptyDefaults: ProfileFormValues = {
-    profileFor: "self",
-    fullName: "",
-    dateOfBirth: "",
-    gender: "prefer-not-to-say",
-    height: "",
-    ukCity: "",
-    ukPostcode: "",
-    aboutMe: "",
-    phoneNumber: "",
-    preferredGender: "any",
-    partnerPreferenceAgeMin: "",
-    partnerPreferenceAgeMax: "",
-    partnerPreferenceUkCity: "",
-    maritalStatus: "single",
-    education: "",
-    occupation: "",
-    annualIncome: "",
-    diet: "",
-    smoking: "no",
-    drinking: "no",
-    physicalStatus: "",
-    subscriptionPlan: "free",
-  };
+  const emptyDefaults = React.useMemo<ProfileFormValues>(
+    () => ({
+      profileFor: "self",
+      fullName: "",
+      dateOfBirth: "",
+      gender: "prefer-not-to-say",
+      height: "",
+      ukCity: "",
+      ukPostcode: "",
+      aboutMe: "",
+      phoneNumber: "",
+      preferredGender: "any",
+      partnerPreferenceAgeMin: "",
+      partnerPreferenceAgeMax: "",
+      partnerPreferenceUkCity: "",
+      maritalStatus: "single",
+      education: "",
+      occupation: "",
+      annualIncome: "",
+      diet: "",
+      smoking: "no",
+      drinking: "no",
+      physicalStatus: "",
+      subscriptionPlan: "free",
+    }),
+    []
+  );
 
   // Use a ref to track if we've initialized the form to prevent unnecessary resets
   const hasInitialized = React.useRef(false);
@@ -284,11 +287,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     };
   }, [emptyDefaults, initialValues, fetchedProfile]);
 
-  const { register, handleSubmit, trigger, formState, watch } = useForm<
-    ProfileFormValues,
-    unknown,
-    ProfileFormValues
-  >({
+  // Initialise the React Hook Form instance so we can pass it down to steps
+  const form = useForm<ProfileFormValues, unknown, ProfileFormValues>({
     resolver: zodResolver(essentialProfileSchema) as unknown as Resolver<
       ProfileFormValues,
       unknown
@@ -297,16 +297,18 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     mode: "onChange",
   });
 
+  const { register, handleSubmit, formState, watch, reset } = form;
+
   // Reset form when mergedInitialValues change (after profile fetch)
   React.useEffect(() => {
     if (
       !hasInitialized.current &&
       Object.keys(mergedInitialValues).length > 0
     ) {
-      register(mergedInitialValues as unknown as ProfileFormValues);
+      reset(mergedInitialValues as unknown as ProfileFormValues);
       hasInitialized.current = true;
     }
-  }, [mergedInitialValues, register]);
+  }, [mergedInitialValues, reset]);
 
   // Restore form state from localStorage on mount
   useEffect(() => {
@@ -314,13 +316,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     const savedDraft = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (savedDraft) {
       try {
-        const parsed = JSON.parse(savedDraft);
-        register(parsed as unknown as ProfileFormValues);
+        const parsedDraft = JSON.parse(savedDraft);
+        reset(parsedDraft as unknown as ProfileFormValues);
       } catch {
         // Ignore parse errors
       }
     }
-  }, [register]);
+  }, [reset]);
 
   // Save form state to localStorage on every change
   useEffect(() => {
@@ -406,6 +408,12 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 
   // Wait for userId if needed for image upload
   const waitForUserId = mode === "create" && !internalProfileId;
+
+  // Notify parent about dirty state changes (run early before any conditional returns)
+  React.useEffect(() => {
+    if (onDirtyChange) onDirtyChange(formState.isDirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formState.isDirty]);
 
   // Use profileId from props if present, otherwise fallback to userIdProp, otherwise fallback to fetchedProfile._id
   const resolvedProfileId =
@@ -495,12 +503,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     );
   }
 
-  // Notify parent about dirty state changes
-  React.useEffect(() => {
-    if (onDirtyChange) onDirtyChange(formState.isDirty);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formState.isDirty]);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
       <motion.main
@@ -587,7 +589,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                   {currentStep === 0 && (
                     <FormSection title="Basic Information">
                       <ProfileFormStepBasicInfo
-                        register={register}
+                        form={form}
                         cmToFeetInches={cmToFeetInches}
                       />
                     </FormSection>
@@ -595,24 +597,24 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                   {currentStep === 1 && (
                     <FormSection title="Location (UK) & Lifestyle">
                       <ProfileFormStepLocation
-                        register={register}
+                        form={form}
                         ukCityOptions={ukCityOptions}
                       />
                     </FormSection>
                   )}
                   {currentStep === 2 && (
                     <FormSection title="Cultural Background">
-                      <ProfileFormStepCultural register={register} />
+                      <ProfileFormStepCultural form={form} />
                     </FormSection>
                   )}
                   {currentStep === 3 && (
                     <FormSection title="Education & Career">
-                      <ProfileFormStepEducation register={register} />
+                      <ProfileFormStepEducation form={form} />
                     </FormSection>
                   )}
                   {currentStep === 4 && (
                     <FormSection title="About & Preferences">
-                      <ProfileFormStepAbout register={register} mode={mode} />
+                      <ProfileFormStepAbout form={form} mode={mode} />
                     </FormSection>
                   )}
                   {currentStep === 5 && (
