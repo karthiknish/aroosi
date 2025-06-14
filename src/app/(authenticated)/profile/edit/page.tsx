@@ -159,7 +159,6 @@ export default function EditProfilePage() {
   const [profileDataState, setProfileDataState] = useState<Profile | null>(
     null
   );
-  // Track saving state to prevent duplicate submits and for "beforeunload" guard
   const [isSaving, setIsSaving] = useState(false);
 
   // Memoize the query key to prevent unnecessary refetches

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "pnpm"
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm type-check
+      - name: Unit / Integration tests (with coverage)
+        run: pnpm test -- --runInBand --coverage
+      - name: Build (static analysis)
+        run: pnpm build
+      - name: Install Playwright browsers
+        run: pnpx playwright install --with-deps
+      - name: E2E tests
+        run: pnpx playwright test --reporter=dot
+      - name: Generate sitemap
+        run: pnpm next-sitemap
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage 

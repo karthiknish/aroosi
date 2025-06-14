@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { toast } from "sonner";
 
 /**
@@ -18,11 +19,12 @@ export function showErrorToast(
     }
   }
   toast.error(message, {
+    ariaProps: { role: "alert", "aria-live": "assertive" },
     style: {
       background: "#FDA4AF", // brand pink
       color: "#ffffff",
     },
-  });
+  } as any);
   // Always log the raw error for diagnostics
   if (error) {
     console.error("[ToastError]", error);
@@ -31,19 +33,21 @@ export function showErrorToast(
 
 export function showSuccessToast(message: string) {
   toast.success(message, {
+    ariaProps: { role: "alert", "aria-live": "polite" },
     style: {
       background: "#BFA67A", // brand gold
       color: "#ffffff",
     },
-  });
+  } as any);
 }
 
 // Informational toast (e.g., prompts or neutral messages)
 export function showInfoToast(message: string) {
   toast.info(message, {
+    ariaProps: { role: "alert", "aria-live": "polite" },
     style: {
       background: "#f5f5f5",
       color: "#000000",
     },
-  });
+  } as any);
 }

@@ -101,7 +101,9 @@ export default function CreateProfilePage() {
           showSuccessToast(
             "Profile created successfully! You can now browse matches."
           );
-          router.push("/dashboard");
+          // Warm the search route cache while the toast animates
+          router.prefetch("/search");
+          router.push("/search");
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : "Failed to create profile";

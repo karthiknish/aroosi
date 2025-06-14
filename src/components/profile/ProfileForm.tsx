@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { defaultRHFConfig } from "@/lib/forms/useRHFConfig";
 import * as z from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -289,12 +290,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 
   // Initialise the React Hook Form instance so we can pass it down to steps
   const form = useForm<ProfileFormValues, unknown, ProfileFormValues>({
-    resolver: zodResolver(essentialProfileSchema) as unknown as Resolver<
-      ProfileFormValues,
-      unknown
-    >,
+    ...defaultRHFConfig<ProfileFormValues>(
+      zodResolver(essentialProfileSchema) as unknown as Resolver<
+        ProfileFormValues,
+        unknown
+      >
+    ),
     defaultValues: mergedInitialValues as unknown as ProfileFormValues,
-    mode: "onChange",
   });
 
   const { register, handleSubmit, formState, watch, reset } = form;
@@ -653,6 +655,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                     <Button
                       type="button"
                       variant="ghost"
+                      onMouseEnter={() => router.prefetch("/profile")}
+                      onFocus={() => router.prefetch("/profile")}
                       onClick={() => router.push("/profile")}
                       disabled={isSubmitting || loading}
                     >
@@ -674,12 +678,20 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                     <Button
                       type="button"
                       className="w-full sm:w-auto bg-pink-600 hover:bg-pink-700 px-8 py-6 text-lg font-medium"
-                      disabled={!isValid || isSubmitting || loading}
+                      loading={isSubmitting || loading}
+                      disabled={!isValid}
+                      onMouseEnter={() =>
+                        mode === "create"
+                          ? router.prefetch("/search")
+                          : router.prefetch("/profile")
+                      }
+                      onFocus={() =>
+                        mode === "create"
+                          ? router.prefetch("/search")
+                          : router.prefetch("/profile")
+                      }
                       onClick={handleFormSubmit}
                     >
-                      {isSubmitting || loading ? (
-                        <LoadingSpinner size={16} className="mr-2" />
-                      ) : null}
                       {buttonText}
                     </Button>
                   )}

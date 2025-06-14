@@ -1,5 +1,5 @@
-import request from "supertest";
-import handler, { POST, GET, DELETE } from "../../src/app/api/interests/route";
+/* eslint-disable */
+import { POST, GET, DELETE } from "../../src/app/api/interests/route";
 import { NextRequest } from "next/server";
 
 describe("/api/interests API", () => {
@@ -10,12 +10,15 @@ describe("/api/interests API", () => {
   });
 
   it("should return 401 if no token on GET", async () => {
-    const req = new NextRequest("http://localhost", { method: "GET" });
+    const req = new NextRequest("http://localhost?userId=test", {
+      method: "GET",
+    });
     const res = await GET(req);
     expect(res.status).toBe(401);
   });
 
   it("should return 400 for invalid POST payload", async () => {
+    process.env.NEXT_PUBLIC_CONVEX_URL = "http://localhost";
     const req = new NextRequest("http://localhost", {
       method: "POST",
       headers: { authorization: "Bearer test" },

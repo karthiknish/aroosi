@@ -350,6 +350,12 @@
 
     --chart-5: 340 75% 55%;
   }
+  /* Invalid field highlight */
+  input[aria-invalid="true"],
+  textarea[aria-invalid="true"],
+  select[aria-invalid="true"] {
+    @apply ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500;
+  }
 }
 
 @layer base {
@@ -367,5 +373,23 @@
   }
   p, .prose p {
     font-family: 'Open Sans', 'Nunito Sans', Arial, sans-serif;
+  }
+  /* Accessibility: universal focus-visible outline */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-pink-500;
+  }
+}
+
+@layer utilities {
+  /* Card hover lift only on devices with fine pointer (desktop) */
+  @media (hover: hover) and (pointer: fine) {
+    .hover-lift {
+      @apply transition-transform duration-200 ease-in-out hover:-translate-y-1 hover:shadow-xl;
+    }
   }
 }

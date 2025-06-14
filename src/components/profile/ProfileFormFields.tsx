@@ -66,6 +66,7 @@ export const FormField: React.FC<FormFieldProps> = ({
       <Textarea
         id={String(name)}
         {...form.register(name)}
+        aria-invalid={!!form.formState.errors[name] || undefined}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
         className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:ring-pink-500 focus:border-pink-500 min-h-[100px]"
         rows={5}
@@ -74,6 +75,7 @@ export const FormField: React.FC<FormFieldProps> = ({
       <Input
         id={String(name)}
         {...form.register(name)}
+        aria-invalid={!!form.formState.errors[name] || undefined}
         type={type}
         placeholder={typeof placeholder === "string" ? placeholder : undefined}
         className="mt-1"
@@ -115,7 +117,15 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
 
           return (
             <Select value={selectedValue} onValueChange={field.onChange}>
-              <SelectTrigger id={String(name)} className="mt-1">
+              <SelectTrigger
+                id={String(name)}
+                aria-invalid={!!form.formState.errors[name] || undefined}
+                className={cn(
+                  "mt-1",
+                  form.formState.errors[name] &&
+                    "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+                )}
+              >
                 <SelectValue placeholder={placeholder} />
               </SelectTrigger>
               <SelectContent>
@@ -230,9 +240,12 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                   <Button
                     variant="outline"
                     data-empty={!selectedDate}
+                    aria-invalid={!!errors[name] || undefined}
                     className={cn(
                       "w-[280px] justify-start text-left font-normal mt-1 data-[empty=true]:text-muted-foreground",
-                      !selectedDate && "text-muted-foreground"
+                      !selectedDate && "text-muted-foreground",
+                      errors[name] &&
+                        "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
                     )}
                     disabled={form.formState.isSubmitting}
                   >
