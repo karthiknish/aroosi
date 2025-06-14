@@ -8,11 +8,7 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 const convexClient = getConvexClient();
 
 export async function GET(request: Request) {
-  // Ensure Convex is configured
-  const client = convexClient;
-  if (!client) {
-    return errorResponse("Convex backend not configured", 500);
-  }
+  let client = convexClient;
 
   try {
     // Validate Authorization header
@@ -32,7 +28,13 @@ export async function GET(request: Request) {
     }
 
     try {
-      // Set auth token for Convex client
+      // Initialize Convex client lazily if not already
+      if (!client) {
+        client = getConvexClient();
+      }
+      if (!client) {
+        return errorResponse("Convex backend not configured", 500);
+      }
       client.setAuth(token);
 
       // Fetch user profile from Convex
@@ -126,11 +128,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  // Ensure Convex is configured
-  const client = convexClient;
-  if (!client) {
-    return errorResponse("Convex backend not configured", 500);
-  }
+  let client = convexClient;
 
   try {
     const token = request.headers.get("Authorization")?.split(" ")[1];
@@ -139,6 +137,12 @@ export async function PUT(request: Request) {
       return errorResponse("No token provided", 401);
     }
 
+    if (!client) {
+      client = getConvexClient();
+    }
+    if (!client) {
+      return errorResponse("Convex backend not configured", 500);
+    }
     console.log("Setting auth token for Convex");
     client.setAuth(token);
 

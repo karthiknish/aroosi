@@ -39,6 +39,10 @@ const URL_BASE = "http://localhost/api/profile";
 describe("/api/profile integration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Ensure each test has a fresh mocked client instance
+    const { getConvexClient: getMockClient } =
+      jest.requireMock("@/lib/convexClient");
+    mockConvexClient = getMockClient();
   });
 
   it("returns 401 for GET without Authorization header", async () => {
@@ -57,7 +61,6 @@ describe("/api/profile integration", () => {
       method: "GET",
       headers: { Authorization: "Bearer testtoken" },
     });
-
     const res = await profileGet(asRequest(req));
     expect(res.status).toBe(200);
   });

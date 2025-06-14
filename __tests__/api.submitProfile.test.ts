@@ -6,6 +6,11 @@ describe("submitProfile", () => {
   const values = { fullName: "A" };
 
   it("returns success true when 200", async () => {
+    if (!global.fetch) {
+      // @ts-expect-error no fetch in JSDOM environment
+      global.fetch = () =>
+        Promise.resolve({ ok: true, json: async () => ({}) });
+    }
     const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true, data: {} }),
@@ -18,6 +23,11 @@ describe("submitProfile", () => {
   });
 
   it("returns error when non-200", async () => {
+    if (!global.fetch) {
+      // @ts-expect-error no fetch in JSDOM environment
+      global.fetch = () =>
+        Promise.resolve({ ok: false, json: async () => ({}) });
+    }
     const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue({
       ok: false,
       status: 500,
