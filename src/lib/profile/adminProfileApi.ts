@@ -367,11 +367,13 @@ export async function fetchAdminProfileImagesById({
     const res = await fetch(`/api/profile-detail/${profileId}/images`, {
       headers,
     });
+    console.log("res", res);
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch profile images: ${errorText}`);
     }
     const data = await res.json();
+    console.log("data", data);
     return Array.isArray(data)
       ? data
       : Array.isArray(data.images)

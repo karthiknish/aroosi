@@ -12,11 +12,11 @@ import {
   updateAdminProfileById,
   fetchAdminProfileImagesById,
 } from "@/lib/profile/adminProfileApi";
-import type { Profile, ProfileEditFormState } from "@/types/profile";
+import type { Profile } from "@/types/profile";
 import { useQuery } from "@tanstack/react-query";
-import type { ApiImage } from "@/lib/utils/profileImageUtils";
+import type { ProfileFormValues } from "@/types/profile";
+import ProfileEditForm from "@/components/admin/ProfileEditForm";
 import type { ImageType } from "@/types/image";
-import ProfileForm from "@/components/profile/ProfileForm";
 
 export default function AdminEditProfilePage() {
   const router = useRouter();
@@ -28,10 +28,11 @@ export default function AdminEditProfilePage() {
     isSignedIn,
     isAdmin,
   } = useAuthContext();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editForm, setEditForm] = useState<ProfileEditFormState>({});
-  const [fetchedImages, setFetchedImages] = useState<ImageType[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+
+  // Image state for admin profile images
+  const [images, setImages] = useState<ImageType[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
 
   // Fetch the profile by id
   const { data: profileData, isLoading } = useQuery<Profile | null>({
@@ -43,126 +44,69 @@ export default function AdminEditProfilePage() {
     enabled: !!id && !!token,
   });
 
-  // Fetch admin images for the profile being edited
-  useEffect(() => {
-    const fetchImages = async () => {
-      if (profileData && token) {
-        const raw = await fetchAdminProfileImagesById({
-          token,
-          profileId: profileData._id,
-        });
-        const apiImages: ApiImage[] = Array.isArray(raw)
-          ? (raw as unknown as ApiImage[])
-          : [];
-        setFetchedImages(
-          apiImages.map((img) => ({
-            id: img._id || img.storageId,
-            url: img.url,
-            storageId: img.storageId,
-          }))
-        );
-      } else {
-        setFetchedImages([]);
-      }
-    };
-    fetchImages();
-  }, [profileData, token]);
-
   // Initialize form state from profile
   useEffect(() => {
     if (profileData) {
       setProfile(profileData);
-      setEditForm({
-        ...profileData,
-        partnerPreferenceUkCity: Array.isArray(
-          profileData.partnerPreferenceUkCity
-        )
-          ? profileData.partnerPreferenceUkCity
-          : [],
-        profileImageIds: Array.isArray(profileData.profileImageIds)
-          ? profileData.profileImageIds
-          : [],
-      });
     }
   }, [profileData]);
 
-  // Handle input changes
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setEditForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Handle select changes
-  const handleSelectChange = (name: string, value: string | undefined) => {
-    setEditForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Handle images changed
-  const handleImagesChanged = (newImageIds: string[]) => {
-    setEditForm((prev) => ({ ...prev, profileImageIds: newImageIds }));
-  };
-
-  // Handle form submit
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (isSubmitting || !id) return;
-    setIsSubmitting(true);
-    try {
-      const updates = {
-        ...editForm,
-        partnerPreferenceAgeMin: Number(editForm.partnerPreferenceAgeMin),
-        partnerPreferenceAgeMax: Number(editForm.partnerPreferenceAgeMax),
-        annualIncome:
-          typeof editForm.annualIncome === "string"
-            ? Number(editForm.annualIncome)
-            : editForm.annualIncome,
-        partnerPreferenceUkCity: Array.isArray(editForm.partnerPreferenceUkCity)
-          ? editForm.partnerPreferenceUkCity
-          : typeof editForm.partnerPreferenceUkCity === "string"
-            ? (editForm.partnerPreferenceUkCity as string)
-                .split(",")
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-            : [],
-        preferredGender: (["male", "female", "any"].includes(
-          editForm.preferredGender as string
-        )
-          ? editForm.preferredGender
-          : "any") as "male" | "female" | "any",
-        maritalStatus: (["single", "divorced", "widowed"].includes(
-          editForm.maritalStatus as string
-        )
-          ? editForm.maritalStatus
-          : "single") as "single" | "divorced" | "widowed",
-      };
-      await updateAdminProfileById({
-        token: token!,
-        id,
-        updates,
-      });
-      showSuccessToast("Profile updated successfully");
-      router.push("/admin");
-    } catch (error) {
-      console.error("Profile update error:", error);
-      showErrorToast(error, "Failed to update profile");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Fetch images when profile and token are available
+  useEffect(() => {
+    if (!token) return;
+    const profileId: string = profile?._id || id || "";
+    if (!profileId) return;
+    setImagesLoading(true);
+    fetchAdminProfileImagesById({ token, profileId })
+      .then((imgs) => setImages(imgs.filter((img) => !!img && !!img.url)))
+      .catch(() => {
+        // Optionally handle error here if you want to show a toast
+        // showErrorToast(null, "Failed to load images");
+      })
+      .finally(() => setImagesLoading(false));
+  }, [profile?._id, id, token]);
 
   // Admin profile update handler
-  const handleAdminProfileUpdate = async (values: any) => {
+  const handleAdminProfileUpdate = async (values: ProfileFormValues) => {
     if (!token || !id) return;
-    // Map form values to Profile shape
+    // Map maritalStatus to correct union type
+    const allowedStatuses = [
+      "single",
+      "divorced",
+      "widowed",
+      "annulled",
+    ] as const;
+    const maritalStatus = allowedStatuses.includes(
+      values.maritalStatus as string as (typeof allowedStatuses)[number]
+    )
+      ? (values.maritalStatus as (typeof allowedStatuses)[number])
+      : "single";
+    // Convert types for backend compatibility
+    const partnerPreferenceAgeMin =
+      typeof values.partnerPreferenceAgeMin === "string"
+        ? parseInt(values.partnerPreferenceAgeMin, 10)
+        : values.partnerPreferenceAgeMin;
+    const partnerPreferenceAgeMax =
+      typeof values.partnerPreferenceAgeMax === "string"
+        ? parseInt(values.partnerPreferenceAgeMax, 10)
+        : values.partnerPreferenceAgeMax;
+    const annualIncome =
+      typeof values.annualIncome === "string"
+        ? parseFloat(values.annualIncome)
+        : values.annualIncome;
+    const allowedGenders = ["male", "female", "any", ""] as const;
+    const preferredGender = allowedGenders.includes(
+      values.preferredGender as string as (typeof allowedGenders)[number]
+    )
+      ? (values.preferredGender as (typeof allowedGenders)[number])
+      : "any";
     const updates = {
       ...values,
-      maritalStatus: ["single", "divorced", "widowed", "annulled"].includes(
-        values.maritalStatus
-      )
-        ? values.maritalStatus
-        : "single",
+      maritalStatus,
+      partnerPreferenceAgeMin,
+      partnerPreferenceAgeMax,
+      annualIncome,
+      preferredGender,
     };
     try {
       await updateAdminProfileById({ token, id, updates });
@@ -188,7 +132,7 @@ export default function AdminEditProfilePage() {
     return null;
   }
 
-  if (isLoading || !editForm || !profile) {
+  if (isLoading || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size={32} />
@@ -219,11 +163,14 @@ export default function AdminEditProfilePage() {
             Back to Profile Management
           </Button>
         </div>
-        <ProfileForm
-          mode="edit"
+        <ProfileEditForm
           initialValues={profile}
           onSubmit={handleAdminProfileUpdate}
-          submitButtonText="Save Changes"
+          profileId={profile?._id || id || ""}
+          token={token || ""}
+          images={images}
+          setImages={setImages}
+          imagesLoading={imagesLoading}
         />
       </div>
     </div>

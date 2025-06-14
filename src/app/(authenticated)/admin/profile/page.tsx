@@ -192,7 +192,7 @@ export default function AdminProfilePage() {
           <input
             type="text"
             placeholder="Search by name, city, or phone..."
-            className="flex-1 outline-none bg-transparent text-base"
+            className="flex-1 outline-none bg-white text-base text-foreground"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -200,12 +200,16 @@ export default function AdminProfilePage() {
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Status:</span>
           <select
-            className="border rounded px-2 py-1 text-base"
+            className="border rounded px-2 py-1 text-base text-foreground bg-white"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
             {statusOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <option
+                key={opt.value}
+                value={opt.value}
+                className="text-foreground"
+              >
                 {opt.label}
               </option>
             ))}
@@ -260,14 +264,26 @@ export default function AdminProfilePage() {
                 </div>
               </div>
               {/* Status badge */}
-              <div className="flex justify-center gap-2 mb-1">
-                {profile.banned ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
-                    <Ban className="w-3 h-3" /> Banned
+              <div className="flex flex-col items-center gap-1 mb-1">
+                <div className="flex justify-center gap-2">
+                  {profile.banned ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                      <Ban className="w-3 h-3" /> Banned
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">
+                      <CheckCircle className="w-3 h-3" /> Active
+                    </span>
+                  )}
+                </div>
+                {/* Approval badge */}
+                {profile.isApproved ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-50 text-green-700 border border-green-200">
+                    <CheckCircle className="w-3 h-3" /> Approved
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">
-                    <CheckCircle className="w-3 h-3" /> Active
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-500 border border-gray-200">
+                    <CheckCircle className="w-3 h-3" /> Not Approved
                   </span>
                 )}
               </div>
