@@ -23,7 +23,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     setHydrated(true);
   }, []);
 
-  const { isAdmin, isSignedIn, signOut } = useAuthContext();
+  const { isAdmin, isSignedIn, signOut, profile } = useAuthContext();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   if (!hydrated) return null;
@@ -123,6 +123,27 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   </Button>
                 </Link>
               </motion.div>
+
+              {profile &&
+                (profile.subscriptionPlan === "premium" ||
+                  profile.subscriptionPlan === "premiumPlus") && (
+                  <motion.div
+                    custom={1.7}
+                    variants={navItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <Link href="/premium-settings" onClick={onClick}>
+                      <Button
+                        variant="ghost"
+                        className="w-full cursor-pointer text-left text-[#BFA67A] hover:text-[#BFA67A] hover:bg-primary-light"
+                      >
+                        <Shield className="h-5 w-5 mr-1 sm:mr-2" />
+                        <span>Premium Settings</span>
+                      </Button>
+                    </Link>
+                  </motion.div>
+                )}
 
               <motion.div
                 custom={2}
