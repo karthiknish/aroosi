@@ -137,6 +137,31 @@ export function useMatchMessages(conversationId: string, token: string) {
     // Could prefetch here if desired using a timeout
   }, [hasMore, messages.length]);
 
+  // Real-time updates via native Server-Sent Events
+  useEffect(() => {
+    if (!token) return;
+    const url = `/api/conversations/${conversationId}/events?token=${token}`;
+    const es = new EventSource(url);
+    es.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data) as Message;
+        setMessages((prev) => {
+          // avoid duplicates (by _id)
+          if (prev.some((m) => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
+      } catch (e) {
+        console.error("[SSE] Failed to parse message", e);
+      }
+    };
+    es.onerror = (e) => {
+      console.error("[SSE] error", e);
+    };
+    return () => {
+      es.close();
+    };
+  }, [conversationId, token]);
+
   return {
     messages,
     loading,

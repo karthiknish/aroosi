@@ -69,6 +69,9 @@ export async function POST(req: NextRequest) {
       toUserId: toUserId as Id<"users">,
       text,
     });
+    // Broadcast to SSE subscribers
+    const { eventBus } = await import("@/lib/eventBus");
+    eventBus.emit(conversationId, result);
     return successResponse(result);
   } catch (error) {
     const isAuthError =

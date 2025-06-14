@@ -4,7 +4,12 @@ export function getAuthToken(req: import("next/server").NextRequest): {
 } {
   const authHeader =
     req.headers.get("authorization") || req.headers.get("Authorization");
-  if (!authHeader) return { token: null, error: "No authorization header" };
+  if (!authHeader) {
+    // Fallback for EventSource which can't send headers: look in query param
+    const tokenFromQuery = req.nextUrl?.searchParams.get("token");
+    if (tokenFromQuery) return { token: tokenFromQuery };
+    return { token: null, error: "No authorization header" };
+  }
   const [type, token] = authHeader.split(" ");
   if (type !== "Bearer" || !token)
     return { token: null, error: "Invalid authorization header" };
