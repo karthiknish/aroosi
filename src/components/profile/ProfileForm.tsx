@@ -205,6 +205,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     Partial<ProfileFormValues>
   >({});
 
+  // Track latest images list from image step
+  const [latestImages, setLatestImages] = useState<ImageType[]>([]);
+
   // Only fetch user profile if initialValues is empty (for create mode)
   React.useEffect(() => {
     if (initialValues && Object.keys(initialValues).length > 0) {
@@ -336,12 +339,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     { value: "belfast", label: "Belfast" },
   ]);
 
-  // Compute the current image order from images props (userImages)
-  const imageOrder = React.useMemo(() => {
-    const imgs: MappedImage[] = (userImages ?? []) as MappedImage[];
-    return imgs.map((img: MappedImage) => img.storageId || "");
-  }, [userImages]);
-
   const {
     handleSubmit,
     formState: { isValid },
@@ -354,7 +351,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       return;
     }
     // Require at least one profile image for both create and edit
-    if (!imageOrder || imageOrder.length === 0) {
+    const currentImagesArray = latestImages.length
+      ? latestImages
+      : (userImages ?? []);
+    const checkIds = currentImagesArray.map((img) => {
+      if (typeof img !== "object" || !img) return "";
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      return (img.storageId as string) || (img.id as string) || "";
+    });
+    if (checkIds.length === 0) {
       showErrorToast(
         null,
         "Please upload at least one profile photo to continue."
@@ -367,7 +373,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     }
     onSubmit?.({
       ...data,
-      profileImageIds: imageOrder,
+      profileImageIds: checkIds,
       annualIncome:
         typeof data.annualIncome === "string"
           ? parseFloat(data.annualIncome)
@@ -405,12 +411,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   }) => {
     const { data: apiImages = [], isLoading } = useProfileImages(profileId);
     // Map ApiImage[] to ImageType[]
-    const images = apiImages.map((img) => ({
-      id: img.storageId || img._id,
-      url: img.url,
-      storageId: img.storageId,
-      _id: img._id,
-    }));
+    const images = React.useMemo(
+      () =>
+        apiImages.map((img) => ({
+          id: img.storageId || img._id,
+          url: img.url,
+          storageId: img.storageId,
+          _id: img._id,
+        })),
+      [apiImages]
+    );
     // Get the reorder and delete hooks at the top level
     const reorderImages = useImageReorder(profileId);
     const deleteImage = useDeleteImage(profileId);
@@ -431,6 +441,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
         profileId={profileId}
         onImageReorder={handleReorder}
         onImageDelete={handleDelete}
+        onImagesChanged={(imgs) => {
+          // Avoid infinite re-renders by checking if list actually changed
+          setLatestImages((prev) => {
+            const prevStr = JSON.stringify(prev);
+            const nextStr = JSON.stringify(imgs);
+            return prevStr === nextStr ? prev : imgs;
+          });
+        }}
       />
     );
   };
@@ -592,7 +610,10 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                     </FormSection>
                   )}
                   {currentStep === 6 && (
-                    <FormSection title="Subscription Plan">
+                    <FormSection
+                      title="Subscription Plan"
+                      gridClassName="grid grid-cols-1"
+                    >
                       <ProfileFormStepPlans form={form} />
                     </FormSection>
                   )}

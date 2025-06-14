@@ -8,7 +8,8 @@ import React, {
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { ProfileImageReorder } from "./ProfileImageReorder";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
 import { Id } from "@/../convex/_generated/dataModel";
 import { useAuthContext } from "./AuthProvider";
@@ -68,6 +69,7 @@ export function ProfileImageUpload({
   // Hooks must be called unconditionally at the top level
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const { token, refreshProfile, isAdmin: authIsAdmin } = useAuthContext();
 
   // State management (moved to top)
@@ -115,13 +117,15 @@ export function ProfileImageUpload({
   const refetchImages = useCallback(async () => {
     try {
       await _refetchImages();
-      // Also refresh the profile to ensure consistency
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["profile-images", userId] });
+      }
       await refreshProfile();
     } catch (error) {
       console.error("Failed to refetch images:", error);
       showErrorToast(null, "Failed to refresh images");
     }
-  }, [_refetchImages, refreshProfile]);
+  }, [_refetchImages, refreshProfile, queryClient, userId]);
 
   const { data: currentUserProfile } = useQuery({
     queryKey: ["currentUserWithProfile"],
@@ -230,21 +234,31 @@ export function ProfileImageUpload({
 
       const data = await res.json();
 
-      // Validate response structure
-      if (
-        typeof data.success !== "boolean" ||
-        typeof data.imageId !== "string" ||
-        typeof data.message !== "string"
-      ) {
+      const normalized = (() => {
+        if (
+          typeof data.success === "boolean" &&
+          typeof data.imageId === "string"
+        ) {
+          return data;
+        }
+        if (
+          data.success === true &&
+          data.data &&
+          typeof data.data.imageId === "string"
+        ) {
+          return { success: true, ...data.data };
+        }
+        return null;
+      })();
+
+      if (!normalized) {
         throw new Error("Invalid response structure from /api/images");
       }
 
-      // Return the response without triggering a refetch
-      // The ImageUploader component will handle the success state
       return {
-        success: data.success,
-        imageId: data.imageId as Id<"_storage">,
-        message: data.message,
+        success: normalized.success,
+        imageId: normalized.imageId as Id<"_storage">,
+        message: normalized.message || "Image uploaded",
       };
     },
     [token]
@@ -361,7 +375,14 @@ export function ProfileImageUpload({
   }
   return (
     <div className="space-y-4">
-      {/* Render ProfileImageReorder component for displaying and reordering existing images */}
+      {/* Display existing images with drag-and-drop reorder & delete */}
+      {memoizedOrderedImages.length > 0 && (
+        <ProfileImageReorder
+          images={memoizedOrderedImages}
+          userId={userId}
+          onDeleteImage={(id) => deleteImageMutation.mutate(id)}
+        />
+      )}
 
       {/* Image Upload Section (Use ImageUploader for adding new images) */}
       {(memoizedOrderedImages?.length ?? 0) < MAX_IMAGES_PER_USER && (

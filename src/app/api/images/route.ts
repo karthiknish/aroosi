@@ -91,7 +91,9 @@ export async function POST(req: NextRequest) {
       );
     }
     return successResponse(result);
-  } catch {
-    return errorResponse("Failed to upload image", 500);
+  } catch (err) {
+    console.error("/api/images POST error", err);
+    const message = err instanceof Error ? err.message : "Failed to upload image";
+    return errorResponse(message, 500);
   }
 }

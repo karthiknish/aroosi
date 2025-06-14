@@ -155,7 +155,9 @@ export function ProfileImageReorder({
       if (oldIndex === -1 || newIndex === -1) return;
 
       const newOrdered = arrayMove(images, oldIndex, newIndex);
-      const newStorageOrder = newOrdered.map((img) => img.id);
+      const newStorageOrder = newOrdered.map((img) =>
+        img.storageId ? img.storageId : img.id
+      );
 
       if (onReorder) onReorder(newOrdered);
 

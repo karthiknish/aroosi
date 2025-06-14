@@ -143,9 +143,15 @@ export function ImageUploader({
 
   const uploadImageFile = useCallback(
     async (file: File) => {
-      if (!userId) return;
+      if (!userId || userId === "user-id-placeholder") {
+        showErrorToast(
+          null,
+          "User data still loading. Please try again in a moment."
+        );
+        return;
+      }
       const currentImages = orderedImages || [];
-      const maxProfileImages = 10;
+      const maxProfileImages = 5;
       if (currentImages.length >= maxProfileImages) {
         showErrorToast(
           null,
@@ -190,8 +196,14 @@ export function ImageUploader({
           throw new Error(msg);
         }
 
-        // Convex storage returns storageId as plain text, not JSON
-        const storageId = await storageResp.text();
+        // Convex storage responds with JSON: { storageId: "..." }
+        const storageJson = await storageResp.json().catch(() => null);
+        const storageId =
+          storageJson?.storageId ||
+          (typeof storageJson === "string" ? storageJson : null);
+        if (!storageId) {
+          throw new Error("Invalid response from storage upload");
+        }
 
         // Step 3: Save the image reference in the database
         const mutationResult = await uploadImage({

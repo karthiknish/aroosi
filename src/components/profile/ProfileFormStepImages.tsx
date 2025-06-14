@@ -9,6 +9,7 @@ interface Props {
   images: ImageType[];
   onImageDelete?: (imageId: string) => Promise<void>;
   onImageReorder?: (newOrder: ImageType[]) => void;
+  onImagesChanged?: (images: ImageType[]) => void;
   isLoading: boolean;
   isAdmin?: boolean;
   profileId?: string;
@@ -18,11 +19,18 @@ const ProfileFormStepImages: React.FC<Props> = ({
   images = [],
   onImageDelete,
   onImageReorder,
+  onImagesChanged,
   isLoading,
   profileId,
 }) => {
   const { profile, isAdmin } = useAuthContext();
   const userId = profile?.userId || "user-id-placeholder";
+
+  // Notify parent of image changes (run even during loading to reset state)
+  React.useEffect(() => {
+    onImagesChanged?.(images);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(images)]);
 
   if (isLoading) {
     return (
