@@ -237,7 +237,7 @@ const ProfileView: FC<ProfileViewProps> = ({
 
   return (
     <div
-      className={`w-full pt-12 pb-8 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}
+      className={`w-full pt-4 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}
     >
       {/* Decorative color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>

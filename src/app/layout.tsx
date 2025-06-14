@@ -50,7 +50,7 @@ function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <Header />
-      <main className="pt-24 pb-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden">
+      <main className="pt-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden">
         <RouteTransition>{children}</RouteTransition>
       </main>
       <Footer />

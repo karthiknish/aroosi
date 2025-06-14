@@ -183,7 +183,6 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   return (
     <div className="flex items-center justify-center w-full bg-base-light">
       <ProfileView
-        className="mt-16"
         profileData={profile}
         images={images}
         isLoadingImages={imagesLoading}
