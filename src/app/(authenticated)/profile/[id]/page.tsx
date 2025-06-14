@@ -28,7 +28,6 @@ import {
   fetchUserProfileImages,
   fetchUserProfile,
 } from "@/lib/profile/userProfileApi";
-import Link from "next/link";
 import {
   sendInterest,
   removeInterest,
@@ -37,7 +36,6 @@ import {
 import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
 import { useOffline } from "@/hooks/useOffline";
 
 type Interest = {
