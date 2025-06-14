@@ -5,6 +5,13 @@ import { convexClientFromRequest } from "@/lib/convexClient";
 export async function POST(request: NextRequest) {
   try {
     const convexClient = await convexClientFromRequest(request);
+    if (!convexClient) {
+      return NextResponse.json(
+        { success: false, error: "Convex backend not configured" },
+        { status: 500 }
+      );
+    }
+
     const result = await convexClient.mutation(api.users.boostProfile, {});
     return NextResponse.json({ success: true, ...result });
   } catch (error: unknown) {

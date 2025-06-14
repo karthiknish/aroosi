@@ -1,10 +1,14 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
-const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const convexClient = getConvexClient()!;
+
+if (!convexClient) {
+  return errorResponse("Convex backend not configured", 500);
+}
 
 export async function GET(request: Request) {
   try {
@@ -214,7 +218,7 @@ export async function POST(req: NextRequest) {
     console.error("Unauthorized: Missing or invalid token");
     return errorResponse("Unauthorized", 401);
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
   convex.setAuth(token);
   let body: Record<string, unknown>;
   try {
