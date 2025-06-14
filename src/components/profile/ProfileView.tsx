@@ -14,6 +14,7 @@ import {
   Briefcase,
   Info,
   Edit3,
+  BadgeCheck,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -326,10 +327,19 @@ const ProfileView: FC<ProfileViewProps> = ({
                     </span>
                   }
                 >
-                  <ProfileDetailView
-                    label="Full Name"
-                    value={profileData.fullName}
-                  />
+                  {/* Full Name with spotlight tick for premium users */}
+                  <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-gray-100">
+                    <dt className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                      Full Name
+                    </dt>
+                    <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800 flex items-center gap-1">
+                      {profileData.fullName}
+                      {(profileData.subscriptionPlan === "premium" ||
+                        profileData.subscriptionPlan === "premiumPlus") && (
+                        <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
+                      )}
+                    </dd>
+                  </div>
                   <ProfileDetailView
                     label="Date of Birth"
                     value={

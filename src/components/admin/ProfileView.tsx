@@ -198,8 +198,12 @@ export default function ProfileView({
         </div>
         {/* Profile details */}
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-1">
             {profiledata.fullName || "No Name"}
+            {(profiledata.subscriptionPlan === "premium" ||
+              profiledata.subscriptionPlan === "premiumPlus") && (
+              <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
+            )}
           </h2>
           {profiledata.aboutMe && (
             <p className="mt-1 text-gray-600">{profiledata.aboutMe}</p>

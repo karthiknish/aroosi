@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserCircle, Rocket } from "lucide-react";
+import { UserCircle, Rocket, BadgeCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -96,6 +96,7 @@ export interface ProfileData {
   isProfileComplete?: boolean;
   hiddenFromSearch?: boolean;
   boostedUntil?: number;
+  subscriptionPlan?: string;
   [key: string]: unknown;
 }
 export interface ProfileSearchResult {
@@ -425,10 +426,14 @@ export default function SearchProfilesPage() {
                       )}
                       <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
                         <div
-                          className="text-xl font-serif font-bold text-gray-900 mb-1"
+                          className="text-xl font-serif font-bold text-gray-900 mb-1 flex items-center gap-1"
                           style={{ fontFamily: "Lora, serif" }}
                         >
                           {typeof p.fullName === "string" ? p.fullName : ""}
+                          {(p.subscriptionPlan === "premium" ||
+                            p.subscriptionPlan === "premiumPlus") && (
+                            <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
+                          )}
                         </div>
                         <div
                           className="text-sm text-gray-600 mb-1"
