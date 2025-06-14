@@ -409,7 +409,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   const ProfileFormImageStepWrapper: React.FC<{ profileId: string }> = ({
     profileId,
   }) => {
-    const { data: apiImages = [], isLoading } = useProfileImages(profileId);
+    const {
+      data: apiImages = [],
+      isLoading,
+      refetch: refetchImages,
+    } = useProfileImages(profileId);
     // Map ApiImage[] to ImageType[]
     const images = React.useMemo(
       () =>
@@ -433,6 +437,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     const handleDelete = async (imageId: string) => {
       // Skip the default browser confirm because ImageDeleteConfirmation modal is already shown
       await deleteImage(imageId, true);
+      // Explicitly refetch images after deletion to ensure latest list is shown immediately
+      await refetchImages();
+      return;
     };
     return (
       <ProfileFormStepImages

@@ -161,6 +161,10 @@ export function ProfileImageUpload({
           profileImageIds.length > prevImageCount.current
         ) {
           showSuccessToast("Image uploaded successfully");
+          // Explicitly refetch images so parent components get latest list immediately
+          refetchImages().catch((err) => {
+            console.error("Failed to refetch images after upload", err);
+          });
           setIsUploadingFile(false);
         }
         prevImageCount.current = profileImageIds.length;
