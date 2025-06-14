@@ -159,6 +159,7 @@ export async function PUT(request: Request) {
       "preferredGender",
       "isApproved",
       "hiddenFromSearch",
+      "hideFromFreeUsers",
       "subscriptionPlan",
       "subscriptionExpiresAt",
     ] as const;

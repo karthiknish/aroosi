@@ -97,6 +97,7 @@ export interface ProfileData {
   hiddenFromSearch?: boolean;
   boostedUntil?: number;
   subscriptionPlan?: string;
+  hideFromFreeUsers?: boolean;
   [key: string]: unknown;
 }
 export interface ProfileSearchResult {
@@ -216,8 +217,13 @@ export default function SearchProfilesPage() {
   // Filter out current user and incomplete profiles
   const filtered = useMemo(() => {
     return (publicProfiles || []).filter((u: ProfileSearchResult) => {
-      if (!u.profile?.isProfileComplete || u.profile?.hiddenFromSearch)
-        return false;
+      const p = u.profile;
+      if (!p?.isProfileComplete || p.hiddenFromSearch) return false;
+
+      // Hide premium-hidden profiles from free viewers
+      const viewerPlan = currentUser?.subscriptionPlan || "free";
+      if (p.hideFromFreeUsers && viewerPlan === "free") return false;
+
       if (currentUser) {
         if (u.userId === currentUser.userId) return false;
         if (
