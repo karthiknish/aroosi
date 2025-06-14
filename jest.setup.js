@@ -108,3 +108,15 @@ if (typeof global.Request !== "undefined") {
     }
   };
 }
+
+// Mock toast helpers globally to avoid actual UI & allow assertions
+jest.mock("@/lib/ui/toast", () => {
+  const actual = jest.requireActual("./src/lib/ui/toast");
+  return {
+    __esModule: true,
+    ...actual,
+    showErrorToast: jest.fn(actual.showErrorToast),
+    showSuccessToast: jest.fn(actual.showSuccessToast),
+    showInfoToast: jest.fn(actual.showInfoToast),
+  };
+});
