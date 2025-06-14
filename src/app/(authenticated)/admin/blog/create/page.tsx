@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { createBlogPost } from "@/lib/blogUtil";
+import {
+  createBlogPost,
+  convertAiTextToHtml,
+  convertTextToMarkdown,
+} from "@/lib/blogUtil";
 import { CreatePost } from "@/components/admin/CreatePost";
 import { showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
+
 export default function CreateBlogPage() {
   const { token } = useAuthContext();
   const [title, setTitle] = useState<string>("");
@@ -47,32 +52,8 @@ export default function CreateBlogPage() {
   ];
   async function aiText(text: string, field: "excerpt" | "category") {
     try {
-      if (!token) {
-        throw new Error("Authentication required");
-      }
-
-      const res = await fetch("/api/convert-ai-text-to-html", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text, type: field }),
-        cache: "no-store",
-      });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || "AI processing failed");
-      }
-
-      const data = await res.json();
-
-      // Extract plain text from HTML
-      const temp = document.createElement("div");
-      temp.innerHTML = data.html;
-      const plain = temp.textContent || temp.innerText || "";
-      return plain.trim();
+      if (!token) throw new Error("Authentication required");
+      return await convertAiTextToHtml({ token, text, type: field });
     } catch (error) {
       console.error(`Error in AI ${field} generation:`, error);
       const message =
@@ -127,26 +108,8 @@ export default function CreateBlogPage() {
     prompt?: string
   ): Promise<string> => {
     try {
-      if (!token) {
-        throw new Error("Authentication required");
-      }
-
-      const response = await fetch("/api/convert-markdown", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ text, prompt }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || "Failed to convert to markdown");
-      }
-
-      const data = await response.json();
-      return data.markdown;
+      if (!token) throw new Error("Authentication required");
+      return await convertTextToMarkdown({ token, text, prompt });
     } catch (error) {
       console.error("Error converting to markdown:", error);
       showErrorToast(error, "Failed to convert to markdown");

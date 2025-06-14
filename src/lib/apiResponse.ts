@@ -8,11 +8,25 @@ export const successResponse = <T = unknown>(data?: T, status = 200) =>
   );
 
 export const errorResponse = (
-  error: string,
+  error: unknown,
   status = 400,
   extra?: Record<string, unknown>
-) =>
-  new Response(JSON.stringify({ success: false, error, ...(extra ?? {}) }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
+) => {
+  const isDev = process.env.NODE_ENV === "development";
+  // Only expose detailed error messages in development to avoid leaking internal details.
+  const message = isDev
+    ? typeof error === "string"
+      ? error
+      : error instanceof Error && error.message
+        ? error.message
+        : "Unknown error"
+    : "Something went wrong";
+
+  return new Response(
+    JSON.stringify({ success: false, error: message, ...(extra ?? {}) }),
+    {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+};

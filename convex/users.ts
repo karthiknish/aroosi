@@ -1593,21 +1593,34 @@ export const boostProfile = mutation({
       throw new ConvexError("Profile Boost is only available for Premium Plus");
     }
 
-    const boostsRemaining: number = profile.boostsRemaining ?? 3;
-    if (boostsRemaining <= 0) {
+    // Determine if we need to reset monthly quota
+    const now = new Date();
+    const currentMonthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`; // e.g. "2024-6"
+
+    let boostsRemaining = profile.boostsRemaining as number | undefined;
+    let boostsMonth = (profile as any).boostsMonth as string | undefined;
+
+    if (boostsMonth !== currentMonthKey) {
+      // New month → reset quota to 5
+      boostsRemaining = 5;
+      boostsMonth = currentMonthKey;
+    }
+
+    if ((boostsRemaining ?? 0) <= 0) {
       throw new ConvexError("No boosts remaining this month");
     }
 
-    // Mark boostedUntil for 1 hour
+    // Mark boostedUntil for 1 hour and decrement quota
     const updates: Partial<ConvexProfile> = {
-      boostsRemaining: boostsRemaining - 1,
+      boostsRemaining: (boostsRemaining ?? 0) - 1,
+      boostsMonth,
       boostedUntil: Date.now() + 60 * 60 * 1000, // 1 hour
       updatedAt: Date.now(),
     };
 
     await ctx.db.patch(profile._id, updates as any);
 
-    return { boostsRemaining: boostsRemaining - 1 };
+    return { boostsRemaining: (boostsRemaining ?? 0) - 1 };
   },
 });
 

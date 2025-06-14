@@ -176,3 +176,98 @@ export async function fetchBlogPostBySlug(
   if (data && data.data) return data.data;
   return data;
 }
+
+// Upload blog image metadata and get public URL (requires admin token)
+export async function uploadBlogImageMeta({
+  token,
+  storageId,
+  fileName,
+  contentType,
+  fileSize,
+}: {
+  token: string;
+  storageId: string;
+  fileName: string;
+  contentType?: string;
+  fileSize?: number;
+}): Promise<string> {
+  const res = await fetch("/api/images/blog", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ storageId, fileName, contentType, fileSize }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to register blog image");
+  }
+  // Support shapes { url } or { data: { url } }
+  const url =
+    data?.url ??
+    (data?.data && (data.data as { url?: string }).url) ??
+    (data?.data?.url as string | undefined);
+  if (!url) {
+    throw new Error("Image URL missing in response");
+  }
+  return url;
+}
+
+// Convert AI text (excerpt/category) to plain text via server-side Gemini call
+export async function convertAiTextToHtml({
+  token,
+  text,
+  type,
+}: {
+  token: string;
+  text: string;
+  type: "excerpt" | "category";
+}): Promise<string> {
+  const res = await fetch("/api/convert-ai-text-to-html", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text, type }),
+    cache: "no-store",
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error || "AI processing failed");
+  }
+  // Extract and return plain text from returned HTML
+  if (typeof data?.html === "string") {
+    const temp = document.createElement("div");
+    temp.innerHTML = data.html;
+    const plain = temp.textContent || temp.innerText || "";
+    return plain.trim();
+  }
+  return "";
+}
+
+// Convert arbitrary text to markdown using Gemini
+export async function convertTextToMarkdown({
+  token,
+  text,
+  prompt,
+}: {
+  token: string;
+  text: string;
+  prompt?: string;
+}): Promise<string> {
+  const res = await fetch("/api/convert-markdown", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text, prompt }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.error || "Failed to convert to markdown");
+  }
+  return data?.markdown ?? data?.data?.markdown ?? "";
+}

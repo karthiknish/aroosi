@@ -33,7 +33,7 @@ import ProfileFormStepPlans from "./ProfileFormStepPlans";
 import { useAuthContext } from "@/components/AuthProvider";
 
 // Add Next.js router
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 // Import user profile API
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
@@ -176,7 +176,7 @@ export function mapProfileToFormValues(
 const LOCAL_STORAGE_KEY = "profileFormDraft";
 
 const ProfileForm: React.FC<ProfileFormProps> = ({
-  mode = "create",
+  mode: _mode = "create",
   initialValues = {},
   onSubmit,
   loading = false,
@@ -188,6 +188,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 }) => {
   const { token, profile: authProfile } = useAuthContext();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Determine mode based on pathname if not provided explicitly
+  const mode = React.useMemo<"create" | "edit">(() => {
+    if (pathname?.includes("create-profile")) return "create";
+    if (pathname?.includes("profile/edit")) return "edit";
+    return _mode;
+  }, [pathname, _mode]);
 
   // Use userId from prop if provided, otherwise fallback to profile
   const [internalProfileId] = useState<string>(

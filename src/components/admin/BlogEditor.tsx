@@ -67,6 +67,8 @@ import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
 import "@/styles/emoji-picker-custom.css";
 import { useAuthContext } from "../AuthProvider";
+import { getImageUploadUrl } from "@/lib/utils/imageUtil";
+import { uploadBlogImageMeta } from "@/lib/blogUtil";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
@@ -100,14 +102,13 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       setUploading(true);
       setUploadError(null);
       try {
+        if (!token) throw new Error("Authentication required");
         const file = acceptedFiles[0];
-        // 1. Get upload URL from backend
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const uploadUrlRes = await fetch("/api/images/upload-url", { headers });
-        if (!uploadUrlRes.ok) throw new Error("Failed to get upload URL");
-        const { uploadUrl } = await uploadUrlRes.json();
-        // 2. Upload file to storage
+
+        // 1. Get a signed upload URL
+        const uploadUrl = await getImageUploadUrl(token);
+
+        // 2. Upload the file to storage
         const uploadRes = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": file.type },
@@ -115,24 +116,18 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         });
         if (!uploadRes.ok) throw new Error("Failed to upload image");
         const { storageId } = await uploadRes.json();
-        // 3. Register image and get public URL
-        const blogImageRes = await fetch("/api/images/blog", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            storageId,
-            fileName: file.name,
-            contentType: file.type,
-            fileSize: file.size,
-          }),
+
+        // 3. Register the image for blog usage and get its public URL
+        const url = await uploadBlogImageMeta({
+          token,
+          storageId,
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size,
         });
-        const imageDoc = await blogImageRes.json();
-        if (!imageDoc?.url) throw new Error("Failed to get image URL");
-        // 4. Insert image into editor
-        editor.chain().focus().setImage({ src: imageDoc.url }).run();
+
+        // 4. Insert image into the editor
+        editor.chain().focus().setImage({ src: url }).run();
         setImageModalOpen(false);
       } catch (err: unknown) {
         console.error("Image upload failed:", err);

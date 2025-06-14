@@ -9,6 +9,11 @@ import { Rocket } from "lucide-react";
 import { useProfileContext } from "@/contexts/ProfileContext";
 import { useAuthContext } from "@/components/AuthProvider";
 
+function computeCurrentMonthKey() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
+}
+
 const ProfileBoostButton = () => {
   const { profile, refetchProfileStatus, isLoading } = useProfileContext();
   const { token } = useAuthContext();
@@ -34,7 +39,12 @@ const ProfileBoostButton = () => {
     }
   };
 
-  const disabled = loading || (profile.boostsRemaining ?? 0) <= 0;
+  let boostsRemaining = profile.boostsRemaining ?? 0;
+  if (profile.boostsMonth && profile.boostsMonth !== computeCurrentMonthKey()) {
+    boostsRemaining = 5; // reset quota client-side if month changed
+  }
+
+  const disabled = loading || boostsRemaining <= 0;
 
   return (
     <Button onClick={handleBoost} disabled={disabled} variant="secondary">

@@ -43,6 +43,7 @@ export interface Profile {
   subscriptionPlan: SubscriptionPlan;
   subscriptionExpiresAt?: number;
   boostsRemaining?: number;
+  boostsMonth?: string;
 }
 
 export interface ProfileFormValues {
@@ -189,7 +190,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlanDetails[] = [
     duration: "per month",
     features: [
       "All Premium features",
-      "Profile Boost (3x per month)",
+      "Profile Boost (5x per month)",
       "See who viewed your profile",
       "Access to premium-only filters (income, career, education)",
       "Spotlight badge on profile",
