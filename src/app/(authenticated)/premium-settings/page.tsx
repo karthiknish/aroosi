@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,10 @@ import { useRouter } from "next/navigation";
 
 export default function PremiumSettingsPage() {
   const { profile, token, refreshProfile } = useAuthContext();
+  const [hideProfile, setHideProfile] = useState<boolean>(
+    !!profile?.hideFromFreeUsers
+  );
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   if (!profile) return null;
@@ -19,11 +24,6 @@ export default function PremiumSettingsPage() {
     if (typeof window !== "undefined") router.replace("/pricing");
     return null;
   }
-
-  const [hideProfile, setHideProfile] = useState<boolean>(
-    !!profile.hideFromFreeUsers
-  );
-  const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     try {
