@@ -115,7 +115,7 @@ export const useImageReorder = (profileId: string) => {
  * Handles deletion of a profile image
  */
 export const useDeleteImage = (profileId: string) => {
-  const { token } = useAuthContext();
+  const { token, profile } = useAuthContext();
   const queryClient = useQueryClient();
 
   return async (imageId: string, skipPrompt: boolean = false) => {
@@ -136,7 +136,7 @@ export const useDeleteImage = (profileId: string) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId: profileId, imageId }),
+        body: JSON.stringify({ userId: profile?.userId || profileId, imageId }),
       });
 
       if (!response.ok) {
