@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { requireUserToken } from "@/app/api/_utils/auth";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -14,11 +15,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authCheck = requireUserToken(req);
+  if ("errorResponse" in authCheck) return authCheck.errorResponse;
+  const { token } = authCheck;
 
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return NextResponse.json(

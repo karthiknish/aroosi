@@ -2,24 +2,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
-
-function getToken(req: NextRequest): { token: string | null; error?: string } {
-  const auth = req.headers.get("authorization");
-  if (!auth) return { token: null, error: "No auth header" };
-  const [type, token] = auth.split(" ");
-  if (type !== "Bearer" || !token)
-    return { token: null, error: "Invalid token" };
-  return { token };
-}
+import { requireAdminToken } from "@/app/api/_utils/auth";
 
 export async function POST(req: NextRequest) {
-  const { token, error } = getToken(req);
-  if (!token) {
-    return NextResponse.json(
-      { success: false, error: error || "Unauthorized" },
-      { status: 401 }
-    );
+  const adminCheck = requireAdminToken(req);
+  if ("errorResponse" in adminCheck) {
+    return adminCheck.errorResponse;
   }
+  const { token } = adminCheck;
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return NextResponse.json(
       { success: false, error: "Server config error" },

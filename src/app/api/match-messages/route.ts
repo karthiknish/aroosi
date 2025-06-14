@@ -3,25 +3,7 @@ import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-
-function getTokenFromRequest(req: NextRequest): {
-  token: string | null;
-  error?: string;
-} {
-  try {
-    const auth = req.headers.get("authorization");
-    if (!auth) return { token: null, error: "No authorization header" };
-    const [type, token] = auth.split(" ");
-    if (type !== "Bearer") return { token: null, error: "Invalid token type" };
-    if (!token) return { token: null, error: "No token provided" };
-    return { token };
-  } catch (error) {
-    return {
-      token: null,
-      error: error instanceof Error ? error.message : "Failed to process token",
-    };
-  }
-}
+import { requireUserToken } from "@/app/api/_utils/auth";
 
 // GET: Fetch messages for a conversation
 export async function GET(req: NextRequest) {
@@ -34,10 +16,9 @@ export async function GET(req: NextRequest) {
   if (!conversationId) {
     return errorResponse("Missing conversationId parameter", 400);
   }
-  const { token, error: tokenError } = getTokenFromRequest(req);
-  if (!token) {
-    return errorResponse("Authentication failed", 401, { details: tokenError });
-  }
+  const authCheck = requireUserToken(req);
+  if ("errorResponse" in authCheck) return authCheck.errorResponse;
+  const { token } = authCheck;
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return errorResponse("Server configuration error", 500);
   }
@@ -61,10 +42,9 @@ export async function GET(req: NextRequest) {
 
 // POST: Send a message
 export async function POST(req: NextRequest) {
-  const { token, error: tokenError } = getTokenFromRequest(req);
-  if (!token) {
-    return errorResponse("Authentication failed", 401, { details: tokenError });
-  }
+  const authCheckPost = requireUserToken(req);
+  if ("errorResponse" in authCheckPost) return authCheckPost.errorResponse;
+  const { token } = authCheckPost;
   let body;
   try {
     body = await req.json();

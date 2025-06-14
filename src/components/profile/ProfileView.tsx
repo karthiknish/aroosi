@@ -474,6 +474,30 @@ const ProfileView: FC<ProfileViewProps> = ({
                     }
                   />
                 </DisplaySection>
+
+                {/* Subscription Section */}
+                <DisplaySection
+                  title={
+                    <>
+                      <Heart className="w-5 h-5 text-pink-600" /> Subscription
+                    </>
+                  }
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-md font-semibold capitalize">
+                      {profileData.subscriptionPlan || "Free"}
+                    </span>
+                    {profileData.subscriptionPlan !== "premiumPlus" && (
+                      <Button
+                        type="button"
+                        className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg"
+                        onClick={() => router.push("/pricing")}
+                      >
+                        Upgrade
+                      </Button>
+                    )}
+                  </div>
+                </DisplaySection>
               </>
             ) : (
               <div className="space-y-6">

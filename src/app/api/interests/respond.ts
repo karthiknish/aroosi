@@ -3,16 +3,12 @@ import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { requireUserToken } from "@/app/api/_utils/auth";
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const authCheck = requireUserToken(req);
+  if ("errorResponse" in authCheck) return authCheck.errorResponse;
+  const { token } = authCheck;
   let body: { interestId?: string; status?: string } = {};
   try {
     body = await req.json();
@@ -42,16 +38,14 @@ export async function POST(req: NextRequest) {
       interestId: interestId as Id<"interests">,
       status,
     });
-    return NextResponse.json(successResponse(result));
+    return successResponse(result);
   } catch (error) {
-    return NextResponse.json(
-      errorResponse(
-        "Failed to respond to interest",
-        500,
-        process.env.NODE_ENV === "development"
-          ? { details: error instanceof Error ? error.message : String(error) }
-          : undefined
-      )
+    return errorResponse(
+      "Failed to respond to interest",
+      500,
+      process.env.NODE_ENV === "development"
+        ? { details: error instanceof Error ? error.message : String(error) }
+        : undefined
     );
   }
 }

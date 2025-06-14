@@ -3,6 +3,7 @@ import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { requireUserToken } from "@/app/api/_utils/auth";
 
 type InterestAction = "send" | "remove";
 
@@ -11,51 +12,12 @@ interface InterestRequest {
   toUserId: string;
 }
 
-function getTokenFromRequest(req: NextRequest): {
-  token: string | null;
-  error?: string;
-} {
-  try {
-    const auth = req.headers.get("authorization");
-
-    if (!auth) {
-      console.log("[API] No authorization header found");
-      return { token: null, error: "No authorization header" };
-    }
-
-    const [type, token] = auth.split(" ");
-
-    if (type !== "Bearer") {
-      console.log("[API] Invalid token type. Expected Bearer token");
-      return { token: null, error: "Invalid token type" };
-    }
-
-    if (!token) {
-      console.log("[API] No token provided after Bearer");
-      return { token: null, error: "No token provided" };
-    }
-
-    return { token };
-  } catch (error) {
-    console.error("[API] Error extracting token:", error);
-    return {
-      token: null,
-      error: error instanceof Error ? error.message : "Failed to process token",
-    };
-  }
-}
-
 async function handleInterestAction(req: NextRequest, action: InterestAction) {
   try {
     // Validate token
-    const { token, error: tokenError } = getTokenFromRequest(req);
-    if (!token) {
-      return errorResponse(
-        "Authentication failed",
-        401,
-        tokenError ? { details: tokenError } : undefined
-      );
-    }
+    const authCheck = requireUserToken(req);
+    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    const { token } = authCheck;
 
     // Parse request body
     let body: Partial<InterestRequest>;
@@ -134,14 +96,9 @@ export async function GET(req: NextRequest) {
   }
 
   // Auth
-  const { token, error: tokenError } = getTokenFromRequest(req);
-  if (!token) {
-    return errorResponse(
-      "Authentication failed",
-      401,
-      tokenError ? { details: tokenError } : undefined
-    );
-  }
+  const authCheck = requireUserToken(req);
+  if ("errorResponse" in authCheck) return authCheck.errorResponse;
+  const { token } = authCheck;
 
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return errorResponse("Server configuration error", 500);
