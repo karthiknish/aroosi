@@ -14,31 +14,32 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: "pnpm"
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
+          cache: "npm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
       - name: Type check
-        run: pnpm type-check
+        run: npm run type-check
       - name: Unit / Integration tests (with coverage)
-        run: pnpm test -- --runInBand --coverage
+        run: npm test -- --runInBand --coverage
       - name: Build (static analysis)
-        run: pnpm build
+        run: npm run build
       - name: Install Playwright browsers
         run: pnpx playwright install --with-deps
       - name: E2E tests
-        run: pnpx playwright test --reporter=dot
+        run: pnpx playwright test --reporter="dot,html"
       - name: Generate sitemap
-        run: pnpm next-sitemap
+        run: npm run next-sitemap
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage 
+          path: coverage
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report 
