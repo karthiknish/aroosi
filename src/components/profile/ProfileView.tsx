@@ -36,6 +36,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { deleteProfile } from "@/lib/utils/profileApi";
+import { useAuthContext } from "@/components/AuthProvider";
 
 // Re-export types for backward compatibility
 type ApiImage = unknown;
@@ -144,6 +146,7 @@ const ProfileView: FC<ProfileViewProps> = ({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
+  const { token } = useAuthContext();
 
   // Format images for the image reorder component
   const imageList = React.useMemo(() => {
@@ -204,12 +207,8 @@ const ProfileView: FC<ProfileViewProps> = ({
     setDeleteError(null);
     setDeleteLoading(true);
     try {
-      const res = await fetch("/api/profile/delete", {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to delete profile.");
-      }
+      if (!token) throw new Error("No token");
+      await deleteProfile(token);
       router.push("/");
     } catch (err: unknown) {
       if (err instanceof Error) {

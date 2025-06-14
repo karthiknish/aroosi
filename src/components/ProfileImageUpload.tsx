@@ -6,6 +6,11 @@ import React, {
   useRef,
 } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import {
+  getImageUploadUrl,
+  saveImageMeta,
+  deleteImageById,
+} from "@/lib/utils/imageUtil";
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
 import { ProfileImageReorder } from "./ProfileImageReorder";
@@ -196,17 +201,8 @@ export function ProfileImageUpload({
   const handleStartUpload = () => setIsUploadingFile(true);
 
   const generateUploadUrl = useCallback(async () => {
-    const res = await fetch("/api/images/upload-url", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) {
-      throw new Error("Failed to get upload URL");
-    }
-    const data = await res.json();
-    if (!data.uploadUrl) {
-      throw new Error("Upload URL not received");
-    }
-    return data.uploadUrl as string;
+    if (!token) throw new Error("No token");
+    return await getImageUploadUrl(token);
   }, [token]);
 
   // Move uploadImage definition above uploadImageToUse
@@ -222,47 +218,11 @@ export function ProfileImageUpload({
         throw new Error("Authentication token not available.");
       }
 
-      const res = await fetch("/api/images", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(args),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to save image via API");
-      }
-
-      const data = await res.json();
-
-      const normalized = (() => {
-        if (
-          typeof data.success === "boolean" &&
-          typeof data.imageId === "string"
-        ) {
-          return data;
-        }
-        if (
-          data.success === true &&
-          data.data &&
-          typeof data.data.imageId === "string"
-        ) {
-          return { success: true, ...data.data };
-        }
-        return null;
-      })();
-
-      if (!normalized) {
-        throw new Error("Invalid response structure from /api/images");
-      }
-
+      const result = await saveImageMeta({ token, ...args });
       return {
-        success: normalized.success,
-        imageId: normalized.imageId as Id<"_storage">,
-        message: normalized.message || "Image uploaded",
+        success: true,
+        imageId: result.imageId as Id<"_storage">,
+        message: "Image uploaded",
       };
     },
     [token]
@@ -293,15 +253,7 @@ export function ProfileImageUpload({
         return imageId;
       }
       // Default user delete
-      const res = await fetch(`/api/images`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ userId, imageId }),
-      });
-      if (!res.ok) throw new Error("Failed to delete image");
+      await deleteImageById({ token, userId, imageId });
       return imageId;
     },
     onSuccess: async () => {

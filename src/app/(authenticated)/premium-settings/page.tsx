@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
+import { updateProfile } from "@/lib/utils/profileApi";
 
 export default function PremiumSettingsPage() {
   const { profile, token, refreshProfile } = useAuthContext();
@@ -28,17 +29,11 @@ export default function PremiumSettingsPage() {
   async function handleSave() {
     try {
       setSaving(true);
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ hideFromFreeUsers: hideProfile }),
+      if (!token) throw new Error("No token");
+      await updateProfile({
+        token,
+        updates: { hideFromFreeUsers: hideProfile },
       });
-      if (!res.ok) {
-        throw new Error("Failed to update settings");
-      }
       await refreshProfile();
       alert("Settings saved");
     } catch (err) {

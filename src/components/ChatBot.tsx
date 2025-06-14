@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Skeleton } from "@/components/ui/skeleton";
+import { sendGeminiChat } from "@/lib/utils/chatUtil";
 
 const ChatBot: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -47,12 +48,10 @@ const ChatBot: React.FC = () => {
     setInput("");
     setLoading(true);
     try {
-      const res = await fetch("/api/gemini-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg], email }),
+      const data = await sendGeminiChat({
+        messages: [...messages, userMsg],
+        email,
       });
-      const data = await res.json();
       setMessages((msgs) => [
         ...msgs,
         { role: "bot", text: data.reply, timestamp: Date.now() },

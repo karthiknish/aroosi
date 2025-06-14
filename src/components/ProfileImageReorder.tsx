@@ -23,6 +23,7 @@ import { Trash2, Grip } from "lucide-react";
 import ImageDeleteConfirmation from "@/components/ImageDeleteConfirmation";
 import ProfileImageModal from "@/components/ProfileImageModal";
 import type { ImageType } from "@/types/image";
+import { updateImageOrder } from "@/lib/utils/imageUtil";
 
 type Props = {
   images: ImageType[];
@@ -169,19 +170,7 @@ export function ProfileImageReorder({
           throw new Error("Authentication required. Please sign in again.");
         }
 
-        const res = await fetch("/api/images/order", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ userId, imageIds: newStorageOrder }),
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to update image order");
-        }
+        await updateImageOrder({ token, userId, imageIds: newStorageOrder });
 
         showSuccessToast("Image order updated successfully");
       } catch (err) {
