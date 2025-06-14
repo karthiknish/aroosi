@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -13,17 +14,14 @@ export async function GET(request: Request) {
       console.error(
         "Invalid or missing Authorization header in GET /api/profile"
       );
-      return NextResponse.json(
-        { error: "Invalid or missing Authorization header" },
-        { status: 401 }
-      );
+      return errorResponse("Invalid or missing Authorization header", 401);
     }
 
     // Extract token
     const token = authHeader.split(" ")[1];
     if (!token) {
       console.error("No token provided in Authorization header");
-      return NextResponse.json({ error: "No token provided" }, { status: 401 });
+      return errorResponse("No token provided", 401);
     }
 
     try {
@@ -45,9 +43,9 @@ export async function GET(request: Request) {
       // Handle case where user is not found
       if (!currentUser) {
         console.log("User record not found in Convex for the given token");
-        return NextResponse.json(
-          { error: "User session invalid or expired. Please log in again." },
-          { status: 401 }
+        return errorResponse(
+          "User session invalid or expired. Please log in again.",
+          401
         );
       }
 
@@ -72,31 +70,25 @@ export async function GET(request: Request) {
               `User record (ID: ${currentUser._id}) deleted successfully due to null profile.`
             );
           }
-          return NextResponse.json(
-            {
-              error:
-                "Your profile was incomplete or corrupted. Please sign up again.",
-            },
-            { status: 401 }
+          return errorResponse(
+            "Your profile was incomplete or corrupted. Please sign up again.",
+            401
           );
         } catch (deleteError) {
           console.error(
             `Failed to clean up user record (ID: ${currentUser._id}):`,
             deleteError
           );
-          return NextResponse.json(
-            {
-              error:
-                "Profile error. Please sign out and try again or contact support.",
-            },
-            { status: 401 }
+          return errorResponse(
+            "Profile error. Please sign out and try again or contact support.",
+            401
           );
         }
       }
 
       // Return the valid user profile
       console.log("Valid profile found for user:", currentUser._id);
-      return NextResponse.json(currentUser);
+      return successResponse(currentUser);
     } catch (error) {
       console.error("Error in Convex query:", error);
 
@@ -105,9 +97,9 @@ export async function GET(request: Request) {
         error instanceof Error &&
         error.message.includes("AUTHENTICATION_ERROR")
       ) {
-        return NextResponse.json(
-          { error: "Authentication failed. Please log in again." },
-          { status: 401 }
+        return errorResponse(
+          "Authentication failed. Please log in again.",
+          401
         );
       }
 
@@ -118,15 +110,11 @@ export async function GET(request: Request) {
 
     // General error handling
     const errorMessage =
-      error instanceof Error ? error.message : "Internal server error";
+      error instanceof Error
+        ? error.message
+        : "Failed to process profile request";
 
-    return NextResponse.json(
-      {
-        error: "Failed to process profile request",
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
+    return errorResponse(errorMessage, 500);
   }
 }
 
@@ -135,7 +123,7 @@ export async function PUT(request: Request) {
     const token = request.headers.get("Authorization")?.split(" ")[1];
     if (!token) {
       console.error("No token provided in request");
-      return NextResponse.json({ error: "No token provided" }, { status: 401 });
+      return errorResponse("No token provided", 401);
     }
 
     console.log("Setting auth token for Convex");
@@ -144,18 +132,77 @@ export async function PUT(request: Request) {
     const body = await request.json();
     console.log("Updating profile with data:", body);
 
+    // Filter only the fields that are accepted by the Convex `updateProfile` mutation
+    const ALLOWED_UPDATE_FIELDS = [
+      "fullName",
+      "dateOfBirth",
+      "gender",
+      "ukCity",
+      "ukPostcode",
+      "aboutMe",
+      "religion",
+      "occupation",
+      "education",
+      "height",
+      "maritalStatus",
+      "smoking",
+      "drinking",
+      "profileImageIds",
+      "isProfileComplete",
+      "phoneNumber",
+      "annualIncome",
+      "diet",
+      "physicalStatus",
+      "partnerPreferenceAgeMin",
+      "partnerPreferenceAgeMax",
+      "partnerPreferenceUkCity",
+      "preferredGender",
+      "isApproved",
+      "hiddenFromSearch",
+      "subscriptionPlan",
+      "subscriptionExpiresAt",
+    ] as const;
+
+    const updates = Object.fromEntries(
+      Object.entries(body).filter(([key]) =>
+        (ALLOWED_UPDATE_FIELDS as readonly string[]).includes(key)
+      )
+    ) as Record<string, unknown>;
+
+    if (Object.keys(updates).length === 0) {
+      console.warn(
+        "No valid update fields provided in PUT /api/profile request. Body:",
+        body
+      );
+      return errorResponse("No valid profile fields provided.", 400);
+    }
+
+    // Cast `updates` to any to satisfy Convex mutation type expectations.
+    // The actual runtime validation is handled by Convex schema.
     const result = await convexClient.mutation(api.users.updateProfile, {
-      updates: body,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      updates: updates as any,
     });
     console.log("Profile update result:", result);
 
-    return NextResponse.json({ success: true, data: result });
+    // Fetch the latest profile to return to the client so the UI has fresh data
+    const updatedUser = (await convexClient.query(
+      api.users.getCurrentUserWithProfile,
+      {}
+    )) as { profile?: unknown; isProfileComplete?: boolean };
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    return successResponse({
+      success: true,
+      profile: updatedUser?.profile ?? null,
+      isProfileComplete:
+        (updatedUser as any)?.profile?.isProfileComplete ?? false,
+      message: (result as any)?.message ?? "Profile updated successfully",
+    });
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   } catch (error) {
     console.error("Error in profile update API route:", error);
-    return NextResponse.json(
-      { error: "Internal server error", details: error },
-      { status: 500 }
-    );
+    return errorResponse("Internal server error", 500);
   }
 }
 
@@ -164,7 +211,7 @@ export async function POST(req: NextRequest) {
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
     console.error("Unauthorized: Missing or invalid token");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
@@ -173,14 +220,11 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {
     console.error("Invalid JSON body in request");
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return errorResponse("Invalid JSON body", 400);
   }
   if (!body || typeof body !== "object") {
     console.error("Missing or invalid body in request");
-    return NextResponse.json(
-      { error: "Missing or invalid body" },
-      { status: 400 }
-    );
+    return errorResponse("Missing or invalid body", 400);
   }
   // Validate required fields
   const requiredFields = [
@@ -198,20 +242,14 @@ export async function POST(req: NextRequest) {
   for (const field of requiredFields) {
     if (!body[field] || typeof body[field] !== "string") {
       console.error(`Missing or invalid required field: ${field}`);
-      return NextResponse.json(
-        { error: `Missing or invalid required field: ${field}` },
-        { status: 400 }
-      );
+      return errorResponse(`Missing or invalid required field: ${field}`, 400);
     }
   }
 
   // Validate gender
   if (!["male", "female", "other"].includes(body.gender as string)) {
     console.error("Invalid gender value:", body.gender);
-    return NextResponse.json(
-      { error: "Invalid gender value" },
-      { status: 400 }
-    );
+    return errorResponse("Invalid gender value", 400);
   }
 
   // Validate marital status
@@ -221,10 +259,7 @@ export async function POST(req: NextRequest) {
     )
   ) {
     console.error("Invalid marital status value:", body.maritalStatus);
-    return NextResponse.json(
-      { error: "Invalid marital status value" },
-      { status: 400 }
-    );
+    return errorResponse("Invalid marital status value", 400);
   }
 
   try {
@@ -270,10 +305,7 @@ export async function POST(req: NextRequest) {
     });
     if (result && result.success === false) {
       console.error("Profile creation failed:", result.message);
-      return NextResponse.json(
-        { error: result.message || "Profile creation failed" },
-        { status: 400 }
-      );
+      return errorResponse(result.message || "Profile creation failed", 400);
     }
     // After creation, fetch the latest user+profile object to return userId and _id
     const userResult = await convex.query(
@@ -282,12 +314,9 @@ export async function POST(req: NextRequest) {
     );
     if (!userResult) {
       console.error("Profile not found after creation");
-      return NextResponse.json(
-        { error: "Profile not found after creation" },
-        { status: 404 }
-      );
+      return errorResponse("Profile not found after creation", 404);
     }
-    return NextResponse.json({
+    return successResponse({
       success: true,
       userId: userResult._id,
       profile: {
@@ -328,7 +357,7 @@ export async function POST(req: NextRequest) {
       process.env.NODE_ENV === "development"
         ? { error: message, details: err }
         : { error: message };
-    return NextResponse.json(errorBody, { status });
+    return errorResponse((errorBody as { error: string }).error, status);
   }
 }
 
@@ -337,7 +366,7 @@ export async function DELETE(request: Request) {
     const token = request.headers.get("Authorization")?.split(" ")[1];
     if (!token) {
       console.error("No token provided for DELETE request");
-      return NextResponse.json({ error: "No token provided" }, { status: 401 });
+      return errorResponse("No token provided", 401);
     }
 
     convexClient.setAuth(token);
@@ -349,10 +378,7 @@ export async function DELETE(request: Request) {
     );
     if (!currentUser || !currentUser.profile?._id) {
       console.error("No user or profile found for deletion");
-      return NextResponse.json(
-        { error: "No user or profile found for deletion" },
-        { status: 404 }
-      );
+      return errorResponse("No user or profile found for deletion", 404);
     }
 
     const result: { success: boolean; message?: string } =
@@ -362,19 +388,12 @@ export async function DELETE(request: Request) {
 
     if (result && result.success) {
       console.log("User and profile deletion successful:", result.message);
-      return NextResponse.json({
-        success: true,
-        message: result.message || "User and profile deleted successfully",
+      return successResponse({
+        message: "User and profile deleted successfully",
       });
     } else {
       console.error("User and profile deletion failed:", result?.message);
-      return NextResponse.json(
-        {
-          error: "Failed to delete user and profile",
-          details: result?.message,
-        },
-        { status: 500 }
-      );
+      return errorResponse("Failed to delete user and profile", 500);
     }
   } catch (error: unknown) {
     console.error("Error in profile DELETE API route:", error);
@@ -382,10 +401,6 @@ export async function DELETE(request: Request) {
       (error as { data?: { message?: string } }).data?.message ||
       (error as { message?: string }).message ||
       "Internal server error";
-    const errorDetails = (error as { data?: unknown }).data || error;
-    return NextResponse.json(
-      { error: errorMessage, details: errorDetails },
-      { status: 500 }
-    );
+    return errorResponse(errorMessage, 500);
   }
 }

@@ -27,7 +27,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { toast } from "sonner";
+import { showSuccessToast } from "@/lib/ui/toast";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -75,12 +75,10 @@ export default function AdminProfilePage() {
         _id: p._id,
         userId: p.userId || p._id,
       }));
-      console.log("profiles for image fetch", profilesForImages);
       const profileImages = await fetchAllAdminProfileImages({
         token,
         profiles: profilesForImages,
       });
-      console.log("profileImages:", profileImages);
       return { profiles, profileImages };
     },
     enabled: !!token,
@@ -113,14 +111,14 @@ export default function AdminProfilePage() {
     await deleteAdminProfile({ token, id });
     setConfirmDeleteId(null);
     loadProfiles();
-    toast.success("Profile deleted");
+    showSuccessToast("Profile deleted");
   };
   const onToggleBan = async (id: string, banned: boolean) => {
     if (!token) return;
     await setProfileBannedStatus(token, id, !banned);
     setConfirmBanId(null);
     loadProfiles();
-    toast.success(banned ? "Profile unbanned" : "Profile banned");
+    showSuccessToast(banned ? "Profile unbanned" : "Profile banned");
   };
 
   // Loading state

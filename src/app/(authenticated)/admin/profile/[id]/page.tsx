@@ -15,12 +15,13 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Button } from "@/components/ui/button";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 // Define types for images and matches
 interface ImageType {
@@ -213,7 +214,7 @@ export default function AdminProfileDetailPage() {
   if (!authIsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }
@@ -248,16 +249,16 @@ export default function AdminProfileDetailPage() {
       });
 
       if (deleteRes.ok) {
-        toast.success("Image deleted successfully");
+        showSuccessToast("Image deleted successfully");
         setImageToDelete(null);
         setIsDeleteModalOpen(false);
       } else {
         console.error("Error deleting image:", deleteRes.statusText);
-        toast.error("Failed to delete image");
+        showErrorToast(null, "Failed to delete image");
       }
     } catch (error) {
       console.error("Error deleting image:", error);
-      toast.error("Failed to delete image");
+      showErrorToast(null, "Failed to delete image");
     } finally {
       setIsDeleting(false);
     }
@@ -314,16 +315,16 @@ export default function AdminProfileDetailPage() {
       );
 
       if (updateRes.ok) {
-        toast.success(
+        showSuccessToast(
           !profile.hiddenFromSearch
             ? "Profile hidden from search."
             : "Profile visible in search."
         );
       } else {
-        toast.error("Failed to update search visibility");
+        showErrorToast(null, "Failed to update search visibility");
       }
     } catch {
-      toast.error("Failed to update search visibility");
+      showErrorToast(null, "Failed to update search visibility");
     }
   };
 

@@ -1,9 +1,8 @@
 import { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { Loader2, Upload } from "lucide-react";
-import { Id } from "@/../convex/_generated/dataModel";
-import { ConvexError } from "convex/values";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Upload } from "lucide-react";
 import type { ImageType } from "@/types/image";
 import Cropper, { Area } from "react-easy-crop";
 import {
@@ -14,6 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 interface ImageUploaderProps {
   userId: string;
@@ -22,14 +22,13 @@ interface ImageUploaderProps {
     string | { success: boolean; error: string }
   >;
   uploadImage: (args: {
-    userId: Id<"users">;
-    storageId: Id<"_storage">;
+    userId: string;
+    storageId: string;
     fileName: string;
     contentType: string;
     fileSize: number;
-  }) => Promise<{ success: boolean; imageId: Id<"_storage">; message: string }>;
+  }) => Promise<{ success: boolean; imageId: string; message: string }>;
   setIsUploading: (val: boolean) => void;
-  toast: typeof import("sonner").toast;
   disabled?: boolean;
   isUploading?: boolean;
   maxFiles?: number;
@@ -102,7 +101,6 @@ export function ImageUploader({
   generateUploadUrl,
   uploadImage,
   setIsUploading,
-  toast,
   disabled = false,
   isUploading = false,
   className = "",
@@ -147,7 +145,8 @@ export function ImageUploader({
       const currentImages = orderedImages || [];
       const maxProfileImages = 10;
       if (currentImages.length >= maxProfileImages) {
-        toast.error(
+        showErrorToast(
+          null,
           `You can only display up to ${maxProfileImages} images on your profile`
         );
         return;
@@ -163,45 +162,46 @@ export function ImageUploader({
         }
 
         // Step 2: Upload the file to storage
-        const result = await fetch(uploadUrl, {
+        const storageResp = await fetch(uploadUrl, {
           method: "POST",
           headers: { "Content-Type": file.type },
           body: file,
         });
 
-        if (!result.ok) {
-          throw new Error("Failed to upload image");
+        if (!storageResp.ok) {
+          const msg =
+            storageResp.status === 413
+              ? "Image is too large (max 5MB)."
+              : "Failed to upload image to storage.";
+          throw new Error(msg);
         }
+
         // Convex storage returns storageId as plain text, not JSON
-        const storageId = await result.text();
+        const storageId = await storageResp.text();
 
         // Step 3: Save the image reference in the database
         const mutationResult = await uploadImage({
-          userId: userId as Id<"users">,
-          storageId: storageId as Id<"_storage">,
+          userId,
+          storageId,
           fileName: file.name,
           contentType: file.type,
           fileSize: file.size,
         });
 
-        if (!mutationResult.success) {
-          throw new Error(mutationResult.message || "Upload failed");
+        if (!mutationResult?.success) {
+          throw new Error(mutationResult?.message || "Upload failed");
         }
 
         // Show success message
-        toast.success("Image uploaded successfully");
+        showSuccessToast("Image uploaded successfully");
 
         // Return the result so the parent component can handle it
         return mutationResult;
       } catch (error) {
         console.error("Error uploading image:", error);
-        if (error instanceof ConvexError) {
-          toast.error(
-            "Something went wrong while uploading your image. Please try again."
-          );
-        } else {
-          toast.error("Failed to upload image");
-        }
+        const msg =
+          error instanceof Error ? error.message : "Failed to upload image";
+        showErrorToast(msg);
         throw error;
       } finally {
         setIsUploading(false);
@@ -213,7 +213,6 @@ export function ImageUploader({
       generateUploadUrl,
       uploadImage,
       setIsUploading,
-      toast,
       onStartUpload,
     ]
   );
@@ -371,13 +370,10 @@ export function ImageUploader({
                     setCroppedAreaPixels(null);
                   } catch (error) {
                     console.error("Error cropping image:", error);
-                    if (error instanceof ConvexError) {
-                      toast.error(
-                        "Something went wrong while processing your image. Please try again."
-                      );
-                    } else {
-                      toast.error("Failed to crop image. Please try again.");
-                    }
+                    showErrorToast(
+                      null,
+                      "Failed to crop image. Please try again."
+                    );
                   }
                 }}
                 className="bg-pink-600 hover:bg-pink-500"
@@ -385,7 +381,7 @@ export function ImageUploader({
               >
                 {isUploading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <LoadingSpinner size={16} className="mr-2" />
                     Uploading...
                   </>
                 ) : (

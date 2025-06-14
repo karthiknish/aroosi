@@ -54,7 +54,6 @@ export default function AdminBlogPage() {
   if (!isAdmin) {
     return <div>You must be an admin to view this page.</div>;
   }
-  console.log(blogs);
   return (
     <div className="max-w-5xl my-8 mx-auto py-10 px-4">
       <h1 className="text-3xl font-bold mb-6 text-pink-700">

@@ -44,7 +44,6 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
           control={form.control}
           render={({ field }) => {
             const numVal = Number(field.value);
-            console.log(numVal);
             const safeNumVal =
               !isNaN(numVal) && numVal >= 137 && numVal <= 198 ? numVal : 170;
             return (

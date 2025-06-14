@@ -44,7 +44,7 @@ export const DisplaySection: React.FC<DisplaySectionProps> = ({
   </div>
 );
 
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Id } from "@/../convex/_generated/dataModel";
 
 export async function handleExpressInterest({
@@ -67,14 +67,14 @@ export async function handleExpressInterest({
   try {
     await sendInterestMutation({ fromUserId: currentUserId, toUserId: id });
     setInterestSent(true);
-    toast.success("Interest sent!");
+    showSuccessToast("Interest sent!");
   } catch (err: unknown) {
     const message =
       typeof err === "object" && err && "message" in err
         ? String((err as { message?: unknown }).message)
         : "Could not send interest.";
     setInterestError(message);
-    toast.error(message);
+    showErrorToast(message);
   }
 }
 
@@ -98,13 +98,13 @@ export async function handleBlock({
       blockerUserId: currentUserId,
       blockedUserId: id,
     });
-    toast.success("User blocked successfully");
+    showSuccessToast("User blocked successfully");
   } catch (err: unknown) {
     const message =
       typeof err === "object" && err && "message" in err
         ? String((err as { message?: unknown }).message)
         : "Failed to block user";
-    toast.error(message);
+    showErrorToast(message);
   } finally {
     setBlockLoading(false);
   }
@@ -130,13 +130,13 @@ export async function handleUnblock({
       blockerUserId: currentUserId,
       blockedUserId: id,
     });
-    toast.success("User unblocked.");
+    showSuccessToast("User unblocked.");
   } catch (err: unknown) {
     const message =
       typeof err === "object" && err && "message" in err
         ? String((err as { message?: unknown }).message)
         : "Could not unblock user.";
-    toast.error(message);
+    showErrorToast(message);
   } finally {
     setBlockLoading(false);
   }
@@ -162,13 +162,13 @@ export async function handleRemoveInterest({
   try {
     await removeInterestMutation({ fromUserId: currentUserId, toUserId: id });
     setInterestSent(false);
-    toast.success("Interest removed.");
+    showSuccessToast("Interest removed.");
   } catch (err: unknown) {
     const message =
       typeof err === "object" && err && "message" in err
         ? String((err as { message?: unknown }).message)
         : "Could not remove interest.";
     setInterestError(message);
-    toast.error(message);
+    showErrorToast(message);
   }
 }

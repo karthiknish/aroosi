@@ -15,7 +15,7 @@ import type { Profile, ProfileEditFormState } from "@/types/profile";
 import type { ImageType } from "@/types/image";
 import { Slider } from "@/components/ui/slider";
 import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "../AuthProvider";
 import {
   Dialog,
@@ -131,7 +131,7 @@ export default function ProfileEditForm({
         body: JSON.stringify({ userId: profile.userId, imageId: storageId }),
       });
       if (!res.ok) throw new Error("Failed to delete image");
-      toast.success("Image deleted");
+      showSuccessToast("Image deleted");
       // Refetch images from backend to update reorderImages
       if (!profile.userId || !token) return;
       const imgRes = await fetch(
@@ -155,7 +155,7 @@ export default function ProfileEditForm({
         }
       }
     } catch {
-      toast.error("Failed to delete image");
+      showErrorToast(null, "Failed to delete image");
     } finally {
       setDeletingImageId(null);
       setConfirmDeleteId(null);
@@ -166,18 +166,18 @@ export default function ProfileEditForm({
   const handleManualMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile?.userId || !matchUserId) {
-      toast.error("Both user IDs are required");
+      showErrorToast(null, "Both user IDs are required");
       return;
     }
     setIsMatching(true);
     try {
       // Send interest from A to B
       const interestA = await sendInterest({
-        fromUserId: profile.userId,
-        toUserId: matchUserId as Id<"users">,
+        fromUserId: profile.userId as unknown as Id<"users">,
+        toUserId: matchUserId as unknown as Id<"users">,
       });
       if (typeof interestA !== "string") {
-        toast.error(interestA?.error || "Failed to send interest (A→B)");
+        showErrorToast(interestA?.error ?? null, "Failed to send interest");
         setIsMatching(false);
         return;
       }
@@ -188,11 +188,11 @@ export default function ProfileEditForm({
       });
       // Send interest from B to A
       const interestB = await sendInterest({
-        fromUserId: matchUserId as Id<"users">,
-        toUserId: profile.userId,
+        fromUserId: matchUserId as unknown as Id<"users">,
+        toUserId: profile.userId as unknown as Id<"users">,
       });
       if (typeof interestB !== "string") {
-        toast.error(interestB?.error || "Failed to send interest (B→A)");
+        showErrorToast(interestB?.error ?? null, "Failed to send interest");
         setIsMatching(false);
         return;
       }
@@ -201,7 +201,7 @@ export default function ProfileEditForm({
         interestId: interestB,
         status: "accepted",
       });
-      toast.success("Profiles matched successfully!");
+      showSuccessToast("Profiles matched successfully!");
       setMatchUserId("");
     } catch (err: unknown) {
       let message = "Failed to match profiles";
@@ -213,7 +213,7 @@ export default function ProfileEditForm({
       ) {
         message = (err as { message: string }).message;
       }
-      toast.error(message);
+      showErrorToast(message);
     } finally {
       setIsMatching(false);
     }

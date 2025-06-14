@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 // Simple in-memory rate limit store (replace with Redis for production)
 const rateLimitMap = new Map<string, { count: number; last: number }>();
@@ -22,24 +23,21 @@ export async function GET(req: NextRequest) {
   entry.count++;
   rateLimitMap.set(ip, entry);
   if (entry.count > RATE_LIMIT_MAX) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429 }
-    );
+    return errorResponse("Too many requests. Please try again later.", 429);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   // Do not set auth for public queries
   const url = new URL(req.url);
   const slug = url.pathname.split("/").pop()!;
   const result = await convex.query(api.blog.getBlogPostBySlug, { slug });
-  return NextResponse.json(result);
+  return successResponse(result);
 }
 
 export async function PUT(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
@@ -48,22 +46,16 @@ export async function PUT(req: NextRequest) {
     body = await req.json();
     console.log("[PUT /api/blog/[slug]] Request body:", body);
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return errorResponse("Invalid JSON body", 400);
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json(
-      { error: "Missing or invalid body" },
-      { status: 400 }
-    );
+    return errorResponse("Missing or invalid body", 400);
   }
   // Use _id from the request body
   const _id = (body as Record<string, unknown>)._id;
   console.log("[PUT /api/blog/[slug]] _id:", _id);
   if (!_id || typeof _id !== "string") {
-    return NextResponse.json(
-      { error: "Missing or invalid _id" },
-      { status: 400 }
-    );
+    return errorResponse("Missing or invalid _id", 400);
   }
   // Validate required fields
   const requiredFields = [
@@ -76,10 +68,7 @@ export async function PUT(req: NextRequest) {
   ];
   for (const field of requiredFields) {
     if (!(field in body)) {
-      return NextResponse.json(
-        { error: `Missing field: ${field}` },
-        { status: 400 }
-      );
+      return errorResponse(`Missing field: ${field}`, 400);
     }
   }
   try {
@@ -104,12 +93,12 @@ export async function PUT(req: NextRequest) {
     };
     const result = await convex.mutation(api.blog.updateBlogPost, updateData);
     console.log("[PUT /api/blog/[slug]] Convex mutation result:", result);
-    return NextResponse.json(result);
+    return successResponse(result);
   } catch (err: unknown) {
     console.error("[PUT /api/blog/[slug]] Error:", err);
-    return NextResponse.json(
-      { error: (err as Error)?.message || "Failed to update blog post" },
-      { status: 500 }
+    return errorResponse(
+      (err as Error)?.message || "Failed to update blog post",
+      500
     );
   }
 }

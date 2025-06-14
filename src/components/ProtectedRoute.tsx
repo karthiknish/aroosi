@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { toast } from "sonner";
 
 interface ProtectedRouteProps {
@@ -12,13 +12,6 @@ interface ProtectedRouteProps {
   requireProfileComplete?: boolean;
   requireOnboardingComplete?: boolean;
   redirectTo?: string;
-}
-
-// Helper to read boolean from localStorage
-function getLocalStorageFlag(key: string): boolean {
-  if (typeof window === "undefined") return false;
-  const value = localStorage.getItem(key);
-  return value ? JSON.parse(value) : false;
 }
 
 export default function ProtectedRoute({
@@ -47,27 +40,9 @@ export default function ProtectedRoute({
     isApproved,
   } = useAuthContext();
 
-  // Use state to track if we've checked localStorage
-  const [hasCheckedLocalStorage, setHasCheckedLocalStorage] = useState(false);
-  const [localProfileComplete, setLocalProfileComplete] = useState<
-    boolean | null
-  >(null);
-  const [localOnboardingComplete, setLocalOnboardingComplete] = useState<
-    boolean | null
-  >(null);
-
-  // Check localStorage after component mounts
-  useEffect(() => {
-    if (isClient) {
-      setLocalProfileComplete(getLocalStorageFlag("isProfileComplete"));
-      setLocalOnboardingComplete(getLocalStorageFlag("isOnboardingComplete"));
-      setHasCheckedLocalStorage(true);
-    }
-  }, [isClient]);
-
-  // Fallback to localStorage if context values are undefined
-  const profileComplete = isProfileComplete ?? localProfileComplete;
-  const onboardingComplete = isOnboardingComplete ?? localOnboardingComplete;
+  // Directly use context values; undefined indicates still loading
+  const profileComplete = isProfileComplete;
+  const onboardingComplete = isOnboardingComplete;
 
   // Memoize route checks to prevent unnecessary recalculations
   const {
@@ -161,6 +136,13 @@ export default function ProtectedRoute({
         }
       }
     }
+
+    console.log("[ProtectedRoute] State", {
+      isSignedIn,
+      profileComplete,
+      onboardingComplete,
+      pathname,
+    });
   }, [
     isLoaded,
     isSignedIn,
@@ -183,7 +165,6 @@ export default function ProtectedRoute({
   const isLoading =
     !isLoaded ||
     isAuthLoading ||
-    !hasCheckedLocalStorage ||
     (isClient &&
       (isSignedIn === undefined ||
         (isSignedIn && profileComplete === undefined)));
@@ -209,8 +190,8 @@ export default function ProtectedRoute({
   // Show loading state or nothing (for server render)
   if (shouldShowLoader) {
     return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size={32} />
       </div>
     );
   }

@@ -2,10 +2,11 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   fetchAdminProfileById,
   updateAdminProfileById,
@@ -141,15 +142,11 @@ export default function AdminEditProfilePage() {
         id,
         updates,
       });
-      toast.success("Profile updated successfully");
+      showSuccessToast("Profile updated successfully");
       router.push("/admin");
     } catch (error) {
       console.error("Profile update error:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message || "Failed to update profile"
-          : "An unexpected error occurred"
-      );
+      showErrorToast(error, "Failed to update profile");
     } finally {
       setIsSubmitting(false);
     }
@@ -158,7 +155,7 @@ export default function AdminEditProfilePage() {
   if (!authIsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }
@@ -170,7 +167,7 @@ export default function AdminEditProfilePage() {
   if (isLoading || !editForm || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }

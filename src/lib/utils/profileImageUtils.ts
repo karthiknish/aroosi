@@ -26,7 +26,7 @@ export const useProfileImages = (profileId: string) => {
     queryKey: ["profile-images", profileId] as const,
     queryFn: async (): Promise<ApiImage[]> => {
       if (!token) throw new Error("No authentication token");
-
+      if (!profileId) return [];
       const response = await fetch(`/api/profile-detail/${profileId}/images`, {
         headers: {
           Authorization: `Bearer ${token}`,

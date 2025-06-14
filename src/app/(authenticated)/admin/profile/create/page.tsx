@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import ProfileForm from "@/components/profile/ProfileForm";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { submitProfile } from "@/lib/profile/userProfileApi";
 
 // Extend the ProfileForm props to include submitButtonText
@@ -37,7 +38,7 @@ export default function AdminCreateProfilePage() {
   if (!authIsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }
@@ -72,12 +73,9 @@ export default function AdminCreateProfilePage() {
                 import("@/types/profile").ProfileFormValues
               > = {
                 ...values,
-                dateOfBirth:
-                  typeof values.dateOfBirth === "string"
-                    ? values.dateOfBirth
-                    : values.dateOfBirth instanceof Date
-                      ? values.dateOfBirth.toISOString()
-                      : "",
+                // dateOfBirth should already be a string from the form values
+                // so we forward it directly to the API payload.
+                dateOfBirth: values.dateOfBirth,
                 // Only keep partnerPreferenceUkCity logic
                 partnerPreferenceUkCity: Array.isArray(
                   values.partnerPreferenceUkCity
@@ -94,18 +92,14 @@ export default function AdminCreateProfilePage() {
               const { ...restValues } = submitValues;
               const response = await submitProfile(token, restValues, "create");
               if (response.success) {
-                toast.success("Profile created successfully");
+                showSuccessToast("Profile created successfully");
                 router.push("/admin");
               } else {
-                toast.error(response.error || "Failed to create profile");
+                showErrorToast(response.error, "Failed to create profile");
               }
             } catch (error) {
               console.error("Profile creation error:", error);
-              toast.error(
-                error instanceof Error
-                  ? error.message || "Failed to create profile"
-                  : "An unexpected error occurred"
-              );
+              showErrorToast(error, "Failed to create profile");
             } finally {
               setIsSubmitting(false);
             }

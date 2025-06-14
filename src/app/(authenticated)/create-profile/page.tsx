@@ -3,9 +3,10 @@
 import ProfileForm from "@/components/profile/ProfileForm";
 import type { ProfileFormValues } from "@/components/profile/ProfileForm";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useCallback, useMemo } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
+import { submitProfile } from "@/lib/profile/userProfileApi";
 
 // Helper to map context profile to ProfileForm initial values
 function mapProfileToInitialValues(
@@ -31,6 +32,9 @@ export default function CreateProfilePage() {
   const router = useRouter();
   const { token, refreshProfile, profile, userId } = useAuthContext();
 
+  // Extract profileId generated at sign-up (same for create & edit flows)
+  const profileId = (profile as { id?: string } | null)?.id || "";
+
   // Memoize initialValues with a stable dependency
   const initialValues = useMemo(
     () => mapProfileToInitialValues(profile),
@@ -38,42 +42,54 @@ export default function CreateProfilePage() {
   );
 
   // Create a stable form key based on the user ID to ensure proper remounting
-  const formKey = useMemo(() => `create-profile-${userId || "new"}`, [userId]);
+  const formKey = useMemo(
+    () => `create-profile-${profileId || "new"}`,
+    [profileId]
+  );
 
   // Handle form submission
   const handleSubmit = useCallback(
     async (values: ProfileFormValues) => {
       if (!token) {
-        toast.error("Authentication token is missing. Please sign in again.");
+        showErrorToast(
+          null,
+          "Authentication token is missing. Please sign in again."
+        );
         return;
       }
 
       try {
-        const response = await fetch("/api/profile", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ ...values, isOnboardingComplete: true }),
-        });
+        const apiResult = await submitProfile(token, values, "create");
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || "Failed to create profile");
+        if (!apiResult.success) {
+          throw new Error(apiResult.error || "Failed to create profile");
         }
 
-        // Refresh profile to update the completion status
+        // Refresh profile (fetch updated flags) then update local storage via AuthProvider.
         await refreshProfile();
 
-        // Redirect to success page - ProtectedRoute will handle further redirection
-        router.push("/create-profile/success");
+        // Create subscription message based on the plan selected
+        let subscriptionMessage = "";
+        if (values.subscriptionPlan === "premium") {
+          subscriptionMessage =
+            "Premium Plan trial activated! Enjoy unlimited features for 30 days.";
+        } else if (values.subscriptionPlan === "premiumPlus") {
+          subscriptionMessage =
+            "Premium Plus trial activated! Enjoy all premium features for 30 days.";
+        }
 
-        return await response.json();
+        showSuccessToast(
+          `Profile created successfully! ${subscriptionMessage ? subscriptionMessage : "You can now browse matches."}`
+        );
+
+        // Redirect to dashboard
+        router.push("/dashboard");
+
+        return;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Failed to create profile";
-        toast.error(errorMessage);
+        showErrorToast(errorMessage);
         throw error;
       }
     },
@@ -121,6 +137,7 @@ export default function CreateProfilePage() {
             key={formKey}
             mode="create"
             initialValues={initialValues}
+            profileId={profileId}
             userId={userId}
             onSubmit={handleSubmit}
             onEditDone={() => {}}

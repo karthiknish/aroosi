@@ -1,4 +1,8 @@
-import { Id } from "@/../convex/_generated/dataModel";
+// Generic fallback Id type so shared types compile both in frontend (Next.js) and Convex.
+// When compiling inside Convex, the generated Id type will shadow this one via module resolution.
+// On the frontend side we don't need the exact branded type, so a simple string alias is sufficient.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type Id<TableName extends string> = string;
 
 export interface Profile {
   _id: Id<"profiles">;
@@ -15,7 +19,7 @@ export interface Profile {
   phoneNumber: string;
   aboutMe: string;
   height: string;
-  maritalStatus: "single" | "divorced" | "widowed";
+  maritalStatus: "single" | "divorced" | "widowed" | "annulled";
   education: string;
   occupation: string;
   annualIncome: string | number;
@@ -25,8 +29,8 @@ export interface Profile {
   physicalStatus: string;
   partnerPreferenceAgeMin: number;
   partnerPreferenceAgeMax: number;
-  partnerPreferenceUkCity: string[];
-  preferredGender: "male" | "female" | "any";
+  partnerPreferenceUkCity: string[] | string;
+  preferredGender: "male" | "female" | "any" | "";
   profileImageIds: string[];
   isProfileComplete: boolean;
   isOnboardingComplete: boolean;
@@ -36,6 +40,9 @@ export interface Profile {
   updatedAt: number;
   _creationTime?: number | string | Date;
   isApproved: boolean;
+  subscriptionPlan: SubscriptionPlan;
+  subscriptionExpiresAt?: number;
+  boostsRemaining?: number;
 }
 
 export interface ProfileFormValues {
@@ -62,7 +69,7 @@ export interface ProfileFormValues {
   physicalStatus: string;
   partnerPreferenceAgeMin: number | string;
   partnerPreferenceAgeMax: number | string;
-  partnerPreferenceUkCity: string[];
+  partnerPreferenceUkCity: string[] | string;
   preferredGender: string;
   profileImageIds?: string[];
   isProfileComplete?: boolean;
@@ -73,6 +80,8 @@ export interface ProfileFormValues {
   updatedAt?: number;
   isApproved?: boolean;
   profileFor: "self" | "friend" | "family";
+  subscriptionPlan?: SubscriptionPlan;
+  boostsRemaining?: number;
 }
 
 export interface ProfileContextType {
@@ -120,3 +129,70 @@ export interface ProfileEditFormState {
   preferredGender?: string;
   isApproved?: boolean;
 }
+
+export type SubscriptionPlan = "free" | "premium" | "premiumPlus";
+
+export interface SubscriptionPlanFeature {
+  key: string;
+  title: string;
+  description: string;
+}
+
+export interface SubscriptionPlanDetails {
+  id: SubscriptionPlan;
+  name: string;
+  price: number;
+  displayPrice: string;
+  duration: string;
+  features: string[];
+  popular?: boolean;
+  badge?: string;
+}
+
+export const SUBSCRIPTION_PLANS: SubscriptionPlanDetails[] = [
+  {
+    id: "free",
+    name: "Free Plan",
+    price: 0,
+    displayPrice: "£0",
+    duration: "Lifetime",
+    features: [
+      "Create profile",
+      "Search & view limited profiles",
+      "Limited daily likes",
+      "Receive messages but can't reply",
+      "Basic matchmaking",
+    ],
+  },
+  {
+    id: "premium",
+    name: "Premium Plan",
+    price: 14.99,
+    displayPrice: "£14.99",
+    duration: "per month",
+    popular: true,
+    badge: "Most Popular",
+    features: [
+      "Unlimited likes & profile views",
+      "Initiate chats with other users",
+      "Access full profile details (education, family info, etc.)",
+      "Daily match suggestions",
+      "Hide your profile from non-premium users",
+      "Priority customer support",
+    ],
+  },
+  {
+    id: "premiumPlus",
+    name: "Premium Plus",
+    price: 39.99,
+    displayPrice: "£39.99",
+    duration: "per month",
+    features: [
+      "All Premium features",
+      "Profile Boost (3x per month)",
+      "See who viewed your profile",
+      "Access to premium-only filters (income, career, education)",
+      "Spotlight badge on profile",
+    ],
+  },
+];

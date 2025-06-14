@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { createBlogPost } from "@/lib/blogUtil";
 import { CreatePost } from "@/components/admin/CreatePost";
-import { toast } from "sonner";
+import { showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 export default function CreateBlogPage() {
@@ -77,7 +77,7 @@ export default function CreateBlogPage() {
       console.error(`Error in AI ${field} generation:`, error);
       const message =
         error instanceof Error ? error.message : "AI processing failed";
-      toast.error(message);
+      showErrorToast(message);
       return "";
     }
   }
@@ -149,9 +149,7 @@ export default function CreateBlogPage() {
       return data.markdown;
     } catch (error) {
       console.error("Error converting to markdown:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to convert to markdown"
-      );
+      showErrorToast(error, "Failed to convert to markdown");
       return text;
     }
   };

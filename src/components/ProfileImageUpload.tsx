@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -131,11 +131,11 @@ export function ProfileImageUpload({
     },
     onSuccess: (data) => {
       if (data?.message !== "Order unchanged") {
-        toast.success("Image order updated successfully");
+        showSuccessToast("Image order updated successfully");
       }
     },
     onError: (error) => {
-      toast.error("Failed to update image order");
+      showErrorToast(null, "Failed to update image order");
       console.error("Update image order error:", error);
     },
   });
@@ -143,8 +143,10 @@ export function ProfileImageUpload({
   const { data: orderedImages = [], refetch: _refetchImages } = useQuery({
     queryKey: ["profileImages", userId, token, authIsAdmin, profileId],
     queryFn: async () => {
-      if (!token || !userId) {
-        console.warn("Missing token or userId when fetching images");
+      if (!token || !userId || userId === "user-id-placeholder") {
+        console.warn(
+          "Missing or placeholder token/userId when fetching images"
+        );
         return [];
       }
       if (authIsAdmin && profileId) {
@@ -161,7 +163,11 @@ export function ProfileImageUpload({
         (img: ImageType) => !!img?.url && !!img?.id
       ) as ImageType[];
     },
-    enabled: mode === "edit" && !!token && !!userId,
+    enabled:
+      mode === "edit" &&
+      !!token &&
+      !!userId &&
+      userId !== "user-id-placeholder",
     staleTime: 60 * 1000, // Consider data fresh for 1 minute
   });
 
@@ -173,7 +179,7 @@ export function ProfileImageUpload({
       await refreshProfile();
     } catch (error) {
       console.error("Failed to refetch images:", error);
-      toast.error("Failed to refresh images");
+      showErrorToast(null, "Failed to refresh images");
     }
   }, [_refetchImages, refreshProfile]);
 
@@ -244,7 +250,7 @@ export function ProfileImageUpload({
           isUploadingFile &&
           profileImageIds.length > prevImageCount.current
         ) {
-          toast.success("Image uploaded successfully");
+          showSuccessToast("Image uploaded successfully");
           setIsUploadingFile(false);
         }
         prevImageCount.current = profileImageIds.length;
@@ -344,7 +350,7 @@ export function ProfileImageUpload({
     if (!profileId)
       throw new Error("Profile ID not available for admin upload.");
     await adminUploadProfileImage({ token, profileId, file });
-    toast.success("Image uploaded successfully");
+    showSuccessToast("Image uploaded successfully");
     await refetchImages();
   };
 
@@ -377,16 +383,16 @@ export function ProfileImageUpload({
       // After delete, fetch the new images and send them to reorder
       try {
         await refetchImages();
-        toast.success("Image deleted successfully");
+        showSuccessToast("Image deleted successfully");
       } catch {
-        toast.error("Failed to update image order after delete");
+        showErrorToast(null, "Failed to update image order after delete");
       }
       setIsUploading(false);
       setDeleteModalOpen(false);
       setPendingDeleteId(null);
     },
     onError: () => {
-      toast.error("Failed to delete image");
+      showErrorToast(null, "Failed to delete image");
       setIsUploading(false);
       setDeleteModalOpen(false);
       setPendingDeleteId(null);
@@ -446,7 +452,6 @@ export function ProfileImageUpload({
   if (!userId) {
     return null;
   }
-  console.log(isAdmin, profileId);
   return (
     <div className="space-y-4">
       {/* Render ProfileImageReorder component for displaying and reordering existing images */}
@@ -473,7 +478,6 @@ export function ProfileImageUpload({
                 : uploadImage
             }
             setIsUploading={setIsUploading}
-            toast={toast}
             isUploading={isUploading}
             fetchImages={refetchImages}
             onStartUpload={handleStartUpload}

@@ -194,7 +194,7 @@ const ProfileView: FC<ProfileViewProps> = ({
 
     return [];
   }, [images, profileData?.profileImageIds]);
-  console.log(profileData);
+
   // Delete profile handler
   const handleDeleteProfile = async () => {
     setDeleteError(null);

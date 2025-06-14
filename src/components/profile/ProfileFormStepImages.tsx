@@ -22,9 +22,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
   profileId,
 }) => {
   const { profile, isAdmin } = useAuthContext();
-  const userId = profile?.id || "user-id-placeholder";
-  console.log("ProfileFormStepImages profileId:", profileId);
-  console.log("isAdmin:", isAdmin);
+  const userId = profile?.userId || "user-id-placeholder";
 
   if (isLoading) {
     return (
@@ -54,7 +52,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
         )}
       />
       {images.length < 6 && (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+        <div className="w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
           <ProfileImageUpload
             userId={userId}
             isAdmin={isAdmin}

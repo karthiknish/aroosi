@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Share2, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { showSuccessToast } from "@/lib/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
 import type { BlogPost } from "@/types/blog";
@@ -249,8 +249,7 @@ export default function BlogDetailPage() {
                       url: window.location.href,
                     });
                   } else {
-                    navigator.clipboard.writeText(window.location.href);
-                    toast.success("Link copied to clipboard!");
+                    showSuccessToast("Link copied to clipboard!");
                   }
                 }}
               >

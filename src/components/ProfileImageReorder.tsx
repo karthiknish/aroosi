@@ -14,10 +14,11 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "./AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Trash2, Grip } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Trash2, Grip } from "lucide-react";
 // Use the correct import for the modal
 import ImageDeleteConfirmation from "@/components/ImageDeleteConfirmation";
 import ProfileImageModal from "@/components/ProfileImageModal";
@@ -125,8 +126,6 @@ export function ProfileImageReorder({
   const { token } = useAuthContext();
   const [isReordering, setIsReordering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [orderedImages, setOrderedImages] = useState<ImageType[]>(images);
-
   // Modal state for swiping through images
   const [modalState, setModalState] = useState<{
     open: boolean;
@@ -151,14 +150,13 @@ export function ProfileImageReorder({
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
-      const oldIndex = orderedImages.findIndex((img) => img.id === active.id);
-      const newIndex = orderedImages.findIndex((img) => img.id === over.id);
+      const oldIndex = images.findIndex((img) => img.id === active.id);
+      const newIndex = images.findIndex((img) => img.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
 
-      const newOrdered = arrayMove(orderedImages, oldIndex, newIndex);
+      const newOrdered = arrayMove(images, oldIndex, newIndex);
       const newStorageOrder = newOrdered.map((img) => img.id);
 
-      setOrderedImages(newOrdered);
       if (onReorder) onReorder(newOrdered);
 
       try {
@@ -183,21 +181,21 @@ export function ProfileImageReorder({
           throw new Error(errorData.error || "Failed to update image order");
         }
 
-        toast.success("Image order updated successfully");
+        showSuccessToast("Image order updated successfully");
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to update image order";
         console.error("Error updating image order:", errorMessage);
         setError(errorMessage);
-        toast.error(`Failed to update order: ${errorMessage}`);
+        showErrorToast(null, `Failed to update order: ${errorMessage}`);
 
-        setOrderedImages(images);
+        // Can call onReorder with original images if needed
         if (onReorder) onReorder(images);
       } finally {
         setIsReordering(false);
       }
     },
-    [orderedImages, loading, isReordering, onReorder, token, userId, images]
+    [loading, isReordering, images, onReorder, token, userId]
   );
 
   if (loading) {
@@ -219,14 +217,14 @@ export function ProfileImageReorder({
     );
   }
 
-  if (!orderedImages || orderedImages.length === 0) {
+  if (!images || images.length === 0) {
     return (
       <div className="text-center py-6 text-gray-500">No images to display</div>
     );
   }
 
   // Prepare images for modal swiping
-  const modalImages = orderedImages.map((img) => ({
+  const modalImages = images.map((img) => ({
     url: img.url,
     name: "Profile Image",
   }));
@@ -239,16 +237,16 @@ export function ProfileImageReorder({
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={orderedImages.map((img) => img.id)}
+          items={images.map((img) => img.id)}
           strategy={horizontalListSortingStrategy}
         >
           <div className="flex flex-wrap gap-4">
-            {orderedImages.map((img, idx) => (
+            {images.map((img, idx) => (
               <div key={img.id} style={{ width: 100, height: 100 }}>
                 <SortableImage
                   img={img}
                   onDeleteImage={onDeleteImage}
-                  allImages={orderedImages}
+                  allImages={images}
                   imageIndex={idx}
                   setModalState={setModalState}
                 />
@@ -266,7 +264,7 @@ export function ProfileImageReorder({
       />
       {isReordering && (
         <div className="flex items-center gap-2">
-          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          <LoadingSpinner size={20} />
           <span className="text-sm text-gray-600">Updating image order...</span>
         </div>
       )}

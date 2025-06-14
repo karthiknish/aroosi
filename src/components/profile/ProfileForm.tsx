@@ -2,14 +2,19 @@
 
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import type { Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { showErrorToast } from "@/lib/ui/toast";
 
 // Import custom hooks for image handling
-// import { useImageUpload, useDeleteImage } from "@/lib/utils/profileImageUtils";
+import {
+  useProfileImages,
+  useImageReorder,
+  useDeleteImage,
+} from "@/lib/utils/profileImageUtils";
 
 // Import UI components
 import { Button } from "@/components/ui/button";
@@ -22,6 +27,7 @@ import ProfileFormStepCultural from "./ProfileFormStepCultural";
 import ProfileFormStepEducation from "./ProfileFormStepEducation";
 import ProfileFormStepAbout from "./ProfileFormStepAbout";
 import ProfileFormStepImages from "./ProfileFormStepImages";
+import ProfileFormStepPlans from "./ProfileFormStepPlans";
 
 // Import auth context
 import { useAuthContext } from "@/components/AuthProvider";
@@ -41,32 +47,14 @@ import type { MappedImage } from "@/lib/utils/profileImageUtils";
 // Import ImageType from '@/types/image'
 import type { ImageType } from "@/types/image";
 
+// Import ProfileFormValues from types folder
+import type { ProfileFormValues as ProfileFormValuesFromTypes } from "@/types/profile";
+
 // Types
 type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say" | "other";
 
-export type ProfileFormValues = {
-  profileFor: "self" | "friend" | "family";
-  fullName: string;
-  dateOfBirth: Date | string;
-  gender: Gender;
-  height: string;
-  ukCity: string;
-  ukPostcode: string;
-  aboutMe: string;
-  phoneNumber: string;
-  preferredGender: string;
-  partnerPreferenceAgeMin: string;
-  partnerPreferenceAgeMax: string;
-  partnerPreferenceUkCity: string;
-  maritalStatus: string;
-  education: string;
-  occupation: string;
-  annualIncome: string | number;
-  diet: string;
-  smoking: string;
-  drinking: string;
-  physicalStatus: string;
-};
+// Re-export the shared type for downstream imports so existing import paths continue to work.
+export type ProfileFormValues = ProfileFormValuesFromTypes;
 
 interface ProfileFormProps {
   mode?: "create" | "edit";
@@ -79,20 +67,25 @@ interface ProfileFormProps {
   submitButtonText?: string;
   userId?: string;
   onEditDone?: () => void;
-  isAdmin?: boolean;
   profileId?: string;
-  adminImages?: MappedImage[];
   userImages?: MappedImage[];
 }
 
-const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <div className="space-y-3 pt-6 border-t first:border-t-0 first:pt-0">
-    <h2 className="text-xl font-semibold text-gray-700">{title}</h2>
-    {children}
-  </div>
+const FormSection: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  gridClassName?: string;
+}> = ({ title, children, gridClassName }) => (
+  <section className="mb-10 pt-6 first:pt-0 first:border-t-0 border-t">
+    <h2 className="text-xl font-semibold text-gray-700 mb-4">{title}</h2>
+    <div
+      className={
+        gridClassName || "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4"
+      }
+    >
+      {children}
+    </div>
+  </section>
 );
 
 const essentialProfileSchema = z.object({
@@ -100,25 +93,17 @@ const essentialProfileSchema = z.object({
     required_error: "Please select who you are creating this profile for.",
   }),
   fullName: z.string().min(2, "Full name is required"),
-  dateOfBirth: z.union([
-    z.date(),
-    z.string().min(1, "Date of birth is required"),
-  ]),
-  gender: z.enum(
-    ["male", "female", "non-binary", "prefer-not-to-say", "other"] as const,
-    {
-      required_error: "Gender is required",
-    }
-  ),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  gender: z.string().min(1, "Gender is required"),
   height: z.string().min(1, "Height is required"),
   ukCity: z.string().min(1, "City is required"),
   ukPostcode: z.string().min(1, "Postcode is required"),
   aboutMe: z.string().min(1, "About Me is required"),
   phoneNumber: z.string().min(1, "Phone number is required"),
   preferredGender: z.string().min(1, "Preferred gender is required"),
-  partnerPreferenceAgeMin: z.string(),
-  partnerPreferenceAgeMax: z.string(),
-  partnerPreferenceUkCity: z.string(),
+  partnerPreferenceAgeMin: z.union([z.string(), z.number()]),
+  partnerPreferenceAgeMax: z.union([z.string(), z.number()]),
+  partnerPreferenceUkCity: z.union([z.string(), z.array(z.string())]),
   maritalStatus: z.string(),
   education: z.string(),
   occupation: z.string(),
@@ -144,9 +129,10 @@ const stepTips = [
   "Tip: Education and career info helps you stand out.",
   "Tip: Write a friendly, honest 'About Me' to attract the right matches.",
   "Tip: A clear profile photo increases your chances by 3x!",
+  "Tip: Choose the right plan for your needs - you can upgrade anytime.",
 ];
 
-const totalSteps = 6;
+const totalSteps = 7;
 
 // Helper to map Profile to ProfileFormValues
 export function mapProfileToFormValues(
@@ -164,6 +150,7 @@ export function mapProfileToFormValues(
     ].includes(profile.gender)
       ? (profile.gender as Gender)
       : "other",
+    ukCity: profile.ukCity ? profile.ukCity.toLowerCase() : "",
     partnerPreferenceAgeMin:
       profile.partnerPreferenceAgeMin !== undefined &&
       profile.partnerPreferenceAgeMin !== null
@@ -197,10 +184,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   submitButtonText,
   userId: userIdProp,
   profileId,
-  adminImages,
   userImages,
 }) => {
-  const { token, isAdmin } = useAuthContext();
+  const { token } = useAuthContext();
   const router = useRouter();
 
   // Use userId from prop if provided, otherwise fallback to profile
@@ -251,24 +237,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     profileFor: "self",
     fullName: "",
     dateOfBirth: "",
-    gender: "other",
+    gender: "prefer-not-to-say",
+    height: "",
     ukCity: "",
     ukPostcode: "",
     aboutMe: "",
-    height: "",
     phoneNumber: "",
-    preferredGender: "",
+    preferredGender: "any",
     partnerPreferenceAgeMin: "",
     partnerPreferenceAgeMax: "",
     partnerPreferenceUkCity: "",
-    maritalStatus: "",
+    maritalStatus: "single",
     education: "",
     occupation: "",
     annualIncome: "",
     diet: "",
-    smoking: "",
-    drinking: "",
+    smoking: "no",
+    drinking: "no",
     physicalStatus: "",
+    subscriptionPlan: "free",
   };
 
   // Use a ref to track if we've initialized the form to prevent unnecessary resets
@@ -284,9 +271,12 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     };
   }, [emptyDefaults, initialValues, fetchedProfile]);
 
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(essentialProfileSchema),
-    defaultValues: mergedInitialValues,
+  const form = useForm<ProfileFormValues, unknown, ProfileFormValues>({
+    resolver: zodResolver(essentialProfileSchema) as unknown as Resolver<
+      ProfileFormValues,
+      unknown
+    >,
+    defaultValues: mergedInitialValues as unknown as ProfileFormValues,
     mode: "onChange",
   });
 
@@ -296,7 +286,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       !hasInitialized.current &&
       Object.keys(mergedInitialValues).length > 0
     ) {
-      form.reset(mergedInitialValues);
+      form.reset(mergedInitialValues as unknown as ProfileFormValues);
       hasInitialized.current = true;
     }
   }, [mergedInitialValues, form]);
@@ -308,7 +298,10 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
-        form.reset({ ...mergedInitialValues, ...parsed });
+        form.reset({
+          ...mergedInitialValues,
+          ...parsed,
+        } as unknown as ProfileFormValues);
       } catch {
         // Ignore parse errors
       }
@@ -341,13 +334,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     { value: "belfast", label: "Belfast" },
   ]);
 
-  // Compute the current image order from images props (adminImages or userImages)
+  // Compute the current image order from images props (userImages)
   const imageOrder = React.useMemo(() => {
-    const imgs: MappedImage[] = (adminImages ??
-      userImages ??
-      []) as MappedImage[];
+    const imgs: MappedImage[] = (userImages ?? []) as MappedImage[];
     return imgs.map((img: MappedImage) => img.storageId || "");
-  }, [adminImages, userImages]);
+  }, [userImages]);
 
   const {
     handleSubmit,
@@ -356,14 +347,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 
   // Form submission: just call onSubmit with form data and imageOrder
   const handleFormSubmit = handleSubmit((data: ProfileFormValues) => {
-    console.log("SUBMIT triggered", { currentStep, totalSteps });
     if (currentStep !== totalSteps - 1) {
       // Prevent submit if not on the last step
       return;
     }
     // Require at least one profile image for both create and edit
     if (!imageOrder || imageOrder.length === 0) {
-      toast.error("Please upload at least one profile photo to continue.");
+      showErrorToast(
+        null,
+        "Please upload at least one profile photo to continue."
+      );
       return;
     }
     // Clear draft from localStorage on successful submit
@@ -397,7 +390,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   const waitForUserId = mode === "create" && !internalProfileId;
 
   // Use profileId from props if present, otherwise fallback to userIdProp, otherwise fallback to fetchedProfile._id
-
   const resolvedProfileId =
     profileId ||
     userIdProp ||
@@ -405,38 +397,37 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     "";
 
   // Wrapper for the image step to only fetch images when on the image step
-  const ProfileFormImageStepWrapper: React.FC<{
-    profileId: string;
-    isAdmin: boolean;
-    images?: ImageType[];
-  }> = ({ profileId, isAdmin, images }) => {
-    // Use images prop if provided, otherwise use userImages prop mapped to ImageType[]
-    const mappedImages: ImageType[] = images
-      ? images.map((img) => ({
-          ...img,
-          id:
-            "storageId" in img
-              ? ("_id" in img && typeof img._id === "string" && img._id) ||
-                (typeof img.storageId === "string" && img.storageId) ||
-                ""
-              : "",
-        }))
-      : (userImages || []).map((img) => ({
-          ...img,
-          id:
-            "storageId" in img
-              ? ("_id" in img && typeof img._id === "string" && img._id) ||
-                (typeof img.storageId === "string" && img.storageId) ||
-                ""
-              : "",
-        }));
-    const isLoadingImages = false;
+  const ProfileFormImageStepWrapper: React.FC<{ profileId: string }> = ({
+    profileId,
+  }) => {
+    const { data: apiImages = [], isLoading } = useProfileImages(profileId);
+    // Map ApiImage[] to ImageType[]
+    const images = apiImages.map((img) => ({
+      id: img.storageId || img._id,
+      url: img.url,
+      storageId: img.storageId,
+      _id: img._id,
+    }));
+    // Get the reorder and delete hooks at the top level
+    const reorderImages = useImageReorder(profileId);
+    const deleteImage = useDeleteImage(profileId);
+    // Adapt reorder handler to accept ImageType[]
+    const handleReorder = async (newOrder: ImageType[]) => {
+      const storageIds = newOrder.map((img) => img.storageId || img.id);
+      await reorderImages(storageIds);
+    };
+    // Adapt delete handler to accept (imageId: string) => Promise<void>
+    const handleDelete = async (imageId: string) => {
+      await deleteImage(imageId);
+      return;
+    };
     return (
       <ProfileFormStepImages
-        images={mappedImages}
-        isLoading={isLoadingImages}
-        isAdmin={isAdmin}
+        images={images}
+        isLoading={isLoading}
         profileId={profileId}
+        onImageReorder={handleReorder}
+        onImageDelete={handleDelete}
       />
     );
   };
@@ -445,7 +436,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   if (profileLoading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <Loader2 className="animate-spin w-8 h-8 text-green-600" />
+        <LoadingSpinner size={32} colorClassName="text-green-600" />
         <span className="ml-3 text-green-700 font-semibold">
           Loading profile...
         </span>
@@ -456,7 +447,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   if (waitForUserId || isCreatingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-pink-600" />
+        <LoadingSpinner size={32} colorClassName="text-pink-600" />
         <span className="ml-2 text-pink-700 font-semibold">
           {isCreatingProfile
             ? "Creating your profile..."
@@ -581,26 +572,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                     </FormSection>
                   )}
                   {currentStep === 5 && (
-                    <FormSection title="Profile Photos">
-                      {mode === "create" && !resolvedProfileId ? (
+                    <FormSection
+                      title="Profile Photos"
+                      gridClassName="grid grid-cols-1"
+                    >
+                      {!resolvedProfileId ? (
                         <div className="flex items-center gap-2 text-pink-600">
-                          <Loader2 className="h-5 w-5 animate-spin" />
+                          <LoadingSpinner size={20} />
                           Waiting for profile to be created...
                         </div>
                       ) : (
                         <ProfileFormImageStepWrapper
                           profileId={resolvedProfileId}
-                          isAdmin={isAdmin}
-                          images={
-                            adminImages
-                              ? adminImages.map((img) => ({
-                                  ...img,
-                                  id: img._id || img.storageId || "",
-                                }))
-                              : undefined
-                          }
                         />
                       )}
+                    </FormSection>
+                  )}
+                  {currentStep === 6 && (
+                    <FormSection title="Subscription Plan">
+                      <ProfileFormStepPlans form={form} />
                     </FormSection>
                   )}
                 </motion.div>
@@ -647,7 +637,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                       onClick={handleFormSubmit}
                     >
                       {isSubmitting || loading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <LoadingSpinner size={16} className="mr-2" />
                       ) : null}
                       {buttonText}
                     </Button>

@@ -103,6 +103,12 @@ export default defineSchema({
     // Timestamps
     createdAt: v.float64(), // Automatically set by Convex?
     updatedAt: v.optional(v.float64()),
+    boostsRemaining: v.optional(v.number()),
+    boostedUntil: v.optional(v.float64()),
+    subscriptionPlan: v.optional(
+      v.union(v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))
+    ),
+    subscriptionExpiresAt: v.optional(v.number()),
   })
     .index("by_userId", ["userId"])
     .index("by_clerkId", ["clerkId"]),
@@ -196,4 +202,10 @@ export default defineSchema({
     fileSize: v.optional(v.number()),
     createdAt: v.float64(),
   }),
+
+  profileViews: defineTable({
+    viewerId: v.id("users"),
+    profileId: v.id("profiles"),
+    createdAt: v.float64(),
+  }).index("by_profileId_createdAt", ["profileId", "createdAt"]),
 });

@@ -7,21 +7,18 @@ import type { Profile, ProfileFormValues } from "@/types/profile";
 import ProfileFormComponent from "@/components/profile/ProfileForm";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Id } from "@convex/_generated/dataModel";
 import {
   getCurrentUserWithProfile,
-  updateUserProfile,
+  submitProfile,
 } from "@/lib/profile/userProfileApi";
 import {
   ProfileFormValues as ProfileFormComponentValues,
   mapProfileToFormValues,
 } from "@/components/profile/ProfileForm";
-import { fetchAdminProfileImagesById } from "@/lib/profile/adminProfileApi";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { ApiImage, MappedImage } from "@/lib/utils/profileImageUtils";
-import { Loader2 } from "lucide-react";
-import { ImageType } from "@/types/image";
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
@@ -58,8 +55,11 @@ const defaultProfile: Profile = {
   updatedAt: Date.now(),
   profileFor: "self",
   isApproved: false,
+  subscriptionPlan: "free",
+  boostsRemaining: 0,
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function convertFormValuesToProfile(
   formValues: ProfileFormValues,
   existingProfile: Partial<Profile> = {}
@@ -118,8 +118,8 @@ function fromProfileFormComponentValues(
     ...cleanValues,
     fullName: values.fullName ?? "",
     dateOfBirth:
-      values.dateOfBirth instanceof Date
-        ? values.dateOfBirth.toISOString()
+      (values.dateOfBirth as unknown) instanceof Date
+        ? (values.dateOfBirth as unknown as Date).toISOString()
         : ((values.dateOfBirth as string) ?? ""),
     gender: values.gender ?? "other",
     height: values.height ?? "",
@@ -197,16 +197,19 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (isProfileError) {
       console.error("Error fetching profile:", profileError);
-      toast.error("Failed to load profile data");
+      showErrorToast(null, "Failed to load profile data");
     }
   }, [isProfileError, profileError]);
 
   // Memoized profile data for type safety and consistency
   const profileData: Profile = useMemo(() => {
     if (!profileDataState) return defaultProfile;
+    const filtered = Object.fromEntries(
+      Object.entries(profileDataState).filter(([, v]) => v !== undefined)
+    );
     return {
       ...defaultProfile,
-      ...profileDataState,
+      ...filtered,
       _id: profileDataState._id || defaultProfile._id,
       userId: (profileDataState.userId as Id<"users">) || defaultProfile.userId,
       gender:
@@ -214,7 +217,6 @@ export default function EditProfilePage() {
       createdAt: profileDataState.createdAt || Date.now(),
       updatedAt: profileDataState.updatedAt || Date.now(),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(profileDataState)]); // Compare content of profileDataState
 
   // Profile update mutation using react-query
@@ -222,19 +224,11 @@ export default function EditProfilePage() {
     mutationFn: async (values: ProfileFormValues) => {
       if (!token)
         throw new Error("Authentication required. Please sign in again.");
-      // Remove _id and clerkId from values before conversion
-      const rest = Object.fromEntries(
-        Object.entries(values).filter(([k]) => k !== "_id" && k !== "clerkId")
-      );
-      const updatedProfile = convertFormValuesToProfile(
-        rest as ProfileFormValues,
-        profileData
-      );
-      const result = await updateUserProfile(token, updatedProfile);
-      if (!result.success) {
-        throw new Error(result.error || "Profile update was not successful");
+      const apiResult = await submitProfile(token, values, "edit");
+      if (!apiResult.success) {
+        throw new Error(apiResult.error || "Profile update was not successful");
       }
-      return result.data as Profile;
+      return apiResult.data as Profile;
     },
     onSuccess: async (profile) => {
       setProfileDataState(profile);
@@ -244,14 +238,14 @@ export default function EditProfilePage() {
         queryClient.invalidateQueries({ queryKey: ["auth"] }),
       ]);
       await refetchProfile();
-      toast.success("Profile updated successfully!");
+      showSuccessToast("Profile updated successfully!");
       router.push("/profile");
     },
     onError: (error: unknown) => {
       const errorMessage =
         error instanceof Error ? error.message : "An unknown error occurred";
       setServerError(errorMessage);
-      toast.error(`Failed to update profile: ${errorMessage}`);
+      showErrorToast(null, "Failed to update profile");
     },
   });
 
@@ -274,35 +268,6 @@ export default function EditProfilePage() {
 
   // Determine if the user is an admin (adjust this logic as needed)
   const isAdmin = authProfile?.role === "admin";
-
-  // Fetch admin images if admin
-  const [adminImages, setAdminImages] = useState<MappedImage[]>([]);
-  useEffect(() => {
-    const fetchImages = async () => {
-      if (isAdmin && profileData?._id && token) {
-        const raw = await fetchAdminProfileImagesById({
-          token,
-          profileId: profileData._id,
-        });
-        const apiImages: ApiImage[] = Array.isArray(raw)
-          ? (raw as ImageType[]).map((img) => ({
-              _id: img.id,
-              storageId: img.storageId || img.id,
-              url: img.url,
-            }))
-          : [];
-        const mapped: MappedImage[] = apiImages.map((img) => ({
-          _id: img._id || img.storageId,
-          storageId: img.storageId,
-          url: img.url,
-        }));
-        setAdminImages(mapped);
-      } else {
-        setAdminImages([]);
-      }
-    };
-    fetchImages();
-  }, [isAdmin, profileData?._id, token]);
 
   // Fetch user images (not admin)
   const userProfileId = profileData?._id;
@@ -336,16 +301,23 @@ export default function EditProfilePage() {
     url: img.url,
   }));
 
-  // Loading state
+  // Main form
   if (isLoadingProfile) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Skeleton className="h-12 w-1/3 mb-8" />
-        <div className="grid gap-6 md:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+      <div className="flex items-center justify-center min-h-[200px]">
+        <LoadingSpinner size={32} colorClassName="text-pink-600" />
+        <span className="ml-3 text-pink-700 font-semibold">
+          Loading profile...
+        </span>
+      </div>
+    );
+  }
+  if (!profileData) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <span className="ml-3 text-pink-700 font-semibold">
+          Failed to load profile.
+        </span>
       </div>
     );
   }
@@ -387,18 +359,6 @@ export default function EditProfilePage() {
     );
   }
 
-  // Main form
-  if (!profileData || !profileData._id) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <Loader2 className="animate-spin w-8 h-8 text-pink-600" />
-        <span className="ml-3 text-pink-700 font-semibold">
-          Loading profile...
-        </span>
-      </div>
-    );
-  }
-
   return (
     <div className="flex items-center justify-center w-full min-h-screen bg-base-light">
       <div className="bg-white/90 shadow-xl rounded-2xl mt-16 w-full  overflow-hidden">
@@ -411,10 +371,8 @@ export default function EditProfilePage() {
             serverError={serverError || undefined}
             onEditDone={() => router.push("/profile")}
             key={profileData._id}
-            isAdmin={isAdmin}
             profileId={profileData._id}
-            adminImages={adminImages as unknown as MappedImage[]}
-            userImages={!isAdmin ? userImages : undefined}
+            userImages={userImages}
           />
         </div>
       </div>

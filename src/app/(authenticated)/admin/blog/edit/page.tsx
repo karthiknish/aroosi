@@ -3,13 +3,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
 import BlogEditor from "@/components/admin/BlogEditor";
 import { useAuthContext } from "@/components/AuthProvider";
 import { fetchBlogPostBySlug, editBlogPost } from "@/lib/blogUtil";
 import type { BlogPost } from "@/types/blog";
-import { Loader2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 
 export default function AdminEditBlogPage() {
@@ -90,14 +90,14 @@ export default function AdminEditBlogPage() {
       return result.data;
     },
     onSuccess: () => {
-      toast.success("Blog post updated successfully!");
+      showSuccessToast("Blog post updated successfully!");
       router.push("/admin");
     },
     onError: (err: unknown) => {
       if (err instanceof Error) {
-        toast.error(err.message || "Failed to update post");
+        showErrorToast(err, "Failed to update post");
       } else {
-        toast.error("Failed to update post");
+        showErrorToast(null, "Failed to update post");
       }
     },
   });
@@ -105,7 +105,7 @@ export default function AdminEditBlogPage() {
   if (!isLoaded || !isSignedIn || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }
@@ -113,7 +113,7 @@ export default function AdminEditBlogPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }

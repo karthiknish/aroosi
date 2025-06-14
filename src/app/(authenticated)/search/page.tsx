@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserCircle } from "lucide-react";
+import { UserCircle, Rocket } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -95,6 +95,7 @@ export interface ProfileData {
   dateOfBirth?: string;
   isProfileComplete?: boolean;
   hiddenFromSearch?: boolean;
+  boostedUntil?: number;
   [key: string]: unknown;
 }
 export interface ProfileSearchResult {
@@ -154,7 +155,6 @@ export default function SearchProfilesPage() {
         }
 
         if (!profiles || profiles.length === 0) {
-          console.log("No profiles available to fetch images for");
           return {};
         }
 
@@ -163,11 +163,9 @@ export default function SearchProfilesPage() {
           .filter(Boolean);
 
         if (userIds.length === 0) {
-          console.log("No valid user IDs found for image batch request");
           return {};
         }
 
-        console.log("Fetching images for user IDs:", userIds);
         const res = await fetch(
           `/api/images/batch?userIds=${userIds.join(",")}`,
           {
@@ -388,7 +386,13 @@ export default function SearchProfilesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, delay: idx * 0.05 }}
                   >
-                    <Card className="hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col">
+                    <Card
+                      className={`${
+                        p.boostedUntil && p.boostedUntil > Date.now()
+                          ? "ring-2 ring-pink-500 shadow-pink-200"
+                          : ""
+                      } hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col`}
+                    >
                       {firstImageUrl ? (
                         <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
                           {/* Skeleton loader */}
@@ -408,6 +412,11 @@ export default function SearchProfilesPage() {
                               }))
                             }
                           />
+                          {p.boostedUntil && p.boostedUntil > Date.now() && (
+                            <div className="absolute top-2 left-2 bg-pink-600 text-white text-xs px-2 py-1 rounded-full z-10 flex items-center gap-1">
+                              <Rocket className="h-3 w-3" /> Boosted
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="w-full h-40 flex items-center justify-center bg-gray-100">

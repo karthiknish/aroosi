@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Users, Mail } from "lucide-react";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 
@@ -16,7 +16,7 @@ function AdminPageInner() {
   if (!userIsAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }
@@ -143,7 +143,7 @@ function AdminPage() {
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   UserCircle,
@@ -38,20 +38,6 @@ import {
 } from "@/lib/interestUtils";
 import type { Profile } from "@/types/profile";
 
-// Helper: theme color for toast
-const toastTheme = {
-  style: {
-    background: "#fce7f3", // Tailwind pink-100
-    color: "#be185d", // Tailwind pink-700
-    border: "1px solid #f472b6", // Tailwind pink-400
-    fontWeight: 500,
-  },
-  iconTheme: {
-    primary: "#db2777", // Tailwind pink-600
-    secondary: "#fff",
-  },
-};
-
 type Interest = {
   id: string;
   toUserId: string;
@@ -85,7 +71,7 @@ export default function ProfileDetailPage() {
 
   // Use .data from API response (as per fetchUserProfile return type)
   const profile: Profile | null = profileData?.data ?? null;
-  console.log(profile);
+
   const { data: userProfileImagesResponse } = useQuery({
     queryKey: ["userProfileImages", userId, token],
     queryFn: async () => {
@@ -180,9 +166,9 @@ export default function ProfileDetailPage() {
   ) {
     invalidIdError =
       "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID.";
-    toast.error(
-      "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID.",
-      toastTheme
+    showErrorToast(
+      null,
+      "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID."
     );
   }
 
@@ -289,15 +275,15 @@ export default function ProfileDetailPage() {
   // --- BEGIN: Update handleInterestClick for instant UI feedback ---
   const handleInterestClick = async () => {
     if (!fromUserId || typeof fromUserId !== "string") {
-      toast.error("User ID not available", toastTheme);
+      showErrorToast(null, "User ID not available");
       return;
     }
     if (!toUserId || typeof toUserId !== "string") {
-      toast.error("Target user ID not available", toastTheme);
+      showErrorToast(null, "Target user ID not available");
       return;
     }
     if (!token || typeof token !== "string") {
-      toast.error("Token not available", toastTheme);
+      showErrorToast(null, "Token not available");
       return;
     }
     setInterestError(null);
@@ -306,7 +292,7 @@ export default function ProfileDetailPage() {
         // Optimistically update UI: switch heart back immediately
         setLocalInterest(false);
         const responseData = await removeInterest(token, fromUserId, toUserId);
-        toast.success("Interest withdrawn successfully!", toastTheme);
+        showSuccessToast("Interest withdrawn successfully!");
         await refetchSentInterests();
         setLocalInterest(null); // Let server state take over
         return responseData;
@@ -314,7 +300,7 @@ export default function ProfileDetailPage() {
         // Optimistically update UI: switch heart immediately
         setLocalInterest(true);
         const responseData = await sendInterest(token, fromUserId, toUserId);
-        toast.success("Interest sent successfully!", toastTheme);
+        showSuccessToast("Interest sent successfully!");
         await refetchSentInterests();
         setLocalInterest(null); // Let server state take over
         return responseData;
@@ -328,7 +314,7 @@ export default function ProfileDetailPage() {
           : alreadySentInterest
             ? "Failed to remove interest"
             : "Failed to send interest";
-      toast.error(msg, toastTheme);
+      showErrorToast(msg);
       setInterestError(msg as string);
       throw error;
     }

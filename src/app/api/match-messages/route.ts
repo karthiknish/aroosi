@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 function getTokenFromRequest(req: NextRequest): {
   token: string | null;
@@ -27,23 +28,14 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const conversationId = searchParams.get("conversationId");
   if (!conversationId) {
-    return NextResponse.json(
-      { success: false, error: "Missing conversationId parameter" },
-      { status: 400 }
-    );
+    return errorResponse("Missing conversationId parameter", 400);
   }
   const { token, error: tokenError } = getTokenFromRequest(req);
   if (!token) {
-    return NextResponse.json(
-      { success: false, error: "Authentication failed", details: tokenError },
-      { status: 401 }
-    );
+    return errorResponse("Authentication failed", 401, { details: tokenError });
   }
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    return NextResponse.json(
-      { success: false, error: "Server configuration error" },
-      { status: 500 }
-    );
+    return errorResponse("Server configuration error", 500);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
   convex.setAuth(token);
@@ -51,21 +43,13 @@ export async function GET(req: NextRequest) {
     const result = await convex.query(api.messages.getMessages, {
       conversationId,
     });
-    return NextResponse.json(result, { status: 200 });
+    return successResponse(result);
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch messages",
-        details:
-          process.env.NODE_ENV === "development"
-            ? error instanceof Error
-              ? error.message
-              : String(error)
-            : undefined,
-      },
-      { status: 500 }
-    );
+    const details =
+      process.env.NODE_ENV === "development"
+        ? { details: error instanceof Error ? error.message : String(error) }
+        : undefined;
+    return errorResponse("Failed to fetch messages", 500, details);
   }
 }
 
@@ -73,36 +57,22 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { token, error: tokenError } = getTokenFromRequest(req);
   if (!token) {
-    return NextResponse.json(
-      { success: false, error: "Authentication failed", details: tokenError },
-      { status: 401 }
-    );
+    return errorResponse("Authentication failed", 401, { details: tokenError });
   }
   let body;
   try {
     body = await req.json();
   } catch (e) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Invalid request body",
-        details: e instanceof Error ? e.message : "Unknown error",
-      },
-      { status: 400 }
-    );
+    return errorResponse("Invalid request body", 400, {
+      details: e instanceof Error ? e.message : "Unknown error",
+    });
   }
   const { conversationId, fromUserId, toUserId, text } = body || {};
   if (!conversationId || !fromUserId || !toUserId || !text) {
-    return NextResponse.json(
-      { success: false, error: "Missing required fields" },
-      { status: 400 }
-    );
+    return errorResponse("Missing required fields", 400);
   }
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    return NextResponse.json(
-      { success: false, error: "Server configuration error" },
-      { status: 500 }
-    );
+    return errorResponse("Server configuration error", 500);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
   convex.setAuth(token);
@@ -113,25 +83,21 @@ export async function POST(req: NextRequest) {
       toUserId: toUserId as Id<"users">,
       text,
     });
-    return NextResponse.json({ success: true, data: result }, { status: 200 });
+    return successResponse(result);
   } catch (error) {
     const isAuthError =
       error instanceof Error &&
       (error.message.includes("Unauthenticated") ||
         error.message.includes("token") ||
         error.message.includes("authentication"));
-    return NextResponse.json(
-      {
-        success: false,
-        error: isAuthError ? "Authentication failed" : "Failed to send message",
-        details:
-          process.env.NODE_ENV === "development"
-            ? error instanceof Error
-              ? error.message
-              : String(error)
-            : undefined,
-      },
-      { status: isAuthError ? 401 : 400 }
+    const details =
+      process.env.NODE_ENV === "development"
+        ? { details: error instanceof Error ? error.message : String(error) }
+        : undefined;
+    return errorResponse(
+      isAuthError ? "Authentication failed" : "Failed to send message",
+      isAuthError ? 401 : 400,
+      details
     );
   }
 }

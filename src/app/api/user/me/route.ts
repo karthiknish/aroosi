@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import {} from "next/server";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import type { NextRequest } from "next/server";
@@ -28,10 +29,7 @@ export async function GET(request: NextRequest) {
 
     if (!token) {
       console.error("[API /api/user/me] No or invalid Authorization header");
-      return NextResponse.json(
-        { error: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
+      return errorResponse("Unauthorized - No token provided", 401);
     }
 
     // Log the first 10 and last 10 chars of the token to verify it's the same one
@@ -53,38 +51,27 @@ export async function GET(request: NextRequest) {
 
       if (!userData) {
         console.error("[API /api/user/me] No user data returned from Convex");
-        return NextResponse.json(
-          { error: "User profile not found" },
-          { status: 404 }
-        );
+        return errorResponse("User profile not found", 404);
       }
 
       console.log(
         "[API /api/user/me] Successfully fetched user data from Convex"
       );
-      return NextResponse.json(userData);
+      return successResponse(userData);
     } catch (convexError) {
       console.error("[API /api/user/me] Convex fetchQuery error:", convexError);
-      return NextResponse.json(
-        {
-          error: "Failed to fetch user profile from Convex",
-          details:
-            convexError instanceof Error
-              ? convexError.message
-              : String(convexError),
-        },
-        { status: 500 }
-      );
+      return errorResponse("Failed to fetch user profile from Convex", 500, {
+        details:
+          convexError instanceof Error
+            ? convexError.message
+            : String(convexError),
+      });
     }
   } catch (error) {
     console.error("[API /api/user/me] Unexpected error:", error);
-    return NextResponse.json(
-      {
-        error: "An unexpected error occurred",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return errorResponse("An unexpected error occurred", 500, {
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -101,10 +88,7 @@ export async function PUT(request: NextRequest) {
       console.error(
         "[API /api/user/me] PUT No or invalid Authorization header"
       );
-      return NextResponse.json(
-        { error: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
+      return errorResponse("Unauthorized - No token provided", 401);
     }
 
     // Log the first 10 and last 10 chars of the token to verify it's the same one
@@ -122,7 +106,7 @@ export async function PUT(request: NextRequest) {
       body = await request.json();
     } catch (jsonError) {
       console.error("[API /api/user/me] PUT Invalid JSON body:", jsonError);
-      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+      return errorResponse("Invalid JSON body", 400);
     }
 
     try {
@@ -139,40 +123,29 @@ export async function PUT(request: NextRequest) {
         console.error(
           "[API /api/user/me] PUT No user data returned from Convex after update"
         );
-        return NextResponse.json(
-          { error: "User profile not found or not updated" },
-          { status: 404 }
-        );
+        return errorResponse("User profile not found or not updated", 404);
       }
 
       console.log(
         "[API /api/user/me] PUT Successfully updated user data in Convex"
       );
-      return NextResponse.json(updatedUser);
+      return successResponse(updatedUser);
     } catch (convexError) {
       console.error(
         "[API /api/user/me] PUT Convex fetchMutation error:",
         convexError
       );
-      return NextResponse.json(
-        {
-          error: "Failed to update user profile in Convex",
-          details:
-            convexError instanceof Error
-              ? convexError.message
-              : String(convexError),
-        },
-        { status: 500 }
-      );
+      return errorResponse("Failed to update user profile in Convex", 500, {
+        details:
+          convexError instanceof Error
+            ? convexError.message
+            : String(convexError),
+      });
     }
   } catch (error) {
     console.error("[API /api/user/me] PUT Unexpected error:", error);
-    return NextResponse.json(
-      {
-        error: "An unexpected error occurred",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return errorResponse("An unexpected error occurred", 500, {
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 }

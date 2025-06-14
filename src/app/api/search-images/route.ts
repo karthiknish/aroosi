@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import {} from "next/server";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
 const PEXELS_API_URL = "https://api.pexels.com/v1/search";
@@ -8,17 +9,11 @@ export async function GET(request: Request) {
   const query = searchParams.get("query");
 
   if (!query) {
-    return NextResponse.json(
-      { error: "Query parameter is required" },
-      { status: 400 }
-    );
+    return errorResponse("Query parameter is required", 400);
   }
 
   if (!PEXELS_API_KEY) {
-    return NextResponse.json(
-      { error: "Pexels API key is not configured" },
-      { status: 500 }
-    );
+    return errorResponse("Pexels API key is not configured", 500);
   }
 
   try {
@@ -51,19 +46,9 @@ export async function GET(request: Request) {
       })
     );
 
-    return NextResponse.json(
-      { images },
-      {
-        headers: {
-          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-        },
-      }
-    );
+    return successResponse({ images });
   } catch (error) {
     console.error("Error fetching images from Pexels:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch images" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch images", 500);
   }
 }

@@ -16,7 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"; // Added: useQ
 // import { usePathname, useRouter } from "next/navigation";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { setCachedProfileComplete } from "@/lib/cache";
-import { Loader2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 // import { toast } from "sonner"; // Or your preferred toast library
 
 // Placeholder for toast if not using a specific library for this example
@@ -39,10 +39,14 @@ interface ProfileType {
   location?: string;
   createdAt?: string | Date | number;
   updatedAt?: string | Date | number;
-  isOnboardingComplete?: boolean;
-  isApproved?: boolean;
+  isOnboardingComplete: boolean;
+  isApproved: boolean;
+  isProfileComplete: boolean;
   // Add other profile fields as needed
   [key: string]: unknown;
+  banned: boolean;
+  hiddenFromSearch: boolean;
+  role: string;
 }
 
 interface AuthContextType {
@@ -66,29 +70,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const TOKEN_STORAGE_KEY = "aroosi_auth_token";
-
-// Type for expected profile API response shape
-type ProfileApiResponseData = {
-  _id?: string;
-  id?: string;
-  userId?: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  fullName?: string;
-  phoneNumber?: string;
-  dateOfBirth?: string | Date | number;
-  gender?: string;
-  profileImageUrl?: string;
-  bio?: string;
-  location?: string;
-  createdAt?: string | Date | number;
-  updatedAt?: string | Date | number;
-  isOnboardingComplete?: boolean;
-  isApproved?: boolean;
-};
-
 export function AuthProvider({
   children,
 }: {
@@ -104,17 +85,7 @@ export function AuthProvider({
   const queryClient = useQueryClient(); // Added
 
   // Token state
-  const [token, setTokenState] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return localStorage.getItem(TOKEN_STORAGE_KEY);
-      } catch (e) {
-        console.error("Failed to read token from localStorage on init:", e);
-        return null;
-      }
-    }
-    return null;
-  });
+  const [token, setTokenState] = useState<string | null>(null);
 
   // AuthProvider's own loading and error states
   const [authProviderLoading, setAuthProviderLoading] = useState(true);
@@ -125,8 +96,9 @@ export function AuthProvider({
   const tokenRefreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
   // Profile state
-  const [isProfileComplete, setIsProfileComplete] = useState(false);
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
+  const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
+  const [isOnboardingComplete, setIsOnboardingComplete] =
+    useState<boolean>(false);
   const [profile, setProfile] = useState<ProfileType | null>(null);
 
   // Combined overall loaded state (Clerk + AuthProvider initial tasks)
@@ -136,11 +108,6 @@ export function AuthProvider({
 
   // Derived states
   const isAdmin = useMemo(() => {
-    console.log("clerkUser:", clerkUser);
-    console.log(
-      "clerkUser?.publicMetadata?.role:",
-      clerkUser?.publicMetadata?.role
-    );
     return clerkUser?.publicMetadata?.role === "admin" || false;
   }, [clerkUser]);
 
@@ -181,7 +148,7 @@ export function AuthProvider({
     [clerkGetToken]
   );
 
-  // Set token in state and localStorage
+  // Set token in state
   const setToken = useCallback(
     (newToken: string | null) => {
       // Only update if the token has actually changed
@@ -189,26 +156,17 @@ export function AuthProvider({
 
       setTokenState(newToken);
 
-      if (typeof window !== "undefined") {
+      // Token persistence to localStorage removed for security. Still decode for debugging.
+      if (newToken) {
         try {
-          if (newToken) {
-            try {
-              const decoded = jwtDecode<JwtPayload>(newToken);
-              console.log("AuthProvider decoded token payload:", decoded);
-            } catch (error) {
-              console.error("AuthProvider - Error decoding token:", error);
-            }
-            localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
-          } else {
-            localStorage.removeItem(TOKEN_STORAGE_KEY);
-            // Clear sensitive queries on logout or token removal
-            queryClient.removeQueries({ queryKey: ["userProfile"] }); // Be more specific
-            // queryClient.clear(); // Use if a full cache clear is desired on logout
-          }
+          jwtDecode<JwtPayload>(newToken);
         } catch (error) {
-          console.error("Error updating token in localStorage:", error);
-          // Potentially dispatch an error state update here
+          console.error("AuthProvider - Error decoding token:", error);
         }
+      }
+      // Clear relevant cache when token is cleared.
+      if (!newToken) {
+        queryClient.removeQueries({ queryKey: ["userProfile"] });
       }
     },
     [token, queryClient]
@@ -216,37 +174,35 @@ export function AuthProvider({
 
   // Sign out function
   const signOut = useCallback(async () => {
-    console.log("AuthContext: Signing out...");
-    try {
-      // Clear local auth state immediately
-      setToken(null); // This will also clear from localStorage and parts of queryClient
-      setProfile(null);
-      setIsProfileComplete(false);
-      setIsOnboardingComplete(false);
-      setAuthError(null);
+    // Clear local auth state immediately
+    setToken(null); // This will also clear from localStorage and parts of queryClient
+    setProfile(null);
+    setIsProfileComplete(false);
+    setIsOnboardingComplete(false);
+    setAuthError(null);
 
-      // Reset token refresh mechanism
-      isRefreshingTokenRef.current = false;
-      tokenRefreshPromiseRef.current = null;
+    // Reset token refresh mechanism
+    isRefreshingTokenRef.current = false;
+    tokenRefreshPromiseRef.current = null;
 
-      // Sign out from Clerk
-      if (clerkSignOut) {
-        await clerkSignOut();
-        console.log("AuthContext: Clerk sign out complete");
+    // Sign out from Clerk
+    if (clerkSignOut) {
+      await clerkSignOut();
+    }
+
+    // Clear any remaining sensitive data
+    if (queryClient) {
+      queryClient.clear();
+    }
+
+    // Clear completion flags from localStorage explicitly on sign-out (token already in memory only)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("isProfileComplete");
+        localStorage.removeItem("isOnboardingComplete");
+      } catch (err) {
+        console.error("AuthProvider: Failed to clear completion flags", err);
       }
-
-      // Clear any remaining sensitive data
-      if (queryClient) {
-        queryClient.clear();
-      }
-    } catch (error) {
-      console.error("Error during sign out:", error);
-      setAuthError(
-        error instanceof Error ? error : new Error("Failed to sign out")
-      );
-      throw error;
-    } finally {
-      console.log("AuthContext: Sign out process completed");
     }
   }, [clerkSignOut, setToken, queryClient]);
 
@@ -259,45 +215,72 @@ export function AuthProvider({
         const response = await getCurrentUserWithProfile(token);
         if (response.success && response.data) {
           // Safely extract data from the response
-          const profileResponse = response.data as ProfileApiResponseData;
+          const userData = response.data as unknown; // raw response data from API
+          // Some endpoints wrap payload in `data` field. Support both shapes.
+          /* eslint-disable @typescript-eslint/no-explicit-any */
+          const envelope: any = (userData as any)?.data ?? userData;
+          /* eslint-enable @typescript-eslint/no-explicit-any */
 
-          // Create a properly typed profile object with defaults
+          const nestedProfile = envelope.profile || {};
+
           const profileData: ProfileType = {
-            id:
-              profileResponse._id?.toString() ||
-              profileResponse.id?.toString() ||
-              "",
-            userId: profileResponse.userId?.toString() || "",
-            email: profileResponse.email || "",
+            // IDs & user info
+            id: String(nestedProfile._id ?? ""),
+            userId: String(envelope._id ?? envelope.userId ?? ""),
+            email: envelope.email || "",
+
+            // Names strictly from nestedProfile
             firstName:
-              profileResponse.firstName ||
-              profileResponse.fullName?.split(" ")[0] ||
-              "",
+              nestedProfile.firstName ??
+              (typeof nestedProfile.fullName === "string"
+                ? nestedProfile.fullName.split(" ")[0]
+                : ""),
             lastName:
-              profileResponse.lastName ||
-              profileResponse.fullName?.split(" ").slice(1).join(" ") ||
-              "",
-            phoneNumber: profileResponse.phoneNumber,
-            dateOfBirth: profileResponse.dateOfBirth,
-            gender: profileResponse.gender,
-            profileImageUrl: profileResponse.profileImageUrl,
-            bio: profileResponse.bio,
-            location: profileResponse.location,
-            createdAt: profileResponse.createdAt,
-            updatedAt: profileResponse.updatedAt,
-            isOnboardingComplete: Boolean(profileResponse.isOnboardingComplete),
-            isApproved:
-              typeof profileResponse.isApproved === "boolean"
-                ? profileResponse.isApproved
-                : false,
+              nestedProfile.lastName ??
+              (typeof nestedProfile.fullName === "string"
+                ? nestedProfile.fullName.split(" ").slice(1).join(" ")
+                : ""),
+
+            // Profile details
+            phoneNumber: nestedProfile.phoneNumber,
+            dateOfBirth: nestedProfile.dateOfBirth,
+            gender: nestedProfile.gender,
+            profileImageUrl: nestedProfile.profileImageUrl,
+            bio:
+              (nestedProfile.aboutMe as string) ??
+              (nestedProfile.bio as string),
+            location: nestedProfile.location,
+
+            // Timestamps
+            createdAt:
+              nestedProfile.createdAt ??
+              envelope.createdAt ??
+              envelope._creationTime,
+            updatedAt: nestedProfile.updatedAt ?? envelope.updatedAt,
+
+            // Flags
+            isOnboardingComplete: Boolean(nestedProfile.isOnboardingComplete),
+            isProfileComplete: Boolean(nestedProfile.isProfileComplete),
+            isApproved: Boolean(nestedProfile.isApproved),
+
+            // Additional flags / roles
+            banned: Boolean(nestedProfile.banned),
+            hiddenFromSearch: Boolean(nestedProfile.hiddenFromSearch),
+            role: envelope.role || "",
           };
 
           setProfile(profileData);
-          const profileComplete = response.isProfileComplete || false;
-          setIsProfileComplete(profileComplete);
+          console.log("profileData", profileData);
 
-          // Set onboarding complete based on profile data
-          setIsOnboardingComplete(profileData.isOnboardingComplete || false);
+          // Completion flags are now directly read from the correctly built profileData
+          const rawIsProfileComplete = Boolean(profileData.isProfileComplete);
+          const rawIsOnboardingComplete = Boolean(
+            profileData.isOnboardingComplete
+          );
+
+          // Ensure flags are always boolean to unblock UI logic
+          setIsProfileComplete(rawIsProfileComplete);
+          setIsOnboardingComplete(rawIsOnboardingComplete);
 
           return profileData;
         }
@@ -341,12 +324,6 @@ export function AuthProvider({
       // Only run in browser
       if (typeof window === "undefined") return;
 
-      // Initialize token from localStorage if available
-      const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-      if (savedToken) {
-        setTokenState(savedToken);
-      }
-
       // Wait for Clerk to be fully loaded
       if (!isClerkLoaded || !isUserLoaded) return;
 
@@ -364,9 +341,6 @@ export function AuthProvider({
             );
             await signOut();
           }
-        } else if (savedToken) {
-          // Clear token if user is not signed in but we have a saved token
-          setToken(null);
         }
       } catch (error) {
         console.error("AuthProvider: Error initializing auth:", error);
@@ -386,20 +360,6 @@ export function AuthProvider({
     setToken,
     signOut,
   ]);
-
-  // After the state for isProfileComplete and isOnboardingComplete is set
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "isProfileComplete",
-        JSON.stringify(isProfileComplete)
-      );
-      localStorage.setItem(
-        "isOnboardingComplete",
-        JSON.stringify(isOnboardingComplete)
-      );
-    }
-  }, [isProfileComplete, isOnboardingComplete]);
 
   // No redirection logic here - all redirections are handled by ProtectedRoute component
 
@@ -446,7 +406,7 @@ export function AuthProvider({
     // This prevents loader flash if Clerk loads fast and user is already "signed in" via local token
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+        <LoadingSpinner size={32} />
       </div>
     );
   }

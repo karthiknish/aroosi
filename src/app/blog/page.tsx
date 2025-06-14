@@ -24,7 +24,11 @@ const fetchBlogPostsAPI = async (
   if (!res.ok) {
     throw new Error("Failed to fetch blog posts");
   }
-  return res.json();
+  const json = await res.json();
+  // The API wraps data in { success, data }
+  const payload =
+    json && typeof json === "object" && "data" in json ? json.data : json;
+  return payload as { posts: BlogPost[]; total: number };
 };
 
 export default function BlogPage() {

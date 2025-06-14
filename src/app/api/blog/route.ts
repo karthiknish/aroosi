@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   // Public endpoint: do not require authentication
@@ -16,18 +17,14 @@ export async function GET(req: NextRequest) {
     pageSize,
     category,
   });
-  return NextResponse.json(result, {
-    headers: {
-      "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-    },
-  });
+  return successResponse(result, 200);
 }
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
@@ -35,13 +32,10 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return errorResponse("Invalid JSON body", 400);
   }
   if (!body || typeof body !== "object") {
-    return NextResponse.json(
-      { error: "Missing or invalid body" },
-      { status: 400 }
-    );
+    return errorResponse("Missing or invalid body", 400);
   }
   const requiredFields = [
     "title",
@@ -53,10 +47,7 @@ export async function POST(req: NextRequest) {
   ];
   for (const field of requiredFields) {
     if (!(field in body)) {
-      return NextResponse.json(
-        { error: `Missing field: ${field}` },
-        { status: 400 }
-      );
+      return errorResponse(`Missing field: ${field}`, 400);
     }
   }
   try {
@@ -71,11 +62,11 @@ export async function POST(req: NextRequest) {
         content: string;
       }
     );
-    return NextResponse.json(result);
+    return successResponse(result);
   } catch (err: unknown) {
-    return NextResponse.json(
-      { error: (err as Error)?.message || "Failed to create blog post" },
-      { status: 500 }
+    return errorResponse(
+      (err as Error)?.message || "Failed to create blog post",
+      500
     );
   }
 }
@@ -84,7 +75,7 @@ export async function DELETE(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
@@ -92,23 +83,20 @@ export async function DELETE(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return errorResponse("Invalid JSON body", 400);
   }
   if (!body || typeof body !== "object" || !("_id" in body)) {
-    return NextResponse.json(
-      { error: "Missing or invalid _id" },
-      { status: 400 }
-    );
+    return errorResponse("Missing or invalid _id", 400);
   }
   try {
     const result = await convex.mutation(api.blog.deleteBlogPost, {
       _id: (body as { _id: Id<"blogPosts"> })._id,
     });
-    return NextResponse.json(result);
+    return successResponse(result);
   } catch (err: unknown) {
-    return NextResponse.json(
-      { error: (err as Error)?.message || "Failed to delete blog post" },
-      { status: 500 }
+    return errorResponse(
+      (err as Error)?.message || "Failed to delete blog post",
+      500
     );
   }
 }

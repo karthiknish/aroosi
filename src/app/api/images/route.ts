@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 export async function DELETE(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
@@ -17,10 +18,7 @@ export async function DELETE(req: NextRequest) {
   } catch {}
   const { userId, imageId } = body;
   if (!userId || !imageId) {
-    return NextResponse.json(
-      { error: "Missing userId or imageId" },
-      { status: 400 }
-    );
+    return errorResponse("Missing userId or imageId", 400);
   }
   // Call the Convex mutation to delete the image
   try {
@@ -29,18 +27,12 @@ export async function DELETE(req: NextRequest) {
       imageId: imageId as Id<"_storage">,
     });
     if (result.success) {
-      return NextResponse.json({ success: true });
+      return successResponse();
     } else {
-      return NextResponse.json(
-        { error: result.message || "Failed to delete image" },
-        { status: 400 }
-      );
+      return errorResponse(result.message || "Failed to delete image", 400);
     }
   } catch {
-    return NextResponse.json(
-      { error: "Failed to delete image" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to delete image", 500);
   }
 }
 
@@ -48,7 +40,7 @@ export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Unauthorized", 401);
   }
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
@@ -63,12 +55,23 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {}
   const { userId, storageId, fileName, contentType, fileSize } = body;
+
+  // Basic validation
   if (!userId || !storageId || !fileName || !contentType || !fileSize) {
-    return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 }
-    );
+    return errorResponse("Missing required fields", 400);
   }
+
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+  const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+  if (!ALLOWED_TYPES.includes(contentType as string)) {
+    return errorResponse("Unsupported image type", 400);
+  }
+
+  if (typeof fileSize !== "number" || fileSize > MAX_SIZE_BYTES) {
+    return errorResponse("File too large. Max 5MB allowed.", 400);
+  }
+
   try {
     const result = await convex.mutation(api.images.uploadProfileImage, {
       userId: userId as Id<"users">,
@@ -77,11 +80,18 @@ export async function POST(req: NextRequest) {
       contentType,
       fileSize,
     });
-    return NextResponse.json(result);
+    if (
+      !result ||
+      typeof result !== "object" ||
+      (result as { success?: boolean }).success !== true
+    ) {
+      return errorResponse(
+        (result as { message?: string }).message || "Upload failed",
+        400
+      );
+    }
+    return successResponse(result);
   } catch {
-    return NextResponse.json(
-      { error: "Failed to upload image" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to upload image", 500);
   }
 }
