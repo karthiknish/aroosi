@@ -1,5 +1,4 @@
 import React from "react";
-import { Trash2 } from "lucide-react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import type { ImageType } from "@/types/image";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -48,18 +47,10 @@ const ProfileFormStepImages: React.FC<Props> = ({
         images={images}
         userId={userId}
         onReorder={onImageReorder}
+        onDeleteImage={onImageDelete}
         isAdmin={isAdmin}
-        renderAction={(image: ImageType) => (
-          <button
-            type="button"
-            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => onImageDelete?.(image.id)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
       />
-      {images.length < 6 && (
+      {images.length < 5 && (
         <div className="w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
           <ProfileImageUpload
             userId={userId}

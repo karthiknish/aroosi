@@ -118,23 +118,26 @@ export const useDeleteImage = (profileId: string) => {
   const { token } = useAuthContext();
   const queryClient = useQueryClient();
 
-  return async (imageId: string) => {
+  return async (imageId: string, skipPrompt: boolean = false) => {
     if (!profileId || !token) return false;
 
-    if (!window.confirm("Are you sure you want to delete this image?")) {
-      return false;
+    // Show confirmation prompt only if skipPrompt is false
+    if (!skipPrompt) {
+      const confirmed = window.confirm(
+        "Are you sure you want to delete this image?"
+      );
+      if (!confirmed) return false;
     }
 
     try {
-      const response = await fetch(
-        `/api/profile/${profileId}/images/${imageId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`/api/images`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: profileId, imageId }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

@@ -431,8 +431,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     };
     // Adapt delete handler to accept (imageId: string) => Promise<void>
     const handleDelete = async (imageId: string) => {
-      await deleteImage(imageId);
-      return;
+      // Skip the default browser confirm because ImageDeleteConfirmation modal is already shown
+      await deleteImage(imageId, true);
     };
     return (
       <ProfileFormStepImages
