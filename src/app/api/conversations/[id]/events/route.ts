@@ -4,15 +4,12 @@ import { eventBus } from "@/lib/eventBus";
 
 export const runtime = "nodejs";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest) {
   // Verify auth
   const authCheck = requireUserToken(req);
   if ("errorResponse" in authCheck) return authCheck.errorResponse;
 
-  const conversationId = params.id;
+  const conversationId = req.nextUrl.pathname.split("/").slice(-2)[0];
   if (!conversationId) {
     return new Response(
       JSON.stringify({ success: false, error: "Missing conversationId" }),
@@ -23,24 +20,41 @@ export async function GET(
     );
   }
 
+  let heartbeat: NodeJS.Timeout;
+  let send: (data: unknown) => void;
+
   const stream = new ReadableStream({
     start(controller) {
-      const send = (data: unknown) => {
-        controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
-      };
-      // Listen for events for this conversation
-      eventBus.on(conversationId, send);
-
-      // Heartbeat to keep the connection alive behind proxies
-      const heartbeat = setInterval(() => {
-        controller.enqueue(`:keep-alive\n\n`);
-      }, 15000);
-
-      // When the connection is closed
-      return () => {
+      const cleanup = () => {
         clearInterval(heartbeat);
         eventBus.off(conversationId, send);
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       };
+
+      send = (data: unknown) => {
+        try {
+          controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
+        } catch {
+          cleanup();
+        }
+      };
+      eventBus.on(conversationId, send);
+
+      heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(`:keep-alive\n\n`);
+        } catch {
+          cleanup();
+        }
+      }, 15000);
+    },
+    cancel() {
+      clearInterval(heartbeat);
+      eventBus.off(conversationId, send);
     },
   });
 

@@ -4,10 +4,7 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { requireAdminToken } from "@/app/api/_utils/auth";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest) {
   const adminCheck = requireAdminToken(req);
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
   const { token } = adminCheck;
@@ -21,8 +18,9 @@ export async function GET(
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
   convex.setAuth(token);
   try {
+    const profileId = req.nextUrl.pathname.split("/").slice(-2)[0] as string;
     const matches = await convex.query(api.users.getMatchesForProfile, {
-      profileId: params.id as Id<"profiles">,
+      profileId: profileId as Id<"profiles">,
     });
     return NextResponse.json({ success: true, matches }, { status: 200 });
   } catch {

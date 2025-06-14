@@ -6,14 +6,13 @@ import { ReactNode } from "react";
 export default function RouteTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
+        exit={{ opacity: 0, y: -16 }}
         transition={{ duration: 0.25, ease: "easeInOut" }}
-        className="min-h-full"
       >
         {children}
       </motion.div>
