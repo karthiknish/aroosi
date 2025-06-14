@@ -1,7 +1,6 @@
 // Skeleton component from shadcn/ui
 import React from "react";
 
-import { cn } from "@/lib/utils";
 
 interface SkeletonProps {
   className?: string;
