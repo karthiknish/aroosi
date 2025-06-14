@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Users, Heart, Shield, Star } from "lucide-react";
