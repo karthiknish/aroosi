@@ -14,7 +14,6 @@ import type { BlogPost } from "@/types/blog";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { fetchBlogPostBySlug } from "@/lib/blogUtil";
-import { buildMetadata } from "@/lib/seo";
 
 // Calculate reading time
 function getReadingTime(content: string): number {
@@ -41,23 +40,6 @@ const BlogDetailSkeleton = () => (
     </Card>
   </div>
 );
-
-// Build metadata dynamically using the blog post title if available
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  // Attempt to create a readable title from the slug
-  const raw = params.slug.replace(/-/g, " ");
-  const titleCase = raw.replace(/\b\w/g, (l) => l.toUpperCase());
-
-  return buildMetadata({
-    title: `${titleCase} – Aroosi Blog`,
-    description: `Read ${titleCase} on the Aroosi matrimonial blog.`,
-    openGraph: { url: `https://aroosi.co.uk/blog/${params.slug}` },
-  });
-}
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();

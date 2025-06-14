@@ -2,13 +2,6 @@
 
 import { SignUp } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { buildMetadata } from "@/lib/seo";
-
-export const metadata = buildMetadata({
-  title: "Sign Up – Aroosi",
-  description:
-    "Create your free Aroosi account and start your journey to finding the perfect Afghan match.",
-});
 
 export default function SignUpPage() {
   return (

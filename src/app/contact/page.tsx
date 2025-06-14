@@ -10,8 +10,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState } from "react";
 import { submitContactPublic } from "@/lib/contactUtil";
-import { Mail, Send, MapPin, Phone } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
 
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -25,12 +23,6 @@ const contactFormSchema = z.object({
 });
 
 type ContactFormValues = z.infer<typeof contactFormSchema>;
-
-export const metadata = buildMetadata({
-  title: "Contact Us – Aroosi",
-  description:
-    "Get in touch with the Aroosi team for support, feedback, or partnership enquiries.",
-});
 
 export default function ContactPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);

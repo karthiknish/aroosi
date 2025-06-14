@@ -3,13 +3,6 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import React from "react";
-import { buildMetadata } from "@/lib/seo";
-
-export const metadata = buildMetadata({
-  title: "Terms & Conditions – Aroosi",
-  description:
-    "Review the terms and conditions governing your use of the Aroosi matrimony platform.",
-});
 
 export default function TermsPage() {
   return (

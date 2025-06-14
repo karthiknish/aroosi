@@ -2,13 +2,6 @@
 
 import { SignIn, ClerkLoading, ClerkLoaded } from "@clerk/nextjs";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { buildMetadata } from "@/lib/seo";
-
-export const metadata = buildMetadata({
-  title: "Forgot Password – Aroosi",
-  description:
-    "Reset your Aroosi account password securely and regain access to your profile.",
-});
 
 export default function ForgotPasswordPage() {
   return (

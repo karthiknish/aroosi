@@ -8,7 +8,6 @@ import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { ArrowRight, Calendar, Award, Smile } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -26,12 +25,6 @@ const fadeIn = {
     transition: { delay: i * 0.15, duration: 0.7, ease: "easeOut" },
   }),
 };
-
-export const metadata = buildMetadata({
-  title: "About Us – Aroosi",
-  description:
-    "Learn about Aroosi's mission to connect Afghan singles and families worldwide through a trusted, culturally-aware matrimony platform.",
-});
 
 export default function AboutPage() {
   return (
