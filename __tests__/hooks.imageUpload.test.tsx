@@ -46,7 +46,7 @@ describe("useImageUpload", () => {
       wrapper: createWrapper(),
     });
     await result.current(new File(["a"], "a.png"));
-    expect(showSuccessToast).toHaveBeenCalled();
+    await waitFor(() => expect(showSuccessToast).toHaveBeenCalled());
   });
 
   it("calls error toast on failure", async () => {
@@ -62,7 +62,7 @@ describe("useImageUpload", () => {
       wrapper: createWrapper(),
     });
     await expect(result.current(new File(["a"], "a.png"))).rejects.toThrow();
-    expect(showErrorToast).toHaveBeenCalled();
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
   });
 });
 
@@ -80,7 +80,7 @@ describe("useImageReorder", () => {
       wrapper: createWrapper(),
     });
     await result.current(["a", "b"]);
-    expect(showSuccessToast).toHaveBeenCalled();
+    await waitFor(() => expect(showSuccessToast).toHaveBeenCalled());
   });
 
   it("error path", async () => {
@@ -95,6 +95,6 @@ describe("useImageReorder", () => {
       wrapper: createWrapper(),
     });
     await expect(result.current(["a"])).rejects.toThrow();
-    expect(showErrorToast).toHaveBeenCalled();
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
   });
 });

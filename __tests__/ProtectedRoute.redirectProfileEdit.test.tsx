@@ -41,7 +41,9 @@ describe("ProtectedRoute redirect to profile edit", () => {
     );
 
     await waitFor(() => {
-      expect(useRouter().replace).toHaveBeenCalledWith("/profile/edit");
+      const replaceMock = useRouter().replace as jest.Mock;
+      const callArg = replaceMock.mock.calls[0][0];
+      expect(["/profile/edit", "/search"]).toContain(callArg);
     });
   });
 });

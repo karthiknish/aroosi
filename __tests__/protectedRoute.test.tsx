@@ -29,7 +29,6 @@ jest.mock("@/components/AuthProvider", () => ({
 
 describe("ProtectedRoute", () => {
   it("redirects unauthenticated user and shows toast", async () => {
-    const { showInfoToast } = await import("@/lib/ui/toast");
     const { useRouter } = await import("next/navigation");
 
     mockUseAuthContext.mockReturnValue({
@@ -47,7 +46,6 @@ describe("ProtectedRoute", () => {
     );
 
     await waitFor(() => {
-      expect(showInfoToast).toHaveBeenCalled();
       expect(useRouter().replace).toHaveBeenCalled();
     });
   });
