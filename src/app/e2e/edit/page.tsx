@@ -1,0 +1,45 @@
+"use client";
+import { useState } from "react";
+import { updateUserProfile } from "@/lib/profile/userProfileApi";
+import { useSearchParams } from "next/navigation";
+
+export default function EditProfileE2ETestPage() {
+  const params = useSearchParams();
+  const token = params.get("token") ?? "test-token";
+
+  const [fullName, setFullName] = useState("");
+  const [status, setStatus] = useState("idle");
+
+  const handleSave = async () => {
+    setStatus("loading");
+    try {
+      const res = await updateUserProfile(
+        token,
+        { fullName },
+        0 // retries
+      );
+      setStatus(res.success ? "success" : "error");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
+      <input
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
+        placeholder="Full name"
+        className="border p-2 rounded w-64"
+      />
+      <button
+        onClick={handleSave}
+        disabled={status === "loading"}
+        className="bg-primary text-white px-4 py-2 rounded"
+      >
+        Save
+      </button>
+      <div data-testid="status">{status}</div>
+    </div>
+  );
+}

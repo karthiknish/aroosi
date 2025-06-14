@@ -4,13 +4,16 @@ import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
-const convexClient = getConvexClient()!;
-
-if (!convexClient) {
-  return errorResponse("Convex backend not configured", 500);
-}
+// Initialize Convex client (may be null if URL not configured)
+const convexClient = getConvexClient();
 
 export async function GET(request: Request) {
+  // Ensure Convex is configured
+  const client = convexClient;
+  if (!client) {
+    return errorResponse("Convex backend not configured", 500);
+  }
+
   try {
     // Validate Authorization header
     const authHeader = request.headers.get("Authorization");
@@ -30,7 +33,7 @@ export async function GET(request: Request) {
 
     try {
       // Set auth token for Convex client
-      convexClient.setAuth(token);
+      client.setAuth(token);
 
       // Fetch user profile from Convex
       console.log("Fetching current user with profile in GET /api/profile");
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
         profile?: { _id: string } | null;
         // ...add other fields as needed
       };
-      const currentUser = (await convexClient.query(
+      const currentUser = (await client.query(
         api.users.getCurrentUserWithProfile,
         {}
       )) as UserWithProfile;
@@ -67,7 +70,7 @@ export async function GET(request: Request) {
             typeof (currentUser.profile as { _id?: unknown })._id === "string"
           ) {
             const profileWithId = currentUser.profile as { _id: string };
-            await convexClient.mutation(api.users.deleteProfile, {
+            await client.mutation(api.users.deleteProfile, {
               id: profileWithId._id as Id<"profiles">,
             });
             console.log(
@@ -123,6 +126,12 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  // Ensure Convex is configured
+  const client = convexClient;
+  if (!client) {
+    return errorResponse("Convex backend not configured", 500);
+  }
+
   try {
     const token = request.headers.get("Authorization")?.split(" ")[1];
     if (!token) {
@@ -131,7 +140,7 @@ export async function PUT(request: Request) {
     }
 
     console.log("Setting auth token for Convex");
-    convexClient.setAuth(token);
+    client.setAuth(token);
 
     const body = await request.json();
     console.log("Updating profile with data:", body);
@@ -184,14 +193,14 @@ export async function PUT(request: Request) {
 
     // Cast `updates` to any to satisfy Convex mutation type expectations.
     // The actual runtime validation is handled by Convex schema.
-    const result = await convexClient.mutation(api.users.updateProfile, {
+    const result = await client.mutation(api.users.updateProfile, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updates: updates as any,
     });
     console.log("Profile update result:", result);
 
     // Fetch the latest profile to return to the client so the UI has fresh data
-    const updatedUser = (await convexClient.query(
+    const updatedUser = (await client.query(
       api.users.getCurrentUserWithProfile,
       {}
     )) as { profile?: unknown; isProfileComplete?: boolean };
@@ -219,6 +228,9 @@ export async function POST(req: NextRequest) {
     return errorResponse("Unauthorized", 401);
   }
   const convex = getConvexClient();
+  if (!convex) {
+    return errorResponse("Convex backend not configured", 500);
+  }
   convex.setAuth(token);
   let body: Record<string, unknown>;
   try {
@@ -374,10 +386,13 @@ export async function DELETE(request: Request) {
       return errorResponse("No token provided", 401);
     }
 
-    convexClient.setAuth(token);
+    const client = convexClient;
+    if (!client) {
+      return errorResponse("Convex backend not configured", 500);
+    }
 
     // Get the current user with profile to find profile _id
-    const currentUser = await convexClient.query(
+    const currentUser = await client.query(
       api.users.getCurrentUserWithProfile,
       {}
     );
@@ -387,7 +402,7 @@ export async function DELETE(request: Request) {
     }
 
     const result: { success: boolean; message?: string } =
-      await convexClient.mutation(api.users.deleteProfile, {
+      await client.mutation(api.users.deleteProfile, {
         id: currentUser.profile._id as Id<"profiles">,
       });
 

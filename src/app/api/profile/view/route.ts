@@ -23,8 +23,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const convexClient = await convexClientFromRequest(request);
-    await convexClient.mutation(api.users.recordProfileView, {
+    const tmpClient = await convexClientFromRequest(request);
+    if (!tmpClient) {
+      return NextResponse.json(
+        { success: false, error: "Convex backend not configured" },
+        { status: 500 }
+      );
+    }
+    const client = tmpClient;
+    await client.mutation(api.users.recordProfileView, {
       profileId,
     });
 
@@ -52,8 +59,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const convexClient = await convexClientFromRequest(request);
-    const viewers = await convexClient.query(api.users.getProfileViewers, {
+    const tmpClient = await convexClientFromRequest(request);
+    if (!tmpClient) {
+      return NextResponse.json(
+        { success: false, error: "Convex backend not configured" },
+        { status: 500 }
+      );
+    }
+    const client = tmpClient;
+    const viewers = await client.query(api.users.getProfileViewers, {
       profileId: profileId as Id<"profiles">,
     });
 
