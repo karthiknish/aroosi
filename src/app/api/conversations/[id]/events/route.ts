@@ -22,10 +22,13 @@ export async function GET(req: NextRequest) {
 
   let heartbeat: NodeJS.Timeout;
   let send: (data: unknown) => void;
+  let closed = false;
 
   const stream = new ReadableStream({
     start(controller) {
       const cleanup = () => {
+        if (closed) return;
+        closed = true;
         clearInterval(heartbeat);
         eventBus.off(conversationId, send);
         try {
@@ -36,6 +39,7 @@ export async function GET(req: NextRequest) {
       };
 
       send = (data: unknown) => {
+        if (closed) return;
         try {
           controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
         } catch {
@@ -45,6 +49,7 @@ export async function GET(req: NextRequest) {
       eventBus.on(conversationId, send);
 
       heartbeat = setInterval(() => {
+        if (closed) return;
         try {
           controller.enqueue(`:keep-alive\n\n`);
         } catch {
@@ -53,6 +58,7 @@ export async function GET(req: NextRequest) {
       }, 15000);
     },
     cancel() {
+      closed = true;
       clearInterval(heartbeat);
       eventBus.off(conversationId, send);
     },

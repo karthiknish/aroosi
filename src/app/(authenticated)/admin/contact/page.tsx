@@ -114,7 +114,11 @@ export default function AdminContactPage() {
             <TableBody>
               {contacts.map((contact: Contact) => (
                 <TableRow
-                  key={contact.id}
+                  key={
+                    contact._id ??
+                    contact.id ??
+                    `${contact.email}-${contact.createdAt}`
+                  }
                   className="cursor-pointer hover:bg-gray-100"
                   onClick={() => handleRowClick(contact)}
                 >

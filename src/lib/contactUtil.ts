@@ -1,6 +1,7 @@
 // Utility to fetch all contacts (admin) and submit contact (public)
 export interface Contact {
-  id: string;
+  _id?: string;
+  id?: string;
   name: string;
   email: string;
   subject: string;
@@ -19,7 +20,9 @@ export async function fetchAllContactsAdmin(token: string): Promise<Contact[]> {
   if (!res.ok) {
     throw new Error("Failed to fetch contacts");
   }
-  return res.json();
+  const data = await res.json();
+  // Map to ensure each has id field for React keys
+  return (data as Contact[]).map((c) => ({ ...c, id: c.id || c._id || "" }));
 }
 
 export async function submitContactPublic(data: {

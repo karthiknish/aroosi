@@ -14,27 +14,62 @@ export async function fetchBlogPosts({
   page = 0,
   pageSize = 6,
   category,
-}: { page?: number; pageSize?: number; category?: string } = {}): Promise<
-  BlogPost[]
-> {
+  token,
+}: {
+  page?: number;
+  pageSize?: number;
+  category?: string;
+  token?: string;
+} = {}): Promise<BlogPost[]> {
   const params = new URLSearchParams();
   params.append("page", String(page));
   params.append("pageSize", String(pageSize));
   if (category) params.append("category", category);
 
-  const res = await fetch(`/api/blog?${params.toString()}`);
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`/api/blog?${params.toString()}`, { headers });
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || "Failed to fetch blog posts");
   }
-  // If the API returns { data: BlogPost[] }, return data.data; else, return data
+  // Support multiple envelope shapes
+  // 1. Bare array
   if (Array.isArray(data)) return data;
+
+  // 2. { data: BlogPost[] }
   if (data && Array.isArray(data.data)) return data.data;
+
+  // 3. { posts: BlogPost[] }
   if (data && Array.isArray(data.posts)) return data.posts;
+
+  // 4. { success: true, data: { posts: BlogPost[] } }
+  if (
+    data &&
+    typeof data === "object" &&
+    "data" in data &&
+    data.data &&
+    Array.isArray((data.data as unknown as { posts?: unknown[] }).posts)
+  ) {
+    return (data.data as { posts: BlogPost[] }).posts;
+  }
   return [];
 }
 
-// Admin: Fetch paginated blog posts (admin endpoint, requires auth)
+// Admin: Fetch paginated blog posts with auth
+export async function fetchAdminBlogPosts({
+  token,
+  page = 0,
+  pageSize = 10,
+  category,
+}: {
+  token: string;
+  page?: number;
+  pageSize?: number;
+  category?: string;
+}): Promise<BlogPost[]> {
+  return fetchBlogPosts({ page, pageSize, category, token });
+}
 
 // Create a new blog post (requires auth)
 export async function createBlogPost(

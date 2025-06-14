@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { fetchBlogPosts, deleteBlogPost } from "@/lib/blogUtil";
+import { fetchAdminBlogPosts, deleteBlogPost } from "@/lib/blogUtil";
 import type { BlogPost } from "@/types/blog";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,9 +26,9 @@ export default function AdminBlogPage() {
     isLoading,
     refetch,
   } = useQuery<BlogPost[]>({
-    queryKey: ["adminBlogs"],
-    queryFn: () => fetchBlogPosts(),
-    enabled: isLoaded && isAdmin,
+    queryKey: ["adminBlogs", token],
+    queryFn: () => (token ? fetchAdminBlogPosts({ token }) : []),
+    enabled: isLoaded && isAdmin && !!token,
   });
 
   // Redirect to blog edit page
