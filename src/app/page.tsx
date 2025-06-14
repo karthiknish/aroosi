@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { buildMetadata } from "@/lib/seo";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,8 @@ const fadeIn = {
     },
   }),
 };
+
+export const metadata = buildMetadata();
 
 export default function HomePage() {
   return (

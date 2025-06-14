@@ -1,3 +1,4 @@
+"use client";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

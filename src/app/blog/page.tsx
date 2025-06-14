@@ -3,6 +3,7 @@
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import React from "react";
+import { buildMetadata } from "@/lib/seo";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +11,12 @@ import { BlogPost } from "@/types/blog";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
+
+export const metadata = buildMetadata({
+  title: "Matrimonial Blog – Aroosi",
+  description:
+    "Advice, inspiration, and real wedding stories for Afghan singles and families on Aroosi.",
+});
 
 // Explicit return type for the fetch function
 const fetchBlogPostsAPI = async (

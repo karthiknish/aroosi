@@ -2,6 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { buildMetadata } from "@/lib/seo";
 
 const plans = [
   {
@@ -143,6 +145,12 @@ const faqs = [
     a: "You will keep your Premium features until your current billing cycle ends, then your account will revert to the Free Plan.",
   },
 ];
+
+export const metadata = buildMetadata({
+  title: "Plans & Pricing – Aroosi",
+  description:
+    "Compare Aroosi's Free, Premium, and Premium Plus plans and choose the features that suit your matrimonial journey.",
+});
 
 export default function PricingPage() {
   return (

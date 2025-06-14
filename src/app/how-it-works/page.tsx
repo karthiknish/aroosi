@@ -14,6 +14,13 @@ import {
   Globe2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { buildMetadata } from "@/lib/seo";
+
+export const metadata = buildMetadata({
+  title: "How It Works – Aroosi",
+  description:
+    "Learn how Aroosi connects Afghan singles and families through a safe, culturally-aware matrimony platform.",
+});
 
 export default function HowItWorksPage() {
   return (

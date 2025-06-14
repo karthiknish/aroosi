@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Head from "next/head";
+import { buildMetadata } from "@/lib/seo";
+
+export const metadata = buildMetadata({
+  title: "Privacy Policy – Aroosi",
+  description:
+    "Read about how Aroosi protects your personal data and privacy throughout your matrimonial journey.",
+});
 
 export default function PrivacyPage() {
   return (

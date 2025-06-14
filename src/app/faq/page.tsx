@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import Head from "next/head";
+import { buildMetadata } from "@/lib/seo";
 
 const faqData = [
   {
@@ -48,31 +48,16 @@ const faqData = [
   },
 ];
 
+export const metadata = buildMetadata({
+  title: "FAQ – Aroosi",
+  description:
+    "Frequently asked questions about using the Aroosi Afghan matrimony platform.",
+});
+
 export default function FaqPage() {
   return (
     <>
-      <Head>
-        <title>FAQ | Aroosi</title>
-        <meta
-          name="description"
-          content="Frequently asked questions about Aroosi, the trusted Afghan matrimony platform."
-        />
-        <meta property="og:title" content="FAQ | Aroosi" />
-        <meta
-          property="og:description"
-          content="Frequently asked questions about Aroosi, the trusted Afghan matrimony platform."
-        />
-        <meta property="og:image" content="/og-image.png" />
-        <meta property="og:url" content="https://aroosi.co.uk/faq" />
-        <meta property="og:type" content="article" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="FAQ | Aroosi" />
-        <meta
-          name="twitter:description"
-          content="Frequently asked questions about Aroosi, the trusted Afghan matrimony platform."
-        />
-        <meta name="twitter:image" content="/og-image.png" />
-      </Head>
+      {/* Metadata handled via buildMetadata helper */}
       <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8">
         <motion.main
           initial={{ opacity: 0, y: 20 }}
