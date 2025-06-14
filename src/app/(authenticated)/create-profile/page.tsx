@@ -1,3 +1,5 @@
+"use client";
+
 import ProfileForm from "@/components/profile/ProfileForm";
 import type { ProfileFormValues } from "@/components/profile/ProfileForm";
 import { useRouter } from "next/navigation";
