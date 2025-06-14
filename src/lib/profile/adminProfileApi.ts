@@ -1,4 +1,4 @@
-import { Profile } from "@/types/profile";
+import type { Profile } from "@/types/profile";
 import type { ImageType } from "@/types/image";
 
 type AdminProfile = Profile & { _id: string; userId: string };
@@ -528,4 +528,48 @@ export async function updateAdminProfileImageOrder({
   }
 
   return response.json();
+}
+
+export async function createManualMatch({
+  token,
+  fromProfileId,
+  toProfileId,
+}: {
+  token: string;
+  fromProfileId: string;
+  toProfileId: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  const res = await fetch(`/api/admin/matches/create`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ fromProfileId, toProfileId }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { success: false, error: data.error || "Failed to create match" };
+  }
+  return { success: true };
+}
+
+export async function fetchAdminProfileMatches({
+  token,
+  profileId,
+}: {
+  token: string;
+  profileId: string;
+}): Promise<Profile[]> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const res = await fetch(`/api/admin/profiles/${profileId}/matches`, {
+    headers,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to fetch matches");
+  }
+  const data = await res.json();
+  return data.matches || [];
 }

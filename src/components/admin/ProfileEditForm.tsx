@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -8,12 +8,18 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { ProfileFormValues } from "@/types/profile";
 import type { ImageType } from "@/types/image";
+import type { Profile } from "@/types/profile";
 import {
   adminUploadProfileImage,
   deleteAdminProfileImageById,
   updateAdminProfileImageOrder,
+  createManualMatch,
+  fetchAdminProfiles,
 } from "@/lib/profile/adminProfileApi";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { Switch } from "@/components/ui/switch";
+import { Controller } from "react-hook-form";
 
 // Zod schema matches ProfileFormValues (allow string for enums for compatibility)
 const profileSchema = z.object({
@@ -53,6 +59,7 @@ type Props = {
   images: ImageType[];
   setImages: React.Dispatch<React.SetStateAction<ImageType[]>>;
   imagesLoading: boolean;
+  matches?: Profile[];
 };
 
 function isErrorWithMessage(error: unknown): error is { message: string } {
@@ -75,10 +82,12 @@ export default function ProfileEditForm({
   images,
   setImages,
   imagesLoading,
+  matches = [],
 }: Props) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -89,6 +98,35 @@ export default function ProfileEditForm({
   // --- Profile Images State ---
   const [imageError, setImageError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Manual match state
+  const [manualMatchName, setManualMatchName] = useState("");
+  const [creatingMatch, setCreatingMatch] = useState(false);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Profile[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+
+  // Debounced fetch suggestions
+  useEffect(() => {
+    const term = manualMatchName.trim();
+    if (!token || term.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      try {
+        const { profiles } = await fetchAdminProfiles({
+          token,
+          search: term,
+          page: 1,
+        });
+        setSuggestions(profiles.slice(0, 5));
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [manualMatchName, token]);
 
   // Upload image handler
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,6 +162,48 @@ export default function ProfileEditForm({
       setImageError(
         isErrorWithMessage(err) ? err.message : "Failed to delete image"
       );
+    }
+  };
+
+  const handleCreateMatch = async () => {
+    if (!profileId || !token || (!manualMatchName.trim() && !selectedProfile))
+      return;
+    setCreatingMatch(true);
+    setMatchError(null);
+    try {
+      let target: Profile | undefined = selectedProfile ?? undefined;
+      if (!target) {
+        const { profiles } = await fetchAdminProfiles({
+          token,
+          search: manualMatchName.trim(),
+          page: 1,
+        });
+        target = profiles.find((p) =>
+          p.fullName
+            .toLowerCase()
+            .includes(manualMatchName.trim().toLowerCase())
+        );
+      }
+      if (!target) throw new Error("No matching profile found");
+      if (target._id === profileId)
+        throw new Error("Cannot match a profile with itself");
+
+      const res = await createManualMatch({
+        token,
+        fromProfileId: profileId,
+        toProfileId: target._id,
+      });
+      if (!res.success) throw new Error(res.error || "Failed to match");
+      showSuccessToast(`Matched with ${target.fullName}`);
+      setManualMatchName("");
+      setSelectedProfile(null);
+      setSuggestions([]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to match";
+      setMatchError(msg);
+      showErrorToast(null, msg);
+    } finally {
+      setCreatingMatch(false);
     }
   };
 
@@ -191,15 +271,20 @@ export default function ProfileEditForm({
         <div className="col-span-2 mb-2">
           <h3 className="text-lg font-semibold mb-2">Personal Information</h3>
         </div>
-        <div className="col-span-2 flex items-center mb-2">
-          <input
-            type="checkbox"
-            id="isApproved"
-            {...register("isApproved")}
-            className="mr-2 h-4 w-4"
-            defaultChecked={!!initialValues.isApproved}
+        <div className="col-span-2 flex items-center gap-3 mb-2">
+          <Controller
+            name="isApproved"
+            control={control}
+            defaultValue={!!initialValues.isApproved}
+            render={({ field }) => (
+              <Switch
+                id="isApproved"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
           />
-          <label htmlFor="isApproved" className="font-medium">
+          <label htmlFor="isApproved" className="font-medium select-none">
             Approved (Admin Only)
           </label>
         </div>
@@ -492,6 +577,74 @@ export default function ProfileEditForm({
           )}
         </div>
       </div>
+      {/* Manual Match Section */}
+      {profileId && token && (
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold mb-2">Manual Match</h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            Enter another profile name to create an immediate mutual match.
+          </p>
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={manualMatchName}
+              onChange={(e) => {
+                setManualMatchName(e.target.value);
+                setSelectedProfile(null);
+              }}
+              placeholder="Other profile name"
+              className="flex-1 form-input rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500 text-foreground"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={
+                (!manualMatchName.trim() && !selectedProfile) || creatingMatch
+              }
+              onClick={handleCreateMatch}
+            >
+              {creatingMatch ? <LoadingSpinner size={16} /> : "Match Now"}
+            </Button>
+          </div>
+          {matchError && (
+            <p className="text-sm text-red-600 mt-2">{matchError}</p>
+          )}
+
+          {/* Suggestions dropdown */}
+          {suggestions.length > 0 && (
+            <div className="border mt-2 rounded-md bg-white shadow max-h-60 overflow-auto z-50">
+              {suggestions.map((sug) => (
+                <div
+                  key={sug._id}
+                  className="px-3 py-2 hover:bg-pink-50 cursor-pointer text-foreground"
+                  onClick={() => {
+                    setSelectedProfile(sug);
+                    setManualMatchName(sug.fullName);
+                    setSuggestions([]);
+                  }}
+                >
+                  {sug.fullName} – {sug.ukCity}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Matches List */}
+      {matches.length > 0 && (
+        <div className="border-t pt-6 mt-6">
+          <h3 className="text-lg font-semibold mb-2">
+            Current Matches ({matches.length})
+          </h3>
+          <ul className="list-disc pl-5 space-y-1">
+            {matches.map((m) => (
+              <li key={m._id} className="text-sm text-foreground">
+                {m.fullName} — {m.ukCity}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="flex gap-4 mt-8">
         <Button
           type="submit"

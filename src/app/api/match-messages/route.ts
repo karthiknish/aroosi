@@ -27,6 +27,10 @@ function getTokenFromRequest(req: NextRequest): {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const conversationId = searchParams.get("conversationId");
+  const limitParam = searchParams.get("limit");
+  const beforeParam = searchParams.get("before");
+  const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+  const before = beforeParam ? parseInt(beforeParam, 10) : undefined;
   if (!conversationId) {
     return errorResponse("Missing conversationId parameter", 400);
   }
@@ -42,6 +46,8 @@ export async function GET(req: NextRequest) {
   try {
     const result = await convex.query(api.messages.getMessages, {
       conversationId,
+      limit,
+      before,
     });
     return successResponse(result);
   } catch (error) {

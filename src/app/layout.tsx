@@ -8,6 +8,7 @@ import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import RouteTransition from "@/components/RouteTransition";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -49,8 +50,8 @@ function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <Header />
-      <main className="pt-20 pb-12 min-h-[calc(100vh-theme(spacing.20)-theme(spacing.12))]">
-        {children}
+      <main className="pt-20 pb-12 min-h-[calc(100vh-theme(spacing.20)-theme(spacing.12))] overflow-hidden">
+        <RouteTransition>{children}</RouteTransition>
       </main>
       <Footer />
       <Toaster position="bottom-right" />

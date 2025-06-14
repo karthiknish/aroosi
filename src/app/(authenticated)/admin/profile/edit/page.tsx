@@ -11,6 +11,7 @@ import {
   fetchAdminProfileById,
   updateAdminProfileById,
   fetchAdminProfileImagesById,
+  fetchAdminProfileMatches,
 } from "@/lib/profile/adminProfileApi";
 import type { Profile } from "@/types/profile";
 import { useQuery } from "@tanstack/react-query";
@@ -40,6 +41,16 @@ export default function AdminEditProfilePage() {
     queryFn: async () => {
       if (!id || !token) return null;
       return await fetchAdminProfileById({ token, id });
+    },
+    enabled: !!id && !!token,
+  });
+
+  // Fetch matches for profile
+  const { data: matches } = useQuery<Profile[]>({
+    queryKey: ["profileMatches", id, token],
+    queryFn: async () => {
+      if (!id || !token) return [];
+      return await fetchAdminProfileMatches({ token, profileId: id });
     },
     enabled: !!id && !!token,
   });
@@ -171,6 +182,7 @@ export default function AdminEditProfilePage() {
           images={images}
           setImages={setImages}
           imagesLoading={imagesLoading}
+          matches={matches || []}
         />
       </div>
     </div>

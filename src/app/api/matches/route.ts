@@ -38,18 +38,26 @@ export async function GET(req: NextRequest) {
     // matches is an array of profile objects with userId field
     // For each, fetch the public profile
     const results = await Promise.all(
-      matches.map(async (profile) => {
+      matches.map(async (match) => {
         try {
           const res = await convex.query(api.users.getUserPublicProfile, {
-            userId: profile.userId as Id<"users">,
+            userId: match.userId as Id<"users">,
           });
           if (res && res.profile) {
-            return { userId: profile.userId, profile: res.profile };
+            // ensure userId is included on the returned profile for convenience
+            return { ...res.profile, userId: match.userId };
           }
-        } catch {}
+        } catch (e) {
+          console.error(
+            "[matches API] Error fetching profile for",
+            match.userId,
+            e
+          );
+        }
         return null;
       })
     );
+    // Filter nulls and respond with flattened profile array
     return NextResponse.json(results.filter(Boolean), { status: 200 });
   } catch (error) {
     return NextResponse.json(

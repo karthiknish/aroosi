@@ -159,8 +159,10 @@ export default defineSchema({
     toUserId: v.id("users"),
     text: v.string(),
     createdAt: v.float64(),
-    // Optionally: read status, attachments, etc.
-  }).index("by_conversation", ["conversationId"]),
+    readAt: v.optional(v.float64()), // timestamp when recipient read the message
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_to", ["toUserId"]),
 
   // Blocked users table
   blocks: defineTable({
