@@ -19,7 +19,6 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { motion } from "framer-motion";
 import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
 import { useOffline } from "@/hooks/useOffline";
 
 const majorUkCities = [
@@ -247,14 +246,6 @@ export default function SearchProfilesPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <ErrorState onRetry={() => refetchProfiles()} />
-      </div>
-    );
-  }
-
-  if (!loadingProfiles && profiles.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <EmptyState message="No profiles match your search." />
       </div>
     );
   }
