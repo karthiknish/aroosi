@@ -62,6 +62,7 @@ const SortableImage = ({
   } = useSortable({ id: img.id });
 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -83,10 +84,17 @@ const SortableImage = ({
       <div className="absolute -left-2 -top-2 p-2 cursor-grab active:cursor-grabbing z-10 opacity-100 group-hover:opacity-100 transition-opacity">
         <Grip className="w-4 h-4 text-gray-400" />
       </div>
+      {!loaded && (
+        <div className="absolute inset-0 animate-pulse bg-gray-100 rounded-lg" />
+      )}
       <img
         src={img.url}
-        alt={`Profile`}
-        className="w-full h-full object-cover rounded-lg border border-gray-200 cursor-pointer"
+        alt="Profile"
+        className={
+          "w-full h-full object-cover rounded-lg border border-gray-200 cursor-pointer " +
+          (loaded ? "opacity-100" : "opacity-0")
+        }
+        onLoad={() => setLoaded(true)}
         onClick={() => setModalState({ open: true, index: imageIndex })}
       />
       {onDeleteImage && (
@@ -233,7 +241,10 @@ export function ProfileImageReorder({
         >
           <div className="flex flex-wrap gap-4">
             {images.map((img, idx) => (
-              <div key={img.id} style={{ width: 100, height: 100 }}>
+              <div
+                key={`${img.id ?? "img"}-${idx}`}
+                style={{ width: 100, height: 100 }}
+              >
                 <SortableImage
                   img={img}
                   onDeleteImage={onDeleteImage}

@@ -237,7 +237,7 @@ const ProfileView: FC<ProfileViewProps> = ({
 
   return (
     <div
-      className={`w-full pt-4 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}
+      className={`w-full overflow-y-hidden py-12 px-4 sm:px-6 lg:px-8 relative overflow-x-hidden ${className}`}
     >
       {/* Decorative color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
@@ -270,6 +270,13 @@ const ProfileView: FC<ProfileViewProps> = ({
                 className="border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700"
               >
                 <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
+              </Button>
+              <Button
+                onClick={() => router.push("/profile/edit/images")}
+                variant="outline"
+                className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <Camera className="mr-2 h-4 w-4" /> Edit Photos
               </Button>
               <Button
                 onClick={() => setShowDeleteDialog(true)}

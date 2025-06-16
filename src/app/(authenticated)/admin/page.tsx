@@ -64,9 +64,9 @@ function AdminPageInner() {
               Manage, create, and edit blog posts for your site.
               <div className="mt-4">
                 <Button
+                  asChild
                   variant="outline"
                   className="w-full group-hover:bg-pink-50 group-hover:text-pink-700"
-                  asChild
                 >
                   <Link href="/admin/blog">Go to Blog</Link>
                 </Button>
@@ -88,9 +88,9 @@ function AdminPageInner() {
               View and manage user profiles and admin accounts.
               <div className="mt-4">
                 <Button
+                  asChild
                   variant="outline"
                   className="w-full group-hover:bg-pink-50 group-hover:text-pink-700"
-                  asChild
                 >
                   <Link href="/admin/profile">Go to Profiles</Link>
                 </Button>
@@ -112,9 +112,9 @@ function AdminPageInner() {
               Review and respond to contact form messages from users.
               <div className="mt-4">
                 <Button
+                  asChild
                   variant="outline"
                   className="w-full group-hover:bg-pink-50 group-hover:text-pink-700"
-                  asChild
                 >
                   <Link href="/admin/contact">Go to Contact</Link>
                 </Button>

@@ -178,7 +178,7 @@ export async function fetchUserProfileImages(
     }
 
     const data = await response.json();
-
+    console.log(data);
     // Accept any of these keys, fallback to empty array
     const images =
       (Array.isArray(data) && data) ||

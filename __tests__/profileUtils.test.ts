@@ -1,4 +1,4 @@
-import { cmToFeetInches } from "../src/components/profile/ProfileForm";
+import { cmToFeetInches } from "../src/lib/utils/height";
 
 describe("cmToFeetInches", () => {
   it("converts centimeters to feet and inches string", () => {

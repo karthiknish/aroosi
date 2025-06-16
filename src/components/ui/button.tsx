@@ -56,6 +56,26 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const Comp = asChild ? Slot : "button";
+
+    // If using asChild with Radix Slot, ensure only a single valid React element is passed
+    // Filter out accidental whitespace/empty string children that can be introduced by
+    // formatting (e.g., newlines).
+    const filteredChildren = React.Children.toArray(children).filter(
+      (child) => !(typeof child === "string" && child.trim() === "")
+    );
+
+    // When using asChild, we avoid injecting the internal LoadingSpinner because it would
+    // add a second child and break Radix Slot's single-child constraint. Instead, callers
+    // should render their own spinner inside the slotted component if needed.
+    const content = asChild ? (
+      (filteredChildren[0] ?? null)
+    ) : (
+      <>
+        {loading && <LoadingSpinner size={16} />}
+        {children}
+      </>
+    );
+
     return (
       <Comp
         ref={ref}
@@ -67,8 +87,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         {...props}
       >
-        {loading && <LoadingSpinner size={16} />}
-        {children}
+        {content}
       </Comp>
     );
   }

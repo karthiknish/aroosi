@@ -1,9 +1,9 @@
 import React from "react";
 import { FormField, FormSelectField } from "./ProfileFormFields";
-import type { ProfileFormValues } from "./ProfileForm";
+import type { ProfileFormValues } from "@/types/profile";
 
 type Props = {
-  form: import("react-hook-form").UseFormReturn<ProfileFormValues>;
+  form: import("react-hook-form").UseFormReturn<Partial<ProfileFormValues>>;
   mode: "create" | "edit";
 };
 

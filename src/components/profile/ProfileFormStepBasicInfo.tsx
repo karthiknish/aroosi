@@ -3,10 +3,10 @@ import { Controller } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { FormField, FormDateField, FormSelectField } from "./ProfileFormFields";
-import type { ProfileFormValues } from "./ProfileForm";
+import type { ProfileFormValues } from "@/types/profile";
 
 type Props = {
-  form: import("react-hook-form").UseFormReturn<ProfileFormValues>;
+  form: import("react-hook-form").UseFormReturn<Partial<ProfileFormValues>>;
   cmToFeetInches: (cm: number) => string;
 };
 

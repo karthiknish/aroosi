@@ -1,7 +1,7 @@
 "use client";
 
-import ProfileForm from "@/components/profile/ProfileForm";
-import type { ProfileFormValues } from "@/components/profile/ProfileForm";
+import ProfileCreateWizard from "@/components/profile/ProfileCreateWizard";
+import type { ProfileFormValues } from "@/types/profile";
 import { useRouter } from "next/navigation";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useCallback, useMemo, useEffect, useState } from "react";
@@ -30,7 +30,7 @@ function mapProfileToInitialValues(
 
 export default function CreateProfilePage() {
   const router = useRouter();
-  const { token, refreshProfile, profile, userId } = useAuthContext();
+  const { token, refreshProfile, profile } = useAuthContext();
 
   // Extract profileId generated at sign-up (same for create & edit flows)
   const profileId = (profile as { id?: string } | null)?.id || "";
@@ -146,14 +146,12 @@ export default function CreateProfilePage() {
         }}
       ></div>
       <div className="relative z-10 w-full h-full p-4">
-        <ProfileForm
+        <ProfileCreateWizard
           key={formKey}
-          mode="create"
           initialValues={initialValues}
           profileId={profileId}
-          userId={userId}
           onSubmit={handleSubmit}
-          onEditDone={() => {}}
+          loading={isSaving}
         />
       </div>
     </div>

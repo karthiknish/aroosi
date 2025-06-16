@@ -4,18 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
-import ProfileForm from "@/components/profile/ProfileForm";
+import ProfileCreateWizard from "@/components/profile/ProfileCreateWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { submitProfile } from "@/lib/profile/userProfileApi";
-
-// Extend the ProfileForm props to include submitButtonText
-declare module "@/components/profile/ProfileForm" {
-  interface ProfileFormProps {
-    submitButtonText?: string | React.ReactNode;
-  }
-}
 
 export default function AdminCreateProfilePage() {
   const router = useRouter();
@@ -61,8 +54,7 @@ export default function AdminCreateProfilePage() {
             Back to Profile Management
           </Button>
         </div>
-        <ProfileForm
-          mode="create"
+        <ProfileCreateWizard
           onSubmit={async (values) => {
             if (isSubmitting) return;
             if (!token) return;
@@ -104,8 +96,7 @@ export default function AdminCreateProfilePage() {
               setIsSubmitting(false);
             }
           }}
-          onEditDone={() => router.back()}
-          submitButtonText={isSubmitting ? "Creating..." : "Create Profile"}
+          loading={isSubmitting}
         />
       </div>
     </div>

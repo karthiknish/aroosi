@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import type { Profile, ProfileFormValues } from "@/types/profile";
-import ProfileFormComponent from "@/components/profile/ProfileForm";
+import ProfileEditSimpleForm from "@/components/profile/ProfileEditSimpleForm";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
@@ -12,12 +12,9 @@ import {
   getCurrentUserWithProfile,
   submitProfile,
 } from "@/lib/profile/userProfileApi";
-import {
-  ProfileFormValues as ProfileFormComponentValues,
-  mapProfileToFormValues,
-} from "@/components/profile/ProfileForm";
+import { mapProfileToFormValues } from "@/lib/profile/formMapping";
+import type { ProfileFormValues as ProfileFormComponentValues } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import type { MappedImage } from "@/lib/utils/profileImageUtils";
 import React from "react";
 
 // Default profile data matching the Profile interface
@@ -187,10 +184,26 @@ export default function EditProfilePage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Handle successful profile fetch
+  // Populate local state once the profile API returns data
   useEffect(() => {
     if (profileApiData) {
-      setProfileDataState(profileApiData);
+      // Flatten potential envelope shapes
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const envelope: any = (profileApiData as any)?.data ?? profileApiData;
+      const combined: Partial<Profile> = {
+        ...(envelope || {}),
+        ...(envelope.profile || {}),
+      };
+
+      // Build fullName fallback
+      const first = (combined as any).firstName as string | undefined;
+      const last = (combined as any).lastName as string | undefined;
+      if (!combined.fullName && (first || last)) {
+        combined.fullName = `${first || ""} ${last || ""}`.trim();
+      }
+
+      setProfileDataState(combined as Profile);
+      /* eslint-enable @typescript-eslint/no-explicit-any */
     }
   }, [profileApiData]);
 
@@ -314,36 +327,15 @@ export default function EditProfilePage() {
 
   // Wrapper for onSubmit to map values back to canonical shape
   const handleProfileFormComponentSubmit = useCallback(
-    (values: ProfileFormComponentValues & { profileImageIds: string[] }) => {
-      return handleProfileSubmit(fromProfileFormComponentValues(values));
+    (values: ProfileFormComponentValues) => {
+      return handleProfileSubmit(
+        fromProfileFormComponentValues(
+          values as ProfileFormComponentValues & { profileImageIds: string[] }
+        )
+      );
     },
     [handleProfileSubmit]
   );
-
-  // Determine if the user is an admin (adjust this logic as needed)
-  const isAdmin = authProfile?.role === "admin";
-
-  // Build userImages from profileData.profileImageUrls when not admin
-  const userImages: MappedImage[] = React.useMemo(() => {
-    const nested =
-      (profileData as unknown as {
-        profile?: { profileImageUrls?: string[]; profileImageIds?: string[] };
-      }) || {};
-    const profileImageUrls = nested.profile?.profileImageUrls ?? [];
-    const profileImageIds = nested.profile?.profileImageIds ?? [];
-    const urls: string[] = profileImageUrls;
-    const ids: string[] = profileImageIds;
-    return urls.map((u: string, idx: number) => {
-      const sid = String(ids[idx] ?? "");
-      const identifier = sid || `img_${idx}`;
-      return {
-        id: identifier,
-        _id: identifier,
-        storageId: sid,
-        url: u,
-      } as unknown as MappedImage;
-    });
-  }, [isAdmin, profileData]);
 
   // Main form
   if (isLoadingProfile) {
@@ -404,17 +396,22 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-base-light flex flex-col p-4">
-      <ProfileFormComponent
-        mode="edit"
+    <div className="relative w-full min-h-screen bg-base-light flex flex-col py-10 px-4 md:px-8 overflow-hidden">
+      {/* Decorative pink circle background */}
+      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
+
+      {/* Page title */}
+      <h1 className="text-3xl font-bold text-center text-pink-700 mb-8 z-10">
+        Edit Profile
+      </h1>
+
+      <ProfileEditSimpleForm
         initialValues={mapProfileToFormValues(profileData)}
         onSubmit={handleProfileFormComponentSubmit}
         loading={updateProfileMutation.status === "pending"}
         serverError={serverError || undefined}
-        onEditDone={() => router.push("/profile")}
         key={profileData._id}
-        profileId={profileData._id}
-        userImages={userImages}
+        // images handled separately
       />
     </div>
   );

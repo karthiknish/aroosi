@@ -181,7 +181,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   }
 
   return (
-    <div className="flex items-center justify-center w-full bg-base-light">
+    <div className="flex overflow-y-hidden  items-center justify-center w-full bg-base-light">
       <ProfileView
         profileData={profile}
         images={images}
@@ -228,10 +228,10 @@ const ProfilePage: React.FC = (): React.ReactElement => {
           </DialogHeader>
           <DialogFooter className="flex justify-end space-x-2">
             <Button
+              asChild
               variant="outline"
               onClick={cancelDeleteProfile}
               disabled={deleteProfileMutation.status === "pending"}
-              asChild
             >
               <DialogClose asChild>
                 <span>Cancel</span>

@@ -34,9 +34,7 @@ interface ProfileType {
   phoneNumber?: string;
   dateOfBirth?: string | Date | number;
   gender?: string;
-  profileImageUrl?: string;
-  bio?: string;
-  location?: string;
+  // profileImageUrl and bio removed – we now rely solely on array `profileImageUrls` and `aboutMe`.
   createdAt?: string | Date | number;
   updatedAt?: string | Date | number;
   isOnboardingComplete: boolean;
@@ -47,6 +45,8 @@ interface ProfileType {
   banned: boolean;
   hiddenFromSearch: boolean;
   role: string;
+  ukCity: string;
+  profileImageUrls: string[];
 }
 
 interface AuthContextType {
@@ -245,11 +245,12 @@ export function AuthProvider({
             phoneNumber: nestedProfile.phoneNumber,
             dateOfBirth: nestedProfile.dateOfBirth,
             gender: nestedProfile.gender,
-            profileImageUrl: nestedProfile.profileImageUrl,
-            bio:
-              (nestedProfile.aboutMe as string) ??
-              (nestedProfile.bio as string),
-            location: nestedProfile.location,
+            ukCity: nestedProfile.ukCity ?? nestedProfile.location,
+
+            // New array of image URLs
+            profileImageUrls: Array.isArray(nestedProfile.profileImageUrls)
+              ? nestedProfile.profileImageUrls
+              : [],
 
             // Timestamps
             createdAt:

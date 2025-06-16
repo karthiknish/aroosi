@@ -18,12 +18,13 @@ import {
 } from "@/components/ui/popover";
 import { format, parseISO, subYears } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { ProfileFormValues } from "./ProfileForm";
+import type { ProfileFormValues } from "@/types/profile";
 import type { UseFormReturn } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays } from "lucide-react";
 import { useState } from "react";
-type UseFormType = UseFormReturn<ProfileFormValues>;
+// Shared alias: form handles a *partial* profile during multi-step wizards
+type UseFormType = UseFormReturn<Partial<ProfileFormValues>>;
 
 interface FormFieldProps {
   name: keyof ProfileFormValues;

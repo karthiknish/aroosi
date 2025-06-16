@@ -210,8 +210,7 @@ export default function BlogDetailPage() {
                 className="text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg"
               >
                 <Link href="/blog" className="flex items-center gap-2">
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Blog
+                  <ArrowLeft className="w-4 h-4" /> Back to Blog
                 </Link>
               </Button>
               <Button
