@@ -146,7 +146,7 @@ const faqs = [
 
 export default function PricingPage() {
   return (
-    <div className="relative mt-12 pt-10 overflow-hidden bg-base-light">
+    <div className="relative pt-12 pt-10 overflow-hidden bg-base-light">
       {/* Pink color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-30 z-0 pointer-events-none"></div>
       <div className="absolute -bottom-32 -right-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
