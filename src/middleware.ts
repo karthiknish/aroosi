@@ -9,8 +9,10 @@ const publicRoutes = [
   "/about",
   "/how-it-works",
   "/privacy",
+  "/pricing",
   "/terms",
   "/faq",
+  "/blog(.*)",
   "/contact",
   "/api(.*)",
 ];

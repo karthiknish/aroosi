@@ -156,7 +156,7 @@ export default function BlogPage() {
       </section>
       {/* Decorative section break */}
 
-      <div className="px-2 sm:px-6 md:px-10 max-w-7xl mx-auto">
+      <div className="px-2 py-12 sm:px-6 md:px-10 max-w-7xl mx-auto">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {isLoading ? (
             Array.from({ length: pageSize }).map((_, i) => (
