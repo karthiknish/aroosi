@@ -80,6 +80,9 @@ export default function ProfileDetailPage() {
       ? (profileRaw as { profile: Profile | null }).profile
       : (profileRaw as Profile | null);
 
+  const skipImagesQuery =
+    profile?.profileImageUrls && profile.profileImageUrls.length > 0;
+
   const { data: userProfileImagesResponse } = useQuery({
     queryKey: ["userProfileImages", userId, token],
     queryFn: async () => {
@@ -94,7 +97,7 @@ export default function ProfileDetailPage() {
       }
       return [];
     },
-    enabled: !!token && !!userId,
+    enabled: !!token && !!userId && !skipImagesQuery,
   });
   const isOwnProfile = Boolean(
     currentUserProfile?._id && userId && currentUserProfile._id === userId
@@ -114,6 +117,12 @@ export default function ProfileDetailPage() {
   }, [isOwnProfile, profile]);
 
   const imagesToShow: string[] = useMemo(() => {
+    // Prefer profileImageUrls if present
+    if (profile?.profileImageUrls && profile.profileImageUrls.length > 0) {
+      return profile.profileImageUrls;
+    }
+
+    // Fallback to previously fetched images (legacy path)
     if (
       isOwnProfile &&
       localCurrentUserImageOrder.length > 0 &&
@@ -126,7 +135,12 @@ export default function ProfileDetailPage() {
     return Array.isArray(userProfileImagesResponse)
       ? userProfileImagesResponse
       : [];
-  }, [isOwnProfile, localCurrentUserImageOrder, userProfileImagesResponse]);
+  }, [
+    profile?.profileImageUrls,
+    isOwnProfile,
+    localCurrentUserImageOrder,
+    userProfileImagesResponse,
+  ]);
 
   // Use currentUserProfile._id as fromUserId and userId from params as toUserId
   const fromUserId = currentUserProfile?.userId;

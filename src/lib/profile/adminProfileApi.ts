@@ -433,15 +433,16 @@ export async function deleteAdminProfileImageById({
   profileId: string;
   imageId: string;
 }): Promise<{ success: boolean; message?: string }> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
   try {
-    const res = await fetch(
-      `/api/profile-detail/${profileId}/images/${imageId}`,
-      {
-        method: "DELETE",
-        headers,
-      }
-    );
+    const res = await fetch(`/api/profile-images`, {
+      method: "DELETE",
+      headers,
+      body: JSON.stringify({ userId: profileId, imageId }),
+    });
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to delete profile image: ${errorText}`);
@@ -468,25 +469,49 @@ export async function adminUploadProfileImage({
   if (!profileId) throw new Error("Profile ID required");
   if (!file) throw new Error("File required");
 
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("profileId", profileId);
+  // 1) upload URL
+  const uploadUrlRes = await fetch(`/api/profile-images/upload-url`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!uploadUrlRes.ok) {
+    throw new Error("Failed to get upload URL");
+  }
+  const { uploadUrl } = (await uploadUrlRes.json()) as { uploadUrl: string };
+  if (!uploadUrl) throw new Error("Upload URL missing");
 
-  const response = await fetch(`/api/admin/profiles/${profileId}/images`, {
+  // 2) put file
+  const putRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!putRes.ok) {
+    const txt = await putRes.text();
+    throw new Error(txt || "Failed to upload to storage");
+  }
+  const { storageId } = (await putRes.json()) as { storageId: string };
+  if (!storageId) throw new Error("storageId missing");
+
+  // 3) save meta
+  const metaRes = await fetch(`/api/profile-images`, {
     method: "POST",
     headers: {
+      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: formData,
+    body: JSON.stringify({
+      userId: profileId,
+      storageId,
+      fileName: file.name,
+      contentType: file.type,
+      fileSize: file.size,
+    }),
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to upload image");
+  if (!metaRes.ok) {
+    const errData = await metaRes.json().catch(() => ({}));
+    throw new Error(errData.error || "Failed to save metadata");
   }
-
-  const data = await response.json();
-  // Optionally validate shape here
+  const data = await metaRes.json();
   return data as ImageType;
 }
 
@@ -510,17 +535,14 @@ export async function updateAdminProfileImageOrder({
   if (!profileId) throw new Error("Profile ID required");
   if (!Array.isArray(imageIds)) throw new Error("Image IDs array required");
 
-  const response = await fetch(
-    `/api/admin/profiles/${profileId}/images/order`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ imageIds }),
-    }
-  );
+  const response = await fetch(`/api/profile-images/order`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ profileId, imageIds }),
+  });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

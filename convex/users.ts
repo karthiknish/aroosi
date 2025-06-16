@@ -22,6 +22,7 @@ export interface ConvexProfile {
   _id: Id<"profiles">;
   userId: Id<"users">;
   clerkId: string;
+  email?: string;
   // Allow any additional fields with flexible types
   [key: string]: any;
 }
@@ -114,6 +115,7 @@ export const getCurrentUserWithProfile = query({
       ? {
           ...profile,
           profileImageIds: profile.profileImageIds || [],
+          profileImageUrls: profile.profileImageUrls || [],
         }
       : null;
 
@@ -174,6 +176,7 @@ export const internalUpsertUser = internalMutation(
       await ctx.db.insert("profiles", {
         userId,
         clerkId,
+        email,
         isProfileComplete: false,
         createdAt: Date.now(),
         profileFor: "self",
@@ -183,8 +186,12 @@ export const internalUpsertUser = internalMutation(
       } as any);
       console.log(`Created new profile for user ${userId}`);
     } else {
-      if (!existingProfile.clerkId) {
-        await ctx.db.patch(existingProfile._id, { clerkId });
+      if (
+        !existingProfile.clerkId ||
+        existingProfile.clerkId !== clerkId ||
+        existingProfile.email !== email
+      ) {
+        await ctx.db.patch(existingProfile._id, { clerkId, email });
       }
       // If profile exists but createdAt is missing (e.g. old data), patch it.
       // This is less likely if all new profiles get it, but good for data integrity.
@@ -432,7 +439,8 @@ export const getUserPublicProfile = query({
         education: profile.education,
         occupation: profile.occupation,
         aboutMe: profile.aboutMe,
-        profileImageIds: profile.profileImageIds, // Assuming these are safe and you handle their URLs correctly
+        profileImageIds: profile.profileImageIds,
+        profileImageUrls: profile.profileImageUrls,
         createdAt: profile.createdAt, // Useful for 'Member since'
       },
     };
@@ -1206,7 +1214,9 @@ export const createProfile = mutation({
       }
     }
     // Check for at least one image
-    const images = profileDataForCheck.profileImageIds;
+    const images =
+      profileDataForCheck.profileImageUrls ||
+      profileDataForCheck.profileImageIds;
     const hasImage = Array.isArray(images) && images.length > 0;
     if (allEssentialFilled && hasImage) {
       profileData.isProfileComplete = true;
@@ -1540,6 +1550,7 @@ export const searchPublicProfiles = query({
           isProfileComplete: profile.isProfileComplete,
           hiddenFromSearch: profile.hiddenFromSearch,
           profileImageIds: profile.profileImageIds,
+          profileImageUrls: profile.profileImageUrls,
           createdAt: profile.createdAt,
           boostedUntil: profile.boostedUntil,
         },

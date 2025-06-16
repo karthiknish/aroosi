@@ -7,8 +7,8 @@ export async function updateImageOrder({
   userId: string;
   imageIds: string[];
 }): Promise<void> {
-  const res = await fetch("/api/images/order", {
-    method: "PUT",
+  const res = await fetch("/api/profile-images/order", {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
@@ -22,7 +22,7 @@ export async function updateImageOrder({
 }
 
 export async function getImageUploadUrl(token: string): Promise<string> {
-  const res = await fetch("/api/images/upload-url", {
+  const res = await fetch("/api/profile-images/upload-url", {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Failed to get upload URL");
@@ -46,7 +46,7 @@ export async function saveImageMeta({
   contentType: string;
   fileSize: number;
 }): Promise<{ imageId: string }> {
-  const res = await fetch("/api/images", {
+  const res = await fetch("/api/profile-images", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -76,7 +76,7 @@ export async function deleteImageById({
   userId: string;
   imageId: string;
 }): Promise<void> {
-  const res = await fetch("/api/images", {
+  const res = await fetch("/api/profile-images", {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

@@ -14,6 +14,8 @@ export type MappedImage = {
   _id: string;
   storageId: string;
   url: string;
+  fileName?: string;
+  uploadedAt?: number;
 };
 
 /**
@@ -80,7 +82,7 @@ export const useImageReorder = (profileId: string) => {
 
     try {
       // Update the order on the server
-      const res = await fetch(`/api/images/order`, {
+      const res = await fetch(`/api/profile-images/order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -130,7 +132,7 @@ export const useDeleteImage = (profileId: string) => {
     }
 
     try {
-      const response = await fetch(`/api/images`, {
+      const response = await fetch(`/api/profile-images`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -171,27 +173,66 @@ export const useImageUpload = (userId: string) => {
       throw new Error("Authentication required");
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("userId", userId);
-
     try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+      // 1) Get an upload URL from our API (which proxies Convex generateUploadUrl)
+      const uploadUrlRes = await fetch("/api/profile-images/upload-url", {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to upload image");
+      if (!uploadUrlRes.ok) {
+        throw new Error("Failed to get upload URL");
       }
 
-      const data = await response.json();
+      const { uploadUrl } = (await uploadUrlRes.json()) as {
+        uploadUrl: string;
+      };
+      if (!uploadUrl) {
+        throw new Error("Upload URL missing");
+      }
 
-      // Invalidate and refetch
+      // 2) Upload the raw file directly to Convex storage using the signed URL
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      if (!putRes.ok) {
+        const errText = await putRes.text();
+        throw new Error(errText || "Failed to upload to storage");
+      }
+
+      const { storageId } = (await putRes.json()) as { storageId: string };
+      if (!storageId) {
+        throw new Error("storageId missing from upload response");
+      }
+
+      // 3) Save the file metadata via our metadata endpoint
+      const metaRes = await fetch("/api/profile-images", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId,
+          storageId,
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+        }),
+      });
+
+      if (!metaRes.ok) {
+        const errorData = await metaRes.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to save image metadata");
+      }
+
+      const data = await metaRes.json();
+
+      // Invalidate and refetch images for realtime UI update
       await queryClient.invalidateQueries({
         queryKey: ["profile-images", userId],
       });

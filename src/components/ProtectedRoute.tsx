@@ -141,28 +141,21 @@ export default function ProtectedRoute({
         }
       }
 
-      // If profile and onboarding are complete, redirect to search if on a public or onboarding route,
-      // BUT do NOT redirect if on /profile/edit
+      // 1. If either flag is false, keep user on /create-profile until completed
+      if (!profileComplete || !onboardingComplete) {
+        if (!isCreateProfileRoute) {
+          router.replace("/create-profile");
+          return;
+        }
+      }
+
+      // 2. Both flags true → if currently on create-profile or any public route, send to /search
       if (profileComplete && onboardingComplete) {
         if (
-          (isPublicRoute || isOnboardingRoute) &&
-          !isProfileEditRoute // <-- prevent redirect from /profile/edit
+          (isPublicRoute || isOnboardingRoute || isCreateProfileRoute) &&
+          !isProfileEditRoute
         ) {
           router.replace("/search");
-          return;
-        }
-      }
-      // If profile is incomplete, redirect to profile edit
-      else if (!profileComplete) {
-        if (!isProfileEditRoute) {
-          router.replace("/profile/edit");
-          return;
-        }
-      }
-      // If profile is complete but onboarding is not, redirect to create-profile
-      else if (!onboardingComplete) {
-        if (pathname !== "/create-profile") {
-          router.replace("/create-profile");
           return;
         }
       }
@@ -194,15 +187,19 @@ export default function ProtectedRoute({
     premiumAnyPlanRoutes,
     premiumPlusRoutes,
     planManagementRoute,
+    isCreateProfileRoute,
   ]);
 
-  // Determine if we should show a loading state
-  const isLoading =
+  // Base loading state when auth/profile still initializing
+  const baseLoading =
     !isLoaded ||
     isAuthLoading ||
     (isClient &&
       (isSignedIn === undefined ||
         (isSignedIn && profileComplete === undefined)));
+
+  // Allow the create-profile wizard to render even while profile flags load.
+  const isLoading = isCreateProfileRoute ? false : baseLoading;
 
   // On server render or initial client render, return null to prevent hydration mismatch
   if (!isClient) {
@@ -212,14 +209,19 @@ export default function ProtectedRoute({
   // Show loading state while checking auth status or redirecting
   const shouldShowLoader =
     isLoading ||
+    // If profile is incomplete, *show* loader only when we are NOT allowed to be on the
+    // create-profile wizard or edit-profile screen. Otherwise let the wizard render.
     (isSignedIn &&
       requireProfileComplete &&
       !profileComplete &&
-      !isProfileEditRoute) ||
+      !isProfileEditRoute &&
+      !isCreateProfileRoute) ||
+    // Same idea for onboarding: don't block the create-profile wizard itself.
     (isSignedIn &&
       requireOnboardingComplete &&
       !onboardingComplete &&
       !isOnboardingRoute &&
+      !isCreateProfileRoute &&
       !isProfileEditRoute);
 
   // Show loading state or nothing (for server render)
@@ -236,16 +238,23 @@ export default function ProtectedRoute({
     return null;
   }
 
-  // If profile is incomplete and not on the edit profile page, show nothing (will redirect)
-  if (requireProfileComplete && !profileComplete && !isProfileEditRoute) {
+  // If profile is incomplete and we're *not* on a route explicitly meant to complete it,
+  // do not render children (user will be redirected). Allow /create-profile and edit screens.
+  if (
+    requireProfileComplete &&
+    !profileComplete &&
+    !isProfileEditRoute &&
+    !isCreateProfileRoute
+  ) {
     return null;
   }
 
-  // If onboarding is incomplete and not on an onboarding route, show nothing (will redirect)
+  // Same for onboarding: allow wizard routes to render.
   if (
     requireOnboardingComplete &&
     !onboardingComplete &&
     !isOnboardingRoute &&
+    !isCreateProfileRoute &&
     !isProfileEditRoute
   ) {
     return null;

@@ -2,8 +2,13 @@
 
 import { SignIn } from "@clerk/nextjs";
 import { motion } from "framer-motion";
+import { useAuthContext } from "@/components/AuthProvider";
 
 export default function SignInPage() {
+  const { isProfileComplete, isOnboardingComplete } = useAuthContext();
+  const needsWizard = !isProfileComplete || !isOnboardingComplete;
+  const redirectUrl = needsWizard ? "/create-profile" : "/search";
+
   return (
     <div className="w-full bg-base-light flex items-center justify-center relative overflow-x-hidden">
       {/* Decorative color pop circles */}
@@ -45,7 +50,13 @@ export default function SignInPage() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+          <SignIn
+            path="/sign-in"
+            routing="path"
+            signUpUrl="/sign-up"
+            afterSignInUrl={redirectUrl}
+            fallbackRedirectUrl={redirectUrl}
+          />
           <p className="text-center text-sm mt-4">
             <a
               href="/forgot-password"

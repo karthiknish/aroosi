@@ -1,0 +1,267 @@
+# Page snapshot
+
+```yaml
+- alert: Aroosi - Afghan Matrimony Platform
+- button "Open Next.js Dev Tools":
+  - img
+- banner:
+  - link "Aroosi":
+    - /url: /
+    - heading "Aroosi" [level=2]
+  - navigation
+- main:
+  - main:
+    - text: Who are you creating this profile for?
+    - combobox "Who are you creating this profile for?":
+      - option "Myself" [selected]
+      - option "A Friend"
+      - option "A Family Member"
+    - text: Step 1 of 6 Profile 17% complete
+    - progressbar
+    - text: "Tip: Use your real name and accurate details for better matches."
+    - heading "Create Profile" [level=1]
+    - text: Welcome! Please complete your essential profile details to continue.
+    - heading "Basic Information" [level=2]
+    - text: Full Name *
+    - textbox "Full Name *": E2E Comprehensive User
+    - text: Date of Birth *
+    - button "Pick a date" [expanded]
+    - text: Gender *
+    - combobox "Gender *": Select gender
+    - text: Height *
+    - slider
+    - text: 4'6" 6'6" Select your height Phone Number *
+    - textbox "Phone Number *"
+    - button "Next"
+- contentinfo:
+  - link "Aroosi":
+    - /url: /
+  - paragraph: Connecting hearts, building futures. Find your UK-based life partner.
+  - link "Facebook":
+    - /url: "#"
+  - link "Twitter":
+    - /url: "#"
+  - link "Instagram":
+    - /url: "#"
+  - link "LinkedIn":
+    - /url: "#"
+  - heading "Quick Links" [level=3]
+  - list:
+    - listitem:
+      - link "Home":
+        - /url: /
+    - listitem:
+      - link "About Us":
+        - /url: /about
+    - listitem:
+      - link "How It Works":
+        - /url: /how-it-works
+    - listitem:
+      - link "Pricing":
+        - /url: /pricing
+    - listitem:
+      - link "Blog":
+        - /url: /blog
+    - listitem:
+      - link "Contact Us":
+        - /url: /contact
+  - heading "Legal" [level=3]
+  - list:
+    - listitem:
+      - link "Terms & Conditions":
+        - /url: /terms
+    - listitem:
+      - link "Privacy Policy":
+        - /url: /privacy
+    - listitem:
+      - link "FAQ":
+        - /url: /faq
+  - paragraph: Aroosi is a UK-focused matrimonial platform. Please ensure you review our terms and safety guidelines.
+  - paragraph: © 2025 Aroosi. All rights reserved.
+- region "Notifications alt+T"
+- button "Open chat bot"
+- dialog:
+  - text: "December 2007 Month:"
+  - combobox "Month:":
+    - option "January"
+    - option "February"
+    - option "March"
+    - option "April"
+    - option "May"
+    - option "June"
+    - option "July"
+    - option "August"
+    - option "September"
+    - option "October"
+    - option "November"
+    - option "December" [selected]
+  - text: "Year:"
+  - combobox "Year:":
+    - option "1900"
+    - option "1901"
+    - option "1902"
+    - option "1903"
+    - option "1904"
+    - option "1905"
+    - option "1906"
+    - option "1907"
+    - option "1908"
+    - option "1909"
+    - option "1910"
+    - option "1911"
+    - option "1912"
+    - option "1913"
+    - option "1914"
+    - option "1915"
+    - option "1916"
+    - option "1917"
+    - option "1918"
+    - option "1919"
+    - option "1920"
+    - option "1921"
+    - option "1922"
+    - option "1923"
+    - option "1924"
+    - option "1925"
+    - option "1926"
+    - option "1927"
+    - option "1928"
+    - option "1929"
+    - option "1930"
+    - option "1931"
+    - option "1932"
+    - option "1933"
+    - option "1934"
+    - option "1935"
+    - option "1936"
+    - option "1937"
+    - option "1938"
+    - option "1939"
+    - option "1940"
+    - option "1941"
+    - option "1942"
+    - option "1943"
+    - option "1944"
+    - option "1945"
+    - option "1946"
+    - option "1947"
+    - option "1948"
+    - option "1949"
+    - option "1950"
+    - option "1951"
+    - option "1952"
+    - option "1953"
+    - option "1954"
+    - option "1955"
+    - option "1956"
+    - option "1957"
+    - option "1958"
+    - option "1959"
+    - option "1960"
+    - option "1961"
+    - option "1962"
+    - option "1963"
+    - option "1964"
+    - option "1965"
+    - option "1966"
+    - option "1967"
+    - option "1968"
+    - option "1969"
+    - option "1970"
+    - option "1971"
+    - option "1972"
+    - option "1973"
+    - option "1974"
+    - option "1975"
+    - option "1976"
+    - option "1977"
+    - option "1978"
+    - option "1979"
+    - option "1980"
+    - option "1981"
+    - option "1982"
+    - option "1983"
+    - option "1984"
+    - option "1985"
+    - option "1986"
+    - option "1987"
+    - option "1988"
+    - option "1989"
+    - option "1990"
+    - option "1991"
+    - option "1992"
+    - option "1993"
+    - option "1994"
+    - option "1995"
+    - option "1996"
+    - option "1997"
+    - option "1998"
+    - option "1999"
+    - option "2000"
+    - option "2001"
+    - option "2002"
+    - option "2003"
+    - option "2004"
+    - option "2005"
+    - option "2006"
+    - option "2007" [selected]
+  - grid "December 2007":
+    - rowgroup:
+      - row "Sunday Monday Tuesday Wednesday Thursday Friday Saturday":
+        - columnheader "Sunday": Su
+        - columnheader "Monday": Mo
+        - columnheader "Tuesday": Tu
+        - columnheader "Wednesday": We
+        - columnheader "Thursday": Th
+        - columnheader "Friday": Fr
+        - columnheader "Saturday": Sa
+    - rowgroup:
+      - row "25 26 27 28 29 30 1":
+        - gridcell "25" [disabled]
+        - gridcell "26" [disabled]
+        - gridcell "27" [disabled]
+        - gridcell "28" [disabled]
+        - gridcell "29" [disabled]
+        - gridcell "30" [disabled]
+        - gridcell "1" [disabled]
+      - row "2 3 4 5 6 7 8":
+        - gridcell "2" [disabled]
+        - gridcell "3" [disabled]
+        - gridcell "4" [disabled]
+        - gridcell "5" [disabled]
+        - gridcell "6" [disabled]
+        - gridcell "7" [disabled]
+        - gridcell "8" [disabled]
+      - row "9 10 11 12 13 14 15":
+        - gridcell "9" [disabled]
+        - gridcell "10" [disabled]
+        - gridcell "11" [disabled]
+        - gridcell "12" [disabled]
+        - gridcell "13" [disabled]
+        - gridcell "14" [disabled]
+        - gridcell "15" [disabled]
+      - row "16 17 18 19 20 21 22":
+        - gridcell "16" [disabled]
+        - gridcell "17" [disabled]
+        - gridcell "18" [disabled]
+        - gridcell "19" [disabled]
+        - gridcell "20" [disabled]
+        - gridcell "21" [disabled]
+        - gridcell "22" [disabled]
+      - row "23 24 25 26 27 28 29":
+        - gridcell "23" [disabled]
+        - gridcell "24" [disabled]
+        - gridcell "25" [disabled]
+        - gridcell "26" [disabled]
+        - gridcell "27" [disabled]
+        - gridcell "28" [disabled]
+        - gridcell "29" [disabled]
+      - row "30 31 1 2 3 4 5":
+        - gridcell "30" [disabled]
+        - gridcell "31" [disabled]
+        - gridcell "1" [disabled]
+        - gridcell "2" [disabled]
+        - gridcell "3" [disabled]
+        - gridcell "4" [disabled]
+        - gridcell "5" [disabled]
+```

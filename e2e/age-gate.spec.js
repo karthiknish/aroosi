@@ -10,7 +10,7 @@ test("profile wizard blocks under-18 date of birth", async ({ page }) => {
   ).toBeVisible({ timeout: 15000 });
 
   // Fill required full name field (input has placeholder or label)
-  const nameInput = page.getByPlaceholder(/full name/i).first();
+  const nameInput = page.getByLabel(/full name/i).first();
   await nameInput.fill("Test Teen");
 
   // Open the DOB picker (button contains a calendar icon)
@@ -23,12 +23,14 @@ test("profile wizard blocks under-18 date of birth", async ({ page }) => {
   const targetMonth = today.getMonth() + 1; // 1-indexed
 
   // Change year dropdown – pick the first select and choose year
-  await page.locator("select").first().selectOption(String(targetYear));
+  const yearSelect = page.locator('[aria-label^="Year"]');
+  await yearSelect.waitFor({ state: "visible" });
+  await yearSelect.selectOption(String(targetYear));
 
   // Choose month dropdown if present
-  const selects = page.locator("select");
-  if ((await selects.count()) > 1) {
-    await selects.nth(1).selectOption(String(targetMonth));
+  const monthSelect = page.locator('[aria-label^="Month"]');
+  if (await monthSelect.count()) {
+    await monthSelect.selectOption(String(targetMonth));
   }
 
   // Pick day 1

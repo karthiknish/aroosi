@@ -51,11 +51,11 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
                 <Slider
                   value={[safeNumVal]}
                   onValueChange={([val]) => {
-                  const newStringValue = String(val);
-                  if (newStringValue !== field.value) {
-                    field.onChange(newStringValue);
-                  }
-                }}
+                    const newStringValue = String(val);
+                    if (newStringValue !== field.value) {
+                      field.onChange(newStringValue);
+                    }
+                  }}
                   min={137}
                   max={198}
                   step={1}

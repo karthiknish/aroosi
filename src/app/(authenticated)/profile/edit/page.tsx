@@ -17,7 +17,8 @@ import {
   mapProfileToFormValues,
 } from "@/components/profile/ProfileForm";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import type { ApiImage, MappedImage } from "@/lib/utils/profileImageUtils";
+import type { MappedImage } from "@/lib/utils/profileImageUtils";
+import React from "react";
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
@@ -322,37 +323,27 @@ export default function EditProfilePage() {
   // Determine if the user is an admin (adjust this logic as needed)
   const isAdmin = authProfile?.role === "admin";
 
-  // Fetch user images (not admin)
-  const userProfileId = profileData?._id;
-  const { data: userImagesRaw = [] } = useQuery({
-    queryKey: ["profile-images", userProfileId],
-    queryFn: async () => {
-      if (!token || !userProfileId) return [];
-      const response = await fetch(
-        `/api/profile-detail/${userProfileId}/images`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch profile images");
-      const data = await response.json();
-      return Array.isArray(data)
-        ? (data as unknown as ApiImage[])
-        : Array.isArray(data.images)
-          ? (data.images as unknown as ApiImage[])
-          : [];
-    },
-    enabled: !!token && !!userProfileId && !isAdmin,
-    retry: 1,
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000,
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userImages: MappedImage[] = userImagesRaw.map((img: any) => ({
-    _id: img._id || img.storageId,
-    storageId: img.storageId,
-    url: img.url,
-  }));
+  // Build userImages from profileData.profileImageUrls when not admin
+  const userImages: MappedImage[] = React.useMemo(() => {
+    const nested =
+      (profileData as unknown as {
+        profile?: { profileImageUrls?: string[]; profileImageIds?: string[] };
+      }) || {};
+    const profileImageUrls = nested.profile?.profileImageUrls ?? [];
+    const profileImageIds = nested.profile?.profileImageIds ?? [];
+    const urls: string[] = profileImageUrls;
+    const ids: string[] = profileImageIds;
+    return urls.map((u: string, idx: number) => {
+      const sid = String(ids[idx] ?? "");
+      const identifier = sid || `img_${idx}`;
+      return {
+        id: identifier,
+        _id: identifier,
+        storageId: sid,
+        url: u,
+      } as unknown as MappedImage;
+    });
+  }, [isAdmin, profileData]);
 
   // Main form
   if (isLoadingProfile) {
@@ -413,22 +404,18 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="flex items-center justify-center w-full bg-base-light">
-      <div className="bg-white/90 shadow-xl rounded-2xl mt-16 w-full  overflow-hidden">
-        <div className="px-4 py-8 sm:p-10">
-          <ProfileFormComponent
-            mode="edit"
-            initialValues={mapProfileToFormValues(profileData)}
-            onSubmit={handleProfileFormComponentSubmit}
-            loading={updateProfileMutation.status === "pending"}
-            serverError={serverError || undefined}
-            onEditDone={() => router.push("/profile")}
-            key={profileData._id}
-            profileId={profileData._id}
-            userImages={userImages}
-          />
-        </div>
-      </div>
+    <div className="w-full min-h-screen bg-base-light flex flex-col p-4">
+      <ProfileFormComponent
+        mode="edit"
+        initialValues={mapProfileToFormValues(profileData)}
+        onSubmit={handleProfileFormComponentSubmit}
+        loading={updateProfileMutation.status === "pending"}
+        serverError={serverError || undefined}
+        onEditDone={() => router.push("/profile")}
+        key={profileData._id}
+        profileId={profileData._id}
+        userImages={userImages}
+      />
     </div>
   );
 }

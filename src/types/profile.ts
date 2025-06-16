@@ -32,6 +32,7 @@ export interface Profile {
   partnerPreferenceUkCity: string[] | string;
   preferredGender: "male" | "female" | "any" | "";
   profileImageIds: string[];
+  profileImageUrls?: string[];
   isProfileComplete: boolean;
   isOnboardingComplete: boolean;
   hiddenFromSearch: boolean;

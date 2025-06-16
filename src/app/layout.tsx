@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Toaster } from "sonner";
-import ChatBot from "@/components/ChatBot";
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import RouteTransition from "@/components/RouteTransition";
+import ClientRoot from "@/components/ClientRoot";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -44,21 +40,6 @@ export const metadata: Metadata = {
     site: "@aroosiuk",
   },
 };
-
-// Define client-side only components
-function ClientLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-      <Header />
-      <main className="pt-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden">
-        <RouteTransition>{children}</RouteTransition>
-      </main>
-      <Footer />
-      <Toaster position="bottom-right" />
-      <ChatBot />
-    </AuthProvider>
-  );
-}
 
 export default function RootLayout({
   children,
@@ -157,7 +138,9 @@ export default function RootLayout({
           }}
         >
           <ReactQueryProvider>
-            <ClientLayout>{children}</ClientLayout>
+            <AuthProvider>
+              <ClientRoot>{children}</ClientRoot>
+            </AuthProvider>
           </ReactQueryProvider>
         </ClerkProvider>
       </body>

@@ -1,25 +1,21 @@
 import { jest } from "@jest/globals";
 import { NextRequest } from "next/server";
 
-// Mock the Convex client helper _before_ importing the route handlers so that
-// the file-level call to `getConvexClient()` inside the module receives the
-// mocked instance rather than a real client (or `null`).
-let mockConvexClient: {
+type MockConvex = {
   setAuth: jest.Mock;
   query: jest.Mock;
   mutation: jest.Mock;
 };
 
-jest.mock("@/lib/convexClient", () => {
-  mockConvexClient = {
-    setAuth: jest.fn(),
-    query: jest.fn(),
-    mutation: jest.fn(),
-  };
-  return {
-    getConvexClient: jest.fn(() => mockConvexClient),
-  };
-});
+const sharedMockClient: MockConvex = {
+  setAuth: jest.fn(),
+  query: jest.fn(),
+  mutation: jest.fn(),
+};
+
+jest.mock("@/lib/convexClient", () => ({
+  getConvexClient: jest.fn(() => sharedMockClient),
+}));
 
 // Import the route handlers *after* the mock above so the mocked client is
 // captured in the module scope of the route file.
@@ -39,10 +35,6 @@ const URL_BASE = "http://localhost/api/profile";
 describe("/api/profile integration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Ensure each test has a fresh mocked client instance
-    const { getConvexClient: getMockClient } =
-      jest.requireMock("@/lib/convexClient");
-    mockConvexClient = getMockClient();
   });
 
   it("returns 401 for GET without Authorization header", async () => {
@@ -52,7 +44,7 @@ describe("/api/profile integration", () => {
   });
 
   it("returns 200 for GET with valid token and profile", async () => {
-    mockConvexClient.query.mockResolvedValue({
+    sharedMockClient.query.mockResolvedValue({
       _id: "user1",
       profile: { _id: "profile1" },
     } as never);

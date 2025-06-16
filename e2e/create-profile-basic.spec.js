@@ -10,7 +10,7 @@ test("wizard advances to step 2 with valid basic info", async ({ page }) => {
 
   // Fill name
   await page
-    .getByPlaceholder(/full name/i)
+    .getByLabel(/full name/i)
     .first()
     .fill("Happy Adult");
 
@@ -22,10 +22,12 @@ test("wizard advances to step 2 with valid basic info", async ({ page }) => {
   const targetYear = today.getFullYear() - 25;
   const targetMonth = 1; // January for simplicity
 
-  await page.locator("select").first().selectOption(String(targetYear));
-  const selects = page.locator("select");
-  if ((await selects.count()) > 1) {
-    await selects.nth(1).selectOption(String(targetMonth));
+  const yearSelect = page.locator('[aria-label^="Year"]');
+  await yearSelect.waitFor({ state: "visible" });
+  await yearSelect.selectOption(String(targetYear));
+  const monthSelect = page.locator('[aria-label^="Month"]');
+  if (await monthSelect.count()) {
+    await monthSelect.selectOption(String(targetMonth));
   }
   await page.locator(".rdp-day", { hasText: "1" }).first().click();
 

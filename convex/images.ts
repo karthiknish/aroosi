@@ -54,8 +54,20 @@ export const getProfileImages = query({
         storageIds: allImages.map((img) => img.storageId),
       });
 
-      // If no explicit order, return all images
+      // When no explicit ID order, check if profileImageUrls exist and return them directly
       if (!profile.profileImageIds || profile.profileImageIds.length === 0) {
+        if (profile.profileImageUrls && profile.profileImageUrls.length > 0) {
+          console.log("Using profileImageUrls array to return images");
+          const mapped = profile.profileImageUrls.map((url, idx) => ({
+            _id: `${profile._id}_img_${idx}`,
+            storageId: "", // unknown without lookup
+            url,
+            fileName: "",
+            uploadedAt: profile.createdAt || 0,
+          }));
+          return mapped;
+        }
+
         console.log("No profileImageIds, returning all images in any order");
         const imagePromises = allImages.map(async (image) => {
           const url = await ctx.storage.getUrl(image.storageId);
@@ -213,7 +225,14 @@ export const uploadProfileImage = mutation({
         contentType: args.contentType,
         fileSize: args.fileSize,
       });
-      // Update profile with the new image ID
+      // Generate a public URL for the uploaded image so we can store it directly on the profile
+      const imageUrlNullable = await ctx.storage.getUrl(args.storageId);
+      if (!imageUrlNullable) {
+        throw new ConvexError("Failed to generate image URL");
+      }
+      const imageUrl = imageUrlNullable;
+
+      // Update profile with the new image ID **and** URL (new approach)
       const profile = await ctx.db
         .query("profiles")
         .withIndex("by_userId", (q) => q.eq("userId", args.userId))
@@ -226,7 +245,8 @@ export const uploadProfileImage = mutation({
       );
       const currentImageIds =
         (profile!.profileImageIds as Id<"_storage">[]) || [];
-      // Initialize profileImageIds if it's empty
+      const currentImageUrls = (profile!.profileImageUrls as string[]) || [];
+
       if (currentImageIds.length === 0) {
         console.log(
           "[uploadProfileImage] profileImageIds is empty, initializing with storageId:",
@@ -234,17 +254,21 @@ export const uploadProfileImage = mutation({
         );
         await ctx.db.patch(profile!._id, {
           profileImageIds: [args.storageId],
+          profileImageUrls: [imageUrl],
           updatedAt: Date.now(),
         });
         console.log("[uploadProfileImage] Profile patched with new image ID.");
       } else if (!currentImageIds.includes(args.storageId)) {
         console.log(
           "[uploadProfileImage] Adding new storageId to existing profileImageIds:",
-          args.storageId
+          args.storageId,
+          "(profileImageUrls not modified)"
         );
         const newImageIds = [...currentImageIds, args.storageId];
+        const newImageUrls = [...currentImageUrls, imageUrl];
         await ctx.db.patch(profile!._id, {
           profileImageIds: newImageIds,
+          profileImageUrls: newImageUrls,
           updatedAt: Date.now(),
         });
         console.log(
@@ -253,12 +277,14 @@ export const uploadProfileImage = mutation({
       } else {
         console.log(
           "[uploadProfileImage] StorageId already exists in profileImageIds:",
-          args.storageId
+          args.storageId,
+          "(profileImageUrls not modified)"
         );
       }
       return {
         success: true,
         imageId: args.storageId,
+        imageUrl,
         message: "Image uploaded successfully",
       };
     } catch (error) {
@@ -314,8 +340,21 @@ export const deleteProfileImage = mutation({
         );
 
         if (updatedImageIds.length !== profile.profileImageIds.length) {
+          // Also compute URL to remove from profileImageUrls
+          const urlToRemoveNullable = await ctx.storage.getUrl(args.imageId);
+          const urlToRemove = urlToRemoveNullable || null;
+
+          let updatedImageUrls: string[] | undefined =
+            profile.profileImageUrls as string[] | undefined;
+          if (updatedImageUrls && urlToRemove) {
+            updatedImageUrls = updatedImageUrls.filter(
+              (u) => u !== urlToRemove
+            );
+          }
+
           await ctx.db.patch(profile._id, {
             profileImageIds: updatedImageIds,
+            profileImageUrls: updatedImageUrls,
             updatedAt: Date.now(),
           });
         }
@@ -443,6 +482,7 @@ export const updateProfileImageOrder = mutation({
       if (args.imageIds.length === 0) {
         await ctx.db.patch(profile._id, {
           profileImageIds: [],
+          profileImageUrls: [],
           updatedAt: Date.now(),
         });
         return { success: true, message: "Image order cleared" };
@@ -465,9 +505,15 @@ export const updateProfileImageOrder = mutation({
         );
       }
 
-      // Update the profile with the new image order
+      // Build the corresponding URL order array
+      const urlPromises = args.imageIds.map((id) => ctx.storage.getUrl(id));
+      const urlResults = await Promise.all(urlPromises);
+      const urlsRaw = urlResults.filter((u): u is string => Boolean(u));
+      const urls: string[] = urlsRaw.filter((u): u is string => Boolean(u));
+
       await ctx.db.patch(profile._id, {
         profileImageIds: args.imageIds,
+        profileImageUrls: urls,
         updatedAt: Date.now(),
       });
 

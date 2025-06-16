@@ -26,7 +26,7 @@ test.describe("Profile edit", () => {
 
     await page.goto(EDIT_FIXTURE_URL);
 
-    const input = page.getByPlaceholder("Full name");
+    const input = page.getByLabel(/full name/i);
     const status = page.getByTestId("status");
 
     const newName = "Playwright Tester";

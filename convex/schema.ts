@@ -97,6 +97,7 @@ export default defineSchema({
     partnerPreferenceUkCity: v.optional(v.array(v.string())),
 
     profileImageIds: v.optional(v.array(v.id("_storage"))),
+    profileImageUrls: v.optional(v.array(v.string())),
     banned: v.optional(v.boolean()),
     hiddenFromSearch: v.optional(v.boolean()),
     email: v.optional(v.string()),

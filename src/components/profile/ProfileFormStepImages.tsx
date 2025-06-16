@@ -40,7 +40,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
       </div>
     );
   }
-
+console.log(images);
   return (
     <div className="space-y-4">
       <ProfileImageReorder

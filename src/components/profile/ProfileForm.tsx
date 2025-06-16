@@ -11,11 +11,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { showErrorToast } from "@/lib/ui/toast";
 
 // Import custom hooks for image handling
-import {
-  useProfileImages,
-  useImageReorder,
-  useDeleteImage,
-} from "@/lib/utils/profileImageUtils";
+import { useImageReorder, useDeleteImage } from "@/lib/utils/profileImageUtils";
 
 // Import UI components
 import { Button } from "@/components/ui/button";
@@ -69,7 +65,6 @@ interface ProfileFormProps {
   onEditDone?: () => void;
   profileId?: string;
   userImages?: MappedImage[];
-  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const FormSection: React.FC<{
@@ -139,37 +134,49 @@ export function mapProfileToFormValues(
   profile: Profile
 ): Partial<ProfileFormValues> {
   if (!profile || typeof profile !== "object") return {};
+
+  // Strip profileImageUrls which is not part of the form schema
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { profileImageUrls, ...p } = profile;
+
   return {
-    ...profile,
-    gender: [
-      "male",
-      "female",
-      "non-binary",
-      "prefer-not-to-say",
-      "other",
-    ].includes(profile.gender)
-      ? (profile.gender as Gender)
-      : "other",
-    ukCity: profile.ukCity ? profile.ukCity.toLowerCase() : "",
+    ...p,
+    gender: (() => {
+      const g = typeof p.gender === "string" ? p.gender.toLowerCase() : "";
+      return [
+        "male",
+        "female",
+        "non-binary",
+        "prefer-not-to-say",
+        "other",
+      ].includes(g)
+        ? (g as Gender)
+        : "other";
+    })(),
+    ukCity: p.ukCity ? p.ukCity.toLowerCase() : "",
     partnerPreferenceAgeMin:
-      profile.partnerPreferenceAgeMin !== undefined &&
-      profile.partnerPreferenceAgeMin !== null
-        ? String(profile.partnerPreferenceAgeMin)
+      p.partnerPreferenceAgeMin !== undefined &&
+      p.partnerPreferenceAgeMin !== null
+        ? String(p.partnerPreferenceAgeMin)
         : "",
     partnerPreferenceAgeMax:
-      profile.partnerPreferenceAgeMax !== undefined &&
-      profile.partnerPreferenceAgeMax !== null
-        ? String(profile.partnerPreferenceAgeMax)
+      p.partnerPreferenceAgeMax !== undefined &&
+      p.partnerPreferenceAgeMax !== null
+        ? String(p.partnerPreferenceAgeMax)
         : "",
-    partnerPreferenceUkCity: Array.isArray(profile.partnerPreferenceUkCity)
-      ? profile.partnerPreferenceUkCity.join(", ")
-      : typeof profile.partnerPreferenceUkCity === "string"
-        ? profile.partnerPreferenceUkCity
+    partnerPreferenceUkCity: Array.isArray(p.partnerPreferenceUkCity)
+      ? p.partnerPreferenceUkCity.join(", ")
+      : typeof p.partnerPreferenceUkCity === "string"
+        ? p.partnerPreferenceUkCity
         : "",
     annualIncome:
-      typeof profile.annualIncome === "number"
-        ? String(profile.annualIncome)
-        : profile.annualIncome || "",
+      typeof p.annualIncome === "number"
+        ? String(p.annualIncome)
+        : p.annualIncome || "",
+    height:
+      typeof p.height === "number"
+        ? String(p.height)
+        : (p.height as string) || "",
   };
 }
 
@@ -185,9 +192,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   userId: userIdProp,
   profileId,
   userImages,
-  onDirtyChange,
 }) => {
-  const { token, profile: authProfile } = useAuthContext();
+  const { token } = useAuthContext();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -198,32 +204,31 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     return _mode;
   }, [pathname, _mode]);
 
-  // Use userId from prop if provided, otherwise fallback to profile
-  const [internalProfileId] = useState<string>(
-    userIdProp || profileId || authProfile?.userId || ""
-  );
-
   // Form state
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [isSubmitting] = useState<boolean>(false);
-  const [isCreatingProfile] = useState<boolean>(false);
 
   // New: Profile loading state and fetched profile
-  const [profileLoading, setProfileLoading] = useState<boolean>(true);
+  const [profileLoading, setProfileLoading] = useState<boolean>(
+    _mode === "edit"
+  );
   const [fetchedProfile, setFetchedProfile] = useState<
     Partial<ProfileFormValues>
   >({});
 
-  // Track latest images list from image step
-  const [latestImages, setLatestImages] = useState<ImageType[]>([]);
-
   // Only fetch user profile if initialValues is empty (for create mode)
   React.useEffect(() => {
+    if (_mode !== "edit") {
+      // No need to fetch profile when creating.
+      return;
+    }
+
     if (initialValues && Object.keys(initialValues).length > 0) {
       setFetchedProfile({});
       setProfileLoading(false);
       return;
     }
+
     let isMounted = true;
     async function fetchProfile() {
       if (!token) {
@@ -244,7 +249,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [token, initialValues]);
+  }, [token, initialValues, _mode]);
 
   // Form
   const emptyDefaults = React.useMemo<ProfileFormValues>(
@@ -361,16 +366,20 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       return;
     }
     // Require at least one profile image for both create and edit
-    const currentImagesArray = latestImages.length
-      ? latestImages
-      : (userImages ?? []);
-    const checkIds = currentImagesArray.map((img) => {
-      if (typeof img !== "object" || !img) return "";
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      return (img.storageId as string) || (img.id as string) || "";
+    const imageIds: string[] = (userImages ?? []).flatMap((img) => {
+      if ("storageId" in img && typeof img.storageId === "string") {
+        return [img.storageId];
+      }
+      if ("id" in img && typeof img.id === "string") {
+        return [img.id];
+      }
+      if ("_id" in img && typeof (img as MappedImage)._id === "string") {
+        return [(img as MappedImage)._id];
+      }
+      return [];
     });
-    if (checkIds.length === 0) {
+
+    if (imageIds.length === 0) {
       showErrorToast(
         null,
         "Please upload at least one profile photo to continue."
@@ -383,7 +392,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     }
     onSubmit?.({
       ...data,
-      profileImageIds: checkIds,
+      profileImageIds: imageIds,
       annualIncome:
         typeof data.annualIncome === "string"
           ? parseFloat(data.annualIncome)
@@ -408,59 +417,56 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   const buttonText =
     submitButtonText || (mode === "create" ? "Create Profile" : "Save Changes");
 
-  // Wait for userId if needed for image upload
-  const waitForUserId = mode === "create" && !internalProfileId;
-
-  // Notify parent about dirty state changes (run early before any conditional returns)
-  React.useEffect(() => {
-    if (onDirtyChange) onDirtyChange(formState.isDirty);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formState.isDirty]);
-
-  // Use profileId from props if present, otherwise fallback to userIdProp, otherwise fallback to fetchedProfile._id
-  const resolvedProfileId =
-    profileId ||
-    userIdProp ||
-    authProfile?.userId ||
-    (fetchedProfile as unknown as Profile)?._id ||
-    "";
-
   // Wrapper for the image step to only fetch images when on the image step
-  const ProfileFormImageStepWrapper: React.FC<{ profileId: string }> = ({
-    profileId,
-  }) => {
-    const {
-      data: apiImages = [],
-      isLoading,
-      refetch: refetchImages,
-    } = useProfileImages(profileId);
-    // Map ApiImage[] to ImageType[]
-    const images = React.useMemo(
-      () =>
-        apiImages.map((img) => ({
-          id: img.storageId || img._id,
-          url: img.url,
-          storageId: img.storageId,
-          _id: img._id,
-        })),
-      [apiImages]
+  const ProfileFormImageStepWrapper: React.FC<{
+    images: (ImageType | MappedImage)[];
+    profileId: string;
+  }> = ({ images: initialImages, profileId }) => {
+    // Normalize incoming images to ImageType shape
+    const normalize = (arr: (ImageType | MappedImage)[]): ImageType[] =>
+      arr.map((img) => {
+        const id = "id" in img ? img.id : (img._id ?? img.storageId ?? "");
+        const storageId =
+          "storageId" in img ? img.storageId : (img._id ?? undefined);
+        const name =
+          "name" in img
+            ? img.name
+            : "fileName" in img
+              ? img.fileName
+              : undefined;
+        const size = "size" in img ? img.size : undefined;
+        const uploadedAt =
+          "uploadedAt" in img
+            ? (img as { uploadedAt?: number }).uploadedAt
+            : undefined;
+
+        return { id, url: img.url, name, size, storageId, uploadedAt };
+      });
+
+    const [images, setImages] = React.useState<ImageType[]>(
+      normalize(initialImages)
     );
-    // Get the reorder and delete hooks at the top level
+
+    React.useEffect(() => {
+      setImages(normalize(initialImages));
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [JSON.stringify(initialImages)]);
+
+    const isLoading = false;
     const reorderImages = useImageReorder(profileId);
     const deleteImage = useDeleteImage(profileId);
-    // Adapt reorder handler to accept ImageType[]
+
     const handleReorder = async (newOrder: ImageType[]) => {
       const storageIds = newOrder.map((img) => img.storageId || img.id);
       await reorderImages(storageIds);
     };
-    // Adapt delete handler to accept (imageId: string) => Promise<void>
+
     const handleDelete = async (imageId: string) => {
-      // Skip the default browser confirm because ImageDeleteConfirmation modal is already shown
       await deleteImage(imageId, true);
-      // Explicitly refetch images after deletion to ensure latest list is shown immediately
-      await refetchImages();
+      setImages((prev) => prev.filter((img) => img.storageId !== imageId));
       return;
     };
+
     return (
       <ProfileFormStepImages
         images={images}
@@ -468,14 +474,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
         profileId={profileId}
         onImageReorder={handleReorder}
         onImageDelete={handleDelete}
-        onImagesChanged={(imgs) => {
-          // Avoid infinite re-renders by checking if list actually changed
-          setLatestImages((prev) => {
-            const prevStr = JSON.stringify(prev);
-            const nextStr = JSON.stringify(imgs);
-            return prevStr === nextStr ? prev : imgs;
-          });
-        }}
+        onImagesChanged={setImages}
       />
     );
   };
@@ -487,19 +486,6 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
         <LoadingSpinner size={32} colorClassName="text-pink-600" />
         <span className="ml-3 text-pink-700 font-semibold">
           Loading profile...
-        </span>
-      </div>
-    );
-  }
-
-  if (waitForUserId || isCreatingProfile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size={32} colorClassName="text-pink-600" />
-        <span className="ml-2 text-pink-700 font-semibold">
-          {isCreatingProfile
-            ? "Creating your profile..."
-            : "Preparing image upload..."}
         </span>
       </div>
     );
@@ -561,7 +547,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           )}
           <div className="border-b pb-4 px-6 pt-6 flex justify-between items-center flex-wrap gap-2">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800">
+              <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-gray-800 mb-1">
                 {mode === "create" ? "Create Profile" : "My Profile"}
               </h1>
               <div className="text-gray-600">
@@ -624,14 +610,24 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                       title="Profile Photos"
                       gridClassName="grid grid-cols-1"
                     >
-                      {!resolvedProfileId ? (
+                      {mode === "edit" ? (
+                        <ProfileFormImageStepWrapper
+                          profileId={profileId || ""}
+                          images={
+                            (userImages ?? []) as (ImageType | MappedImage)[]
+                          }
+                        />
+                      ) : !userIdProp ? (
                         <div className="flex items-center gap-2 text-pink-600">
                           <LoadingSpinner size={20} />
                           Waiting for profile to be created...
                         </div>
                       ) : (
                         <ProfileFormImageStepWrapper
-                          profileId={resolvedProfileId}
+                          profileId={userIdProp || profileId || ""}
+                          images={
+                            (userImages ?? []) as (ImageType | MappedImage)[]
+                          }
                         />
                       )}
                     </FormSection>

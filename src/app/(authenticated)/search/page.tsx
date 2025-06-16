@@ -101,6 +101,7 @@ export interface ProfileData {
   boostedUntil?: number;
   subscriptionPlan?: string;
   hideFromFreeUsers?: boolean;
+  profileImageUrls?: string[];
   [key: string]: unknown;
 }
 export interface ProfileSearchResult {
@@ -180,30 +181,9 @@ export default function SearchProfilesPage() {
           return {};
         }
 
-        const res = await fetch(
-          `/api/images/batch?userIds=${userIds.join(",")}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            cache: "no-store",
-          }
-        );
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error("Batch images API error:", {
-            status: res.status,
-            statusText: res.statusText,
-            error: errorText,
-            userIds,
-            hasAuthHeader: !!token,
-          });
-          return {};
-        }
-
-        return await res.json();
+        // No need for a separate image batch fetch – we now rely on
+        // profile.profileImageUrls directly, so just build an empty map.
+        return {} as Record<string, string | null>;
       } catch (error) {
         console.error("Error in images batch request:", error);
         return {};
@@ -280,7 +260,7 @@ export default function SearchProfilesPage() {
   }
 
   return (
-    <div className="w-full bg-base-light pt-24 sm:pt-28 md:pt-32 pb-12 relative overflow-x-hidden">
+    <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
       {/* Decorative color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
@@ -416,14 +396,9 @@ export default function SearchProfilesPage() {
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((u: ProfileSearchResult, idx: number) => {
                 const p = u.profile!;
-                const firstImageUrl =
-                  typeof userImages === "object" &&
-                  userImages !== null &&
-                  typeof u.userId === "string" &&
-                  u.userId in userImages
-                    ? (userImages as Record<string, string | null>)[u.userId] ||
-                      null
-                    : null;
+                const profileUrls = p.profileImageUrls;
+                const matchImageUrl =
+                  profileUrls && profileUrls.length > 0 ? profileUrls[0] : null;
                 const loaded = imgLoaded[u.userId] || false;
                 return (
                   <motion.div
@@ -439,14 +414,14 @@ export default function SearchProfilesPage() {
                           : ""
                       } hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col`}
                     >
-                      {firstImageUrl ? (
+                      {matchImageUrl ? (
                         <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
                           {/* Skeleton loader */}
                           {!loaded && (
-                            <div className="absolute inset-0 bg-gray-200 animate-pulse z-0" />
+                            <div className="absolute inset-0 bg-gray-100 dark:bg-gray-600 animate-pulse z-0" />
                           )}
                           <img
-                            src={firstImageUrl}
+                            src={matchImageUrl}
                             alt={
                               typeof p.fullName === "string" ? p.fullName : ""
                             }

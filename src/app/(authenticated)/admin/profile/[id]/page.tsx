@@ -252,9 +252,13 @@ export default function AdminProfileDetailPage() {
       setIsDeleting(true);
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      const deleteRes = await fetch(`/api/images/${storageId}`, {
+      const deleteRes = await fetch(`/api/profile-images`, {
         method: "DELETE",
-        headers,
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: profile.userId, imageId: storageId }),
       });
 
       if (deleteRes.ok) {
