@@ -2,15 +2,27 @@
 import { useAuthContext } from "@/components/AuthProvider";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, Award } from "lucide-react";
-import { showInfoToast, showErrorToast } from "@/lib/ui/toast";
+import { Star, CheckCircle, Crown } from "lucide-react";
+import { showErrorToast } from "@/lib/ui/toast";
 import React from "react";
 
-const plans = [
+type PlanId = "free" | "premium" | "premiumPlus";
+
+interface PlanDetails {
+  id: PlanId;
+  name: string;
+  price: string;
+  subtitle?: string;
+  badge?: string;
+  benefits: string[];
+}
+
+const plans: PlanDetails[] = [
   {
     id: "free",
     name: "Free Plan",
     price: "£0 / lifetime",
+    badge: "Start for Free",
     benefits: [
       "Browse limited matches",
       "Send limited interests",
@@ -20,7 +32,9 @@ const plans = [
   {
     id: "premium",
     name: "Premium Plan",
-    price: "£14.99 / month (1-month free trial)",
+    price: "£14.99 / month",
+    subtitle: "1-month free trial",
+    badge: "Most Popular",
     benefits: [
       "Unlimited likes & views",
       "Chat initiation",
@@ -33,7 +47,9 @@ const plans = [
   {
     id: "premiumPlus",
     name: "Premium Plus",
-    price: "£39.99 / month (1-month free trial)",
+    price: "£39.99 / month",
+    subtitle: "1-month free trial",
+    badge: "All-Inclusive",
     benefits: [
       "All Premium perks",
       "Monthly profile boosts",
@@ -42,60 +58,108 @@ const plans = [
       "Spotlight badge",
     ],
   },
-] as const;
-
-type PlanId = (typeof plans)[number]["id"];
+];
 
 export default function ManagePlansPage() {
-  const { profile } = useAuthContext();
+  const { profile, getToken } = useAuthContext();
   const currentPlan = (profile?.subscriptionPlan || "free") as PlanId;
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (planId === currentPlan) return;
     try {
-      // TODO: call backend / Stripe checkout session
-      showInfoToast("Redirecting to checkout…");
+      const t = await getToken();
+      if (!t) {
+        showErrorToast(new Error("Not authenticated"), "Please sign in first");
+        return;
+      }
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${t}`,
+        },
+        body: JSON.stringify({ planId }),
+      });
+      const data = await res.json();
+      if (!data.success || !data.url) {
+        throw new Error(data.error || "Unknown error");
+      }
+      window.location.href = data.url as string;
     } catch (err) {
-      showErrorToast(err, "Failed to start checkout");
+      showErrorToast(err as Error, "Failed to start checkout");
     }
   };
 
+  const isCurrent = (id: PlanId) => id === currentPlan;
+
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 flex flex-col items-center">
-      <h1 className="text-3xl font-bold mb-8 text-center">
-        Manage Subscription
+    <div className="relative min-h-screen pt-24 pb-16 px-4 flex flex-col items-center bg-white">
+      {/* Decorative pink circle */}
+      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
+
+      <h1 className="text-4xl font-extrabold mb-3 text-center font-display">
+        Choose the plan that&rsquo;s right for you
       </h1>
-      <div className="grid gap-8 md:grid-cols-3 w-full max-w-6xl">
-        {plans.map((p) => (
-          <Card key={p.id} className="relative">
-            {p.id === "premiumPlus" && (
-              <Award className="absolute -top-3 -left-3 h-6 w-6 text-[#BFA67A]" />
-            )}
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {p.name}
-                {p.id === currentPlan && (
-                  <Star className="h-4 w-4 text-[#BFA67A]" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-semibold mb-4">{p.price}</p>
-              <ul className="space-y-2 mb-6 text-sm list-disc list-inside">
-                {p.benefits.map((b) => (
-                  <li key={b}>{b}</li>
-                ))}
-              </ul>
-              <Button
-                disabled={p.id === currentPlan}
-                className="w-full"
-                onClick={() => handleSelectPlan(p.id)}
-              >
-                {p.id === currentPlan ? "Current Plan" : "Choose Plan"}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+      <p className="text-muted-foreground mb-10 text-center max-w-xl">
+        Upgrade at any time. Cancel whenever you wish. Paid plans come with a
+        1-month free trial.
+      </p>
+
+      <div className="grid gap-8 w-full max-w-6xl md:grid-cols-3">
+        {plans.map((p) => {
+          const selected = isCurrent(p.id);
+          return (
+            <Card
+              key={p.id}
+              className={
+                "relative overflow-hidden transition-transform hover:scale-[1.03] " +
+                (p.id === "premium" ? "ring-4 ring-[#BFA67A]/60" : "") +
+                (selected ? " ring-2 ring-[#BFA67A]" : "")
+              }
+            >
+              {/* decorative badge */}
+              {p.badge && (
+                <span className="absolute right-3 top-3 rounded-md bg-[#BFA67A] px-2 py-0.5 text-xs font-semibold text-white shadow">
+                  {p.badge}
+                </span>
+              )}
+
+              {p.id === "premiumPlus" && (
+                <Crown className="absolute -top-4 -left-4 h-8 w-8 text-[#BFA67A] rotate-[20deg] z-10" />
+              )}
+
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                  {p.name}
+                  {selected && <Star className="h-5 w-5 text-[#BFA67A]" />}
+                </CardTitle>
+                {p.subtitle ? (
+                  <p className="text-sm text-muted-foreground">{p.subtitle}</p>
+                ) : null}
+              </CardHeader>
+              <CardContent>
+                <p className="mb-6 text-3xl font-extrabold tracking-tight text-[#BFA67A]">
+                  {p.price}
+                </p>
+                <ul className="space-y-3 mb-8 text-sm">
+                  {p.benefits.map((b) => (
+                    <li key={b} className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#BFA67A] mt-0.5" />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  disabled={selected}
+                  className="w-full"
+                  onClick={() => handleSelectPlan(p.id)}
+                >
+                  {selected ? "Current Plan" : "Choose Plan"}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

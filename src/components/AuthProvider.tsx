@@ -17,6 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"; // Added: useQ
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { setCachedProfileComplete } from "@/lib/cache";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useOneSignal } from "@/hooks/useOneSignal";
 // import { toast } from "sonner"; // Or your preferred toast library
 
 // Placeholder for toast if not using a specific library for this example
@@ -362,6 +363,11 @@ export function AuthProvider({
     signOut,
   ]);
 
+  const PushInit: React.FC = () => {
+    useOneSignal();
+    return null;
+  };
+
   // No redirection logic here - all redirections are handled by ProtectedRoute component
 
   // Context value
@@ -413,7 +419,10 @@ export function AuthProvider({
   }
 
   return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>
+      <PushInit />
+      {children}
+    </AuthContext.Provider>
   );
 }
 

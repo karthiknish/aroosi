@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { Notifications } from "@/lib/notify";
+import type { Profile as AppProfile } from "@/types/profile";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -44,6 +46,33 @@ export async function PUT(req: NextRequest) {
     id: id as unknown as Id<"profiles">,
     updates,
   });
+
+  // Determine if approval or subscription change
+  try {
+    const updated = await convex.query(api.users.getProfileById, {
+      id: id as unknown as Id<"profiles">,
+    });
+    const profile = updated as AppProfile;
+    if (profile && profile.email) {
+      // if just approved
+      if (updates.isApproved === true) {
+        await Notifications.profileApproved(profile.email, profile);
+      }
+      if (
+        updates.subscriptionPlan &&
+        typeof updates.subscriptionPlan === "string"
+      ) {
+        await Notifications.subscriptionChanged(
+          profile.email,
+          profile.fullName || profile.email,
+          updates.subscriptionPlan as string
+        );
+      }
+    }
+  } catch (e) {
+    console.error("admin profile notify error", e);
+  }
+
   return NextResponse.json(result);
 }
 

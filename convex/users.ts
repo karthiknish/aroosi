@@ -131,7 +131,17 @@ export const getCurrentUserWithProfile = query({
 export const internalUpsertUser = internalMutation(
   async (
     ctx,
-    { clerkId, email, role }: { clerkId: string; email: string; role?: string }
+    {
+      clerkId,
+      email,
+      role,
+      fullName,
+    }: {
+      clerkId: string;
+      email: string;
+      role?: string;
+      fullName?: string;
+    }
   ) => {
     const existingUser = await ctx.db
       .query("users")
@@ -178,20 +188,41 @@ export const internalUpsertUser = internalMutation(
         clerkId,
         email,
         isProfileComplete: false,
+        isOnboardingComplete: false,
+        isApproved: false,
         createdAt: Date.now(),
         profileFor: "self",
         // Initialize other fields as undefined or with defaults if necessary
-        fullName: undefined,
+        fullName: fullName,
         dateOfBirth: undefined,
+        subscriptionPlan: "free",
       } as any);
       console.log(`Created new profile for user ${userId}`);
     } else {
-      if (
-        !existingProfile.clerkId ||
-        existingProfile.clerkId !== clerkId ||
-        existingProfile.email !== email
-      ) {
-        await ctx.db.patch(existingProfile._id, { clerkId, email });
+      const profileUpdates: any = {};
+      if (!existingProfile.clerkId || existingProfile.clerkId !== clerkId) {
+        profileUpdates.clerkId = clerkId;
+      }
+      if (existingProfile.email !== email) {
+        profileUpdates.email = email;
+      }
+      if (fullName && !existingProfile.fullName) {
+        profileUpdates.fullName = fullName;
+      }
+      if (existingProfile.isOnboardingComplete === undefined) {
+        profileUpdates.isOnboardingComplete = false;
+      }
+      if (existingProfile.isProfileComplete === undefined) {
+        profileUpdates.isProfileComplete = false;
+      }
+      if (existingProfile.isApproved === undefined) {
+        profileUpdates.isApproved = false;
+      }
+      if (existingProfile.subscriptionPlan === undefined) {
+        profileUpdates.subscriptionPlan = "free";
+      }
+      if (Object.keys(profileUpdates).length > 0) {
+        await ctx.db.patch(existingProfile._id, profileUpdates);
       }
       // If profile exists but createdAt is missing (e.g. old data), patch it.
       // This is less likely if all new profiles get it, but good for data integrity.
@@ -1691,5 +1722,56 @@ export const getProfileViewers = query({
     const users = await Promise.all(viewerIds.map((id) => ctx.db.get(id)));
 
     return users.filter(Boolean);
+  },
+});
+
+// --- Stripe subscription helpers ---
+export const internalUpdateSubscription = internalMutation(
+  async (
+    ctx,
+    args: {
+      clerkId: string;
+      plan: "free" | "premium" | "premiumPlus";
+      expiresAt?: number;
+    }
+  ) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) {
+      console.error("internalUpdateSubscription: user not found", args.clerkId);
+      return;
+    }
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) {
+      console.error("internalUpdateSubscription: profile not found", user._id);
+      return;
+    }
+    await ctx.db.patch(profile._id, {
+      subscriptionPlan: args.plan,
+      subscriptionExpiresAt: args.expiresAt ?? undefined,
+    });
+  }
+);
+
+export const stripeUpdateSubscription = action({
+  args: {
+    clerkId: v.string(),
+    plan: v.union(
+      v.literal("free"),
+      v.literal("premium"),
+      v.literal("premiumPlus")
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.users.internalUpdateSubscription, {
+      clerkId: args.clerkId,
+      plan: args.plan,
+      expiresAt: Date.now() + 31 * 24 * 60 * 60 * 1000, // extend 31 days
+    });
   },
 });

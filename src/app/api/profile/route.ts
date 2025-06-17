@@ -3,6 +3,7 @@ import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { Notifications } from "@/lib/notify";
 
 // Initialize Convex client (may be null if URL not configured)
 const convexClient = getConvexClient();
@@ -336,6 +337,13 @@ export async function POST(req: NextRequest) {
     if (!userResult) {
       console.error("Profile not found after creation");
       return errorResponse("Profile not found after creation", 404);
+    }
+    // send profile created email
+    if (userResult.email && userResult.profile) {
+      Notifications.profileCreated(
+        userResult.email,
+        userResult.profile as unknown as import("@/types/profile").Profile
+      ).catch((e) => console.error("profileCreated email failed", e));
     }
     return successResponse({
       success: true,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
+import { Notifications } from "@/lib/notify";
+import type { Profile as AppProfile } from "@/types/profile";
 
 export async function PUT(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -34,10 +36,22 @@ export async function PUT(req: NextRequest) {
     result = await convex.mutation(api.users.banUser, {
       userId: profile.userId,
     });
+    if (profile.email) {
+      await Notifications.profileBanStatus(profile.email, {
+        profile: profile as AppProfile,
+        banned: true,
+      });
+    }
   } else {
     result = await convex.mutation(api.users.unbanUser, {
       userId: profile.userId,
     });
+    if (profile.email) {
+      await Notifications.profileBanStatus(profile.email, {
+        profile: profile as AppProfile,
+        banned: false,
+      });
+    }
   }
   return NextResponse.json(result);
 }

@@ -2,8 +2,11 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center bg-pink-50 px-4">
-      <div className="text-center">
+    <div className="relative overflow-y-hidden min-h-screen flex flex-col items-center justify-center bg-white ">
+      {/* Decorative pink circle */}
+      <div className="pointer-events-none absolute -bottom-32 -left-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
+
+      <div className="text-center relative z-10">
         <div className="text-7xl font-extrabold text-pink-600 mb-4">404</div>
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
           Page Not Found

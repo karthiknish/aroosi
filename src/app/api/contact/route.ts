@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
+import { sendAdminNotification, sendUserNotification } from "@/lib/email";
+import {
+  contactFormAdminTemplate,
+  contactFormUserAckTemplate,
+} from "@/lib/emailTemplates";
 
 // Simple in-memory rate limit store (replace with Redis for production)
 const rateLimitMap = new Map<string, { count: number; last: number }>();
@@ -72,6 +77,30 @@ export async function POST(req: NextRequest) {
       subject,
       message,
     });
+
+    // Fire-and-forget email notifications (no need to block response)
+    (async () => {
+      try {
+        // Notify admin
+        const adminTemplate = contactFormAdminTemplate({
+          name,
+          email,
+          message,
+        });
+        await sendAdminNotification(adminTemplate.subject, adminTemplate.html);
+
+        const userTemplate = contactFormUserAckTemplate({ name });
+        await sendUserNotification(
+          email,
+          userTemplate.subject,
+          userTemplate.html
+        );
+      } catch (e) {
+        // Silently log – notification failure shouldn't break API
+        console.error("Failed to send contact form emails", e);
+      }
+    })();
+
     return NextResponse.json(result);
   } catch (err: unknown) {
     const message =

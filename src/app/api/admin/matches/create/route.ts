@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { requireAdminToken } from "@/app/api/_utils/auth";
+import { Notifications } from "@/lib/notify";
 
 export async function POST(req: NextRequest) {
   const adminCheck = requireAdminToken(req);
@@ -83,6 +84,29 @@ export async function POST(req: NextRequest) {
 
     await upsertAcceptedInterest(fromUserId, toUserId);
     await upsertAcceptedInterest(toUserId, fromUserId);
+
+    // send match emails, non-blocking
+    (async () => {
+      try {
+        if (fromProfile.email && toProfile.email) {
+          await Promise.all([
+            Notifications.newMatch(
+              fromProfile.email,
+              fromProfile.fullName || "",
+              toProfile.fullName || "A user"
+            ),
+            Notifications.newMatch(
+              toProfile.email,
+              toProfile.fullName || "",
+              fromProfile.fullName || "A user"
+            ),
+          ]);
+        }
+      } catch (e) {
+        console.error("match email send error", e);
+      }
+    })();
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
     return NextResponse.json(

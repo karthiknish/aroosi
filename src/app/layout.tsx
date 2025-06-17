@@ -5,6 +5,7 @@ import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -143,6 +144,24 @@ export default function RootLayout({
             </AuthProvider>
           </ReactQueryProvider>
         </ClerkProvider>
+
+        {/* OneSignal SDK v16 */}
+        <Script
+          src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+          strategy="afterInteractive"
+        />
+        <Script id="onesignal-init" strategy="afterInteractive">
+          {`
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            OneSignalDeferred.push(function(OneSignal) {
+              OneSignal.init({
+                appId: "${process.env.NEXT_PUBLIC_ONE_SIGNAL_APP_ID}",
+                safari_web_id: "${process.env.NEXT_PUBLIC_ONE_SIGNAL_SAFARI_ID}",
+                notifyButton: { enable: true }
+              });
+            });
+          `}
+        </Script>
       </body>
     </html>
   );

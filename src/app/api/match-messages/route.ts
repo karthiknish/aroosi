@@ -4,6 +4,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
+// import { Notifications } from "@/lib/notify"; // future use
 
 // GET: Fetch messages for a conversation
 export async function GET(req: NextRequest) {
@@ -72,6 +73,9 @@ export async function POST(req: NextRequest) {
     // Broadcast to SSE subscribers
     const { eventBus } = await import("@/lib/eventBus");
     eventBus.emit(conversationId, result);
+
+    // TODO: trigger email notification to receiver if offline (requires user lookup function)
+
     return successResponse(result);
   } catch (error) {
     const isAuthError =

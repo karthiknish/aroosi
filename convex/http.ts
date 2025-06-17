@@ -1,4 +1,5 @@
 "use strict";
+ 
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -43,8 +44,13 @@ http.route({
           first_name,
           last_name,
         } = event.data;
-        const email = email_addresses?.find(
-          (e: any) => e.id === event.data.primary_email_address_id
+        const email = (
+          email_addresses as Array<{
+            id: string;
+            email_address: string;
+          }>
+        )?.find(
+          (addr) => addr.id === event.data.primary_email_address_id
         )?.email_address;
 
         if (!clerkId || !email) {
@@ -60,7 +66,8 @@ http.route({
         await ctx.runMutation(internal.users.internalUpsertUser, {
           clerkId: clerkId as string,
           email: email as string,
-          // You could pass firstName: first_name, lastName: last_name here if you want to store them
+
+          fullName: `${first_name ?? ""} ${last_name ?? ""}`.trim(),
         });
         break;
       // case "user.deleted": // Optional: handle user deletion
@@ -80,3 +87,5 @@ http.route({
 });
 
 export default http;
+
+ 

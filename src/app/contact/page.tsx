@@ -225,10 +225,10 @@ export default function ContactPage() {
           <p className="mt-2 text-gray-600">
             Email:{" "}
             <a
-              href="mailto:contact@aroosi.co.uk"
+              href="mailto:contact@aroosi.app"
               className="text-primary-light hover:underline"
             >
-              contact@aroosi.co.uk
+              contact@aroosi.app
             </a>
           </p>
           {/* Add physical address or phone if applicable */}
