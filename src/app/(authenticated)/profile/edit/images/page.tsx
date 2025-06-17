@@ -89,8 +89,11 @@ export default function EditProfileImagesPage() {
   }
   console.log(images);
   return (
-    <div className="flex items-center justify-center min-h-screen bg-base-light p-4">
-      <Card className="w-full max-w-3xl">
+    <div className="relative flex items-start justify-center min-h-screen bg-white p-4 overflow-hidden">
+      {/* Decorative pink circle */}
+      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
+
+      <Card className="w-full max-w-3xl z-10 shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold">
             Edit Profile Photos

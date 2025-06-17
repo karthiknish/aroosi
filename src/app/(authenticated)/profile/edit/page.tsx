@@ -396,7 +396,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="relative w-full min-h-screen bg-base-light flex flex-col py-10 px-4 md:px-8 overflow-hidden">
+    <div className="relative w-full min-h-screen bg-white flex flex-col py-10 px-4 md:px-8 overflow-hidden">
       {/* Decorative pink circle background */}
       <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
 
@@ -405,14 +405,17 @@ export default function EditProfilePage() {
         Edit Profile
       </h1>
 
-      <ProfileEditSimpleForm
-        initialValues={mapProfileToFormValues(profileData)}
-        onSubmit={handleProfileFormComponentSubmit}
-        loading={updateProfileMutation.status === "pending"}
-        serverError={serverError || undefined}
-        key={profileData._id}
-        // images handled separately
-      />
+      <div className="flex justify-center z-10">
+        <div className="w-full max-w-3xl bg-white shadow-xl rounded-xl p-6 md:p-8">
+          <ProfileEditSimpleForm
+            initialValues={mapProfileToFormValues(profileData)}
+            onSubmit={handleProfileFormComponentSubmit}
+            loading={updateProfileMutation.status === "pending"}
+            serverError={serverError || undefined}
+            key={profileData._id}
+          />
+        </div>
+      </div>
     </div>
   );
 }
