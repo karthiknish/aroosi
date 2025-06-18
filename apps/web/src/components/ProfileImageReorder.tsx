@@ -59,7 +59,7 @@ const SortableImage = ({
     transform,
     transition,
     isDragging: dndDragging,
-  } = useSortable({ id: img.id });
+  } = useSortable({ id: img.id, resizeObserverConfig: undefined });
 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [loaded, setLoaded] = useState(false);

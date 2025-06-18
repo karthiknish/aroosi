@@ -48,6 +48,7 @@ export interface Profile {
   boostsMonth?: string;
   hasSpotlightBadge?: boolean;
   spotlightBadgeExpiresAt?: number;
+  boostedUntil?: number;
 }
 
 export interface ProfileFormValues {

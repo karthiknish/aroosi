@@ -79,7 +79,8 @@ const ProfileBoostButton = () => {
     boostsRemaining = 5; // reset quota client-side if month changed
   }
 
-  const isCurrentlyBoosted = profile.boostedUntil && profile.boostedUntil > Date.now();
+  const isCurrentlyBoosted =
+    !!profile.boostedUntil && profile.boostedUntil > Date.now();
   const disabled = loading || boostsRemaining <= 0 || isCurrentlyBoosted;
 
   if (isCurrentlyBoosted) {

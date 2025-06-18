@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/components/AuthProvider";
 import {
@@ -28,7 +28,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
 
   if (!hydrated) return null;
 
-  const headerVariants = {
+  const headerVariants: Variants = {
     hidden: { y: -100, opacity: 0 },
     visible: {
       y: 0,
@@ -37,7 +37,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     },
   };
 
-  const navItemVariants = {
+  const navItemVariants: Variants = {
     hidden: { y: -20, opacity: 0 },
     visible: (i: number) => ({
       y: 0,

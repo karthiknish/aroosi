@@ -56,8 +56,12 @@ export default function ProfileCreateWizard({
   const handleNext = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const handleBack = () => setStep((s) => Math.max(s - 1, 0));
 
-  const handleImagesChanged = useCallback((images: ImageType[]) => {
-    setUploadedImages(images);
+  const handleImagesChanged = useCallback((images: ImageType[] | string[]) => {
+    if (typeof images[0] === "string") {
+      // If string[], do nothing or handle as needed
+      return;
+    }
+    setUploadedImages(images as ImageType[]);
   }, []);
 
   const handleImageDelete = useCallback(async (imageId: string) => {

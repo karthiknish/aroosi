@@ -45,6 +45,7 @@ export interface Profile {
   subscriptionExpiresAt?: number;
   boostsRemaining?: number;
   boostsMonth?: string;
+  boostedUntil?: number;
 }
 
 export interface ProfileFormValues {
