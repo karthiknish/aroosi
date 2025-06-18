@@ -1,5 +1,6 @@
 {
-  "name": "mobile",
-  "slug": "mobile",
-  "jsEngine": "hermes"
+  "name": "aroosi",
+  "slug": "aroosi",
+  "jsEngine": "hermes",
+  "icon": "./assets/icon.png"
 }

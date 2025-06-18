@@ -418,7 +418,7 @@ function DetailsStep({ data, onUpdate, onNext, onPrev, errors }: StepComponentPr
         label="Height"
         value={data.height || ""}
         onChangeText={(height) => onUpdate({ height })}
-        placeholder="e.g., 5'8\" or 173cm"
+        placeholder="e.g., 5'8&quot; or 173cm"
         error={errors.height}
         required
       />
