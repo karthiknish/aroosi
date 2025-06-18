@@ -105,13 +105,13 @@ export function ProfileImageUpload({
       // Use existing utility function
       const result = await fetchUserProfileImages(token, userId);
       if (!result.success || !result.data) return [];
-      return (result.data || []).filter(
-        (img) => !!img?.url && !!img?.storageId
-      ).map(img => ({
-        id: img.storageId,
-        storageId: img.storageId,
-        ...img
-      })) as ImageType[];
+      return (result.data || [])
+        .filter((img) => !!img?.url && !!img?.storageId)
+        .map((img) => ({
+          ...img,
+          id: img.storageId,
+          storageId: img.storageId,
+        })) as ImageType[];
     },
     enabled:
       mode === "edit" &&

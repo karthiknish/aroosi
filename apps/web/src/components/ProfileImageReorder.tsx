@@ -5,7 +5,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -160,11 +159,16 @@ export function ProfileImageReorder({
     })
   );
 
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      if (loading || isReordering) return;
+  type DragEventLike = {
+    active: { id: string };
+    over: { id: string } | null;
+  };
 
+  const handleDragEnd = useCallback(
+    async (event: DragEventLike) => {
+      if (loading || isReordering) return;
       const { active, over } = event;
+
       if (!over || active.id === over.id) return;
 
       const oldIndex = images.findIndex((img) => img.id === active.id);

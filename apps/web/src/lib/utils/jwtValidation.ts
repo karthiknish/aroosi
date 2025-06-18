@@ -236,13 +236,13 @@ export function validateTokenBasic(token: string): JWTValidationResult {
 export function isTokenNearExpiry(token: string): boolean {
   try {
     const validation = validateTokenBasic(token);
-    if (!validation.valid || !validation.payload?.exp) {
-      return true; // Treat invalid tokens as expired
+    const exp = validation.payload?.exp;
+    if (!validation.valid || typeof exp !== "number") {
+      return true; // Treat invalid tokens or missing/invalid exp as expired
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const expiresIn = validation.payload.exp - now;
-    
+    const expiresIn = exp - now;
     return expiresIn < 300; // 5 minutes
   } catch {
     return true;
@@ -252,10 +252,12 @@ export function isTokenNearExpiry(token: string): boolean {
 /**
  * Extract all claims from token safely
  */
-export function extractTokenClaims(token: string): Record<string, unknown> | null {
+export function extractTokenClaims(
+  token: string
+): Record<string, unknown> | null {
   try {
     const validation = validateTokenBasic(token);
-    return validation.valid ? validation.payload : null;
+    return validation.valid && validation.payload ? validation.payload : null;
   } catch {
     return null;
   }
