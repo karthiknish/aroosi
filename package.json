@@ -28,6 +28,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.0.1",
+    "@next/swc-darwin-arm64": "15.3.3",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -149,7 +150,8 @@
     "ts-jest": "^29.0.0"
   },
   "overrides": {
-    "lightningcss": "^1.28.2"
+    "lightningcss": "^1.28.2",
+    "entities": "^4.5.0"
   },
   "optionalDependencies": {
     "lightningcss-linux-x64-gnu": "^1.28.2",

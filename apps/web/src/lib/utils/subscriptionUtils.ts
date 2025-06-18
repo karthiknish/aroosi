@@ -13,7 +13,7 @@ export interface SubscriptionFeatures {
   boostsPerMonth: number;
 }
 
-export function getSubscriptionFeatures(plan: SubscriptionPlan): SubscriptionFeatures {
+export function getSubscriptionFeatures(plan: SubscriptionPlan | undefined): SubscriptionFeatures {
   switch (plan) {
     case "free":
       return {
@@ -54,13 +54,14 @@ export function getSubscriptionFeatures(plan: SubscriptionPlan): SubscriptionFea
         maxLikesPerDay: -1, // unlimited
         boostsPerMonth: 5,
       };
+    case undefined:
     default:
       return getSubscriptionFeatures("free");
   }
 }
 
 export function canAccessFeature(
-  userPlan: SubscriptionPlan,
+  userPlan: SubscriptionPlan | undefined,
   feature: keyof SubscriptionFeatures
 ): boolean {
   const features = getSubscriptionFeatures(userPlan);
@@ -68,7 +69,7 @@ export function canAccessFeature(
 }
 
 export function getUpgradeMessage(
-  currentPlan: SubscriptionPlan,
+  currentPlan: SubscriptionPlan | undefined,
   requiredFeature: keyof SubscriptionFeatures
 ): string {
   const messages: Record<keyof SubscriptionFeatures, string> = {
@@ -115,7 +116,7 @@ export function getRequiredPlanForFeature(feature: keyof SubscriptionFeatures): 
 }
 
 export function isFeatureAvailable(
-  userPlan: SubscriptionPlan,
+  userPlan: SubscriptionPlan | undefined,
   feature: keyof SubscriptionFeatures
 ): { available: boolean; requiredPlan?: SubscriptionPlan; message?: string } {
   const available = canAccessFeature(userPlan, feature);
@@ -135,7 +136,7 @@ export function isFeatureAvailable(
 }
 
 export function shouldShowUpgradePrompt(
-  userPlan: SubscriptionPlan,
+  userPlan: SubscriptionPlan | undefined,
   attemptedFeature: keyof SubscriptionFeatures
 ): boolean {
   return !canAccessFeature(userPlan, attemptedFeature);

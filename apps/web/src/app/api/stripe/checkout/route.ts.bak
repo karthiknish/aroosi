@@ -46,11 +46,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Additional security: Log checkout attempt
-    // logSecurityEvent('VALIDATION_FAILED', {
-    //   userId,
-    //   action: 'stripe_checkout_init',
-    //   planId
-    // }, req);
+    logSecurityEvent('PAYMENT_ACTION', {
+      userId,
+      action: 'stripe_checkout_init',
+      planId
+    }, req);
 
     // Validate Stripe configuration
     const priceId =
@@ -151,12 +151,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Log successful checkout session creation
-    // logSecurityEvent('VALIDATION_FAILED', {
-    //   userId,
-    //   action: 'stripe_checkout_created',
-    //   planId,
-    //   sessionId: session.id
-    // }, req);
+    logSecurityEvent('PAYMENT_ACTION', {
+      userId,
+      action: 'stripe_checkout_created',
+      planId,
+      sessionId: session.id
+    }, req);
 
     console.log(`Stripe checkout session created: ${session.id} for user ${userId}`);
     return successResponse({ url: session.url, sessionId: session.id });
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     console.error("Error in Stripe checkout:", error);
     
     // Log security event for monitoring
-    logSecurityEvent('VALIDATION_FAILED', {
+    logSecurityEvent('API_ERROR', {
       endpoint: 'stripe/checkout',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, req);

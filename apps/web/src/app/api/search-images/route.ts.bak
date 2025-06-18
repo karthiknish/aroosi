@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders";
 
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
 const PEXELS_API_URL = "https://api.pexels.com/v1/search";
@@ -106,11 +106,11 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching images from Pexels:", error);
     
     // Log security event for monitoring
-    // logSecurityEvent('VALIDATION_FAILED', { 
-    //   userId: userId || 'unknown', 
-    //   endpoint: 'search-images',
-    //   error: error instanceof Error ? error.message : 'Unknown error'
-    // }, request);
+    logSecurityEvent('API_ERROR', { 
+      userId, 
+      endpoint: 'search-images',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, request);
     
     if (error instanceof Error && error.name === 'AbortError') {
       return errorResponse("Image search request timed out", 408);

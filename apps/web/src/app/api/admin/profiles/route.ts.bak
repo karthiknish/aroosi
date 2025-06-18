@@ -144,7 +144,7 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     console.error("Error in admin profile DELETE:", error);
     
-    // logSecurityEvent('VALIDATION_FAILED', {
+    // logSecurityEvent('API_ERROR', {
     //   endpoint: 'admin/profiles',
     //   method: 'DELETE',
     //   error: error instanceof Error ? error.message : 'Unknown error'
@@ -247,7 +247,7 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     console.error("Error in admin profile PUT:", error);
     
-    // logSecurityEvent('VALIDATION_FAILED', {
+    // logSecurityEvent('API_ERROR', {
     //   endpoint: 'admin/profiles',
     //   method: 'PUT',
     //   error: error instanceof Error ? error.message : 'Unknown error'

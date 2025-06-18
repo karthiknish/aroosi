@@ -447,13 +447,13 @@ export default function SearchProfilesPage() {
                             p.subscriptionPlan === "premiumPlus") && (
                             <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
                           )}
-                          {(p.subscriptionPlan === "premium" ||
+                          {((p.subscriptionPlan === "premium" ||
                             p.subscriptionPlan === "premiumPlus") &&
                            p.hasSpotlightBadge && 
                            p.spotlightBadgeExpiresAt && 
-                           p.spotlightBadgeExpiresAt > Date.now() && (
+                           (p.spotlightBadgeExpiresAt as number) > Date.now()) ? (
                             <SpotlightIcon className="w-4 h-4" />
-                          )}
+                          ) : null}
                         </div>
                         <div
                           className="text-sm text-gray-600 mb-1"

@@ -255,7 +255,7 @@ export default function ProfileDetailPage() {
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.5, type: "spring" },
+      transition: { duration: 0.5, type: "spring" as const },
     },
     exit: { opacity: 0, y: 40, transition: { duration: 0.3 } },
   };
@@ -271,7 +271,7 @@ export default function ProfileDetailPage() {
     visible: (i: number) => ({
       opacity: 1,
       scale: 1,
-      transition: { delay: 0.1 + i * 0.07, duration: 0.35, type: "spring" },
+      transition: { delay: 0.1 + i * 0.07, duration: 0.35, type: "spring" as const },
     }),
     exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } },
   };
@@ -281,7 +281,7 @@ export default function ProfileDetailPage() {
     visible: {
       scale: 1,
       opacity: 1,
-      transition: { type: "spring", stiffness: 300, damping: 20 },
+      transition: { type: "spring" as const, stiffness: 300, damping: 20 },
     },
     tap: { scale: 0.92 },
   };

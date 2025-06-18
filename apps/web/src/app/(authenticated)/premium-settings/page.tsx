@@ -130,7 +130,7 @@ export default function PremiumSettingsPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <h1 className="text-3xl font-bold">Premium Settings</h1>
-          {getSubscriptionBadge(profile.subscriptionPlan)}
+          {getSubscriptionBadge(profile.subscriptionPlan as SubscriptionPlan)}
         </div>
         <p className="text-gray-600">
           Manage your premium features and subscription preferences.
@@ -157,7 +157,7 @@ export default function PremiumSettingsPage() {
                 </p>
                 <p className="text-sm text-gray-500">
                   {profile.subscriptionExpiresAt 
-                    ? `Expires: ${new Date(profile.subscriptionExpiresAt).toLocaleDateString()}`
+                    ? `Expires: ${new Date(profile.subscriptionExpiresAt as number).toLocaleDateString()}`
                     : "Active subscription"
                   }
                 </p>

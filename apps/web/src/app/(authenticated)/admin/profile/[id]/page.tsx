@@ -352,7 +352,7 @@ export default function AdminProfileDetailPage() {
           hasSpotlightBadge: !profile.hasSpotlightBadge,
           durationDays: 30,
         },
-        token
+        token ?? undefined
       );
 
       showSuccessToast(

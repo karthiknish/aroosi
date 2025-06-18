@@ -212,7 +212,7 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching sent interests:", error);
     
     // Log security event for monitoring
-    logSecurityEvent('VALIDATION_FAILED', {
+    logSecurityEvent('API_ERROR', {
       userId: req.url.includes('userId=') ? new URL(req.url).searchParams.get('userId') : 'unknown',
       endpoint: 'interests',
       method: 'GET',

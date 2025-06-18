@@ -41,7 +41,7 @@ export interface Profile {
   updatedAt: number;
   _creationTime?: number | string | Date;
   isApproved: boolean;
-  subscriptionPlan: SubscriptionPlan;
+  subscriptionPlan?: SubscriptionPlan;
   subscriptionExpiresAt?: number;
   boostsRemaining?: number;
   boostsMonth?: string;

@@ -3,7 +3,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders";
 
 const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -120,10 +120,11 @@ export async function GET(request: NextRequest) {
     console.error("Error in search API route:", error);
     
     // Log security event for monitoring
-    // logSecurityEvent('VALIDATION_FAILED', { 
-    //   endpoint: 'search',
-    //   error: error instanceof Error ? error.message : 'Unknown error'
-    // }, request);
+    logSecurityEvent('API_ERROR', { 
+      userId, 
+      endpoint: 'search',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, request);
     
     // Handle Convex authentication errors
     if (error instanceof Error && 

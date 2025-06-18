@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     // Validate webhook signature
     const sig = req.headers.get("stripe-signature");
     if (!sig) {
-      logSecurityEvent('VALIDATION_FAILED', { reason: 'Missing signature' }, req);
+      logSecurityEvent('WEBHOOK_ERROR', { reason: 'Missing signature' }, req);
       return errorResponse("Missing signature", 400);
     }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     
     // Validate request body
     if (!rawBody || rawBody.length === 0) {
-      logSecurityEvent('VALIDATION_FAILED', { reason: 'Empty body' }, req);
+      logSecurityEvent('WEBHOOK_ERROR', { reason: 'Empty body' }, req);
       return errorResponse("Empty request body", 400);
     }
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("Stripe webhook signature verification failed:", err);
       
-      logSecurityEvent('UNAUTHORIZED_ACCESS', { 
+      logSecurityEvent('WEBHOOK_ERROR', { 
         reason: 'Signature verification failed',
         error: err instanceof Error ? err.message : 'Unknown error'
       }, req);
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     
     // Validate event structure
     if (!event.type || !event.data || !event.data.object) {
-      logSecurityEvent('VALIDATION_FAILED', { 
+      logSecurityEvent('WEBHOOK_ERROR', { 
         reason: 'Invalid event structure',
         eventType: event.type 
       }, req);
@@ -78,11 +78,12 @@ export async function POST(req: NextRequest) {
 
         const planId = session.metadata.planId as "premium" | "premiumPlus" | undefined;
         const clerkId = session.metadata.clerkId;
+        const userId = session.metadata.userId;
 
         // Validate required metadata
         if (!planId || !clerkId) {
           console.error("Missing required metadata in checkout session:", { planId, clerkId, sessionId: session.id });
-          logSecurityEvent('VALIDATION_FAILED', {
+          logSecurityEvent('WEBHOOK_ERROR', {
             reason: 'Missing metadata',
             sessionId: session.id,
             planId,
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
         // Validate plan ID
         if (!["premium", "premiumPlus"].includes(planId)) {
           console.error("Invalid plan ID in webhook:", planId);
-          logSecurityEvent('VALIDATION_FAILED', {
+          logSecurityEvent('WEBHOOK_ERROR', {
             reason: 'Invalid plan ID',
             planId,
             sessionId: session.id
@@ -103,13 +104,13 @@ export async function POST(req: NextRequest) {
         }
 
         // Log subscription upgrade for monitoring
-        // logSecurityEvent('PAYMENT_ACTION', {
-        //   action: 'subscription_upgrade',
-        //   planId,
-        //   clerkId,
-        //   userId,
-        //   sessionId: session.id
-        // }, req);
+        logSecurityEvent('PAYMENT_ACTION', {
+          action: 'subscription_upgrade',
+          planId,
+          clerkId,
+          userId,
+          sessionId: session.id
+        }, req);
 
         console.log(`Processing subscription upgrade: ${clerkId} -> ${planId}`);
 
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
         } catch (e) {
           console.error("Convex subscription update failed:", e);
           
-          logSecurityEvent('VALIDATION_FAILED', {
+          logSecurityEvent('WEBHOOK_ERROR', {
             reason: 'Convex update failed',
             clerkId,
             planId,
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
         
         if (!clerkId) {
           console.error("Missing clerkId in subscription deletion:", { subscriptionId: sub.id });
-          logSecurityEvent('VALIDATION_FAILED', {
+          logSecurityEvent('WEBHOOK_ERROR', {
             reason: 'Missing clerkId in subscription deletion',
             subscriptionId: sub.id
           }, req);
@@ -174,11 +175,11 @@ export async function POST(req: NextRequest) {
         }
 
         // Log subscription cancellation for monitoring
-        // logSecurityEvent('PAYMENT_ACTION', {
-        //   action: 'subscription_cancelled',
-        //   clerkId,
-        //   subscriptionId: sub.id
-        // }, req);
+        logSecurityEvent('PAYMENT_ACTION', {
+          action: 'subscription_cancelled',
+          clerkId,
+          subscriptionId: sub.id
+        }, req);
 
         console.log(`Processing subscription cancellation: ${clerkId}`);
 
@@ -198,7 +199,7 @@ export async function POST(req: NextRequest) {
         } catch (e) {
           console.error("Convex subscription downgrade failed:", e);
           
-          logSecurityEvent('VALIDATION_FAILED', {
+          logSecurityEvent('WEBHOOK_ERROR', {
             reason: 'Convex downgrade failed',
             clerkId,
             error: e instanceof Error ? e.message : 'Unknown error'
@@ -218,7 +219,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Error processing Stripe webhook:", error);
     
-    logSecurityEvent('VALIDATION_FAILED', {
+    logSecurityEvent('WEBHOOK_ERROR', {
       reason: 'Processing error',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, req);

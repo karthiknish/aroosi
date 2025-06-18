@@ -22,10 +22,10 @@ const fadeInUp = {
     transition: {
       delay: i * 0.15,
       duration: 0.7,
-      ease: "easeOut",
+      ease: [0.25, 0.1, 0.25, 1] as const,
     },
   }),
-};
+} as const;
 
 const fadeIn = {
   hidden: { opacity: 0 },
@@ -34,10 +34,10 @@ const fadeIn = {
     transition: {
       delay: i * 0.15,
       duration: 0.7,
-      ease: "easeOut",
+      ease: [0.25, 0.1, 0.25, 1] as const,
     },
   }),
-};
+} as const;
 
 export default function HomePage() {
   return (
