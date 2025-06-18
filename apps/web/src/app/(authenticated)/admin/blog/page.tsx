@@ -7,6 +7,7 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -33,11 +33,8 @@ import {
   Edit,
   Trash2,
   Eye,
-  Filter,
-  MoreHorizontal,
   Grid,
   List,
-  Calendar,
 } from "lucide-react";
 
 export default function AdminBlogPage() {
@@ -249,9 +246,11 @@ export default function AdminBlogPage() {
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       {blog.imageUrl && (
-                        <img
+                        <Image
                           src={blog.imageUrl}
                           alt={blog.title}
+                          width={40}
+                          height={40}
                           className="w-10 h-10 rounded object-cover"
                         />
                       )}
@@ -320,9 +319,11 @@ export default function AdminBlogPage() {
             <Card key={blog._id} className="group hover:shadow-lg transition-shadow">
               {blog.imageUrl && (
                 <div className="relative">
-                  <img
+                  <Image
                     src={blog.imageUrl}
                     alt={blog.title}
+                    width={400}
+                    height={192}
                     className="w-full h-48 object-cover"
                   />
                   <div className="absolute top-2 left-2">

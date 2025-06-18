@@ -27,11 +27,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Image from "next/image";
 import { showSuccessToast } from "@/lib/ui/toast";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
 
 const statusOptions = [
   { label: "All", value: "all" },
@@ -248,9 +248,11 @@ export default function AdminProfilePage() {
                 {profileImages[profile._id] &&
                 profileImages[profile._id].length > 0 &&
                 profileImages[profile._id][0].url ? (
-                  <img
+                  <Image
                     src={profileImages[profile._id][0].url}
                     alt={profile.fullName || "Profile image"}
+                    width={80}
+                    height={80}
                     className="w-full h-full object-cover"
                   />
                 ) : (

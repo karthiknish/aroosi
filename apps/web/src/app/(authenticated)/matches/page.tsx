@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserCircle, MapPin, Search, MessageCircle, Heart, Calendar, Users, Star } from "lucide-react";
+import { UserCircle, MapPin, Search, MessageCircle, Heart, Users, Star } from "lucide-react";
 import { useState } from "react";
 import { useMatches } from "@/lib/hooks/useMatches";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
 import Link from "next/link";
+import Image from "next/image";
 import type { Profile } from "@/types/profile";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -56,9 +57,11 @@ function MatchCard({
             <div className="relative p-4">
               {avatar ? (
                 <div className="relative">
-                  <img
+                  <Image
                     src={avatar}
                     alt={match.fullName || "Avatar"}
+                    width={80}
+                    height={80}
                     className="w-20 h-20 rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform duration-300"
                   />
                   {match.unread && match.unread > 0 && (
@@ -154,7 +157,7 @@ function MatchesLoadingSkeleton() {
 }
 
 export default function MatchesPage() {
-  const { token, userId, profile } = useAuthContext();
+  const { token, userId } = useAuthContext();
   const offline = useOffline();
   const [search, setSearch] = useState("");
 

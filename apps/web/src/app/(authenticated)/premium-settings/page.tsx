@@ -8,7 +8,7 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/utils/profileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { Eye, EyeOff, Crown, Zap, Users, Filter, MessageCircle, Heart } from "lucide-react";
+import { Eye, Crown, Zap, Users, Filter, MessageCircle, Heart } from "lucide-react";
 import type { SubscriptionPlan } from "@/types/profile";
 
 export default function PremiumSettingsPage() {

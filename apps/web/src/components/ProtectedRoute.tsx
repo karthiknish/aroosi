@@ -89,7 +89,7 @@ export default function ProtectedRoute({
   
   // Define feature-based restrictions
   const chatRestrictedRoutes = ["/matches", "/chat"];
-  const advancedSearchRoutes = ["/search"] // Will check for premium plus filters in search
+  // const advancedSearchRoutes = ["/search"] // Will check for premium plus filters in search
 
   // Quick bypass for E2E tests or demo environments (constant after build)
   if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {

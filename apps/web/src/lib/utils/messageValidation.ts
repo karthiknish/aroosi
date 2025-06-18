@@ -1,4 +1,3 @@
-import { Id } from "@convex/_generated/dataModel";
 
 export interface MessageValidationResult {
   isValid: boolean;

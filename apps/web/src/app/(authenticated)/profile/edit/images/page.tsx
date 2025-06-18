@@ -72,7 +72,7 @@ export default function EditProfileImagesPage() {
   );
 
   // Handle image changes (for upload notifications)
-  const handleImagesChanged = useCallback((newImages: ImageType[]) => {
+  const handleImagesChanged = useCallback(() => {
     // This will be called when images are uploaded/changed
     // Refetch the images to get the latest state
     queryClient.invalidateQueries({ queryKey: ["profileImages", token, profile?._id] });

@@ -3,7 +3,7 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, CheckCircle, Crown, Zap, Heart, Sparkles, ArrowRight, Check } from "lucide-react";
-import { showErrorToast, showSuccessToast, showInfoToast } from "@/lib/ui/toast";
+import { showErrorToast, showInfoToast } from "@/lib/ui/toast";
 import { createCheckoutSession } from "@/lib/utils/stripeUtil";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/types/profile";
 import React, { useState } from "react";
@@ -17,7 +17,7 @@ export default function ManagePlansPage() {
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (planId === currentPlan) {
-      showInfoToast("You're already on this plan!");
+      showInfoToast("You&apos;re already on this plan!");
       return;
     }
     
@@ -87,7 +87,7 @@ export default function ManagePlansPage() {
             {currentPlan !== "free" && (
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
                 <Check className="w-4 h-4" />
-                You're currently on {SUBSCRIPTION_PLANS.find(p => p.id === currentPlan)?.name}
+                You&apos;re currently on {SUBSCRIPTION_PLANS.find(p => p.id === currentPlan)?.name}
               </div>
             )}
           </div>
@@ -213,7 +213,7 @@ export default function ManagePlansPage() {
 
                     {selected && (
                       <p className="text-center text-sm text-green-600 mt-3 font-medium">
-                        ✓ You're currently enjoying this plan
+                        ✓ You&apos;re currently enjoying this plan
                       </p>
                     )}
                   </CardContent>

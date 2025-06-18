@@ -1,4 +1,3 @@
-import { Id } from "@convex/_generated/dataModel";
 
 interface ValidationResult {
   isValid: boolean;
