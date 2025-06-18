@@ -594,7 +594,13 @@ export default function BlogEditor({
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: value,
-    onUpdate: ({ editor }: { editor: Editor }) => {
+    onUpdate: ({
+      editor,
+      transaction,
+    }: {
+      editor: Editor;
+      transaction: any;
+    }) => {
       onChange(editor.getHTML());
     },
     editorProps: {

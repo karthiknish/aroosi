@@ -19,6 +19,7 @@ import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as interests from "../interests.js";
 import type * as messages from "../messages.js";
+import type * as profiles from "../profiles.js";
 import type * as storage from "../storage.js";
 import type * as users from "../users.js";
 import type * as utils_rateLimit from "../utils/rateLimit.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   images: typeof images;
   interests: typeof interests;
   messages: typeof messages;
+  profiles: typeof profiles;
   storage: typeof storage;
   users: typeof users;
   "utils/rateLimit": typeof utils_rateLimit;

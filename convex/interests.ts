@@ -145,3 +145,23 @@ export const listAllInterests = query({
     return await ctx.db.query("interests").collect();
   },
 });
+
+// Query the status of an interest between two users
+export const getInterestStatus = query({
+  args: {
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+  },
+  handler: async (
+    ctx: QueryCtx,
+    args: { fromUserId: Id<"users">; toUserId: Id<"users"> }
+  ) => {
+    const interest = await ctx.db
+      .query("interests")
+      .withIndex("by_from_to", (q: any) =>
+        q.eq("fromUserId", args.fromUserId).eq("toUserId", args.toUserId)
+      )
+      .first();
+    return interest ? interest.status : null;
+  },
+});
