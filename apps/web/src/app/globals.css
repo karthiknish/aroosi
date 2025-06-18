@@ -4,7 +4,8 @@
 @tailwind utilities;
 
 :root {
-  --font-family-sans: var(--font-sans), "Open Sans", "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-nunito: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-family-sans: var(--font-nunito), 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
   --font-family-serif: "Boldonse", ui-serif, serif;
 
   --color-primary: #EC4899;
@@ -98,6 +99,7 @@
 
 #blog-content p{
   @apply text-base;
+  font-family: var(--font-nunito), 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
 }
 #blog-content p strong{
   @apply font-bold;

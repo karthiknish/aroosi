@@ -2,22 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
-import { Open_Sans, Nunito_Sans } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
-
-const openSans = Open_Sans({ 
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap"
-});
-
-const nunitoSans = Nunito_Sans({ 
-  subsets: ["latin"],
-  variable: "--font-nunito",
-  display: "swap"
-});
 
 export const metadata: Metadata = {
   title: "Aroosi - Afghan Matrimony Platform",
@@ -64,8 +51,12 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Boldonse:wght@400;700&display=swap"
           rel="stylesheet"
         />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap"
+          rel="stylesheet"
+        ></link>
       </head>
-      <body className={`${openSans.variable} ${nunitoSans.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <ClerkProvider
           appearance={{
             layout: {

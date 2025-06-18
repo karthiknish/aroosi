@@ -99,7 +99,7 @@ export default function HomePage() {
                   <motion.h1
                     variants={fadeInUp}
                     custom={0.2}
-                    className="font-serif text-3xl lg:text-6xl font-bold text-white leading-tight"
+                    className="font-serif text-3xl lg:text-6xl font-bold text-white leading-normal relative"
                     style={{ fontFamily: "Boldonse, serif" }}
                   >
                     Find Your Perfect
@@ -156,7 +156,10 @@ export default function HomePage() {
                 >
                   <div className="text-center relative flex-1 min-w-[120px]">
                     <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm" style={{ fontFamily: "Boldonse, serif" }}>
+                    <div
+                      className="font-serif text-lg font-bold text-white drop-shadow-sm"
+                      style={{ fontFamily: "Boldonse, serif" }}
+                    >
                       2025
                     </div>
                     <div className="font-nunito text-sm text-white">
@@ -165,7 +168,10 @@ export default function HomePage() {
                   </div>
                   <div className="text-center relative flex-1 min-w-[120px]">
                     <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm" style={{ fontFamily: "Boldonse, serif" }}>
+                    <div
+                      className="font-serif text-lg font-bold text-white drop-shadow-sm"
+                      style={{ fontFamily: "Boldonse, serif" }}
+                    >
                       GDPR-First
                     </div>
                     <div className="font-nunito text-sm text-white">
@@ -174,7 +180,10 @@ export default function HomePage() {
                   </div>
                   <div className="text-center relative flex-1 min-w-[120px]">
                     <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm" style={{ fontFamily: "Boldonse, serif" }}>
+                    <div
+                      className="font-serif text-lg font-bold text-white drop-shadow-sm"
+                      style={{ fontFamily: "Boldonse, serif" }}
+                    >
                       Community
                     </div>
                     <div className="font-nunito text-sm text-white">
