@@ -9,17 +9,15 @@
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
-    "dev:mobile": "npm run start --workspace=apps/mobile",
     "build": "npm run build --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
-    "build:mobile": "npm run build --workspace=apps/mobile",
     "start": "npm run start --workspace=apps/web",
-    "lint": "npm run lint --workspace=apps/web && npm run lint --workspace=apps/mobile",
-    "type-check": "npm run type-check --workspace=apps/web && npm run type-check --workspace=apps/mobile",
+    "lint": "npm run lint --workspace=apps/web",
+    "type-check": "npm run type-check --workspace=apps/web",
     "test": "jest",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
-    "install:all": "npm install && npm install --workspace=apps/web && npm install --workspace=apps/mobile"
+    "install:all": "npm install && npm install --workspace=apps/web"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.22.0",
@@ -135,7 +133,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.53.0",
-    "@react-native/js-polyfills": "0.79.2",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.23",
@@ -144,24 +141,9 @@
     "dotenv": "^16.5.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.0",
-    "hermes-parser": "0.28.1",
     "jest": "^29.0.0",
     "jest-environment-jsdom": "^29.0.0",
-    "metro": "0.82.4",
-    "metro-config": "0.82.4",
-    "metro-resolver": "0.82.4",
-    "metro-source-map": "0.82.4",
-    "react-native": "0.79.2",
     "supertest": "^6.3.0",
     "ts-jest": "^29.0.0"
-  },
-  "overrides": {
-    "metro": "0.82.4",
-    "metro-config": "0.82.4",
-    "metro-resolver": "0.82.4",
-    "metro-source-map": "0.82.4",
-    "hermes-parser": "0.28.1",
-    "@react-native/js-polyfills": "0.79.2",
-    "react-native": "0.79.2"
   }
 }

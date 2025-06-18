@@ -426,8 +426,9 @@ export default function SearchProfilesPage() {
                             }
                           />
                           {p.boostedUntil && p.boostedUntil > Date.now() && (
-                            <div className="absolute top-2 left-2 bg-pink-600 text-white text-xs px-2 py-1 rounded-full z-10 flex items-center gap-1">
-                              <Rocket className="h-3 w-3" /> Boosted
+                            <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-pink-400/30">
+                              <Rocket className="h-3 w-3 fill-current" /> 
+                              <span className="font-semibold">Boosted</span>
                             </div>
                           )}
                         </div>

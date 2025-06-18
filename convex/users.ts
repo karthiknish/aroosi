@@ -1652,11 +1652,11 @@ export const boostProfile = mutation({
       throw new ConvexError("No boosts remaining this month");
     }
 
-    // Mark boostedUntil for 1 hour and decrement quota
+    // Mark boostedUntil for 24 hours and decrement quota
     const updates: Partial<ConvexProfile> = {
       boostsRemaining: (boostsRemaining ?? 0) - 1,
       boostsMonth,
-      boostedUntil: Date.now() + 60 * 60 * 1000, // 1 hour
+      boostedUntil: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
       updatedAt: Date.now(),
     };
 
