@@ -1,11 +1,25 @@
 import React, { useState, useEffect, useRef } from "react";
 // Define Editor type locally since @tiptap/core doesn't export it properly
+interface EditorChain {
+  focus: () => EditorChain;
+  toggleBold: () => EditorChain;
+  toggleItalic: () => EditorChain;
+  toggleHeading: (options: { level: number }) => EditorChain;
+  toggleBulletList: () => EditorChain;
+  toggleOrderedList: () => EditorChain;
+  insertContent: (content: string) => EditorChain;
+  setImage: (options: { src: string }) => EditorChain;
+  insertTable: (options: { rows: number; cols: number }) => EditorChain;
+  run: () => void;
+}
+
 interface Editor {
   commands: Record<string, unknown>;
-  chain: () => Record<string, unknown>;
+  chain: () => EditorChain;
   can: () => Record<string, unknown>;
   getHTML: () => string;
   setContent: (content: string) => void;
+  isActive: (name: string, attrs?: Record<string, unknown>) => boolean;
   // Add other Editor methods as needed
 }
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -71,12 +85,7 @@ import {
   PenTool as HighlightIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-// Define Theme enum locally since emoji-picker-react doesn't have proper types
-const Theme = {
-  LIGHT: "light" as const,
-  DARK: "dark" as const,
-  AUTO: "auto" as const,
-};
+import { Theme } from "emoji-picker-react";
 import "@/styles/emoji-picker-custom.css";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });

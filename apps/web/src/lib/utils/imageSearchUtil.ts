@@ -8,6 +8,7 @@ export interface PexelsImage {
   id: number;
   url: string;
   photographer: string;
+  alt: string;
   src: {
     original: string;
     large2x: string;
