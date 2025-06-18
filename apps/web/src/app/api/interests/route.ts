@@ -34,7 +34,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     let body: Partial<InterestRequest>;
     try {
       body = await req.json();
-    } catch (e) {
+    } catch {
       return errorResponse("Invalid request body", 400);
     }
 

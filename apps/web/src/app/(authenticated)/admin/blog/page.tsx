@@ -104,8 +104,8 @@ export default function AdminBlogPage() {
     setSelectedPosts([]);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -280,7 +280,7 @@ export default function AdminBlogPage() {
                     <Badge className="bg-green-100 text-green-700">Published</Badge>
                   </TableCell>
                   <TableCell className="text-gray-500">
-                    {blog.publishedAt && formatDate(blog.publishedAt)}
+                    {blog.createdAt && formatDate(blog.createdAt)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-1">
@@ -354,7 +354,7 @@ export default function AdminBlogPage() {
                 </p>
                 <div className="flex items-center justify-between mt-4">
                   <span className="text-xs text-gray-500">
-                    {blog.publishedAt && formatDate(blog.publishedAt)}
+                    {blog.createdAt && formatDate(blog.createdAt)}
                   </span>
                   <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button

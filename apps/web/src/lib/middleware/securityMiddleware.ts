@@ -258,7 +258,7 @@ export function getCSPHeader(pathname: string): string {
 /**
  * Input sanitization middleware
  */
-export async function sanitizeRequestBody(request: NextRequest): Promise<any> {
+export async function sanitizeRequestBody(request: NextRequest): Promise<unknown> {
   if (!['POST', 'PUT', 'PATCH'].includes(request.method)) {
     return null;
   }
@@ -275,7 +275,7 @@ export async function sanitizeRequestBody(request: NextRequest): Promise<any> {
 /**
  * Recursively sanitize an object
  */
-function sanitizeObject(obj: any): any {
+function sanitizeObject(obj: unknown): unknown {
   if (typeof obj === 'string') {
     return sanitizeString(obj);
   }
@@ -285,7 +285,7 @@ function sanitizeObject(obj: any): any {
   }
   
   if (obj && typeof obj === 'object') {
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       sanitized[sanitizeString(key)] = sanitizeObject(value);
     }

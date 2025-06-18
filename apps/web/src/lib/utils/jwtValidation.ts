@@ -5,7 +5,7 @@ import { jwtVerify, importSPKI } from 'jose';
  */
 export interface JWTValidationResult {
   valid: boolean;
-  payload?: any;
+  payload?: Record<string, unknown>;
   userId?: string;
   role?: string;
   error?: string;
@@ -55,7 +55,7 @@ export async function validateJWTToken(token: string): Promise<JWTValidationResu
     });
 
     // Extract user information
-    const userId = payload.sub || (payload as any).userId;
+    const userId = payload.sub || (payload as { userId?: string }).userId;
     const role = extractRoleFromPayload(payload);
 
     // Check token expiration
@@ -126,7 +126,7 @@ async function getPublicKey(keyId: string): Promise<CryptoKey | null> {
     }
 
     const jwks = await response.json();
-    const key = jwks.keys.find((k: any) => k.kid === keyId);
+    const key = jwks.keys.find((k: { kid?: string }) => k.kid === keyId);
 
     if (!key) {
       throw new Error(`Key ${keyId} not found in JWKS`);
@@ -155,7 +155,7 @@ async function getPublicKey(keyId: string): Promise<CryptoKey | null> {
 /**
  * Convert JWK to PEM format
  */
-async function jwkToPem(jwk: any): Promise<string> {
+async function jwkToPem(jwk: { kty?: string; n?: string; e?: string }): Promise<string> {
   // This is a simplified version - in production, use a proper JWK to PEM library
   if (jwk.kty !== 'RSA') {
     throw new Error('Only RSA keys are supported');
@@ -169,14 +169,16 @@ async function jwkToPem(jwk: any): Promise<string> {
 /**
  * Extract role from JWT payload
  */
-function extractRoleFromPayload(payload: any): string | undefined {
+function extractRoleFromPayload(payload: Record<string, unknown>): string | undefined {
   // Clerk puts role in publicMetadata or public_metadata
-  if (payload.publicMetadata?.role) {
-    return payload.publicMetadata.role;
+  const publicMetadata = payload.publicMetadata as { role?: string } | undefined;
+  if (publicMetadata?.role) {
+    return publicMetadata.role;
   }
   
-  if (payload.public_metadata?.role) {
-    return payload.public_metadata.role;
+  const publicMetadataAlt = payload.public_metadata as { role?: string } | undefined;
+  if (publicMetadataAlt?.role) {
+    return publicMetadataAlt.role;
   }
   
   return undefined;
@@ -250,7 +252,7 @@ export function isTokenNearExpiry(token: string): boolean {
 /**
  * Extract all claims from token safely
  */
-export function extractTokenClaims(token: string): Record<string, any> | null {
+export function extractTokenClaims(token: string): Record<string, unknown> | null {
   try {
     const validation = validateTokenBasic(token);
     return validation.valid ? validation.payload : null;

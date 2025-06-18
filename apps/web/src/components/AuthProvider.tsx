@@ -16,7 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"; // Added: useQ
 // import { usePathname, useRouter } from "next/navigation";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { setCachedProfileComplete } from "@/lib/cache";
-import { showErrorToast } from "@/lib/ui/toast";
+// import { showErrorToast } from "@/lib/ui/toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useOneSignal } from "@/hooks/useOneSignal";
 // import { toast } from "sonner"; // Or your preferred toast library

@@ -8,6 +8,7 @@
     "@aroosi/shared-types": "*",
     "@aroosi/shared-utils": "*",
     "@aroosi/ui": "*",
+    "entities": "6.0.1",
     "next": "^15.3.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

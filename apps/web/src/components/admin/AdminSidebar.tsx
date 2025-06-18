@@ -5,18 +5,16 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Users,
-  MessageSquare,
   FileText,
   Mail,
   BarChart3,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Heart,
 } from "lucide-react";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 
 interface AdminSidebarProps {
   collapsed: boolean;
@@ -30,7 +28,6 @@ export function AdminSidebar({
   currentPath,
 }: AdminSidebarProps) {
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
-  const router = useRouter();
 
   const navigationItems = [
     {

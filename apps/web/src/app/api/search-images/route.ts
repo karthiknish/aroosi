@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     // Enhanced authentication
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(`search_images_${userId}`, 50, 60000); // 50 searches per minute
@@ -78,7 +78,10 @@ export async function GET(request: NextRequest) {
 
     // Filter and sanitize image data
     const images = data.photos
-      .filter((photo: any) => photo && photo.id && photo.src?.medium && photo.src?.large)
+      .filter((photo: unknown) => {
+        const p = photo as { id?: number; src?: { medium?: string; large?: string } };
+        return p && p.id && p.src?.medium && p.src?.large;
+      })
       .slice(0, 12) // Limit results
       .map((photo: {
         id: number;

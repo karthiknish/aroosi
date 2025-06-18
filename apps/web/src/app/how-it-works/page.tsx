@@ -6,14 +6,11 @@ import Link from "next/link";
 import {
   UserPlus,
   Search,
-  Star,
   ArrowRight,
   ShieldCheck,
-  Heart,
   Users,
   Globe2,
   CheckCircle,
-  Sparkles,
   MessageCircle,
   UserCheck,
   Zap,
@@ -44,7 +41,7 @@ export default function HowItWorksPage() {
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
               Aroosi makes finding your ideal life partner simple, safe, and meaningful. 
-              Here's how you can start your journey to finding love.
+              Here&apos;s how you can start your journey to finding love.
             </p>
             <div className="flex justify-center space-x-8 text-sm text-gray-500 mb-8">
               <span className="flex items-center gap-1">
@@ -152,7 +149,7 @@ export default function HowItWorksPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="text-center text-gray-600 pb-8">
-                    <p>When there's mutual interest, start chatting! Get to know each other and take the next step when you're ready.</p>
+                    <p>When there&apos;s mutual interest, start chatting! Get to know each other and take the next step when you&apos;re ready.</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -172,7 +169,7 @@ export default function HowItWorksPage() {
                 Why Choose Aroosi?
               </h2>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                We're more than just a dating platform - we're a community built for Afghan singles worldwide.
+                We&apos;re more than just a dating platform - we&apos;re a community built for Afghan singles worldwide.
               </p>
             </div>
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
@@ -258,7 +255,7 @@ export default function HowItWorksPage() {
                 Safety & Privacy First
               </h2>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Your security and privacy are our top priorities. We've built comprehensive safeguards to protect your journey.
+                Your security and privacy are our top priorities. We&apos;ve built comprehensive safeguards to protect your journey.
               </p>
             </div>
 

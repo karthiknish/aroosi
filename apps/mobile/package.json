@@ -13,10 +13,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@aroosi/shared-types": "*",
-    "@aroosi/shared-utils": "*",
     "@aroosi/auth": "*",
     "@aroosi/convex-client": "*",
+    "@aroosi/shared-types": "*",
+    "@aroosi/shared-utils": "*",
     "@clerk/clerk-expo": "^2.13.1",
     "@expo/vector-icons": "^14.0.0",
     "@react-navigation/bottom-tabs": "^7.3.10",
@@ -25,6 +25,7 @@
     "convex": "^1.24.1",
     "expo": "^53.0.11",
     "expo-auth-session": "6.2.0",
+    "expo-constants": "17.1.6",
     "expo-image-picker": "~15.0.7",
     "expo-router": "^5.1.0",
     "expo-secure-store": "12.4.0",

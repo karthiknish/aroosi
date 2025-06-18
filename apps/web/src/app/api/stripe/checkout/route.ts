@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { getConvexClient } from "@/lib/convexClient";
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
     
     // Handle Stripe-specific errors
     if (error && typeof error === 'object' && 'type' in error) {
-      const stripeError = error as any;
+      const stripeError = error as { type: string; message: string };
       console.error("Stripe error:", stripeError.type, stripeError.message);
       
       if (stripeError.type === 'StripeCardError') {
