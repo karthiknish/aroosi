@@ -36,6 +36,7 @@ export interface Profile {
   isProfileComplete: boolean;
   isOnboardingComplete: boolean;
   hiddenFromSearch: boolean;
+  hideFromFreeUsers?: boolean;
   banned: boolean;
   createdAt: number;
   updatedAt: number;

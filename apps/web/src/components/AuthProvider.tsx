@@ -19,6 +19,7 @@ import { setCachedProfileComplete } from "@/lib/cache";
 // import { showErrorToast } from "@/lib/ui/toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useOneSignal } from "@/hooks/useOneSignal";
+import { Profile } from "@/types/profile";
 // import { toast } from "sonner"; // Or your preferred toast library
 
 // Placeholder for toast if not using a specific library for this example
@@ -27,34 +28,10 @@ import { useOneSignal } from "@/hooks/useOneSignal";
 //   error: (message: string) => console.error("Toast Error:", message),
 // };
 
-interface ProfileType {
-  id: string;
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber?: string;
-  dateOfBirth?: string | Date | number;
-  gender?: string;
-  // profileImageUrl and bio removed – we now rely solely on array `profileImageUrls` and `aboutMe`.
-  createdAt?: string | Date | number;
-  updatedAt?: string | Date | number;
-  isOnboardingComplete: boolean;
-  isApproved: boolean;
-  isProfileComplete: boolean;
-  // Add other profile fields as needed
-  [key: string]: unknown;
-  banned: boolean;
-  hiddenFromSearch: boolean;
-  role: string;
-  ukCity: string;
-  profileImageUrls: string[];
-}
-
 interface AuthContextType {
   token: string | null;
   // setToken: (token: string | null) => void; // setToken is internal, not usually exposed directly
-  profile: ProfileType | null;
+  profile: Profile | null;
   isProfileComplete: boolean;
   isOnboardingComplete: boolean;
   isApproved: boolean;
@@ -101,7 +78,7 @@ export function AuthProvider({
   const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
   const [isOnboardingComplete, setIsOnboardingComplete] =
     useState<boolean>(false);
-  const [profile, setProfile] = useState<ProfileType | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   // Combined overall loaded state (Clerk + AuthProvider initial tasks)
   const isFullyLoaded = Boolean(
@@ -268,51 +245,9 @@ export function AuthProvider({
 
           const nestedProfile = envelope.profile || {};
 
-          const profileData: ProfileType = {
-            // IDs & user info
-            id: String(nestedProfile._id ?? ""),
-            userId: String(envelope._id ?? envelope.userId ?? ""),
-            email: envelope.email || "",
-
-            // Names strictly from nestedProfile
-            firstName:
-              nestedProfile.firstName ??
-              (typeof nestedProfile.fullName === "string"
-                ? nestedProfile.fullName.split(" ")[0]
-                : ""),
-            lastName:
-              nestedProfile.lastName ??
-              (typeof nestedProfile.fullName === "string"
-                ? nestedProfile.fullName.split(" ").slice(1).join(" ")
-                : ""),
-
-            // Profile details
-            phoneNumber: nestedProfile.phoneNumber,
-            dateOfBirth: nestedProfile.dateOfBirth,
-            gender: nestedProfile.gender,
-            ukCity: nestedProfile.ukCity ?? nestedProfile.location,
-
-            // New array of image URLs
-            profileImageUrls: Array.isArray(nestedProfile.profileImageUrls)
-              ? nestedProfile.profileImageUrls
-              : [],
-
-            // Timestamps
-            createdAt:
-              nestedProfile.createdAt ??
-              envelope.createdAt ??
-              envelope._creationTime,
-            updatedAt: nestedProfile.updatedAt ?? envelope.updatedAt,
-
-            // Flags
-            isOnboardingComplete: Boolean(nestedProfile.isOnboardingComplete),
-            isProfileComplete: Boolean(nestedProfile.isProfileComplete),
-            isApproved: Boolean(nestedProfile.isApproved),
-
-            // Additional flags / roles
-            banned: Boolean(nestedProfile.banned),
-            hiddenFromSearch: Boolean(nestedProfile.hiddenFromSearch),
-            role: envelope.role || "",
+          const profileData: Profile = {
+            ...nestedProfile,
+            role: envelope.role || nestedProfile.role || "",
           };
 
           setProfile(profileData);
@@ -345,7 +280,7 @@ export function AuthProvider({
               // Retry the profile fetch with fresh token
               const retryResponse = await getCurrentUserWithProfile(freshToken);
               if (retryResponse.success && retryResponse.data) {
-                return retryResponse.data as ProfileType;
+                return retryResponse.data;
               }
             } catch (retryError) {
               console.error("AuthProvider: Failed to retry profile fetch:", retryError);

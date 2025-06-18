@@ -12,6 +12,18 @@ const nextConfig: NextConfig = {
       "@convex": path.resolve(__dirname, "convex"),
     };
 
+    // Add fallback for monorepo dependencies
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+    };
+
+    // Ensure dependencies from root node_modules are found
+    config.resolve.modules = [
+      path.resolve(__dirname, "node_modules"),
+      path.resolve(__dirname, "../../node_modules"),
+      "node_modules",
+    ];
+
     // Prevent Next dev watcher from rebuilding when Playwright writes traces/reports
     const currentWatchOpts = config.watchOptions || {};
     const ignoredExisting = currentWatchOpts.ignored || [];

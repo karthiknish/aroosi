@@ -31,7 +31,7 @@ export function AdminHeader({
   setSidebarCollapsed,
   currentPath,
 }: AdminHeaderProps) {
-  const { userData } = useAuthContext();
+  const { profile } = useAuthContext();
   const router = useRouter();
 
   const getPageTitle = (path: string) => {
@@ -116,7 +116,7 @@ export function AdminHeader({
               <Button variant="ghost" className="h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-pink-100 text-pink-700">
-                    {userData?.firstName?.charAt(0) || "A"}
+                    {profile?.fullName?.charAt(0) || "A"}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -125,10 +125,10 @@ export function AdminHeader({
               <div className="flex items-center justify-start gap-2 p-3 border-b">
                 <div className="flex flex-col space-y-1 leading-none">
                   <p className="font-medium text-sm">
-                    {userData?.firstName} {userData?.lastName}
+                    {profile?.fullName}
                   </p>
                   <p className="w-[200px] truncate text-xs text-gray-500">
-                    {userData?.emailAddresses?.[0]?.emailAddress}
+                    {profile?.email}
                   </p>
                 </div>
               </div>

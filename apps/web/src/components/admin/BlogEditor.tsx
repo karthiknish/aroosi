@@ -1,5 +1,13 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import type { Editor } from "@tiptap/react";
+import React, { useState, useEffect, useRef } from "react";
+// Define Editor type locally since @tiptap/core doesn't export it properly
+interface Editor {
+  commands: Record<string, unknown>;
+  chain: () => Record<string, unknown>;
+  can: () => Record<string, unknown>;
+  getHTML: () => string;
+  setContent: (content: string) => void;
+  // Add other Editor methods as needed
+}
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Bold from "@tiptap/extension-bold";
@@ -62,13 +70,14 @@ import {
   Smile,
   PenTool as HighlightIcon,
 } from "lucide-react";
-import { useDropzone } from "react-dropzone";
 import dynamic from "next/dynamic";
-import { Theme } from "emoji-picker-react";
+// Define Theme enum locally since emoji-picker-react doesn't have proper types
+const Theme = {
+  LIGHT: "light" as const,
+  DARK: "dark" as const,
+  AUTO: "auto" as const,
+};
 import "@/styles/emoji-picker-custom.css";
-import { useAuthContext } from "../AuthProvider";
-import { getImageUploadUrl } from "@/lib/utils/imageUtil";
-import { uploadBlogImageMeta } from "@/lib/blogUtil";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
@@ -88,64 +97,11 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [tableRows, setTableRows] = useState(3);
   const [tableCols, setTableCols] = useState(3);
   const [imageModalOpen, setImageModalOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string>("");
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPopoverRef = useRef<HTMLDivElement>(null);
-  const { token } = useAuthContext();
 
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      if (!acceptedFiles.length || !editor) return;
-      setUploading(true);
-      setUploadError(null);
-      try {
-        if (!token) throw new Error("Authentication required");
-        const file = acceptedFiles[0];
-
-        // 1. Get a signed upload URL
-        const uploadUrl = await getImageUploadUrl(token);
-
-        // 2. Upload the file to storage
-        const uploadRes = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        if (!uploadRes.ok) throw new Error("Failed to upload image");
-        const { storageId } = await uploadRes.json();
-
-        // 3. Register the image for blog usage and get its public URL
-        const url = await uploadBlogImageMeta({
-          token,
-          storageId,
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        });
-
-        // 4. Insert image into the editor
-        editor.chain().focus().setImage({ src: url }).run();
-        setImageModalOpen(false);
-      } catch (err: unknown) {
-        console.error("Image upload failed:", err);
-        setUploadError(
-          err instanceof Error ? err.message : "Failed to upload image"
-        );
-      } finally {
-        setUploading(false);
-      }
-    },
-    [editor, token]
-  );
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { "image/*": [] },
-    multiple: false,
-  });
 
   useEffect(() => {
     if (!emojiPickerOpen) return;
@@ -514,27 +470,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
               <X className="w-5 h-5" />
             </button>
             <h2 className="text-lg font-bold mb-4">Insert Image</h2>
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${isDragActive ? "border-pink-500 bg-pink-50" : "border-gray-300 bg-gray-50"}`}
-            >
-              <input {...getInputProps()} />
-              {isDragActive ? (
-                <p className="text-pink-600 font-semibold">
-                  Drop the image here ...
-                </p>
-              ) : (
-                <>
-                  <p className="text-gray-700">
-                    Drag & drop an image here, or click to select
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">
-                    PNG, JPG, GIF, SVG, WebP supported
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="my-4 text-center text-gray-500 text-xs">or</div>
             <input
               type="url"
               className="w-full border rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-pink-400"

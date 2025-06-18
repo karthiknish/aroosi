@@ -152,7 +152,7 @@ export default function EditProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { token, profile: authProfile, isSignedIn } = useAuthContext();
-  const userId = authProfile?.id;
+  const userId = authProfile?._id;
   const [serverError, setServerError] = useState<string | null>(null);
   const [profileDataState, setProfileDataState] = useState<Profile | null>(
     null
