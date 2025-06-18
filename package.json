@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "workspaces": [
     "apps/web",
+    "apps/mobile",
     "packages/*"
   ],
   "private": true,
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
     "build": "npm run build --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
     "start": "npm run start --workspace=apps/web",
@@ -17,7 +19,7 @@
     "test": "jest",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
-    "install:all": "npm install && npm install --workspace=apps/web"
+    "install:all": "npm install && npm install --workspace=apps/web && npm install --workspace=apps/mobile"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.22.0",
@@ -145,5 +147,12 @@
     "jest-environment-jsdom": "^29.0.0",
     "supertest": "^6.3.0",
     "ts-jest": "^29.0.0"
+  },
+  "overrides": {
+    "lightningcss": "^1.28.2"
+  },
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "^1.28.2",
+    "lightningcss-linux-x64-musl": "^1.28.2"
   }
 }
