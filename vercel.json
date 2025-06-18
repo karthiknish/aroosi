@@ -1,17 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd apps/web && npm run build",
-  "outputDirectory": "apps/web/dist",
+  "buildCommand": "npm run build --workspace=apps/web",
+  "outputDirectory": "apps/web/.next",
   "installCommand": "npm install",
   "framework": "nextjs",
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1"
-    }
-  },
-  "functions": {
-    "apps/web/src/app/api/**/*.ts": {
-      "maxDuration": 30
     }
   },
   "headers": [

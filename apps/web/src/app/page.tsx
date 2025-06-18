@@ -99,7 +99,8 @@ export default function HomePage() {
                   <motion.h1
                     variants={fadeInUp}
                     custom={0.2}
-                    className="font-serif text-3xl lg:text-6xl font-bold text-white font- leading-tight"
+                    className="font-serif text-3xl lg:text-6xl font-bold text-white leading-tight"
+                    style={{ fontFamily: "Boldonse, serif" }}
                   >
                     Find Your Perfect
                     <div className="relative inline-block">
@@ -155,7 +156,7 @@ export default function HomePage() {
                 >
                   <div className="text-center relative flex-1 min-w-[120px]">
                     <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm">
+                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm" style={{ fontFamily: "Boldonse, serif" }}>
                       2025
                     </div>
                     <div className="font-nunito text-sm text-white">
@@ -164,7 +165,7 @@ export default function HomePage() {
                   </div>
                   <div className="text-center relative flex-1 min-w-[120px]">
                     <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm">
+                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm" style={{ fontFamily: "Boldonse, serif" }}>
                       GDPR-First
                     </div>
                     <div className="font-nunito text-sm text-white">
@@ -173,7 +174,7 @@ export default function HomePage() {
                   </div>
                   <div className="text-center relative flex-1 min-w-[120px]">
                     <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm">
+                    <div className="font-serif text-lg font-bold text-white drop-shadow-sm" style={{ fontFamily: "Boldonse, serif" }}>
                       Community
                     </div>
                     <div className="font-nunito text-sm text-white">
@@ -240,6 +241,7 @@ export default function HomePage() {
                   variants={fadeInUp}
                   custom={0}
                   className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative"
+                  style={{ fontFamily: "Boldonse, serif" }}
                 >
                   How Aroosi Works
                   <svg
@@ -316,7 +318,10 @@ export default function HomePage() {
                           style={card.ringStyle}
                         ></div>
                       </div>
-                      <h3 className="font-serif text-xl font-semibold text-primary-dark">
+                      <h3
+                        className="font-serif text-xl font-semibold text-primary-dark"
+                        style={{ fontFamily: "Boldonse, serif" }}
+                      >
                         {card.title}
                       </h3>
                       <p className="font-nunito text-primary">{card.desc}</p>
@@ -350,6 +355,7 @@ export default function HomePage() {
                     variants={fadeInUp}
                     custom={0}
                     className="font-serif text-2xl lg:text-3xl font-bold text-neutral relative inline-block"
+                    style={{ fontFamily: "Boldonse, serif" }}
                   >
                     Why Choose Aroosi?
                     <svg
@@ -411,7 +417,10 @@ export default function HomePage() {
                         {feature.icon}
                       </div>
                       <div>
-                        <h3 className="font-serif text-xl font-semibold text-neutral">
+                        <h3
+                          className="font-serif text-xl font-semibold text-neutral"
+                          style={{ fontFamily: "Boldonse, serif" }}
+                        >
                           {feature.title}
                         </h3>
                         <p className="font-nunito text-neutral-600">
@@ -482,6 +491,7 @@ export default function HomePage() {
                     variants={fadeInUp}
                     custom={0}
                     className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
+                    style={{ fontFamily: "Boldonse, serif" }}
                   >
                     Afghan Community Values
                   </motion.h2>
@@ -527,17 +537,17 @@ export default function HomePage() {
                     desc: "We welcome and encourage family participation in the matchmaking process.",
                   },
                   {
-                    icon: <Shield className="h-8 w-8 text-accent-600" />,
+                    icon: <Shield className="h-8 w-8 text-primary" />,
                     title: "Cultural Sensitivity",
                     desc: "Profiles and matches are reviewed with respect for Afghan traditions and values.",
                   },
                   {
-                    icon: <Star className="h-8 w-8 text-primary-dark" />,
+                    icon: <Star className="h-8 w-8 text-primary" />,
                     title: "Halal Matchmaking",
                     desc: "We ensure all connections and communications are respectful and halal.",
                   },
                   {
-                    icon: <Users className="h-8 w-8 text-accent-600" />,
+                    icon: <Users className="h-8 w-8 text-primary" />,
                     title: "Community Support",
                     desc: "Our team and community are here to support you every step of the way.",
                   },
@@ -549,7 +559,10 @@ export default function HomePage() {
                     className="flex flex-col items-center text-center p-6 rounded-lg bg-white shadow-lg hover:shadow-xl transition-all"
                   >
                     <div className="mb-4">{item.icon}</div>
-                    <h3 className="font-serif text-xl font-semibold text-primary-dark mb-2">
+                    <h3
+                      className="font-serif text-xl font-semibold text-primary-dark mb-2"
+                      style={{ fontFamily: "Boldonse, serif" }}
+                    >
                       {item.title}
                     </h3>
                     <p className="font-nunito text-neutral">{item.desc}</p>
@@ -588,6 +601,7 @@ export default function HomePage() {
                   variants={fadeInUp}
                   custom={0}
                   className="font-serif text-2xl lg:text-3xl font-bold text-neutral"
+                  style={{ fontFamily: "Boldonse, serif" }}
                 >
                   Success Stories
                 </motion.h2>
@@ -667,7 +681,10 @@ export default function HomePage() {
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-serif font-semibold text-neutral-900">
+                          <h4
+                            className="font-serif font-semibold text-neutral-900"
+                            style={{ fontFamily: "Boldonse, serif" }}
+                          >
                             {story.name}
                           </h4>
                         </div>
@@ -768,6 +785,7 @@ export default function HomePage() {
                   variants={fadeInUp}
                   custom={0}
                   className="font-serif text-2xl lg:text-3xl font-bold text-white"
+                  style={{ fontFamily: "Boldonse, serif" }}
                 >
                   Ready to Find Your Life Partner?
                 </motion.h2>
