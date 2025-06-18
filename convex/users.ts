@@ -1667,6 +1667,140 @@ export const boostProfile = mutation({
 });
 
 /***********************************
+ * Spotlight Badge Management
+ ***********************************/
+
+// Grant spotlight badge (Premium/Premium Plus users only)
+export const grantSpotlightBadge = mutation({
+  args: {
+    durationDays: v.optional(v.number()), // Optional duration, defaults to 30 days
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Not authenticated");
+
+    // Get user & profile
+    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    if (!user) throw new ConvexError("User not found");
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) throw new ConvexError("Profile not found");
+
+    // Check if user has premium or premium plus subscription
+    if (profile.subscriptionPlan !== "premium" && profile.subscriptionPlan !== "premiumPlus") {
+      throw new ConvexError("Spotlight badge is only available for Premium and Premium Plus subscribers");
+    }
+
+    // Calculate expiration (default 30 days)
+    const durationDays = args.durationDays ?? 30;
+    const expiresAt = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+
+    const updates: Partial<ConvexProfile> = {
+      hasSpotlightBadge: true,
+      spotlightBadgeExpiresAt: expiresAt,
+      updatedAt: Date.now(),
+    };
+
+    await ctx.db.patch(profile._id, updates as any);
+
+    return { 
+      hasSpotlightBadge: true, 
+      spotlightBadgeExpiresAt: expiresAt,
+      durationDays 
+    };
+  },
+});
+
+// Remove spotlight badge
+export const removeSpotlightBadge = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Not authenticated");
+
+    // Get user & profile
+    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    if (!user) throw new ConvexError("User not found");
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+    if (!profile) throw new ConvexError("Profile not found");
+
+    const updates: Partial<ConvexProfile> = {
+      hasSpotlightBadge: false,
+      spotlightBadgeExpiresAt: undefined,
+      updatedAt: Date.now(),
+    };
+
+    await ctx.db.patch(profile._id, updates as any);
+
+    return { hasSpotlightBadge: false };
+  },
+});
+
+// Admin function to grant spotlight badge to any user
+export const adminGrantSpotlightBadge = mutation({
+  args: {
+    profileId: v.id("profiles"),
+    durationDays: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
+
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile) throw new ConvexError("Profile not found");
+
+    // Calculate expiration (default 30 days)
+    const durationDays = args.durationDays ?? 30;
+    const expiresAt = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+
+    const updates: Partial<ConvexProfile> = {
+      hasSpotlightBadge: true,
+      spotlightBadgeExpiresAt: expiresAt,
+      updatedAt: Date.now(),
+    };
+
+    await ctx.db.patch(args.profileId, updates as any);
+
+    return { 
+      hasSpotlightBadge: true, 
+      spotlightBadgeExpiresAt: expiresAt,
+      durationDays 
+    };
+  },
+});
+
+// Admin function to remove spotlight badge from any user
+export const adminRemoveSpotlightBadge = mutation({
+  args: {
+    profileId: v.id("profiles"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    requireAdmin(identity);
+
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile) throw new ConvexError("Profile not found");
+
+    const updates: Partial<ConvexProfile> = {
+      hasSpotlightBadge: false,
+      spotlightBadgeExpiresAt: undefined,
+      updatedAt: Date.now(),
+    };
+
+    await ctx.db.patch(args.profileId, updates as any);
+
+    return { hasSpotlightBadge: false };
+  },
+});
+
+/***********************************
  * Record Profile View
  ***********************************/
 export const recordProfileView = mutation({

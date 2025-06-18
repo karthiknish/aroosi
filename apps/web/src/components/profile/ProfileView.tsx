@@ -16,6 +16,7 @@ import {
   Edit3,
   BadgeCheck,
 } from "lucide-react";
+import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -343,6 +344,13 @@ const ProfileView: FC<ProfileViewProps> = ({
                       {(profileData.subscriptionPlan === "premium" ||
                         profileData.subscriptionPlan === "premiumPlus") && (
                         <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
+                      )}
+                      {(profileData.subscriptionPlan === "premium" ||
+                        profileData.subscriptionPlan === "premiumPlus") &&
+                       profileData.hasSpotlightBadge && 
+                       profileData.spotlightBadgeExpiresAt && 
+                       profileData.spotlightBadgeExpiresAt > Date.now() && (
+                        <SpotlightIcon className="w-4 h-4" />
                       )}
                     </dd>
                   </div>

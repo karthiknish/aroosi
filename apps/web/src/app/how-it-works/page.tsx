@@ -12,328 +12,352 @@ import {
   Heart,
   Users,
   Globe2,
+  CheckCircle,
+  Sparkles,
+  MessageCircle,
+  UserCheck,
+  Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function HowItWorksPage() {
   return (
-    <div className="bg-gradient-to-b from-pink-50 via-rose-50 to-white pt-24 sm:pt-28 md:pt-32 pb-0 px-0 relative overflow-x-clip">
-      {/* Hero Section */}
-      <section className="w-full text-center bg-white/90 p-8 md:p-16 border-b border-rose-100 relative">
-        <h1
-          className="text-4xl md:text-5xl font-bold text-pink-600 mb-2 font-serif"
-          style={{ fontFamily: "var(--font-lora)" }}
-        >
-          How It Works
-        </h1>
-        {/* Wavy underline SVG */}
-        <div className="flex justify-center mb-4">
-          <svg
-            height="12"
-            width="180"
-            viewBox="0 0 180 12"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+    <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      {/* Decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-gradient-to-tr from-blue-300 to-indigo-300 rounded-full opacity-15 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-amber-200 to-yellow-200 rounded-full opacity-10 blur-2xl" />
+      </div>
+
+      <div className="relative pt-32 pb-16 px-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Hero Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-20"
           >
-            <path
-              d="M2 10C30 2 60 14 90 6C120 -2 150 14 178 6"
-              stroke="#db2777"
-              strokeWidth="3"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </svg>
-        </div>
-        <p className="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto mb-6">
-          Aroosi makes finding your ideal life partner simple, safe, and
-          meaningful. Here&apos;s how you can start your journey:
-        </p>
-      </section>
-
-      {/* Why Aroosi Section */}
-      <section className="py-16 bg-gradient-to-r from-pink-50 via-rose-50 to-white relative">
-        <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-pink-600 mb-8 text-center font-serif relative">
-            Why Choose Aroosi?
-            <span className="block flex justify-center mt-2">
-              <svg
-                height="10"
-                width="120"
-                viewBox="0 0 120 10"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M2 8C20 2 40 12 60 4C80 -2 100 12 118 4"
-                  stroke="#db2777"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-              </svg>
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <Card className="shadow-lg relative overflow-visible">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center shadow-md">
-                <Users className="w-7 h-7 text-pink-600" />
-              </div>
-              <CardHeader className="pt-10 pb-2">
-                <CardTitle className="text-center font-serif text-lg text-pink-700">
-                  Community Focused
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center text-gray-600">
-                Built for Afghans, by Afghans. We celebrate our culture and
-                values.
-              </CardContent>
-            </Card>
-            <Card className="shadow-lg relative overflow-visible">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center shadow-md">
-                <Heart className="w-7 h-7 text-yellow-500" />
-              </div>
-              <CardHeader className="pt-10 pb-2">
-                <CardTitle className="text-center font-serif text-lg text-yellow-700">
-                  Genuine Connections
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center text-gray-600">
-                Every profile is reviewed for authenticity. We value real,
-                meaningful matches.
-              </CardContent>
-            </Card>
-            <Card className="shadow-lg relative overflow-visible">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center shadow-md">
-                <Globe2 className="w-7 h-7 text-pink-600" />
-              </div>
-              <CardHeader className="pt-10 pb-2">
-                <CardTitle className="text-center font-serif text-lg text-pink-700">
-                  Global Reach
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center text-gray-600">
-                Connect with Afghans worldwide, wherever you are.
-              </CardContent>
-            </Card>
-            <Card className="shadow-lg relative overflow-visible">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center shadow-md">
-                <ShieldCheck className="w-7 h-7 text-pink-600" />
-              </div>
-              <CardHeader className="pt-10 pb-2">
-                <CardTitle className="text-center font-serif text-lg text-pink-700">
-                  Safe & Private
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center text-gray-600">
-                Your privacy and safety are our top priorities. Data is always
-                protected.
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Steps Section */}
-      <section className="py-16 bg-pink-50/60">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <UserPlus className="mx-auto h-10 w-10 text-pink-600 mb-2" />
-                  <CardTitle
-                    className="text-center"
-                    style={{ fontFamily: "var(--font-lora)" }}
-                  >
-                    1. Sign Up & Create Profile
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center text-gray-600">
-                  Register in minutes and tell us about yourself and your ideal
-                  partner.
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <Search className="mx-auto h-10 w-10 text-pink-600 mb-2" />
-                  <CardTitle
-                    className="text-center"
-                    style={{ fontFamily: "var(--font-lora)" }}
-                  >
-                    2. Discover Matches
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center text-gray-600">
-                  Browse profiles, filter by what matters to you, and connect
-                  securely.
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <Star className="mx-auto h-10 w-10 text-pink-600 mb-2" />
-                  <CardTitle
-                    className="text-center"
-                    style={{ fontFamily: "var(--font-lora)" }}
-                  >
-                    3. Start Your Journey
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center text-gray-600">
-                  Chat, get to know each other, and take the next step when
-                  you&apos;re ready.
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Safety & Privacy Section */}
-      <section className="py-16 bg-white/90 border-y border-rose-100 relative">
-        <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center gap-10">
-          <div className="flex-shrink-0 flex items-center justify-center w-32 h-32 rounded-full bg-pink-100 shadow-md mb-6 md:mb-0">
-            <ShieldCheck className="w-16 h-16 text-pink-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-pink-700 mb-3 font-serif flex items-center gap-2">
-              Safety & Privacy
-              <span>
-                <svg
-                  height="8"
-                  width="60"
-                  viewBox="0 0 60 8"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M2 6C12 2 24 10 58 2"
-                    stroke="#FDA4AF"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                </svg>
-              </span>
-            </h2>
-            <p className="text-lg text-gray-700 mb-2">
-              We use advanced security and moderation to keep your experience
-              safe. Your data is encrypted and never shared without your
-              consent.
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent leading-tight">
+              How Aroosi Works
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Aroosi makes finding your ideal life partner simple, safe, and meaningful. 
+              Here's how you can start your journey to finding love.
             </p>
-            <ul className="list-disc pl-6 text-gray-600 space-y-1">
-              <li>All profiles are manually reviewed</li>
-              <li>Private messaging and photo controls</li>
-              <li>Report and block features for your safety</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* Afghan Community Values Section */}
-      <section className="py-16 bg-gradient-to-r from-rose-50 via-pink-50 to-white relative">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center gap-12">
-          <div className="md:w-1/2 flex justify-center">
-            <img
-              src="/afghan-family.jpg"
-              alt="Afghan family values"
-              className="rounded-2xl shadow-xl w-full max-w-md border-4 border-pink-100"
-            />
-          </div>
-          <div className="md:w-1/2">
-            <h2 className="text-2xl md:text-3xl font-bold text-pink-600 mb-4 font-serif flex items-center gap-2">
-              Afghan Community Values
-              <span>
-                <svg
-                  height="8"
-                  width="60"
-                  viewBox="0 0 60 8"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M2 6C12 2 24 10 58 2"
-                    stroke="#db2777"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                </svg>
+            <div className="flex justify-center space-x-8 text-sm text-gray-500 mb-8">
+              <span className="flex items-center gap-1">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Quick & Easy Setup
               </span>
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-pink-300">
-                <span className="font-bold text-pink-600">Respect</span>
-                <p className="text-gray-700 text-sm mt-1">
-                  We honor Afghan traditions and family values in every match.
+              <span className="flex items-center gap-1">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Safe & Secure
+              </span>
+              <span className="flex items-center gap-1">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Afghan Community
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Steps Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mb-20"
+          >
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                Simple Steps to Love
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Getting started with Aroosi is easy. Follow these simple steps to begin your journey.
+              </p>
+            </div>
+
+            <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className="relative"
+              >
+                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-rose-500/5" />
+                  <CardHeader className="pt-8 pb-4 text-center relative">
+                    <div className="flex justify-center mb-4">
+                      <div className="p-4 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 text-pink-600">
+                        <UserPlus className="w-8 h-8" />
+                      </div>
+                    </div>
+                    <div className="absolute top-2 right-2 text-pink-300 font-bold text-4xl opacity-50">1</div>
+                    <CardTitle className="text-xl mb-2">
+                      Sign Up & Create Profile
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center text-gray-600 pb-8">
+                    <p>Register in minutes and tell us about yourself and your ideal partner. Upload photos and share what makes you unique.</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="relative"
+              >
+                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-indigo-500/5" />
+                  <CardHeader className="pt-8 pb-4 text-center relative">
+                    <div className="flex justify-center mb-4">
+                      <div className="p-4 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-600">
+                        <Search className="w-8 h-8" />
+                      </div>
+                    </div>
+                    <div className="absolute top-2 right-2 text-blue-300 font-bold text-4xl opacity-50">2</div>
+                    <CardTitle className="text-xl mb-2">
+                      Discover Matches
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center text-gray-600 pb-8">
+                    <p>Browse verified profiles, filter by what matters to you, and send interests to potential matches securely.</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="relative"
+              >
+                <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-yellow-500/5" />
+                  <CardHeader className="pt-8 pb-4 text-center relative">
+                    <div className="flex justify-center mb-4">
+                      <div className="p-4 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 text-amber-600">
+                        <MessageCircle className="w-8 h-8" />
+                      </div>
+                    </div>
+                    <div className="absolute top-2 right-2 text-amber-300 font-bold text-4xl opacity-50">3</div>
+                    <CardTitle className="text-xl mb-2">
+                      Connect & Chat
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center text-gray-600 pb-8">
+                    <p>When there's mutual interest, start chatting! Get to know each other and take the next step when you're ready.</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Why Aroosi Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="mb-20"
+          >
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                Why Choose Aroosi?
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                We're more than just a dating platform - we're a community built for Afghan singles worldwide.
+              </p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 via-transparent to-rose-500/5" />
+                <CardHeader className="pt-8 pb-4 text-center relative">
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 text-pink-600 group-hover:scale-110 transition-transform duration-300">
+                      <Users className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg mb-2 text-pink-700">
+                    Community Focused
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-gray-600 pb-8">
+                  <p>Built for Afghans, by Afghans. We celebrate our culture and values.</p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-emerald-500/5" />
+                <CardHeader className="pt-8 pb-4 text-center relative">
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 text-green-600 group-hover:scale-110 transition-transform duration-300">
+                      <UserCheck className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg mb-2 text-green-700">
+                    Verified Profiles
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-gray-600 pb-8">
+                  <p>Every profile is manually reviewed for authenticity. Real people, genuine connections.</p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-indigo-500/5" />
+                <CardHeader className="pt-8 pb-4 text-center relative">
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-600 group-hover:scale-110 transition-transform duration-300">
+                      <Globe2 className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg mb-2 text-blue-700">
+                    Global Reach
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-gray-600 pb-8">
+                  <p>Connect with Afghan singles worldwide, wherever your journey has taken you.</p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg group">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-violet-500/5" />
+                <CardHeader className="pt-8 pb-4 text-center relative">
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-violet-100 text-purple-600 group-hover:scale-110 transition-transform duration-300">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg mb-2 text-purple-700">
+                    Safe & Private
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-gray-600 pb-8">
+                  <p>Your privacy and safety are our top priorities. Data is always protected.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+          {/* Safety & Privacy Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mb-20"
+          >
+            <div className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                Safety & Privacy First
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Your security and privacy are our top priorities. We've built comprehensive safeguards to protect your journey.
+              </p>
+            </div>
+
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-emerald-500/5" />
+                <CardHeader className="pt-8 pb-4 text-center relative">
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 text-green-600">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg mb-2 text-green-700">
+                    Profile Verification
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-gray-600 pb-8">
+                  <p>All profiles are manually reviewed before approval. We ensure authenticity and remove fake accounts.</p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-indigo-500/5" />
+                <CardHeader className="pt-8 pb-4 text-center relative">
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-600">
+                      <Zap className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg mb-2 text-blue-700">
+                    Secure Messaging
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-gray-600 pb-8">
+                  <p>Private messaging with photo controls. Report and block features keep you safe and in control.</p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-violet-500/5" />
+                <CardHeader className="pt-8 pb-4 text-center relative">
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-violet-100 text-purple-600">
+                      <Users className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <CardTitle className="text-lg mb-2 text-purple-700">
+                    Data Protection
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center text-gray-600 pb-8">
+                  <p>Your data is encrypted and never shared without consent. GDPR compliant with full transparency.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+
+          {/* Call to Action Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="relative"
+          >
+            <div className="relative bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 rounded-3xl p-12 md:p-16 overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-300/20 rounded-full blur-xl" />
+              
+              <div className="relative text-center">
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
+                  Ready to Find Your Perfect Match?
+                </h2>
+                <p className="text-lg sm:text-xl text-pink-100 mb-8 max-w-2xl mx-auto">
+                  Join thousands of Afghan singles who have found love through Aroosi. Your journey starts with a single click.
                 </p>
-              </div>
-              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-yellow-300">
-                <span className="font-bold text-yellow-600">Trust</span>
-                <p className="text-gray-700 text-sm mt-1">
-                  Profiles are verified and privacy is protected at every step.
-                </p>
-              </div>
-              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-pink-300">
-                <span className="font-bold text-pink-600">Openness</span>
-                <p className="text-gray-700 text-sm mt-1">
-                  We welcome all Afghans, regardless of background or location.
-                </p>
-              </div>
-              <div className="bg-white/80 rounded-xl shadow p-4 border-l-4 border-pink-300">
-                <span className="font-bold text-pink-600">Support</span>
-                <p className="text-gray-700 text-sm mt-1">
-                  Our team is here to help you every step of the way.
-                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                  <Link href="/sign-up">
+                    <Button size="lg" className="bg-white text-pink-600 hover:bg-pink-50 text-lg px-8 py-4 rounded-xl shadow-lg transition-all duration-300 hover:scale-105">
+                      Start Your Journey
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link href="/pricing">
+                    <Button 
+                      size="lg" 
+                      variant="outline" 
+                      className="border-2 border-white text-white hover:bg-white hover:text-pink-600 text-lg px-8 py-4 rounded-xl transition-all duration-300"
+                    >
+                      View Pricing
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </section>
-
-      {/* Call to Action Section */}
-      <section className="py-20 bg-gradient-to-r from-pink-600 to-rose-500 relative overflow-hidden">
-        {/* Decorative floating hearts/circles */}
-        <div className="absolute left-10 top-10 w-24 h-24 bg-pink-200 rounded-full opacity-40 blur-2xl animate-pulse" />
-        <div className="absolute right-10 bottom-10 w-32 h-32 bg-yellow-100 rounded-full opacity-30 blur-2xl animate-pulse" />
-        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 w-16 h-16 bg-white rounded-full opacity-20 blur-2xl animate-pulse" />
-        <div className="max-w-3xl mx-auto px-4 text-center relative z-10">
-          <h2
-            className="text-3xl font-bold text-white mb-6 font-serif"
-            style={{ fontFamily: "var(--font-lora)" }}
-          >
-            Ready to Begin?
-          </h2>
-          <p className="text-lg text-rose-100 mb-8">
-            Join Aroosi today and take the first step towards finding your ideal
-            partner.
-          </p>
-          <Link href="/sign-up">
-            <Button className="bg-white text-pink-600 hover:bg-rose-50 text-lg px-10 py-6 font-semibold shadow-lg">
-              Sign Up Free
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

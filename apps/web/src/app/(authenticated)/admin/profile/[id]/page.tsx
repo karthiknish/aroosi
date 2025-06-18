@@ -24,6 +24,8 @@ import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SpotlightIcon } from "@/components/ui/spotlight-badge";
+import { updateSpotlightBadge } from "@/lib/utils/spotlightBadgeApi";
 
 // Define types for images and matches
 interface ImageType {
@@ -341,6 +343,31 @@ export default function AdminProfileDetailPage() {
     }
   };
 
+  const handleToggleSpotlightBadge = async (id: string) => {
+    if (!profile?._id) return;
+    try {
+      await updateSpotlightBadge(
+        id,
+        {
+          hasSpotlightBadge: !profile.hasSpotlightBadge,
+          durationDays: 30,
+        },
+        token
+      );
+
+      showSuccessToast(
+        profile.hasSpotlightBadge
+          ? "Spotlight badge removed."
+          : "Spotlight badge granted for 30 days."
+      );
+      
+      // Refresh profile data
+      refetchProfile();
+    } catch (error) {
+      showErrorToast(null, error instanceof Error ? error.message : "Failed to update spotlight badge");
+    }
+  };
+
   const matchesSection =
     matches.length === 0 ? (
       <EmptyState message="No matches found." />
@@ -605,14 +632,35 @@ export default function AdminProfileDetailPage() {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Profile Details</CardTitle>
-          {/* Add toggle button for search visibility */}
-          <Button
-            variant={profile?.hiddenFromSearch ? "secondary" : "outline"}
-            className="mt-2"
-            onClick={() => handleToggleHiddenFromSearch(String(profile?._id))}
-          >
-            {profile?.hiddenFromSearch ? "Show in Search" : "Hide from Search"}
-          </Button>
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="flex gap-2">
+              {/* Add toggle button for search visibility */}
+              <Button
+                variant={profile?.hiddenFromSearch ? "secondary" : "outline"}
+                onClick={() => handleToggleHiddenFromSearch(String(profile?._id))}
+              >
+                {profile?.hiddenFromSearch ? "Show in Search" : "Hide from Search"}
+              </Button>
+              
+              {/* Add spotlight badge management */}
+              <Button
+                variant={profile?.hasSpotlightBadge ? "default" : "outline"}
+                onClick={() => handleToggleSpotlightBadge(String(profile?._id))}
+                className="flex items-center gap-1"
+              >
+                <SpotlightIcon className="w-4 h-4" />
+                {profile?.hasSpotlightBadge ? "Remove Spotlight" : "Add Spotlight"}
+              </Button>
+            </div>
+            
+            {/* Show spotlight badge expiration if active */}
+            {profile?.hasSpotlightBadge && profile?.spotlightBadgeExpiresAt && (
+              <div className="text-sm text-gray-600 flex items-center gap-1">
+                <SpotlightIcon className="w-3 h-3" />
+                Spotlight expires: {new Date(profile.spotlightBadgeExpiresAt).toLocaleDateString()}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">

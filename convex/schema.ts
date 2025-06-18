@@ -110,6 +110,10 @@ export default defineSchema({
       v.union(v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))
     ),
     subscriptionExpiresAt: v.optional(v.number()),
+    // Spotlight badge fields
+    hasSpotlightBadge: v.optional(v.boolean()),
+    spotlightBadgeExpiresAt: v.optional(v.number()),
+    boostsMonth: v.optional(v.number()),
   })
     .index("by_userId", ["userId"])
     .index("by_clerkId", ["clerkId"]),

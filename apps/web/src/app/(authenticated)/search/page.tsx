@@ -12,6 +12,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserCircle, Rocket, BadgeCheck } from "lucide-react";
+import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -444,6 +445,13 @@ export default function SearchProfilesPage() {
                           {(p.subscriptionPlan === "premium" ||
                             p.subscriptionPlan === "premiumPlus") && (
                             <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
+                          )}
+                          {(p.subscriptionPlan === "premium" ||
+                            p.subscriptionPlan === "premiumPlus") &&
+                           p.hasSpotlightBadge && 
+                           p.spotlightBadgeExpiresAt && 
+                           p.spotlightBadgeExpiresAt > Date.now() && (
+                            <SpotlightIcon className="w-4 h-4" />
                           )}
                         </div>
                         <div
