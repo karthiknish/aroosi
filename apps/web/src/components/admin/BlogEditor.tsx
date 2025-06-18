@@ -1,47 +1,5 @@
+/// <reference types="tiptap__core" />
 import React, { useState, useEffect, useRef } from "react";
-// Define Editor type locally since @tiptap/core doesn't export it properly
-interface EditorChain {
-  focus: () => EditorChain;
-  toggleBold: () => EditorChain;
-  toggleItalic: () => EditorChain;
-  toggleUnderline: () => EditorChain;
-  toggleStrike: () => EditorChain;
-  toggleSubscript: () => EditorChain;
-  toggleSuperscript: () => EditorChain;
-  toggleHeading: (options: { level: number }) => EditorChain;
-  toggleBulletList: () => EditorChain;
-  toggleOrderedList: () => EditorChain;
-  toggleCodeBlock: () => EditorChain;
-  toggleBlockquote: () => EditorChain;
-  toggleHighlight: () => EditorChain;
-  setHorizontalRule: () => EditorChain;
-  insertContent: (content: string) => EditorChain;
-  setImage: (options: { src: string }) => EditorChain;
-  insertTable: (options: { rows: number; cols: number; withHeaderRow?: boolean }) => EditorChain;
-  setTextSelection: (selection: { from: number; to: number }) => EditorChain;
-  setLink: (options: { href: string }) => EditorChain;
-  unsetLink: () => EditorChain;
-  undo: () => EditorChain;
-  redo: () => EditorChain;
-  run: () => void;
-}
-
-interface Editor {
-  commands: Record<string, unknown>;
-  chain: () => EditorChain;
-  can: () => Record<string, unknown>;
-  getHTML: () => string;
-  setContent: (content: string) => void;
-  isActive: (name: string, attrs?: Record<string, unknown>) => boolean;
-  getAttributes: (name: string) => Record<string, unknown>;
-  state: {
-    selection: {
-      from: number;
-      to: number;
-    };
-  };
-  // Add other Editor methods as needed
-}
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Bold from "@tiptap/extension-bold";
@@ -111,7 +69,7 @@ import "@/styles/emoji-picker-custom.css";
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
 type MenuBarProps = {
-  editor: Editor | null;
+  editor: ReturnType<typeof useEditor>;
 };
 
 const MenuBar = ({ editor }: MenuBarProps) => {
@@ -130,7 +88,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const emojiPopoverRef = useRef<HTMLDivElement>(null);
-
 
   useEffect(() => {
     if (!emojiPickerOpen) return;
@@ -594,13 +551,7 @@ export default function BlogEditor({
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: value,
-    onUpdate: ({
-      editor,
-      transaction,
-    }: {
-      editor: Editor;
-      transaction: any;
-    }) => {
+    onUpdate: ({ editor, transaction }: any) => {
       onChange(editor.getHTML());
     },
     editorProps: {
