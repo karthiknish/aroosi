@@ -1,24 +1,101 @@
-# Aroosi: Next.js + Convex + Clerk Matrimonial Platform
+# Aroosi: Modern Matrimonial Platform
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app), using [Convex](https://convex.dev) for backend/database and [Clerk](https://clerk.com/) for authentication.
+A full-stack matrimonial platform built with modern technologies and a unified monorepo architecture.
 
-## Getting Started
+## 🏗️ Architecture
 
-First, run the development server:
+This project uses a **monorepo structure** with shared packages for maximum code reuse between web and mobile applications.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Project Structure
+
+```
+aroosi/
+├── apps/
+│   ├── web/          # Next.js web application
+│   └── mobile/       # React Native mobile app (Expo)
+├── packages/
+│   ├── shared-types/    # Shared TypeScript types
+│   ├── shared-utils/    # Shared utility functions
+│   ├── auth/           # Shared authentication (Clerk)
+│   ├── convex-client/  # Shared Convex client utilities
+│   └── ui/             # Shared UI components
+├── convex/           # Backend functions and schema
+└── __tests__/        # Shared test files
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Technology Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js 15 (web) + React Native/Expo (mobile)
+- **Authentication**: Clerk (shared across platforms)
+- **Database**: Convex (real-time, serverless)
+- **Styling**: Tailwind CSS 4.0
+- **Type Safety**: TypeScript with shared types
+- **State Management**: React Query + React Context
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- Convex CLI: `npm install -g convex`
+- Expo CLI (for mobile): `npm install -g @expo/cli`
+
+### Installation
+
+1. **Clone and install dependencies:**
+```bash
+git clone <repo-url>
+cd aroosi
+npm run install:all
+```
+
+2. **Set up environment variables:**
+```bash
+cp .env.aroosi.example .env.local
+# Fill in your API keys and configuration
+```
+
+3. **Start development servers:**
+
+**Web application:**
+```bash
+npm run dev:web
+# Opens http://localhost:3000
+```
+
+**Mobile application:**
+```bash
+npm run dev:mobile
+# Opens Expo development server
+```
+
+**Convex backend:**
+```bash
+npm run convex:dev
+```
+
+### Development Commands
+
+```bash
+# Development
+npm run dev          # Start web app
+npm run dev:web      # Start web app
+npm run dev:mobile   # Start mobile app
+npm run convex:dev   # Start Convex backend
+
+# Building
+npm run build        # Build web app
+npm run build:web    # Build web app
+npm run build:mobile # Build mobile app
+
+# Testing & Quality
+npm run test         # Run tests
+npm run lint         # Lint both apps
+npm run type-check   # TypeScript checking
+
+# Deployment
+npm run convex:deploy # Deploy Convex functions
+```
 
 ## Convex Admin & Cleanup Scripts
 

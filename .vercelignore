@@ -1,0 +1,16 @@
+apps/mobile
+apps/mobile/**
+packages
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+test-results
+playwright-report
+.env.local
+.env.*.local
+convex.json
+README.md
+CLAUDE.md
+TAILWIND_4_UPGRADE.md 

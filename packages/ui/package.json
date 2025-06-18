@@ -1,0 +1,20 @@
+{
+  "name": "@aroosi/ui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "types": "index.ts",
+  "dependencies": {
+    "@aroosi/shared-types": "*",
+    "@aroosi/shared-utils": "*",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "lucide-react": "^0.511.0",
+    "react": "19.0.0",
+    "tailwindcss": "^4.1.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@types/react": "^19.0.0"
+  }
+}

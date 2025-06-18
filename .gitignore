@@ -16,9 +16,29 @@
 # next.js
 /.next/
 /out/
+apps/web/.next/
 
 # production
 /build
+/dist
+apps/web/dist
+apps/mobile/build
+
+# monorepo specific
+packages/*/dist
+packages/*/build
+apps/*/dist
+apps/*/.next/
+
+# Expo (React Native)
+apps/mobile/.expo/
+.expo/
+
+# playwright test artifacts
+playwright-report/
+test-results/
+apps/web/playwright-report/
+apps/web/test-results/
 
 # misc
 .DS_Store
@@ -39,6 +59,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# cache directories
+.turbo/
+.eslintcache
 .cursor/rules/always-apply-changes.mdc
 .cursor/rules/no-ask-just-do.mdc
 
@@ -63,3 +87,5 @@ node_modules/
 # Task files
 tasks.json
 tasks/ 
+# clerk configuration (can include secrets)
+/.clerk/

@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@aroosi/shared-types": ["packages/shared-types"],
+      "@aroosi/shared-types/*": ["packages/shared-types/*"],
+      "@aroosi/shared-utils": ["packages/shared-utils"],
+      "@aroosi/shared-utils/*": ["packages/shared-utils/*"],
+      "@aroosi/auth": ["packages/auth"],
+      "@aroosi/auth/*": ["packages/auth/*"],
+      "@aroosi/convex-client": ["packages/convex-client"],
+      "@aroosi/convex-client/*": ["packages/convex-client/*"],
+      "@api/*": ["packages/api/*"],
+      "@ui/*": ["packages/ui/*"],
+      "@/lib/*": ["apps/web/src/lib/*", "packages/api/lib/*"],
+      "@lib/*": ["packages/api/lib/*"],
+      "@/*": ["apps/web/src/*"],
+      "@convex/*": ["convex/*"]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@aroosi/shared-types": "*",
+    "@aroosi/shared-utils": "*",
+    "@aroosi/auth": "*",
+    "@aroosi/convex-client": "*",
+    "@aroosi/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "next": "^15.3.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^14.3.1",
+    "@testing-library/user-event": "^14.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  }
+}

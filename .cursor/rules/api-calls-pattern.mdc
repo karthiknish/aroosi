@@ -1,0 +1,150 @@
+---
+description: Enforce API calls through utility functions, not direct fetch in components/pages
+globs: apps/web/src/**/*.{ts,tsx}
+alwaysApply: true
+---
+
+# API Call Pattern Enforcement
+
+**All API calls must be made through utility functions, not direct fetch() calls in components or pages.**
+
+## **Rules**
+
+- **❌ NEVER use `fetch()` directly in:**
+  - Page components (`app/**/*.tsx`)
+  - React components (`components/**/*.tsx`)
+  - Context providers (`contexts/**/*.tsx`)
+
+- **✅ ALWAYS use utility functions from:**
+  - `/lib/profile/userProfileApi.ts` - User profile operations
+  - `/lib/profile/adminProfileApi.ts` - Admin profile operations  
+  - `/lib/utils/imageUtil.ts` - Image upload/delete/reorder
+  - `/lib/utils/stripeUtil.ts` - Payment and subscription operations
+  - `/lib/utils/imageSearchUtil.ts` - Image search operations
+  - `/lib/blogUtil.ts` - Blog content management
+  - `/lib/contactUtil.ts` - Contact form operations
+  - `/lib/interestUtils.ts` - User interest operations
+
+## **Available Utility Functions**
+
+### **Profile Operations**
+```typescript
+// User Profile API
+import { 
+  getCurrentUserWithProfile,
+  submitProfile,
+  fetchUserProfileImages 
+} from "@/lib/profile/userProfileApi";
+
+// Admin Profile API  
+import {
+  fetchAdminProfileImagesById,
+  deleteAdminProfileImageById,
+  adminUploadProfileImage
+} from "@/lib/profile/adminProfileApi";
+```
+
+### **Image Operations**
+```typescript
+import {
+  updateImageOrder,
+  getImageUploadUrl,
+  saveImageMeta,
+  deleteImageById
+} from "@/lib/utils/imageUtil";
+
+import { searchImages } from "@/lib/utils/imageSearchUtil";
+```
+
+### **Payment Operations**
+```typescript
+import { createCheckoutSession } from "@/lib/utils/stripeUtil";
+```
+
+### **Content Operations**
+```typescript
+import { 
+  fetchBlogPosts,
+  uploadBlogImageMeta 
+} from "@/lib/blogUtil";
+
+import { fetchAllContactsAdmin } from "@/lib/contactUtil";
+```
+
+## **Common Violations & Fixes**
+
+### **❌ Bad: Direct fetch in component**
+```typescript
+// DON'T DO THIS
+const handleSubmit = async () => {
+  const response = await fetch("/api/profile", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+};
+```
+
+### **✅ Good: Use utility function**
+```typescript
+// DO THIS INSTEAD
+import { submitProfile } from "@/lib/profile/userProfileApi";
+
+const handleSubmit = async () => {
+  const result = await submitProfile(token, data, "edit");
+  if (result.success) {
+    // handle success
+  }
+};
+```
+
+## **Benefits of This Pattern**
+
+- **Consistency**: All API calls follow the same pattern
+- **Error Handling**: Centralized error handling and toast notifications
+- **Type Safety**: Proper TypeScript interfaces for all API responses
+- **Reusability**: Utility functions can be used across multiple components
+- **Testing**: Easier to mock and test API operations
+- **Maintenance**: Single place to update API endpoints and logic
+
+## **Creating New Utility Functions**
+
+When adding new API endpoints, create utility functions in the appropriate file:
+
+```typescript
+// Example: New utility function
+export async function newApiOperation(
+  token: string,
+  data: SomeType
+): Promise<ApiResponse<ResultType>> {
+  try {
+    const response = await fetch("/api/new-endpoint", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    return { success: true, data: result };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Operation failed";
+    showErrorToast(errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+```
+
+## **Exceptions**
+
+The only acceptable places for direct `fetch()` calls are:
+- API route handlers (`app/api/**/*.ts`)
+- Utility functions in `/lib/**/*.ts`
+- Server-side functions (not client components)
