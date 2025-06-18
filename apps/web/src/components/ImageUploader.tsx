@@ -1,5 +1,14 @@
 import { useCallback, useState, useEffect } from "react";
-import { useDropzone, FileRejection } from "react-dropzone";
+import { useDropzone } from "react-dropzone";
+
+// Define FileRejection type locally since import isn't working
+interface FileRejection {
+  file: File;
+  errors: Array<{
+    code: string;
+    message: string;
+  }>;
+}
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Upload } from "lucide-react";

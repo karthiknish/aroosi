@@ -109,7 +109,6 @@ export function ProfileImageUpload({
         (img) => !!img?.url && !!img?.storageId
       ).map(img => ({
         id: img.storageId,
-        url: img.url,
         storageId: img.storageId,
         ...img
       })) as ImageType[];
