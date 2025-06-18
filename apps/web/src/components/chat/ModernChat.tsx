@@ -385,7 +385,6 @@ export default function ModernChat({
                     setText((prev) => prev + emojiData.emoji);
                     inputRef.current?.focus();
                   }}
-                  autoFocusSearch={false}
                   width={350}
                   height={400}
                 />

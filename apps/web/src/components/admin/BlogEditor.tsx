@@ -4,12 +4,25 @@ interface EditorChain {
   focus: () => EditorChain;
   toggleBold: () => EditorChain;
   toggleItalic: () => EditorChain;
+  toggleUnderline: () => EditorChain;
+  toggleStrike: () => EditorChain;
+  toggleSubscript: () => EditorChain;
+  toggleSuperscript: () => EditorChain;
   toggleHeading: (options: { level: number }) => EditorChain;
   toggleBulletList: () => EditorChain;
   toggleOrderedList: () => EditorChain;
+  toggleCodeBlock: () => EditorChain;
+  toggleBlockquote: () => EditorChain;
+  toggleHighlight: () => EditorChain;
+  setHorizontalRule: () => EditorChain;
   insertContent: (content: string) => EditorChain;
   setImage: (options: { src: string }) => EditorChain;
-  insertTable: (options: { rows: number; cols: number }) => EditorChain;
+  insertTable: (options: { rows: number; cols: number; withHeaderRow?: boolean }) => EditorChain;
+  setTextSelection: (selection: { from: number; to: number }) => EditorChain;
+  setLink: (options: { href: string }) => EditorChain;
+  unsetLink: () => EditorChain;
+  undo: () => EditorChain;
+  redo: () => EditorChain;
   run: () => void;
 }
 
@@ -20,6 +33,13 @@ interface Editor {
   getHTML: () => string;
   setContent: (content: string) => void;
   isActive: (name: string, attrs?: Record<string, unknown>) => boolean;
+  getAttributes: (name: string) => Record<string, unknown>;
+  state: {
+    selection: {
+      from: number;
+      to: number;
+    };
+  };
   // Add other Editor methods as needed
 }
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -258,7 +278,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           from: editor.state.selection.from,
           to: editor.state.selection.to,
         });
-        setLinkValue(editor.getAttributes("link").href || "");
+        setLinkValue((editor.getAttributes("link").href as string) || "");
         setLinkModalOpen(true);
       },
       active: editor.isActive("link"),
@@ -496,12 +516,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                 }
               }}
             />
-            {uploading && (
-              <div className="text-pink-600 text-sm mb-2">Uploading...</div>
-            )}
-            {uploadError && (
-              <div className="text-red-600 text-sm mb-2">{uploadError}</div>
-            )}
             <div className="flex gap-2 justify-end mt-2">
               <button
                 className="px-4 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -580,7 +594,7 @@ export default function BlogEditor({
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: value,
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: { editor: Editor }) => {
       onChange(editor.getHTML());
     },
     editorProps: {
