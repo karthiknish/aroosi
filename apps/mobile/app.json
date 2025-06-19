@@ -132,13 +132,10 @@
         "expo-secure-store"
       ],
       [
-        "@clerk/clerk-expo/plugin"
-      ],
-      [
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "13.0"
+            "deploymentTarget": "15.1"
           },
           "android": {
             "compileSdkVersion": 34,
