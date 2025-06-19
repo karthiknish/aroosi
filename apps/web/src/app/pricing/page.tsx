@@ -1,5 +1,6 @@
 "use client";
 
+import Head from "next/head";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -135,7 +136,64 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+    <>
+      <Head>
+        <title>Pricing Plans - Aroosi | Affordable Afghan Matrimony Subscriptions</title>
+        <meta name="description" content="Choose the perfect Aroosi membership plan. Free, Premium (£14.99/month), and Premium Plus (£39.99/month) with 30-day free trials. Unlimited messaging, advanced features, and more." />
+        <meta name="keywords" content="aroosi pricing, afghan matrimony cost, matrimonial subscription, premium membership, muslim dating plans, halal matrimony pricing" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://aroosi.app/pricing" />
+        <meta property="og:title" content="Pricing Plans - Aroosi | Affordable Afghan Matrimony Subscriptions" />
+        <meta property="og:description" content="Choose the perfect Aroosi membership plan. Free, Premium (£14.99/month), and Premium Plus (£39.99/month) with 30-day free trials." />
+        <meta property="og:image" content="https://aroosi.app/og-pricing.png" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://aroosi.app/pricing" />
+        <meta property="twitter:title" content="Pricing Plans - Aroosi | Affordable Afghan Matrimony Subscriptions" />
+        <meta property="twitter:description" content="Choose the perfect Aroosi membership plan. Free, Premium (£14.99/month), and Premium Plus (£39.99/month) with 30-day free trials." />
+        <meta property="twitter:image" content="https://aroosi.app/og-pricing.png" />
+        
+        <link rel="canonical" href="https://aroosi.app/pricing" />
+        
+        {/* Schema.org for Product/Service */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              "name": "Aroosi Premium Membership",
+              "description": "Premium Afghan matrimony membership with unlimited messaging and advanced features",
+              "brand": {
+                "@type": "Brand",
+                "name": "Aroosi"
+              },
+              "offers": [
+                {
+                  "@type": "Offer",
+                  "name": "Premium Plan",
+                  "price": "14.99",
+                  "priceCurrency": "GBP",
+                  "billingDuration": "P1M",
+                  "availability": "https://schema.org/InStock"
+                },
+                {
+                  "@type": "Offer", 
+                  "name": "Premium Plus Plan",
+                  "price": "39.99",
+                  "priceCurrency": "GBP",
+                  "billingDuration": "P1M",
+                  "availability": "https://schema.org/InStock"
+                }
+              ]
+            })
+          }}
+        />
+      </Head>
+      <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
@@ -490,5 +548,6 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

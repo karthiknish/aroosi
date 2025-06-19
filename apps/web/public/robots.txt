@@ -1,0 +1,55 @@
+# Robots.txt for Aroosi - Afghan Matrimony Platform
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /pricing  
+Allow: /contact
+Allow: /faq
+Allow: /blog
+Allow: /privacy
+Allow: /terms
+Allow: /how-it-works
+
+# Disallow private/sensitive areas
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /profile
+Disallow: /search
+Disallow: /matches
+Disallow: /admin
+Disallow: /api
+Disallow: /_next
+Disallow: /premium-settings
+Disallow: /create-profile
+
+# Allow specific API endpoints for SEO
+Allow: /api/og
+
+# Block common bot paths
+Disallow: /*?
+Disallow: /*.json$
+Disallow: /*.xml$
+
+# Sitemap location
+Sitemap: https://aroosi.app/sitemap.xml
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Specific instructions for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot  
+Allow: /
+Crawl-delay: 1
+
+User-agent: facebookexternalhit
+Allow: /
+Allow: /api/og
+
+User-agent: Twitterbot
+Allow: /
+Allow: /api/og
