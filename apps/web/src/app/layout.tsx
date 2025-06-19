@@ -6,13 +6,14 @@ import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
 
+export const viewport = "width=device-width, initial-scale=1";
+
 export const metadata: Metadata = {
   title: "Aroosi - Afghan Matrimony Platform",
   description:
     "Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform.",
   keywords:
     "matrimony, afghan matrimony, afghan marriage, aroosi, matrimonial site, rishta, afghan community, afghan singles, afghan wedding",
-  viewport: "width=device-width, initial-scale=1",
   robots: "index, follow",
   authors: [{ name: "Aroosi Team" }],
   openGraph: {
