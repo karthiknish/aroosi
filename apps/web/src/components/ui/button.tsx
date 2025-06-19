@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { LoadingSpinner } from "./loading-spinner";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -39,6 +39,8 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
+  loadingText?: string;
+  srOnlyText?: string; // Screen reader only text
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -49,6 +51,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       asChild = false,
       loading = false,
+      loadingText = "Loading",
+      srOnlyText,
       disabled,
       children,
       ...props
@@ -71,8 +75,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       (filteredChildren[0] ?? null)
     ) : (
       <>
-        {loading && <LoadingSpinner size={16} />}
+        {loading && (
+          <>
+            <LoadingSpinner size={16} />
+            <span className="sr-only">{loadingText}</span>
+          </>
+        )}
         {children}
+        {srOnlyText && <span className="sr-only">{srOnlyText}</span>}
       </>
     );
 
@@ -81,10 +91,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={cn(
           buttonVariants({ variant, size, className }),
-          "focus-visible:ring-2 focus-visible:ring-pink-500 active:scale-95 transition-transform",
+          "active:scale-95 transition-transform",
           loading && "pointer-events-none opacity-70"
         )}
         disabled={disabled || loading}
+        aria-disabled={disabled || loading}
         {...props}
       >
         {content}

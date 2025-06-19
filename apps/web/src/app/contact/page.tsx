@@ -171,16 +171,19 @@ export default function ContactPage() {
                           htmlFor="name"
                           className="block text-sm font-medium text-gray-700 mb-2"
                         >
-                          Full Name
+                          Full Name <span className="text-red-500" aria-label="required">*</span>
                         </Label>
                         <Input
                           id="name"
                           {...register("name")}
                           placeholder="John Doe"
+                          error={!!errors.name}
+                          aria-describedby={errors.name ? "name-error" : undefined}
+                          aria-required="true"
                           className={`${errors.name ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
                         />
                         {errors.name && (
-                          <p className="mt-1 text-sm text-red-600">
+                          <p id="name-error" className="mt-1 text-sm text-red-600" role="alert">
                             {errors.name.message}
                           </p>
                         )}
@@ -191,17 +194,20 @@ export default function ContactPage() {
                           htmlFor="email"
                           className="block text-sm font-medium text-gray-700 mb-2"
                         >
-                          Email Address
+                          Email Address <span className="text-red-500" aria-label="required">*</span>
                         </Label>
                         <Input
                           id="email"
                           type="email"
                           {...register("email")}
                           placeholder="john@example.com"
+                          error={!!errors.email}
+                          aria-describedby={errors.email ? "email-error" : undefined}
+                          aria-required="true"
                           className={`${errors.email ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
                         />
                         {errors.email && (
-                          <p className="mt-1 text-sm text-red-600">
+                          <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
                             {errors.email.message}
                           </p>
                         )}
@@ -213,16 +219,19 @@ export default function ContactPage() {
                         htmlFor="subject"
                         className="block text-sm font-medium text-gray-700 mb-2"
                       >
-                        Subject
+                        Subject <span className="text-red-500" aria-label="required">*</span>
                       </Label>
                       <Input
                         id="subject"
                         {...register("subject")}
                         placeholder="How can we help?"
+                        error={!!errors.subject}
+                        aria-describedby={errors.subject ? "subject-error" : undefined}
+                        aria-required="true"
                         className={`${errors.subject ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
                       />
                       {errors.subject && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p id="subject-error" className="mt-1 text-sm text-red-600" role="alert">
                           {errors.subject.message}
                         </p>
                       )}
@@ -233,24 +242,30 @@ export default function ContactPage() {
                         htmlFor="message"
                         className="block text-sm font-medium text-gray-700 mb-2"
                       >
-                        Message
+                        Message <span className="text-red-500" aria-label="required">*</span>
                       </Label>
                       <Textarea
                         id="message"
                         {...register("message")}
                         placeholder="Tell us more about your inquiry..."
                         rows={5}
+                        aria-describedby={errors.message ? "message-error" : undefined}
+                        aria-required="true"
                         className={`${errors.message ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
                       />
                       {errors.message && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p id="message-error" className="mt-1 text-sm text-red-600" role="alert">
                           {errors.message.message}
                         </p>
                       )}
                     </div>
 
                     {submitError && (
-                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                      <div 
+                        className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"
+                        role="alert"
+                        aria-live="polite"
+                      >
                         {submitError}
                       </div>
                     )}
@@ -259,11 +274,13 @@ export default function ContactPage() {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
+                        loadingText="Sending your message"
+                        srOnlyText={isSubmitting ? "Please wait while we send your message" : "Submit contact form"}
                         className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-50"
                       >
                         <div className="flex items-center justify-center gap-2">
                           {isSubmitting ? "Sending..." : "Send Message"}
-                          <Send className="w-4 h-4" />
+                          <Send className="w-4 h-4" aria-hidden="true" />
                         </div>
                       </Button>
                     </div>

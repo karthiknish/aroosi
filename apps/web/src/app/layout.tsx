@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     "Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform.",
   keywords:
     "matrimony, afghan matrimony, afghan marriage, aroosi, matrimonial site, rishta, afghan community, afghan singles, afghan wedding",
+  viewport: "width=device-width, initial-scale=1",
+  robots: "index, follow",
+  authors: [{ name: "Aroosi Team" }],
   openGraph: {
     title: "Aroosi - Afghan Matrimony Platform",
     description:
@@ -57,6 +60,13 @@ export default function RootLayout({
         ></link>
       </head>
       <body suppressHydrationWarning>
+        {/* Skip to main content link for screen readers */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-gray-900 focus:border focus:border-gray-300 focus:rounded-md focus:shadow-lg focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+        >
+          Skip to main content
+        </a>
         <ClerkProvider
           appearance={{
             layout: {

@@ -26,6 +26,17 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const { isAdmin, isSignedIn, signOut, profile } = useAuthContext();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  // Close mobile menu on escape key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileOpen) {
+        setMobileOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [mobileOpen]);
+
   if (!hydrated) return null;
 
   const headerVariants: Variants = {
@@ -253,13 +264,16 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-pink-100"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileOpen}
+                aria-controls="mobile-navigation"
+                aria-haspopup="menu"
               >
                 {mobileOpen ? (
-                  <X className="h-7 w-7" />
+                  <X className="h-7 w-7" aria-hidden="true" />
                 ) : (
-                  <Menu className="h-7 w-7" />
+                  <Menu className="h-7 w-7" aria-hidden="true" />
                 )}
               </Button>
             </div>
@@ -271,11 +285,14 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           {mobileOpen && (
             <motion.nav
               key="mobile-nav"
+              id="mobile-navigation"
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -30, opacity: 0 }}
               transition={{ type: "spring", stiffness: 120, damping: 18 }}
               className="md:hidden absolute top-full left-0 right-0 bg-base-light/90 backdrop-blur-md border-b border-base-200"
+              role="menu"
+              aria-label="Main navigation"
             >
               <div className="px-4 py-4 flex flex-col space-y-2">
                 <NavLinks onClick={() => setMobileOpen(false)} />

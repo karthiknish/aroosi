@@ -17,7 +17,11 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
   return (
     <>
       <Header hideLinks={hideLinks} />
-      <main className="pt-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden">
+      <main 
+        id="main-content"
+        className="pt-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden"
+        tabIndex={-1}
+      >
         <RouteTransition>{children}</RouteTransition>
       </main>
       <Footer />
@@ -41,6 +45,7 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
         closeButton={true}
         expand={true}
         visibleToasts={5}
+        aria-live="polite"
       />
       <ChatBot />
     </>
