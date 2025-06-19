@@ -1,6 +1,6 @@
 /// <reference types="tiptap__core" />
 import React, { useState, useEffect, useRef } from "react";
-import { useEditor, EditorContent, type Editor } from "@tiptap/react";
+import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Bold from "@tiptap/extension-bold";
 import Italic from "@tiptap/extension-italic";
@@ -68,8 +68,10 @@ import "@/styles/emoji-picker-custom.css";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
+type EditorType = NonNullable<ReturnType<typeof useEditor>>;
+
 type MenuBarProps = {
-  editor: ReturnType<typeof useEditor>;
+  editor: EditorType;
 };
 
 const MenuBar = ({ editor }: MenuBarProps) => {
@@ -551,7 +553,7 @@ export default function BlogEditor({
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: value,
-    onUpdate: ({ editor }: { editor: Editor }) => {
+    onUpdate: ({ editor }: { editor: EditorType }) => {
       onChange(editor.getHTML());
     },
     editorProps: {
