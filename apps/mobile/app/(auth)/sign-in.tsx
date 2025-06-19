@@ -15,6 +15,11 @@ import { useSignIn } from "@clerk/clerk-expo";
 import { Button, Input } from "../../components/ui";
 import { Colors, Layout } from "../../constants";
 import { ValidationRules } from "../../utils/validation";
+import PlatformInput from "../../components/ui/PlatformInput";
+import PlatformButton from "../../components/ui/PlatformButton";
+import PlatformHaptics from "../../utils/PlatformHaptics";
+import { useMatrimonyAppRating } from "../../hooks/useAppRating";
+import SocialAuthButtons from "../../components/auth/SocialAuthButtons";
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -22,6 +27,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const rating = useMatrimonyAppRating();
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -43,7 +49,10 @@ export default function SignInScreen() {
   };
 
   const handleSignIn = async () => {
-    if (!isLoaded || !validateForm()) return;
+    if (!isLoaded || !validateForm()) {
+      await PlatformHaptics.error();
+      return;
+    }
 
     setLoading(true);
     try {
@@ -53,14 +62,22 @@ export default function SignInScreen() {
       });
 
       if (signInAttempt.status === "complete") {
+        await PlatformHaptics.success();
         await setActive({ session: signInAttempt.createdSessionId });
+        
+        // Record significant event for app rating
+        await rating.recordSignificantEvent('user_signed_in');
+        
         router.replace("/(tabs)/search");
       } else {
         // Handle additional verification steps if needed
         console.error("Sign in incomplete", signInAttempt);
+        await PlatformHaptics.warning();
       }
     } catch (err: any) {
       console.error("Sign in error:", err);
+      await PlatformHaptics.error();
+      
       let errorMessage = "Sign in failed. Please try again.";
 
       if (err.errors?.[0]?.message) {
@@ -90,7 +107,7 @@ export default function SignInScreen() {
           </View>
 
           <View style={styles.form}>
-            <Input
+            <PlatformInput
               label="Email Address"
               value={emailAddress}
               onChangeText={setEmailAddress}
@@ -100,9 +117,10 @@ export default function SignInScreen() {
               autoComplete="email"
               error={errors.email}
               required
+              leftIcon="mail-outline"
             />
 
-            <Input
+            <PlatformInput
               label="Password"
               value={password}
               onChangeText={setPassword}
@@ -111,6 +129,7 @@ export default function SignInScreen() {
               autoComplete="password"
               error={errors.password}
               required
+              leftIcon="lock-closed-outline"
             />
 
             <View style={styles.forgotPasswordContainer}>
@@ -119,14 +138,19 @@ export default function SignInScreen() {
               </Link>
             </View>
 
-            <Button
+            <PlatformButton
               title="Sign In"
               onPress={handleSignIn}
               loading={loading}
-              disabled={loading}
-              fullWidth
+              style={styles.signInButton}
             />
           </View>
+
+          <SocialAuthButtons 
+            mode="sign-in" 
+            loading={loading}
+            setLoading={setLoading}
+          />
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don&apos;t have an account?</Text>
@@ -177,6 +201,10 @@ const styles = StyleSheet.create({
   forgotPasswordContainer: {
     alignItems: "flex-end",
     marginBottom: Layout.spacing.lg,
+  },
+
+  signInButton: {
+    marginTop: Layout.spacing.md,
   },
 
   footer: {

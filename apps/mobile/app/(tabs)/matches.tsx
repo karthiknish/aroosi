@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -11,57 +11,50 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 // @ts-expect-error expo vector icons
 import { Ionicons } from "@expo/vector-icons";
+// @ts-expect-error clerk expo types
+import { useUser } from "@clerk/clerk-expo";
 import { Card, Avatar } from "../../components/ui";
 import { Colors, Layout } from "../../constants";
-import { useApiClient } from "../../utils/api";
 import { Match } from "../../types";
 import { formatTimeAgo, formatName } from "../../utils/formatting";
+import { useMatchesList } from "../../hooks/useMessaging";
 
 export default function MatchesScreen() {
-  const apiClient = useApiClient();
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    loadMatches();
-  }, []);
-
-  const loadMatches = async () => {
-    try {
-      const response = await apiClient.getMatches();
-      if (response.success && response.data) {
-        setMatches(response.data);
-      }
-    } catch (error) {
-      console.error("Error loading matches:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user } = useUser();
+  const { 
+    matches, 
+    unreadCounts, 
+    loading, 
+    loadMatches,
+    getTotalUnreadCount 
+  } = useMatchesList();
 
   const handleRefresh = async () => {
-    setRefreshing(true);
     await loadMatches();
-    setRefreshing(false);
   };
 
   const handleMatchPress = (match: Match) => {
     router.push({
-      pathname: "/chat",
-      params: { matchId: match.id },
+      pathname: "/chat/[id]",
+      params: { id: match.id },
     });
   };
 
   const getOtherUserProfile = (match: Match) => {
-    // TODO: Get current user ID and return the other user's profile
-    return match.user1Profile; // Placeholder
+    if (!user) return match.user1Profile;
+    
+    // Return the profile that doesn't belong to the current user
+    if (match.user1Profile.id === user.id) {
+      return match.user2Profile;
+    }
+    return match.user1Profile;
   };
 
   const renderMatch = ({ item: match }: { item: Match }) => {
     const otherUser = getOtherUserProfile(match);
     const primaryImage = otherUser.profileImageIds?.[0];
-    const hasUnread = match.unreadCount && match.unreadCount > 0;
+    const unreadCount = unreadCounts[match.id] || 0;
+    const hasUnread = unreadCount > 0;
 
     return (
       <TouchableOpacity
@@ -94,8 +87,10 @@ export default function MatchesScreen() {
 
               <Text style={styles.lastMessage} numberOfLines={1}>
                 {hasUnread
-                  ? `${match.unreadCount} new message${match.unreadCount > 1 ? "s" : ""}`
-                  : "Start a conversation..."}
+                  ? `${unreadCount} new message${unreadCount > 1 ? "s" : ""}`
+                  : match.lastActivity 
+                    ? "Tap to continue chatting..."
+                    : "Tap to start chatting! 💬"}
               </Text>
             </View>
 
@@ -165,7 +160,7 @@ export default function MatchesScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={loading}
               onRefresh={handleRefresh}
               colors={[Colors.primary[500]]}
               tintColor={Colors.primary[500]}

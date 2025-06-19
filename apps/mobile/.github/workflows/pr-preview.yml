@@ -1,0 +1,77 @@
+name: PR Preview Build
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/mobile/**'
+
+env:
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+jobs:
+  preview:
+    name: Build Preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: 🏗 Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        working-directory: apps/mobile
+        run: npm ci
+
+      - name: 🔍 Verify TypeScript
+        working-directory: apps/mobile
+        run: npm run type-check
+
+      - name: 🧹 Lint code
+        working-directory: apps/mobile
+        run: npm run lint
+
+      - name: 🧪 Run tests
+        working-directory: apps/mobile
+        run: npm run test
+
+      - name: 📱 Build preview for iOS
+        working-directory: apps/mobile
+        run: eas build --platform ios --profile preview --non-interactive
+
+      - name: 🤖 Build preview for Android
+        working-directory: apps/mobile
+        run: eas build --platform android --profile preview --non-interactive
+
+      - name: 📝 Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Preview builds are ready!
+              
+              📱 **iOS**: Check EAS dashboard for download link
+              🤖 **Android**: Check EAS dashboard for download link
+              
+              📊 **Build Details**:
+              - Commit: ${context.sha}
+              - Branch: ${context.ref}
+              - Workflow: ${context.workflow}
+              
+              🔗 [View builds on EAS](https://expo.dev/accounts/aroosi-team/projects/aroosi-matrimony/builds)`
+            })

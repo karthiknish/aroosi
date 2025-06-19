@@ -18,11 +18,13 @@ import { Colors, Layout } from "../../constants";
 import { useApiClient } from "../../utils/api";
 import { Profile as ProfileType } from "../../types";
 import { formatAge, formatCity, formatEducation, formatMaritalStatus } from "../../utils/formatting";
+import { useInterests } from "../../hooks/useInterests";
 
 export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { user } = useUser();
   const apiClient = useApiClient();
+  const { pendingReceivedCount } = useInterests();
   const [profile, setProfile] = useState<ProfileType | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -59,7 +61,7 @@ export default function ProfileScreen() {
   };
 
   const handleEditProfile = () => {
-    router.push("/profile-setup");
+    router.push("/profile-edit");
   };
 
   const handleBoostProfile = async () => {
@@ -193,6 +195,15 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           
           <ActionItem
+            icon="heart-outline"
+            title="Interests"
+            subtitle="Manage sent and received interests"
+            onPress={() => router.push("/interests")}
+            showChevron
+            badgeCount={pendingReceivedCount}
+          />
+
+          <ActionItem
             icon="diamond-outline"
             title="Upgrade to Premium"
             subtitle="Get unlimited likes and more features"
@@ -204,19 +215,23 @@ export default function ProfileScreen() {
             icon="eye-outline"
             title="Profile Viewers"
             subtitle="See who viewed your profile"
-            onPress={() => {
-              // Navigate to profile viewers
-            }}
+            onPress={() => router.push("/profile-viewers")}
             showChevron
           />
           
           <ActionItem
+            icon="shield-outline"
+            title="Safety & Guidelines"
+            subtitle="Stay safe while using Aroosi"
+            onPress={() => router.push("/safety-guidelines")}
+            showChevron
+          />
+
+          <ActionItem
             icon="help-circle-outline"
             title="Help & Support"
             subtitle="Get help with your account"
-            onPress={() => {
-              // Navigate to help
-            }}
+            onPress={() => router.push("/help")}
             showChevron
           />
           
@@ -258,6 +273,7 @@ interface ActionItemProps {
   onPress: () => void;
   showChevron?: boolean;
   textColor?: string;
+  badgeCount?: number;
 }
 
 function ActionItem({ 
@@ -266,7 +282,8 @@ function ActionItem({
   subtitle, 
   onPress, 
   showChevron = false,
-  textColor = Colors.text.primary 
+  textColor = Colors.text.primary,
+  badgeCount
 }: ActionItemProps) {
   return (
     <TouchableOpacity
@@ -274,7 +291,16 @@ function ActionItem({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Ionicons name={icon as any} size={24} color={textColor} />
+      <View style={styles.iconContainer}>
+        <Ionicons name={icon as any} size={24} color={textColor} />
+        {badgeCount && badgeCount > 0 && (
+          <View style={styles.actionBadge}>
+            <Text style={styles.actionBadgeText}>
+              {badgeCount > 99 ? '99+' : badgeCount.toString()}
+            </Text>
+          </View>
+        )}
+      </View>
       <View style={styles.actionContent}>
         <Text style={[styles.actionTitle, { color: textColor }]}>{title}</Text>
         <Text style={styles.actionSubtitle}>{subtitle}</Text>
@@ -466,5 +492,29 @@ const styles = StyleSheet.create({
     fontSize: Layout.typography.fontSize.sm,
     color: Colors.text.secondary,
     marginTop: Layout.spacing.xs,
+  },
+
+  iconContainer: {
+    position: 'relative',
+  },
+
+  actionBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: Colors.error[500],
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+
+  actionBadgeText: {
+    color: Colors.background.primary,
+    fontSize: 11,
+    fontWeight: Layout.typography.fontWeight.bold,
+    textAlign: 'center',
   },
 });

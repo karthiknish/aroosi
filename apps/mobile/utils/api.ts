@@ -63,6 +63,10 @@ class ApiClient {
     return this.request('/profile');
   }
 
+  async getProfileById(profileId: string) {
+    return this.request(`/profile-detail/${profileId}`);
+  }
+
   async createProfile(profileData: any) {
     return this.request('/profile', {
       method: 'POST',
@@ -99,7 +103,52 @@ class ApiClient {
   }
 
   async getSentInterests(userId: string) {
-    return this.request(`/interests?userId=${userId}`);
+    return this.request(`/interests/sent?userId=${userId}`);
+  }
+
+  async getReceivedInterests(userId: string) {
+    return this.request(`/interests/received?userId=${userId}`);
+  }
+
+  async respondToInterest(interestId: string, response: 'accept' | 'reject') {
+    return this.request(`/interests/${interestId}/respond`, {
+      method: 'POST',
+      body: JSON.stringify({ response }),
+    });
+  }
+
+  async getInterestStatus(fromUserId: string, toUserId: string) {
+    return this.request(`/interests/status?fromUserId=${fromUserId}&toUserId=${toUserId}`);
+  }
+
+  // Safety APIs
+  async reportUser(reportedUserId: string, reason: string, description?: string) {
+    return this.request('/safety/report', {
+      method: 'POST',
+      body: JSON.stringify({ reportedUserId, reason, description }),
+    });
+  }
+
+  async blockUser(blockedUserId: string) {
+    return this.request('/safety/block', {
+      method: 'POST',
+      body: JSON.stringify({ blockedUserId }),
+    });
+  }
+
+  async unblockUser(blockedUserId: string) {
+    return this.request('/safety/unblock', {
+      method: 'POST',
+      body: JSON.stringify({ blockedUserId }),
+    });
+  }
+
+  async getBlockedUsers() {
+    return this.request('/safety/blocked');
+  }
+
+  async checkIfBlocked(userId: string) {
+    return this.request(`/safety/blocked/check?userId=${userId}`);
   }
 
   // Match APIs
@@ -138,10 +187,53 @@ class ApiClient {
     });
   }
 
+  async uploadImageToUrl(uploadUrl: string, imageData: any, contentType: string) {
+    try {
+      const response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+        },
+        body: imageData,
+      });
+      
+      return { success: response.ok };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Upload failed' 
+      };
+    }
+  }
+
+  async confirmImageUpload(fileName: string, uploadId: string) {
+    return this.request('/profile-images/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ fileName, uploadId }),
+    });
+  }
+
+  async deleteProfileImage(imageId: string) {
+    return this.request(`/profile-images/${imageId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async updateImageOrder(imageIds: string[]) {
     return this.request('/profile-images/order', {
       method: 'PUT',
       body: JSON.stringify({ imageIds }),
+    });
+  }
+
+  async getProfileImages() {
+    return this.request('/profile-images');
+  }
+
+  async setMainProfileImage(imageId: string) {
+    return this.request('/profile-images/main', {
+      method: 'PUT',
+      body: JSON.stringify({ imageId }),
     });
   }
 
@@ -153,11 +245,253 @@ class ApiClient {
     });
   }
 
+  async getSubscriptionStatus() {
+    return this.request('/subscription/status');
+  }
+
+  async getUsageStats() {
+    return this.request('/subscription/usage');
+  }
+
+  async purchaseSubscription(productId: string, purchaseToken: string) {
+    return this.request('/subscription/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ productId, purchaseToken }),
+    });
+  }
+
+  async cancelSubscription() {
+    return this.request('/subscription/cancel', {
+      method: 'POST',
+    });
+  }
+
+  async restorePurchases() {
+    return this.request('/subscription/restore', {
+      method: 'POST',
+    });
+  }
+
+  async updateSubscriptionTier(tier: string) {
+    return this.request('/subscription/upgrade', {
+      method: 'POST',
+      body: JSON.stringify({ tier }),
+    });
+  }
+
+  async trackFeatureUsage(feature: string) {
+    return this.request('/subscription/track-usage', {
+      method: 'POST',
+      body: JSON.stringify({ feature }),
+    });
+  }
+
   // Profile boost
   async boostProfile() {
     return this.request('/profile/boost', {
       method: 'POST',
     });
+  }
+
+  // Typing Indicators
+  async sendTypingIndicator(conversationId: string, action: 'start' | 'stop') {
+    return this.request('/typing-indicators', {
+      method: 'POST',
+      body: JSON.stringify({ conversationId, action }),
+    });
+  }
+
+  async getTypingIndicators(conversationId: string) {
+    return this.request(`/typing-indicators/${conversationId}`);
+  }
+
+  // Message Delivery Receipts
+  async sendDeliveryReceipt(messageId: string, status: string) {
+    return this.request('/delivery-receipts', {
+      method: 'POST',
+      body: JSON.stringify({ messageId, status }),
+    });
+  }
+
+  async getDeliveryReceipts(conversationId: string) {
+    return this.request(`/delivery-receipts/${conversationId}`);
+  }
+
+  async markMessagesAsRead(messageIds: string[]) {
+    return this.request('/messages/mark-read', {
+      method: 'POST',
+      body: JSON.stringify({ messageIds }),
+    });
+  }
+
+  async markConversationAsRead(conversationId: string) {
+    return this.request(`/conversations/${conversationId}/mark-read`, {
+      method: 'POST',
+    });
+  }
+
+  // Voice Messages
+  async uploadVoiceMessage(audioBlob: Blob, conversationId: string, duration: number) {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'voice-message.m4a');
+    formData.append('conversationId', conversationId);
+    formData.append('duration', duration.toString());
+
+    return this.request('/voice-messages/upload', {
+      method: 'POST',
+      headers: {
+        // Don't set Content-Type for FormData
+      },
+      body: formData,
+    });
+  }
+
+  async getVoiceMessageUrl(messageId: string) {
+    return this.request(`/voice-messages/${messageId}/url`);
+  }
+
+  // Profile view tracking
+  async recordProfileView(viewedUserId: string) {
+    return this.request('/profile/view', {
+      method: 'POST',
+      body: JSON.stringify({ viewedUserId }),
+    });
+  }
+
+  async getProfileViewers() {
+    return this.request('/profile/view');
+  }
+
+  // User management
+  async deleteProfile() {
+    return this.request('/profile', {
+      method: 'DELETE',
+    });
+  }
+
+  async getCurrentUser() {
+    return this.request('/user/me');
+  }
+
+  // Blog APIs
+  async getBlogPosts(params: { page?: number; pageSize?: number; category?: string } = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set('page', params.page.toString());
+    if (params.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+    if (params.category) searchParams.set('category', params.category);
+    
+    return this.request(`/blog?${searchParams}`);
+  }
+
+  async getBlogPost(slug: string) {
+    return this.request(`/blog/${slug}`);
+  }
+
+  async createBlogPost(blogData: {
+    title: string;
+    slug: string;
+    excerpt: string;
+    content: string;
+    imageUrl?: string;
+    categories: string[];
+  }) {
+    return this.request('/blog', {
+      method: 'POST',
+      body: JSON.stringify(blogData),
+    });
+  }
+
+  async deleteBlogPost(id: string) {
+    return this.request('/blog', {
+      method: 'DELETE',
+      body: JSON.stringify({ _id: id }),
+    });
+  }
+
+  async getBlogImages() {
+    return this.request('/images/blog');
+  }
+
+  // Contact & Support
+  async submitContactForm(contactData: {
+    email: string;
+    name: string;
+    subject: string;
+    message: string;
+  }) {
+    return this.request('/contact', {
+      method: 'POST',
+      body: JSON.stringify(contactData),
+    });
+  }
+
+  async getContactSubmissions() {
+    return this.request('/contact');
+  }
+
+  // AI Chat
+  async sendChatMessage(data: { messages: any[]; email: string }) {
+    return this.request('/gemini-chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async saveChatbotMessage(messageData: any) {
+    return this.request('/saveChatbotMessage', {
+      method: 'POST',
+      body: JSON.stringify(messageData),
+    });
+  }
+
+  async convertAITextToHTML(text: string) {
+    return this.request('/convert-ai-text-to-html', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  // Push Notifications
+  async registerForPushNotifications(playerId: string) {
+    return this.request('/push/register', {
+      method: 'POST',
+      body: JSON.stringify({ playerId }),
+    });
+  }
+
+  // Interest Management - Extended
+  async getInterests(params: { userId?: string } = {}) {
+    const searchParams = new URLSearchParams();
+    if (params.userId) searchParams.set('userId', params.userId);
+    
+    return this.request(`/interests?${searchParams}`);
+  }
+
+  async respondToInterestByStatus(data: { interestId: string; status: 'accepted' | 'rejected' }) {
+    return this.request('/interests/respond', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Messaging - Extended
+  async getConversationEvents(conversationId: string) {
+    return this.request(`/conversations/${conversationId}/events`);
+  }
+
+  // Public APIs (no auth required)
+  async getPublicProfile() {
+    return this.request('/public-profile');
+  }
+
+  async getProfileDetailImages(profileId: string) {
+    return this.request(`/profile-detail/${profileId}/images`);
+  }
+
+  // Search - Extended
+  async searchImages(params: any) {
+    const searchParams = new URLSearchParams(params);
+    return this.request(`/search-images?${searchParams}`);
   }
 }
 

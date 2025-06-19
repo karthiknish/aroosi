@@ -125,6 +125,33 @@ export interface ApiResponse<T = any> {
   message?: string;
 }
 
+export interface UserReport {
+  id: string;
+  reporterId: string;
+  reportedUserId: string;
+  reason: string;
+  description?: string;
+  status: 'pending' | 'reviewed' | 'resolved';
+  createdAt: string;
+}
+
+export interface BlockedUser {
+  id: string;
+  blockerId: string;
+  blockedUserId: string;
+  blockedProfile: Profile;
+  createdAt: string;
+}
+
+export type ReportReason = 
+  | 'inappropriate_content'
+  | 'harassment'
+  | 'fake_profile'
+  | 'spam'
+  | 'safety_concern'
+  | 'inappropriate_behavior'
+  | 'other';
+
 // Navigation types
 export interface RootStackParamList {
   index: undefined;

@@ -1,6 +1,184 @@
 {
-  "name": "aroosi",
-  "slug": "aroosi",
-  "jsEngine": "hermes",
-  "icon": "./assets/icon.png"
+  "expo": {
+    "name": "Aroosi - Afghan Matrimony",
+    "slug": "aroosi-matrimony",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "jsEngine": "hermes",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aroosi.matrimony",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "Aroosi needs camera access to take profile photos and verify your identity.",
+        "NSPhotoLibraryUsageDescription": "Aroosi needs photo library access to select profile photos from your gallery.",
+        "NSMicrophoneUsageDescription": "Aroosi needs microphone access to record voice messages in conversations.",
+        "NSLocationWhenInUseUsageDescription": "Aroosi uses your location to show nearby matches and improve search results.",
+        "NSFaceIDUsageDescription": "Aroosi uses Face ID for secure and convenient authentication.",
+        "NSContactsUsageDescription": "Aroosi can access your contacts to help you find friends who are also using the app.",
+        "NSUserTrackingUsageDescription": "Aroosi uses tracking to provide personalized match recommendations and improve your experience.",
+        "UIBackgroundModes": ["background-fetch", "remote-notification"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:aroosi.com",
+        "applinks:www.aroosi.com"
+      ],
+      "privacy": {
+        "microphone": {
+          "microphoneUsageDescription": "This app uses the microphone to record voice messages for conversations."
+        },
+        "camera": {
+          "cameraUsageDescription": "This app uses the camera to take profile photos."
+        },
+        "photoLibrary": {
+          "photoLibraryUsageDescription": "This app accesses your photo library to select profile pictures."
+        },
+        "location": {
+          "locationWhenInUseUsageDescription": "This app uses location to show nearby matches."
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.aroosi.matrimony",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "aroosi.com"
+            },
+            {
+              "scheme": "https", 
+              "host": "www.aroosi.com"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/notification.wav"],
+          "mode": "production"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Aroosi needs access to your photo library to select profile pictures.",
+          "cameraPermission": "Aroosi needs camera access to take profile photos."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Aroosi uses your location to show nearby matches and improve search results."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to authenticate and secure your account."
+        }
+      ],
+      [
+        "expo-secure-store"
+      ],
+      [
+        "@clerk/clerk-expo/plugin"
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "13.0"
+          },
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 21
+          }
+        }
+      ]
+    ],
+    "scheme": "aroosi",
+    "owner": "karthik-nishanth",
+    "privacy": "unlisted",
+    "platforms": ["ios", "android"],
+    "primaryColor": "#e91e63",
+    "backgroundColor": "#ffffff",
+    "orientation": "portrait",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a91c25c4-cfe1-4cee-87b4-d6c86cdee36b"
+      },
+      "oneSignalAppId": "f4532461-45fa-46ff-a5fc-7dc972860746",
+      "clerkPublishableKey": "pk_test_ZXhjaXRlZC1wbGF0eXB1cy0xMC5jbGVyay5hY2NvdW50cy5kZXYk",
+      "convexUrl": "https://quirky-akita-969.convex.cloud",
+      "stripePublishableKey": "pk_test_51RatRgFPChdEFyQJ5Zuo1T00R6VCxaRKoAtewS0aD9WJ4RMXKOZJCs6FPP2mdRkZMR2OPm2rBocoIwqtTYhLkGd800B4hPgFy1",
+      "premiumPriceId": "price_1RatU9FPChdEFyQJoGzwrVRN",
+      "premiumPlusPriceId": "price_1RatwgFPChdEFyQJTt0ZKxMl"
+    },
+    "hooks": {
+      "postPublish": [
+        {
+          "file": "sentry-expo/upload-sourcemaps",
+          "config": {
+            "organization": "aroosi",
+            "project": "aroosi-mobile"
+          }
+        }
+      ]
+    }
+  }
 }

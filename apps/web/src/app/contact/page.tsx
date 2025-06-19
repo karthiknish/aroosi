@@ -4,11 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState } from "react";
 import { submitContactPublic } from "@/lib/contactUtil";
+import {
+  Mail,
+  Send,
+  MessageSquare,
+  Clock,
+  ArrowRight,
+  Check,
+} from "lucide-react";
 
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -56,186 +65,241 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="bg-base-light pt-24 sm:pt-28 md:pt-32 pb-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Pink color pop circles */}
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-primary rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
-      <motion.main
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-2xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl relative z-20"
-      >
-        <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-neutral relative inline-block">
-            Contact Us
-            <svg
-              className="absolute -bottom-2 left-0 w-full"
-              height="6"
-              viewBox="0 0 200 6"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M0 3C50 0.5 150 0.5 200 3"
-                stroke="#FDA4AF"
-                strokeWidth="5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </h1>
-          <p className="mt-2 text-lg font-sans text-neutral-light">
-            We&apos;d love to hear from you! Send us a message using the form
-            below.
-          </p>
-        </div>
+    <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      {/* Decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-gradient-to-tr from-blue-300 to-indigo-300 rounded-full opacity-15 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-amber-200 to-yellow-200 rounded-full opacity-10 blur-2xl" />
+      </div>
 
-        {isSubmitted ? (
+      <div className="relative pt-32 pb-16 px-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Hero Section */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center p-6 bg-primary-light border border-primary-200 rounded-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-20"
           >
-            <h2 className="text-2xl font-serif font-bold text-primary-700">
-              Thank You!
-            </h2>
-            <p className="mt-2 font-sans text-primary-600">
-              Your message has been sent successfully. We&apos;ll get back to
-              you soon.
+            <h1
+              style={{
+                lineHeight: "1.3",
+              }}
+              className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent leading-normal"
+            >
+              Get in Touch
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Have a question or need assistance? We&apos;re here to help. Reach
+              out to us and we&apos;ll respond as quickly as possible.
             </p>
-            <Button
-              onClick={() => setIsSubmitted(false)}
-              className="mt-6 bg-danger hover:bg-danger/90"
-            >
-              Send Another Message
-            </Button>
+            <div className="flex justify-center space-x-8 text-sm text-gray-500">
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4 text-green-500" />
+                24/7 Support
+              </span>
+              <span className="flex items-center gap-1">
+                <MessageSquare className="w-4 h-4 text-green-500" />
+                Quick Response
+              </span>
+              <span className="flex items-center gap-1">
+                <Check className="w-4 h-4 text-green-500" />
+                Friendly Team
+              </span>
+            </div>
           </motion.div>
-        ) : (
-          <motion.form
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
+
+          {/* Contact Form */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="max-w-2xl mx-auto"
           >
-            <div>
-              <Label
-                htmlFor="name"
-                className="block text-sm font-medium text-neutral mb-1"
-              >
-                Full Name
-              </Label>
-              <Input
-                id="name"
-                {...register("name")}
-                placeholder="Your Name"
-                className={`${errors.name ? "border-danger" : ""}`}
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-danger">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
+            <Card className="bg-white/80 backdrop-blur-sm shadow-xl p-8">
+              {isSubmitted ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center py-16"
+                >
+                  <div className="mb-6">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                      <Check className="w-8 h-8 text-green-600" />
+                    </div>
+                  </div>
+                  <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                    Message Sent Successfully!
+                  </h2>
+                  <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                    Thank you for reaching out. We&apos;ve received your message
+                    and will get back to you within 24 hours.
+                  </p>
+                  <Button
+                    onClick={() => setIsSubmitted(false)}
+                    className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                  >
+                    <div className="flex items-center gap-2">
+                      Send Another Message
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </Button>
+                </motion.div>
+              ) : (
+                <>
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                      Send us a Message
+                    </h2>
+                    <p className="text-gray-600">
+                      Fill out the form below and we&apos;ll get back to you
+                      soon
+                    </p>
+                  </div>
 
-            <div>
-              <Label
-                htmlFor="email"
-                className="block text-sm font-medium text-neutral mb-1"
-              >
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                {...register("email")}
-                placeholder="you@example.com"
-                className={`${errors.email ? "border-danger" : ""}`}
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-danger">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
+                  <motion.form
+                    onSubmit={handleSubmit(onSubmit)}
+                    className="space-y-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                  >
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div>
+                        <Label
+                          htmlFor="name"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Full Name
+                        </Label>
+                        <Input
+                          id="name"
+                          {...register("name")}
+                          placeholder="John Doe"
+                          className={`${errors.name ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                        />
+                        {errors.name && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {errors.name.message}
+                          </p>
+                        )}
+                      </div>
 
-            <div>
-              <Label
-                htmlFor="subject"
-                className="block text-sm font-medium text-neutral mb-1"
-              >
-                Subject
-              </Label>
-              <Input
-                id="subject"
-                {...register("subject")}
-                placeholder="Regarding..."
-                className={`${errors.subject ? "border-danger" : ""}`}
-              />
-              {errors.subject && (
-                <p className="mt-1 text-sm text-danger">
-                  {errors.subject.message}
-                </p>
-              )}
-            </div>
+                      <div>
+                        <Label
+                          htmlFor="email"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Email Address
+                        </Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          {...register("email")}
+                          placeholder="john@example.com"
+                          className={`${errors.email ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                        />
+                        {errors.email && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {errors.email.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-            <div>
-              <Label
-                htmlFor="message"
-                className="block text-sm font-medium text-neutral mb-1"
-              >
-                Message
-              </Label>
-              <Textarea
-                id="message"
-                {...register("message")}
-                placeholder="Your message here..."
-                rows={5}
-                className={`${errors.message ? "border-danger" : ""}`}
-              />
-              {errors.message && (
-                <p className="mt-1 text-sm text-danger">
-                  {errors.message.message}
-                </p>
-              )}
-            </div>
+                    <div>
+                      <Label
+                        htmlFor="subject"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Subject
+                      </Label>
+                      <Input
+                        id="subject"
+                        {...register("subject")}
+                        placeholder="How can we help?"
+                        className={`${errors.subject ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                      />
+                      {errors.subject && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.subject.message}
+                        </p>
+                      )}
+                    </div>
 
-            {submitError && (
-              <p className="text-sm text-danger bg-danger/10 p-3 rounded-md">
-                {submitError}
+                    <div>
+                      <Label
+                        htmlFor="message"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Message
+                      </Label>
+                      <Textarea
+                        id="message"
+                        {...register("message")}
+                        placeholder="Tell us more about your inquiry..."
+                        rows={5}
+                        className={`${errors.message ? "border-red-500 focus:border-red-500" : "border-gray-300"}`}
+                      />
+                      {errors.message && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.message.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {submitError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                        {submitError}
+                      </div>
+                    )}
+
+                    <div>
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-50"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          {isSubmitting ? "Sending..." : "Send Message"}
+                          <Send className="w-4 h-4" />
+                        </div>
+                      </Button>
+                    </div>
+                  </motion.form>
+                </>
+              )}
+            </Card>
+          </motion.div>
+          <motion.div
+            className="max-w-2xl mx-auto mt-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            <Card className="p-6 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 h-full">
+              <div className="flex justify-center mb-4">
+                <div className="p-3 rounded-full bg-pink-100 text-pink-600">
+                  <Mail className="w-6 h-6" />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2 text-center">
+                Email Us
+              </h3>
+              <p className="text-gray-600 text-center mb-4">
+                Send us an email anytime
               </p>
-            )}
-
-            <div>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-primary-dark hover:bg-primary-light disabled:bg-primary-light text-white"
+              <a
+                href="mailto:contact@aroosi.app"
+                className="text-pink-600 hover:text-pink-700 font-medium text-center block hover:underline"
               >
-                {isSubmitting ? "Sending..." : "Send Message"}
-              </Button>
-            </div>
-          </motion.form>
-        )}
-
-        <div className="mt-10 pt-8 border-t border-gray-200 text-center">
-          <h3 className="text-xl font-semibold text-gray-800">
-            Other ways to reach us:
-          </h3>
-          <p className="mt-2 text-gray-600">
-            Email:{" "}
-            <a
-              href="mailto:contact@aroosi.app"
-              className="text-primary-light hover:underline"
-            >
-              contact@aroosi.app
-            </a>
-          </p>
-          {/* Add physical address or phone if applicable */}
-          {/* <p className="mt-1 text-gray-600">Phone: +44 XXXXXXXXXX</p> */}
-          {/* <p className="mt-1 text-gray-600">123 Matrimony Lane, London, UK</p> */}
+                contact@aroosi.app
+              </a>
+            </Card>
+          </motion.div>
         </div>
-      </motion.main>
+      </div>
     </div>
   );
 }

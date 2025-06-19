@@ -14,15 +14,23 @@ import { useSignIn } from "@clerk/clerk-expo";
 import { Button, Input } from "../../components/ui";
 import { Colors, Layout } from "../../constants";
 import { ValidationRules } from "../../utils/validation";
+import PlatformInput from "../../components/ui/PlatformInput";
+import PlatformButton from "../../components/ui/PlatformButton";
+import PlatformHaptics from "../../utils/PlatformHaptics";
+// @ts-expect-error - Expo vector icons
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ForgotPasswordScreen() {
   const { signIn, isLoaded } = useSignIn();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [successfulCreation, setSuccessfulCreation] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [resendTimer, setResendTimer] = useState(0);
 
   const validateEmail = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -37,8 +45,47 @@ export default function ForgotPasswordScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const validateResetForm = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!code || code.length !== 6) {
+      newErrors.code = "Please enter the 6-digit verification code";
+    }
+
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else if (password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const startResendTimer = () => {
+    setResendTimer(60);
+    const interval = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handleSendResetCode = async () => {
-    if (!isLoaded || !validateEmail()) return;
+    if (!isLoaded || !validateEmail()) {
+      await PlatformHaptics.error();
+      return;
+    }
 
     setLoading(true);
     try {
@@ -46,9 +93,13 @@ export default function ForgotPasswordScreen() {
         strategy: "reset_password_email_code",
         identifier: emailAddress,
       });
+      await PlatformHaptics.success();
       setSuccessfulCreation(true);
+      startResendTimer();
     } catch (err: any) {
       console.error("Password reset error:", err);
+      await PlatformHaptics.error();
+      
       let errorMessage = "Failed to send reset code. Please try again.";
       
       if (err.errors?.[0]?.message) {
@@ -61,8 +112,32 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  const handleResendCode = async () => {
+    if (resendTimer > 0) return;
+    
+    setResendLoading(true);
+    try {
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: emailAddress,
+      });
+      await PlatformHaptics.light();
+      Alert.alert("Code Sent", "A new verification code has been sent to your email.");
+      startResendTimer();
+    } catch (err: any) {
+      console.error("Resend error:", err);
+      await PlatformHaptics.error();
+      Alert.alert("Error", "Failed to resend code. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   const handleResetPassword = async () => {
-    if (!isLoaded) return;
+    if (!isLoaded || !validateResetForm()) {
+      await PlatformHaptics.error();
+      return;
+    }
 
     setLoading(true);
     try {
@@ -73,9 +148,10 @@ export default function ForgotPasswordScreen() {
       });
 
       if (result.status === "complete") {
+        await PlatformHaptics.success();
         Alert.alert(
           "Password Reset Complete",
-          "Your password has been successfully reset.",
+          "Your password has been successfully reset. You can now sign in with your new password.",
           [
             {
               text: "OK",
@@ -86,6 +162,8 @@ export default function ForgotPasswordScreen() {
       }
     } catch (err: any) {
       console.error("Password reset confirmation error:", err);
+      await PlatformHaptics.error();
+      
       let errorMessage = "Failed to reset password. Please try again.";
       
       if (err.errors?.[0]?.message) {
@@ -107,6 +185,9 @@ export default function ForgotPasswordScreen() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="mail-outline" size={64} color={Colors.primary[500]} />
+              </View>
               <Text style={styles.title}>Check your email</Text>
               <Text style={styles.subtitle}>
                 We've sent a password reset code to {emailAddress}
@@ -114,17 +195,19 @@ export default function ForgotPasswordScreen() {
             </View>
 
             <View style={styles.form}>
-              <Input
+              <PlatformInput
                 label="Reset Code"
                 value={code}
                 onChangeText={setCode}
                 placeholder="Enter 6-digit code"
                 keyboardType="number-pad"
                 maxLength={6}
+                error={errors.code}
                 required
+                leftIcon="key-outline"
               />
 
-              <Input
+              <PlatformInput
                 label="New Password"
                 value={password}
                 onChangeText={setPassword}
@@ -132,22 +215,37 @@ export default function ForgotPasswordScreen() {
                 secureTextEntry
                 autoComplete="password-new"
                 hint="Must be at least 8 characters"
+                error={errors.password}
                 required
+                leftIcon="lock-closed-outline"
               />
 
-              <Button
+              <PlatformInput
+                label="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm your new password"
+                secureTextEntry
+                autoComplete="password-new"
+                error={errors.confirmPassword}
+                required
+                leftIcon="lock-closed-outline"
+              />
+
+              <PlatformButton
                 title="Reset Password"
                 onPress={handleResetPassword}
                 loading={loading}
-                disabled={loading || !code || !password}
-                fullWidth
+                style={styles.resetButton}
               />
 
-              <Button
-                title="Resend Code"
-                variant="ghost"
-                onPress={handleSendResetCode}
-                disabled={loading}
+              <PlatformButton
+                title={resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend Code"}
+                variant="outline"
+                onPress={handleResendCode}
+                loading={resendLoading}
+                disabled={resendTimer > 0 || resendLoading}
+                style={styles.resendButton}
               />
             </View>
 
@@ -171,6 +269,9 @@ export default function ForgotPasswordScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="lock-open-outline" size={64} color={Colors.primary[500]} />
+            </View>
             <Text style={styles.title}>Forgot Password?</Text>
             <Text style={styles.subtitle}>
               Enter your email address and we'll send you a code to reset your password
@@ -178,7 +279,7 @@ export default function ForgotPasswordScreen() {
           </View>
 
           <View style={styles.form}>
-            <Input
+            <PlatformInput
               label="Email Address"
               value={emailAddress}
               onChangeText={setEmailAddress}
@@ -188,14 +289,14 @@ export default function ForgotPasswordScreen() {
               autoComplete="email"
               error={errors.email}
               required
+              leftIcon="mail-outline"
             />
 
-            <Button
+            <PlatformButton
               title="Send Reset Code"
               onPress={handleSendResetCode}
               loading={loading}
-              disabled={loading}
-              fullWidth
+              style={styles.sendButton}
             />
           </View>
 
@@ -227,6 +328,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Layout.spacing.xxl,
   },
+
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.primary[50],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Layout.spacing.lg,
+  },
   
   title: {
     fontSize: Layout.typography.fontSize["2xl"],
@@ -256,5 +367,17 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: Layout.typography.fontSize.base,
     color: Colors.text.secondary,
+  },
+
+  sendButton: {
+    marginTop: Layout.spacing.md,
+  },
+
+  resetButton: {
+    marginTop: Layout.spacing.md,
+  },
+
+  resendButton: {
+    marginTop: Layout.spacing.sm,
   },
 });

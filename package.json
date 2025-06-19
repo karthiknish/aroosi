@@ -11,6 +11,7 @@
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:mobile": "npm run start --workspace=apps/mobile",
+    "dev:convex": "convex dev",
     "build": "npm run build --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
     "start": "npm run start --workspace=apps/web",
@@ -136,6 +137,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@expo/config-plugins": "10.0.3",
     "@playwright/test": "^1.53.0",
     "@types/jest": "^29.0.0",
     "@types/lodash": "4.17.18",

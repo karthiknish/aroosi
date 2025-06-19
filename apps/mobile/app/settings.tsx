@@ -17,11 +17,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Card } from "../components/ui";
 import { Colors, Layout } from "../constants";
 import { userPreferences, UserPreferences, onboarding } from "../utils/storage";
+import { useMatrimonyAppRating } from "../hooks/useAppRating";
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(true);
+  const rating = useMatrimonyAppRating();
 
   useEffect(() => {
     loadPreferences();
@@ -97,6 +99,17 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleRateApp = async () => {
+    try {
+      const result = await rating.showRatingPrompt();
+      if (result.action === 'rate') {
+        Alert.alert("Thank You!", "Thank you for rating Aroosi!");
+      }
+    } catch (error) {
+      console.error("Error showing rating prompt:", error);
+    }
+  };
+
   if (loading || !preferences) {
     return (
       <SafeAreaView style={styles.container}>
@@ -113,6 +126,14 @@ export default function SettingsScreen() {
         {/* Notifications */}
         <Card style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Notifications</Text>
+          
+          <SettingRow
+            icon="notifications-outline"
+            title="Push Notifications"
+            subtitle="Manage notification settings and permissions"
+            onPress={() => router.push("/notification-settings")}
+            showChevron
+          />
           
           <SettingRow
             icon="heart-outline"
@@ -275,10 +296,15 @@ export default function SettingsScreen() {
             icon="mail-outline"
             title="Contact Us"
             subtitle="Send us your feedback"
-            onPress={() => {
-              // TODO: Open contact form
-              Alert.alert("Coming Soon", "Contact form will be available soon.");
-            }}
+            onPress={() => router.push("/contact")}
+            showChevron
+          />
+          
+          <SettingRow
+            icon="star-outline"
+            title="Rate Aroosi"
+            subtitle="Rate us in the app store"
+            onPress={handleRateApp}
             showChevron
           />
           

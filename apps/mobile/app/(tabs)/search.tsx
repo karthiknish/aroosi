@@ -9,6 +9,7 @@ import {
   State,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 // @ts-expect-error deck swiper types
 import Swiper from "react-native-deck-swiper";
 // @ts-expect-error expo vector icons
@@ -18,38 +19,117 @@ import { Colors, Layout } from "../../constants";
 import { useApiClient } from "../../utils/api";
 import { Profile } from "../../types";
 import { formatAge, formatCity } from "../../utils/formatting";
+// @ts-expect-error clerk expo types
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useMatrimonyAppRating } from "../../hooks/useAppRating";
+import PlatformHaptics from "../../utils/PlatformHaptics";
+import { useStorage } from "../../utils/storage";
+import { SearchFilters } from "../../types";
+import { useInterests } from "../../hooks/useInterests";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function SearchScreen() {
   const apiClient = useApiClient();
+  const { user } = useUser();
+  const storage = useStorage();
+  const { sendInterest } = useInterests();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<SearchFilters>({});
   const swiperRef = useRef<any>(null);
+  const rating = useMatrimonyAppRating();
 
   useEffect(() => {
-    loadProfiles();
+    loadFiltersAndProfiles();
   }, []);
+
+  // Listen for focus to reload when returning from filters
+  useEffect(() => {
+    const unsubscribe = router.subscribe?.(() => {
+      // Reload when returning from filters screen
+      loadFiltersAndProfiles();
+    });
+    
+    return unsubscribe;
+  }, []);
+
+  const loadFiltersAndProfiles = async () => {
+    await loadSavedFilters();
+    await loadProfiles();
+  };
+
+  const loadSavedFilters = async () => {
+    try {
+      const savedFilters = await storage.getItem("search_filters");
+      if (savedFilters) {
+        setFilters(JSON.parse(savedFilters));
+      }
+    } catch (error) {
+      console.error("Error loading saved filters:", error);
+    }
+  };
 
   const loadProfiles = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.searchProfiles({
+      setError(null);
+      
+      // Convert UI filters to API format
+      const searchParams = {
         page: 0,
         pageSize: 10,
-      });
+        ...formatFiltersForAPI(filters),
+      };
+      
+      const response = await apiClient.searchProfiles(searchParams);
 
       if (response.success && response.data?.profiles) {
         setProfiles(response.data.profiles);
         setCurrentIndex(0);
+        await PlatformHaptics.light();
+      } else {
+        setError(response.error || 'Failed to load profiles');
+        await PlatformHaptics.error();
       }
     } catch (error) {
       console.error("Error loading profiles:", error);
+      setError('Network error. Please check your connection.');
+      await PlatformHaptics.error();
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatFiltersForAPI = (filters: SearchFilters) => {
+    const apiFilters: any = {};
+    
+    if (filters.ageMin && filters.ageMin !== 'any') {
+      apiFilters.ageMin = parseInt(filters.ageMin);
+    }
+    if (filters.ageMax && filters.ageMax !== 'any') {
+      apiFilters.ageMax = parseInt(filters.ageMax);
+    }
+    if (filters.city && filters.city !== 'any') {
+      apiFilters.city = filters.city;
+    }
+    if (filters.education && filters.education !== 'any') {
+      apiFilters.education = filters.education;
+    }
+    if (filters.occupation && filters.occupation !== 'any') {
+      apiFilters.occupation = filters.occupation;
+    }
+    if (filters.maritalStatus && filters.maritalStatus !== 'any') {
+      apiFilters.maritalStatus = filters.maritalStatus;
+    }
+    if (filters.religion && filters.religion !== 'any') {
+      apiFilters.religion = filters.religion;
+    }
+    
+    return apiFilters;
   };
 
   const loadMoreProfiles = async () => {
@@ -58,10 +138,14 @@ export default function SearchScreen() {
     try {
       setLoadingMore(true);
       const nextPage = Math.floor(profiles.length / 10);
-      const response = await apiClient.searchProfiles({
+      
+      const searchParams = {
         page: nextPage,
         pageSize: 10,
-      });
+        ...formatFiltersForAPI(filters),
+      };
+      
+      const response = await apiClient.searchProfiles(searchParams);
 
       if (response.success && response.data?.profiles) {
         setProfiles(prev => [...prev, ...response.data.profiles]);
@@ -73,28 +157,57 @@ export default function SearchScreen() {
     }
   };
 
-  const handleSwipeLeft = (cardIndex: number) => {
-    console.log("Swiped left on:", profiles[cardIndex]?.fullName);
-    // Handle pass/reject logic here
+  const handleSwipeLeft = async (cardIndex: number) => {
+    const profile = profiles[cardIndex];
+    if (!profile) return;
+
+    console.log("Swiped left on:", profile.fullName);
+    await PlatformHaptics.light();
+    
+    // Record significant event for app rating
+    await rating.recordSignificantEvent('profile_viewed');
   };
 
   const handleSwipeRight = async (cardIndex: number) => {
     const profile = profiles[cardIndex];
-    if (!profile) return;
+    if (!profile || !user) return;
 
     console.log("Swiped right on:", profile.fullName);
     
     try {
-      // Send interest
-      await apiClient.sendInterest(profile.id, "current-user-id"); // TODO: Get current user ID
+      await PlatformHaptics.medium();
+      
+      // Send interest using the hook
+      const success = await sendInterest(profile.id);
+      
+      if (success) {
+        console.log("Interest sent successfully");
+        await PlatformHaptics.success();
+        
+        // Record significant events for app rating
+        await rating.recordInterest();
+      } else {
+        console.error("Failed to send interest");
+        await PlatformHaptics.error();
+      }
     } catch (error) {
       console.error("Error sending interest:", error);
+      await PlatformHaptics.error();
     }
   };
 
-  const handleCardPress = (cardIndex: number) => {
+  const handleCardPress = async (cardIndex: number) => {
+    const profile = profiles[cardIndex];
+    if (!profile) return;
+
+    console.log("Pressed on profile:", profile.fullName);
+    await PlatformHaptics.light();
+    
+    // Record profile view for app rating
+    await rating.recordProfileView();
+    
     // Navigate to profile detail
-    console.log("Pressed on profile:", profiles[cardIndex]?.fullName);
+    router.push(`/profile/${profile.id}`);
   };
 
   const renderProfileCard = (profile: Profile, index: number) => {
@@ -190,15 +303,34 @@ export default function SearchScreen() {
         onPress={loadProfiles}
         variant="outline"
         style={styles.refreshButton}
+        loading={loading}
       />
     </View>
   );
 
-  if (loading) {
+  const renderErrorState = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="alert-circle-outline" size={64} color={Colors.error[400]} />
+      <Text style={styles.emptyTitle}>Oops! Something went wrong</Text>
+      <Text style={styles.emptySubtitle}>
+        {error || 'Unable to load profiles. Please try again.'}
+      </Text>
+      <Button
+        title="Try Again"
+        onPress={loadProfiles}
+        variant="primary"
+        style={styles.refreshButton}
+        loading={loading}
+      />
+    </View>
+  );
+
+  if (loading && profiles.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text>Loading profiles...</Text>
+          <Ionicons name="heart" size={48} color={Colors.primary[500]} style={styles.loadingIcon} />
+          <Text style={styles.loadingText}>Finding amazing people for you...</Text>
         </View>
       </SafeAreaView>
     );
@@ -215,14 +347,16 @@ export default function SearchScreen() {
           size="sm"
           icon={<Ionicons name="options-outline" size={20} color={Colors.primary[500]} />}
           onPress={() => {
-            // Navigate to filters
+            router.push("/search-filters");
           }}
         />
       </View>
 
       {/* Swiper */}
       <View style={styles.swiperContainer}>
-        {profiles.length > 0 ? (
+        {error ? (
+          renderErrorState()
+        ) : profiles.length > 0 ? (
           <Swiper
             ref={swiperRef}
             cards={profiles}
@@ -298,6 +432,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: Layout.spacing.xl,
+  },
+
+  loadingIcon: {
+    marginBottom: Layout.spacing.lg,
+  },
+
+  loadingText: {
+    fontSize: Layout.typography.fontSize.lg,
+    color: Colors.text.secondary,
+    textAlign: "center",
   },
   
   header: {

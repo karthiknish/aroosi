@@ -5,12 +5,14 @@ import { Redirect } from "expo-router";
 // @ts-expect-error clerk expo types
 import { useAuth } from "@clerk/clerk-expo";
 import { Colors } from "../constants";
+import { useOnboarding } from "../hooks/useOnboarding";
 
 export default function IndexScreen() {
   const { isSignedIn, isLoaded } = useAuth();
+  const { shouldShow: shouldShowOnboarding, isLoading: onboardingLoading } = useOnboarding();
 
-  // Show loading spinner while auth is loading
-  if (!isLoaded) {
+  // Show loading spinner while auth and onboarding are loading
+  if (!isLoaded || onboardingLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary[500]} />
@@ -18,8 +20,13 @@ export default function IndexScreen() {
     );
   }
 
-  // Redirect based on authentication status
+  // Redirect based on authentication status and onboarding state
   if (isSignedIn) {
+    // If user needs onboarding, redirect to onboarding
+    if (shouldShowOnboarding) {
+      return <Redirect href="/onboarding" />;
+    }
+    // Otherwise, go to main app
     return <Redirect href="/(tabs)/search" />;
   } else {
     return <Redirect href="/(auth)/welcome" />;
