@@ -77,6 +77,8 @@ export default function ProtectedRoute({
         pathname === "/profile/edit" || pathname.startsWith("/profile/edit/"),
       isCreateProfileRoute:
         pathname === "/create-profile" ||
+        pathname.startsWith("/create-profile") ||
+        pathname === "/create-profile" ||
         pathname.startsWith("/create-profile"),
     }),
     [pathname]
@@ -174,7 +176,13 @@ export default function ProtectedRoute({
       // 1. If either flag is false, keep user on /create-profile until completed
       if (!profileComplete || !onboardingComplete) {
         if (!isCreateProfileRoute) {
-          handleNavigation("/create-profile");
+          // Check if we have pending onboarding data from the home page
+          const pendingData = localStorage.getItem("pendingProfileData");
+          if (pendingData) {
+            handleNavigation("/create-profile");
+          } else {
+            handleNavigation("/create-profile");
+          }
           return;
         }
       }

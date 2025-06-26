@@ -3,7 +3,6 @@
 import Head from "next/head";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Heart,
   Users,
@@ -15,6 +14,7 @@ import {
 import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { HeroOnboarding } from "@/components/home/HeroOnboarding";
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: (i = 0) => ({
@@ -143,98 +143,79 @@ export default function HomePage() {
             {/* Dark overlay for better text readability */}
             <div className="absolute inset-0 bg-black/50 z-0"></div>
             <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
-            {/* Decorative background patterns */}
-            <div className="relative z-10 w-full max-w-2xl mx-auto text-center space-y-6">
-              <div
-                className="font-serif text-lg font-bold text-white drop-shadow-sm"
-                style={{ fontFamily: "Boldonse, serif" }}
-              >
-<h1 style={{
-  lineHeight: "1.4",
-}} className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-normal">
-             Connect with Afghans Worldwide
-                </h1>
+            {/* Main content container */}
+            <div className="relative z-10 w-full max-w-7xl mx-auto px-4 lg:px-8">
+              <div className="grid lg:grid-cols-2 gap-12 items-center">
+                {/* Left side - Text content */}
+                <div className="text-center lg:text-left space-y-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <h1 
+                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-normal text-white"
+                      style={{ fontFamily: "Boldonse, serif", lineHeight: "1.2" }}
+                    >
+                      Connect with Afghans Worldwide
+                    </h1>
+                  </motion.div>
+                  
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="font-nunito text-lg sm:text-xl text-white/90 leading-relaxed"
+                  >
+                    Join thousands of Afghan singles who are finding their soulmate
+                    through Aroosi. Our trusted platform connects Afghan
+                    singles and families across the globe for meaningful relationships and
+                    marriage.
+                  </motion.p>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                    className="flex flex-wrap gap-8 justify-center lg:justify-start pt-4"
+                  >
+                    <div className="text-center">
+                      <div className="font-serif text-3xl font-bold text-white">
+                        2025
+                      </div>
+                      <div className="font-nunito text-sm text-white/80">
+                        Launch Year
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-serif text-3xl font-bold text-white">
+                        100%
+                      </div>
+                      <div className="font-nunito text-sm text-white/80">
+                        Verified Profiles
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-serif text-3xl font-bold text-white">
+                        1000+
+                      </div>
+                      <div className="font-nunito text-sm text-white/80">
+                        Happy Couples
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Right side - Onboarding form */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  className="w-full"
+                >
+                  <HeroOnboarding />
+                </motion.div>
               </div>
-          
-              <motion.p
-                variants={fadeInUp}
-                custom={0.3}
-                className="font-nunito text-lg text-white leading-relaxed"
-              >
-                Join Afghans worldwide who are finding their soulmate
-                through Aroosi. Our trusted platform connects Afghan
-                singles and families across the globe for meaningful relationships and
-                marriage.
-              </motion.p>
-              <motion.div
-                variants={fadeInUp}
-                custom={0.4}
-                className="flex flex-col sm:flex-row gap-4 justify-center"
-              >
-                <Link href="/signup">
-                  <Button
-                    size="lg"
-                    className="bg-primary-dark hover:bg-primary-light font-nunito text-base font-medium relative overflow-hidden group"
-                  >
-                    <span className="relative z-10 text-white flex items-center hover:text-primary-dark">
-                      Start Your Journey
-                      <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                    </span>
-                  </Button>
-                </Link>
-                <Link href="/contact">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-primary bg-white text-primary-dark hover:bg-primary-light font-nunito text-base font-medium relative overflow-hidden group"
-                  >
-                    <span className="relative z-10">Contact Us</span>
-                    <span className="absolute inset-0 bg-primary-light opacity-0 group-hover:opacity-30 transition-opacity"></span>
-                  </Button>
-                </Link>
-              </motion.div>
-              <motion.div
-                variants={fadeInUp}
-                custom={0.5}
-                className="items-center space-x-8 md:flex hidden pt-4 justify-center"
-              >
-                <div className="text-center relative flex-1 min-w-[120px]">
-                  <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                  <div
-                    className="font-serif text-lg font-bold text-white drop-shadow-sm"
-                    style={{ fontFamily: "Boldonse, serif" }}
-                  >
-                    2025
-                  </div>
-                  <div className="font-nunito text-sm text-white">
-                    Launch Year
-                  </div>
-                </div>
-                <div className="text-center relative flex-1 min-w-[120px]">
-                  <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                  <div
-                    className="font-serif text-lg font-bold text-white drop-shadow-sm"
-                    style={{ fontFamily: "Boldonse, serif" }}
-                  >
-                    GDPR-First
-                  </div>
-                  <div className="font-nunito text-sm text-white">
-                    Privacy & Security
-                  </div>
-                </div>
-                <div className="text-center relative flex-1 min-w-[120px]">
-                  <div className="absolute -inset-1 bg-primary-light shadow-lg rounded-xl -z-10"></div>
-                  <div
-                    className="font-serif text-lg font-bold text-white drop-shadow-sm"
-                    style={{ fontFamily: "Boldonse, serif" }}
-                  >
-                    Community
-                  </div>
-                  <div className="font-nunito text-sm text-white">
-                    Built For You
-                  </div>
-                </div>
-              </motion.div>
             </div>
           </section>
 

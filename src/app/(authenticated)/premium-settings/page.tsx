@@ -8,10 +8,8 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/utils/profileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { Eye, Crown, Zap, Users, Filter, MessageCircle, Heart, Settings, BarChart } from "lucide-react";
+import { Eye, Crown, Zap, Users, Filter, MessageCircle, Heart, BarChart } from "lucide-react";
 import type { SubscriptionPlan } from "@/types/profile";
-import { SubscriptionWidget } from "@/components/subscription/SubscriptionWidget";
-import { useSubscriptionGuard } from "@/hooks/useSubscription";
 
 export default function PremiumSettingsPage() {
   const { profile, token, refreshProfile } = useAuthContext();

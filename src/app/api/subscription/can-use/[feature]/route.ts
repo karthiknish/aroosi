@@ -17,13 +17,14 @@ type Feature = typeof validFeatures[number];
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { feature: string } }
+  context: { params: Promise<{ feature: string }> }
 ) {
   try {
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token } = authCheck;
     
+    const params = await context.params;
     const feature = params.feature as Feature;
     if (!validFeatures.includes(feature)) {
       return errorResponse(
