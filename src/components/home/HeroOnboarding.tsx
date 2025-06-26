@@ -161,14 +161,14 @@ export function HeroOnboarding() {
                       <SelectTrigger id="profileFor" className="w-full bg-white">
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="self">Myself</SelectItem>
-                        <SelectItem value="son">Son</SelectItem>
-                        <SelectItem value="daughter">Daughter</SelectItem>
-                        <SelectItem value="brother">Brother</SelectItem>
-                        <SelectItem value="sister">Sister</SelectItem>
-                        <SelectItem value="friend">Friend</SelectItem>
-                        <SelectItem value="relative">Relative</SelectItem>
+                      <SelectContent className="bg-white border border-gray-200 z-[100]" style={{ backgroundColor: 'white' }}>
+                        <SelectItem value="self" className="hover:bg-gray-50 focus:bg-gray-100">Myself</SelectItem>
+                        <SelectItem value="son" className="hover:bg-gray-50 focus:bg-gray-100">Son</SelectItem>
+                        <SelectItem value="daughter" className="hover:bg-gray-50 focus:bg-gray-100">Daughter</SelectItem>
+                        <SelectItem value="brother" className="hover:bg-gray-50 focus:bg-gray-100">Brother</SelectItem>
+                        <SelectItem value="sister" className="hover:bg-gray-50 focus:bg-gray-100">Sister</SelectItem>
+                        <SelectItem value="friend" className="hover:bg-gray-50 focus:bg-gray-100">Friend</SelectItem>
+                        <SelectItem value="relative" className="hover:bg-gray-50 focus:bg-gray-100">Relative</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -243,7 +243,7 @@ export function HeroOnboarding() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
+                      <PopoverContent className="w-auto p-0 bg-white" align="start">
                         <Calendar
                           mode="single"
                           selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
