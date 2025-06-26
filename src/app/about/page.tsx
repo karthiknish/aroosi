@@ -30,7 +30,7 @@ export default function AboutPage() {
     <div className="flex flex-col bg-base-light">
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 overflow-hidden bg-primary-dark">
+        <section className="relative py-20 lg:py-32 overflow-hidden bg-primary-light">
           {/* Decorative background patterns */}
           <div className="absolute inset-0 bg-gradient-to-br from-accent-light to-primary-light z-0"></div>
           <div
@@ -52,12 +52,12 @@ export default function AboutPage() {
               variants={fadeInUp}
             >
               <motion.div variants={fadeInUp} custom={0}>
-                <Badge className="bg-primary-dark text-base-light font-nunito px-4 py-1.5 rounded-full shadow-sm">
+                <Badge className="bg-primary-dark text-white font-nunito px-4 py-1.5 rounded-full shadow-sm">
                   About Aroosi
                 </Badge>
               </motion.div>
               <motion.h1
-                className="font-serif text-4xl lg:text-5xl font-bold text-neutral leading-tight"
+                className="font-serif text-4xl lg:text-5xl font-bold text-primary leading-tight"
                 variants={fadeInUp}
                 custom={1}
               >
@@ -75,8 +75,8 @@ export default function AboutPage() {
                 variants={fadeInUp}
                 custom={2}
               >
-                Aroosi was founded with a simple mission: to help Afghans worldwide
-                find their perfect life partner while honoring Afghan
+                Aroosi was founded with a simple mission: to help Afghans
+                worldwide find their perfect life partner while honoring Afghan
                 cultural values and traditions. Our journey began to bring the
                 global Afghan community together for meaningful marriages.
               </motion.p>
@@ -385,8 +385,8 @@ export default function AboutPage() {
                   variants={fadeInUp}
                   custom={1}
                 >
-                  From a small idea to the world&apos;s leading matrimony platform
-                  for Afghans worldwide.
+                  From a small idea to the world&apos;s leading matrimony
+                  platform for Afghans worldwide.
                 </motion.p>
               </motion.div>
 
