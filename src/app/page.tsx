@@ -37,9 +37,7 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        <title>
-          Aroosi - Afghan Matrimony Platform | Connecting Afghans Worldwide
-        </title>
+        <title>Aroosi - Number 1 Afghan Matrimony Site</title>
         <meta
           name="description"
           content="Join Aroosi, the premier Afghan matrimony platform connecting Afghan singles worldwide. Find your perfect match with our secure, culturally-focused matrimonial service trusted by the global Afghan community."
