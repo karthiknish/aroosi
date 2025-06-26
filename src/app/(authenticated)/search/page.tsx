@@ -22,6 +22,7 @@ import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
 import { ErrorState } from "@/components/ui/error-state";
 import { useOffline } from "@/hooks/useOffline";
 import { useBlockedUsers } from "@/hooks/useSafety";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
 
 const majorUkCities = [
   "London",
@@ -140,6 +141,7 @@ export interface ProfileSearchResult {
 export default function SearchProfilesPage() {
   const { token, isSignedIn } = useAuthContext();
   const router = useRouter();
+  const { trackUsage } = useUsageTracking();
   const [city, setCity] = React.useState("any");
   const [country, setCountry] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
@@ -148,6 +150,7 @@ export default function SearchProfilesPage() {
   const [page, setPage] = useState(0);
   const [pageSize] = useState(12);
   const [total, setTotal] = useState(0);
+  const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
 
   // Use util for search results
   // (token, page, pageSize, city, religion, ageMin, ageMax)
@@ -177,12 +180,28 @@ export default function SearchProfilesPage() {
   // Extract profiles and total from search results
   const { profiles = [], total: totalResults = 0 } = searchResults || {};
 
-  // Update total count for pagination
+  // Update total count for pagination and track search usage
   useEffect(() => {
     if (typeof totalResults === "number") {
       setTotal(totalResults);
+      
+      // Track search usage when results are loaded
+      if (totalResults > 0 && !hasTrackedSearch && !loadingProfiles) {
+        trackUsage({
+          feature: "search_performed",
+          metadata: {
+            searchQuery: JSON.stringify({ city, country, ageMin, ageMax }),
+          },
+        });
+        setHasTrackedSearch(true);
+      }
     }
-  }, [totalResults]);
+  }, [totalResults, hasTrackedSearch, loadingProfiles, trackUsage, city, country, ageMin, ageMax]);
+  
+  // Reset tracking flag when search parameters change
+  useEffect(() => {
+    setHasTrackedSearch(false);
+  }, [city, country, ageMin, ageMax]);
 
   // React Query for user images
   const {

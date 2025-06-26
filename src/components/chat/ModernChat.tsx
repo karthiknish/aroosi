@@ -5,6 +5,7 @@ import { useMatchMessages } from "@/lib/utils/useMatchMessages";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { useTypingIndicators } from "@/hooks/useTypingIndicators";
 import { useDeliveryReceipts } from "@/hooks/useDeliveryReceipts";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,6 +61,7 @@ function ModernChat({
   token,
 }: ModernChatProps) {
   const subscriptionStatus = useSubscriptionStatus(token);
+  const { trackUsage } = useUsageTracking();
   const {
     messages,
     loading,
@@ -285,6 +287,15 @@ function ModernChat({
         // Mark as sent (the actual message ID will be handled by the optimistic update)
         markMessageAsSent(tempMessageId);
         
+        // Track message usage
+        trackUsage({
+          feature: "message_sent",
+          metadata: {
+            targetUserId: matchUserId,
+            messageType: "text",
+          },
+        });
+        
         setText("");
         setIsNearBottom(true);
         // Focus back to input after sending
@@ -305,6 +316,7 @@ function ModernChat({
       userPlan,
       messages,
       currentUserId,
+      trackUsage,
       matchUserId,
       sendMessage,
     ]

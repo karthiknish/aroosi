@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("Unauthorized - No token provided", 401);
     }
 
-    const { feature } = await request.json();
+    const { feature, metadata } = await request.json();
     const validFeatures = [
       "message_sent",
       "profile_view",
@@ -35,67 +35,32 @@ export async function POST(request: NextRequest) {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
     convex.setAuth(token);
 
-    const userData = await convex.query(
-      api.users.getCurrentUserWithProfile,
-      {}
-    );
-    if (!userData || !userData.profile) {
-      return errorResponse("User profile not found", 404);
+    // Check if user can use the feature
+    const canUse = await convex.query(api.usageTracking.canUseFeature, { feature });
+    if (!canUse.canUse) {
+      return errorResponse(canUse.reason || "Feature usage limit reached", 403, {
+        limit: canUse.limit,
+        used: canUse.used,
+        resetDate: canUse.resetDate,
+      });
     }
 
-    const profile = userData.profile;
-    const plan = profile.subscriptionPlan || "free";
+    // Track the usage
+    await convex.mutation(api.usageTracking.trackUsage, { feature, metadata });
 
-    // Check if user has reached their limit for this feature
-    const limits = {
-      free: {
-        message_sent: 50,
-        profile_view: 10,
-        search_performed: 20,
-        interest_sent: 5,
-        profile_boost_used: 0,
-        voice_message_sent: 0,
-      },
-      premium: {
-        message_sent: -1, // unlimited
-        profile_view: 50,
-        search_performed: -1,
-        interest_sent: -1,
-        profile_boost_used: 0,
-        voice_message_sent: 10,
-      },
-      premiumPlus: {
-        message_sent: -1,
-        profile_view: -1,
-        search_performed: -1,
-        interest_sent: -1,
-        profile_boost_used: 5,
-        voice_message_sent: -1,
-      },
-    };
-    const userLimits = limits[plan as keyof typeof limits];
-    const featureLimit = userLimits[feature as keyof typeof userLimits];
-
-    // Mock current usage (in reality, fetch from database)
-    const mockCurrentUsage = Math.floor(Math.random() * 20);
-    const isUnlimited = featureLimit === -1;
-    const remainingQuota = isUnlimited
-      ? -1
-      : Math.max(0, featureLimit - mockCurrentUsage - 1);
+    // Get updated usage stats
+    const stats = await convex.query(api.usageTracking.getUsageStats, {});
+    const featureStats = stats.usage.find(u => u.feature === feature);
 
     return successResponse({
       feature,
-      plan,
+      plan: stats.plan,
       tracked: true,
-      currentUsage: mockCurrentUsage + 1,
-      limit: featureLimit,
-      remainingQuota,
-      isUnlimited,
-      resetDate: new Date(
-        new Date().getFullYear(),
-        new Date().getMonth() + 1,
-        1
-      ).getTime(),
+      currentUsage: featureStats?.used || 0,
+      limit: featureStats?.limit || 0,
+      remainingQuota: featureStats?.remaining || 0,
+      isUnlimited: featureStats?.unlimited || false,
+      resetDate: stats.resetDate,
     });
   } catch (error) {
     console.error("Error tracking feature usage:", error);

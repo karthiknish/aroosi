@@ -15,6 +15,7 @@ import {
   X,
   Heart,
   LogOut,
+  BarChart,
 } from "lucide-react";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
@@ -144,6 +145,23 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     </Link>
                   </motion.div>
                 )}
+
+              <motion.div
+                custom={1.8}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <Link href="/usage" onClick={onClick}>
+                  <Button
+                    variant="ghost"
+                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                  >
+                    <BarChart className="h-5 w-5 mr-1 sm:mr-2" />
+                    <span>Usage</span>
+                  </Button>
+                </Link>
+              </motion.div>
 
               <motion.div
                 custom={2}

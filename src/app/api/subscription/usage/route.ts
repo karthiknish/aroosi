@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 
@@ -9,37 +8,46 @@ export async function GET(request: NextRequest) {
   try {
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    const { token } = authCheck;
+    
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
     convex.setAuth(token);
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
-      userId: userId as Id<"users">,
-    });
-    if (!profile) return errorResponse("User profile not found", 404);
-    const plan = profile.subscriptionPlan || "free";
-    // Get usage statistics based on subscription plan
+    
+    // Get usage statistics from Convex
+    const stats = await convex.query(api.usageTracking.getUsageStats, {});
+    
+    // Transform the data to match the expected format
     const usage = {
-      plan,
+      plan: stats.plan,
+      currentMonth: stats.currentMonth,
+      resetDate: stats.resetDate,
+      features: stats.usage.map(feature => ({
+        name: feature.feature,
+        used: feature.used,
+        limit: feature.limit,
+        unlimited: feature.unlimited,
+        remaining: feature.remaining,
+        percentageUsed: feature.percentageUsed,
+      })),
+      // Legacy format for backward compatibility
       messaging: {
-        sent: 0,
-        received: 0,
-        limit: plan === "free" ? 50 : -1, // -1 means unlimited
+        sent: stats.usage.find(u => u.feature === "message_sent")?.used || 0,
+        limit: stats.usage.find(u => u.feature === "message_sent")?.limit || 0,
       },
       profileViews: {
-        count: 0,
-        limit: plan === "free" ? 10 : -1,
+        count: stats.usage.find(u => u.feature === "profile_view")?.used || 0,
+        limit: stats.usage.find(u => u.feature === "profile_view")?.limit || 0,
       },
       searches: {
-        count: 0,
-        limit: plan === "free" ? 20 : -1,
+        count: stats.usage.find(u => u.feature === "search_performed")?.used || 0,
+        limit: stats.usage.find(u => u.feature === "search_performed")?.limit || 0,
       },
       boosts: {
-        used: 0,
-        remaining: profile.boostsRemaining || 0,
-        monthlyLimit: plan === "premiumPlus" ? 5 : 0,
+        used: stats.usage.find(u => u.feature === "profile_boost_used")?.used || 0,
+        monthlyLimit: stats.usage.find(u => u.feature === "profile_boost_used")?.limit || 0,
       },
     };
+    
     return successResponse(usage);
   } catch (error) {
     console.error("Error fetching usage statistics:", error);

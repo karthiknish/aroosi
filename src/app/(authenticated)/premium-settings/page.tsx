@@ -8,10 +8,9 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "@/lib/utils/profileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { Eye, Crown, Zap, Users, Filter, MessageCircle, Heart, Settings } from "lucide-react";
+import { Eye, Crown, Zap, Users, Filter, MessageCircle, Heart, Settings, BarChart } from "lucide-react";
 import type { SubscriptionPlan } from "@/types/profile";
 import { SubscriptionWidget } from "@/components/subscription/SubscriptionWidget";
-import { UsageCard } from "@/components/subscription/UsageCard";
 import { useSubscriptionGuard } from "@/hooks/useSubscription";
 
 export default function PremiumSettingsPage() {
@@ -170,6 +169,37 @@ export default function PremiumSettingsPage() {
                 onClick={() => handleNavigate("/plans")}
               >
                 Manage Plan
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Usage Tracking */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart className="w-5 h-5 text-blue-500" />
+              Usage Tracking
+            </CardTitle>
+            <CardDescription>
+              Monitor your feature usage and limits
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">View Detailed Usage Analytics</p>
+                <p className="text-sm text-gray-500">
+                  Track messages, searches, profile views, and more
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => handleNavigate("/usage")}
+                className="flex items-center gap-2"
+              >
+                <BarChart className="w-4 h-4" />
+                View Usage
               </Button>
             </div>
           </CardContent>

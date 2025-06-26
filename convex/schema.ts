@@ -297,4 +297,43 @@ export default defineSchema({
   })
     .index("by_userId_timestamp", ["userId", "timestamp"])
     .index("by_deviceId", ["deviceId"]),
+
+  // Usage tracking for subscription features
+  usageTracking: defineTable({
+    userId: v.id("users"),
+    feature: v.union(
+      v.literal("message_sent"),
+      v.literal("profile_view"),
+      v.literal("search_performed"),
+      v.literal("interest_sent"),
+      v.literal("profile_boost_used"),
+      v.literal("voice_message_sent")
+    ),
+    timestamp: v.float64(),
+    metadata: v.optional(v.object({
+      targetUserId: v.optional(v.id("users")),
+      searchQuery: v.optional(v.string()),
+      messageType: v.optional(v.string()),
+    })),
+  })
+    .index("by_userId_feature_timestamp", ["userId", "feature", "timestamp"])
+    .index("by_userId_timestamp", ["userId", "timestamp"]),
+
+  // Monthly usage summaries for quick access
+  usageSummaries: defineTable({
+    userId: v.id("users"),
+    month: v.string(), // Format: "YYYY-MM"
+    feature: v.union(
+      v.literal("message_sent"),
+      v.literal("profile_view"),
+      v.literal("search_performed"),
+      v.literal("interest_sent"),
+      v.literal("profile_boost_used"),
+      v.literal("voice_message_sent")
+    ),
+    count: v.number(),
+    lastUpdated: v.float64(),
+  })
+    .index("by_userId_month_feature", ["userId", "month", "feature"])
+    .index("by_userId_month", ["userId", "month"]),
 });

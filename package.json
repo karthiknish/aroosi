@@ -74,6 +74,7 @@
     "react-hook-form": "^7.54.0",
     "react-markdown": "10.1.0",
     "react-use": "17.6.0",
+    "recharts": "3.0.0",
     "resend": "^4.0.2",
     "sonner": "2.0.5",
     "stripe": "^17.6.0",

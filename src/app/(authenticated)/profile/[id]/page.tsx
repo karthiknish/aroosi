@@ -40,6 +40,7 @@ import { useOffline } from "@/hooks/useOffline";
 import { SafetyActionButton } from "@/components/safety/SafetyActionButton";
 import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
 import { useBlockStatus } from "@/hooks/useSafety";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
 
 type Interest = {
   id: string;
@@ -53,6 +54,7 @@ export default function ProfileDetailPage() {
   const params = useParams();
   const { token, profile: currentUserProfile } = useAuthContext();
   const offline = useOffline();
+  const { trackUsage } = useUsageTracking();
 
   const id = params?.id as string;
   const userId = id as Id<"users">;
@@ -212,8 +214,15 @@ export default function ProfileDetailPage() {
   useEffect(() => {
     if (!isOwnProfile && token && profile?._id) {
       recordProfileView({ token, profileId: profile._id as unknown as string });
+      // Track profile view usage
+      trackUsage({
+        feature: "profile_view",
+        metadata: {
+          targetUserId: userId,
+        },
+      });
     }
-  }, [isOwnProfile, token, profile?._id]);
+  }, [isOwnProfile, token, profile?._id, trackUsage, userId]);
 
   if (offline) {
     return (
@@ -324,6 +333,15 @@ export default function ProfileDetailPage() {
         setLocalInterest(true);
         const responseData = await sendInterest(token, fromUserId, toUserId);
         showSuccessToast("Interest sent successfully!");
+        
+        // Track interest sent usage
+        trackUsage({
+          feature: "interest_sent",
+          metadata: {
+            targetUserId: toUserId,
+          },
+        });
+        
         await refetchSentInterests();
         setLocalInterest(null); // Let server state take over
         return responseData;
