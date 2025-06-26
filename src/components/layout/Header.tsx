@@ -282,7 +282,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-1">
+            <nav className="hidden md:flex items-center space-x-2">
               <NavLinks />
             </nav>
 
