@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/components/AuthProvider";
 import {
@@ -26,34 +26,23 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const { isAdmin, isSignedIn, signOut, profile } = useAuthContext();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
-  // Close mobile menu on escape key
-  React.useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && mobileOpen) {
-        setMobileOpen(false);
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [mobileOpen]);
-
   if (!hydrated) return null;
 
-  const headerVariants: Variants = {
+  const headerVariants = {
     hidden: { y: -100, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
-      transition: { type: "spring", stiffness: 80, damping: 15, delay: 0.2 },
+      transition: { type: "spring" as const, stiffness: 80, damping: 15, delay: 0.2 },
     },
   };
 
-  const navItemVariants: Variants = {
+  const navItemVariants = {
     hidden: { y: -20, opacity: 0 },
     visible: (i: number) => ({
       y: 0,
       opacity: 1,
-      transition: { delay: i * 0.1 + 0.4, type: "spring", stiffness: 90 },
+      transition: { delay: i * 0.1 + 0.4, type: "spring" as const, stiffness: 90 },
     }),
   };
 
@@ -157,23 +146,6 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 )}
 
               <motion.div
-                custom={1.9}
-                variants={navItemVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                <Link href="/safety-guidelines" onClick={onClick}>
-                  <Button
-                    variant="ghost"
-                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
-                  >
-                    <Shield className="h-5 w-5 mr-1 sm:mr-2" />
-                    <span>Safety</span>
-                  </Button>
-                </Link>
-              </motion.div>
-
-              <motion.div
                 custom={2}
                 variants={navItemVariants}
                 initial="hidden"
@@ -260,15 +232,13 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         variants={headerVariants}
         initial="hidden"
         animate="visible"
-        className="fixed top-0 left-0 right-0 z-50 bg-white backdrop-blur-md"
+        className="fixed top-0 left-0 right-0 z-50 bg-base-light/80 border-b border-base-200 backdrop-blur-md"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="flex items-center">
-                <h2 className="text-2xl text-primary-dark font-bold font-serif">
-                  Aroosi
-                </h2>
+                <h2 className="text-2xl text-primary-dark font-bold">Aroosi</h2>
               </Link>
             </div>
 
@@ -283,16 +253,13 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-pink-100"
+                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
-                aria-expanded={mobileOpen}
-                aria-controls="mobile-navigation"
-                aria-haspopup="menu"
               >
                 {mobileOpen ? (
-                  <X className="h-7 w-7" aria-hidden="true" />
+                  <X className="h-7 w-7" />
                 ) : (
-                  <Menu className="h-7 w-7" aria-hidden="true" />
+                  <Menu className="h-7 w-7" />
                 )}
               </Button>
             </div>
@@ -304,14 +271,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           {mobileOpen && (
             <motion.nav
               key="mobile-nav"
-              id="mobile-navigation"
               initial={{ y: -30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -30, opacity: 0 }}
               transition={{ type: "spring", stiffness: 120, damping: 18 }}
               className="md:hidden absolute top-full left-0 right-0 bg-base-light/90 backdrop-blur-md border-b border-base-200"
-              role="menu"
-              aria-label="Main navigation"
             >
               <div className="px-4 py-4 flex flex-col space-y-2">
                 <NavLinks onClick={() => setMobileOpen(false)} />
