@@ -42,7 +42,7 @@ export interface User {
 // Public-facing profile type (for getUserPublicProfile)
 export interface PublicProfile {
   fullName?: string;
-  ukCity?: string;
+  city?: string;
   height?: string;
   maritalStatus?: "single" | "divorced" | "widowed" | "annulled";
   education?: string;
@@ -64,6 +64,22 @@ const getUserByClerkIdInternal = async (
     .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
     .unique();
 };
+
+// Get user by ID
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
+// Get user by Clerk ID (public query)
+export const getUserByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    return await getUserByClerkIdInternal(ctx, args.clerkId);
+  },
+});
 
 /**
  * Retrieves the user record and their profile for the currently authenticated Clerk user.
@@ -189,7 +205,7 @@ export const internalUpsertUser = internalMutation(
         email,
         isProfileComplete: false,
         isOnboardingComplete: false,
-        isApproved: false,
+
         createdAt: Date.now(),
         profileFor: "self",
         // Initialize other fields as undefined or with defaults if necessary
@@ -215,9 +231,7 @@ export const internalUpsertUser = internalMutation(
       if (existingProfile.isProfileComplete === undefined) {
         profileUpdates.isProfileComplete = false;
       }
-      if (existingProfile.isApproved === undefined) {
-        profileUpdates.isApproved = false;
-      }
+
       if (existingProfile.subscriptionPlan === undefined) {
         profileUpdates.subscriptionPlan = "free";
       }
@@ -246,7 +260,7 @@ export const updateProfile = mutation({
       gender: v.optional(
         v.union(v.literal("male"), v.literal("female"), v.literal("other"))
       ),
-      ukCity: v.optional(v.string()),
+      city: v.optional(v.string()),
       aboutMe: v.optional(v.string()),
       religion: v.optional(v.string()),
       occupation: v.optional(v.string()),
@@ -273,7 +287,7 @@ export const updateProfile = mutation({
       ),
       profileImageIds: v.optional(v.array(v.id("_storage"))),
       isProfileComplete: v.optional(v.boolean()),
-      ukPostcode: v.optional(v.string()),
+      country: v.optional(v.string()),
       phoneNumber: v.optional(v.string()),
       annualIncome: v.optional(v.union(v.number(), v.string(), v.literal(""))),
       diet: v.optional(
@@ -300,7 +314,7 @@ export const updateProfile = mutation({
       partnerPreferenceAgeMax: v.optional(
         v.union(v.string(), v.number(), v.literal(""))
       ),
-      partnerPreferenceUkCity: v.optional(v.array(v.string())),
+      partnerPreferenceCity: v.optional(v.array(v.string())),
       preferredGender: v.optional(
         v.union(
           v.literal("male"),
@@ -309,8 +323,6 @@ export const updateProfile = mutation({
           v.literal("other")
         )
       ),
-      isApproved: v.optional(v.boolean()),
-      hiddenFromSearch: v.optional(v.boolean()),
       updatedAt: v.optional(v.number()),
       // Subscription related fields
       subscriptionPlan: v.optional(
@@ -378,7 +390,7 @@ export const updateProfile = mutation({
         "fullName",
         "dateOfBirth",
         "gender",
-        "ukCity",
+        "city",
         "aboutMe",
       ]) {
         const value = updatedProfile[field];
@@ -464,7 +476,7 @@ export const getUserPublicProfile = query({
       // Profile-related info
       profile: {
         fullName: profile.fullName,
-        ukCity: profile.ukCity,
+        city: profile.city,
         height: profile.height,
         maritalStatus: profile.maritalStatus,
         education: profile.education,
@@ -562,7 +574,6 @@ export const batchGetPublicProfiles = action({
             user.profile &&
             user.profile.profileFor !== undefined &&
             user.profile.isProfileComplete === true &&
-            user.profile.hiddenFromSearch !== true &&
             user.profile.banned !== true
         )
         .map((user) => ({
@@ -768,7 +779,7 @@ export const adminUpdateProfile = mutation({
     id: v.id("profiles"),
     updates: v.object({
       fullName: v.optional(v.string()),
-      ukCity: v.optional(v.string()),
+      city: v.optional(v.string()),
       gender: v.optional(
         v.union(v.literal("male"), v.literal("female"), v.literal("other"))
       ),
@@ -822,14 +833,12 @@ export const adminUpdateProfile = mutation({
       partnerPreferenceAgeMax: v.optional(
         v.union(v.string(), v.number(), v.literal(""))
       ),
-      partnerPreferenceUkCity: v.optional(v.array(v.string())),
+      partnerPreferenceCity: v.optional(v.array(v.string())),
       profileImageIds: v.optional(v.array(v.id("_storage"))),
       isProfileComplete: v.optional(v.boolean()),
       isOnboardingComplete: v.optional(v.boolean()),
-      isApproved: v.optional(v.boolean()),
-      hiddenFromSearch: v.optional(v.boolean()),
       banned: v.optional(v.boolean()),
-      ukPostcode: v.optional(v.string()),
+      country: v.optional(v.string()),
       preferredGender: v.optional(
         v.union(
           v.literal("male"),
@@ -946,14 +955,14 @@ export const adminListProfiles = query({
     let allProfiles = await ctx.db.query("profiles").collect();
     const users = await ctx.db.query("users").collect();
 
-    // Only include complete profiles (example: must have fullName, ukCity, religion, phoneNumber)
+    // Only include complete profiles (example: must have fullName, city, religion, phoneNumber)
     allProfiles = allProfiles.filter(
       (p) =>
         p.fullName &&
-        p.ukCity &&
+        p.city &&
         p.phoneNumber &&
         typeof p.fullName === "string" &&
-        typeof p.ukCity === "string" &&
+        typeof p.city === "string" &&
         typeof p.phoneNumber === "string"
     );
 
@@ -964,7 +973,7 @@ export const adminListProfiles = query({
         const user = users.find((u) => u._id === p.userId);
         return (
           (p.fullName && p.fullName.toLowerCase().includes(s)) ||
-          (p.ukCity && p.ukCity.toLowerCase().includes(s)) ||
+          (p.city && p.city.toLowerCase().includes(s)) ||
           (p.phoneNumber && p.phoneNumber.toLowerCase().includes(s)) ||
           (user && user.email && user.email.toLowerCase().includes(s))
         );
@@ -1130,7 +1139,7 @@ export const createProfile = mutation({
     fullName: v.string(),
     dateOfBirth: v.string(),
     gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
-    ukCity: v.string(),
+    city: v.string(),
     aboutMe: v.string(),
     height: v.string(),
     maritalStatus: v.union(
@@ -1200,7 +1209,7 @@ export const createProfile = mutation({
       clerkId: identity.subject,
       email: user.email,
       isProfileComplete: args.isProfileComplete ?? false,
-      isApproved: false,
+
       createdAt: Date.now(),
       updatedAt: Date.now(),
       profileFor: args.profileFor || "self",
@@ -1208,7 +1217,7 @@ export const createProfile = mutation({
       dateOfBirth: args.dateOfBirth || "",
       gender: args.gender || "",
       preferredGender: args.preferredGender || "",
-      ukCity: args.ukCity || "",
+      city: args.city || "",
       aboutMe: args.aboutMe || "",
       height: args.height || "",
       maritalStatus: args.maritalStatus || "single",
@@ -1227,7 +1236,7 @@ export const createProfile = mutation({
       "fullName",
       "dateOfBirth",
       "gender",
-      "ukCity",
+      "city",
       "aboutMe",
     ];
     let allEssentialFilled = true;
@@ -1291,7 +1300,7 @@ export const setProfileHiddenFromSearch = mutation({
   handler: async (ctx, { profileId, hidden }) => {
     const identity = await ctx.auth.getUserIdentity();
     requireAdmin(identity);
-    await ctx.db.patch(profileId, { hiddenFromSearch: hidden });
+    // hiddenFromSearch field removed - this function is no longer needed
     return { success: true };
   },
 });
@@ -1466,7 +1475,8 @@ export const searchPublicProfiles = query({
         v.literal("any")
       )
     ),
-    ukCity: v.optional(v.string()),
+    city: v.optional(v.string()),
+    country: v.optional(v.string()),
     ageMin: v.optional(v.number()),
     ageMax: v.optional(v.number()),
     page: v.optional(v.number()),
@@ -1512,8 +1522,7 @@ export const searchPublicProfiles = query({
       // Skip incomplete profiles
       if (!u.profile.isProfileComplete) return false;
 
-      // Skip hidden profiles
-      if (u.profile.hiddenFromSearch) return false;
+
 
       // Skip banned profiles
       if (u.profile.banned) return false;
@@ -1524,8 +1533,13 @@ export const searchPublicProfiles = query({
       }
 
       // Filter by city
-      if (args.ukCity && args.ukCity !== "any") {
-        if (u.profile.ukCity !== args.ukCity) return false;
+      if (args.city && args.city !== "any") {
+        if (u.profile.city !== args.city) return false;
+      }
+
+      // Filter by country
+      if (args.country && args.country !== "any") {
+        if (u.profile.country !== args.country) return false;
       }
 
       // Filter by age
@@ -1576,10 +1590,10 @@ export const searchPublicProfiles = query({
         email: u.email,
         profile: {
           fullName: profile.fullName,
-          ukCity: profile.ukCity,
+          city: profile.city,
           dateOfBirth: profile.dateOfBirth,
           isProfileComplete: profile.isProfileComplete,
-          hiddenFromSearch: profile.hiddenFromSearch,
+
           profileImageIds: profile.profileImageIds,
           profileImageUrls: profile.profileImageUrls,
           createdAt: profile.createdAt,

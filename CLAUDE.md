@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Aroosi is an Afghan matrimony platform built with Next.js 15, using a monorepo structure with separate web and mobile applications. The platform connects Afghan singles through profile matching, messaging, and subscription-based premium features.
+Aroosi is an Afghan matrimony platform built with Next.js 15. This is the web application that connects Afghan singles through profile matching, messaging, and subscription-based premium features.
 
 ## Development Commands
 
@@ -30,12 +30,11 @@ Aroosi is an Afghan matrimony platform built with Next.js 15, using a monorepo s
 
 ## Architecture Overview
 
-### Monorepo Structure
-- **apps/web/** - Next.js web application (primary app)
-- **apps/mobile/** - React Native mobile app (Expo-based)
-- **packages/** - Shared packages and utilities
+### Project Structure
+- **src/** - Next.js web application source code
 - **convex/** - Backend database functions and schema
-- **__tests__/** - Test files at project root level
+- **public/** - Static assets
+- **e2e/** - End-to-end tests
 
 ### Technology Stack
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript
@@ -50,11 +49,9 @@ Aroosi is an Afghan matrimony platform built with Next.js 15, using a monorepo s
 
 ### Key Path Mappings (TypeScript)
 ```typescript
-"@/*": ["apps/web/src/*"]
-"@/lib/*": ["apps/web/src/lib/*", "packages/api/lib/*"]
-"@api/*": ["packages/api/*"]
-"@ui/*": ["packages/ui/*"]
-"@convex/*": ["convex/*"]
+"@/*": ["./src/*"]
+"@/lib/*": ["./src/lib/*"]
+"@convex/*": ["./convex/*"]
 ```
 
 ## Authentication & User Flow
@@ -178,4 +175,3 @@ const userData = await fetchQuery(api.users.getCurrentUserWithProfile, {}, { tok
 - Web app deploys to Vercel
 - Convex functions deploy separately
 - Environment variables required for Clerk, Stripe, OneSignal
-- Mobile app builds separately with Expo

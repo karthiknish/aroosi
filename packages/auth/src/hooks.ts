@@ -1,1 +1,0 @@
-export { useAuthContext } from './AuthProvider';

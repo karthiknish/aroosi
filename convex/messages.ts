@@ -29,6 +29,11 @@ export const sendMessage = mutation({
     fromUserId: v.id("users"),
     toUserId: v.id("users"),
     text: v.string(),
+    type: v.optional(v.union(v.literal("text"), v.literal("voice"), v.literal("image"))),
+    audioStorageId: v.optional(v.string()),
+    duration: v.optional(v.number()),
+    fileSize: v.optional(v.number()),
+    mimeType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if fromUserId and toUserId are mutual matches
@@ -42,6 +47,11 @@ export const sendMessage = mutation({
       fromUserId: args.fromUserId,
       toUserId: args.toUserId,
       text: args.text,
+      type: args.type || "text",
+      audioStorageId: args.audioStorageId,
+      duration: args.duration,
+      fileSize: args.fileSize,
+      mimeType: args.mimeType,
       createdAt: Date.now(),
     });
     const saved = await ctx.db.get(newId);
@@ -116,5 +126,39 @@ export const getUnreadCountsForUser = query({
       }
     });
     return counts; // { otherUserId: count }
+  },
+});
+
+// Get a specific voice message by ID
+export const getVoiceMessage = query({
+  args: { messageId: v.id("messages") },
+  handler: async (ctx, { messageId }) => {
+    const message = await ctx.db.get(messageId);
+    if (!message) {
+      throw new Error("Voice message not found");
+    }
+    
+    // Only return voice messages
+    if (message.type !== "voice" || !message.audioStorageId) {
+      throw new Error("Message is not a voice message");
+    }
+    
+    return message;
+  },
+});
+
+// Generate upload URL for voice message
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Get download URL for voice message
+export const getVoiceMessageUrl = query({
+  args: { storageId: v.string() },
+  handler: async (ctx, { storageId }) => {
+    return await ctx.storage.getUrl(storageId);
   },
 });

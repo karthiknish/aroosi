@@ -20,7 +20,7 @@ export default defineSchema({
     ),
     isProfileComplete: v.optional(v.boolean()), // ADDED: Flag to indicate profile completion
     isOnboardingComplete: v.optional(v.boolean()), // ADDED: Flag to indicate onboarding completion
-    isApproved: v.optional(v.boolean()), // Admin must approve before access
+
     fullName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()), // Consider v.float64() for timestamp if more precision needed
     gender: v.optional(
@@ -34,9 +34,9 @@ export default defineSchema({
         v.literal("any")
       )
     ),
-    // UK-centric fields
-    ukCity: v.optional(v.string()),
-    ukPostcode: v.optional(v.string()),
+    // Location fields
+    city: v.optional(v.string()),
+    country: v.optional(v.string()),
     // Physical attributes
     height: v.optional(v.string()), // store as '5ft 7in'
     // Life status
@@ -54,6 +54,9 @@ export default defineSchema({
     annualIncome: v.optional(v.number()), // Store as number
     // Personal details
     aboutMe: v.optional(v.string()), // A brief bio
+    motherTongue: v.optional(v.string()), // Primary language spoken
+    religion: v.optional(v.string()), // Religious affiliation
+    ethnicity: v.optional(v.string()), // Ethnic background
     // Lifestyle/contact fields
     phoneNumber: v.optional(v.string()),
     diet: v.optional(
@@ -94,12 +97,12 @@ export default defineSchema({
       v.union(v.number(), v.string(), v.literal(""))
     ),
     partnerPreferenceReligion: v.optional(v.array(v.string())),
-    partnerPreferenceUkCity: v.optional(v.array(v.string())),
+    partnerPreferenceCity: v.optional(v.array(v.string())),
 
     profileImageIds: v.optional(v.array(v.id("_storage"))),
     profileImageUrls: v.optional(v.array(v.string())),
     banned: v.optional(v.boolean()),
-    hiddenFromSearch: v.optional(v.boolean()),
+
     email: v.optional(v.string()),
     // Timestamps
     createdAt: v.float64(), // Automatically set by Convex?
@@ -114,6 +117,29 @@ export default defineSchema({
     hasSpotlightBadge: v.optional(v.boolean()),
     spotlightBadgeExpiresAt: v.optional(v.number()),
     boostsMonth: v.optional(v.number()),
+    
+    // Biometric authentication settings
+    biometricSettings: v.optional(v.object({
+      enabled: v.boolean(),
+      autoLogin: v.boolean(),
+      requireBiometricForPayments: v.boolean(),
+      requireBiometricForSensitiveActions: v.boolean(),
+      fallbackToPin: v.boolean(),
+      lockoutDuration: v.number(), // in minutes
+      maxFailedAttempts: v.number(),
+      enabledAt: v.optional(v.float64()),
+      lastUsed: v.optional(v.float64()),
+    })),
+
+    // Registered biometric devices
+    biometricDevices: v.optional(v.array(v.object({
+      deviceId: v.string(),
+      deviceName: v.optional(v.string()),
+      platform: v.union(v.literal("ios"), v.literal("android")),
+      registeredAt: v.float64(),
+      lastUsed: v.optional(v.float64()),
+      isActive: v.boolean(),
+    }))),
   })
     .index("by_userId", ["userId"])
     .index("by_clerkId", ["clerkId"]),
@@ -163,6 +189,11 @@ export default defineSchema({
     fromUserId: v.id("users"),
     toUserId: v.id("users"),
     text: v.string(),
+    type: v.optional(v.union(v.literal("text"), v.literal("voice"), v.literal("image"))), // message type
+    audioStorageId: v.optional(v.string()), // Convex storage ID for voice messages
+    duration: v.optional(v.number()), // duration in seconds for voice messages
+    fileSize: v.optional(v.number()), // file size in bytes
+    mimeType: v.optional(v.string()), // MIME type for audio files
     createdAt: v.float64(),
     readAt: v.optional(v.float64()), // timestamp when recipient read the message
   })
@@ -215,4 +246,55 @@ export default defineSchema({
     profileId: v.id("profiles"),
     createdAt: v.float64(),
   }).index("by_profileId_createdAt", ["profileId", "createdAt"]),
+
+  // Push notification registrations
+  pushNotifications: defineTable({
+    userId: v.id("users"),
+    playerId: v.string(),
+    deviceType: v.string(),
+    deviceToken: v.optional(v.string()),
+    registeredAt: v.float64(),
+    isActive: v.boolean(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_playerId", ["playerId"]),
+
+  // Delivery receipts for messages
+  deliveryReceipts: defineTable({
+    messageId: v.id("messages"),
+    userId: v.id("users"),
+    status: v.union(v.literal("delivered"), v.literal("read"), v.literal("failed")),
+    timestamp: v.float64(),
+  })
+    .index("by_messageId", ["messageId"])
+    .index("by_userId", ["userId"]),
+
+  // Typing indicators for conversations
+  typingIndicators: defineTable({
+    conversationId: v.string(),
+    userId: v.id("users"),
+    isTyping: v.boolean(),
+    lastUpdated: v.float64(),
+  })
+    .index("by_conversationId", ["conversationId"])
+    .index("by_userId", ["userId"]),
+
+  // Biometric authentication audit logs
+  biometricAuditLogs: defineTable({
+    userId: v.id("users"),
+    action: v.string(), // 'login', 'payment', 'settings_change', 'profile_access', 'sensitive_data'
+    result: v.string(), // 'success', 'failure', 'lockout', 'user_cancel', 'biometric_error'
+    deviceId: v.string(),
+    platform: v.optional(v.union(v.literal("ios"), v.literal("android"), v.literal("web"))),
+    timestamp: v.float64(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    metadata: v.optional(v.object({
+      errorMessage: v.optional(v.string()),
+      attemptCount: v.optional(v.number()),
+      biometricType: v.optional(v.string()), // 'fingerprint', 'face', 'iris'
+    })),
+  })
+    .index("by_userId_timestamp", ["userId", "timestamp"])
+    .index("by_deviceId", ["deviceId"]),
 });
