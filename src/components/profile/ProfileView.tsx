@@ -15,6 +15,7 @@ import {
   Info,
   Edit3,
   BadgeCheck,
+  BarChart,
 } from "lucide-react";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { motion } from "framer-motion";
@@ -278,6 +279,13 @@ const ProfileView: FC<ProfileViewProps> = ({
                 className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
               >
                 <Camera className="mr-2 h-4 w-4" /> Edit Photos
+              </Button>
+              <Button
+                onClick={() => router.push("/usage")}
+                variant="outline"
+                className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
+              >
+                <BarChart className="mr-2 h-4 w-4" /> Usage
               </Button>
               <Button
                 className="bg-red-600 hover:bg-red-700 text-white"
