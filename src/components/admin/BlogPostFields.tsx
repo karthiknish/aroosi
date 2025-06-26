@@ -80,7 +80,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
 
       <div>
         <label className="text-sm font-medium text-gray-700">
-          Excerpt <span className="text-red-500">*</span>
+          Excerpt <span className="text-primary">*</span>
         </label>
         <div className="flex gap-2 items-center">
           <Input
@@ -110,7 +110,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
 
       <div>
         <label className="text-sm font-medium text-gray-700">
-          Categories <span className="text-red-500">*</span>
+          Categories <span className="text-primary">*</span>
         </label>
         <div className="flex gap-2 items-center">
           <Input
@@ -155,7 +155,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
 
       <div>
         <label className="text-sm font-medium text-gray-700">
-          Featured Image <span className="text-red-500">*</span>
+          Featured Image <span className="text-primary">*</span>
         </label>
         <div className="mt-1 flex gap-2">
           <Input

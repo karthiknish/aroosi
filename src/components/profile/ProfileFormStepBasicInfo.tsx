@@ -36,7 +36,7 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
     />
     <div className="mb-4">
       <Label htmlFor="height">
-        Height <span className="text-red-600">*</span>
+        Height <span className="text-primary">*</span>
       </Label>
       <div className="flex flex-col gap-2 mt-2">
         <Controller

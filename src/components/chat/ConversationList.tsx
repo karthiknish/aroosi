@@ -245,7 +245,7 @@ export default function ConversationList({
 
                       {/* Unread badge */}
                       {conv.unreadCount > 0 && (
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
                           {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
                         </div>
                       )}

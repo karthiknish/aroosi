@@ -158,7 +158,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Gender <span className="text-red-500">*</span>
+                  Gender <span className="text-primary">*</span>
                 </FormLabel>
                 <FormControl>
                   <div className="grid grid-cols-3 gap-3">
@@ -216,7 +216,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                 <FormLabel>
                   <span className="flex items-center gap-2">
                     <Ruler className="w-4 h-4 text-primary" />
-                    Height <span className="text-red-500">*</span>
+                    Height <span className="text-primary">*</span>
                   </span>
                 </FormLabel>
                 <FormControl>

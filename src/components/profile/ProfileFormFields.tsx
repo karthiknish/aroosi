@@ -60,9 +60,9 @@ export const FormField: React.FC<FormFieldProps> = ({
   textarea = false,
 }) => (
   <div>
-    <Label htmlFor={String(name)}>
-      {label} {isRequired && <span className="text-red-600">*</span>}
-    </Label>
+      <Label htmlFor={String(name)}>
+        {label} {isRequired && <span className="text-primary">*</span>}
+      </Label>
     {textarea ? (
       <Textarea
         id={String(name)}
