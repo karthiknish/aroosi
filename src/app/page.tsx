@@ -134,10 +134,11 @@ export default function HomePage() {
           {/* Hero Section */}
           <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
             {/* Background Image */}
-            <div 
+            <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{
-                backgroundImage: 'url(https://images.squarespace-cdn.com/content/v1/5c2db4029772aebeba129860/1694409731047-S7NM7Y467ZR6X1CKMO5M/wedd.jpg)'
+                backgroundImage:
+                  "url(https://images.squarespace-cdn.com/content/v1/5c2db4029772aebeba129860/1694409731047-S7NM7Y467ZR6X1CKMO5M/wedd.jpg)",
               }}
             ></div>
             {/* Dark overlay for better text readability */}
@@ -153,57 +154,28 @@ export default function HomePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
                   >
-                    <h1 
+                    <h1
                       className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-normal text-white"
-                      style={{ fontFamily: "Boldonse, serif", lineHeight: "1.2" }}
+                      style={{
+                        fontFamily: "Boldonse, serif",
+                        lineHeight: "1.2",
+                      }}
                     >
                       Connect with Afghans Worldwide
                     </h1>
                   </motion.div>
-                  
+
                   <motion.p
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.2 }}
                     className="font-nunito text-lg sm:text-xl text-white/90 leading-relaxed"
                   >
-                    Join thousands of Afghan singles who are finding their soulmate
-                    through Aroosi. Our trusted platform connects Afghan
-                    singles and families across the globe for meaningful relationships and
-                    marriage.
+                    Join thousands of Afghan singles who are finding their
+                    soulmate through Aroosi. Our trusted platform connects
+                    Afghan singles and families across the globe for meaningful
+                    relationships and marriage.
                   </motion.p>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                    className="flex flex-wrap gap-8 justify-center lg:justify-start pt-4"
-                  >
-                    <div className="text-center">
-                      <div className="font-serif text-3xl font-bold text-white">
-                        2025
-                      </div>
-                      <div className="font-nunito text-sm text-white/80">
-                        Launch Year
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-serif text-3xl font-bold text-white">
-                        100%
-                      </div>
-                      <div className="font-nunito text-sm text-white/80">
-                        Verified Profiles
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-serif text-3xl font-bold text-white">
-                        1000+
-                      </div>
-                      <div className="font-nunito text-sm text-white/80">
-                        Happy Couples
-                      </div>
-                    </div>
-                  </motion.div>
                 </div>
 
                 {/* Right side - Onboarding form */}

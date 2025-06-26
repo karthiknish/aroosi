@@ -17,9 +17,12 @@ import {
   LogOut,
   BarChart,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
+  const pathname = usePathname();
+  
   React.useEffect(() => {
     setHydrated(true);
   }, []);
@@ -27,7 +30,25 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const { isAdmin, isSignedIn, signOut, profile } = useAuthContext();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
-  if (!hydrated) return null;
+  // Close mobile menu on route change
+  React.useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Show a skeleton header while hydrating to prevent layout shift
+  if (!hydrated) {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h2 className="text-2xl text-primary-dark font-bold">Aroosi</h2>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   const headerVariants = {
     hidden: { y: -100, opacity: 0 },
@@ -61,12 +82,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/search" onClick={onClick}>
+                <Link href="/search" onClick={onClick} className="block">
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   >
-                    <Search className="h-5 w-5 mr-1 sm:mr-2" />
+                    <Search className="h-5 w-5 mr-2" />
                     <span>Search Profiles</span>
                   </Button>
                 </Link>
@@ -79,12 +100,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   initial="hidden"
                   animate="visible"
                 >
-                  <Link href="/admin" onClick={onClick}>
+                  <Link href="/admin" onClick={onClick} className="block">
                     <Button
                       variant="ghost"
-                      className="w-full cursor-pointer text-left text-primary-dark hover:text-primary hover:bg-primary-light font-semibold"
+                      className="w-full justify-start text-primary-dark hover:text-primary hover:bg-pink-50 font-semibold"
                     >
-                      <Shield className="h-5 w-5 mr-1 sm:mr-2" />
+                      <Shield className="h-5 w-5 mr-2" />
                       <span>Admin</span>
                     </Button>
                   </Link>
@@ -97,12 +118,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/profile" onClick={onClick}>
+                <Link href="/profile" onClick={onClick} className="block">
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   >
-                    <LayoutDashboard className="h-5 w-5 mr-1 sm:mr-2" />
+                    <LayoutDashboard className="h-5 w-5 mr-2" />
                     <span>My Profile</span>
                   </Button>
                 </Link>
@@ -114,12 +135,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/matches" onClick={onClick}>
+                <Link href="/matches" onClick={onClick} className="block">
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   >
-                    <Heart className="h-5 w-5 mr-1 sm:mr-2 text-pink-500" />
+                    <Heart className="h-5 w-5 mr-2 text-pink-500" />
                     <span>Matches</span>
                   </Button>
                 </Link>
@@ -134,12 +155,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     initial="hidden"
                     animate="visible"
                   >
-                    <Link href="/premium-settings" onClick={onClick}>
+                    <Link href="/premium-settings" onClick={onClick} className="block">
                       <Button
                         variant="ghost"
-                        className="w-full cursor-pointer text-left text-[#BFA67A] hover:text-[#BFA67A] hover:bg-primary-light"
+                        className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
                       >
-                        <Shield className="h-5 w-5 mr-1 sm:mr-2" />
+                        <Shield className="h-5 w-5 mr-2" />
                         <span>Premium Settings</span>
                       </Button>
                     </Link>
@@ -152,12 +173,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/usage" onClick={onClick}>
+                <Link href="/usage" onClick={onClick} className="block">
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   >
-                    <BarChart className="h-5 w-5 mr-1 sm:mr-2" />
+                    <BarChart className="h-5 w-5 mr-2" />
                     <span>Usage</span>
                   </Button>
                 </Link>
@@ -172,10 +193,10 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               >
                 <Button
                   variant="ghost"
-                  className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                  className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   onClick={() => signOut()}
                 >
-                  <LogOut className="h-5 w-5 mr-1 sm:mr-2" />
+                  <LogOut className="h-5 w-5 mr-2" />
                   <span>Sign Out</span>
                 </Button>
               </motion.div>
@@ -188,10 +209,10 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/about" onClick={onClick}>
+                <Link href="/about" onClick={onClick} className="block">
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   >
                     <span>About</span>
                   </Button>
@@ -204,10 +225,10 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/how-it-works" onClick={onClick}>
+                <Link href="/how-it-works" onClick={onClick} className="block">
                   <Button
                     variant="ghost"
-                    className="w-full cursor-pointer text-left text-neutral hover:text-primary hover:bg-primary-light"
+                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   >
                     <span>How It Works</span>
                   </Button>
@@ -221,17 +242,17 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 animate="visible"
                 className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0"
               >
-                <Link href="/sign-in" onClick={onClick}>
+                <Link href="/sign-in" onClick={onClick} className="block">
                   <Button
                     variant="outline"
-                    className="w-full flex items-center justify-center gap-1.5 text-primary border-primary hover:bg-primary-light hover:border-primary-dark"
+                    className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-600 hover:bg-pink-50 hover:border-pink-700"
                   >
                     <LogIn className="h-4 w-4" />
                     <span>Sign In</span>
                   </Button>
                 </Link>
-                <Link href="/sign-up" onClick={onClick}>
-                  <Button className="w-full flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-dark text-base-light">
+                <Link href="/sign-up" onClick={onClick} className="block">
+                  <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
                     <UserPlus className="h-4 w-4" />
                     <span>Sign Up</span>
                   </Button>
@@ -250,7 +271,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         variants={headerVariants}
         initial="hidden"
         animate="visible"
-        className="fixed top-0 bg-white left-0 right-0 z-50 border-b border-base-200 backdrop-blur-md"
+        className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -271,7 +292,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="text-black hover:text-red-600 p-2 rounded-md hover:bg-pink-100 focus:outline-none focus:ring-2 focus:ring-pink-400"
+                className="text-gray-700 hover:text-pink-600 p-2 rounded-md hover:bg-pink-50 focus:outline-none focus:ring-2 focus:ring-pink-400"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
                 {mobileOpen ? (
@@ -293,7 +314,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -30, opacity: 0 }}
               transition={{ type: "spring", stiffness: 120, damping: 18 }}
-              className="md:hidden absolute top-full left-0 right-0 bg-base-light/90 backdrop-blur-md border-b border-base-200"
+              className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg"
             >
               <div className="px-4 py-4 flex flex-col space-y-2">
                 <NavLinks onClick={() => setMobileOpen(false)} />
