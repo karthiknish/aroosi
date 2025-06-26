@@ -6,7 +6,11 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ["quirky-akita-969.convex.cloud", "images.pexels.com"],
+    domains: [
+      "quirky-akita-969.convex.cloud",
+      "images.pexels.com",
+      "images.squarespace-cdn.com",
+    ],
   },
   webpack: (config) => {
     config.resolve.alias = {
