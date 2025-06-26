@@ -424,7 +424,7 @@ export default function HomePage() {
                   <div className="relative z-10 rounded-2xl overflow-hidden shadow-xl">
                     <div className="absolute inset-0 bg-gradient-to-tr from-accent-600/10 to-primary-600/10 mix-blend-overlay"></div>
                     <Image
-                      src="https://images.pexels.com/photos/2778436/pexels-photo-2778436.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                      src="https://images.squarespace-cdn.com/content/v1/5c2db4029772aebeba129860/1688023879574-KW15CNT3DTPOTX4452WY/3b06c423-c529-4892-bdb0-fe879ec9824a.jpeg"
                       alt="Features illustration"
                       width={600}
                       height={500}
@@ -502,7 +502,7 @@ export default function HomePage() {
                   </motion.p>
                   <div className="rounded-2xl overflow-hidden shadow-xl mt-8">
                     <Image
-                      src="/afghan.jpg"
+                      src="https://images.squarespace-cdn.com/content/v1/585c5fb2893fc01e5ba9e13e/1668548927134-0JMYE59EYVGQ2QE969SS/Afghan+_+Indian+Wedding+Photography+Mississauga+Ontario-14.jpg?format=2500w"
                       alt="Afghan family gathering"
                       width={500}
                       height={400}
