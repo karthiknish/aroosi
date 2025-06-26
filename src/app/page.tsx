@@ -3,14 +3,7 @@
 import Head from "next/head";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Heart,
-  Users,
-  Shield,
-  Star,
-  CheckCircle,
-  ArrowRight,
-} from "lucide-react";
+import { Heart, Users, Shield, Star, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -132,7 +125,7 @@ export default function HomePage() {
         {/* Header */}
         <main className="flex-1">
           {/* Hero Section */}
-          <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+          <section className="relative min-h-screen flex flex-col items-start lg:flex-row lg:items-center justify-center overflow-y-auto lg:overflow-visible py-8 sm:py-12 overflow-hidden">
             {/* Background Image */}
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -145,8 +138,8 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-black/50 z-0"></div>
             <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-20 z-0"></div>
             {/* Main content container */}
-            <div className="relative z-10 w-full max-w-7xl mx-auto px-4 lg:px-8">
-              <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="relative z-10 w-full max-w-7xl mx-auto px-4 lg:px-8 pt-8 pb-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
                 {/* Left side - Text content */}
                 <div className="text-center lg:text-left space-y-6">
                   <motion.div
@@ -183,7 +176,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.3 }}
-                  className="w-full"
+                  className="w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto"
                 >
                   <HeroOnboarding />
                 </motion.div>

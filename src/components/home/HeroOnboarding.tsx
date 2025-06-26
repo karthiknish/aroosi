@@ -102,8 +102,8 @@ export function HeroOnboarding() {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0">
-        <div className="p-8">
+      <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0 max-h-[80vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
+        <div className="sm:p-8 p-4">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Find Your Perfect Match
@@ -151,24 +151,70 @@ export function HeroOnboarding() {
               {step === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <Label htmlFor="profileFor" className="text-gray-700 mb-2 block">
+                    <Label
+                      htmlFor="profileFor"
+                      className="text-gray-700 mb-2 block"
+                    >
                       This profile is for
                     </Label>
                     <Select
                       value={formData.profileFor}
-                      onValueChange={(value) => handleInputChange("profileFor", value)}
+                      onValueChange={(value) =>
+                        handleInputChange("profileFor", value)
+                      }
                     >
-                      <SelectTrigger id="profileFor" className="w-full bg-white">
+                      <SelectTrigger
+                        id="profileFor"
+                        className="w-full bg-white"
+                      >
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200 z-[100]" style={{ backgroundColor: 'white' }}>
-                        <SelectItem value="self" className="hover:bg-gray-50 focus:bg-gray-100">Myself</SelectItem>
-                        <SelectItem value="son" className="hover:bg-gray-50 focus:bg-gray-100">Son</SelectItem>
-                        <SelectItem value="daughter" className="hover:bg-gray-50 focus:bg-gray-100">Daughter</SelectItem>
-                        <SelectItem value="brother" className="hover:bg-gray-50 focus:bg-gray-100">Brother</SelectItem>
-                        <SelectItem value="sister" className="hover:bg-gray-50 focus:bg-gray-100">Sister</SelectItem>
-                        <SelectItem value="friend" className="hover:bg-gray-50 focus:bg-gray-100">Friend</SelectItem>
-                        <SelectItem value="relative" className="hover:bg-gray-50 focus:bg-gray-100">Relative</SelectItem>
+                      <SelectContent
+                        className="bg-white border border-gray-200 z-[100]"
+                        style={{ backgroundColor: "white" }}
+                      >
+                        <SelectItem
+                          value="self"
+                          className="hover:bg-gray-50 focus:bg-gray-100"
+                        >
+                          Myself
+                        </SelectItem>
+                        <SelectItem
+                          value="son"
+                          className="hover:bg-gray-50 focus:bg-gray-100"
+                        >
+                          Son
+                        </SelectItem>
+                        <SelectItem
+                          value="daughter"
+                          className="hover:bg-gray-50 focus:bg-gray-100"
+                        >
+                          Daughter
+                        </SelectItem>
+                        <SelectItem
+                          value="brother"
+                          className="hover:bg-gray-50 focus:bg-gray-100"
+                        >
+                          Brother
+                        </SelectItem>
+                        <SelectItem
+                          value="sister"
+                          className="hover:bg-gray-50 focus:bg-gray-100"
+                        >
+                          Sister
+                        </SelectItem>
+                        <SelectItem
+                          value="friend"
+                          className="hover:bg-gray-50 focus:bg-gray-100"
+                        >
+                          Friend
+                        </SelectItem>
+                        <SelectItem
+                          value="relative"
+                          className="hover:bg-gray-50 focus:bg-gray-100"
+                        >
+                          Relative
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -178,7 +224,9 @@ export function HeroOnboarding() {
                     <div className="grid grid-cols-2 gap-4">
                       <Button
                         type="button"
-                        variant={formData.gender === "male" ? "default" : "outline"}
+                        variant={
+                          formData.gender === "male" ? "default" : "outline"
+                        }
                         className={`w-full ${
                           formData.gender === "male"
                             ? "bg-pink-600 hover:bg-pink-700"
@@ -190,7 +238,9 @@ export function HeroOnboarding() {
                       </Button>
                       <Button
                         type="button"
-                        variant={formData.gender === "female" ? "default" : "outline"}
+                        variant={
+                          formData.gender === "female" ? "default" : "outline"
+                        }
                         className={`w-full ${
                           formData.gender === "female"
                             ? "bg-pink-600 hover:bg-pink-700"
@@ -209,7 +259,10 @@ export function HeroOnboarding() {
               {step === 2 && (
                 <div className="space-y-6">
                   <div>
-                    <Label htmlFor="fullName" className="text-gray-700 mb-2 block">
+                    <Label
+                      htmlFor="fullName"
+                      className="text-gray-700 mb-2 block"
+                    >
                       Full Name
                     </Label>
                     <Input
@@ -217,13 +270,18 @@ export function HeroOnboarding() {
                       type="text"
                       placeholder="Enter full name"
                       value={formData.fullName}
-                      onChange={(e) => handleInputChange("fullName", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("fullName", e.target.value)
+                      }
                       className="w-full bg-white"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="dateOfBirth" className="text-gray-700 mb-2 block">
+                    <Label
+                      htmlFor="dateOfBirth"
+                      className="text-gray-700 mb-2 block"
+                    >
                       Date of Birth
                     </Label>
                     <Popover>
@@ -243,13 +301,23 @@ export function HeroOnboarding() {
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white" align="start">
+                      <PopoverContent
+                        className="w-auto p-0 bg-white"
+                        align="start"
+                      >
                         <Calendar
                           mode="single"
-                          selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                          selected={
+                            formData.dateOfBirth
+                              ? new Date(formData.dateOfBirth)
+                              : undefined
+                          }
                           onSelect={(date) => {
                             if (date) {
-                              handleInputChange("dateOfBirth", format(date, "yyyy-MM-dd"));
+                              handleInputChange(
+                                "dateOfBirth",
+                                format(date, "yyyy-MM-dd")
+                              );
                             }
                           }}
                           disabled={(date) =>
@@ -279,13 +347,18 @@ export function HeroOnboarding() {
                       type="email"
                       placeholder="your@email.com"
                       value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("email", e.target.value)
+                      }
                       className="w-full bg-white"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="phoneNumber" className="text-gray-700 mb-2 block">
+                    <Label
+                      htmlFor="phoneNumber"
+                      className="text-gray-700 mb-2 block"
+                    >
                       Phone Number
                     </Label>
                     <Input
@@ -293,7 +366,9 @@ export function HeroOnboarding() {
                       type="tel"
                       placeholder="+44 7XXX XXXXXX"
                       value={formData.phoneNumber}
-                      onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("phoneNumber", e.target.value)
+                      }
                       className="w-full bg-white"
                     />
                   </div>
@@ -334,7 +409,10 @@ export function HeroOnboarding() {
 
           <div className="mt-6 text-center text-sm text-gray-600">
             Already have an account?{" "}
-            <Link href="/sign-in" className="text-pink-600 hover:text-pink-700 font-medium">
+            <Link
+              href="/sign-in"
+              className="text-pink-600 hover:text-pink-700 font-medium"
+            >
               Sign In
             </Link>
           </div>

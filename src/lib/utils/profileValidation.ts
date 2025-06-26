@@ -43,6 +43,13 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     }
   }
 
+  // Validate preferredGender
+  if (data.preferredGender !== undefined) {
+    if (!['male', 'female', 'other', 'any', ''].includes(data.preferredGender as string)) {
+      return { isValid: false, error: 'Invalid preferred gender value' };
+    }
+  }
+
   // Validate maritalStatus
   if (data.maritalStatus !== undefined) {
     if (!['single', 'divorced', 'widowed', 'annulled'].includes(data.maritalStatus as string)) {

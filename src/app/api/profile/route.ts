@@ -82,6 +82,8 @@ export async function PUT(request: NextRequest) {
       "country",
       "aboutMe",
       "religion",
+      "motherTongue",
+      "ethnicity",
       "occupation",
       "education",
       "height",
@@ -98,7 +100,7 @@ export async function PUT(request: NextRequest) {
       "partnerPreferenceAgeMax",
       "partnerPreferenceCity",
       "preferredGender",
-
+      "profileFor",
       "hideFromFreeUsers",
       "subscriptionPlan",
       "subscriptionExpiresAt",
@@ -184,12 +186,14 @@ export async function POST(req: NextRequest) {
       "fullName",
       "dateOfBirth",
       "gender",
+      "preferredGender",
       "city",
       "aboutMe",
       "occupation",
       "education",
       "height",
       "maritalStatus",
+      "phoneNumber",
     ];
     for (const field of requiredFields) {
       if (!sanitizedBody[field] || typeof sanitizedBody[field] !== "string") {
