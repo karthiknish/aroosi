@@ -14,8 +14,17 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Heart, Users, Shield, Star } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Users, Shield, Star, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface OnboardingData {
   profileFor: string;
@@ -69,11 +78,11 @@ export function HeroOnboarding() {
     setLoading(true);
     try {
       // Store form data in localStorage for use after sign-up
-      localStorage.setItem("onboardingData", JSON.stringify(formData));
+      localStorage.setItem("pendingProfileData", JSON.stringify(formData));
       
       // Redirect to sign-up page
       router.push("/sign-up");
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -149,7 +158,7 @@ export function HeroOnboarding() {
                       value={formData.profileFor}
                       onValueChange={(value) => handleInputChange("profileFor", value)}
                     >
-                      <SelectTrigger id="profileFor" className="w-full">
+                      <SelectTrigger id="profileFor" className="w-full bg-white">
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -209,7 +218,7 @@ export function HeroOnboarding() {
                       placeholder="Enter full name"
                       value={formData.fullName}
                       onChange={(e) => handleInputChange("fullName", e.target.value)}
-                      className="w-full"
+                      className="w-full bg-white"
                     />
                   </div>
 
@@ -217,14 +226,38 @@ export function HeroOnboarding() {
                     <Label htmlFor="dateOfBirth" className="text-gray-700 mb-2 block">
                       Date of Birth
                     </Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
-                      className="w-full"
-                      max={new Date().toISOString().split("T")[0]}
-                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal bg-white",
+                            !formData.dateOfBirth && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.dateOfBirth ? (
+                            format(new Date(formData.dateOfBirth), "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                          onSelect={(date) => {
+                            if (date) {
+                              handleInputChange("dateOfBirth", format(date, "yyyy-MM-dd"));
+                            }
+                          }}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
                     {formData.dateOfBirth && (
                       <p className="text-sm text-gray-500 mt-1">
                         Age: {calculateAge(formData.dateOfBirth)} years
@@ -247,7 +280,7 @@ export function HeroOnboarding() {
                       placeholder="your@email.com"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="w-full"
+                      className="w-full bg-white"
                     />
                   </div>
 
@@ -261,7 +294,7 @@ export function HeroOnboarding() {
                       placeholder="+44 7XXX XXXXXX"
                       value={formData.phoneNumber}
                       onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-                      className="w-full"
+                      className="w-full bg-white"
                     />
                   </div>
                 </div>
@@ -301,9 +334,9 @@ export function HeroOnboarding() {
 
           <div className="mt-6 text-center text-sm text-gray-600">
             Already have an account?{" "}
-            <a href="/sign-in" className="text-pink-600 hover:text-pink-700 font-medium">
+            <Link href="/sign-in" className="text-pink-600 hover:text-pink-700 font-medium">
               Sign In
-            </a>
+            </Link>
           </div>
         </div>
       </Card>
