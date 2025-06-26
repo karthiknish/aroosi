@@ -54,7 +54,7 @@ describe('useLocalStorage Hook', () => {
     const { result } = renderHook(() => useLocalStorage<number>('counter', 0));
 
     act(() => {
-      result.current[1](prev => prev + 1);
+      result.current[1]((prev: number) => prev + 1);
     });
 
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith('counter', JSON.stringify(6));

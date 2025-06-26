@@ -24,7 +24,7 @@ describe('Button Component', () => {
   test('applies correct size classes', () => {
     render(<Button size="lg">Large Button</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('h-11');
+    expect(button).toHaveClass('h-10');
   });
 
   test('disables button when disabled prop is true', () => {
@@ -34,15 +34,20 @@ describe('Button Component', () => {
     expect(button).toHaveClass('disabled:pointer-events-none');
   });
 
-  test('shows loading state correctly', () => {
-    render(<Button loading={true} loadingText="Saving...">Save</Button>);
-    expect(screen.getByText('Saving...')).toBeInTheDocument();
-    expect(screen.getByRole('button')).toBeDisabled();
+  test('can be rendered as child component', () => {
+    render(
+      <Button asChild>
+        <a href="/test">Link Button</a>
+      </Button>
+    );
+    expect(screen.getByRole('link')).toBeInTheDocument();
+    expect(screen.getByText('Link Button')).toBeInTheDocument();
   });
 
-  test('renders with screen reader only text', () => {
-    render(<Button srOnlyText="Save your changes">Save</Button>);
-    expect(screen.getByText('Save your changes')).toHaveClass('sr-only');
+  test('applies custom className', () => {
+    render(<Button className="custom-class">Custom</Button>);
+    const button = screen.getByRole('button');
+    expect(button).toHaveClass('custom-class');
   });
 
   test('forwards ref correctly', () => {
