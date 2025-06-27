@@ -592,7 +592,7 @@ export default function PricingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Link href="/sign-up">
+                <Link href="/">
                   <Button className="bg-white text-[#3E647A] hover:bg-blue-50 text-lg px-8 py-6 rounded-xl shadow-xl hover:shadow-2xl transition-all">
                     <div className="flex items-center gap-2">
                       <Heart className="w-5 h-5" />

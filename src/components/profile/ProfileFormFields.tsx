@@ -60,9 +60,9 @@ export const FormField: React.FC<FormFieldProps> = ({
   textarea = false,
 }) => (
   <div>
-      <Label htmlFor={String(name)}>
-        {label} {isRequired && <span className="text-primary">*</span>}
-      </Label>
+    <Label htmlFor={String(name)}>
+      {label} {isRequired && <span className="text-primary">*</span>}
+    </Label>
     {textarea ? (
       <Textarea
         id={String(name)}
@@ -113,7 +113,7 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
             typeof field.value === "string" ? field.value : String(field.value);
           // Always compare as lowercase for matching
           const matchedOption = options.find(
-            (opt) => opt.value.toLowerCase() === fieldValue.toLowerCase()
+            (opt) => opt.value.toLowerCase() === fieldValue.toLowerCase(),
           );
           // Always use the lowercase value for selection
           const selectedValue = matchedOption
@@ -128,7 +128,7 @@ const FormSelectFieldComponent: React.FC<FormSelectFieldProps> = ({
                 className={cn(
                   "mt-1",
                   form.formState.errors[name] &&
-                    "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+                    "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
                 )}
               >
                 <SelectValue placeholder={placeholder} />
@@ -166,10 +166,10 @@ export const FormSelectField = React.memo(
   (prevProps, nextProps) => {
     // Only re-render if the form values or errors have changed
     const prevValue = prevProps.form.getValues(
-      prevProps.name as keyof ProfileFormValues
+      prevProps.name as keyof ProfileFormValues,
     );
     const nextValue = nextProps.form.getValues(
-      nextProps.name as keyof ProfileFormValues
+      nextProps.name as keyof ProfileFormValues,
     );
 
     return (
@@ -177,7 +177,7 @@ export const FormSelectField = React.memo(
       prevProps.form.formState.isDirty === nextProps.form.formState.isDirty &&
       prevProps.form.formState.errors === nextProps.form.formState.errors
     );
-  }
+  },
 );
 
 FormSelectField.displayName = "FormSelectField";
@@ -191,7 +191,7 @@ export const DatePickerCustomInput = React.forwardRef<
     variant="outline"
     className={cn(
       "w-full justify-start text-left font-normal mt-1",
-      !value && "text-muted-foreground"
+      !value && "text-muted-foreground",
     )}
     onClick={onClick}
     ref={ref}
@@ -218,7 +218,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
   // State for popover and calendar month
   const [open, setOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState<Date | undefined>(
-    undefined
+    undefined,
   );
 
   return (
@@ -259,7 +259,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                       "w-full justify-start text-left font-normal mt-1 data-[empty=true]:text-muted-foreground",
                       !selectedDate && "text-muted-foreground",
                       errors[name] &&
-                        "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+                        "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
                     )}
                     disabled={form.formState.isSubmitting}
                   >
@@ -292,10 +292,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                       setCalendarMonth(date ?? undefined);
                       setOpen(false);
                     }}
-                    fromYear={1940}
-                    toYear={maxDate.getFullYear()}
                     captionLayout="dropdown"
-                    initialFocus
                     disabled={(date) => date > maxDate || date < minDate}
                     defaultMonth={defaultMonth}
                     fixedWeeks

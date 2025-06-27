@@ -7,7 +7,7 @@ import { useAuthContext } from "@/components/AuthProvider";
 export default function SignInPage() {
   const { isProfileComplete, isOnboardingComplete } = useAuthContext();
   const needsWizard = !isProfileComplete || !isOnboardingComplete;
-  const redirectUrl = needsWizard ? "/create-profile" : "/search";
+  const redirectUrl = needsWizard ? "/" : "/search";
 
   return (
     <div className="w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
@@ -53,7 +53,7 @@ export default function SignInPage() {
           <SignIn
             path="/sign-in"
             routing="path"
-            signUpUrl="/sign-up"
+            signUpUrl="/"
             afterSignInUrl={redirectUrl}
             fallbackRedirectUrl={redirectUrl}
           />

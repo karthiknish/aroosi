@@ -74,7 +74,7 @@ export function profileCreatedTemplate(profile: Profile): EmailPayload {
       <li>Set your preferences so we can surface the best matches</li>
     </ul>
     <p style="font-size:16px; line-height:1.6;">When you're ready, our search page is waiting for you ✨</p>
-    <a href="https://aroosi.app/create-profile" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">Complete my profile</a>
+    <a href="https://aroosi.app/" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">Complete my profile</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -220,7 +220,10 @@ export function profileCreatedAdminTemplate(profile: Profile): EmailPayload {
 }
 
 // Admin: Subscription purchased notification
-export function subscriptionPurchasedAdminTemplate(profile: Profile, plan: string): EmailPayload {
+export function subscriptionPurchasedAdminTemplate(
+  profile: Profile,
+  plan: string,
+): EmailPayload {
   const subject = `New subscription: ${profile.fullName} purchased ${plan}`;
   const body = `
     <h1 style="margin-top:0;">💳 New Subscription Purchased</h1>

@@ -13,7 +13,11 @@ const fadeInUp = {
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.15, duration: 0.7, ease: [0.25, 0.1, 0.25, 1] as const },
+    transition: {
+      delay: i * 0.15,
+      duration: 0.7,
+      ease: [0.25, 0.1, 0.25, 1] as const,
+    },
   }),
 };
 
@@ -21,7 +25,11 @@ const fadeIn = {
   hidden: { opacity: 0 },
   visible: (i = 0) => ({
     opacity: 1,
-    transition: { delay: i * 0.15, duration: 0.7, ease: [0.25, 0.1, 0.25, 1] as const },
+    transition: {
+      delay: i * 0.15,
+      duration: 0.7,
+      ease: [0.25, 0.1, 0.25, 1] as const,
+    },
   }),
 };
 
@@ -707,7 +715,7 @@ export default function AboutPage() {
                   size="lg"
                   className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all"
                 >
-                  <Link href="/sign-up">Create Your Profile</Link>
+                  <Link href="/">Create Your Profile</Link>
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <Button

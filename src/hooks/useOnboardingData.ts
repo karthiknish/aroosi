@@ -12,20 +12,23 @@ export function useOnboardingData() {
     if (isSignedIn) {
       // Check if we have onboarding data from the home page
       const onboardingData = localStorage.getItem("onboardingData");
-      
+
       if (onboardingData) {
         // Store it with the user ID for later use in profile creation
         const data = JSON.parse(onboardingData);
-        localStorage.setItem("pendingProfileData", JSON.stringify({
-          ...data,
-          fromHomePage: true,
-        }));
-        
+        localStorage.setItem(
+          "pendingProfileData",
+          JSON.stringify({
+            ...data,
+            fromHomePage: true,
+          }),
+        );
+
         // Clear the original onboarding data
         localStorage.removeItem("onboardingData");
-        
-        // Redirect to profile creation with the data
-        router.push("/create-profile");
+
+        // Redirect to home page where the modal will open
+        router.push("/");
       }
     }
   }, [isSignedIn, isLoaded, router]);

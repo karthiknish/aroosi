@@ -13,7 +13,7 @@ export default function ForgotPasswordPage() {
         <SignIn
           path="/forgot-password"
           routing="path"
-          signUpUrl="/sign-up"
+          signUpUrl="/"
           redirectUrl="/"
           appearance={{ variables: { colorPrimary: "#BFA67A" } }}
         />

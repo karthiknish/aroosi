@@ -22,7 +22,7 @@ import { usePathname } from "next/navigation";
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
   const pathname = usePathname();
-  
+
   React.useEffect(() => {
     setHydrated(true);
   }, []);
@@ -55,7 +55,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     visible: {
       y: 0,
       opacity: 1,
-      transition: { type: "spring" as const, stiffness: 80, damping: 15, delay: 0.2 },
+      transition: {
+        type: "spring" as const,
+        stiffness: 80,
+        damping: 15,
+        delay: 0.2,
+      },
     },
   };
 
@@ -64,7 +69,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     visible: (i: number) => ({
       y: 0,
       opacity: 1,
-      transition: { delay: i * 0.1 + 0.4, type: "spring" as const, stiffness: 90 },
+      transition: {
+        delay: i * 0.1 + 0.4,
+        type: "spring" as const,
+        stiffness: 90,
+      },
     }),
   };
 
@@ -155,7 +164,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     initial="hidden"
                     animate="visible"
                   >
-                    <Link href="/premium-settings" onClick={onClick} className="block">
+                    <Link
+                      href="/premium-settings"
+                      onClick={onClick}
+                      className="block"
+                    >
                       <Button
                         variant="ghost"
                         className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
@@ -251,7 +264,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     <span>Sign In</span>
                   </Button>
                 </Link>
-                <Link href="/sign-up" onClick={onClick} className="block">
+                <Link href="/" onClick={onClick} className="block">
                   <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
                     <UserPlus className="h-4 w-4" />
                     <span>Sign Up</span>

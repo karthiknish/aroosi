@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { useRouter } from "next/navigation";
+
 import Link from "next/link";
 import { ArrowRight, Users, Shield, Star, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ProfileCreationModal } from "@/components/home/ProfileCreationModal";
 
 interface OnboardingData {
   profileFor: string;
@@ -36,9 +37,9 @@ interface OnboardingData {
 }
 
 export function HeroOnboarding() {
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [formData, setFormData] = useState<OnboardingData>({
     profileFor: "",
     gender: "",
@@ -49,7 +50,7 @@ export function HeroOnboarding() {
   });
 
   const handleInputChange = (field: keyof OnboardingData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleNext = () => {
@@ -61,6 +62,14 @@ export function HeroOnboarding() {
     if (step === 2 && (!formData.fullName || !formData.dateOfBirth)) {
       toast.error("Please fill in all fields");
       return;
+    }
+    // Age validation
+    if (step === 2 && formData.dateOfBirth) {
+      const age = calculateAge(formData.dateOfBirth);
+      if (isNaN(age) || age < 18) {
+        toast.error("You must be at least 18 years old to use this app.");
+        return;
+      }
     }
     if (step === 3 && (!formData.email || !formData.phoneNumber)) {
       toast.error("Please fill in all fields");
@@ -77,11 +86,8 @@ export function HeroOnboarding() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      // Store form data in localStorage for use after sign-up
-      localStorage.setItem("pendingProfileData", JSON.stringify(formData));
-      
-      // Redirect to sign-up page
-      router.push("/sign-up");
+      // Open the profile creation modal with the collected data
+      setShowProfileModal(true);
     } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {
@@ -94,7 +100,10 @@ export function HeroOnboarding() {
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
       age--;
     }
     return age;
@@ -290,7 +299,7 @@ export function HeroOnboarding() {
                           variant="outline"
                           className={cn(
                             "w-full justify-start text-left font-normal bg-white",
-                            !formData.dateOfBirth && "text-muted-foreground"
+                            !formData.dateOfBirth && "text-muted-foreground",
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -316,13 +325,23 @@ export function HeroOnboarding() {
                             if (date) {
                               handleInputChange(
                                 "dateOfBirth",
-                                format(date, "yyyy-MM-dd")
+                                format(date, "yyyy-MM-dd"),
                               );
                             }
                           }}
-                          disabled={(date) =>
-                            date > new Date() || date < new Date("1900-01-01")
-                          }
+                          disabled={(date) => {
+                            const today = new Date();
+                            const minDate = new Date(
+                              today.getFullYear() - 18,
+                              today.getMonth(),
+                              today.getDate(),
+                            );
+                            return (
+                              date > minDate || date < new Date("1900-01-01")
+                            );
+                          }}
+                          captionLayout="dropdown"
+                          defaultMonth={new Date(2000, 0, 1)}
                         />
                       </PopoverContent>
                     </Popover>
@@ -434,6 +453,13 @@ export function HeroOnboarding() {
           <p className="text-sm opacity-90">Success Stories</p>
         </div>
       </div>
+
+      {/* Profile Creation Modal */}
+      <ProfileCreationModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        initialData={formData}
+      />
     </div>
   );
 }

@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 const publicRoutes = [
   "/",
   "/sign-in(.*)",
-  "/sign-up(.*)",
   "/about",
   "/how-it-works",
   "/privacy",
@@ -25,7 +24,7 @@ export default clerkMiddleware(async (auth, req) => {
     publicRoutes.some((route) =>
       route.endsWith("(.*)")
         ? new RegExp(`^${route.replace("(.*)", ".*")}$`).test(pathname)
-        : pathname === route
+        : pathname === route,
     )
   ) {
     return NextResponse.next();

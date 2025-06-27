@@ -450,7 +450,7 @@ export default function HowItWorksPage() {
                 Aroosi. Your journey starts with a single click.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Link href="/sign-up">
+                <Link href="/">
                   <Button
                     size="lg"
                     className="bg-white text-[#3E647A] hover:bg-blue-50 text-lg px-8 py-4 rounded-xl shadow-lg transition-all duration-300 hover:scale-105"

@@ -60,7 +60,6 @@ export default function ProtectedRoute({
       isPublicRoute: [
         "/",
         "/sign-in",
-        "/sign-up",
         "/forgot-password",
         "/privacy",
         "/terms",
@@ -70,18 +69,14 @@ export default function ProtectedRoute({
         "/faq",
         "/contact",
       ].some((route) => pathname === route || pathname.startsWith(`${route}/`)),
-      isOnboardingRoute: ["/create-profile", "/profile/onboarding"].some(
-        (route) => pathname.startsWith(route)
+      isOnboardingRoute: ["/profile/onboarding"].some((route) =>
+        pathname.startsWith(route),
       ),
       isProfileEditRoute:
         pathname === "/profile/edit" || pathname.startsWith("/profile/edit/"),
-      isCreateProfileRoute:
-        pathname === "/create-profile" ||
-        pathname.startsWith("/create-profile") ||
-        pathname === "/create-profile" ||
-        pathname.startsWith("/create-profile"),
+      isCreateProfileRoute: false,
     }),
-    [pathname]
+    [pathname],
   );
 
   // Define premium page paths and feature restrictions
@@ -99,17 +94,20 @@ export default function ProtectedRoute({
   }
 
   // Enhanced navigation handler with better error handling
-  const handleNavigation = useCallback((path: string, message?: string) => {
-    try {
-      if (message) {
-        showInfoToast(message);
+  const handleNavigation = useCallback(
+    (path: string, message?: string) => {
+      try {
+        if (message) {
+          showInfoToast(message);
+        }
+        router.replace(path);
+      } catch (error) {
+        console.error("ProtectedRoute: Navigation error:", error);
+        showErrorToast("Navigation failed. Please refresh and try again.");
       }
-      router.replace(path);
-    } catch (error) {
-      console.error("ProtectedRoute: Navigation error:", error);
-      showErrorToast("Navigation failed. Please refresh and try again.");
-    }
-  }, [router]);
+    },
+    [router],
+  );
 
   // Handle all redirections with improved error handling
   useEffect(() => {
@@ -136,7 +134,10 @@ export default function ProtectedRoute({
             params.set("redirect_url", pathname);
             return `/sign-in?${params.toString()}`;
           };
-          handleNavigation(redirectTo || getSignInUrl(), "Please sign in to continue");
+          handleNavigation(
+            redirectTo || getSignInUrl(),
+            "Please sign in to continue",
+          );
         }
       }
       return;
@@ -153,7 +154,10 @@ export default function ProtectedRoute({
       // Restrict premium-only routes based on subscription
       if (premiumAnyPlanRoutes.some((p) => pathname.startsWith(p))) {
         if (userPlan === "free") {
-          handleNavigation(planManagementRoute, "Upgrade to Premium to access this feature.");
+          handleNavigation(
+            planManagementRoute,
+            "Upgrade to Premium to access this feature.",
+          );
           return;
         }
       }
@@ -164,30 +168,27 @@ export default function ProtectedRoute({
           return;
         }
       }
-      
+
       // Handle chat/messaging restrictions for free users
       if (chatRestrictedRoutes.some((p) => pathname.startsWith(p))) {
         if (userPlan === "free") {
-          handleNavigation(planManagementRoute, "Upgrade to Premium to chat with your matches.");
+          handleNavigation(
+            planManagementRoute,
+            "Upgrade to Premium to chat with your matches.",
+          );
           return;
         }
       }
 
-      // 1. If either flag is false, keep user on /create-profile until completed
+      // 1. If either flag is false, redirect to home page for onboarding
       if (!profileComplete || !onboardingComplete) {
-        if (!isCreateProfileRoute) {
-          // Check if we have pending onboarding data from the home page
-          const pendingData = localStorage.getItem("pendingProfileData");
-          if (pendingData) {
-            handleNavigation("/create-profile");
-          } else {
-            handleNavigation("/create-profile");
-          }
+        if (!isCreateProfileRoute && !isPublicRoute) {
+          handleNavigation("/");
           return;
         }
       }
 
-      // 2. Both flags true → if currently on create-profile or any public route, send to /search
+      // 2. Both flags true → if currently on any public route, send to /search
       if (profileComplete && onboardingComplete) {
         if (
           (isPublicRoute || isOnboardingRoute || isCreateProfileRoute) &&
@@ -271,7 +272,7 @@ export default function ProtectedRoute({
   }
 
   // If profile is incomplete and we're *not* on a route explicitly meant to complete it,
-  // do not render children (user will be redirected). Allow /create-profile and edit screens.
+  // do not render children (user will be redirected). Allow edit screens.
   if (
     requireProfileComplete &&
     !profileComplete &&
@@ -291,8 +292,6 @@ export default function ProtectedRoute({
   ) {
     return null;
   }
-
-
 
   // Return children wrapped in a fragment to maintain consistent structure
   return <>{children}</>;

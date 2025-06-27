@@ -8,6 +8,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { HeroOnboarding } from "@/components/home/HeroOnboarding";
+
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: (i = 0) => ({
@@ -779,7 +780,7 @@ export default function HomePage() {
                   className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                 >
                   <Button className="bg-white text-primary-dark hover:bg-primary-light font-nunito font-medium px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all">
-                    <Link href="/sign-up">Get Started Free</Link>
+                    <Link href="/">Get Started Free</Link>
                   </Button>
                 </motion.div>
 
