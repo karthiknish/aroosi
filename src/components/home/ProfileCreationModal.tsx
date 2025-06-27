@@ -176,7 +176,7 @@ export function ProfileCreationModal({
 
   const handleInputChange = (
     field: keyof ProfileCreationData,
-    value: string
+    value: string | number | string[],
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -325,7 +325,10 @@ export function ProfileCreationModal({
                         id="country"
                         value={formData.country}
                         onChange={(e) =>
-                          handleInputChange("country", e.target.value)
+                          handleInputChange(
+                            "partnerPreferenceAgeMax",
+                            Number(e.target.value),
+                          )
                         }
                         placeholder="Country"
                       />
@@ -684,7 +687,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value)
+                              e.target.value,
                             )
                           }
                           className="w-20"
@@ -702,7 +705,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMax",
-                              Number(e.target.value)
+                              e.target.value,
                             )
                           }
                           className="w-20"
@@ -729,7 +732,7 @@ export function ProfileCreationModal({
                             e.target.value
                               .split(",")
                               .map((s) => s.trim())
-                              .filter(Boolean)
+                              .filter(Boolean),
                           )
                         }
                         placeholder="e.g. London, Kabul"
@@ -753,9 +756,9 @@ export function ProfileCreationModal({
                             "profileImageIds",
                             Array.isArray(imgs)
                               ? imgs.map((img) =>
-                                  typeof img === "string" ? img : img.id
+                                  typeof img === "string" ? img : img.id,
                                 )
-                              : []
+                              : [],
                           )
                         }
                         className="w-full h-48"
