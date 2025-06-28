@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!profile) return errorResponse("User profile not found", 404);
+
     const now = Date.now();
     const isActive = profile.subscriptionExpiresAt
       ? profile.subscriptionExpiresAt > now

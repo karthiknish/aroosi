@@ -4,11 +4,19 @@ import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { subscriptionAPI } from "@/lib/api/subscription";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { useAuthContext } from "@/components/AuthProvider";
 
-export const useSubscriptionStatus = (token?: string) => {
+export const useSubscriptionStatus = (providedToken?: string) => {
+  // Prefer explicit token, fall back to AuthProvider context
+  const { token: contextToken } = useAuthContext();
+  const token: string | undefined =
+    providedToken ?? (contextToken || undefined);
+
   return useQuery({
     queryKey: ["subscription", "status", token],
     queryFn: () => subscriptionAPI.getStatus(token),
+    // Only run the query when we actually have an auth token.
+    enabled: Boolean(token),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
