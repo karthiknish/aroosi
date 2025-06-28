@@ -60,10 +60,21 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
       convex.setAuth(token);
 
-      const currentUserRecord = await convex.query(
-        api.users.getCurrentUserWithProfile,
-        {}
-      );
+      let currentUserRecord;
+      try {
+        currentUserRecord = await convex.query(
+          api.users.getCurrentUserWithProfile,
+          {}
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        const isAuth =
+          message.includes("Unauthenticated") || message.includes("token");
+        return errorResponse(
+          isAuth ? "Authentication failed" : "Failed to fetch current user",
+          isAuth ? 401 : 400
+        );
+      }
 
       if (!currentUserRecord) {
         return errorResponse("User not found", 404);
@@ -142,11 +153,8 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     }
   } catch (error) {
     console.error(`Unexpected error in interest ${action}:`, error);
-    
-    return errorResponse(
-      "Internal server error",
-      500
-    );
+
+    return errorResponse("Internal server error", 500);
   }
 }
 
@@ -181,13 +189,26 @@ export async function GET(req: NextRequest) {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
     convex.setAuth(token);
 
-    const currentUserRecord = await convex.query(
-      api.users.getCurrentUserWithProfile,
-      {}
-    );
+    let currentUserRecord;
+    try {
+      currentUserRecord = await convex.query(
+        api.users.getCurrentUserWithProfile,
+        {}
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const isAuth =
+        message.includes("Unauthenticated") || message.includes("token");
+      return errorResponse(
+        isAuth ? "Authentication failed" : "Failed to fetch current user",
+        isAuth ? 401 : 400
+      );
+    }
+
     if (!currentUserRecord) {
       return errorResponse("User not found", 404);
     }
+
     const currentUserId = currentUserRecord._id as Id<"users">;
 
     if (userIdParam && userIdParam !== (currentUserId as unknown as string)) {
@@ -224,19 +245,25 @@ export async function GET(req: NextRequest) {
     return successResponse(result);
   } catch (error) {
     console.error("Error fetching sent interests:", error);
-    
+
     // Log security event for monitoring
-    logSecurityEvent('VALIDATION_FAILED', {
-      userId: req.url.includes('userId=') ? new URL(req.url).searchParams.get('userId') : 'unknown',
-      endpoint: 'interests',
-      method: 'GET',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, req);
+    logSecurityEvent(
+      "VALIDATION_FAILED",
+      {
+        userId: req.url.includes("userId=")
+          ? new URL(req.url).searchParams.get("userId")
+          : "unknown",
+        endpoint: "interests",
+        method: "GET",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      req
+    );
 
     if (error instanceof Error && error.message.includes("Unauthenticated")) {
       return errorResponse("Authentication failed", 401);
     }
-    
+
     return errorResponse("Failed to fetch interests", 500);
   }
 }
