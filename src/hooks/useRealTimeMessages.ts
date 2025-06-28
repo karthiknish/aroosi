@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
 import { MessageData, MessageEvent } from "@/lib/utils/messageUtils";
+import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
 
 interface UseRealTimeMessagesProps {
   conversationId: string;
@@ -14,6 +15,11 @@ interface UseRealTimeMessagesReturn {
   isTyping: Record<string, boolean>;
   isConnected: boolean;
   sendMessage: (text: string, toUserId: string) => Promise<void>;
+  sendVoiceMessage: (
+    blob: Blob,
+    toUserId: string,
+    duration: number
+  ) => Promise<void>;
   sendTypingStart: () => void;
   sendTypingStop: () => void;
   markAsRead: (messageIds: string[]) => Promise<void>;
@@ -225,6 +231,51 @@ export function useRealTimeMessages({
     [userId, conversationId, contextToken]
   );
 
+  // Send voice message
+  const sendVoiceMessage = useCallback(
+    async (blob: Blob, toUserId: string, duration: number) => {
+      if (!userId) return;
+
+      try {
+        const token = contextToken;
+        if (!token) throw new Error("Authentication required");
+
+        const saved = await uploadVoiceMessage({
+          token,
+          conversationId,
+          fromUserId: userId,
+          toUserId,
+          blob,
+          duration,
+        });
+
+        // Optimistically add to state
+        setMessages((prev) => [
+          ...prev,
+          {
+            _id: saved._id,
+            conversationId,
+            fromUserId: userId,
+            toUserId,
+            text: "",
+            type: "voice",
+            audioStorageId: saved.audioStorageId,
+            duration: saved.duration,
+            fileSize: saved.fileSize,
+            mimeType: saved.mimeType,
+            isRead: false,
+            _creationTime: saved.createdAt,
+          },
+        ]);
+      } catch (err) {
+        console.error("Error sending voice message", err);
+        if (err instanceof Error) setError(err.message);
+        throw err;
+      }
+    },
+    [userId, conversationId, contextToken]
+  );
+
   // Send typing indicators
   const sendTypingStart = useCallback(() => {
     if (!userId || !eventSourceRef.current) return;
@@ -409,6 +460,7 @@ export function useRealTimeMessages({
     isTyping,
     isConnected,
     sendMessage,
+    sendVoiceMessage,
     sendTypingStart,
     sendTypingStop,
     markAsRead,

@@ -28,9 +28,9 @@ export const sendMessage = mutation({
     conversationId: v.string(),
     fromUserId: v.id("users"),
     toUserId: v.id("users"),
-    text: v.string(),
+    text: v.optional(v.string()),
     type: v.optional(
-      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image"))
     ),
     audioStorageId: v.optional(v.string()),
     duration: v.optional(v.number()),
@@ -38,26 +38,49 @@ export const sendMessage = mutation({
     mimeType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Check if fromUserId and toUserId are mutual matches
-    // (You may want to optimize this by storing matches in a table, but for now, use getMyMatches)
+    // Ensure users are matched before allowing message
     const matches = await ctx.runQuery(api.users.getMyMatches, {});
     const isMatched = matches.some(
-      (p: Profile | null) => p?.userId === args.toUserId,
+      (p: Profile | null) => p?.userId === args.toUserId
     );
-    if (!isMatched)
+    if (!isMatched) {
       throw new Error("You can only message users you are matched with.");
+    }
+
+    // Default to text when type not provided
+    const type = args.type || "text";
+
+    // Validation per message type
+    if (type === "text") {
+      if (!args.text || args.text.trim() === "") {
+        throw new Error("Text message cannot be empty");
+      }
+    } else if (type === "voice") {
+      if (!args.audioStorageId) {
+        throw new Error("Voice message missing audioStorageId");
+      }
+      if (args.duration === undefined || args.duration <= 0) {
+        throw new Error("Voice message missing duration");
+      }
+    } else if (type === "image") {
+      if (!args.audioStorageId) {
+        throw new Error("Image message missing storageId");
+      }
+    }
+
     const newId = await ctx.db.insert("messages", {
       conversationId: args.conversationId,
       fromUserId: args.fromUserId,
       toUserId: args.toUserId,
-      text: args.text,
-      type: args.type || "text",
+      text: type === "text" ? args.text || "" : "",
+      type,
       audioStorageId: args.audioStorageId,
       duration: args.duration,
       fileSize: args.fileSize,
       mimeType: args.mimeType,
       createdAt: Date.now(),
     });
+
     const saved = await ctx.db.get(newId);
     return saved;
   },
@@ -74,7 +97,7 @@ export const getMessages = query({
     const query = ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversationId),
+        q.eq("conversationId", conversationId)
       )
       .order("desc");
 
@@ -100,7 +123,7 @@ export const markConversationRead = mutation({
     const unread = await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversationId),
+        q.eq("conversationId", conversationId)
       )
       .collect();
     await Promise.all(
@@ -108,7 +131,7 @@ export const markConversationRead = mutation({
         if (msg.toUserId === userId && msg.readAt === undefined) {
           await ctx.db.patch(msg._id as Id<"messages">, { readAt: Date.now() });
         }
-      }),
+      })
     );
     return { success: true };
   },
@@ -164,5 +187,21 @@ export const getVoiceMessageUrl = query({
   args: { storageId: v.string() },
   handler: async (ctx, { storageId }) => {
     return await ctx.storage.getUrl(storageId);
+  },
+});
+
+// Fetch only voice messages for a conversation
+export const getVoiceMessages = query({
+  args: {
+    conversationId: v.string(),
+  },
+  handler: async (ctx, { conversationId }) => {
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_conversation", (q) =>
+        q.eq("conversationId", conversationId)
+      )
+      .filter((q) => q.eq(q.field("type"), "voice"))
+      .collect();
   },
 });
