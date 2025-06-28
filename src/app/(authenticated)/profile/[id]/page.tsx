@@ -169,10 +169,17 @@ export default function ProfileDetailPage() {
     queryKey: ["sentInterests", fromUserId, toUserId, token],
     queryFn: async () => {
       if (!token || !fromUserId) return [];
-      // getSentInterests expects (token, userId), where userId is the current user's id
-      // But we want to get interests sent by current user to the profile user
-      // So we fetch all sent interests by current user, then filter for toUserId
-      return await getSentInterests(token, fromUserId);
+      const res = await getSentInterests(token, fromUserId);
+      let payload: unknown = res;
+      if (
+        payload &&
+        typeof payload === "object" &&
+        "success" in payload &&
+        "data" in payload
+      ) {
+        payload = (payload as { data: unknown }).data;
+      }
+      return Array.isArray(payload) ? payload : [];
     },
     enabled: !!token && !!fromUserId,
     retry: false,
