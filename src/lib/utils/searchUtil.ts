@@ -11,6 +11,9 @@ import { showErrorToast } from "@/lib/ui/toast";
  * @param {string} [params.country] - The country to filter by.
  * @param {string} [params.ageMin] - The minimum age to filter by.
  * @param {string} [params.ageMax] - The maximum age to filter by.
+ * @param {string} [params.ethnicity] - The ethnicity to filter by.
+ * @param {string} [params.motherTongue] - The mother tongue to filter by.
+ * @param {string} [params.language] - The language to filter by.
  * @returns {Promise<{ profiles: ProfileSearchResult[]; total: number }>} The search results.
  */
 export async function fetchProfileSearchResults({
@@ -21,6 +24,9 @@ export async function fetchProfileSearchResults({
   country,
   ageMin,
   ageMax,
+  ethnicity,
+  motherTongue,
+  language,
 }: {
   token: string;
   page: number;
@@ -29,6 +35,9 @@ export async function fetchProfileSearchResults({
   country?: string;
   ageMin?: string;
   ageMax?: string;
+  ethnicity?: string;
+  motherTongue?: string;
+  language?: string;
 }): Promise<{ profiles: ProfileSearchResult[]; total: number }> {
   if (!token) return { profiles: [], total: 0 };
   try {
@@ -40,6 +49,10 @@ export async function fetchProfileSearchResults({
     if (country && country !== "any") params.append("country", country);
     if (ageMin) params.append("ageMin", ageMin);
     if (ageMax) params.append("ageMax", ageMax);
+    if (ethnicity && ethnicity !== "any") params.append("ethnicity", ethnicity);
+    if (motherTongue && motherTongue !== "any")
+      params.append("motherTongue", motherTongue);
+    if (language && language !== "any") params.append("language", language);
     const response = await fetch(`/api/search?${params.toString()}`, {
       headers: {
         "Content-Type": "application/json",

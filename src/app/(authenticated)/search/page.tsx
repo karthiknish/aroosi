@@ -24,67 +24,6 @@ import { useOffline } from "@/hooks/useOffline";
 import { useBlockedUsers } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 
-const majorUkCities = [
-  "London",
-  "Birmingham",
-  "Manchester",
-  "Leeds",
-  "Glasgow",
-  "Liverpool",
-  "Newcastle",
-  "Sheffield",
-  "Bristol",
-  "Leicester",
-  "Edinburgh",
-  "Nottingham",
-  "Southampton",
-  "Cardiff",
-  "Coventry",
-  "Bradford",
-  "Belfast",
-  "Stoke-on-Trent",
-  "Wolverhampton",
-  "Plymouth",
-  "Derby",
-  "Swansea",
-  "Sunderland",
-  "Luton",
-  "Preston",
-  "Aberdeen",
-  "Norwich",
-  "Portsmouth",
-  "York",
-  "Milton Keynes",
-  "Reading",
-  "Huddersfield",
-  "Peterborough",
-  "Blackpool",
-  "Bolton",
-  "Ipswich",
-  "Middlesbrough",
-  "Woking",
-  "Slough",
-  "Cambridge",
-  "Exeter",
-  "Bath",
-  "Oxford",
-  "Chelmsford",
-  "Colchester",
-  "Crawley",
-  "Gillingham",
-  "Hastings",
-  "High Wycombe",
-  "Maidstone",
-  "Poole",
-  "Rochdale",
-  "Solihull",
-  "Stockport",
-  "Warrington",
-  "Watford",
-  "Wokingham",
-];
-const cityOptions = ["any", ...majorUkCities.sort()];
-
 const commonCountries = [
   "Afghanistan",
   "United Kingdom",
@@ -110,6 +49,42 @@ const commonCountries = [
   "Bahrain",
 ];
 const countryOptions = ["any", ...commonCountries.sort()];
+
+// Additional premium filters
+const ethnicityOptions = [
+  "any",
+  "Pashtun",
+  "Tajik",
+  "Hazara",
+  "Uzbek",
+  "Turkmen",
+  "Nuristani",
+  "Aimaq",
+  "Baloch",
+  "Sadat",
+];
+
+const motherTongueOptions = [
+  "any",
+  "Pashto",
+  "Dari",
+  "Uzbeki",
+  "Turkmeni",
+  "Nuristani",
+  "Balochi",
+];
+
+const languageOptions = [
+  "any",
+  "English",
+  "Pashto",
+  "Dari",
+  "Farsi",
+  "Urdu",
+  "Arabic",
+  "German",
+  "Turkish",
+];
 
 function getAge(dateOfBirth: string) {
   if (!dateOfBirth) return "-";
@@ -139,10 +114,10 @@ export interface ProfileSearchResult {
 }
 
 export default function SearchProfilesPage() {
-  const { token, isSignedIn } = useAuthContext();
+  const { token, isSignedIn, profile } = useAuthContext();
   const router = useRouter();
   const { trackUsage } = useUsageTracking(token ?? undefined);
-  const [city, setCity] = React.useState("any");
+  const [city, setCity] = React.useState("");
   const [country, setCountry] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
   const [ageMax, setAgeMax] = React.useState("");
@@ -151,6 +126,11 @@ export default function SearchProfilesPage() {
   const [pageSize] = useState(12);
   const [total, setTotal] = useState(0);
   const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
+
+  // Premium filters
+  const [ethnicity, setEthnicity] = useState("any");
+  const [motherTongue, setMotherTongue] = useState("any");
+  const [language, setLanguage] = useState("any");
 
   // Use util for search results
   // (token, page, pageSize, city, religion, ageMin, ageMax)
@@ -172,6 +152,9 @@ export default function SearchProfilesPage() {
       ageMax,
       page,
       pageSize,
+      ethnicity,
+      motherTongue,
+      language,
     ],
     queryFn: () =>
       fetchProfileSearchResults({
@@ -182,6 +165,9 @@ export default function SearchProfilesPage() {
         country,
         ageMin,
         ageMax,
+        ethnicity,
+        motherTongue,
+        language,
       }),
     enabled: !!token && isSignedIn,
   });
@@ -367,18 +353,13 @@ export default function SearchProfilesPage() {
             transition={{ duration: 0.7 }}
             className="flex flex-wrap gap-3 justify-center mb-10 bg-white/80 rounded-xl shadow p-4"
           >
-            <Select value={city} onValueChange={setCity}>
-              <SelectTrigger className="w-40 bg-white rounded-lg shadow-sm font-nunito">
-                <SelectValue placeholder="Choose City" />
-              </SelectTrigger>
-              <SelectContent>
-                {cityOptions.map((c) => (
-                  <SelectItem key={c} value={c} className="font-nunito">
-                    {c === "any" ? "Any City" : c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              type="text"
+              placeholder="City"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="w-40 bg-white rounded-lg shadow-sm font-nunito"
+            />
             <Select value={country} onValueChange={setCountry}>
               <SelectTrigger className="w-40 bg-white rounded-lg shadow-sm font-nunito">
                 <SelectValue placeholder="Choose Country" />
@@ -409,6 +390,50 @@ export default function SearchProfilesPage() {
               onChange={(e) => setAgeMax(e.target.value)}
               className="w-24 bg-white rounded-lg shadow-sm font-nunito"
             />
+            {/* Premium-only filters */}
+            {(profile?.subscriptionPlan === "premium" ||
+              profile?.subscriptionPlan === "premiumPlus") && (
+              <>
+                <Select value={ethnicity} onValueChange={setEthnicity}>
+                  <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+                    <SelectValue placeholder="Ethnicity" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {ethnicityOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="font-nunito">
+                        {opt === "any" ? "Any Ethnicity" : opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={motherTongue} onValueChange={setMotherTongue}>
+                  <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+                    <SelectValue placeholder="Mother Tongue" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {motherTongueOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="font-nunito">
+                        {opt === "any" ? "Any Mother Tongue" : opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+                    <SelectValue placeholder="Language" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto">
+                    {languageOptions.map((opt) => (
+                      <SelectItem key={opt} value={opt} className="font-nunito">
+                        {opt === "any" ? "Any Language" : opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </motion.div>
         </section>
         {loadingProfiles ||
@@ -458,7 +483,7 @@ export default function SearchProfilesPage() {
             {(city !== "any" || country !== "any" || ageMin || ageMax) && (
               <button
                 onClick={() => {
-                  setCity("any");
+                  setCity("");
                   setCountry("any");
                   setAgeMin("");
                   setAgeMax("");
