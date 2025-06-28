@@ -2,7 +2,6 @@
 
 import { useAuthContext } from "@/components/AuthProvider";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,9 +62,9 @@ function MatchCard({
                       animate={{ scale: 1 }}
                       className="absolute -top-1 -right-1"
                     >
-                      <Badge className="h-6 min-w-6 rounded-full text-xs font-bold shadow-lg bg-primary text-white border-0">
+                      <span className="flex items-center justify-center h-6 min-w-6 rounded-full bg-primary text-white text-[10px] leading-none font-bold shadow-lg px-1">
                         {match.unread > 9 ? "9+" : match.unread}
-                      </Badge>
+                      </span>
                     </motion.div>
                   )}
                 </div>
