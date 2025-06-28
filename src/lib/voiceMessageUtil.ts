@@ -44,12 +44,10 @@ export async function uploadVoiceMessage({
   client.setAuth(token);
 
   // Step 2: get an upload URL
-  const { uploadUrl } = (await client.mutation(
+  const uploadUrl = (await client.mutation(
     api.messages.generateUploadUrl,
     {}
-  )) as {
-    uploadUrl: string;
-  };
+  )) as string;
   if (!uploadUrl) throw new Error("Failed to obtain upload URL");
 
   // Step 3: upload the blob
