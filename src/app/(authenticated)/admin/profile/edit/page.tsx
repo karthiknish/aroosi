@@ -111,8 +111,18 @@ export default function AdminEditProfilePage() {
     )
       ? (values.preferredGender as (typeof allowedGenders)[number])
       : "any";
+    
+    // Map gender to correct union type
+    const allowedGenderTypes = ["male", "female", "other"] as const;
+    const gender = allowedGenderTypes.includes(
+      values.gender as string as (typeof allowedGenderTypes)[number]
+    )
+      ? (values.gender as (typeof allowedGenderTypes)[number])
+      : "other";
+    
     const updates = {
       ...values,
+      gender,
       maritalStatus,
       partnerPreferenceAgeMin,
       partnerPreferenceAgeMax,
