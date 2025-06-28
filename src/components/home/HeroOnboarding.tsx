@@ -26,6 +26,7 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ProfileCreationModal } from "@/components/home/ProfileCreationModal";
+import * as z from "zod";
 
 interface OnboardingData {
   profileFor: string;
@@ -35,6 +36,21 @@ interface OnboardingData {
   email: string;
   phoneNumber: string;
 }
+
+const onboardingSchema = z.object({
+  profileFor: z.string().min(1, "Required"),
+  gender: z.string().min(1, "Required"),
+  fullName: z.string().min(2, "Required"),
+  dateOfBirth: z.string().min(1, "Required"),
+  email: z.string().email("Invalid email"),
+  phoneNumber: z.string().min(7, "Required"),
+});
+
+const onboardingStepSchemas = [
+  onboardingSchema.pick({ profileFor: true, gender: true }),
+  onboardingSchema.pick({ fullName: true, dateOfBirth: true }),
+  onboardingSchema.pick({ email: true, phoneNumber: true }),
+];
 
 export function HeroOnboarding() {
   const [step, setStep] = useState(1);
@@ -53,27 +69,24 @@ export function HeroOnboarding() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const validateOnboardingStep = (): boolean => {
+    const schema = onboardingStepSchemas[step - 1];
+    const res = schema.safeParse(formData);
+    if (!res.success) {
+      toast.error(res.error.errors[0]?.message || "Please fill in all fields");
+      return false;
+    }
+    return true;
+  };
+
   const handleNext = () => {
-    // Basic validation
-    if (step === 1 && (!formData.profileFor || !formData.gender)) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    if (step === 2 && (!formData.fullName || !formData.dateOfBirth)) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-    // Age validation
-    if (step === 2 && formData.dateOfBirth) {
+    if (!validateOnboardingStep()) return;
+    if (step === 2) {
       const age = calculateAge(formData.dateOfBirth);
       if (isNaN(age) || age < 18) {
         toast.error("You must be at least 18 years old to use this app.");
         return;
       }
-    }
-    if (step === 3 && (!formData.email || !formData.phoneNumber)) {
-      toast.error("Please fill in all fields");
-      return;
     }
 
     if (step < 3) {
@@ -299,7 +312,7 @@ export function HeroOnboarding() {
                           variant="outline"
                           className={cn(
                             "w-full justify-start text-left font-normal bg-white",
-                            !formData.dateOfBirth && "text-muted-foreground",
+                            !formData.dateOfBirth && "text-muted-foreground"
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -325,7 +338,7 @@ export function HeroOnboarding() {
                             if (date) {
                               handleInputChange(
                                 "dateOfBirth",
-                                format(date, "yyyy-MM-dd"),
+                                format(date, "yyyy-MM-dd")
                               );
                             }
                           }}
@@ -334,7 +347,7 @@ export function HeroOnboarding() {
                             const minDate = new Date(
                               today.getFullYear() - 18,
                               today.getMonth(),
-                              today.getDate(),
+                              today.getDate()
                             );
                             return (
                               date > minDate || date < new Date("1900-01-01")

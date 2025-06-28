@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import {
   Dialog,
@@ -23,6 +22,13 @@ import {
 import { SignUp } from "@clerk/nextjs";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  MOTHER_TONGUE_OPTIONS,
+  RELIGION_OPTIONS,
+  ETHNICITY_OPTIONS,
+} from "@/lib/constants/languages";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ProfileData {
   profileFor: string;
@@ -91,15 +97,14 @@ const profileSchema = z.object({
   profileImageIds: z.array(z.string()).optional(),
 });
 
-// Helper: get step-specific schema
+// Validation schemas aligned with visible steps
 const stepSchemas = [
+  // Step 1 – Basic (shown only when not supplied from onboarding)
   profileSchema.pick({
     profileFor: true,
     gender: true,
-    fullName: true,
-    dateOfBirth: true,
-    phoneNumber: true,
   }),
+  // Step 2 – Location & Physical
   profileSchema.pick({
     country: true,
     city: true,
@@ -107,6 +112,7 @@ const stepSchemas = [
     maritalStatus: true,
     physicalStatus: true,
   }),
+  // Step 3 – Cultural & Lifestyle
   profileSchema.pick({
     motherTongue: true,
     religion: true,
@@ -115,19 +121,57 @@ const stepSchemas = [
     smoking: true,
     drinking: true,
   }),
+  // Step 4 – Education & Career
   profileSchema.pick({
     education: true,
     occupation: true,
     annualIncome: true,
     aboutMe: true,
   }),
-  profileSchema.pick({
-    preferredGender: true,
-    partnerPreferenceAgeMin: true,
-    partnerPreferenceAgeMax: true,
-    partnerPreferenceCity: true,
-  }),
+  // Step 5 – Partner Preferences
+  profileSchema
+    .pick({
+      preferredGender: true,
+      partnerPreferenceAgeMin: true,
+      partnerPreferenceAgeMax: true,
+      partnerPreferenceCity: true,
+    })
+    .extend({
+      partnerPreferenceCity: z.array(z.string()).optional(),
+    }),
+  // Step 6 – Photos (optional but still validate array type)
   profileSchema.pick({ profileImageIds: true }),
+];
+
+// Static list of countries for selector
+const countries: string[] = [
+  "United Kingdom",
+  "United States",
+  "Canada",
+  "Australia",
+  "New Zealand",
+  "Afghanistan",
+  "United Arab Emirates",
+  "Qatar",
+  "Saudi Arabia",
+  "Kuwait",
+  "Bahrain",
+  "Oman",
+  "Germany",
+  "France",
+  "Netherlands",
+  "Belgium",
+  "Switzerland",
+  "Austria",
+  "Sweden",
+  "Norway",
+  "Denmark",
+  "Finland",
+  "Italy",
+  "Spain",
+  "Portugal",
+  "Ireland",
+  "Other",
 ];
 
 export function ProfileCreationModal({
@@ -135,8 +179,19 @@ export function ProfileCreationModal({
   onClose,
   initialData,
 }: ProfileCreationModalProps) {
-  const router = useRouter();
-  const [step, setStep] = useState(1);
+  // Determine if we already have the basic fields (collected in HeroOnboarding)
+  const hasBasicData =
+    Boolean(initialData?.profileFor) && Boolean(initialData?.gender);
+
+  // Total number of steps adjusts when we skip the duplicate first step
+  const totalSteps = hasBasicData ? 6 : 7;
+
+  // React state for the current UI step (1-based within the displayed steps)
+  const [step, setStep] = useState<number>(1);
+
+  // Display step that aligns with visible UI, accounting for skipped basic step
+  const displayStep = hasBasicData ? step + 1 : step;
+
   const [formData, setFormData] = useState<ProfileCreationData>({
     profileFor: initialData?.profileFor || "",
     gender: initialData?.gender || "",
@@ -176,31 +231,58 @@ export function ProfileCreationModal({
 
   const handleInputChange = (
     field: keyof ProfileCreationData,
-    value: string | number | string[],
+    value: string | number | string[]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleProfileImageIdsChange = useCallback(
+    (ids: string[]) => {
+      if (
+        JSON.stringify(ids) !== JSON.stringify(formData.profileImageIds ?? [])
+      ) {
+        handleInputChange("profileImageIds", ids);
+        // Persist to localStorage for recovery before final submission
+        try {
+          localStorage.setItem("pendingProfileImages", JSON.stringify(ids));
+        } catch (err) {
+          console.warn("Unable to store images in localStorage", err);
+        }
+      }
+    },
+    [formData.profileImageIds]
+  );
+
   const validateStep = () => {
-    if (step >= 1 && step <= 6) {
-      const schema = stepSchemas[step - 1];
+    const schemaIndex = displayStep - 1;
+    if (schemaIndex >= 0 && schemaIndex < stepSchemas.length) {
+      const schema = stepSchemas[schemaIndex];
       const result = schema.safeParse(formData);
+
       if (!result.success) {
         const fieldErrors: Record<string, string> = {};
         result.error.errors.forEach((e) => {
-          if (e.path[0]) fieldErrors[e.path[0] as string] = e.message;
+          if (e.path[0]) fieldErrors[String(e.path[0])] = e.message;
         });
-        setErrors(fieldErrors);
+
+        // Only update state if error set actually changed
+        if (JSON.stringify(errors) !== JSON.stringify(fieldErrors)) {
+          setErrors(fieldErrors);
+        }
         return false;
       }
     }
-    setErrors({});
+
+    // Clear errors only if previously non-empty
+    if (Object.keys(errors).length) {
+      setErrors({});
+    }
     return true;
   };
 
   const handleNext = () => {
     if (!validateStep()) return;
-    if (step < 7) setStep(step + 1);
+    if (step < totalSteps) setStep(step + 1);
   };
 
   const handleBack = () => {
@@ -209,21 +291,28 @@ export function ProfileCreationModal({
     }
   };
 
+  // Pure validator that does *not* update React state — safe to use inside render
+  const isStepValid = useCallback((): boolean => {
+    const schemaIndex = displayStep - 1;
+    if (schemaIndex < 0 || schemaIndex >= stepSchemas.length) return true;
+    return stepSchemas[schemaIndex].safeParse(formData).success;
+  }, [displayStep, formData]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-full p-0 overflow-hidden">
+      <DialogContent className="max-w-md w-full p-0 overflow-hidden bg-white">
         <div className="relative">
           {/* Progress indicator */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
             <div
               className="h-full bg-pink-600 transition-all duration-300"
-              style={{ width: `${(step / 4) * 100}%` }}
+              style={{ width: `${(step / totalSteps) * 100}%` }}
             />
           </div>
 
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="text-2xl font-bold text-gray-900">
-              {step === 4 ? "Create Your Account" : "Find Your Perfect Match"}
+              Find Your Perfect Match
             </DialogTitle>
             {step < 4 && (
               <p className="text-gray-600 mt-2">
@@ -241,8 +330,8 @@ export function ProfileCreationModal({
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* Step 1: Profile For & Gender */}
-                {step === 1 && (
+                {/* Step 1: Profile For & Gender (only shown when data not yet provided) */}
+                {displayStep === 1 && !hasBasicData && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -312,7 +401,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 2: Location & Physical */}
-                {step === 2 && (
+                {displayStep === 2 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -321,16 +410,11 @@ export function ProfileCreationModal({
                       >
                         Country
                       </Label>
-                      <Input
-                        id="country"
+                      <SearchableSelect
+                        options={countries.map((c) => ({ value: c, label: c }))}
                         value={formData.country}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "partnerPreferenceAgeMax",
-                            Number(e.target.value),
-                          )
-                        }
-                        placeholder="Country"
+                        onValueChange={(v) => handleInputChange("country", v)}
+                        placeholder="Select country"
                       />
                     </div>
                     <div>
@@ -438,7 +522,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 3: Cultural & Lifestyle */}
-                {step === 3 && (
+                {displayStep === 3 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -447,13 +531,16 @@ export function ProfileCreationModal({
                       >
                         Mother Tongue
                       </Label>
-                      <Input
-                        id="motherTongue"
+                      <SearchableSelect
+                        options={MOTHER_TONGUE_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
                         value={formData.motherTongue}
-                        onChange={(e) =>
-                          handleInputChange("motherTongue", e.target.value)
+                        onValueChange={(v) =>
+                          handleInputChange("motherTongue", v)
                         }
-                        placeholder="e.g. Dari, Pashto"
+                        placeholder="Select language"
                       />
                     </div>
                     <div>
@@ -463,21 +550,15 @@ export function ProfileCreationModal({
                       >
                         Religion
                       </Label>
-                      <Select
+                      <SearchableSelect
+                        options={RELIGION_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
                         value={formData.religion}
                         onValueChange={(v) => handleInputChange("religion", v)}
-                      >
-                        <SelectTrigger
-                          id="religion"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="islam">Islam</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        placeholder="Select religion"
+                      />
                     </div>
                     <div>
                       <Label
@@ -486,13 +567,14 @@ export function ProfileCreationModal({
                       >
                         Ethnicity
                       </Label>
-                      <Input
-                        id="ethnicity"
+                      <SearchableSelect
+                        options={ETHNICITY_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
                         value={formData.ethnicity}
-                        onChange={(e) =>
-                          handleInputChange("ethnicity", e.target.value)
-                        }
-                        placeholder="e.g. Pashtun, Tajik"
+                        onValueChange={(v) => handleInputChange("ethnicity", v)}
+                        placeholder="Select ethnicity"
                       />
                     </div>
                     <div>
@@ -572,7 +654,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 4: Education & Career */}
-                {step === 4 && (
+                {displayStep === 4 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -629,20 +711,22 @@ export function ProfileCreationModal({
                       >
                         About Me
                       </Label>
-                      <Input
+                      <Textarea
                         id="aboutMe"
                         value={formData.aboutMe}
                         onChange={(e) =>
                           handleInputChange("aboutMe", e.target.value)
                         }
-                        placeholder="Brief description"
+                        placeholder="Tell us a little about yourself..."
+                        rows={4}
+                        className="w-full bg-white"
                       />
                     </div>
                   </div>
                 )}
 
                 {/* Step 5: Partner Preferences */}
-                {step === 5 && (
+                {displayStep === 5 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -687,7 +771,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              e.target.value,
+                              Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -705,7 +789,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMax",
-                              e.target.value,
+                              Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -732,7 +816,7 @@ export function ProfileCreationModal({
                             e.target.value
                               .split(",")
                               .map((s) => s.trim())
-                              .filter(Boolean),
+                              .filter(Boolean)
                           )
                         }
                         placeholder="e.g. London, Kabul"
@@ -742,7 +826,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 6: Photos (Optional) */}
-                {step === 6 && (
+                {displayStep === 6 && (
                   <div className="space-y-6">
                     <div>
                       <Label className="text-gray-700 mb-2 block">
@@ -752,13 +836,12 @@ export function ProfileCreationModal({
                         userId={"user-id-placeholder"}
                         mode="create"
                         onImagesChanged={(imgs) =>
-                          handleInputChange(
-                            "profileImageIds",
+                          handleProfileImageIdsChange(
                             Array.isArray(imgs)
                               ? imgs.map((img) =>
-                                  typeof img === "string" ? img : img.id,
+                                  typeof img === "string" ? img : img.id
                                 )
-                              : [],
+                              : []
                           )
                         }
                         className="w-full h-48"
@@ -773,13 +856,13 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 7: Clerk SignUp */}
-                {step === 7 && (
+                {displayStep === 7 && (
                   <div className="space-y-6">
                     <div>
                       <Label className="text-gray-700 mb-2 block">
                         Create Account
                       </Label>
-                      <SignUp />
+                      <SignUp afterSignUpUrl="/search" />
                     </div>
                   </div>
                 )}
@@ -787,19 +870,17 @@ export function ProfileCreationModal({
             </AnimatePresence>
 
             <div className="mt-8 flex justify-between">
-              {step > 1 && step < 4 && (
+              {step > 1 && step <= 7 && (
                 <Button variant="outline" onClick={handleBack} disabled={false}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
               )}
-              {step < 4 && (
+              {step < 7 && (
                 <Button
                   onClick={handleNext}
-                  disabled={!validateStep() || Object.keys(errors).length > 0}
-                  className={`${
-                    step === 1 ? "w-full" : "ml-auto"
-                  } bg-pink-600 hover:bg-pink-700 text-white`}
+                  disabled={!isStepValid()}
+                  className={`${step === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white`}
                 >
                   Next
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -807,20 +888,7 @@ export function ProfileCreationModal({
               )}
             </div>
 
-            {step < 4 && (
-              <div className="mt-6 text-center text-sm text-gray-600">
-                Already have an account?{" "}
-                <button
-                  onClick={() => {
-                    onClose();
-                    router.push("/sign-in");
-                  }}
-                  className="text-pink-600 hover:text-pink-700 font-medium"
-                >
-                  Sign In
-                </button>
-              </div>
-            )}
+            {/* The modal is for users creating a profile after onboarding; hide sign-in prompt */}
           </div>
         </div>
       </DialogContent>

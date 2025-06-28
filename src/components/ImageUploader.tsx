@@ -203,11 +203,17 @@ export function ImageUploader({
   const uploadImageFile = useCallback(
     async (file: File) => {
       if (!userId || userId === "user-id-placeholder") {
-        showErrorToast(
-          null,
-          "User data still loading. Please try again in a moment."
-        );
-        return;
+        // In profile creation (create) mode, just add file locally
+        const tempId = `local-${Date.now()}`;
+        const localImg: ImageType = {
+          id: tempId,
+          storageId: tempId,
+          url: URL.createObjectURL(file),
+          fileName: file.name,
+        };
+        if (onOptimisticUpdate) onOptimisticUpdate(localImg);
+        showSuccessToast("Image added");
+        return { success: true, imageId: tempId, message: "local" };
       }
       const currentImages = orderedImages || [];
       const maxProfileImages = maxFiles ?? 5;
@@ -382,7 +388,7 @@ export function ImageUploader({
       </div>
 
       <Dialog open={isCropping} onOpenChange={setIsCropping}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-white">
           <DialogHeader>
             <DialogTitle>Crop Image</DialogTitle>
             <DialogDescription>
@@ -456,11 +462,12 @@ export function ImageUploader({
                         type: "image/jpeg",
                       }
                     );
-                     const result = await uploadImageFile(croppedFile);
-                     if (result?.success) {
-                       // Fetch images immediately to update UI
-                       await fetchImages();
-                     }                    setIsCropping(false);
+                    const result = await uploadImageFile(croppedFile);
+                    if (result?.success) {
+                      // Fetch images immediately to update UI
+                      await fetchImages();
+                    }
+                    setIsCropping(false);
                     setImagePreview(null);
                     setPendingUpload(null);
                     setCrop({ x: 0, y: 0 });
