@@ -30,7 +30,8 @@ export async function removeInterest(
   return res.json();
 }
 
-export async function getSentInterests(token: string) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function getSentInterests(token: string, _userId?: string) {
   const res = await fetch(`/api/interests`, {
     method: "GET",
     headers: {
