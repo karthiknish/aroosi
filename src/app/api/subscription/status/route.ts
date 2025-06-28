@@ -9,9 +9,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const profileId = searchParams.get("profileId");
     const userIdParam = searchParams.get("userId");
-    if (!profileId && !userIdParam) {
-      return errorResponse("Missing profileId or userId parameter", 400);
-    }
 
     const client = await convexClientFromRequest(request);
     if (!client) return errorResponse("Convex backend not configured", 500);
@@ -26,6 +23,13 @@ export async function GET(request: NextRequest) {
       profile = await client.query(api.profiles.getProfileByUserId, {
         userId: userIdParam as Id<"users">,
       });
+    } else {
+      // Fallback: derive profile from authenticated user
+      const current = await client.query(
+        api.users.getCurrentUserWithProfile,
+        {}
+      );
+      profile = current?.profile ?? null;
     }
 
     if (!profile) return errorResponse("User profile not found", 404);
