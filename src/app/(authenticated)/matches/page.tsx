@@ -13,7 +13,6 @@ import {
   MessageCircle,
   Heart,
   Users,
-  Star,
 } from "lucide-react";
 import { useState } from "react";
 import { useMatches } from "@/lib/hooks/useMatches";
@@ -37,23 +36,6 @@ function MatchCard({
   index: number;
 }) {
   const { imageUrl: avatar } = useProfileImage(match.userId, token);
-
-  const calculateAge = (dateOfBirth: string | Date | number | undefined) => {
-    if (!dateOfBirth) return null;
-    const birth = new Date(dateOfBirth);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birth.getDate())
-    ) {
-      age--;
-    }
-    return age;
-  };
-
-  const age = calculateAge(match.dateOfBirth);
 
   return (
     <motion.div
@@ -101,11 +83,6 @@ function MatchCard({
                   <h3 className="font-bold text-lg text-neutral truncate group-hover:text-primary transition-colors">
                     {match.fullName || "Unknown"}
                   </h3>
-                  {age && (
-                    <Badge className="text-xs bg-accent-light text-accent-dark border-0">
-                      {age}
-                    </Badge>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-1 text-sm text-neutral-light">
@@ -193,129 +170,134 @@ export default function MatchesPage() {
 
   return (
     <SubscriptionGuard feature="canChatWithMatches">
-      <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-        {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-8"
-        >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-primary rounded-2xl text-white shadow-lg">
-              <Heart className="w-8 h-8" />
-            </div>
-            <h1 className="text-4xl font-bold text-primary font-serif">
-              Your Matches
-            </h1>
-          </div>
-          <p className="text-neutral-light text-lg">
-            Connect with people who are interested in you
-          </p>
-        </motion.div>
-        {/* Stats Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="bg-gradient-to-r from-primary-light/20 to-secondary-light/20 rounded-2xl p-6 mb-8 border border-primary-light/30"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">
-                  {matches.length}
-                </div>
-                <div className="text-sm text-neutral-light">Total Matches</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-secondary">
-                  {matches.filter((m) => m.unread > 0).length}
-                </div>
-                <div className="text-sm text-neutral-light">Unread Chats</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-neutral-light">
-              <Star className="w-4 h-4 text-accent" />
-              <span>Premium Feature</span>
-            </div>
-          </div>
-        </motion.div>
+      <div className="w-full overflow-x-hidden overflow-y-hidden bg-base-light pt-24 pb-12 relative">
+        {/* Decorative pink circles */}
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none" />
 
-        {/* Search Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mb-8"
-        >
-          <div className="relative max-w-md mx-auto">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-secondary" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or location..."
-              className="pl-12 pr-4 py-3 rounded-2xl border-0 bg-base-light shadow-lg focus:shadow-xl transition-shadow text-center focus:ring-2 focus:ring-primary"
-            />
-          </div>
-        </motion.div>
-        {/* Matches List */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          {loading ? (
-            <MatchesLoadingSkeleton />
-          ) : matches.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <EmptyState
-                message={
-                  search
-                    ? "No matches found for your search."
-                    : "No matches yet."
-                }
-                description={
-                  search
-                    ? "Try adjusting your search terms."
-                    : "Keep swiping to find your perfect match!"
-                }
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Header Section */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-8"
+          >
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="p-3 bg-primary rounded-2xl text-white shadow-lg">
+                <Heart className="w-8 h-8" />
+              </div>
+              <h1 className="text-4xl font-bold text-primary font-serif">
+                Your Matches
+              </h1>
+            </div>
+            <p className="text-neutral-light text-lg">
+              Connect with people who are interested in you
+            </p>
+          </motion.div>
+          {/* Stats Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-gradient-to-r from-primary-light/20 to-secondary-light/20 rounded-2xl p-6 mb-8 border border-primary-light/30"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">
+                    {matches.length}
+                  </div>
+                  <div className="text-sm text-neutral-light">
+                    Total Matches
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-secondary">
+                    {matches.filter((m) => m.unread > 0).length}
+                  </div>
+                  <div className="text-sm text-neutral-light">Unread Chats</div>
+                </div>
+              </div>
+              {/* Premium feature badge removed as per UI update */}
+            </div>
+          </motion.div>
+
+          {/* Search Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-8"
+          >
+            <div className="relative max-w-md mx-auto">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-secondary" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or location..."
+                className="pl-12 pr-4 py-3 rounded-2xl border-0 bg-base-light shadow-lg focus:shadow-xl transition-shadow text-center focus:ring-2 focus:ring-primary"
               />
-            </motion.div>
-          ) : (
-            <div className="space-y-6">
-              {matches.map((match, index) => (
-                <MatchCard
-                  key={match.userId}
-                  match={match}
-                  token={token}
-                  index={index}
-                />
-              ))}
-
-              {/* Load More Hint */}
-              {matches.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-center py-8"
-                >
-                  <p className="text-neutral-light text-sm">
-                    {matches.length === 1
-                      ? "1 match"
-                      : `${matches.length} matches`}{" "}
-                    found
-                  </p>
-                </motion.div>
-              )}
             </div>
-          )}
-        </motion.div>
+          </motion.div>
+          {/* Matches List */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            {loading ? (
+              <MatchesLoadingSkeleton />
+            ) : matches.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                <EmptyState
+                  message={
+                    search
+                      ? "No matches found for your search."
+                      : "No matches yet."
+                  }
+                  description={
+                    search
+                      ? "Try adjusting your search terms."
+                      : "Keep swiping to find your perfect match!"
+                  }
+                />
+              </motion.div>
+            ) : (
+              <div className="space-y-6">
+                {matches.map((match, index) => (
+                  <MatchCard
+                    key={match.userId}
+                    match={match}
+                    token={token}
+                    index={index}
+                  />
+                ))}
+
+                {/* Load More Hint */}
+                {matches.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="text-center py-8"
+                  >
+                    <p className="text-neutral-light text-sm">
+                      {matches.length === 1
+                        ? "1 match"
+                        : `${matches.length} matches`}{" "}
+                      found
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+            )}
+          </motion.div>
+        </div>
       </div>
     </SubscriptionGuard>
   );
