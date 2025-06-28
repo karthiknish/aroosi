@@ -185,12 +185,12 @@ export default function ProfileDetailPage() {
   const alreadySentInterest = useMemo(() => {
     if (localInterest !== null) return localInterest;
     if (!sentInterests || !Array.isArray(sentInterests)) return false;
-    return sentInterests.some(
-      (interest) =>
-        interest.toUserId === toUserId &&
-        interest.fromUserId === fromUserId &&
-        interest.status === "pending"
-    );
+    return sentInterests.some((interest) => {
+      if (interest.toUserId !== toUserId || interest.fromUserId !== fromUserId)
+        return false;
+      // Treat both pending and accepted as an active interest
+      return interest.status !== "rejected";
+    });
   }, [sentInterests, toUserId, fromUserId, localInterest]);
   // --- END: Add local state for interest status ---
 
@@ -232,6 +232,107 @@ export default function ProfileDetailPage() {
       });
     }
   }, [isOwnProfile, token, profile?._id, trackUsage, userId]);
+
+  // Animation state for heart pop effect
+  const [showHeartPop, setShowHeartPop] = useState(false);
+
+  // --- BEGIN: Update handleInterestClick for instant UI feedback ---
+  const handleInterestClick = async () => {
+    if (!fromUserId || typeof fromUserId !== "string") {
+      showErrorToast(null, "User ID not available");
+      return;
+    }
+    if (!toUserId || typeof toUserId !== "string") {
+      showErrorToast(null, "Target user ID not available");
+      return;
+    }
+    if (!token || typeof token !== "string") {
+      showErrorToast(null, "Token not available");
+      return;
+    }
+    setInterestError(null);
+    try {
+      if (alreadySentInterest) {
+        // Optimistically update UI: switch heart back immediately
+        setLocalInterest(false);
+        const responseData = await removeInterest(token, fromUserId, toUserId);
+        showSuccessToast("Interest withdrawn successfully!");
+        await refetchSentInterests();
+        setLocalInterest(null); // Let server state take over
+        setShowHeartPop(false);
+        return responseData;
+      } else {
+        // Optimistically update UI: switch heart immediately
+        setLocalInterest(true);
+        setShowHeartPop(true); // trigger pop animation
+        const responseData = await sendInterest(token, fromUserId, toUserId);
+        showSuccessToast("Interest sent successfully!");
+
+        // Track interest sent usage
+        trackUsage({
+          feature: "interest_sent",
+          metadata: {
+            targetUserId: toUserId,
+          },
+        });
+
+        await refetchSentInterests();
+        setLocalInterest(null); // Let server state take over
+        setTimeout(() => setShowHeartPop(false), 600);
+        return responseData;
+      }
+    } catch (error: unknown) {
+      // Rollback optimistic update on error
+      setLocalInterest(null);
+      const msg =
+        error instanceof Error
+          ? error.message
+          : alreadySentInterest
+            ? "Failed to remove interest"
+            : "Failed to send interest";
+      showErrorToast(msg);
+      setInterestError(msg as string);
+      throw error;
+    }
+  };
+  // --- END: Update handleInterestClick for instant UI feedback ---
+
+  // Get the current image to display (just by index)
+  const mainProfileImageUrl =
+    imagesToShow.length > 0 ? imagesToShow[currentImageIdx] : undefined;
+
+  // Helper for icon+label row
+  function IconRow({
+    icon,
+    label,
+    value,
+    className = "",
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    value: string | undefined;
+    className?: string;
+  }) {
+    return (
+      <div
+        className={`flex items-center gap-2 mb-1 text-gray-700 ${className}`}
+      >
+        <span className="text-red-600">{icon}</span>
+        <span className="font-medium">{label}:</span>
+        <span className="text-gray-800">{value ?? "-"}</span>
+      </div>
+    );
+  }
+
+  // Heart pop animation variants
+  const heartPopVariants = {
+    initial: { scale: 0, opacity: 0 },
+    animate: {
+      scale: [0, 1.4, 1],
+      opacity: [0, 0.8, 0],
+      transition: { duration: 0.6, times: [0, 0.3, 1] },
+    },
+  };
 
   if (offline) {
     return (
@@ -316,91 +417,6 @@ export default function ProfileDetailPage() {
     },
     tap: { scale: 0.92 },
   };
-
-  // --- BEGIN: Update handleInterestClick for instant UI feedback ---
-  const handleInterestClick = async () => {
-    if (!fromUserId || typeof fromUserId !== "string") {
-      showErrorToast(null, "User ID not available");
-      return;
-    }
-    if (!toUserId || typeof toUserId !== "string") {
-      showErrorToast(null, "Target user ID not available");
-      return;
-    }
-    if (!token || typeof token !== "string") {
-      showErrorToast(null, "Token not available");
-      return;
-    }
-    setInterestError(null);
-    try {
-      if (alreadySentInterest) {
-        // Optimistically update UI: switch heart back immediately
-        setLocalInterest(false);
-        const responseData = await removeInterest(token, fromUserId, toUserId);
-        showSuccessToast("Interest withdrawn successfully!");
-        await refetchSentInterests();
-        setLocalInterest(null); // Let server state take over
-        return responseData;
-      } else {
-        // Optimistically update UI: switch heart immediately
-        setLocalInterest(true);
-        const responseData = await sendInterest(token, fromUserId, toUserId);
-        showSuccessToast("Interest sent successfully!");
-
-        // Track interest sent usage
-        trackUsage({
-          feature: "interest_sent",
-          metadata: {
-            targetUserId: toUserId,
-          },
-        });
-
-        await refetchSentInterests();
-        setLocalInterest(null); // Let server state take over
-        return responseData;
-      }
-    } catch (error: unknown) {
-      // Rollback optimistic update on error
-      setLocalInterest(null);
-      const msg =
-        error instanceof Error
-          ? error.message
-          : alreadySentInterest
-            ? "Failed to remove interest"
-            : "Failed to send interest";
-      showErrorToast(msg);
-      setInterestError(msg as string);
-      throw error;
-    }
-  };
-  // --- END: Update handleInterestClick for instant UI feedback ---
-
-  // Get the current image to display (just by index)
-  const mainProfileImageUrl =
-    imagesToShow.length > 0 ? imagesToShow[currentImageIdx] : undefined;
-
-  // Helper for icon+label row
-  function IconRow({
-    icon,
-    label,
-    value,
-    className = "",
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    value: string | undefined;
-    className?: string;
-  }) {
-    return (
-      <div
-        className={`flex items-center gap-2 mb-1 text-gray-700 ${className}`}
-      >
-        <span className="text-red-600">{icon}</span>
-        <span className="font-medium">{label}:</span>
-        <span className="text-gray-800">{value ?? "-"}</span>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -662,7 +678,7 @@ export default function ProfileDetailPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-center gap-8 mt-8 mb-2">
+              <div className="flex justify-center gap-8 mt-8 mb-2 relative">
                 <AnimatePresence>
                   {!isOwnProfile && canInteract && (
                     <motion.button
@@ -714,6 +730,21 @@ export default function ProfileDetailPage() {
                         )}
                       </motion.span>
                     </motion.button>
+                  )}
+                </AnimatePresence>
+                {/* Heart pop animation overlay */}
+                <AnimatePresence>
+                  {showHeartPop && (
+                    <motion.div
+                      key="heart-pop"
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                      variants={heartPopVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="initial"
+                    >
+                      <Heart className="w-24 h-24 text-primary" />
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>
