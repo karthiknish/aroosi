@@ -54,7 +54,7 @@ export default function ProfileDetailPage() {
   const params = useParams();
   const { token, profile: currentUserProfile } = useAuthContext();
   const offline = useOffline();
-  const { trackUsage } = useUsageTracking();
+  const { trackUsage } = useUsageTracking(token ?? undefined);
 
   const id = params?.id as string;
   const userId = id as Id<"users">;
