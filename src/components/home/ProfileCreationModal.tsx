@@ -322,7 +322,15 @@ export function ProfileCreationModal({
         if (!open) onClose(); // only close when intended, ignore internal true events
       }}
     >
-      <DialogContent className="max-w-md w-full p-0 overflow-hidden bg-white">
+      <DialogContent
+        className="max-w-md w-full p-0 overflow-hidden bg-white"
+        onInteractOutside={(e) => {
+          e.preventDefault(); // keep modal open even when Clerk portals register outside clicks
+        }}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+        }}
+      >
         <div className="relative">
           {/* Progress indicator */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
@@ -882,6 +890,7 @@ export function ProfileCreationModal({
                   <div className="space-y-6">
                     <div>
                       <SignUp
+                        routing="virtual"
                         afterSignUpUrl="/search"
                         appearance={clerkAppearance}
                       />
