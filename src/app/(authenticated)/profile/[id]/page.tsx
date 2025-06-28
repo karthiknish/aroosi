@@ -262,7 +262,7 @@ export default function ProfileDetailPage() {
       if (alreadySentInterest) {
         // Optimistically update UI: switch heart back immediately
         setLocalInterest(false);
-        const responseData = await removeInterest(token, fromUserId, toUserId);
+        const responseData = await removeInterest(token, toUserId);
         showSuccessToast("Interest withdrawn successfully!");
         await refetchSentInterests();
         setLocalInterest(null); // Let server state take over
@@ -272,7 +272,7 @@ export default function ProfileDetailPage() {
         // Optimistically update UI: switch heart immediately
         setLocalInterest(true);
         setShowHeartPop(true); // trigger pop animation
-        const responseData = await sendInterest(token, fromUserId, toUserId);
+        const responseData = await sendInterest(token, toUserId);
         showSuccessToast("Interest sent successfully!");
 
         // Track interest sent usage

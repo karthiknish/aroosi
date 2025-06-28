@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 
 export default function InterestE2ETestPage() {
   const params = useSearchParams();
-  const fromUserId = params.get("me") ?? "user1";
   const toUserId = params.get("other") ?? "user2";
   const token = params.get("token") ?? "test-token";
 
@@ -17,10 +16,10 @@ export default function InterestE2ETestPage() {
     setStatus("loading");
     try {
       if (sent) {
-        await removeInterest(token, fromUserId, toUserId);
+        await removeInterest(token, toUserId);
         setSent(false);
       } else {
-        await sendInterest(token, fromUserId, toUserId);
+        await sendInterest(token, toUserId);
         setSent(true);
       }
       setStatus("success");
