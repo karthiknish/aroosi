@@ -174,6 +174,23 @@ const countries: string[] = [
   "Other",
 ];
 
+const clerkAppearance = {
+  layout: {
+    logoImageUrl: "", // Remove logo image altogether
+    logoPlacement: "outside" as const, // Ensure logo is not rendered inside the card
+  },
+  elements: {
+    logoImage: "hidden", // legacy selector
+    headerLogo: "hidden", // new selector for the logo
+    logoBox: "hidden", // container around the logo
+    headerTitle: "hidden", // hide title inside card
+    headerSubtitle: "hidden", // hide subtitle
+    socialButtons: "hidden", // hide social buttons section
+    footer: "hidden", // hide footer links
+    card: "shadow-none bg-transparent p-0", // remove default card shadow/padding
+  },
+};
+
 export function ProfileCreationModal({
   isOpen,
   onClose,
@@ -299,7 +316,12 @@ export function ProfileCreationModal({
   }, [displayStep, formData]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose(); // only close when intended, ignore internal true events
+      }}
+    >
       <DialogContent className="max-w-md w-full p-0 overflow-hidden bg-white">
         <div className="relative">
           {/* Progress indicator */}
@@ -859,10 +881,10 @@ export function ProfileCreationModal({
                 {displayStep === 7 && (
                   <div className="space-y-6">
                     <div>
-                      <Label className="text-gray-700 mb-2 block">
-                        Create Account
-                      </Label>
-                      <SignUp afterSignUpUrl="/search" />
+                      <SignUp
+                        afterSignUpUrl="/search"
+                        appearance={clerkAppearance}
+                      />
                     </div>
                   </div>
                 )}

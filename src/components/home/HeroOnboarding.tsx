@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card";
 
 import Link from "next/link";
 import { ArrowRight, Users, Shield, Star, CalendarIcon } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/lib/ui/toast";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -33,7 +33,6 @@ interface OnboardingData {
   gender: string;
   fullName: string;
   dateOfBirth: string;
-  email: string;
   phoneNumber: string;
 }
 
@@ -42,14 +41,13 @@ const onboardingSchema = z.object({
   gender: z.string().min(1, "Required"),
   fullName: z.string().min(2, "Required"),
   dateOfBirth: z.string().min(1, "Required"),
-  email: z.string().email("Invalid email"),
-  phoneNumber: z.string().min(7, "Required"),
+  phoneNumber: z.string().regex(/^\+?\d{7,15}$/i, "Enter a valid phone number"),
 });
 
 const onboardingStepSchemas = [
   onboardingSchema.pick({ profileFor: true, gender: true }),
   onboardingSchema.pick({ fullName: true, dateOfBirth: true }),
-  onboardingSchema.pick({ email: true, phoneNumber: true }),
+  onboardingSchema.pick({ phoneNumber: true }),
 ];
 
 export function HeroOnboarding() {
@@ -61,7 +59,6 @@ export function HeroOnboarding() {
     gender: "",
     fullName: "",
     dateOfBirth: "",
-    email: "",
     phoneNumber: "",
   });
 
@@ -73,7 +70,10 @@ export function HeroOnboarding() {
     const schema = onboardingStepSchemas[step - 1];
     const res = schema.safeParse(formData);
     if (!res.success) {
-      toast.error(res.error.errors[0]?.message || "Please fill in all fields");
+      showErrorToast(
+        null,
+        res.error.errors[0]?.message || "Please fill in all fields"
+      );
       return false;
     }
     return true;
@@ -84,7 +84,10 @@ export function HeroOnboarding() {
     if (step === 2) {
       const age = calculateAge(formData.dateOfBirth);
       if (isNaN(age) || age < 18) {
-        toast.error("You must be at least 18 years old to use this app.");
+        showErrorToast(
+          null,
+          "You must be at least 18 years old to use this app."
+        );
         return;
       }
     }
@@ -102,7 +105,7 @@ export function HeroOnboarding() {
       // Open the profile creation modal with the collected data
       setShowProfileModal(true);
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      showErrorToast(null, "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -367,25 +370,9 @@ export function HeroOnboarding() {
                 </div>
               )}
 
-              {/* Step 3: Contact Information */}
+              {/* Step 3: Phone Number */}
               {step === 3 && (
                 <div className="space-y-6">
-                  <div>
-                    <Label htmlFor="email" className="text-gray-700 mb-2 block">
-                      Email Address
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={formData.email}
-                      onChange={(e) =>
-                        handleInputChange("email", e.target.value)
-                      }
-                      className="w-full bg-white"
-                    />
-                  </div>
-
                   <div>
                     <Label
                       htmlFor="phoneNumber"
