@@ -1,4 +1,3 @@
- 
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
@@ -82,13 +81,13 @@ export async function POST(req: NextRequest) {
       if (!result.success) {
         throw new Error(result.error || "Failed to send interest");
       }
-      const newId = result.interestId;
+      const newId = result.interestId as Id<"interests">;
       await convex.mutation(api.interests.respondToInterest, {
         interestId: newId,
         status: "accepted",
       });
       return newId;
-    }
+    };
 
     await upsertAcceptedInterest(fromUserId, toUserId);
     await upsertAcceptedInterest(toUserId, fromUserId);
