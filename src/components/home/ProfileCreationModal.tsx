@@ -29,12 +29,14 @@ import {
   ETHNICITY_OPTIONS,
 } from "@/lib/constants/languages";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import {
   submitProfile,
   getCurrentUserWithProfile,
 } from "@/lib/profile/userProfileApi";
 import { useRouter } from "next/navigation";
+import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
+import type { ImageType } from "@/types/image";
 
 interface ProfileData {
   profileFor: string;
@@ -248,7 +250,9 @@ export function ProfileCreationModal({
 
   const router = useRouter();
   const { isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
   const [profileSubmitted, setProfileSubmitted] = useState(false);
+  const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -263,8 +267,76 @@ export function ProfileCreationModal({
           const token = await getToken({ template: "convex" });
           if (!token) return;
 
-          const { profileFor, ...profileValues } = formData;
+          // 1) Upload any locally stored images (ids starting with "local-")
+          const uploadedImageIds: string[] = [];
+
+          try {
+            for (const img of pendingImages) {
+              if (!img.id.startsWith("local-")) {
+                uploadedImageIds.push(img.id);
+                continue;
+              }
+
+              // Reconstruct File from blob URL
+              const blobResp = await fetch(img.url);
+              const blob = await blobResp.blob();
+              const fileName = img.fileName || `photo_${Date.now()}.jpg`;
+              const fileType = blob.type || "image/jpeg";
+
+              // a) get upload URL
+              const uploadUrl = await getImageUploadUrl(token);
+
+              // b) upload file to storage
+              const storageResp = await fetch(uploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": fileType },
+                body: blob,
+              });
+
+              if (!storageResp.ok) {
+                console.error("Failed uploading image blob");
+                continue;
+              }
+
+              const storageJson = await storageResp.json().catch(() => null);
+              const storageId =
+                storageJson?.storageId ||
+                (typeof storageJson === "string" ? storageJson : null);
+              if (!storageId) {
+                console.error("Invalid storage response", storageJson);
+                continue;
+              }
+
+              // c) save metadata
+              try {
+                await saveImageMeta({
+                  token,
+                  userId: user?.id || "",
+                  storageId,
+                  fileName,
+                  contentType: fileType,
+                  fileSize: blob.size,
+                });
+              } catch (err) {
+                console.error("Failed to save image meta", err);
+              }
+
+              uploadedImageIds.push(storageId);
+            }
+          } catch (imgErr) {
+            console.error("Image upload error", imgErr);
+          }
+
+          // Merge uploaded image IDs into profile values
+          const { profileFor, ...rest } = formData;
           void profileFor;
+          const profileValues = {
+            ...rest,
+            profileImageIds: uploadedImageIds.length
+              ? uploadedImageIds
+              : rest.profileImageIds,
+          } as typeof rest;
+
           const result = await submitProfile(token, profileValues, "create");
           if (result.success) {
             try {
@@ -285,7 +357,16 @@ export function ProfileCreationModal({
       }
     };
     void saveProfileIfNeeded();
-  }, [isSignedIn, displayStep, profileSubmitted, formData, getToken, router]);
+  }, [
+    isSignedIn,
+    displayStep,
+    profileSubmitted,
+    formData,
+    getToken,
+    router,
+    pendingImages,
+    user,
+  ]);
 
   const handleInputChange = (
     field: keyof ProfileCreationData,
@@ -294,19 +375,26 @@ export function ProfileCreationModal({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleProfileImageIdsChange = useCallback(
-    (ids: string[]) => {
+  const handleProfileImagesChange = useCallback(
+    (imgs: (string | ImageType)[]) => {
+      // Separate IDs and image objects
+      const ids = imgs.map((img) => (typeof img === "string" ? img : img.id));
       if (
         JSON.stringify(ids) !== JSON.stringify(formData.profileImageIds ?? [])
       ) {
         handleInputChange("profileImageIds", ids);
-        // Persist to localStorage for recovery before final submission
         try {
           localStorage.setItem("pendingProfileImages", JSON.stringify(ids));
         } catch (err) {
           console.warn("Unable to store images in localStorage", err);
         }
       }
+
+      // Extract ImageType objects for later upload
+      const imgObjects = imgs.filter(
+        (img): img is ImageType => typeof img !== "string"
+      );
+      setPendingImages(imgObjects);
     },
     [formData.profileImageIds]
   );
@@ -906,15 +994,7 @@ export function ProfileCreationModal({
                       <ProfileImageUpload
                         userId={"user-id-placeholder"}
                         mode="create"
-                        onImagesChanged={(imgs) =>
-                          handleProfileImageIdsChange(
-                            Array.isArray(imgs)
-                              ? imgs.map((img) =>
-                                  typeof img === "string" ? img : img.id
-                                )
-                              : []
-                          )
-                        }
+                        onImagesChanged={handleProfileImagesChange}
                         className="w-full h-48"
                       />
                       {errors.profileImageIds && (
