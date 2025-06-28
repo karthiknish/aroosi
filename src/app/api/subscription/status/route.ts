@@ -1,23 +1,26 @@
 import { NextRequest } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { convexClientFromRequest } from "@/lib/convexClient";
 
 export async function GET(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    const { searchParams } = new URL(request.url);
+    const profileId = searchParams.get("profileId");
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-    convex.setAuth(token);
+    if (!profileId) {
+      return errorResponse("Missing profileId parameter", 400);
+    }
 
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
-      userId: userId as Id<"users">,
+    const client = await convexClientFromRequest(request);
+    if (!client) return errorResponse("Convex backend not configured", 500);
+
+    // Fetch the profile directly by its ID
+    const profile = await client.query(api.users.getProfile, {
+      id: profileId as Id<"profiles">,
     });
+
     if (!profile) return errorResponse("User profile not found", 404);
     const now = Date.now();
     const isActive = profile.subscriptionExpiresAt
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest) {
         (profile.subscriptionExpiresAt - now) / (24 * 60 * 60 * 1000)
       );
     }
+
     return successResponse({
       plan,
       isActive,

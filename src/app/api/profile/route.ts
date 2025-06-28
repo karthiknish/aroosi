@@ -9,10 +9,7 @@ import {
   validateProfileData,
   sanitizeProfileInput,
 } from "@/lib/utils/profileValidation";
-import {
-  checkApiRateLimit,
-  logSecurityEvent,
-} from "@/lib/utils/securityHeaders";
+import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
 function isProfileWithEmail(
   profile: unknown
