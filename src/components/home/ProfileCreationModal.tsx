@@ -30,7 +30,11 @@ import {
 } from "@/lib/constants/languages";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@clerk/nextjs";
-import { submitProfile } from "@/lib/profile/userProfileApi";
+import {
+  submitProfile,
+  getCurrentUserWithProfile,
+} from "@/lib/profile/userProfileApi";
+import { useRouter } from "next/navigation";
 
 interface ProfileData {
   profileFor: string;
@@ -242,6 +246,7 @@ export function ProfileCreationModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const router = useRouter();
   const { isSignedIn, getToken } = useAuth();
   const [profileSubmitted, setProfileSubmitted] = useState(false);
 
@@ -262,9 +267,15 @@ export function ProfileCreationModal({
           void profileFor;
           const result = await submitProfile(token, profileValues, "create");
           if (result.success) {
-            // clear localStorage cache
+            try {
+              await getCurrentUserWithProfile(token);
+            } catch {}
+
             localStorage.removeItem("pendingProfileData");
             setProfileSubmitted(true);
+
+            // redirect to search after full profile creation
+            router.push("/search");
           } else {
             console.error("Failed to submit profile:", result.error);
           }
@@ -274,7 +285,7 @@ export function ProfileCreationModal({
       }
     };
     void saveProfileIfNeeded();
-  }, [isSignedIn, displayStep, profileSubmitted, formData, getToken]);
+  }, [isSignedIn, displayStep, profileSubmitted, formData, getToken, router]);
 
   const handleInputChange = (
     field: keyof ProfileCreationData,
@@ -919,11 +930,7 @@ export function ProfileCreationModal({
                 {displayStep === 7 && (
                   <div className="space-y-6">
                     <div>
-                      <SignUp
-                        routing="virtual"
-                        afterSignUpUrl="/search"
-                        appearance={clerkAppearance}
-                      />
+                      <SignUp routing="virtual" appearance={clerkAppearance} />
                     </div>
                   </div>
                 )}
