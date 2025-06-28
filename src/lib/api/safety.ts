@@ -127,13 +127,26 @@ class SafetyAPI {
     return this.makeRequest("/blocked", undefined, token);
   }
 
+  // Overload signatures for backward compatibility
   async checkBlockStatus(
     token: string | null,
-    { profileId, userId }: { profileId?: string; userId?: string }
+    userId: string
+  ): Promise<BlockStatus>;
+  async checkBlockStatus(
+    token: string | null,
+    ids: { profileId?: string; userId?: string }
+  ): Promise<BlockStatus>;
+  async checkBlockStatus(
+    token: string | null,
+    arg: string | { profileId?: string; userId?: string }
   ): Promise<BlockStatus> {
     const params = new URLSearchParams();
-    if (profileId) params.append("profileId", profileId);
-    if (userId) params.append("userId", userId);
+    if (typeof arg === "string") {
+      params.append("userId", arg);
+    } else {
+      if (arg.profileId) params.append("profileId", arg.profileId);
+      if (arg.userId) params.append("userId", arg.userId);
+    }
     return this.makeRequest(
       `/blocked/check?${params.toString()}`,
       undefined,
