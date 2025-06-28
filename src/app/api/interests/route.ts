@@ -48,29 +48,39 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       return errorResponse("Invalid or missing toUserId", 400);
     }
 
-    const fromUserId = userId as string; // derive from token, ignore client-provided value
+    // Derive Convex internal user id from the auth token (Clerk id is not valid)
+    let convexClient: ConvexHttpClient;
+    let fromUserIdConvex: Id<"users">;
 
-    // Validate user IDs format (basic length/format check)
-    if (fromUserId.length < 10 || toUserId.length < 10) {
-      return errorResponse("Invalid user ID format", 400);
+    {
+      if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+        return errorResponse("Interest service temporarily unavailable", 503);
+      }
+
+      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+      convex.setAuth(token);
+
+      const currentUserRecord = await convex.query(
+        api.users.getCurrentUserWithProfile,
+        {}
+      );
+
+      if (!currentUserRecord) {
+        return errorResponse("User not found", 404);
+      }
+
+      fromUserIdConvex = currentUserRecord._id as Id<"users">;
+
+      // Move convex client into outer scope
+      convexClient = convex;
     }
 
     // Prevent self-interest (users cannot send interest to themselves)
-    if (fromUserId === toUserId) {
+    if ((fromUserIdConvex as unknown as string) === toUserId) {
       return errorResponse("Cannot send interest to yourself", 400);
     }
 
-    // Initialize Convex client
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      return errorResponse("Interest service temporarily unavailable", 503);
-    }
-
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
-    if (!convex) {
-      return errorResponse("Interest service temporarily unavailable", 503);
-    }
-
-    convex.setAuth(token);
+    const convex = convexClient;
 
     // Log interest action for monitoring
     console.log(`User ${userId} ${action} interest to ${toUserId}`);
@@ -81,7 +91,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
           ? api.interests.sendInterest
           : api.interests.removeInterest,
         {
-          fromUserId: fromUserId as Id<"users">,
+          fromUserId: fromUserIdConvex,
           toUserId: toUserId as Id<"users">,
         }
       );
@@ -93,7 +103,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       }
 
       console.log(
-        `Interest ${action} successful: ${fromUserId} -> ${toUserId}`
+        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`
       );
       return successResponse(result);
     } catch (convexErr) {
