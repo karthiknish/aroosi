@@ -4,7 +4,8 @@ import { useAuthContext } from "@/components/AuthProvider";
 import ModernChat from "@/components/chat/ModernChat";
 import { getConversationId } from "@/lib/utils/conversation";
 import { useQuery } from "@tanstack/react-query";
-import { getPublicProfile } from "@/lib/api/publicProfile";
+import { fetchUserProfile } from "@/lib/profile/userProfileApi";
+import { useProfileImage } from "@/lib/hooks/useProfileImage";
 import { markConversationRead } from "@/lib/api/messages";
 
 export default function MatchChatPage() {
@@ -14,15 +15,25 @@ export default function MatchChatPage() {
 
   const conversationId = getConversationId(userId ?? "", otherUserId);
 
-  // fetch match profile
+  // fetch match profile (name and other public fields)
   const { data: matchProfile } = useQuery({
     queryKey: ["matchProfile", otherUserId, token],
     queryFn: async () => {
       if (!token) return null;
-      return await getPublicProfile(otherUserId);
+      const res = await fetchUserProfile(token, otherUserId);
+      if (res.success && res.data) {
+        return res.data as { fullName?: string };
+      }
+      return null;
     },
     enabled: !!token,
   });
+
+  // fetch avatar image
+  const { imageUrl: matchAvatar } = useProfileImage(
+    otherUserId,
+    token ?? undefined
+  );
 
   // mark conversation as read (runs once via react-query, no useEffect)
   useQuery({
@@ -58,7 +69,7 @@ export default function MatchChatPage() {
         matchUserId={otherUserId}
         token={token}
         matchUserName={matchProfile?.fullName || ""}
-        matchUserAvatarUrl=""
+        matchUserAvatarUrl={matchAvatar || ""}
       />
     </div>
   );

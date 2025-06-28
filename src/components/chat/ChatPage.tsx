@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ConversationList from "./ConversationList";
 import ModernChat from "./ModernChat";
+import { useAuthContext } from "@/components/AuthProvider";
+import { useProfileImage } from "@/lib/hooks/useProfileImage";
 // import { createConversationId } from '@/lib/utils/messageUtils';
 
 interface ChatPageProps {
@@ -23,7 +24,7 @@ export default function ChatPage({
   initialOtherUserName,
   className = "",
 }: ChatPageProps) {
-  const { userId, getToken } = useAuth();
+  const { userId, token } = useAuthContext();
   const [selectedConversation, setSelectedConversation] = useState<{
     conversationId: string;
     otherUserId: string;
@@ -31,6 +32,12 @@ export default function ChatPage({
   } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showConversationList, setShowConversationList] = useState(true);
+
+  // Fetch avatar for currently selected conversation's other user
+  const { imageUrl: selectedAvatar } = useProfileImage(
+    selectedConversation?.otherUserId,
+    token ?? undefined
+  );
 
   // Check if mobile viewport
   useEffect(() => {
@@ -74,7 +81,7 @@ export default function ChatPage({
   const handleConversationSelect = (
     conversationId: string,
     otherUserId: string,
-    otherUserName: string,
+    otherUserName: string
   ) => {
     setSelectedConversation({
       conversationId,
@@ -125,7 +132,7 @@ export default function ChatPage({
             transition={{ type: "tween", duration: 0.3 }}
             className={cn(
               "bg-base border-r border-secondary-light/30",
-              isMobile ? "w-full" : "w-80 flex-shrink-0",
+              isMobile ? "w-full" : "w-80 flex-shrink-0"
             )}
           >
             <ConversationList
@@ -185,7 +192,8 @@ export default function ChatPage({
                   currentUserId={userId}
                   matchUserId={selectedConversation.otherUserId}
                   matchUserName={selectedConversation.otherUserName}
-                  token=""
+                  matchUserAvatarUrl={selectedAvatar || ""}
+                  token={token || ""}
                   className="h-full"
                 />
               </div>
