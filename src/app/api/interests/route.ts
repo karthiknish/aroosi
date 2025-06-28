@@ -116,7 +116,10 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       console.log(
         `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`
       );
-      return successResponse(result);
+
+      // Convex mutations may return the inserted row id (string) or an object.
+      // Wrap result in a standard envelope so the frontend has a consistent shape.
+      return successResponse({ result });
     } catch (convexErr) {
       console.error(`Error in interest ${action}:`, convexErr);
 
@@ -152,7 +155,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       return errorResponse(errorMessage, 400);
     }
   } catch (error) {
-    console.error(`Unexpected error in interest ${action}:`, error);
+    console.error(`Unexpected error in interest ${error}:`, error);
 
     return errorResponse("Internal server error", 500);
   }
