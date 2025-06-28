@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -15,15 +15,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Profile } from "@/types/profile";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { deleteImageById, updateImageOrder } from "@/lib/utils/imageUtil";
-
- 
+import {
+  deleteImageById,
+  updateImageOrder,
+  saveImageMeta,
+} from "@/lib/utils/imageUtil";
 
 export default function EditProfileImagesPage() {
   const { token } = useAuthContext();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Local image state for optimistic edits
+  const [editedImages, setEditedImages] = useState<ImageType[]>([]);
+  const [initialImages, setInitialImages] = useState<ImageType[]>([]);
 
   const { data: profile, isLoading: profileLoading } = useQuery<Profile | null>(
     {
@@ -57,12 +63,24 @@ export default function EditProfileImagesPage() {
           : (result.data as { images?: unknown[] }).images;
 
         // Type guard to ensure we have the right structure
-        const isValidImageArray = (arr: unknown[]): arr is Array<{ id?: string; _id?: string; url?: string; storageId?: string; name?: string; fileName?: string; size?: number; uploadedAt?: number }> => {
+        const isValidImageArray = (
+          arr: unknown[]
+        ): arr is Array<{
+          id?: string;
+          _id?: string;
+          url?: string;
+          storageId?: string;
+          name?: string;
+          fileName?: string;
+          size?: number;
+          uploadedAt?: number;
+        }> => {
           return Array.isArray(arr);
         };
 
-        const validPayload = payload && isValidImageArray(payload) ? payload : [];
-        
+        const validPayload =
+          payload && isValidImageArray(payload) ? payload : [];
+
         const mapped = validPayload.map((img) => ({
           id: img.id || img._id || img.storageId || "",
           url: img.url,
@@ -78,54 +96,86 @@ export default function EditProfileImagesPage() {
     }
   );
 
-  // Handle image changes (for upload notifications)
-  const handleImagesChanged = useCallback(() => {
-    // This will be called when images are uploaded/changed
-    // Refetch the images to get the latest state
-    queryClient.invalidateQueries({ queryKey: ["profileImages", token, profile?._id] });
-  }, [queryClient, token, profile?._id]);
+  // When images are fetched, initialise local state
+  useEffect(() => {
+    if (!imagesLoading) {
+      setEditedImages(images);
+      setInitialImages(images);
+    }
+  }, [images, imagesLoading]);
 
-  // Handle image deletion
+  const handleImagesChanged = useCallback((updated: ImageType[] | string[]) => {
+    if (Array.isArray(updated) && typeof updated[0] !== "string") {
+      setEditedImages(updated as ImageType[]);
+    }
+  }, []);
+
   const handleImageDelete = useCallback(async (imageId: string) => {
-    if (!token || !profile?.userId) return;
-    
-    setIsUpdating(true);
-    try {
-      await deleteImageById({ token, userId: profile.userId, imageId });
-      // Invalidate queries to refresh the image list
-      await queryClient.invalidateQueries({ queryKey: ["profileImages", token, profile._id] });
-      showSuccessToast("Image deleted successfully");
-    } catch (error) {
-      console.error("Failed to delete image:", error);
-      showErrorToast(error instanceof Error ? error.message : "Failed to delete image");
-    } finally {
-      setIsUpdating(false);
-    }
-  }, [token, profile?.userId, profile?._id, queryClient]);
+    setEditedImages((prev) => prev.filter((img) => img.id !== imageId));
+  }, []);
 
-  // Handle image reordering
-  const handleImageReorder = useCallback(async (newOrder: ImageType[]) => {
-    if (!token || !profile?._id) return;
-    
+  const handleImageReorder = useCallback((newOrder: ImageType[]) => {
+    setEditedImages(newOrder);
+  }, []);
+
+  // Utility to compare arrays
+  const arraysEqual = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((v, i) => v === b[i]);
+
+  // Persist all changes
+  const handleSaveChanges = useCallback(async () => {
+    if (!token || !profile) return;
     setIsUpdating(true);
+
+    const initialIds = initialImages.map((img) => img.id);
+    const editedIds = editedImages.map((img) => img.id);
+
+    const deletions = initialIds.filter((id) => !editedIds.includes(id));
+    const additions = editedImages.filter(
+      (img) => !initialIds.includes(img.id)
+    );
+
     try {
-      const imageIds = newOrder.map(img => img.id);
-      await updateImageOrder({
-        token,
-        profileId: profile._id,
-        imageIds,
+      // Delete removed images
+      for (const id of deletions) {
+        await deleteImageById({ token, userId: profile.userId, imageId: id });
+      }
+
+      // Save new images metadata
+      for (const img of additions) {
+        await saveImageMeta({
+          token,
+          userId: profile.userId,
+          storageId: img.id,
+          fileName: img.fileName || "image.jpg",
+          contentType: "image/jpeg",
+          fileSize: img.size || 0,
+        });
+      }
+
+      // Update order if changed
+      if (!arraysEqual(initialIds, editedIds)) {
+        await updateImageOrder({
+          token,
+          profileId: profile._id,
+          imageIds: editedIds,
+        });
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["profileImages", token, profile._id],
       });
-
-      // Invalidate queries to refresh the image list
-      await queryClient.invalidateQueries({ queryKey: ["profileImages", token, profile._id] });
-      showSuccessToast("Image order updated successfully");
+      showSuccessToast("Profile photos updated");
+      router.push("/profile");
     } catch (error) {
-      console.error("Failed to reorder images:", error);
-      showErrorToast(error instanceof Error ? error.message : "Failed to reorder images");
+      console.error("Failed to save image updates:", error);
+      showErrorToast(
+        error instanceof Error ? error.message : "Failed to save changes"
+      );
     } finally {
       setIsUpdating(false);
     }
-  }, [token, profile?._id, queryClient]);
+  }, [token, profile, initialImages, editedImages, queryClient, router]);
 
   if (profileLoading || imagesLoading) {
     return (
@@ -168,7 +218,9 @@ export default function EditProfileImagesPage() {
             <Button variant="outline" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button onClick={() => router.push("/profile")}>Done</Button>
+            <Button onClick={handleSaveChanges} disabled={isUpdating}>
+              {isUpdating ? "Saving..." : "Save"}
+            </Button>
           </div>
         </CardContent>
       </Card>
