@@ -4,7 +4,10 @@ import { ConvexHttpClient } from "convex/browser";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
-import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders";
+import {
+  checkApiRateLimit,
+  logSecurityEvent,
+} from "@/lib/utils/securityHeaders";
 
 type InterestAction = "send" | "remove";
 
@@ -24,7 +27,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     const rateLimitResult = checkApiRateLimit(
       `interest_${action}_${userId}`,
       action === "send" ? 50 : 100, // 50 sends or 100 removes per hour
-      60000
+      60000,
     );
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
@@ -64,7 +67,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       try {
         currentUserRecord = await convex.query(
           api.users.getCurrentUserWithProfile,
-          {}
+          {},
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -72,7 +75,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
           message.includes("Unauthenticated") || message.includes("token");
         return errorResponse(
           isAuth ? "Authentication failed" : "Failed to fetch current user",
-          isAuth ? 401 : 400
+          isAuth ? 401 : 400,
         );
       }
 
@@ -87,7 +90,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     }
 
     // Prevent self-interest (users cannot send interest to themselves)
-    if ((fromUserIdConvex as unknown as string) === toUserId) {
+    if (fromUserIdConvex === (toUserId as Id<"users">)) {
       return errorResponse("Cannot send interest to yourself", 400);
     }
 
@@ -104,7 +107,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         {
           fromUserId: fromUserIdConvex,
           toUserId: toUserId as Id<"users">,
-        }
+        },
       );
 
       // Validate result
@@ -114,7 +117,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       }
 
       console.log(
-        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`
+        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`,
       );
 
       // Convex mutations may return the inserted row id (string) or an object.
@@ -133,7 +136,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
           error:
             convexErr instanceof Error ? convexErr.message : "Unknown error",
         },
-        req
+        req,
       );
 
       const error = convexErr as Error;
@@ -172,7 +175,7 @@ export async function GET(req: NextRequest) {
     const rateLimitResult = checkApiRateLimit(
       `interest_get_${authenticatedUserId}`,
       100,
-      60000
+      60000,
     ); // 100 requests per minute
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
@@ -196,7 +199,7 @@ export async function GET(req: NextRequest) {
     try {
       currentUserRecord = await convex.query(
         api.users.getCurrentUserWithProfile,
-        {}
+        {},
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -204,7 +207,7 @@ export async function GET(req: NextRequest) {
         message.includes("Unauthenticated") || message.includes("token");
       return errorResponse(
         isAuth ? "Authentication failed" : "Failed to fetch current user",
-        isAuth ? 401 : 400
+        isAuth ? 401 : 400,
       );
     }
 
@@ -222,11 +225,11 @@ export async function GET(req: NextRequest) {
           attemptedUserId: userIdParam,
           action: "get_interests",
         },
-        req
+        req,
       );
       return errorResponse(
         "Unauthorized: can only view your own interests",
-        403
+        403,
       );
     }
 
@@ -260,7 +263,7 @@ export async function GET(req: NextRequest) {
         method: "GET",
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      req
+      req,
     );
 
     if (error instanceof Error && error.message.includes("Unauthenticated")) {
