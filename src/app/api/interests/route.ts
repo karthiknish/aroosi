@@ -165,20 +165,33 @@ export async function GET(req: NextRequest) {
 
     // Get optional userId from query string; default to current authenticated user
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId") || authenticatedUserId;
 
-    // Input validation
-    if (typeof userId !== "string" || userId.length < 10) {
-      return errorResponse("Invalid userId parameter", 400);
+    // Determine target user ID (always current user)
+    const userIdParam = searchParams.get("userId");
+
+    // Initialize Convex client (creates 'convex')
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+      return errorResponse("Interest service temporarily unavailable", 503);
     }
 
-    // Security check: users can only query their own interests
-    if (userId !== authenticatedUserId) {
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+    convex.setAuth(token);
+
+    const currentUserRecord = await convex.query(
+      api.users.getCurrentUserWithProfile,
+      {}
+    );
+    if (!currentUserRecord) {
+      return errorResponse("User not found", 404);
+    }
+    const currentUserId = currentUserRecord._id as Id<"users">;
+
+    if (userIdParam && userIdParam !== currentUserId) {
       logSecurityEvent(
         "UNAUTHORIZED_ACCESS",
         {
           userId: authenticatedUserId,
-          attemptedUserId: userId,
+          attemptedUserId: userIdParam,
           action: "get_interests",
         },
         req
@@ -189,16 +202,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      return errorResponse("Interest service temporarily unavailable", 503);
-    }
-
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
-    if (!convex) {
-      return errorResponse("Interest service temporarily unavailable", 503);
-    }
-
-    convex.setAuth(token);
+    const userId = currentUserId;
 
     // Log interest query for monitoring
     console.log(`User ${authenticatedUserId} querying sent interests`);
