@@ -14,13 +14,11 @@ import {
   Send,
   Image as ImageIcon,
   ArrowDown,
-  Mic,
-  MicOff,
-  Play,
-  Pause,
   Shield,
   AlertTriangle,
   Crown,
+  Play,
+  Pause,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -36,6 +34,8 @@ import { TypingIndicator } from "./TypingIndicator";
 import { DeliveryStatus } from "./DeliveryStatus";
 import type { ReportReason } from "@/lib/api/safety";
 import type { MatchMessage } from "@/lib/api/matchMessages";
+import VoiceRecorderButton from "./VoiceRecorderButton";
+import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
 
 export type ModernChatProps = {
   conversationId: string;
@@ -95,17 +95,12 @@ function ModernChat({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
 
   const pickerRef = useRef<HTMLDivElement>(null);
   const toggleBtnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-scroll to bottom when messages change & if near bottom
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -363,115 +358,30 @@ function ModernChat({
     [text, handleSendMessage, stopTyping]
   );
 
-  // Voice recording functionality
-  const startRecording = useCallback(async () => {
-    if (isBlocked || isRecording) return;
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-
-      audioChunksRef.current = [];
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/wav",
-        });
-        await sendVoiceMessage(audioBlob, recordingTime);
-
-        // Cleanup
-        stream.getTracks().forEach((track) => track.stop());
-        setRecordingTime(0);
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-
-      // Start recording timer
-      recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime((prev) => {
-          if (prev >= 300) {
-            // 5 minutes max
-            stopRecording();
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    } catch (error) {
-      console.error("Error starting recording:", error);
-      showErrorToast(
-        null,
-        "Failed to start recording. Please check microphone permissions."
-      );
-    }
-  }, [isBlocked, isRecording, recordingTime]);
-
-  const stopRecording = useCallback(() => {
-    if (!isRecording || !mediaRecorderRef.current) return;
-
-    mediaRecorderRef.current.stop();
-    setIsRecording(false);
-
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
-    }
-  }, [isRecording]);
-
+  // Voice message sender using shared util
   const sendVoiceMessage = useCallback(
-    async (audioBlob: Blob, duration: number) => {
-      if (duration < 1) {
-        showErrorToast(null, "Voice message too short");
-        return;
-      }
-
+    async (blob: Blob, toUserId: string, duration: number) => {
       try {
-        const formData = new FormData();
-        formData.append("audio", audioBlob);
-        formData.append("conversationId", conversationId);
-        formData.append("duration", duration.toString());
-        formData.append("toUserId", matchUserId);
-
-        const response = await fetch("/api/voice-messages/upload", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
+        await uploadVoiceMessage({
+          token,
+          conversationId,
+          fromUserId: currentUserId,
+          toUserId,
+          blob,
+          duration,
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to send voice message");
-        }
-
-        await response.json();
-
-        // Track voice message usage
         trackUsage({
           feature: "voice_message_sent",
-          metadata: {
-            targetUserId: matchUserId,
-            messageType: "voice",
-          },
+          metadata: { targetUserId: toUserId, messageType: "voice" },
         });
-
         showSuccessToast("Voice message sent!");
-        setIsNearBottom(true);
-      } catch (error) {
-        console.error("Error sending voice message:", error);
+      } catch (err) {
+        console.error("Error sending voice message", err);
         showErrorToast(null, "Failed to send voice message");
       }
     },
-    [conversationId, matchUserId, token, trackUsage]
+    [token, conversationId, currentUserId, trackUsage]
   );
 
   // Block user handler
@@ -790,31 +700,13 @@ function ModernChat({
 
           {/* Additional action buttons */}
           <div className="flex gap-2">
-            {/* Voice recording button - Premium feature */}
+            {/* Voice recorder button */}
             {(subscriptionStatus.data?.plan === "premium" ||
               subscriptionStatus.data?.plan === "premiumPlus") && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "transition-colors p-2 h-10 w-10",
-                  isRecording
-                    ? "text-danger hover:text-danger bg-danger/10"
-                    : "text-secondary hover:text-primary"
-                )}
-                title={isRecording ? "Stop recording" : "Record voice message"}
-                disabled={isBlocked || isSending}
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onMouseLeave={stopRecording}
-              >
-                {isRecording ? (
-                  <MicOff className="w-4 h-4" />
-                ) : (
-                  <Mic className="w-4 h-4" />
-                )}
-              </Button>
+              <VoiceRecorderButton
+                onSend={(blob, dur) => sendVoiceMessage(blob, matchUserId, dur)}
+                className="h-10 w-auto"
+              />
             )}
 
             <Button
@@ -890,23 +782,6 @@ function ModernChat({
                   Retry
                 </Button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Recording indicator */}
-        <AnimatePresence>
-          {isRecording && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="mt-2 flex items-center justify-center gap-2 text-red-500"
-            >
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-sm font-medium">
-                Recording {formatVoiceDuration(recordingTime)}
-              </span>
             </motion.div>
           )}
         </AnimatePresence>
