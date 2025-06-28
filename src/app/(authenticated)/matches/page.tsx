@@ -56,7 +56,7 @@ function MatchCard({
                     height={80}
                     className="w-20 h-20 rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform duration-300"
                   />
-                  {match.unread && match.unread > 0 && (
+                  {(match.unread ?? 0) > 0 ? (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
@@ -66,7 +66,7 @@ function MatchCard({
                         {match.unread > 9 ? "9+" : match.unread}
                       </span>
                     </motion.div>
-                  )}
+                  ) : null}
                 </div>
               ) : (
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary-light to-accent-light flex items-center justify-center shadow-lg">
