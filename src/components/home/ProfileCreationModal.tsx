@@ -29,7 +29,8 @@ import {
   ETHNICITY_OPTIONS,
 } from "@/lib/constants/languages";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { useAuthContext } from "@/components/AuthProvider";
 import {
   submitProfile,
   getCurrentUserWithProfile,
@@ -249,7 +250,11 @@ export function ProfileCreationModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const router = useRouter();
-  const { isSignedIn, getToken } = useAuth();
+  const {
+    token: contextToken,
+    isSignedIn,
+    getToken: authCtxGetToken,
+  } = useAuthContext();
   const { user } = useUser();
   const [profileSubmitted, setProfileSubmitted] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
@@ -264,7 +269,8 @@ export function ProfileCreationModal({
     const saveProfileIfNeeded = async () => {
       if (isSignedIn && displayStep === 7 && !profileSubmitted) {
         try {
-          const token = await getToken({ template: "convex" });
+          const token =
+            contextToken ?? (await authCtxGetToken({ template: "convex" }));
           if (!token) return;
 
           // 1) Upload any locally stored images (ids starting with "local-")
@@ -362,7 +368,8 @@ export function ProfileCreationModal({
     displayStep,
     profileSubmitted,
     formData,
-    getToken,
+    contextToken,
+    authCtxGetToken,
     router,
     pendingImages,
     user,

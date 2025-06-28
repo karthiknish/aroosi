@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, MessageCircle, Mic, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +16,7 @@ import {
 } from "@/lib/utils/messageUtils";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { getConversations } from "@/lib/api/conversation";
+import { useAuthContext } from "@/components/AuthProvider";
 
 interface ConversationListProps {
   onConversationSelect: (
@@ -44,10 +44,10 @@ export default function ConversationList({
   selectedConversationId,
   className = "",
 }: ConversationListProps) {
-  const { getToken, userId } = useAuth();
+  const { token: contextToken, userId } = useAuthContext();
   const subscriptionStatus = useSubscriptionStatus();
   const [conversations, setConversations] = useState<ConversationWithUser[]>(
-    [],
+    []
   );
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,7 +59,7 @@ export default function ConversationList({
 
     try {
       setLoading(true);
-      const token = await getToken();
+      const token = contextToken;
       if (!token) throw new Error("Authentication required");
 
       const result = await getConversations({ token });
@@ -92,12 +92,12 @@ export default function ConversationList({
     } catch (err) {
       console.error("Error fetching conversations:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to load conversations",
+        err instanceof Error ? err.message : "Failed to load conversations"
       );
     } finally {
       setLoading(false);
     }
-  }, [userId, getToken]);
+  }, [userId, contextToken]);
 
   // Filter conversations based on search query
   const filteredConversations = conversations.filter(

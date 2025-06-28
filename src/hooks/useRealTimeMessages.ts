@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuthContext } from "@/components/AuthProvider";
 import { MessageData, MessageEvent } from "@/lib/utils/messageUtils";
 
 interface UseRealTimeMessagesProps {
@@ -25,7 +25,7 @@ export function useRealTimeMessages({
   conversationId,
   initialMessages = [],
 }: UseRealTimeMessagesProps): UseRealTimeMessagesReturn {
-  const { getToken, userId } = useAuth();
+  const { token: contextToken, userId } = useAuthContext();
   const [messages, setMessages] = useState<MessageData[]>(initialMessages);
   const [isTyping, setIsTyping] = useState<Record<string, boolean>>({});
   const [isConnected, setIsConnected] = useState(false);
@@ -39,7 +39,7 @@ export function useRealTimeMessages({
     if (!userId || !conversationId) return;
 
     try {
-      const token = await getToken();
+      const token = contextToken;
       if (!token) return;
 
       // Close existing connection
@@ -92,7 +92,7 @@ export function useRealTimeMessages({
       console.error("Error initializing real-time connection:", err);
       setError("Failed to establish real-time connection");
     }
-  }, [userId, conversationId, getToken]);
+  }, [userId, conversationId, contextToken]);
 
   // Handle real-time events
   const handleRealTimeEvent = useCallback(
@@ -153,7 +153,7 @@ export function useRealTimeMessages({
       if (!userId || !text.trim()) return;
 
       try {
-        const token = await getToken();
+        const token = contextToken;
         if (!token) throw new Error("Authentication required");
 
         const response = await fetch("/api/match-messages", {
@@ -222,7 +222,7 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId, getToken]
+    [userId, conversationId, contextToken]
   );
 
   // Send typing indicators
@@ -261,7 +261,7 @@ export function useRealTimeMessages({
       if (!userId || messageIds.length === 0) return;
 
       try {
-        const token = await getToken();
+        const token = contextToken;
         if (!token) throw new Error("Authentication required");
 
         const response = await fetch("/api/messages/mark-read", {
@@ -309,7 +309,7 @@ export function useRealTimeMessages({
         }
       }
     },
-    [userId, getToken]
+    [userId, contextToken]
   );
 
   // Refresh messages from server
@@ -317,7 +317,7 @@ export function useRealTimeMessages({
     if (!userId) return;
 
     try {
-      const token = await getToken();
+      const token = contextToken;
       if (!token) throw new Error("Authentication required");
 
       const response = await fetch(
@@ -373,7 +373,7 @@ export function useRealTimeMessages({
         setError("Failed to refresh messages");
       }
     }
-  }, [userId, conversationId, getToken]);
+  }, [userId, conversationId, contextToken]);
 
   // Initialize connection on mount
   useEffect(() => {
