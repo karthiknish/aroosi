@@ -199,7 +199,7 @@ export default function MatchesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-gradient-to-r from-primary-light/20 to-secondary-light/20 rounded-2xl p-6 mb-8 border border-primary-light/30"
+            className="bg-white rounded-2xl p-6 mb-8 border border-primary-light/20 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
