@@ -116,6 +116,15 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         return errorResponse(`Failed to ${action} interest`, 500);
       }
 
+      // Check if Convex returned an error (e.g., rate limiting)
+      if ("success" in result && result.success === false) {
+        const errorMsg =
+          "error" in result && typeof result.error === "string"
+            ? result.error
+            : `Failed to ${action} interest`;
+        return errorResponse(errorMsg, 429); // Use 429 for rate limiting
+      }
+
       console.log(
         `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`,
       );
