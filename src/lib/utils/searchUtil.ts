@@ -1,4 +1,5 @@
 import type { ProfileSearchResult } from "@/app/(authenticated)/search/page";
+import { showErrorToast } from "@/lib/ui/toast";
 
 /**
  * Fetches profile search results from the API.
@@ -56,7 +57,7 @@ export async function fetchProfileSearchResults({
       total: typeof envelope.total === "number" ? envelope.total : 0,
     };
   } catch (error) {
-    console.error("Error fetching search results:", error);
+    showErrorToast(error, "Failed to fetch search results");
     return { profiles: [], total: 0 };
   }
 }
