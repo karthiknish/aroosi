@@ -147,6 +147,15 @@ export default function ProfileDetailPage() {
     userProfileImagesResponse,
   ]);
 
+  // Determine if image data still loading
+  const imagesLoading =
+    (profile &&
+      (profile.profileImageUrls?.length ?? 0) > 0 &&
+      imagesToShow.length === 0) ||
+    (!skipImagesQuery && userProfileImagesResponse === undefined);
+
+  const skeletonCount = profile?.profileImageUrls?.length ?? 0;
+
   // Use currentUserProfile._id as fromUserId and userId from params as toUserId
   const fromUserId = currentUserProfile?.userId;
   const toUserId = userId;
@@ -289,7 +298,11 @@ export default function ProfileDetailPage() {
     visible: (i: number) => ({
       opacity: 1,
       scale: 1,
-      transition: { delay: 0.1 + i * 0.07, duration: 0.35, type: "spring" as const },
+      transition: {
+        delay: 0.1 + i * 0.07,
+        duration: 0.35,
+        type: "spring" as const,
+      },
     }),
     exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } },
   };
@@ -333,7 +346,7 @@ export default function ProfileDetailPage() {
         setLocalInterest(true);
         const responseData = await sendInterest(token, fromUserId, toUserId);
         showSuccessToast("Interest sent successfully!");
-        
+
         // Track interest sent usage
         trackUsage({
           feature: "interest_sent",
@@ -341,7 +354,7 @@ export default function ProfileDetailPage() {
             targetUserId: toUserId,
           },
         });
-        
+
         await refetchSentInterests();
         setLocalInterest(null); // Let server state take over
         return responseData;
@@ -551,6 +564,16 @@ export default function ProfileDetailPage() {
                   </span>
                 </div>
               </motion.div>
+              {imagesLoading && skeletonCount > 0 && (
+                <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
+                  {Array.from({ length: skeletonCount }).map((_, idx) => (
+                    <div
+                      key={idx}
+                      className="w-full aspect-square bg-gray-100 animate-pulse rounded-lg"
+                    />
+                  ))}
+                </motion.div>
+              )}
               {imagesToShow && imagesToShow.length > 0 && (
                 <motion.div
                   className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8"
