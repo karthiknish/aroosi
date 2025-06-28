@@ -1,38 +1,24 @@
 "use client";
 
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@clerk/nextjs";
+import { useAuthContext } from "@/components/AuthProvider";
+import { useUsageStats } from "@/hooks/useSubscription";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  MessageSquare, 
-  Eye, 
-  Search, 
-  Heart, 
-  Zap, 
+import {
+  MessageSquare,
+  Eye,
+  Search,
+  Heart,
+  Zap,
   Mic,
   Infinity,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-
-interface UsageData {
-  plan: string;
-  currentMonth: string;
-  resetDate: number;
-  features: Array<{
-    name: string;
-    used: number;
-    limit: number;
-    unlimited: boolean;
-    remaining: number;
-    percentageUsed: number;
-  }>;
-}
 
 const featureIcons: Record<string, React.ReactNode> = {
   message_sent: <MessageSquare className="h-5 w-5" />,
@@ -52,24 +38,32 @@ const featureNames: Record<string, string> = {
   voice_message_sent: "Voice Messages",
 };
 
+interface UsageFeature {
+  name: string;
+  used: number;
+  limit: number;
+  unlimited: boolean;
+  remaining: number;
+  percentageUsed: number;
+}
+
+interface UsageSummary {
+  plan: string;
+  currentMonth: string;
+  resetDate: number;
+  features: UsageFeature[];
+}
+
 export function UsageTracker() {
-  const { getToken } = useAuth();
-  
-  const { data: usage, isLoading, error } = useQuery<UsageData>({
-    queryKey: ["usage-stats"],
-    queryFn: async () => {
-      const token = await getToken();
-      const response = await fetch("/api/subscription/usage", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch usage data");
-      const result = await response.json();
-      return result.data;
-    },
-    refetchInterval: 60000, // Refetch every minute
-  });
+  const { token } = useAuthContext();
+
+  const {
+    data: usageRaw,
+    isLoading,
+    error,
+  } = useUsageStats(token ?? undefined);
+
+  const usage = usageRaw as unknown as UsageSummary | undefined;
 
   if (isLoading) {
     return (
@@ -112,17 +106,23 @@ export function UsageTracker() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Usage Tracker</CardTitle>
-          <Badge className={planColors[usage.plan as keyof typeof planColors] || planColors.free}>
+          <Badge
+            className={
+              planColors[usage.plan as keyof typeof planColors] ||
+              planColors.free
+            }
+          >
             {usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1)} Plan
           </Badge>
         </div>
         <p className="text-sm text-gray-500">
-          Resets on {format(new Date(usage.resetDate), "MMMM d, yyyy")}
+          Resets on{" "}
+          {usage ? format(new Date(usage.resetDate), "MMMM d, yyyy") : "-"}
         </p>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {usage.features.map((feature) => (
+          {usage.features.map((feature: UsageFeature) => (
             <div key={feature.name} className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -145,21 +145,21 @@ export function UsageTracker() {
                 </div>
               </div>
               {!feature.unlimited && (
-                <Progress 
-                  value={feature.percentageUsed} 
+                <Progress
+                  value={feature.percentageUsed}
                   className={`h-2 ${
-                    feature.percentageUsed >= 90 
-                      ? "bg-red-100" 
-                      : feature.percentageUsed >= 70 
-                      ? "bg-yellow-100" 
-                      : "bg-gray-100"
+                    feature.percentageUsed >= 90
+                      ? "bg-red-100"
+                      : feature.percentageUsed >= 70
+                        ? "bg-yellow-100"
+                        : "bg-gray-100"
                   }`}
                 />
               )}
               {!feature.unlimited && feature.percentageUsed >= 90 && (
                 <p className="text-xs text-red-600">
-                  {feature.remaining === 0 
-                    ? "Limit reached" 
+                  {feature.remaining === 0
+                    ? "Limit reached"
                     : `Only ${feature.remaining} remaining`}
                 </p>
               )}

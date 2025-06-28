@@ -4,7 +4,7 @@ import React from "react";
 import { UsageTracker } from "@/components/usage/UsageTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@clerk/nextjs";
+import { useAuthContext } from "@/components/AuthProvider";
 import { format } from "date-fns";
 import {
   BarChart,
@@ -19,22 +19,27 @@ import {
   Cell,
 } from "recharts";
 
-export default function UsagePage() {
-  const { getToken } = useAuth();
+interface UsageHistoryItem {
+  feature: string;
+  timestamp: number;
+}
 
+export default function UsagePage() {
+  const { token } = useAuthContext();
+
+  // Detailed usage history (last 100 events)
   const { data: history } = useQuery({
-    queryKey: ["usage-history"],
+    queryKey: ["usage-history", token],
     queryFn: async () => {
-      const token = await getToken({ template: "convex" });
+      if (!token) return null;
       const response = await fetch("/api/subscription/usage-history", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Failed to fetch usage history");
-      const json = await response.json();
-      return json;
+      const json: { data: UsageHistoryItem[] } = await response.json();
+      return json.data;
     },
+    enabled: Boolean(token),
   });
 
   const chartColors = [
@@ -57,13 +62,13 @@ export default function UsagePage() {
 
   // Transform history data for charts
   const chartData = React.useMemo(() => {
-    if (!history?.data) return { daily: [], distribution: [] };
+    if (!history) return { daily: [], distribution: [] };
 
     // Group by day for the last 7 days
     const dailyData: Record<string, Record<string, number>> = {};
     const featureCounts: Record<string, number> = {};
 
-    history.data.forEach((item: any) => {
+    history.forEach((item) => {
       const day = format(new Date(item.timestamp), "MMM dd");
       if (!dailyData[day]) {
         dailyData[day] = {};
@@ -83,13 +88,15 @@ export default function UsagePage() {
       ...features,
     }));
 
-    const distribution = Object.entries(featureCounts).map(([feature, count]) => ({
-      name: featureNames[feature] || feature,
-      value: count,
-    }));
+    const distribution = Object.entries(featureCounts).map(
+      ([feature, count]) => ({
+        name: featureNames[feature] || feature,
+        value: count,
+      })
+    );
 
     return { daily, distribution };
-  }, [history]);
+  }, [history, featureNames]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -110,13 +117,18 @@ export default function UsagePage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(props: any) => `${props.name} ${(props.percent * 100).toFixed(0)}%`}
+                  label={({ name, percent = 0 }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
                   {chartData.distribution.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={chartColors[index % chartColors.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
