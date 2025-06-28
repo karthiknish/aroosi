@@ -25,14 +25,15 @@ export default function UsagePage() {
   const { data: history } = useQuery({
     queryKey: ["usage-history"],
     queryFn: async () => {
-      const token = await getToken();
+      const token = await getToken({ template: "convex" });
       const response = await fetch("/api/subscription/usage-history", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       if (!response.ok) throw new Error("Failed to fetch usage history");
-      return response.json();
+      const json = await response.json();
+      return json;
     },
   });
 
