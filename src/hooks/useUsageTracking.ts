@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
+import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import {
   showErrorToast,
   showWarningToast,
@@ -40,6 +41,9 @@ export function useUsageTracking(providedToken?: string): {
 } {
   const { token: contextToken } = useAuthContext();
   const queryClient = useQueryClient();
+  const { data: subscription } = useSubscriptionStatus(
+    (providedToken ?? undefined) || (contextToken ?? undefined)
+  );
 
   const trackUsage = useMutation({
     mutationFn: async ({ feature, metadata }: TrackUsageParams) => {
@@ -102,6 +106,17 @@ export function useUsageTracking(providedToken?: string): {
       }
     },
     onError: (error: Error) => {
+      // If user is Premium/PremiumPlus, ignore limit errors coming from stale backend data
+      if (
+        subscription &&
+        (subscription.plan === "premium" ||
+          subscription.plan === "premiumPlus") &&
+        error.message.toLowerCase().includes("limit")
+      ) {
+        // Silently ignore – treat as success and don't bother the user
+        return;
+      }
+
       if (error.message.includes("limit reached")) {
         showErrorToast(null, error.message);
         showInfoToast(
