@@ -75,10 +75,14 @@ export async function POST(req: NextRequest) {
         }
         return found._id;
       }
-      const newId = (await convex.mutation(api.interests.sendInterest, {
+      const result = await convex.mutation(api.interests.sendInterest, {
         fromUserId: fromUser,
         toUserId: toUser,
-      })) as Id<"interests">;
+      });
+      if (!result.success) {
+        throw new Error(result.error || "Failed to send interest");
+      }
+      const newId = result.interestId;
       await convex.mutation(api.interests.respondToInterest, {
         interestId: newId,
         status: "accepted",
