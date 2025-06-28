@@ -107,31 +107,41 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         {
           fromUserId: fromUserIdConvex,
           toUserId: toUserId as Id<"users">,
-        },
+        }
       );
 
-      // Validate result
-      if (!result || typeof result !== "object") {
+      // Validate result – Convex v0.16 may return the inserted id string
+      // instead of an object. Accept either `{ success: true, interestId }`
+      // or a bare string id.
+      if (
+        !result ||
+        (typeof result !== "object" && typeof result !== "string")
+      ) {
         console.error(`Invalid ${action} interest result:`, result);
         return errorResponse(`Failed to ${action} interest`, 500);
       }
 
+      // Normalise to a consistent response shape so the front-end can rely on it
+      const normalised =
+        typeof result === "string"
+          ? { success: true, interestId: result }
+          : result;
+
       // Check if Convex returned an error (e.g., rate limiting)
-      if ("success" in result && result.success === false) {
+      if ("success" in normalised && normalised.success === false) {
         const errorMsg =
-          "error" in result && typeof result.error === "string"
-            ? result.error
+          "error" in normalised && typeof normalised.error === "string"
+            ? normalised.error
             : `Failed to ${action} interest`;
         return errorResponse(errorMsg, 429); // Use 429 for rate limiting
       }
 
       console.log(
-        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`,
+        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`
       );
 
-      // Convex mutations may return the inserted row id (string) or an object.
-      // Wrap result in a standard envelope so the frontend has a consistent shape.
-      return successResponse({ result });
+      // Wrap normalised result in a standard envelope so the frontend has a consistent shape.
+      return successResponse({ result: normalised });
     } catch (convexErr) {
       console.error(`Error in interest ${action}:`, convexErr);
 
