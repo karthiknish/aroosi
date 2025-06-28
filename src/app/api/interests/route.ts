@@ -154,18 +154,18 @@ export async function GET(req: NextRequest) {
     const { token, userId: authenticatedUserId } = authCheck;
 
     // Rate limiting for interest queries
-    const rateLimitResult = checkApiRateLimit(`interest_get_${authenticatedUserId}`, 100, 60000); // 100 requests per minute
+    const rateLimitResult = checkApiRateLimit(
+      `interest_get_${authenticatedUserId}`,
+      100,
+      60000
+    ); // 100 requests per minute
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    // Get userId from query string
+    // Get optional userId from query string; default to current authenticated user
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return errorResponse("Missing userId parameter", 400);
-    }
+    const userId = searchParams.get("userId") || authenticatedUserId;
 
     // Input validation
     if (typeof userId !== "string" || userId.length < 10) {
@@ -174,12 +174,19 @@ export async function GET(req: NextRequest) {
 
     // Security check: users can only query their own interests
     if (userId !== authenticatedUserId) {
-      logSecurityEvent('UNAUTHORIZED_ACCESS', {
-        userId: authenticatedUserId,
-        attemptedUserId: userId,
-        action: 'get_interests'
-      }, req);
-      return errorResponse("Unauthorized: can only view your own interests", 403);
+      logSecurityEvent(
+        "UNAUTHORIZED_ACCESS",
+        {
+          userId: authenticatedUserId,
+          attemptedUserId: userId,
+          action: "get_interests",
+        },
+        req
+      );
+      return errorResponse(
+        "Unauthorized: can only view your own interests",
+        403
+      );
     }
 
     if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
@@ -190,7 +197,7 @@ export async function GET(req: NextRequest) {
     if (!convex) {
       return errorResponse("Interest service temporarily unavailable", 503);
     }
-    
+
     convex.setAuth(token);
 
     // Log interest query for monitoring
@@ -201,13 +208,12 @@ export async function GET(req: NextRequest) {
     });
 
     // Validate result
-    if (!result || (typeof result !== 'object' && !Array.isArray(result))) {
+    if (!result || (typeof result !== "object" && !Array.isArray(result))) {
       console.error("Invalid sent interests result:", result);
       return errorResponse("Failed to fetch interests", 500);
     }
 
     return successResponse(result);
-
   } catch (error) {
     console.error("Error fetching sent interests:", error);
     
