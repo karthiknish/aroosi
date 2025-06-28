@@ -511,22 +511,55 @@ const ProfileView: FC<ProfileViewProps> = ({
                 {/* Subscription Section */}
                 <DisplaySection
                   title={
-                    <>
+                    <span className="flex items-center gap-2">
                       <Heart className="w-5 h-5 text-pink-600" /> Subscription
-                    </>
+                    </span>
                   }
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-md font-semibold capitalize">
                       {profileData.subscriptionPlan || "Free"}
                     </span>
-                    {profileData.subscriptionPlan !== "premiumPlus" && (
+
+                    {/* Action buttons based on plan */}
+                    {(!profileData.subscriptionPlan ||
+                      profileData.subscriptionPlan === "free") && (
                       <Button
-                        type="button"
+                        size="sm"
                         className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg"
                         onClick={() => router.push("/plans")}
                       >
                         Upgrade
+                      </Button>
+                    )}
+
+                    {profileData.subscriptionPlan === "premium" && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-pink-600 border-pink-600"
+                          onClick={() => router.push("/plans")}
+                        >
+                          Upgrade to Plus
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.push("/subscription")}
+                        >
+                          Manage
+                        </Button>
+                      </div>
+                    )}
+
+                    {profileData.subscriptionPlan === "premiumPlus" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push("/subscription")}
+                      >
+                        Manage Subscription
                       </Button>
                     )}
                   </div>

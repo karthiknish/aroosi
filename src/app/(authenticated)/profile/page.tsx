@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import type { Profile } from "@/types/profile";
 import { ErrorState } from "@/components/ui/error-state";
-import { SubscriptionWidget } from "@/components/subscription/SubscriptionWidget";
 
 type ImageType = {
   _id: string;
@@ -166,9 +165,6 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   return (
     <div className="flex overflow-y-hidden items-center justify-center w-full bg-pink-50">
       <div className="w-full space-y-6 py-6">
-        {/* Subscription Widget */}
-        <SubscriptionWidget compact className="mb-4" />
-
         <ProfileView
           profileData={profile}
           images={images}
