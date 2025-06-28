@@ -214,19 +214,42 @@ export const isMutualInterest = query({
 export const removeInterest = mutation({
   args: {
     fromUserId: v.id("users"),
-    toUserId: v.id("users"),
+    toUserId: v.id("users"), // Target user's Convex id (new schema)
   },
   handler: async (ctx, args) => {
-    const interest = await ctx.db
+    // 1️⃣ Try the normal lookup (new schema – both ids are users ids)
+    let interest = await ctx.db
       .query("interests")
       .withIndex("by_from_to", (q) =>
         q.eq("fromUserId", args.fromUserId).eq("toUserId", args.toUserId)
       )
       .first();
+
+    // 2️⃣ If not found, fall back to legacy rows that stored a profile _id in toUserId
     if (!interest) {
-      // Instead of throwing, return success (idempotent)
+      const legacyProfile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", args.toUserId))
+        .first();
+
+      if (legacyProfile) {
+        interest = await ctx.db
+          .query("interests")
+          .withIndex("by_from_to", (q) =>
+            // Cast needed because legacy rows typed to users id originally
+            q
+              .eq("fromUserId", args.fromUserId)
+              .eq("toUserId", legacyProfile._id as unknown as Id<"users">)
+          )
+          .first();
+      }
+    }
+
+    if (!interest) {
+      // Nothing to delete – keep idempotent behaviour
       return { success: true, alreadyRemoved: true };
     }
+
     await ctx.db.delete(interest._id);
     return { success: true };
   },
