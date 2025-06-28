@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
       }
       targetUserId = targetProfile.userId as Id<"users">;
     } else {
+      // Treat provided userId as internal Convex user ID
       targetUserId = targetUserIdParam as Id<"users">;
     }
 
