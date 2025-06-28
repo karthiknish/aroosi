@@ -22,7 +22,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
 
     // Rate limiting for interest actions
     const rateLimitResult = checkApiRateLimit(
-      `interest_${action}_${userId}`, 
+      `interest_${action}_${userId}`,
       action === "send" ? 50 : 100, // 50 sends or 100 removes per hour
       60000
     );
@@ -43,25 +43,12 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     }
 
     // Validate required fields
-    const { fromUserId, toUserId } = body;
-    if (
-      !fromUserId ||
-      !toUserId ||
-      typeof fromUserId !== "string" ||
-      typeof toUserId !== "string"
-    ) {
-      return errorResponse("Invalid or missing user IDs", 400);
+    const { toUserId } = body as { toUserId?: string };
+    if (!toUserId || typeof toUserId !== "string") {
+      return errorResponse("Invalid or missing toUserId", 400);
     }
 
-    // Security validation: user can only send interests from their own account
-    if (fromUserId !== userId) {
-      logSecurityEvent('UNAUTHORIZED_ACCESS', {
-        userId,
-        attemptedFromUserId: fromUserId,
-        action: `interest_${action}`
-      }, req);
-      return errorResponse("Unauthorized: can only send interests from your own account", 403);
-    }
+    const fromUserId = userId as string; // derive from token, ignore client-provided value
 
     // Validate user IDs format (basic length/format check)
     if (fromUserId.length < 10 || toUserId.length < 10) {
@@ -82,7 +69,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     if (!convex) {
       return errorResponse("Interest service temporarily unavailable", 503);
     }
-    
+
     convex.setAuth(token);
 
     // Log interest action for monitoring
@@ -100,24 +87,30 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       );
 
       // Validate result
-      if (!result || typeof result !== 'object') {
+      if (!result || typeof result !== "object") {
         console.error(`Invalid ${action} interest result:`, result);
         return errorResponse(`Failed to ${action} interest`, 500);
       }
 
-      console.log(`Interest ${action} successful: ${fromUserId} -> ${toUserId}`);
+      console.log(
+        `Interest ${action} successful: ${fromUserId} -> ${toUserId}`
+      );
       return successResponse(result);
-
     } catch (convexErr) {
       console.error(`Error in interest ${action}:`, convexErr);
-      
+
       // Log security event for monitoring
-      logSecurityEvent('VALIDATION_FAILED', {
-        userId,
-        endpoint: 'interests',
-        action,
-        error: convexErr instanceof Error ? convexErr.message : 'Unknown error'
-      }, req);
+      logSecurityEvent(
+        "VALIDATION_FAILED",
+        {
+          userId,
+          endpoint: "interests",
+          action,
+          error:
+            convexErr instanceof Error ? convexErr.message : "Unknown error",
+        },
+        req
+      );
 
       const error = convexErr as Error;
       const isAuthError =
@@ -130,10 +123,11 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       }
 
       // Don't expose internal errors in production
-      const errorMessage = process.env.NODE_ENV === 'development' 
-        ? error.message 
-        : `Failed to ${action} interest`;
-        
+      const errorMessage =
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : `Failed to ${action} interest`;
+
       return errorResponse(errorMessage, 400);
     }
   } catch (error) {
