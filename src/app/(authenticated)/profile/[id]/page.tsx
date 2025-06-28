@@ -156,9 +156,9 @@ export default function ProfileDetailPage() {
 
   const skeletonCount = profile?.profileImageUrls?.length ?? 0;
 
-  // Use currentUserProfile._id as fromUserId and userId from params as toUserId
-  const fromUserId = currentUserProfile?._id;
-  const toUserId = userId;
+  // Use Convex user IDs for interest actions
+  const fromUserId = currentUserProfile?.userId;
+  const toUserId = profile?.userId;
 
   // --- BEGIN: Add local state for interest status ---
   const {
@@ -202,7 +202,9 @@ export default function ProfileDetailPage() {
   // --- END: Add local state for interest status ---
 
   // Check if user is blocked
-  const { data: blockStatus } = useBlockStatus(userId);
+  const { data: blockStatus } = useBlockStatus(
+    toUserId ? { userId: toUserId } : ""
+  );
   const isBlocked = blockStatus?.isBlocked || false;
   const isBlockedBy = blockStatus?.isBlockedBy || false;
   const canInteract = !isBlocked && !isBlockedBy;
