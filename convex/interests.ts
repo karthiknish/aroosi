@@ -34,12 +34,13 @@ export const sendInterest = mutation({
       .first();
     if (existing) throw new Error("Interest already sent");
     const now = Date.now();
-    return ctx.db.insert("interests", {
+    const interestId = await ctx.db.insert("interests", {
       fromUserId: args.fromUserId,
       toUserId: args.toUserId,
       status: "pending",
       createdAt: now,
     });
+    return { success: true, interestId };
   },
 });
 
