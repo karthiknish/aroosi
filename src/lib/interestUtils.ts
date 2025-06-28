@@ -30,16 +30,13 @@ export async function removeInterest(
   return res.json();
 }
 
-export async function getSentInterests(token: string, userId: string) {
-  const res = await fetch(
-    `/api/interests?userId=${encodeURIComponent(userId)}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+export async function getSentInterests(token: string) {
+  const res = await fetch(`/api/interests`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   return res.json();
 }
 

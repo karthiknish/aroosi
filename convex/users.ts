@@ -73,14 +73,6 @@ export const getUserById = query({
   },
 });
 
-// Get user by Clerk ID (public query)
-export const getUserByClerkId = query({
-  args: { clerkId: v.string() },
-  handler: async (ctx, args) => {
-    return await getUserByClerkIdInternal(ctx, args.clerkId);
-  },
-});
-
 /**
  * Retrieves the user record and their profile for the currently authenticated Clerk user.
  */
@@ -1297,7 +1289,7 @@ export const setProfileHiddenFromSearch = mutation({
     profileId: v.id("profiles"),
     hidden: v.boolean(),
   },
-  handler: async (ctx, { profileId, hidden }) => {
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     requireAdmin(identity);
     // hiddenFromSearch field removed - this function is no longer needed
