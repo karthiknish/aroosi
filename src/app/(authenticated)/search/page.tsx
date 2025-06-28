@@ -23,32 +23,42 @@ import { ErrorState } from "@/components/ui/error-state";
 import { useOffline } from "@/hooks/useOffline";
 import { useBlockedUsers } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
+import { SearchableSelect, Option } from "@/components/ui/searchable-select";
 
 const commonCountries = [
-  "Afghanistan",
   "United Kingdom",
   "United States",
   "Canada",
   "Australia",
+  "New Zealand",
+  "Afghanistan",
+  "United Arab Emirates",
+  "Qatar",
+  "Saudi Arabia",
+  "Kuwait",
+  "Bahrain",
+  "Oman",
   "Germany",
   "France",
   "Netherlands",
   "Belgium",
+  "Switzerland",
+  "Austria",
   "Sweden",
   "Norway",
   "Denmark",
-  "Pakistan",
-  "India",
-  "Iran",
-  "Turkey",
-  "UAE",
-  "Saudi Arabia",
-  "Qatar",
-  "Kuwait",
-  "Oman",
-  "Bahrain",
+  "Finland",
+  "Italy",
+  "Spain",
+  "Portugal",
+  "Ireland",
+  "Other",
 ];
 const countryOptions = ["any", ...commonCountries.sort()];
+const countrySelectOptions: Option<string>[] = countryOptions.map((c) => ({
+  value: c,
+  label: c === "any" ? "Any Country" : c,
+}));
 
 // Additional premium filters
 const ethnicityOptions = [
@@ -360,18 +370,15 @@ export default function SearchProfilesPage() {
               onChange={(e) => setCity(e.target.value)}
               className="w-40 bg-white rounded-lg shadow-sm font-nunito"
             />
-            <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger className="w-40 bg-white rounded-lg shadow-sm font-nunito">
-                <SelectValue placeholder="Choose Country" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                {countryOptions.map((c) => (
-                  <SelectItem key={c} value={c} className="font-nunito">
-                    {c === "any" ? "Any Country" : c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-44">
+              <SearchableSelect
+                options={countrySelectOptions}
+                value={country}
+                onValueChange={setCountry}
+                placeholder="Country"
+                className="bg-white"
+              />
+            </div>
             <Input
               type="number"
               min={18}
