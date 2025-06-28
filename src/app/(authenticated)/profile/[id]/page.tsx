@@ -169,7 +169,7 @@ export default function ProfileDetailPage() {
     queryKey: ["sentInterests", fromUserId, toUserId, token],
     queryFn: async () => {
       if (!token || !fromUserId) return [];
-      const res = await getSentInterests(token, fromUserId);
+      const res = await getSentInterests(token);
       let payload: unknown = res;
       if (
         payload &&
