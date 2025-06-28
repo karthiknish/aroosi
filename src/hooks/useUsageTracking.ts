@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
-import { toast } from "sonner";
+import {
+  showErrorToast,
+  showWarningToast,
+  showInfoToast,
+} from "@/lib/ui/toast";
 
-type Feature = 
+type Feature =
   | "message_sent"
   | "profile_view"
   | "search_performed"
@@ -86,25 +90,24 @@ export function useUsageTracking(): {
         usage.remainingQuota <= 5 &&
         usage.remainingQuota > 0
       ) {
-        toast.warning(
+        showWarningToast(
           `Only ${usage.remainingQuota} ${getFeatureName(usage.feature)} remaining this month`
         );
       } else if (!usage.isUnlimited && usage.remainingQuota === 0) {
-        toast.error(
+        showErrorToast(
+          null,
           `Monthly limit reached for ${getFeatureName(usage.feature)}`
         );
       }
     },
     onError: (error: Error) => {
       if (error.message.includes("limit reached")) {
-        toast.error(error.message, {
-          action: {
-            label: "Upgrade",
-            onClick: () => (window.location.href = "/pricing"),
-          },
-        });
+        showErrorToast(null, error.message);
+        showInfoToast(
+          "Upgrade to Premium for higher limits. Visit pricing page."
+        );
       } else {
-        toast.error(error.message);
+        showErrorToast(null, error.message);
       }
     },
   });
