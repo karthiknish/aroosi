@@ -141,7 +141,7 @@ export interface ProfileSearchResult {
 export default function SearchProfilesPage() {
   const { token, isSignedIn } = useAuthContext();
   const router = useRouter();
-  const { trackUsage } = useUsageTracking();
+  const { trackUsage } = useUsageTracking(token ?? undefined);
   const [city, setCity] = React.useState("any");
   const [country, setCountry] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
@@ -163,7 +163,16 @@ export default function SearchProfilesPage() {
     isError: profilesError,
     refetch: refetchProfiles,
   } = useQuery({
-    queryKey: ["profiles", token, city, country, ageMin, ageMax, page, pageSize],
+    queryKey: [
+      "profiles",
+      token,
+      city,
+      country,
+      ageMin,
+      ageMax,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
       fetchProfileSearchResults({
         token: token!,
@@ -184,7 +193,7 @@ export default function SearchProfilesPage() {
   useEffect(() => {
     if (typeof totalResults === "number") {
       setTotal(totalResults);
-      
+
       // Track search usage when results are loaded
       if (totalResults > 0 && !hasTrackedSearch && !loadingProfiles) {
         trackUsage({
@@ -196,8 +205,17 @@ export default function SearchProfilesPage() {
         setHasTrackedSearch(true);
       }
     }
-  }, [totalResults, hasTrackedSearch, loadingProfiles, trackUsage, city, country, ageMin, ageMax]);
-  
+  }, [
+    totalResults,
+    hasTrackedSearch,
+    loadingProfiles,
+    trackUsage,
+    city,
+    country,
+    ageMin,
+    ageMax,
+  ]);
+
   // Reset tracking flag when search parameters change
   useEffect(() => {
     setHasTrackedSearch(false);
@@ -246,8 +264,7 @@ export default function SearchProfilesPage() {
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: ProfileSearchResult) =>
-        u.profile && u.profile.isProfileComplete
+      (u: ProfileSearchResult) => u.profile && u.profile.isProfileComplete
     );
   }, [profiles]);
 
@@ -316,7 +333,7 @@ export default function SearchProfilesPage() {
       <div
         className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }}
       ></div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">

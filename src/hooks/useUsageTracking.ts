@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@clerk/nextjs";
+import { useAuthContext } from "@/components/AuthProvider";
 import {
   showErrorToast,
   showWarningToast,
@@ -34,16 +34,17 @@ interface UsageResponse {
   resetDate: number;
 }
 
-export function useUsageTracking(): {
+export function useUsageTracking(providedToken?: string): {
   trackUsage: (params: TrackUsageParams) => void;
   isTracking: boolean;
 } {
-  const { getToken } = useAuth();
+  const { token: contextToken } = useAuthContext();
   const queryClient = useQueryClient();
 
   const trackUsage = useMutation({
     mutationFn: async ({ feature, metadata }: TrackUsageParams) => {
-      const token = await getToken();
+      const token = providedToken || contextToken;
+      if (!token) throw new Error("No auth token available");
       const response = await fetch("/api/subscription/track-usage", {
         method: "POST",
         headers: {
@@ -121,12 +122,12 @@ export function useUsageTracking(): {
 export function useCanUseFeature(
   feature: Feature
 ): ReturnType<typeof useQuery> {
-  const { getToken } = useAuth();
+  const { token: contextToken } = useAuthContext();
 
   return useQuery({
     queryKey: ["can-use-feature", feature],
     queryFn: async (): Promise<{ canUse: boolean; reason?: string }> => {
-      const token = await getToken();
+      const token = contextToken;
       const response = await fetch(`/api/subscription/can-use/${feature}`, {
         headers: {
           Authorization: `Bearer ${token}`,

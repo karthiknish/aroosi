@@ -57,7 +57,7 @@ function ModernChat({
   token,
 }: ModernChatProps) {
   const subscriptionStatus = useSubscriptionStatus(token);
-  const { trackUsage } = useUsageTracking();
+  const { trackUsage } = useUsageTracking(token);
   const [connectionStatus, setConnectionStatus] = useState<
     "connected" | "connecting" | "disconnected"
   >("connecting");
