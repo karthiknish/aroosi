@@ -226,39 +226,45 @@ export const removeInterest = mutation({
       .first();
 
     if (!interest) {
-      // 🚑  Final sweep: legacy rows might store a profile _id in toUserId where
-      // the profile record has since been deleted.  We therefore check every
-      // interest sent by the current user and compare:
-      //   • row.toUserId === args.toUserId          (correct schema)
-      //   • The profile (if it exists) referenced by row.toUserId has
-      //     userId === args.toUserId                (legacy schema)
+      // 🚑  Final sweep: support *all* legacy combinations.
+      // We consider both userId and (if exists) profile._id for caller and target.
 
-      const allFromUser = await ctx.db
-        .query("interests")
-        .withIndex("by_from_to", (q) => q.eq("fromUserId", args.fromUserId))
-        .collect();
+      // 1. Load caller's profile _id (may not exist if profile deleted)
+      const callerProfile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", args.fromUserId))
+        .first();
 
-      const matches: typeof allFromUser = [];
+      // 2. Load target's profile _id (may not exist)
+      const targetProfile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", args.toUserId))
+        .first();
 
-      for (const row of allFromUser) {
-        // Case A – already in new schema and matches directly
-        if (
-          (row.toUserId as unknown as string) ===
-          (args.toUserId as unknown as string)
-        ) {
-          matches.push(row);
-          continue;
-        }
+      const possibleFromIds: Id<"users">[] = [args.fromUserId as Id<"users">];
+      if (callerProfile)
+        possibleFromIds.push(callerProfile._id as unknown as Id<"users">);
 
-        // Case B – legacy row: toUserId is actually a profile _id
-        // Try to load the profile and compare its userId
-        const maybeProfile = await ctx.db.get(
-          row.toUserId as unknown as Id<"profiles">
-        );
-        if (maybeProfile && maybeProfile.userId === args.toUserId) {
-          matches.push(row);
-        }
-      }
+      const possibleToIds: Id<"users">[] = [args.toUserId as Id<"users">];
+      if (targetProfile)
+        possibleToIds.push(targetProfile._id as unknown as Id<"users">);
+
+      // Gather all interests where fromUserId is in possibleFromIds
+      const candidateRows = await Promise.all(
+        possibleFromIds.map(async (fid) =>
+          ctx.db
+            .query("interests")
+            .withIndex("by_from_to", (q) => q.eq("fromUserId", fid))
+            .collect()
+        )
+      ).then((arrays) => arrays.flat());
+
+      const matches: typeof candidateRows = candidateRows.filter((row) =>
+        possibleToIds.some(
+          (tid) =>
+            (row.toUserId as unknown as string) === (tid as unknown as string)
+        )
+      );
 
       if (!matches.length) {
         // Still nothing – idempotent success
