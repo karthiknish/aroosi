@@ -510,7 +510,7 @@ function ModernChat({
   return (
     <div
       className={cn(
-        "bg-white text-neutral-900 rounded-xl shadow-sm flex flex-col h-full",
+        "bg-white text-neutral-900 rounded-xl shadow-sm flex flex-col h-full mb-6",
         className
       )}
     >
