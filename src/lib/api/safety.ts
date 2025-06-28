@@ -46,12 +46,22 @@ interface ReportResponse {
 }
 
 class SafetyAPI {
-  private async makeRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  private async makeRequest<T>(
+    endpoint: string,
+    options?: RequestInit,
+    token?: string | null
+  ): Promise<T> {
+    const baseHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const headers: Record<string, string> = {
+      ...baseHeaders,
+      ...((options?.headers as Record<string, string>) || {}),
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const response = await fetch(`/api/safety${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
       ...options,
     });
 
@@ -61,41 +71,71 @@ class SafetyAPI {
     }
 
     const data = await response.json();
-    
+
     if (!data.success) {
-      throw new Error(data.error || 'Request failed');
+      throw new Error(data.error || "Request failed");
     }
 
     return data.data || data;
   }
 
-  async reportUser(data: ReportData): Promise<ReportResponse> {
-    return this.makeRequest<ReportResponse>('/report', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async reportUser(
+    token: string | null,
+    data: ReportData
+  ): Promise<ReportResponse> {
+    return this.makeRequest<ReportResponse>(
+      "/report",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      token
+    );
   }
 
-  async blockUser(blockedUserId: string): Promise<{ message: string }> {
-    return this.makeRequest('/block', {
-      method: 'POST',
-      body: JSON.stringify({ blockedUserId }),
-    });
+  async blockUser(
+    token: string | null,
+    blockedUserId: string
+  ): Promise<{ message: string }> {
+    return this.makeRequest(
+      "/block",
+      {
+        method: "POST",
+        body: JSON.stringify({ blockedUserId }),
+      },
+      token
+    );
   }
 
-  async unblockUser(blockedUserId: string): Promise<{ message: string }> {
-    return this.makeRequest('/unblock', {
-      method: 'POST',
-      body: JSON.stringify({ blockedUserId }),
-    });
+  async unblockUser(
+    token: string | null,
+    blockedUserId: string
+  ): Promise<{ message: string }> {
+    return this.makeRequest(
+      "/unblock",
+      {
+        method: "POST",
+        body: JSON.stringify({ blockedUserId }),
+      },
+      token
+    );
   }
 
-  async getBlockedUsers(): Promise<{ blockedUsers: BlockedUser[] }> {
-    return this.makeRequest('/blocked');
+  async getBlockedUsers(
+    token: string | null
+  ): Promise<{ blockedUsers: BlockedUser[] }> {
+    return this.makeRequest("/blocked", undefined, token);
   }
 
-  async checkBlockStatus(userId: string): Promise<BlockStatus> {
-    return this.makeRequest(`/blocked/check?userId=${encodeURIComponent(userId)}`);
+  async checkBlockStatus(
+    token: string | null,
+    userId: string
+  ): Promise<BlockStatus> {
+    return this.makeRequest(
+      `/blocked/check?userId=${encodeURIComponent(userId)}`,
+      undefined,
+      token
+    );
   }
 }
 
