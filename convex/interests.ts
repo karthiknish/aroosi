@@ -28,7 +28,7 @@ export const sendInterest = mutation({
       throw new Error("Cannot send interest to self");
     const existing = await ctx.db
       .query("interests")
-      .withIndex("by_from_to", (q: any) =>
+      .withIndex("by_from_to", (q) =>
         q.eq("fromUserId", args.fromUserId).eq("toUserId", args.toUserId)
       )
       .first();
@@ -64,35 +64,41 @@ export const respondToInterest = mutation({
     }
     const interest = await ctx.db.get(args.interestId);
     if (!interest) throw new Error("Interest not found");
-    
+
     // Update the interest status
     await ctx.db.patch(args.interestId, { status: args.status });
-    
+
     // If accepted, check for mutual interest and create match
     if (args.status === "accepted") {
       const mutualInterest = await ctx.db
         .query("interests")
-        .withIndex("by_from_to", (q: any) =>
-          q.eq("fromUserId", interest.toUserId).eq("toUserId", interest.fromUserId)
+        .withIndex("by_from_to", (q) =>
+          q
+            .eq("fromUserId", interest.toUserId)
+            .eq("toUserId", interest.fromUserId)
         )
         .first();
-      
+
       if (mutualInterest && mutualInterest.status === "accepted") {
         // Create a match record for easier querying
         const existingMatch = await ctx.db
           .query("matches")
-          .withIndex("by_users", (q: any) =>
-            q.eq("user1Id", interest.fromUserId).eq("user2Id", interest.toUserId)
+          .withIndex("by_users", (q) =>
+            q
+              .eq("user1Id", interest.fromUserId)
+              .eq("user2Id", interest.toUserId)
           )
           .first();
-        
+
         const existingMatchReverse = await ctx.db
           .query("matches")
-          .withIndex("by_users", (q: any) =>
-            q.eq("user1Id", interest.toUserId).eq("user2Id", interest.fromUserId)
+          .withIndex("by_users", (q) =>
+            q
+              .eq("user1Id", interest.toUserId)
+              .eq("user2Id", interest.fromUserId)
           )
           .first();
-        
+
         if (!existingMatch && !existingMatchReverse) {
           await ctx.db.insert("matches", {
             user1Id: interest.fromUserId,
@@ -104,7 +110,7 @@ export const respondToInterest = mutation({
         }
       }
     }
-    
+
     return { success: true, status: args.status };
   },
 });
@@ -115,7 +121,7 @@ export const getSentInterests = query({
   handler: async (ctx: QueryCtx, args: { userId: Id<"users"> }) => {
     const interests = await ctx.db
       .query("interests")
-      .withIndex("by_from_to", (q: any) => q.eq("fromUserId", args.userId))
+      .withIndex("by_from_to", (q) => q.eq("fromUserId", args.userId))
       .collect();
 
     // Enrich with profile data
@@ -125,15 +131,17 @@ export const getSentInterests = query({
           .query("profiles")
           .withIndex("by_userId", (q) => q.eq("userId", interest.toUserId))
           .first();
-        
+
         return {
           ...interest,
-          toProfile: toProfile ? {
-            fullName: toProfile.fullName,
-            city: toProfile.city,
-            profileImageIds: toProfile.profileImageIds,
-            profileImageUrls: toProfile.profileImageUrls,
-          } : null,
+          toProfile: toProfile
+            ? {
+                fullName: toProfile.fullName,
+                city: toProfile.city,
+                profileImageIds: toProfile.profileImageIds,
+                profileImageUrls: toProfile.profileImageUrls,
+              }
+            : null,
         };
       })
     );
@@ -148,7 +156,7 @@ export const getReceivedInterests = query({
   handler: async (ctx: QueryCtx, args: { userId: Id<"users"> }) => {
     const interests = await ctx.db
       .query("interests")
-      .withIndex("by_to", (q: any) => q.eq("toUserId", args.userId))
+      .withIndex("by_to", (q) => q.eq("toUserId", args.userId))
       .collect();
 
     // Enrich with profile data
@@ -158,15 +166,17 @@ export const getReceivedInterests = query({
           .query("profiles")
           .withIndex("by_userId", (q) => q.eq("userId", interest.fromUserId))
           .first();
-        
+
         return {
           ...interest,
-          fromProfile: fromProfile ? {
-            fullName: fromProfile.fullName,
-            city: fromProfile.city,
-            profileImageIds: fromProfile.profileImageIds,
-            profileImageUrls: fromProfile.profileImageUrls,
-          } : null,
+          fromProfile: fromProfile
+            ? {
+                fullName: fromProfile.fullName,
+                city: fromProfile.city,
+                profileImageIds: fromProfile.profileImageIds,
+                profileImageUrls: fromProfile.profileImageUrls,
+              }
+            : null,
         };
       })
     );
@@ -187,13 +197,13 @@ export const isMutualInterest = query({
   ) => {
     const aToB = await ctx.db
       .query("interests")
-      .withIndex("by_from_to", (q: any) =>
+      .withIndex("by_from_to", (q) =>
         q.eq("fromUserId", args.userA).eq("toUserId", args.userB)
       )
       .first();
     const bToA = await ctx.db
       .query("interests")
-      .withIndex("by_from_to", (q: any) =>
+      .withIndex("by_from_to", (q) =>
         q.eq("fromUserId", args.userB).eq("toUserId", args.userA)
       )
       .first();
@@ -243,7 +253,7 @@ export const getInterestStatus = query({
   ) => {
     const interest = await ctx.db
       .query("interests")
-      .withIndex("by_from_to", (q: any) =>
+      .withIndex("by_from_to", (q) =>
         q.eq("fromUserId", args.fromUserId).eq("toUserId", args.toUserId)
       )
       .first();
