@@ -218,40 +218,61 @@ export const removeInterest = mutation({
   },
   handler: async (ctx, args) => {
     // 1️⃣ Try the normal lookup (new schema – both ids are users ids)
-    let interest = await ctx.db
+    const interest = await ctx.db
       .query("interests")
       .withIndex("by_from_to", (q) =>
         q.eq("fromUserId", args.fromUserId).eq("toUserId", args.toUserId)
       )
       .first();
 
-    // 2️⃣ If not found, fall back to legacy rows that stored a profile _id in toUserId
     if (!interest) {
-      const legacyProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", args.toUserId))
-        .first();
+      // 🚑  Final sweep: legacy rows might store a profile _id in toUserId where
+      // the profile record has since been deleted.  We therefore check every
+      // interest sent by the current user and compare:
+      //   • row.toUserId === args.toUserId          (correct schema)
+      //   • The profile (if it exists) referenced by row.toUserId has
+      //     userId === args.toUserId                (legacy schema)
 
-      if (legacyProfile) {
-        interest = await ctx.db
-          .query("interests")
-          .withIndex("by_from_to", (q) =>
-            // Cast needed because legacy rows typed to users id originally
-            q
-              .eq("fromUserId", args.fromUserId)
-              .eq("toUserId", legacyProfile._id as unknown as Id<"users">)
-          )
-          .first();
+      const allFromUser = await ctx.db
+        .query("interests")
+        .withIndex("by_from_to", (q) => q.eq("fromUserId", args.fromUserId))
+        .collect();
+
+      const matches: typeof allFromUser = [];
+
+      for (const row of allFromUser) {
+        // Case A – already in new schema and matches directly
+        if (
+          (row.toUserId as unknown as string) ===
+          (args.toUserId as unknown as string)
+        ) {
+          matches.push(row);
+          continue;
+        }
+
+        // Case B – legacy row: toUserId is actually a profile _id
+        // Try to load the profile and compare its userId
+        const maybeProfile = await ctx.db.get(
+          row.toUserId as unknown as Id<"profiles">
+        );
+        if (maybeProfile && maybeProfile.userId === args.toUserId) {
+          matches.push(row);
+        }
       }
+
+      if (!matches.length) {
+        // Still nothing – idempotent success
+        return { success: true, alreadyRemoved: true };
+      }
+
+      // Delete every matching legacy/new row
+      await Promise.all(matches.map((matchRow) => ctx.db.delete(matchRow._id)));
+      return { success: true, removedCount: matches.length };
     }
 
-    if (!interest) {
-      // Nothing to delete – keep idempotent behaviour
-      return { success: true, alreadyRemoved: true };
-    }
-
+    // Normal path – single row removed
     await ctx.db.delete(interest._id);
-    return { success: true };
+    return { success: true, removedCount: 1 };
   },
 });
 
