@@ -364,7 +364,7 @@ export default function SearchProfilesPage() {
               <SelectTrigger className="w-40 bg-white rounded-lg shadow-sm font-nunito">
                 <SelectValue placeholder="Choose Country" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {countryOptions.map((c) => (
                   <SelectItem key={c} value={c} className="font-nunito">
                     {c === "any" ? "Any Country" : c}
@@ -398,7 +398,7 @@ export default function SearchProfilesPage() {
                   <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
                     <SelectValue placeholder="Ethnicity" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
+                  <SelectContent className="max-h-60 overflow-y-auto bg-white">
                     {ethnicityOptions.map((opt) => (
                       <SelectItem key={opt} value={opt} className="font-nunito">
                         {opt === "any" ? "Any Ethnicity" : opt}
@@ -411,7 +411,7 @@ export default function SearchProfilesPage() {
                   <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
                     <SelectValue placeholder="Mother Tongue" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
+                  <SelectContent className="max-h-60 overflow-y-auto bg-white">
                     {motherTongueOptions.map((opt) => (
                       <SelectItem key={opt} value={opt} className="font-nunito">
                         {opt === "any" ? "Any Mother Tongue" : opt}
@@ -424,7 +424,7 @@ export default function SearchProfilesPage() {
                   <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
                     <SelectValue placeholder="Language" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
+                  <SelectContent className="max-h-60 overflow-y-auto bg-white">
                     {languageOptions.map((opt) => (
                       <SelectItem key={opt} value={opt} className="font-nunito">
                         {opt === "any" ? "Any Language" : opt}
