@@ -11,6 +11,9 @@ export interface SubscriptionFeatures {
   canViewProfileViewers: boolean;
   canUseAdvancedFilters: boolean;
   hasSpotlightBadge: boolean;
+  canUseIncognitoMode: boolean;
+  canAccessPrioritySupport: boolean;
+  canSeeReadReceipts: boolean;
   maxLikesPerDay: number;
   boostsPerMonth: number;
 }
@@ -31,6 +34,9 @@ export function getSubscriptionFeatures(
         canViewProfileViewers: false,
         canUseAdvancedFilters: false,
         hasSpotlightBadge: false,
+        canUseIncognitoMode: false,
+        canAccessPrioritySupport: false,
+        canSeeReadReceipts: false,
         maxLikesPerDay: 5,
         boostsPerMonth: 0,
       };
@@ -46,6 +52,9 @@ export function getSubscriptionFeatures(
         canViewProfileViewers: false,
         canUseAdvancedFilters: false,
         hasSpotlightBadge: false,
+        canUseIncognitoMode: false,
+        canAccessPrioritySupport: true,
+        canSeeReadReceipts: true,
         maxLikesPerDay: -1, // unlimited
         boostsPerMonth: 0,
       };
@@ -61,6 +70,9 @@ export function getSubscriptionFeatures(
         canViewProfileViewers: true,
         canUseAdvancedFilters: true,
         hasSpotlightBadge: true,
+        canUseIncognitoMode: true,
+        canAccessPrioritySupport: true,
+        canSeeReadReceipts: true,
         maxLikesPerDay: -1, // unlimited
         boostsPerMonth: 5,
       };

@@ -1,11 +1,23 @@
 import { useEffect } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
 
+// Minimal OneSignal type definition
+interface OneSignalSDK {
+  getUserId: () => Promise<string | undefined>;
+  on: (event: string, callback: (subscribed: boolean) => void) => void;
+}
+
+declare global {
+  interface Window {
+    OneSignal?: OneSignalSDK;
+  }
+}
+
 /**
  * Registers the current browser with OneSignal and stores the playerId in Convex.
  * Assumes the OneSignal SDK has already been loaded globally via layout.tsx.
  */
-export function useOneSignal() {
+export function useOneSignal(): void {
   const { isSignedIn, userId, getToken } = useAuthContext();
 
   useEffect(() => {
@@ -14,9 +26,7 @@ export function useOneSignal() {
     // wait until SDK available
     if (typeof window === "undefined") return;
     const onReady = () => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const OneSignal = window.OneSignal || undefined;
+      const OneSignal = window.OneSignal;
       if (!OneSignal || !OneSignal.getUserId) return;
 
       OneSignal.on("subscriptionChange", async (subscribed: boolean) => {
@@ -33,8 +43,12 @@ export function useOneSignal() {
                 },
                 body: JSON.stringify({ playerId }),
               });
-            } catch (err) {
-              console.error("push register failed", err);
+            } catch (err: unknown) {
+              if (err instanceof Error) {
+                console.error("push register failed", err.message);
+              } else {
+                console.error("push register failed", err);
+              }
             }
           }
         }

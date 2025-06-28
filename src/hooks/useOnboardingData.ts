@@ -1,27 +1,36 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
-export function useOnboardingData() {
+export function useOnboardingData(): { hasOnboardingData: boolean } {
   const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
+  const [hasOnboardingData, setHasOnboardingData] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (typeof window === "undefined" || !isLoaded) return;
+
+    setHasOnboardingData(!!localStorage.getItem("onboardingData"));
 
     if (isSignedIn) {
       // Check if we have onboarding data from the home page
       const onboardingData = localStorage.getItem("onboardingData");
 
       if (onboardingData) {
-        // Store it with the user ID for later use in profile creation
-        const data = JSON.parse(onboardingData);
+        let data;
+        try {
+          data = JSON.parse(onboardingData);
+        } catch {
+          // If parsing fails, clear the bad data and exit
+          localStorage.removeItem("onboardingData");
+          return;
+        }
         localStorage.setItem(
           "pendingProfileData",
           JSON.stringify({
             ...data,
             fromHomePage: true,
-          }),
+          })
         );
 
         // Clear the original onboarding data
@@ -34,6 +43,6 @@ export function useOnboardingData() {
   }, [isSignedIn, isLoaded, router]);
 
   return {
-    hasOnboardingData: !!localStorage.getItem("onboardingData"),
+    hasOnboardingData,
   };
 }

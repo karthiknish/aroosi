@@ -64,7 +64,48 @@ export const respondToInterest = mutation({
     }
     const interest = await ctx.db.get(args.interestId);
     if (!interest) throw new Error("Interest not found");
-    return ctx.db.patch(args.interestId, { status: args.status });
+    
+    // Update the interest status
+    await ctx.db.patch(args.interestId, { status: args.status });
+    
+    // If accepted, check for mutual interest and create match
+    if (args.status === "accepted") {
+      const mutualInterest = await ctx.db
+        .query("interests")
+        .withIndex("by_from_to", (q: any) =>
+          q.eq("fromUserId", interest.toUserId).eq("toUserId", interest.fromUserId)
+        )
+        .first();
+      
+      if (mutualInterest && mutualInterest.status === "accepted") {
+        // Create a match record for easier querying
+        const existingMatch = await ctx.db
+          .query("matches")
+          .withIndex("by_users", (q: any) =>
+            q.eq("user1Id", interest.fromUserId).eq("user2Id", interest.toUserId)
+          )
+          .first();
+        
+        const existingMatchReverse = await ctx.db
+          .query("matches")
+          .withIndex("by_users", (q: any) =>
+            q.eq("user1Id", interest.toUserId).eq("user2Id", interest.fromUserId)
+          )
+          .first();
+        
+        if (!existingMatch && !existingMatchReverse) {
+          await ctx.db.insert("matches", {
+            user1Id: interest.fromUserId,
+            user2Id: interest.toUserId,
+            status: "matched",
+            createdAt: Date.now(),
+            conversationId: `${interest.fromUserId}_${interest.toUserId}`,
+          });
+        }
+      }
+    }
+    
+    return { success: true, status: args.status };
   },
 });
 
@@ -72,10 +113,32 @@ export const respondToInterest = mutation({
 export const getSentInterests = query({
   args: { userId: v.id("users") },
   handler: async (ctx: QueryCtx, args: { userId: Id<"users"> }) => {
-    return ctx.db
+    const interests = await ctx.db
       .query("interests")
       .withIndex("by_from_to", (q: any) => q.eq("fromUserId", args.userId))
       .collect();
+
+    // Enrich with profile data
+    const enrichedInterests = await Promise.all(
+      interests.map(async (interest) => {
+        const toProfile = await ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", interest.toUserId))
+          .first();
+        
+        return {
+          ...interest,
+          toProfile: toProfile ? {
+            fullName: toProfile.fullName,
+            city: toProfile.city,
+            profileImageIds: toProfile.profileImageIds,
+            profileImageUrls: toProfile.profileImageUrls,
+          } : null,
+        };
+      })
+    );
+
+    return enrichedInterests;
   },
 });
 
@@ -83,10 +146,32 @@ export const getSentInterests = query({
 export const getReceivedInterests = query({
   args: { userId: v.id("users") },
   handler: async (ctx: QueryCtx, args: { userId: Id<"users"> }) => {
-    return ctx.db
+    const interests = await ctx.db
       .query("interests")
       .withIndex("by_to", (q: any) => q.eq("toUserId", args.userId))
       .collect();
+
+    // Enrich with profile data
+    const enrichedInterests = await Promise.all(
+      interests.map(async (interest) => {
+        const fromProfile = await ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", interest.fromUserId))
+          .first();
+        
+        return {
+          ...interest,
+          fromProfile: fromProfile ? {
+            fullName: fromProfile.fullName,
+            city: fromProfile.city,
+            profileImageIds: fromProfile.profileImageIds,
+            profileImageUrls: fromProfile.profileImageUrls,
+          } : null,
+        };
+      })
+    );
+
+    return enrichedInterests;
   },
 });
 

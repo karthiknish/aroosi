@@ -4,6 +4,15 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export type Id<TableName extends string> = string;
 
+// Type definitions matching mobile version exactly
+export type Gender = 'male' | 'female' | 'other';
+export type PreferredGender = 'male' | 'female' | 'other' | 'any' | '';
+export type MaritalStatus = 'single' | 'divorced' | 'widowed' | 'annulled';
+export type Diet = 'vegetarian' | 'non-vegetarian' | 'vegan' | 'eggetarian' | 'other' | '';
+export type SmokingDrinking = 'no' | 'occasionally' | 'yes' | '';
+export type PhysicalStatus = 'normal' | 'differently-abled' | 'other' | '';
+export type ProfileFor = 'self' | 'friend' | 'family';
+
 /**
  * Profile type
  */
@@ -13,31 +22,33 @@ export interface Profile {
   clerkId: string;
   email: string;
   role?: string;
-  profileFor: "self" | "friend" | "family";
+  profileFor: ProfileFor;
   fullName: string;
   dateOfBirth: string;
-  gender: string;
+  gender: Gender;
   city: string;
   country: string;
   phoneNumber: string;
   aboutMe: string;
   height: string;
-  maritalStatus: "single" | "divorced" | "widowed" | "annulled";
+  maritalStatus: MaritalStatus;
   education: string;
   occupation: string;
   annualIncome: string | number;
-  diet: string;
-  smoking: string;
-  drinking: string;
-  physicalStatus: string;
+  diet: Diet;
+  smoking: SmokingDrinking;
+  drinking: SmokingDrinking;
+  physicalStatus: PhysicalStatus;
   partnerPreferenceAgeMin: number;
   partnerPreferenceAgeMax: number;
   partnerPreferenceCity: string[] | string;
-  preferredGender: "male" | "female" | "any" | "";
+  partnerPreferenceReligion?: string[];
+  preferredGender: PreferredGender;
   profileImageIds?: string[];
   profileImageUrls?: string[];
   isProfileComplete: boolean;
   isOnboardingComplete: boolean;
+  isApproved?: boolean;
 
   hideFromFreeUsers?: boolean;
   banned: boolean;

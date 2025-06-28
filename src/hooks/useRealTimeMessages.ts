@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@clerk/nextjs';
-import { MessageData, MessageEvent, createMessageEvent } from '@/lib/utils/messageUtils';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { MessageData, MessageEvent } from "@/lib/utils/messageUtils";
 
 interface UseRealTimeMessagesProps {
   conversationId: string;
@@ -21,16 +21,16 @@ interface UseRealTimeMessagesReturn {
   error: string | null;
 }
 
-export function useRealTimeMessages({ 
-  conversationId, 
-  initialMessages = [] 
+export function useRealTimeMessages({
+  conversationId,
+  initialMessages = [],
 }: UseRealTimeMessagesProps): UseRealTimeMessagesReturn {
   const { getToken, userId } = useAuth();
   const [messages, setMessages] = useState<MessageData[]>(initialMessages);
   const [isTyping, setIsTyping] = useState<Record<string, boolean>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const eventSourceRef = useRef<EventSource | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -59,17 +59,28 @@ export function useRealTimeMessages({
 
       eventSource.onmessage = (event) => {
         try {
-          const messageEvent: MessageEvent = JSON.parse(event.data);
-          handleRealTimeEvent(messageEvent);
-        } catch (err) {
-          console.error('Error parsing real-time message:', err);
+          const messageEvent: unknown = JSON.parse(event.data);
+          if (isMessageEvent(messageEvent)) {
+            handleRealTimeEvent(messageEvent);
+          } else {
+            console.error(
+              "Received malformed real-time message:",
+              messageEvent
+            );
+          }
+        } catch (err: unknown) {
+          if (err instanceof Error) {
+            console.error("Error parsing real-time message:", err.message);
+          } else {
+            console.error("Error parsing real-time message:", err);
+          }
         }
       };
 
       eventSource.onerror = () => {
         setIsConnected(false);
-        setError('Connection lost. Attempting to reconnect...');
-        
+        setError("Connection lost. Attempting to reconnect...");
+
         // Attempt to reconnect after 3 seconds
         setTimeout(() => {
           initializeConnection();
@@ -78,97 +89,141 @@ export function useRealTimeMessages({
 
       eventSourceRef.current = eventSource;
     } catch (err) {
-      console.error('Error initializing real-time connection:', err);
-      setError('Failed to establish real-time connection');
+      console.error("Error initializing real-time connection:", err);
+      setError("Failed to establish real-time connection");
     }
   }, [userId, conversationId, getToken]);
 
   // Handle real-time events
-  const handleRealTimeEvent = useCallback((event: MessageEvent) => {
-    switch (event.type) {
-      case 'message_sent':
-        if (event.data && event.conversationId === conversationId) {
-          setMessages(prev => {
-            // Avoid duplicates
-            const exists = prev.some(msg => msg._id === (event.data as MessageData)._id);
-            if (exists) return prev;
-            return [...prev, event.data as MessageData];
-          });
-        }
-        break;
+  const handleRealTimeEvent = useCallback(
+    (event: MessageEvent) => {
+      switch (event.type) {
+        case "message_sent":
+          if (event.data && event.conversationId === conversationId) {
+            setMessages((prev) => {
+              // Avoid duplicates
+              const exists = prev.some(
+                (msg) => msg._id === (event.data as MessageData)._id
+              );
+              if (exists) return prev;
+              return [...prev, event.data as MessageData];
+            });
+          }
+          break;
 
-      case 'message_read':
-        if (event.data && event.conversationId === conversationId) {
-          setMessages(prev => prev.map(msg => 
-            (event.data as { messageIds: string[] }).messageIds.includes(msg._id)
-              ? { ...msg, isRead: true, readAt: event.timestamp }
-              : msg
-          ));
-        }
-        break;
+        case "message_read":
+          if (event.data && event.conversationId === conversationId) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                (event.data as { messageIds: string[] }).messageIds.includes(
+                  msg._id
+                )
+                  ? { ...msg, isRead: true, readAt: event.timestamp }
+                  : msg
+              )
+            );
+          }
+          break;
 
-      case 'typing_start':
-        if (event.userId !== userId && event.conversationId === conversationId) {
-          setIsTyping(prev => ({ ...prev, [event.userId]: true }));
-        }
-        break;
+        case "typing_start":
+          if (
+            event.userId !== userId &&
+            event.conversationId === conversationId
+          ) {
+            setIsTyping((prev) => ({ ...prev, [event.userId]: true }));
+          }
+          break;
 
-      case 'typing_stop':
-        if (event.userId !== userId && event.conversationId === conversationId) {
-          setIsTyping(prev => ({ ...prev, [event.userId]: false }));
-        }
-        break;
-    }
-  }, [conversationId, userId]);
+        case "typing_stop":
+          if (
+            event.userId !== userId &&
+            event.conversationId === conversationId
+          ) {
+            setIsTyping((prev) => ({ ...prev, [event.userId]: false }));
+          }
+          break;
+      }
+    },
+    [conversationId, userId]
+  );
 
   // Send a text message
-  const sendMessage = useCallback(async (text: string, toUserId: string) => {
-    if (!userId || !text.trim()) return;
+  const sendMessage = useCallback(
+    async (text: string, toUserId: string) => {
+      if (!userId || !text.trim()) return;
 
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Authentication required');
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Authentication required");
 
-      const response = await fetch('/api/match-messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          conversationId,
-          toUserId,
-          text: text.trim(),
-        }),
-      });
+        const response = await fetch("/api/match-messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            conversationId,
+            toUserId,
+            text: text.trim(),
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send message');
+        if (!response.ok) {
+          let errorData: unknown;
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = {};
+          }
+          if (
+            typeof errorData === "object" &&
+            errorData !== null &&
+            "error" in errorData &&
+            typeof (errorData as { error?: unknown }).error === "string"
+          ) {
+            throw new Error((errorData as { error: string }).error);
+          }
+          throw new Error("Failed to send message");
+        }
+
+        const result: unknown = await response.json();
+
+        if (
+          typeof result === "object" &&
+          result !== null &&
+          "data" in result &&
+          typeof (result as { data: unknown }).data === "object" &&
+          result.data !== null &&
+          "_id" in (result as { data: { _id?: unknown } }).data &&
+          typeof (result as { data: { _id?: unknown } }).data._id === "string"
+        ) {
+          // Optimistically add message to local state
+          const newMessage: MessageData = {
+            _id: (result as { data: { _id: string } }).data._id,
+            conversationId,
+            fromUserId: userId,
+            toUserId,
+            text: text.trim(),
+            type: "text",
+            isRead: false,
+            _creationTime: Date.now(),
+          };
+          setMessages((prev) => [...prev, newMessage]);
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error("Error sending message:", err.message);
+          setError(err.message);
+        } else {
+          console.error("Error sending message:", err);
+          setError("Failed to send message");
+        }
+        throw err;
       }
-
-      const result = await response.json();
-      
-      // Optimistically add message to local state
-      const newMessage: MessageData = {
-        _id: result.data._id,
-        conversationId,
-        fromUserId: userId,
-        toUserId,
-        text: text.trim(),
-        type: 'text',
-        isRead: false,
-        _creationTime: Date.now(),
-      };
-
-      setMessages(prev => [...prev, newMessage]);
-      
-    } catch (err) {
-      console.error('Error sending message:', err);
-      setError(err instanceof Error ? err.message : 'Failed to send message');
-      throw err;
-    }
-  }, [userId, conversationId, getToken]);
+    },
+    [userId, conversationId, getToken]
+  );
 
   // Send typing indicators
   const sendTypingStart = useCallback(() => {
@@ -181,12 +236,11 @@ export function useRealTimeMessages({
 
     // Broadcast typing start (implementation would depend on your WebSocket/SSE setup)
     // const event = createMessageEvent('typing_start', conversationId, userId);
-    
+
     // Set timeout to automatically stop typing after 3 seconds
     typingTimeoutRef.current = setTimeout(() => {
       sendTypingStop();
     }, 3000);
-
   }, [userId, conversationId]);
 
   const sendTypingStop = useCallback(() => {
@@ -199,43 +253,64 @@ export function useRealTimeMessages({
 
     // Broadcast typing stop
     // const event = createMessageEvent('typing_stop', conversationId, userId);
-    
   }, [userId, conversationId]);
 
   // Mark messages as read
-  const markAsRead = useCallback(async (messageIds: string[]) => {
-    if (!userId || messageIds.length === 0) return;
+  const markAsRead = useCallback(
+    async (messageIds: string[]) => {
+      if (!userId || messageIds.length === 0) return;
 
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Authentication required');
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Authentication required");
 
-      const response = await fetch('/api/messages/mark-read', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ messageIds }),
-      });
+        const response = await fetch("/api/messages/mark-read", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ messageIds }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to mark messages as read');
+        if (!response.ok) {
+          let errorData: unknown;
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = {};
+          }
+          if (
+            typeof errorData === "object" &&
+            errorData !== null &&
+            "error" in errorData &&
+            typeof (errorData as { error?: unknown }).error === "string"
+          ) {
+            throw new Error((errorData as { error: string }).error);
+          }
+          throw new Error("Failed to mark messages as read");
+        }
+
+        // Optimistically update local state
+        setMessages((prev) =>
+          prev.map((msg) =>
+            messageIds.includes(msg._id)
+              ? { ...msg, isRead: true, readAt: Date.now() }
+              : msg
+          )
+        );
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error("Error marking messages as read:", err.message);
+          setError(err.message);
+        } else {
+          console.error("Error marking messages as read:", err);
+          setError("Failed to mark messages as read");
+        }
       }
-
-      // Optimistically update local state
-      setMessages(prev => prev.map(msg => 
-        messageIds.includes(msg._id)
-          ? { ...msg, isRead: true, readAt: Date.now() }
-          : msg
-      ));
-
-    } catch (err) {
-      console.error('Error marking messages as read:', err);
-      setError(err instanceof Error ? err.message : 'Failed to mark messages as read');
-    }
-  }, [userId, getToken]);
+    },
+    [userId, getToken]
+  );
 
   // Refresh messages from server
   const refreshMessages = useCallback(async () => {
@@ -243,28 +318,60 @@ export function useRealTimeMessages({
 
     try {
       const token = await getToken();
-      if (!token) throw new Error('Authentication required');
+      if (!token) throw new Error("Authentication required");
 
       const response = await fetch(
         `/api/match-messages?conversationId=${conversationId}&limit=50`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch messages');
+        let errorData: unknown;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = {};
+        }
+        if (
+          typeof errorData === "object" &&
+          errorData !== null &&
+          "error" in errorData &&
+          typeof (errorData as { error?: unknown }).error === "string"
+        ) {
+          throw new Error((errorData as { error: string }).error);
+        }
+        throw new Error("Failed to fetch messages");
       }
 
-      const result = await response.json();
-      setMessages(result.data.messages || []);
-
-    } catch (err) {
-      console.error('Error refreshing messages:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh messages');
+      const result: unknown = await response.json();
+      if (
+        typeof result === "object" &&
+        result !== null &&
+        "data" in result &&
+        typeof (result as { data: unknown }).data === "object" &&
+        result.data !== null &&
+        "messages" in (result as { data: { messages?: unknown } }).data &&
+        Array.isArray(
+          (result as { data: { messages?: unknown } }).data.messages
+        )
+      ) {
+        setMessages(
+          (result as { data: { messages: MessageData[] } }).data.messages || []
+        );
+      }
+      // else: do not update if response is malformed
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error("Error refreshing messages:", err.message);
+        setError(err.message);
+      } else {
+        console.error("Error refreshing messages:", err);
+        setError("Failed to refresh messages");
+      }
     }
   }, [userId, conversationId, getToken]);
 
@@ -287,12 +394,12 @@ export function useRealTimeMessages({
   useEffect(() => {
     if (!userId) return;
 
-    const unreadMessages = messages.filter(msg => 
-      msg.toUserId === userId && !msg.isRead
+    const unreadMessages = messages.filter(
+      (msg) => msg.toUserId === userId && !msg.isRead
     );
 
     if (unreadMessages.length > 0) {
-      const messageIds = unreadMessages.map(msg => msg._id);
+      const messageIds = unreadMessages.map((msg) => msg._id);
       markAsRead(messageIds);
     }
   }, [messages, userId, markAsRead]);
@@ -308,4 +415,16 @@ export function useRealTimeMessages({
     refreshMessages,
     error,
   };
+}
+
+// Type guard for MessageEvent
+function isMessageEvent(event: unknown): event is MessageEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    typeof (event as { type: unknown }).type === "string" &&
+    "conversationId" in event &&
+    typeof (event as { conversationId: unknown }).conversationId === "string"
+  );
 }

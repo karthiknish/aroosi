@@ -39,8 +39,6 @@ import { getSubscriptionFeatures } from "@/lib/utils/subscriptionUtils";
 import { TypingIndicator } from "./TypingIndicator";
 import { DeliveryStatus } from "./DeliveryStatus";
 
-
-
 export type ModernChatProps = {
   conversationId: string;
   currentUserId: string;
@@ -62,6 +60,10 @@ function ModernChat({
 }: ModernChatProps) {
   const subscriptionStatus = useSubscriptionStatus(token);
   const { trackUsage } = useUsageTracking();
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "connecting" | "disconnected"
+  >("connecting");
+
   const {
     messages,
     loading,
@@ -70,14 +72,10 @@ function ModernChat({
     fetchOlder,
     sendMessage,
     error,
-  } = useMatchMessages(conversationId, token);
-  
+  } = useMatchMessages(conversationId, token, setConnectionStatus);
+
   // Typing indicators
-  const {
-    typingUsers,
-    startTyping,
-    stopTyping,
-  } = useTypingIndicators({
+  const { typingUsers, startTyping, stopTyping } = useTypingIndicators({
     conversationId,
     currentUserId,
     token,
@@ -134,9 +132,9 @@ function ModernChat({
   useEffect(() => {
     if (messages.length > 0 && !isBlocked) {
       const incomingMessages = messages.filter(
-        (msg) => msg.fromUserId === matchUserId
+        (msg) => msg.fromUserId === matchUserId,
       );
-      
+
       // Mark the latest incoming message as read
       if (incomingMessages.length > 0) {
         const latestMessage = incomingMessages[incomingMessages.length - 1];
@@ -146,8 +144,7 @@ function ModernChat({
   }, [messages, matchUserId, isBlocked, markMessageAsRead]);
 
   // Auto-scroll and scroll detection
-  useEffect(() => {
-  }, [matchUserId]);
+  useEffect(() => {}, [matchUserId]);
 
   const scrollToBottom = useCallback((smooth = false) => {
     const el = scrollRef.current;
@@ -175,9 +172,19 @@ function ModernChat({
     setIsNearBottom(!!isAtBottom);
     setShowScrollToBottom(!isAtBottom && messages.length > 0);
 
-    // Load older messages when near top
-    if (!loadingOlder && hasMore && el.scrollTop < 40) {
-      fetchOlder();
+    // Load older messages when near top (improved threshold)
+    if (!loadingOlder && hasMore && el.scrollTop < 200) {
+      const currentScrollHeight = el.scrollHeight;
+      fetchOlder().then(() => {
+        // Maintain scroll position after loading older messages
+        requestAnimationFrame(() => {
+          if (el && el.scrollHeight > currentScrollHeight) {
+            const newScrollTop =
+              el.scrollHeight - currentScrollHeight + el.scrollTop;
+            el.scrollTop = newScrollTop;
+          }
+        });
+      });
     }
   }, [loadingOlder, hasMore, fetchOlder, messages.length]);
 
@@ -218,16 +225,19 @@ function ModernChat({
   }, [showPicker]);
 
   const userPlan =
-    (subscriptionStatus.data && (subscriptionStatus.data as { plan?: string }).plan) ||
+    (subscriptionStatus.data &&
+      (subscriptionStatus.data as { plan?: string }).plan) ||
     "free";
-  const features = getSubscriptionFeatures(userPlan as "free" | "premium" | "premiumPlus");
+  const features = getSubscriptionFeatures(
+    userPlan as "free" | "premium" | "premiumPlus",
+  );
 
   // Determine if user is allowed to send a message (initiate or reply)
   const hasSentMessage = messages.some(
-    (msg) => msg.fromUserId === currentUserId
+    (msg) => msg.fromUserId === currentUserId,
   );
   const hasReceivedMessage = messages.some(
-    (msg) => msg.fromUserId === matchUserId
+    (msg) => msg.fromUserId === matchUserId,
   );
   const isInitiating = !hasSentMessage && !hasReceivedMessage;
   const canInitiateChat = features.canInitiateChat;
@@ -241,7 +251,7 @@ function ModernChat({
       // Free users: block if trying to initiate chat
       if (!canInitiateChat && isInitiating) {
         toast.error(
-          "Upgrade to Premium to initiate new chats. You can reply to messages from your matches."
+          "Upgrade to Premium to initiate new chats. You can reply to messages from your matches.",
         );
         return;
       }
@@ -255,38 +265,39 @@ function ModernChat({
         const todaysMessages = messages.filter(
           (msg) =>
             msg.fromUserId === currentUserId &&
-            new Date(msg.createdAt).toDateString() === new Date().toDateString()
+            new Date(msg.createdAt).toDateString() ===
+              new Date().toDateString(),
         ).length;
 
         if (todaysMessages >= 5) {
           toast.error(
-            "Daily message limit reached. Upgrade to Premium for unlimited messaging."
+            "Daily message limit reached. Upgrade to Premium for unlimited messaging.",
           );
           return;
         }
       }
 
       setIsSending(true);
-      
+
       // Stop typing indicator when sending
       stopTyping();
-      
+
       try {
         const messageData = {
           fromUserId: currentUserId,
           toUserId: matchUserId,
           text: messageText.trim(),
         };
-        
+
         // Generate temporary message ID for tracking
         const tempMessageId = `tmp-${Date.now()}`;
         markMessageAsPending(tempMessageId);
-        
+
         await sendMessage(messageData);
-        
+
         // Mark as sent (the actual message ID will be handled by the optimistic update)
         markMessageAsSent(tempMessageId);
-        
+
         // Track message usage
         trackUsage({
           feature: "message_sent",
@@ -295,7 +306,7 @@ function ModernChat({
             messageType: "text",
           },
         });
-        
+
         setText("");
         setIsNearBottom(true);
         // Focus back to input after sending
@@ -319,30 +330,37 @@ function ModernChat({
       trackUsage,
       matchUserId,
       sendMessage,
-    ]
+    ],
   );
 
   // Handle input change with typing indicators
-  const handleInputChange = useCallback((value: string) => {
-    setText(value);
-    
-    // Start typing indicator when user types
-    if (value.trim() && !isBlocked) {
-      startTyping();
-    } else {
-      stopTyping();
-    }
-  }, [startTyping, stopTyping, isBlocked]);
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setText(value);
 
-  // Keyboard shortcuts
+      // Start typing indicator when user types
+      if (value.trim() && !isBlocked) {
+        startTyping();
+      } else {
+        stopTyping();
+      }
+    },
+    [startTyping, stopTyping, isBlocked],
+  );
+
+  // Enhanced keyboard shortcuts
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSendMessage(text);
+      } else if (e.key === "Escape") {
+        // Clear input on escape
+        setText("");
+        stopTyping();
       }
     },
-    [text, handleSendMessage]
+    [text, handleSendMessage, stopTyping],
   );
 
   // Voice recording functionality
@@ -390,7 +408,7 @@ function ModernChat({
     } catch (error) {
       console.error("Error starting recording:", error);
       toast.error(
-        "Failed to start recording. Please check microphone permissions."
+        "Failed to start recording. Please check microphone permissions.",
       );
     }
   }, [isBlocked, isRecording, recordingTime]);
@@ -423,6 +441,9 @@ function ModernChat({
 
         const response = await fetch("/api/voice-messages/upload", {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         });
 
@@ -431,6 +452,17 @@ function ModernChat({
           throw new Error(errorData.error || "Failed to send voice message");
         }
 
+        const result = await response.json();
+
+        // Track voice message usage
+        trackUsage({
+          feature: "voice_message_sent",
+          metadata: {
+            targetUserId: matchUserId,
+            messageType: "voice",
+          },
+        });
+
         toast.success("Voice message sent!");
         setIsNearBottom(true);
       } catch (error) {
@@ -438,7 +470,7 @@ function ModernChat({
         toast.error("Failed to send voice message");
       }
     },
-    [conversationId, matchUserId]
+    [conversationId, matchUserId, token, trackUsage],
   );
 
   // Block user handler
@@ -471,18 +503,19 @@ function ModernChat({
         toast.error("Failed to submit report");
       }
     },
-    [matchUserId, conversationId]
+    [matchUserId, conversationId],
   );
 
   return (
     <div
       className={cn(
-        "bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col h-[600px] relative overflow-hidden",
-        className
+        "bg-primary hover:bg-primary-dark text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl",
+        (!text.trim() || isSending || isBlocked) &&
+          "opacity-50 cursor-not-allowed transform-none shadow-none",
       )}
     >
       {/* Chat Header */}
-      <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-t-2xl">
+      <div className="bg-primary text-white p-4 rounded-t-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 border-2 border-white">
@@ -502,8 +535,20 @@ function ModernChat({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Connection status indicator */}
+            <div
+              className={cn(
+                "w-2 h-2 rounded-full",
+                connectionStatus === "connected"
+                  ? "bg-success"
+                  : connectionStatus === "connecting"
+                    ? "bg-accent animate-pulse"
+                    : "bg-danger",
+              )}
+            />
+
             {subscriptionStatus.data?.plan === "free" && (
-              <div className="text-xs bg-white/20 px-2 py-1 rounded-full flex items-center gap-1">
+              <div className="text-xs bg-accent/20 px-2 py-1 rounded-full flex items-center gap-1">
                 <Crown className="w-3 h-3" />
                 <span>Free</span>
               </div>
@@ -527,11 +572,34 @@ function ModernChat({
           ref={scrollRef}
           className="h-full overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
         >
+          {/* Load more messages button */}
+          {hasMore && !loading && messages.length > 0 && (
+            <div className="flex items-center justify-center py-2">
+              {loadingOlder ? (
+                <div className="flex items-center gap-2 text-neutral-light text-sm">
+                  <LoadingSpinner size={16} />
+                  <span>Loading older messages...</span>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fetchOlder}
+                  className="text-primary hover:bg-primary/10 text-sm"
+                >
+                  Load older messages
+                </Button>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-2">
                 <LoadingSpinner size={32} />
-                <p className="text-gray-500 text-sm">Loading messages...</p>
+                <p className="text-neutral-light text-sm">
+                  Loading messages...
+                </p>
               </div>
             </div>
           ) : isBlocked ? (
@@ -553,14 +621,14 @@ function ModernChat({
           ) : messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-3">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto">
-                  <Smile className="w-8 h-8 text-purple-500" />
+                <div className="w-16 h-16 bg-gradient-to-br from-primary-light/30 to-secondary-light/30 rounded-full flex items-center justify-center mx-auto">
+                  <Smile className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900 mb-1">
+                  <h3 className="font-medium text-neutral mb-1">
                     Start the conversation!
                   </h3>
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-neutral-light text-sm">
                     Send a message to break the ice
                   </p>
                 </div>
@@ -607,7 +675,7 @@ function ModernChat({
                             "max-w-[280px] px-4 py-3 rounded-2xl shadow-sm text-sm break-words",
                             isCurrentUser
                               ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-br-md"
-                              : "bg-gray-100 text-gray-900 rounded-bl-md"
+                              : "bg-gray-100 text-gray-900 rounded-bl-md",
                           )}
                         >
                           {isVoice ? (
@@ -628,7 +696,7 @@ function ModernChat({
                               "text-xs mt-2 flex items-center gap-1",
                               isCurrentUser
                                 ? "text-purple-100 justify-end"
-                                : "text-gray-500"
+                                : "text-gray-500",
                             )}
                           >
                             <span>
@@ -637,16 +705,20 @@ function ModernChat({
                                 minute: "2-digit",
                               })}
                             </span>
-                             <DeliveryStatus
-                               status={getMessageDeliveryStatus(msg._id, isCurrentUser)}
-                               isCurrentUser={isCurrentUser}
-                             />                          </div>
+                            <DeliveryStatus
+                              status={getMessageDeliveryStatus(
+                                msg._id,
+                                isCurrentUser,
+                              )}
+                              isCurrentUser={isCurrentUser}
+                            />{" "}
+                          </div>
                         </div>
                       </div>
                     </motion.div>
                   );
                 })}
-                
+
                 {/* Typing indicator */}
                 {typingUsers.length > 0 && (
                   <TypingIndicator
@@ -681,7 +753,7 @@ function ModernChat({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 p-4 bg-gray-50 rounded-b-2xl">
+      <div className="border-t border-secondary-light/30 p-4 bg-base-dark rounded-b-2xl">
         <form
           className="flex items-end gap-3 relative"
           onSubmit={async (e) => {
@@ -701,7 +773,7 @@ function ModernChat({
               disabled={isSending || isBlocked}
               className={cn(
                 "w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 transition-all",
-                (isSending || isBlocked) && "opacity-50 cursor-not-allowed"
+                (isSending || isBlocked) && "opacity-50 cursor-not-allowed",
               )}
             />
 
@@ -712,7 +784,7 @@ function ModernChat({
               size="sm"
               onClick={() => setShowPicker((p) => !p)}
               ref={toggleBtnRef}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-purple-500 transition-colors p-2 h-8 w-8"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-secondary hover:text-primary transition-colors p-2 h-8 w-8"
             >
               <Smile className="w-4 h-4" />
             </Button>
@@ -730,8 +802,8 @@ function ModernChat({
                 className={cn(
                   "transition-colors p-2 h-10 w-10",
                   isRecording
-                    ? "text-red-500 hover:text-red-600 bg-red-50"
-                    : "text-gray-400 hover:text-purple-500"
+                    ? "text-danger hover:text-danger bg-danger/10"
+                    : "text-secondary hover:text-primary",
                 )}
                 title={isRecording ? "Stop recording" : "Record voice message"}
                 disabled={isBlocked || isSending}
@@ -751,7 +823,7 @@ function ModernChat({
               type="button"
               variant="ghost"
               size="sm"
-              className="text-gray-400 hover:text-purple-500 transition-colors p-2 h-10 w-10"
+              className="text-secondary hover:text-primary transition-colors p-2 h-10 w-10"
               title="Send image (Premium feature)"
               disabled={
                 true ||
@@ -770,7 +842,7 @@ function ModernChat({
             className={cn(
               "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl",
               (!text.trim() || isSending || isBlocked) &&
-                "opacity-50 cursor-not-allowed transform-none shadow-none"
+                "opacity-50 cursor-not-allowed transform-none shadow-none",
             )}
           >
             {isSending ? (
@@ -811,9 +883,19 @@ function ModernChat({
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg"
+              className="mt-2 p-3 bg-danger/10 border border-danger/30 rounded-lg"
             >
-              <p className="text-red-600 text-xs">{error}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-danger text-xs flex-1">{error}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  className="text-danger hover:bg-danger/20 text-xs px-2 py-1 h-auto"
+                >
+                  Retry
+                </Button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -870,7 +952,7 @@ function ModernChat({
                     onClick={() =>
                       handleReportUser(
                         "harassment",
-                        "User engaged in harassment"
+                        "User engaged in harassment",
                       )
                     }
                     className="w-full"
@@ -882,7 +964,7 @@ function ModernChat({
                     onClick={() =>
                       handleReportUser(
                         "inappropriate_content",
-                        "User sent inappropriate content"
+                        "User sent inappropriate content",
                       )
                     }
                     className="w-full"
@@ -941,7 +1023,7 @@ function VoiceMessage({
     try {
       const response = await fetch(getVoiceMessageUrl(message._id), {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -999,7 +1081,7 @@ function VoiceMessage({
           "p-2 rounded-full",
           isCurrentUser
             ? "hover:bg-white/20 text-white"
-            : "hover:bg-gray-200 text-gray-600"
+            : "hover:bg-gray-200 text-gray-600",
         )}
       >
         {loading ? (
@@ -1014,13 +1096,13 @@ function VoiceMessage({
         <div
           className={cn(
             "h-1 rounded-full",
-            isCurrentUser ? "bg-white/30" : "bg-gray-300"
+            isCurrentUser ? "bg-white/30" : "bg-gray-300",
           )}
         >
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              isCurrentUser ? "bg-white" : "bg-purple-500"
+              isCurrentUser ? "bg-white" : "bg-purple-500",
             )}
             style={{ width: isPlaying ? "100%" : "0%" }}
           />
@@ -1028,7 +1110,7 @@ function VoiceMessage({
         <div
           className={cn(
             "text-xs mt-1",
-            isCurrentUser ? "text-purple-100" : "text-gray-500"
+            isCurrentUser ? "text-purple-100" : "text-gray-500",
           )}
         >
           🎤 {formatVoiceDuration(message.duration || 0)}

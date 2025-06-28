@@ -1318,25 +1318,40 @@ export const getMyMatches = query({
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .unique();
     if (!user) return [];
-    // Get all interests sent and received by this user
-    const sent = await ctx.db
-      .query("interests")
-      .withIndex("by_from_to", (q) => q.eq("fromUserId", user._id))
+    
+    // Get matches from the matches table
+    const matches1 = await ctx.db
+      .query("matches")
+      .withIndex("by_user1", (q) => q.eq("user1Id", user._id))
+      .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
-    const received = await ctx.db
-      .query("interests")
-      .withIndex("by_to", (q) => q.eq("toUserId", user._id))
+    
+    const matches2 = await ctx.db
+      .query("matches")
+      .withIndex("by_user2", (q) => q.eq("user2Id", user._id))
+      .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
-    // Find mutual matches: both users have accepted each other's interest
-    const acceptedSent = sent.filter((i) => i.status === "accepted");
-    const acceptedReceived = received.filter((i) => i.status === "accepted");
-    const mutualUserIds = acceptedSent
-      .map((i) => i.toUserId)
-      .filter((id) => acceptedReceived.some((r) => r.fromUserId === id));
-    // Get profiles for these userIds
-    const allProfiles = await ctx.db.query("profiles").collect();
-    const matches = allProfiles.filter((p) => mutualUserIds.includes(p.userId));
-    return matches;
+    
+    // Combine and get the other user's profile for each match
+    const allMatches = [...matches1, ...matches2];
+    const matchProfiles = await Promise.all(
+      allMatches.map(async (match) => {
+        const otherUserId = match.user1Id === user._id ? match.user2Id : match.user1Id;
+        const profile = await ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", otherUserId))
+          .first();
+        
+        return profile ? {
+          ...profile,
+          conversationId: match.conversationId,
+          matchedAt: match.createdAt,
+          lastActivity: match.lastActivity,
+        } : null;
+      })
+    );
+    
+    return matchProfiles.filter(Boolean);
   },
 });
 

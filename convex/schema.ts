@@ -184,6 +184,22 @@ export default defineSchema({
     .index("by_from_to", ["fromUserId", "toUserId"])
     .index("by_to", ["toUserId"]),
 
+  matches: defineTable({
+    user1Id: v.id("users"),
+    user2Id: v.id("users"),
+    status: v.union(
+      v.literal("matched"),
+      v.literal("blocked"),
+      v.literal("unmatched")
+    ),
+    conversationId: v.string(),
+    createdAt: v.float64(),
+    lastActivity: v.optional(v.float64()),
+  })
+    .index("by_users", ["user1Id", "user2Id"])
+    .index("by_user1", ["user1Id"])
+    .index("by_user2", ["user2Id"]),
+
   messages: defineTable({
     conversationId: v.string(), // e.g., sorted user IDs joined by '_'
     fromUserId: v.id("users"),

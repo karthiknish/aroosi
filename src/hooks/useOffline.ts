@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 
-export function useOffline() {
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+export function useOffline(): boolean {
+  const getOnlineStatus = () =>
+    typeof window !== "undefined" && typeof navigator !== "undefined"
+      ? !navigator.onLine
+      : false;
+
+  const [isOffline, setIsOffline] = useState(getOnlineStatus);
 
   useEffect(() => {
     function update() {
-      setIsOffline(!navigator.onLine);
+      setIsOffline(getOnlineStatus());
     }
     window.addEventListener("online", update);
     window.addEventListener("offline", update);

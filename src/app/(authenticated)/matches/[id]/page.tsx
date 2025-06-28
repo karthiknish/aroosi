@@ -31,7 +31,7 @@ export default function MatchChatPage() {
     queryKey: ["markRead", conversationId, userId],
     queryFn: async () => {
       if (!token || !userId) return true;
-      await markConversationRead(conversationId);
+      await markConversationRead(conversationId, token);
       return true;
     },
     enabled: !!token && !!userId && !!conversationId,
@@ -41,7 +41,7 @@ export default function MatchChatPage() {
 
   const { imageUrl: avatarData, loading: avatarLoading } = useProfileImage(
     otherUserId,
-    token ?? undefined
+    token ?? undefined,
   );
 
   // Show loader until auth context ready
@@ -55,7 +55,7 @@ export default function MatchChatPage() {
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => router.push("/matches")}
-          className="text-primary pr-2 border-r border-border"
+          className="text-primary pr-2 border-r border-secondary-light/50"
         >
           ← Back
         </button>
@@ -68,12 +68,12 @@ export default function MatchChatPage() {
             alt="avatar"
           />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-gray-200" />
+          <div className="w-10 h-10 rounded-full bg-secondary-light/30" />
         )}
         {profileLoading ? (
           <Skeleton className="h-4 w-32" />
         ) : (
-          <span className="font-semibold text-lg text-foreground">
+          <span className="font-semibold text-lg text-neutral">
             {matchProfile?.fullName || "Match"}
           </span>
         )}

@@ -64,7 +64,7 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     }
   }
   if (data.drinking !== undefined) {
-    if (!['no', 'occasionally', 'yes'].includes(data.drinking as string)) {
+    if (!['no', 'occasionally', 'yes', ''].includes(data.drinking as string)) {
       return { isValid: false, error: 'Invalid drinking preference' };
     }
   }
@@ -94,8 +94,9 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     if (typeof data.phoneNumber !== 'string') {
       return { isValid: false, error: 'Phone number must be a string' };
     }
-    // Basic UK phone number validation
-    if (!/^(\+44|0)[0-9]{10,11}$/.test(data.phoneNumber.replace(/\s/g, ''))) {
+    // More flexible UK phone number validation to match mobile app
+    const cleanPhone = data.phoneNumber.replace(/[\s-]/g, '');
+    if (!/^(\+44|0)[0-9]{10,11}$/.test(cleanPhone) && !/^[+]?[\d\s-]{7,20}$/.test(data.phoneNumber)) {
       return { isValid: false, error: 'Invalid UK phone number format' };
     }
   }
@@ -120,6 +121,86 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     const maxAge = Number(data.partnerPreferenceAgeMax);
     if (minAge > maxAge) {
       return { isValid: false, error: 'Minimum age cannot be greater than maximum age' };
+    }
+  }
+
+  // Validate cultural fields
+  if (data.religion !== undefined) {
+    if (typeof data.religion !== 'string') {
+      return { isValid: false, error: 'Religion must be a string' };
+    }
+    if (data.religion.length > 50) {
+      return { isValid: false, error: 'Religion must not exceed 50 characters' };
+    }
+  }
+
+  if (data.motherTongue !== undefined) {
+    if (typeof data.motherTongue !== 'string') {
+      return { isValid: false, error: 'Mother tongue must be a string' };
+    }
+    if (data.motherTongue.length > 50) {
+      return { isValid: false, error: 'Mother tongue must not exceed 50 characters' };
+    }
+  }
+
+  if (data.ethnicity !== undefined) {
+    if (typeof data.ethnicity !== 'string') {
+      return { isValid: false, error: 'Ethnicity must be a string' };
+    }
+    if (data.ethnicity.length > 50) {
+      return { isValid: false, error: 'Ethnicity must not exceed 50 characters' };
+    }
+  }
+
+  // Validate diet preferences
+  if (data.diet !== undefined) {
+    if (!['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other', ''].includes(data.diet as string)) {
+      return { isValid: false, error: 'Invalid diet preference' };
+    }
+  }
+
+  // Validate physical status
+  if (data.physicalStatus !== undefined) {
+    if (!['normal', 'differently-abled', 'other', ''].includes(data.physicalStatus as string)) {
+      return { isValid: false, error: 'Invalid physical status' };
+    }
+  }
+
+  // Validate height
+  if (data.height !== undefined) {
+    if (typeof data.height !== 'string') {
+      return { isValid: false, error: 'Height must be a string' };
+    }
+    const heightCm = parseInt(data.height);
+    if (isNaN(heightCm) || heightCm < 137 || heightCm > 198) {
+      return { isValid: false, error: 'Height must be between 137cm and 198cm' };
+    }
+  }
+
+  // Validate education and occupation
+  if (data.education !== undefined) {
+    if (typeof data.education !== 'string') {
+      return { isValid: false, error: 'Education must be a string' };
+    }
+    if (data.education.length > 100) {
+      return { isValid: false, error: 'Education must not exceed 100 characters' };
+    }
+  }
+
+  if (data.occupation !== undefined) {
+    if (typeof data.occupation !== 'string') {
+      return { isValid: false, error: 'Occupation must be a string' };
+    }
+    if (data.occupation.length > 100) {
+      return { isValid: false, error: 'Occupation must not exceed 100 characters' };
+    }
+  }
+
+  // Validate annual income
+  if (data.annualIncome !== undefined) {
+    const income = typeof data.annualIncome === 'string' ? parseInt(data.annualIncome) : data.annualIncome;
+    if (isNaN(income) || income < 0) {
+      return { isValid: false, error: 'Annual income must be a positive number' };
     }
   }
 

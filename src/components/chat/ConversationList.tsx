@@ -22,7 +22,7 @@ interface ConversationListProps {
   onConversationSelect: (
     conversationId: string,
     otherUserId: string,
-    otherUserName: string
+    otherUserName: string,
   ) => void;
   selectedConversationId?: string;
   className?: string;
@@ -47,7 +47,7 @@ export default function ConversationList({
   const { getToken, userId } = useAuth();
   const subscriptionStatus = useSubscriptionStatus();
   const [conversations, setConversations] = useState<ConversationWithUser[]>(
-    []
+    [],
   );
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,7 +92,7 @@ export default function ConversationList({
     } catch (err) {
       console.error("Error fetching conversations:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to load conversations"
+        err instanceof Error ? err.message : "Failed to load conversations",
       );
     } finally {
       setLoading(false);
@@ -105,7 +105,7 @@ export default function ConversationList({
       conv.otherUser.fullName
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      conv.lastMessagePreview.toLowerCase().includes(searchQuery.toLowerCase())
+      conv.lastMessagePreview.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Initial load
@@ -119,10 +119,10 @@ export default function ConversationList({
       onConversationSelect(
         conv._id,
         conv.otherUser._id,
-        conv.otherUser.fullName
+        conv.otherUser.fullName,
       );
     },
-    [onConversationSelect]
+    [onConversationSelect],
   );
 
   if (loading) {
@@ -158,13 +158,15 @@ export default function ConversationList({
   }
 
   return (
-    <div className={cn("flex flex-col h-full bg-white", className)}>
+    <div className={cn("flex flex-col h-full bg-base", className)}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-secondary-light/30">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
+          <h2 className="text-lg font-semibold text-neutral font-serif">
+            Messages
+          </h2>
           {(subscriptionStatus.data as { plan?: string })?.plan === "free" && (
-            <div className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full flex items-center gap-1">
+            <div className="text-xs bg-accent-light text-accent-dark px-2 py-1 rounded-full flex items-center gap-1">
               <Crown className="w-3 h-3" />
               <span>Free Plan</span>
             </div>
@@ -173,12 +175,12 @@ export default function ConversationList({
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4" />
           <Input
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 border-secondary-light/50 focus:ring-primary"
           />
         </div>
       </div>
@@ -215,16 +217,17 @@ export default function ConversationList({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   className={cn(
-                    "p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-50",
-                    selectedConversationId === conv._id &&
-                      "bg-purple-50 border border-purple-200"
+                    "font-medium text-sm truncate",
+                    conv.unreadCount > 0
+                      ? "text-neutral"
+                      : "text-neutral-light",
                   )}
                   onClick={() => handleConversationClick(conv)}
                 >
                   <div className="flex items-start gap-3">
                     {/* Profile Image */}
                     <div className="relative">
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary-light/30 to-secondary-light/30 rounded-full flex items-center justify-center">
                         {conv.otherUser.profileImage ? (
                           <img
                             src={conv.otherUser.profileImage}
@@ -232,23 +235,21 @@ export default function ConversationList({
                             className="w-full h-full rounded-full object-cover"
                           />
                         ) : (
-                          <span className="text-purple-600 font-medium text-lg">
+                          <span className="text-primary font-medium text-lg">
                             {conv.otherUser.fullName.charAt(0).toUpperCase()}
                           </span>
                         )}
                       </div>
-
                       {/* Online indicator */}
                       {conv.otherUser.isOnline && (
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-base rounded-full" />
                       )}
-
                       {/* Unread badge */}
                       {conv.unreadCount > 0 && (
                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
                           {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
                         </div>
-                      )}
+                      )}{" "}
                     </div>
 
                     {/* Conversation Info */}
@@ -259,12 +260,12 @@ export default function ConversationList({
                             "font-medium text-sm truncate",
                             conv.unreadCount > 0
                               ? "text-gray-900"
-                              : "text-gray-700"
+                              : "text-gray-700",
                           )}
                         >
                           {conv.otherUser.fullName}
                         </h3>
-                        <span className="text-xs text-gray-500 flex-shrink-0">
+                        <span className="text-xs text-neutral-light flex-shrink-0">
                           {conv.lastMessage
                             ? formatMessageTime(conv.lastMessage._creationTime)
                             : ""}
@@ -274,15 +275,15 @@ export default function ConversationList({
                       <div className="flex items-center gap-1">
                         {/* Message type indicator */}
                         {conv.lastMessage?.type === "voice" && (
-                          <Mic className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                          <Mic className="w-3 h-3 text-secondary flex-shrink-0" />
                         )}
 
                         <p
                           className={cn(
                             "text-sm truncate",
                             conv.unreadCount > 0
-                              ? "text-gray-900 font-medium"
-                              : "text-gray-500"
+                              ? "text-neutral font-medium"
+                              : "text-neutral-light",
                           )}
                         >
                           {conv.lastMessagePreview}
@@ -299,14 +300,14 @@ export default function ConversationList({
 
       {/* Footer with upgrade prompt for free users */}
       {(subscriptionStatus.data as { plan?: string })?.plan === "free" && (
-        <div className="p-4 border-t border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
+        <div className="p-4 border-t border-secondary-light/30 bg-gradient-to-r from-primary-light/20 to-secondary-light/20">
           <div className="text-center space-y-2">
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-neutral-light">
               Limited to 5 messages per day
             </p>
             <Button
               size="sm"
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              className="w-full bg-primary hover:bg-primary-dark"
             >
               Upgrade to Premium
             </Button>

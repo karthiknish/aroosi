@@ -30,7 +30,10 @@ interface UsageResponse {
   resetDate: number;
 }
 
-export function useUsageTracking() {
+export function useUsageTracking(): {
+  trackUsage: (params: TrackUsageParams) => void;
+  isTracking: boolean;
+} {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
 
@@ -47,22 +50,49 @@ export function useUsageTracking() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to track usage");
+        let error: unknown;
+        try {
+          error = await response.json();
+        } catch {
+          error = {};
+        }
+        if (typeof error === "object" && error !== null && "error" in error) {
+          throw new Error(
+            (error as { error?: string }).error || "Failed to track usage"
+          );
+        }
+        throw new Error("Failed to track usage");
       }
 
-      return response.json() as Promise<{ data: UsageResponse }>;
+      const result: unknown = await response.json();
+      if (
+        typeof result === "object" &&
+        result !== null &&
+        "data" in result &&
+        typeof (result as { data: unknown }).data === "object"
+      ) {
+        return result as { data: UsageResponse };
+      }
+      throw new Error("Unexpected response format");
     },
     onSuccess: (data) => {
       // Invalidate usage stats query to refresh the UI
       queryClient.invalidateQueries({ queryKey: ["usage-stats"] });
-      
+
       // Show warning if approaching limit
       const usage = data.data;
-      if (!usage.isUnlimited && usage.remainingQuota <= 5 && usage.remainingQuota > 0) {
-        toast.warning(`Only ${usage.remainingQuota} ${getFeatureName(usage.feature)} remaining this month`);
+      if (
+        !usage.isUnlimited &&
+        usage.remainingQuota <= 5 &&
+        usage.remainingQuota > 0
+      ) {
+        toast.warning(
+          `Only ${usage.remainingQuota} ${getFeatureName(usage.feature)} remaining this month`
+        );
       } else if (!usage.isUnlimited && usage.remainingQuota === 0) {
-        toast.error(`Monthly limit reached for ${getFeatureName(usage.feature)}`);
+        toast.error(
+          `Monthly limit reached for ${getFeatureName(usage.feature)}`
+        );
       }
     },
     onError: (error: Error) => {
@@ -70,7 +100,7 @@ export function useUsageTracking() {
         toast.error(error.message, {
           action: {
             label: "Upgrade",
-            onClick: () => window.location.href = "/pricing",
+            onClick: () => (window.location.href = "/pricing"),
           },
         });
       } else {
@@ -85,12 +115,14 @@ export function useUsageTracking() {
   };
 }
 
-export function useCanUseFeature(feature: Feature) {
+export function useCanUseFeature(
+  feature: Feature
+): ReturnType<typeof useQuery> {
   const { getToken } = useAuth();
 
   return useQuery({
     queryKey: ["can-use-feature", feature],
-    queryFn: async () => {
+    queryFn: async (): Promise<{ canUse: boolean; reason?: string }> => {
       const token = await getToken();
       const response = await fetch(`/api/subscription/can-use/${feature}`, {
         headers: {
@@ -102,7 +134,16 @@ export function useCanUseFeature(feature: Feature) {
         throw new Error("Failed to check feature availability");
       }
 
-      return response.json();
+      const result: unknown = await response.json();
+      if (
+        typeof result === "object" &&
+        result !== null &&
+        "canUse" in result &&
+        typeof (result as { canUse: unknown }).canUse === "boolean"
+      ) {
+        return result as { canUse: boolean; reason?: string };
+      }
+      throw new Error("Unexpected response format");
     },
     staleTime: 30000, // Cache for 30 seconds
   });

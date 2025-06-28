@@ -84,6 +84,9 @@ export function getProfileFormSchema(isOnboarding: boolean) {
       physicalStatus: z
         .enum(["normal", "differently-abled", "other"])
         .optional(),
+      religion: z.string().max(50).optional().or(z.literal("")),
+      motherTongue: z.string().max(50).optional().or(z.literal("")),
+      ethnicity: z.string().max(50).optional().or(z.literal("")),
     })
     .refine(
       (data) =>

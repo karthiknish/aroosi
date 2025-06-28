@@ -1,18 +1,21 @@
 import { useState, useCallback, useEffect } from "react";
-import { getMatchMessages, sendMatchMessage } from "@/lib/api/matchMessages";
+import {
+  getMatchMessages,
+  sendMatchMessage,
+  type MatchMessage,
+} from "@/lib/api/matchMessages";
 import { getConversationEventsSSEUrl } from "@/lib/api/conversation";
 
-// Message type for match messages
-type Message = {
-  _id: string;
-  conversationId: string;
-  fromUserId: string;
-  toUserId: string;
-  text: string;
-  createdAt: number;
-};
+// Use the MatchMessage type from the API
+type Message = MatchMessage;
 
-export function useMatchMessages(conversationId: string, token: string) {
+export function useMatchMessages(
+  conversationId: string,
+  token: string,
+  onConnectionStatusChange?: (
+    status: "connected" | "connecting" | "disconnected",
+  ) => void,
+) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -104,14 +107,17 @@ export function useMatchMessages(conversationId: string, token: string) {
           fromUserId,
           toUserId,
           text,
+          conversationId,
+          token,
+          type: "text",
         })
           .then((saved) => {
             if (saved) {
               const savedMsg = saved as Message;
               setMessages((prev) =>
                 prev.map((m) =>
-                  m._id && m._id.startsWith("tmp-") ? savedMsg : m
-                )
+                  m._id && m._id.startsWith("tmp-") ? savedMsg : m,
+                ),
               );
             }
           })
@@ -126,7 +132,7 @@ export function useMatchMessages(conversationId: string, token: string) {
         /* no-op */
       }
     },
-    [conversationId, token]
+    [conversationId, token],
   );
 
   // Initial fetch on mount or when conversation changes
@@ -200,7 +206,7 @@ export function useMatchMessages(conversationId: string, token: string) {
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = reconnectDelay * Math.pow(2, reconnectAttempts);
           console.log(
-            `[SSE] Attempting reconnection in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`
+            `[SSE] Attempting reconnection in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`,
           );
 
           setTimeout(() => {

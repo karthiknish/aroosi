@@ -29,7 +29,9 @@ export const sendMessage = mutation({
     fromUserId: v.id("users"),
     toUserId: v.id("users"),
     text: v.string(),
-    type: v.optional(v.union(v.literal("text"), v.literal("voice"), v.literal("image"))),
+    type: v.optional(
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
+    ),
     audioStorageId: v.optional(v.string()),
     duration: v.optional(v.number()),
     fileSize: v.optional(v.number()),
@@ -39,7 +41,9 @@ export const sendMessage = mutation({
     // Check if fromUserId and toUserId are mutual matches
     // (You may want to optimize this by storing matches in a table, but for now, use getMyMatches)
     const matches = await ctx.runQuery(api.users.getMyMatches, {});
-    const isMatched = matches.some((p: Profile) => p.userId === args.toUserId);
+    const isMatched = matches.some(
+      (p: Profile | null) => p?.userId === args.toUserId,
+    );
     if (!isMatched)
       throw new Error("You can only message users you are matched with.");
     const newId = await ctx.db.insert("messages", {
@@ -70,7 +74,7 @@ export const getMessages = query({
     const query = ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversationId)
+        q.eq("conversationId", conversationId),
       )
       .order("desc");
 
@@ -96,7 +100,7 @@ export const markConversationRead = mutation({
     const unread = await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversationId)
+        q.eq("conversationId", conversationId),
       )
       .collect();
     await Promise.all(
@@ -104,7 +108,7 @@ export const markConversationRead = mutation({
         if (msg.toUserId === userId && msg.readAt === undefined) {
           await ctx.db.patch(msg._id as Id<"messages">, { readAt: Date.now() });
         }
-      })
+      }),
     );
     return { success: true };
   },
@@ -137,12 +141,12 @@ export const getVoiceMessage = query({
     if (!message) {
       throw new Error("Voice message not found");
     }
-    
+
     // Only return voice messages
     if (message.type !== "voice" || !message.audioStorageId) {
       throw new Error("Message is not a voice message");
     }
-    
+
     return message;
   },
 });
