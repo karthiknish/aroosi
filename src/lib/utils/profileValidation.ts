@@ -199,7 +199,7 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
   // Validate annual income
   if (data.annualIncome !== undefined) {
     const income = typeof data.annualIncome === 'string' ? parseInt(data.annualIncome) : data.annualIncome;
-    if (isNaN(income) || income < 0) {
+    if (typeof income !== 'number' || isNaN(income) || income < 0) {
       return { isValid: false, error: 'Annual income must be a positive number' };
     }
   }

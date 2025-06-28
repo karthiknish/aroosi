@@ -108,6 +108,9 @@ export function getUpgradeMessage(
     canUseAdvancedFilters:
       "Upgrade to Premium Plus for advanced search filters",
     hasSpotlightBadge: "Upgrade to Premium Plus for a spotlight badge",
+    canUseIncognitoMode: "Upgrade to Premium Plus for incognito mode",
+    canAccessPrioritySupport: "Upgrade to Premium Plus for priority support",
+    canSeeReadReceipts: "Upgrade to Premium Plus to see read receipts",
     maxLikesPerDay: "Upgrade to Premium for unlimited daily likes",
     boostsPerMonth: "Upgrade to Premium Plus for monthly profile boosts",
   };

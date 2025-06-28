@@ -120,9 +120,44 @@ export default function AdminEditProfilePage() {
       ? (values.gender as (typeof allowedGenderTypes)[number])
       : "other";
     
+    // Map diet to correct union type
+    const allowedDiets = ["vegetarian", "non-vegetarian", "vegan", "eggetarian", "other", ""] as const;
+    const diet = allowedDiets.includes(
+      values.diet as string as (typeof allowedDiets)[number]
+    )
+      ? (values.diet as (typeof allowedDiets)[number])
+      : "";
+    
+    // Map smoking to correct union type
+    const allowedSmokingDrinking = ["no", "occasionally", "yes", ""] as const;
+    const smoking = allowedSmokingDrinking.includes(
+      values.smoking as string as (typeof allowedSmokingDrinking)[number]
+    )
+      ? (values.smoking as (typeof allowedSmokingDrinking)[number])
+      : "";
+    
+    // Map drinking to correct union type
+    const drinking = allowedSmokingDrinking.includes(
+      values.drinking as string as (typeof allowedSmokingDrinking)[number]
+    )
+      ? (values.drinking as (typeof allowedSmokingDrinking)[number])
+      : "";
+    
+    // Map physicalStatus to correct union type
+    const allowedPhysicalStatus = ["normal", "differently-abled", "other", ""] as const;
+    const physicalStatus = allowedPhysicalStatus.includes(
+      values.physicalStatus as string as (typeof allowedPhysicalStatus)[number]
+    )
+      ? (values.physicalStatus as (typeof allowedPhysicalStatus)[number])
+      : "";
+    
     const updates = {
       ...values,
       gender,
+      diet,
+      smoking,
+      drinking,
+      physicalStatus,
       maritalStatus,
       partnerPreferenceAgeMin,
       partnerPreferenceAgeMax,

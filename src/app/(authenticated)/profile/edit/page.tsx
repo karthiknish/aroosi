@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import type { Profile, ProfileFormValues } from "@/types/profile";
+import type { Profile, ProfileFormValues, Gender, SmokingDrinking, Diet, PhysicalStatus } from "@/types/profile";
 import ProfileEditSimpleForm from "@/components/profile/ProfileEditSimpleForm";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,7 @@ function convertFormValuesToProfile(
     ...defaultProfile,
     ...cleanExistingProfile,
     ...cleanFormValues,
-    gender: String(formValues.gender ?? "other"),
+    gender: (formValues.gender as Gender) ?? "other",
     partnerPreferenceAgeMin:
       typeof formValues.partnerPreferenceAgeMin === "string"
         ? parseInt(formValues.partnerPreferenceAgeMin, 10) || 18
@@ -95,10 +95,10 @@ function convertFormValuesToProfile(
     )
       ? formValues.preferredGender
       : "any") as "male" | "female" | "any",
-    drinking: formValues.drinking || "no",
-    smoking: formValues.smoking || "no",
-    diet: formValues.diet || "vegetarian",
-    physicalStatus: formValues.physicalStatus || "healthy",
+    drinking: (formValues.drinking as SmokingDrinking) || "no",
+    smoking: (formValues.smoking as SmokingDrinking) || "no",
+    diet: (formValues.diet as Diet) || "vegetarian",
+    physicalStatus: (formValues.physicalStatus as PhysicalStatus) || "normal",
     updatedAt: Date.now(),
   };
 }
