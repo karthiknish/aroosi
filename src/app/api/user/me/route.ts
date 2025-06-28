@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken, getAuthToken } from "@/app/api/_utils/auth";
 
@@ -14,11 +13,16 @@ export async function GET(request: NextRequest) {
 
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
     convex.setAuth(token);
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
-      userId: userId as Id<"users">,
-    });
-    if (!profile) return errorResponse("User profile not found", 404);
-    return successResponse({ profile });
+    const userWithProfile = await convex.query(
+      api.users.getCurrentUserWithProfile,
+      {}
+    );
+
+    if (!userWithProfile || !userWithProfile.profile) {
+      return errorResponse("User profile not found", 404);
+    }
+
+    return successResponse({ profile: userWithProfile.profile });
   } catch (error) {
     console.error("Error fetching user profile:", error);
     return errorResponse("Failed to fetch user profile", 500, {

@@ -29,6 +29,8 @@ import {
   ETHNICITY_OPTIONS,
 } from "@/lib/constants/languages";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@clerk/nextjs";
+import { submitProfile } from "@/lib/profile/userProfileApi";
 
 interface ProfileData {
   profileFor: string;
@@ -240,11 +242,39 @@ export function ProfileCreationModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const { isSignedIn, getToken } = useAuth();
+  const [profileSubmitted, setProfileSubmitted] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       localStorage.setItem("pendingProfileData", JSON.stringify(formData));
     }
   }, [formData, isOpen]);
+
+  useEffect(() => {
+    const saveProfileIfNeeded = async () => {
+      if (isSignedIn && displayStep === 7 && !profileSubmitted) {
+        try {
+          const token = await getToken({ template: "convex" });
+          if (!token) return;
+
+          const { profileFor, ...profileValues } = formData;
+          void profileFor;
+          const result = await submitProfile(token, profileValues, "create");
+          if (result.success) {
+            // clear localStorage cache
+            localStorage.removeItem("pendingProfileData");
+            setProfileSubmitted(true);
+          } else {
+            console.error("Failed to submit profile:", result.error);
+          }
+        } catch (err) {
+          console.error("Error submitting profile:", err);
+        }
+      }
+    };
+    void saveProfileIfNeeded();
+  }, [isSignedIn, displayStep, profileSubmitted, formData, getToken]);
 
   const handleInputChange = (
     field: keyof ProfileCreationData,
