@@ -269,8 +269,7 @@ export function ProfileCreationModal({
     const saveProfileIfNeeded = async () => {
       if (isSignedIn && displayStep === 7 && !profileSubmitted) {
         try {
-          const token =
-            contextToken ?? (await authCtxGetToken({ template: "convex" }));
+          const token = contextToken ?? (await authCtxGetToken());
           if (!token) return;
 
           // 1) Upload any locally stored images (ids starting with "local-")
