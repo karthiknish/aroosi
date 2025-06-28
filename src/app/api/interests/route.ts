@@ -186,7 +186,7 @@ export async function GET(req: NextRequest) {
     }
     const currentUserId = currentUserRecord._id as Id<"users">;
 
-    if (userIdParam && userIdParam !== currentUserId) {
+    if (userIdParam && userIdParam !== (currentUserId as unknown as string)) {
       logSecurityEvent(
         "UNAUTHORIZED_ACCESS",
         {
