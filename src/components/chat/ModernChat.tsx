@@ -27,16 +27,15 @@ import { cn } from "@/lib/utils";
 import {
   formatMessageTime,
   formatVoiceDuration,
-  isVoiceMessage,
   getVoiceMessageUrl,
-  shouldShowTimestamp,
-  MessageData,
 } from "@/lib/utils/messageUtils";
 import { safetyAPI } from "@/lib/api/safety";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { getSubscriptionFeatures } from "@/lib/utils/subscriptionUtils";
 import { TypingIndicator } from "./TypingIndicator";
 import { DeliveryStatus } from "./DeliveryStatus";
+import type { ReportReason } from "@/lib/api/safety";
+import type { MatchMessage } from "@/lib/api/matchMessages";
 
 export type ModernChatProps = {
   conversationId: string;
@@ -86,7 +85,6 @@ function ModernChat({
     markMessageAsPending,
     markMessageAsSent,
     markMessageAsRead,
-    markMessageAsDelivered,
   } = useDeliveryReceipts({
     conversationId,
     token,
@@ -108,7 +106,6 @@ function ModernChat({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-scroll to bottom when messages change & if near bottom
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -117,7 +114,10 @@ function ModernChat({
   useEffect(() => {
     const checkBlockStatus = async () => {
       try {
-        const blockStatus = await safetyAPI.checkBlockStatus(matchUserId);
+        const blockStatus = await safetyAPI.checkBlockStatus(
+          token,
+          matchUserId
+        );
         setIsBlocked(!!(blockStatus?.isBlocked || blockStatus?.isBlockedBy));
       } catch (error) {
         console.error("Error checking block status:", error);
@@ -125,7 +125,7 @@ function ModernChat({
     };
 
     checkBlockStatus();
-  }, [matchUserId]);
+  }, [token, matchUserId]);
 
   // Mark incoming messages as read when they come into view
   useEffect(() => {
@@ -453,7 +453,7 @@ function ModernChat({
           throw new Error(errorData.error || "Failed to send voice message");
         }
 
-        const result = await response.json();
+        await response.json();
 
         // Track voice message usage
         trackUsage({
@@ -477,7 +477,7 @@ function ModernChat({
   // Block user handler
   const handleBlockUser = useCallback(async () => {
     try {
-      await safetyAPI.blockUser(matchUserId);
+      await safetyAPI.blockUser(token, matchUserId);
       setIsBlocked(true);
       setShowReportModal(false);
       showSuccessToast("User has been blocked");
@@ -485,15 +485,15 @@ function ModernChat({
       console.error("Error blocking user:", error);
       showErrorToast(null, "Failed to block user");
     }
-  }, [matchUserId]);
+  }, [token, matchUserId]);
 
   // Report user handler
   const handleReportUser = useCallback(
-    async (reason: string, description: string) => {
+    async (reason: ReportReason, description: string) => {
       try {
-        await safetyAPI.reportUser({
+        await safetyAPI.reportUser(token, {
           reportedUserId: matchUserId,
-          reason: reason as any,
+          reason,
           description,
         });
 
@@ -504,15 +504,14 @@ function ModernChat({
         showErrorToast(null, "Failed to submit report");
       }
     },
-    [matchUserId, conversationId]
+    [token, matchUserId]
   );
 
   return (
     <div
       className={cn(
-        "bg-primary hover:bg-primary-dark text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl",
-        (!text.trim() || isSending || isBlocked) &&
-          "opacity-50 cursor-not-allowed transform-none shadow-none"
+        "bg-white text-neutral-900 rounded-xl shadow-sm flex flex-col h-full",
+        className
       )}
     >
       {/* Chat Header */}
@@ -638,15 +637,13 @@ function ModernChat({
           ) : (
             <>
               <AnimatePresence initial={false}>
-                {messages.map((msg: any, index: number) => {
+                {messages.map((msg: MatchMessage, index: number) => {
                   const isCurrentUser = msg.fromUserId === currentUserId;
+                  const prevMsg = index > 0 ? messages[index - 1] : undefined;
                   const showTime =
-                    index > 0
-                      ? new Date(msg.createdAt).getTime() -
-                          new Date(messages[index - 1].createdAt).getTime() >
-                        5 * 60 * 1000
-                      : true;
-                  const isVoice = isVoiceMessage(msg);
+                    !prevMsg ||
+                    msg.createdAt - prevMsg.createdAt > 5 * 60 * 1000;
+                  const isVoice = msg.type === "voice" && !!msg.audioStorageId;
 
                   return (
                     <motion.div
@@ -675,7 +672,7 @@ function ModernChat({
                           className={cn(
                             "max-w-[280px] px-4 py-3 rounded-2xl shadow-sm text-sm break-words",
                             isCurrentUser
-                              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-br-md"
+                              ? "bg-primary text-white rounded-br-md"
                               : "bg-gray-100 text-gray-900 rounded-bl-md"
                           )}
                         >
@@ -826,11 +823,7 @@ function ModernChat({
               size="sm"
               className="text-secondary hover:text-primary transition-colors p-2 h-10 w-10"
               title="Send image (Premium feature)"
-              disabled={
-                true ||
-                isBlocked ||
-                (subscriptionStatus.data as any)?.plan === "free"
-              }
+              disabled
             >
               <ImageIcon className="w-4 h-4" />
             </Button>
@@ -999,7 +992,7 @@ function ModernChat({
 export default ModernChat;
 // Voice Message Component
 interface VoiceMessageProps {
-  message: MessageData;
+  message: MatchMessage;
   isPlaying: boolean;
   onPlayToggle: (playing: boolean) => void;
   isCurrentUser: boolean;
