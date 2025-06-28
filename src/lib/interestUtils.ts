@@ -14,7 +14,11 @@ export async function sendInterest(token: string, toUserId: string) {
     throw new Error(message);
   }
 
-  return res.json();
+  const data = await res.json();
+  if (data && typeof data === "object" && data.success === false) {
+    throw new Error(data.error || "Interest action failed");
+  }
+  return data;
 }
 
 export async function removeInterest(token: string, toUserId: string) {
@@ -33,7 +37,11 @@ export async function removeInterest(token: string, toUserId: string) {
     throw new Error(message);
   }
 
-  return res.json();
+  const data = await res.json();
+  if (data && typeof data === "object" && data.success === false) {
+    throw new Error(data.error || "Interest action failed");
+  }
+  return data;
 }
 
 export async function getSentInterests(token: string) {
