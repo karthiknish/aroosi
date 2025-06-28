@@ -86,8 +86,19 @@ class SubscriptionAPI {
     return data.data || data;
   }
 
-  async getStatus(token?: string): Promise<SubscriptionStatus> {
-    return this.makeRequest<SubscriptionStatus>("/status", undefined, token);
+  async getStatus(
+    token?: string,
+    profileId?: string,
+    userId?: string
+  ): Promise<SubscriptionStatus> {
+    let query = "/status";
+    const params = new URLSearchParams();
+    if (profileId) params.append("profileId", profileId);
+    if (userId) params.append("userId", userId);
+    if (Array.from(params).length > 0) {
+      query += `?${params.toString()}`;
+    }
+    return this.makeRequest<SubscriptionStatus>(query, undefined, token);
   }
 
   async getUsage(token?: string): Promise<UsageStats> {

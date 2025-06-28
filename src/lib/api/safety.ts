@@ -129,10 +129,13 @@ class SafetyAPI {
 
   async checkBlockStatus(
     token: string | null,
-    userId: string
+    { profileId, userId }: { profileId?: string; userId?: string }
   ): Promise<BlockStatus> {
+    const params = new URLSearchParams();
+    if (profileId) params.append("profileId", profileId);
+    if (userId) params.append("userId", userId);
     return this.makeRequest(
-      `/blocked/check?userId=${encodeURIComponent(userId)}`,
+      `/blocked/check?${params.toString()}`,
       undefined,
       token
     );

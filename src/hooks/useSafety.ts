@@ -81,13 +81,19 @@ export const useBlockedUsers = () => {
 };
 
 // Hook for checking if a user is blocked (matching mobile app pattern)
-export const useBlockStatus = (userId: string) => {
+export const useBlockStatus = (
+  input: string | { profileId?: string; userId?: string }
+) => {
   const { token } = useAuthContext();
 
+  const params: { profileId?: string; userId?: string } =
+    typeof input === "string" ? { userId: input } : input;
+
+  const key = params.profileId ?? params.userId ?? "unknown";
   return useQuery({
-    queryKey: ["blockStatus", userId],
-    queryFn: () => safetyAPI.checkBlockStatus(token, userId),
-    enabled: !!userId,
+    queryKey: ["blockStatus", key],
+    queryFn: () => safetyAPI.checkBlockStatus(token, params),
+    enabled: !!params.profileId || !!params.userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });

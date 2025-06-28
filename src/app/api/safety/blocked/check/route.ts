@@ -19,9 +19,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const targetProfileId = searchParams.get("profileId");
+    const targetUserIdParam = searchParams.get("userId");
 
-    if (!targetProfileId) {
-      return errorResponse("Missing required parameter: profileId", 400);
+    if (!targetProfileId && !targetUserIdParam) {
+      return errorResponse("Missing profileId or userId parameter", 400);
     }
 
     const client = await convexClientFromRequest(request);
@@ -39,18 +40,22 @@ export async function GET(request: NextRequest) {
       return errorResponse("Current user profile not found", 404);
     }
 
-    // Fetch target profile to obtain its userId
-    const targetProfile = await client.query(api.users.getProfile, {
-      id: targetProfileId as Id<"profiles">,
-    });
-
-    if (!targetProfile) {
-      return errorResponse("Target profile not found", 404);
+    let targetUserId: Id<"users">;
+    if (targetProfileId) {
+      const targetProfile = await client.query(api.users.getProfile, {
+        id: targetProfileId as Id<"profiles">,
+      });
+      if (!targetProfile) {
+        return errorResponse("Target profile not found", 404);
+      }
+      targetUserId = targetProfile.userId as Id<"users">;
+    } else {
+      targetUserId = targetUserIdParam as Id<"users">;
     }
 
     const blockStatus = await client.query(api.safety.getBlockStatus, {
       blockerUserId: currentUser._id as Id<"users">,
-      blockedUserId: targetProfile.userId as Id<"users">,
+      blockedUserId: targetUserId,
     });
 
     return successResponse({
