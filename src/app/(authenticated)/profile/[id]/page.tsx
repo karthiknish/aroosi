@@ -157,7 +157,7 @@ export default function ProfileDetailPage() {
   const skeletonCount = profile?.profileImageUrls?.length ?? 0;
 
   // Use currentUserProfile._id as fromUserId and userId from params as toUserId
-  const fromUserId = currentUserProfile?.userId;
+  const fromUserId = currentUserProfile?._id;
   const toUserId = userId;
 
   // --- BEGIN: Add local state for interest status ---
