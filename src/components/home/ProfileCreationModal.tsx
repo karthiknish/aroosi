@@ -352,8 +352,8 @@ export function ProfileCreationModal({
             localStorage.removeItem("pendingProfileData");
             setProfileSubmitted(true);
 
-            // redirect to search after full profile creation
-            router.push("/search");
+            // redirect to success page after full profile creation
+            router.push("/success");
           } else {
             console.error("Failed to submit profile:", result.error);
           }
