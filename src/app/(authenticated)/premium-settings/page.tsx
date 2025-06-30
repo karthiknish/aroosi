@@ -124,7 +124,18 @@ export default function PremiumSettingsPage() {
     }
   };
 
-  const premiumFeatures = [
+  interface Feature {
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    available: boolean;
+    action?: () => void;
+    isToggle?: boolean;
+    isBoost?: boolean;
+    isBoosted?: boolean;
+  }
+
+  const premiumFeatures: Feature[] = [
     {
       icon: <Heart className="w-5 h-5 text-primary" />,
       title: "Unlimited Likes",
@@ -362,13 +373,40 @@ export default function PremiumSettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {feature.available ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={feature.action}
-                      >
-                        Access
-                      </Button>
+                      feature.isBoost ? (
+                        feature.isBoosted ? (
+                          <Badge className="bg-pink-600 text-white flex items-center gap-1">
+                            <Zap className="h-3 w-3 fill-current" />
+                            Boosted
+                          </Badge>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={feature.action}
+                            disabled={
+                              boostLoading ||
+                              (profile.boostsRemaining || 0) <= 0
+                            }
+                            className="bg-pink-600 hover:bg-pink-700 text-white"
+                          >
+                            {boostLoading ? (
+                              <LoadingSpinner size={14} className="mr-1" />
+                            ) : (
+                              <Rocket className="h-4 w-4 mr-1" />
+                            )}
+                            Boost Now
+                          </Button>
+                        )
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={feature.action}
+                        >
+                          Access
+                        </Button>
+                      )
                     ) : (
                       <Button
                         size="sm"
