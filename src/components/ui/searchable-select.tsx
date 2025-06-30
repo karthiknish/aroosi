@@ -45,7 +45,7 @@ export function SearchableSelect<T extends string>(
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white max-h-60 overflow-y-auto">
         <div className="p-2">
           <Input
             placeholder="Search..."

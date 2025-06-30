@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation";
 import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
+import { countryCodes } from "@/lib/constants/countryCodes";
 
 interface ProfileData {
   profileFor: string;
@@ -153,36 +154,10 @@ const stepSchemas = [
   profileSchema.pick({ profileImageIds: true }),
 ];
 
-// Static list of countries for selector
-const countries: string[] = [
-  "United Kingdom",
-  "United States",
-  "Canada",
-  "Australia",
-  "New Zealand",
-  "Afghanistan",
-  "United Arab Emirates",
-  "Qatar",
-  "Saudi Arabia",
-  "Kuwait",
-  "Bahrain",
-  "Oman",
-  "Germany",
-  "France",
-  "Netherlands",
-  "Belgium",
-  "Switzerland",
-  "Austria",
-  "Sweden",
-  "Norway",
-  "Denmark",
-  "Finland",
-  "Italy",
-  "Spain",
-  "Portugal",
-  "Ireland",
-  "Other",
-];
+// Build comprehensive country list from countryCodes constant
+const countries: string[] = Array.from(
+  new Set(countryCodes.map((c) => c.country))
+).sort();
 
 const clerkAppearance = {
   layout: {
