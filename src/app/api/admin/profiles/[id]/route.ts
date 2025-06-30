@@ -4,6 +4,7 @@ import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
 import type { Profile as AppProfile } from "@/types/profile";
+import { errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");

@@ -2,17 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 
-const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-
 export async function POST(req: NextRequest) {
   try {
+    const convex = getConvexClient();
+    if (!convex) {
+      return NextResponse.json(
+        { error: "Convex client not configured" },
+        { status: 500 },
+      );
+    }
+
     const { email, role, text, timestamp } = await req.json();
 
     if (!email || !role || !text || !timestamp) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest) {
         error:
           error instanceof Error ? error.message : "Failed to save message",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

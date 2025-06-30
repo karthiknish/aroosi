@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
+import { errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");

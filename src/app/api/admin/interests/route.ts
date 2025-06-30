@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { requireAdminToken } from "@/app/api/_utils/auth";
+import { errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   const adminCheck = requireAdminToken(req);

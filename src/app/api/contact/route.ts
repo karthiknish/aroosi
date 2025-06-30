@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { sendAdminNotification, sendUserNotification } from "@/lib/email";
+import { errorResponse } from "@/lib/apiResponse";
 import {
   contactFormAdminTemplate,
   contactFormUserAckTemplate,

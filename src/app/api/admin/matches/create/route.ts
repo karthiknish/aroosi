@@ -4,6 +4,7 @@ import { api } from "@convex/_generated/api";
 import { requireAdminToken } from "@/app/api/_utils/auth";
 import { Notifications } from "@/lib/notify";
 import type { Doc, Id } from "@convex/_generated/dataModel";
+import { errorResponse } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
   const adminCheck = requireAdminToken(req);
