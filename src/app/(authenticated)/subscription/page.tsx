@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SubscriptionCard } from "@/components/subscription/SubscriptionCard";
@@ -13,6 +13,20 @@ import {
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
 import { createCheckoutSession } from "@/lib/utils/stripeUtil";
+import { motion } from "framer-motion";
+import {
+  Crown,
+  Zap,
+  Shield,
+  MessageCircle,
+  Search,
+  Eye,
+  Rocket,
+  Check,
+  Sparkles,
+  Heart,
+  Star,
+} from "lucide-react";
 
 const pricingPlans = [
   {
@@ -21,11 +35,13 @@ const pricingPlans = [
     price: "£14.99",
     billing: "per month",
     description: "Perfect for active users",
+    icon: Crown,
+    gradient: "bg-gradient-to-br from-purple-600 to-pink-600",
     features: [
-      "Unlimited messaging",
-      "Advanced search filters",
-      "Priority customer support",
-      "Enhanced profile visibility",
+      { icon: MessageCircle, text: "Unlimited messaging" },
+      { icon: Search, text: "Advanced search filters" },
+      { icon: Shield, text: "Priority customer support" },
+      { icon: Zap, text: "Enhanced profile visibility" },
     ],
     popular: false,
   },
@@ -35,13 +51,15 @@ const pricingPlans = [
     price: "£39.99",
     billing: "per month",
     description: "Maximum visibility and features",
+    icon: Rocket,
+    gradient: "bg-gradient-to-br from-pink-600 to-rose-600",
     features: [
-      "All Premium features",
-      "Profile boost (5 per month)",
-      "See who viewed your profile",
-      "Spotlight badge",
-      "Unlimited voice messages",
-      "Priority matching",
+      { icon: Crown, text: "All Premium features" },
+      { icon: Rocket, text: "Profile boost (5 per month)" },
+      { icon: Eye, text: "See who viewed your profile" },
+      { icon: Star, text: "Spotlight badge" },
+      { icon: MessageCircle, text: "Unlimited voice messages" },
+      { icon: Heart, text: "Priority matching" },
     ],
     popular: true,
   },
@@ -50,10 +68,10 @@ const pricingPlans = [
 export default function SubscriptionPage() {
   const { token } = useAuthContext();
   const { cancel, restore, isLoading } = useSubscriptionActions(
-    token || undefined
+    token || undefined,
   );
   const { status, isPremium, isPremiumPlus } = useSubscriptionGuard(
-    token || undefined
+    token || undefined,
   );
   const router = useRouter();
 
@@ -78,7 +96,7 @@ export default function SubscriptionPage() {
   const handleCancel = () => {
     if (
       confirm(
-        "Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period."
+        "Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.",
       )
     ) {
       cancel();
@@ -90,162 +108,264 @@ export default function SubscriptionPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Subscription Management
-        </h1>
-        <p className="text-gray-600">
-          Manage your subscription and view usage statistics
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-12"
+        >
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            Subscription Management
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Unlock premium features and find your perfect match faster
+          </p>
+        </motion.div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Current Subscription */}
-        <div className="lg:col-span-2 space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Current Subscription</h2>
-            <SubscriptionCard
-              onUpgrade={handleUpgrade}
-              onCancel={handleCancel}
-              token={token || undefined}
-            />
-          </div>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Current Subscription & Usage */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-2 space-y-6"
+          >
+            {/* Current Subscription Card */}
+            <Card className="overflow-hidden shadow-lg border-0">
+              <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-1">
+                <CardHeader className="bg-white rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <Crown className="h-5 w-5 text-pink-500" />
+                    Current Subscription
+                  </CardTitle>
+                </CardHeader>
+              </div>
+              <CardContent className="p-6">
+                <SubscriptionCard
+                  onUpgrade={handleUpgrade}
+                  onCancel={handleCancel}
+                  token={token || undefined}
+                />
+              </CardContent>
+            </Card>
 
-          {/* Usage Statistics */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Usage Statistics</h2>
-            <UsageCard token={token || undefined} />
-          </div>
+            {/* Usage Statistics */}
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Zap className="h-5 w-5 text-purple-500" />
+                  Usage Statistics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <UsageCard token={token || undefined} />
+              </CardContent>
+            </Card>
 
-          {/* Quick Actions */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button
-                onClick={handleRestore}
-                variant="outline"
-                disabled={isLoading}
-              >
-                Restore Purchases
-              </Button>
+            {/* Quick Actions */}
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Sparkles className="h-5 w-5 text-pink-500" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button
+                    onClick={handleRestore}
+                    variant="outline"
+                    disabled={isLoading}
+                    className="border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                  >
+                    Restore Purchases
+                  </Button>
 
-              <Button onClick={() => router.push("/pricing")} variant="outline">
-                View All Plans
-              </Button>
+                  <Button
+                    onClick={() => router.push("/pricing")}
+                    variant="outline"
+                    className="border-pink-200 hover:bg-pink-50 hover:border-pink-300 transition-colors"
+                  >
+                    View All Plans
+                  </Button>
 
-              {isPremium && (
-                <Button
-                  onClick={handleCancel}
-                  variant="outline"
-                  className="text-red-600 border-red-600 hover:bg-red-50"
-                  disabled={isLoading}
-                >
-                  Cancel Subscription
-                </Button>
-              )}
-            </div>
-          </Card>
-        </div>
+                  {(isPremium || isPremiumPlus) && (
+                    <Button
+                      onClick={handleCancel}
+                      variant="outline"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors sm:col-span-2"
+                      disabled={isLoading}
+                    >
+                      Cancel Subscription
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-        {/* Upgrade Options */}
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Available Plans</h2>
+          {/* Upgrade Options */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-6"
+          >
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Available Plans
+            </h2>
+
             <div className="space-y-4">
-              {pricingPlans.map((plan) => {
+              {pricingPlans.map((plan, index) => {
                 const isCurrentPlan = status?.plan === plan.id;
                 const canUpgrade =
-                  (plan.id === "premium" && !isPremium) ||
+                  (plan.id === "premium" && !isPremium && !isPremiumPlus) ||
                   (plan.id === "premiumPlus" && !isPremiumPlus);
+                const Icon = plan.icon;
 
                 return (
-                  <Card
+                  <motion.div
                     key={plan.id}
-                    className={`p-6 relative ${plan.popular ? "border-blue-500" : ""}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + index * 0.1 }}
                   >
-                    {plan.popular && (
-                      <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500">
-                        Most Popular
-                      </Badge>
-                    )}
+                    <Card
+                      className={`relative overflow-hidden transition-all duration-300 hover:shadow-xl ${
+                        plan.popular ? "ring-2 ring-pink-500 ring-offset-2" : ""
+                      } ${isCurrentPlan ? "bg-gradient-to-br from-green-50 to-emerald-50" : ""}`}
+                    >
+                      {plan.popular && (
+                        <div className="absolute -top-1 -right-8 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold px-8 py-1 transform rotate-12">
+                          POPULAR
+                        </div>
+                      )}
 
-                    {isCurrentPlan && (
-                      <Badge className="absolute -top-2 right-4 bg-green-500">
-                        Current Plan
-                      </Badge>
-                    )}
+                      {isCurrentPlan && (
+                        <Badge className="absolute top-4 left-4 bg-green-500 hover:bg-green-600">
+                          <Check className="h-3 w-3 mr-1" />
+                          Current Plan
+                        </Badge>
+                      )}
 
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold">{plan.name}</h3>
-                      <div className="text-2xl font-bold text-blue-600 mb-1">
-                        {plan.price}
-                        <span className="text-sm font-normal text-gray-600">
-                          /{plan.billing}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {plan.description}
-                      </p>
-                    </div>
+                      <CardContent className="p-6">
+                        <div className="text-center mb-6">
+                          <div
+                            className={`inline-flex p-3 rounded-full ${plan.gradient} mb-4`}
+                          >
+                            <Icon className="h-8 w-8 text-white" />
+                          </div>
+                          <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                            {plan.name}
+                          </h3>
+                          <div className="flex items-baseline justify-center gap-1 mb-2">
+                            <span className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+                              {plan.price}
+                            </span>
+                            <span className="text-gray-500 text-sm">
+                              /{plan.billing}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {plan.description}
+                          </p>
+                        </div>
 
-                    <ul className="space-y-2 mb-6">
-                      {plan.features.map((feature, index) => (
-                        <li
-                          key={index}
-                          className="text-sm flex items-center gap-2"
-                        >
-                          <span className="text-green-500">✓</span>
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
+                        <ul className="space-y-3 mb-6">
+                          {plan.features.map((feature, idx) => {
+                            const FeatureIcon = feature.icon;
+                            return (
+                              <li
+                                key={idx}
+                                className="flex items-start gap-3 text-sm"
+                              >
+                                <div className="flex-shrink-0 mt-0.5">
+                                  <FeatureIcon className="h-4 w-4 text-pink-500" />
+                                </div>
+                                <span className="text-gray-700">
+                                  {feature.text}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
 
-                    {canUpgrade && (
-                      <Button
-                        onClick={() =>
-                          handleUpgrade(plan.id as "premium" | "premiumPlus")
-                        }
-                        className="w-full"
-                        disabled={isLoading}
-                      >
-                        Upgrade to {plan.name}
-                      </Button>
-                    )}
+                        {canUpgrade && (
+                          <Button
+                            onClick={() =>
+                              handleUpgrade(
+                                plan.id as "premium" | "premiumPlus",
+                              )
+                            }
+                            className={`w-full ${plan.gradient} text-white hover:opacity-90 transition-opacity`}
+                            disabled={isLoading}
+                          >
+                            Upgrade to {plan.name}
+                          </Button>
+                        )}
 
-                    {isCurrentPlan && (
-                      <div className="text-center text-sm text-green-600 font-medium">
-                        ✓ Your current plan
-                      </div>
-                    )}
-                  </Card>
+                        {isCurrentPlan && (
+                          <div className="text-center">
+                            <Badge
+                              variant="secondary"
+                              className="bg-green-100 text-green-700"
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Active
+                            </Badge>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 );
               })}
             </div>
-          </div>
 
-          {/* Benefits Card */}
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-            <h3 className="font-semibold mb-3">Why Upgrade?</h3>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <span className="text-blue-500">💬</span>
-                Send unlimited messages
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-blue-500">🔍</span>
-                Use advanced search filters
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-blue-500">⭐</span>
-                Boost your profile visibility
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-blue-500">👁️</span>
-                See who viewed your profile
-              </li>
-            </ul>
-          </Card>
+            {/* Benefits Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card className="bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 border-0 shadow-lg">
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
+                    <Heart className="h-5 w-5 text-pink-500" />
+                    Why Upgrade?
+                  </h3>
+                  <ul className="space-y-3 text-sm">
+                    <li className="flex items-start gap-3">
+                      <MessageCircle className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">
+                        Connect with unlimited matches through messaging
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Search className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">
+                        Find your perfect match with advanced filters
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Rocket className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">
+                        Boost your profile to get 10x more visibility
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <Eye className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">
+                        Know who's interested with profile view tracking
+                      </span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
         </div>
       </div>
     </div>
