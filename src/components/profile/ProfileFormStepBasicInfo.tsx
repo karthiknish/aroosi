@@ -2,7 +2,12 @@ import React from "react";
 import { Controller } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { FormField, FormDateField, FormSelectField } from "./ProfileFormFields";
+import {
+  FormField,
+  FormDateField,
+  FormSelectField,
+  FormPhoneField,
+} from "./ProfileFormFields";
 import type { ProfileFormValues } from "@/types/profile";
 
 type Props = {
@@ -81,11 +86,11 @@ const ProfileFormStepBasicInfo: React.FC<Props> = ({
         />
       </div>
     </div>
-    <FormField
+    <FormPhoneField
       name="phoneNumber"
       label="Phone Number"
       form={form}
-      placeholder="e.g., +44 7123 456789"
+      placeholder="7123 456789"
       isRequired
     />
   </>

@@ -7,6 +7,7 @@ import type { ProfileFormValues } from "@/types/profile";
 import {
   FormField,
   FormDateField,
+  FormPhoneField,
 } from "@/components/profile/ProfileFormFields";
 import {
   FormItem,
@@ -79,7 +80,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                         "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md",
                         field.value === option.value
                           ? "border-[#BFA67A] bg-[#BFA67A]/10 shadow-md"
-                          : "border-gray-200 hover:border-[#BFA67A]/50"
+                          : "border-gray-200 hover:border-[#BFA67A]/50",
                       )}
                     >
                       <span className="text-2xl mb-2">{option.icon}</span>
@@ -88,7 +89,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                           "text-sm font-medium",
                           field.value === option.value
                             ? "text-[#BFA67A]"
-                            : "text-gray-700"
+                            : "text-gray-700",
                         )}
                       >
                         {option.label}
@@ -121,7 +122,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
           transition={{ delay: 0.2 }}
           className="space-y-3"
         >
-          <FormField
+          <FormPhoneField
             name="phoneNumber"
             label="Phone Number"
             form={form}
@@ -171,7 +172,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                           "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md",
                           field.value === option.value
                             ? "border-[#BFA67A] bg-[#BFA67A]/10 shadow-md"
-                            : "border-gray-200 hover:border-[#BFA67A]/50"
+                            : "border-gray-200 hover:border-[#BFA67A]/50",
                         )}
                       >
                         <span className="text-2xl mb-2">{option.icon}</span>
@@ -180,7 +181,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                             "text-sm font-medium",
                             field.value === option.value
                               ? "text-[#BFA67A]"
-                              : "text-gray-700"
+                              : "text-gray-700",
                           )}
                         >
                           {option.label}

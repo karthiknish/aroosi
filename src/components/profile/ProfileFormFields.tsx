@@ -23,6 +23,7 @@ import type { UseFormReturn } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays } from "lucide-react";
 import { useState } from "react";
+import { PhoneInput } from "@/components/ui/phone-input";
 // Shared alias: form handles a *partial* profile during multi-step wizards
 type UseFormType = UseFormReturn<Partial<ProfileFormValues>>;
 
@@ -301,6 +302,60 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
               </Popover>
             );
           }}
+        />
+      </div>
+      {description && (
+        <p className="text-xs text-gray-500 mt-1">{description}</p>
+      )}
+      {errors[name] && (
+        <p className="text-sm text-red-600 mt-1">
+          {errors[name]?.message as string}
+        </p>
+      )}
+    </div>
+  );
+};
+
+interface FormPhoneFieldProps {
+  name: keyof ProfileFormValues;
+  label: string;
+  form: UseFormType;
+  placeholder?: string;
+  description?: string;
+  isRequired?: boolean;
+}
+
+export const FormPhoneField: React.FC<FormPhoneFieldProps> = ({
+  name,
+  label,
+  form,
+  placeholder = "Phone number",
+  description,
+  isRequired,
+}) => {
+  const {
+    control,
+    formState: { errors },
+  } = form;
+
+  return (
+    <div>
+      <Label htmlFor={String(name)}>
+        {label} {isRequired && <span className="text-primary">*</span>}
+      </Label>
+      <div className="mt-1">
+        <Controller
+          control={control}
+          name={name as keyof ProfileFormValues}
+          render={({ field }) => (
+            <PhoneInput
+              value={field.value as string}
+              onChange={field.onChange}
+              placeholder={placeholder}
+              disabled={form.formState.isSubmitting}
+              error={!!errors[name]}
+            />
+          )}
         />
       </div>
       {description && (
