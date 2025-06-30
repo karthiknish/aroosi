@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 
 export function useOnboardingData(): { hasOnboardingData: boolean } {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded } = useAuthContext();
   const router = useRouter();
   const [hasOnboardingData, setHasOnboardingData] = useState<boolean>(false);
 
@@ -30,7 +30,7 @@ export function useOnboardingData(): { hasOnboardingData: boolean } {
           JSON.stringify({
             ...data,
             fromHomePage: true,
-          })
+          }),
         );
 
         // Clear the original onboarding data

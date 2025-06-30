@@ -29,7 +29,6 @@ import {
   ETHNICITY_OPTIONS,
 } from "@/lib/constants/languages";
 import { Textarea } from "@/components/ui/textarea";
-import { useUser } from "@clerk/nextjs";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
