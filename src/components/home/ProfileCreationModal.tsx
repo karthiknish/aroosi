@@ -38,6 +38,7 @@ import {
 import { useRouter } from "next/navigation";
 import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import type { ImageType } from "@/types/image";
+import { cmToFeetInches } from "@/lib/utils/height";
 
 interface ProfileData {
   profileFor: string;
@@ -605,28 +606,21 @@ export function ProfileCreationModal({
                       >
                         Height
                       </Label>
-                      <Select
+                      <SearchableSelect
+                        options={Array.from(
+                          { length: 198 - 137 + 1 },
+                          (_, i) => {
+                            const cm = 137 + i;
+                            return {
+                              value: String(cm),
+                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
+                            };
+                          }
+                        )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
-                      >
-                        <SelectTrigger id="height" className="w-full bg-white">
-                          <SelectValue placeholder="Select height..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          {[...Array(37)].map((_, i) => {
-                            const feet = 4 + Math.floor(i / 12);
-                            const inches = i % 12;
-                            return (
-                              <SelectItem
-                                key={i}
-                                value={`${feet}&apos;${inches}&quot;`}
-                              >
-                                {feet}&apos;{inches}&quot;
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Select height"
+                      />
                     </div>
                     <div>
                       <Label

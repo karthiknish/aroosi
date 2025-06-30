@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Ruler } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { cmToFeetInches } from "@/lib/utils/height";
 import type { ProfileFormValues } from "@/types/profile";
 import {
@@ -38,6 +38,16 @@ const profileForOptions = [
 
 export default function EnhancedBasicInfoStep({ form }: Props) {
   const { control } = form;
+
+  const heightOptions = React.useMemo(() => {
+    return Array.from({ length: 198 - 137 + 1 }, (_, i) => {
+      const cm = 137 + i;
+      return {
+        value: String(cm),
+        label: `${cmToFeetInches(cm)} (${cm} cm)`,
+      };
+    });
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -80,7 +90,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                         "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md",
                         field.value === option.value
                           ? "border-[#BFA67A] bg-[#BFA67A]/10 shadow-md"
-                          : "border-gray-200 hover:border-[#BFA67A]/50",
+                          : "border-gray-200 hover:border-[#BFA67A]/50"
                       )}
                     >
                       <span className="text-2xl mb-2">{option.icon}</span>
@@ -89,7 +99,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                           "text-sm font-medium",
                           field.value === option.value
                             ? "text-[#BFA67A]"
-                            : "text-gray-700",
+                            : "text-gray-700"
                         )}
                       >
                         {option.label}
@@ -172,7 +182,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                           "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md",
                           field.value === option.value
                             ? "border-[#BFA67A] bg-[#BFA67A]/10 shadow-md"
-                            : "border-gray-200 hover:border-[#BFA67A]/50",
+                            : "border-gray-200 hover:border-[#BFA67A]/50"
                         )}
                       >
                         <span className="text-2xl mb-2">{option.icon}</span>
@@ -181,7 +191,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                             "text-sm font-medium",
                             field.value === option.value
                               ? "text-[#BFA67A]"
-                              : "text-gray-700",
+                              : "text-gray-700"
                           )}
                         >
                           {option.label}
@@ -197,7 +207,7 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
         </motion.div>
       </div>
 
-      {/* Height Section */}
+      {/* Height Section (SearchableSelect) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -209,9 +219,6 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
           name="height"
           rules={{ required: "Height is required" }}
           render={({ field }) => {
-            const numVal = Number(field.value);
-            const safeNumVal =
-              !isNaN(numVal) && numVal >= 137 && numVal <= 198 ? numVal : 170;
             return (
               <FormItem>
                 <FormLabel>
@@ -221,55 +228,12 @@ export default function EnhancedBasicInfoStep({ form }: Props) {
                   </span>
                 </FormLabel>
                 <FormControl>
-                  <div className="space-y-6">
-                    {/* Height Display */}
-                    <div className="text-center">
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm border border-purple-200">
-                        <Ruler className="w-5 h-5 text-purple-500" />
-                        <span className="text-2xl font-bold text-purple-700">
-                          {!isNaN(numVal) && numVal >= 137 && numVal <= 198
-                            ? cmToFeetInches(numVal)
-                            : "Select height"}
-                        </span>
-                        <span className="text-lg text-purple-600">
-                          {!isNaN(numVal) &&
-                            numVal >= 137 &&
-                            numVal <= 198 &&
-                            `(${numVal} cm)`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Slider */}
-                    <div className="space-y-4">
-                      <Slider
-                        value={[safeNumVal]}
-                        onValueChange={([val]: [number]) => {
-                          field.onChange(String(val));
-                        }}
-                        min={137}
-                        max={198}
-                        step={1}
-                        className="w-full"
-                      />
-
-                      {/* Height Range Labels */}
-                      <div className="flex justify-between text-sm text-gray-500">
-                        <div className="text-center">
-                          <div className="font-medium">4&apos;6&quot;</div>
-                          <div className="text-xs">137 cm</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-medium">5&apos;6&quot;</div>
-                          <div className="text-xs">168 cm</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-medium">6&apos;6&quot;</div>
-                          <div className="text-xs">198 cm</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <SearchableSelect
+                    options={heightOptions}
+                    value={field.value as string}
+                    onValueChange={field.onChange}
+                    placeholder="Select height"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
