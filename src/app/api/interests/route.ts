@@ -56,9 +56,6 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     let fromUserIdConvex: Id<"users">;
 
     {
-      if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-        return errorResponse("Interest service temporarily unavailable", 503);
-      }
 
       const convex = getConvexClient();
       if (!convex) return errorResponse("Convex client not configured", 500);
@@ -208,9 +205,6 @@ export async function GET(req: NextRequest) {
     const userIdParam = searchParams.get("userId");
 
     // Initialize Convex client (creates 'convex')
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      return errorResponse("Interest service temporarily unavailable", 503);
-    }
 
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);

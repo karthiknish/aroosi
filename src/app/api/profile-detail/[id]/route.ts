@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
+import { errorResponse } from "@/lib/apiResponse";
 
 /**
  * Extracts and validates the JWT token from the request headers
  */
-function getTokenFromRequest(req: NextRequest): { token: string | null; error?: string } {
+function getTokenFromRequest(req: NextRequest): {
+  token: string | null;
+  error?: string;
+} {
   try {
     const authHeader = req.headers.get("authorization");
 
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest) {
           details: tokenError || "Invalid or missing token",
           timestamp: new Date().toISOString(),
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -53,7 +57,7 @@ export async function GET(req: NextRequest) {
     if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
       return NextResponse.json(
         { error: "Server configuration error" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -75,7 +79,7 @@ export async function GET(req: NextRequest) {
             details: "The user ID is missing from the URL",
             path: url.pathname,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -136,7 +140,7 @@ export async function GET(req: NextRequest) {
           {
             status: isAuthError ? 401 : 500,
             headers: { "Content-Type": "application/json" },
-          }
+          },
         );
       }
     } catch (convexError) {
@@ -155,7 +159,7 @@ export async function GET(req: NextRequest) {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
   } catch (error) {
@@ -174,7 +178,7 @@ export async function GET(req: NextRequest) {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      }
+      },
     );
   }
 }

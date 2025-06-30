@@ -21,11 +21,6 @@ export async function GET(req: NextRequest) {
       { success: false, error: "Missing params" },
       { status: 400 },
     );
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL)
-    return NextResponse.json(
-      { success: false, error: "Server" },
-      { status: 500 },
-    );
   const convex = getConvexClient();
   if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);

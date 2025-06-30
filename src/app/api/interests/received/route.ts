@@ -42,10 +42,6 @@ export async function GET(req: NextRequest) {
       return errorResponse("Unauthorized: can only view your own interests", 403);
     }
 
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      return errorResponse("Interest service temporarily unavailable", 503);
-    }
-
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
     if (!convex) {

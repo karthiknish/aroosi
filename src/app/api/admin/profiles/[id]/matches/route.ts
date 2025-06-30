@@ -9,12 +9,6 @@ export async function GET(req: NextRequest) {
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
   const { token } = adminCheck;
 
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL)
-    return NextResponse.json(
-      { success: false, error: "Server config" },
-      { status: 500 }
-    );
-
   const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
