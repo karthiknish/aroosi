@@ -30,6 +30,21 @@ import type { SubscriptionPlan } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useProfileContext } from "@/contexts/ProfileContext";
 
+function formatTimeRemaining(boostedUntil: number): string {
+  const now = Date.now();
+  const timeLeft = boostedUntil - now;
+
+  if (timeLeft <= 0) return "";
+
+  const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m remaining`;
+  }
+  return `${minutes}m remaining`;
+}
+
 export default function PremiumSettingsPage() {
   const { profile, token, refreshProfile } = useAuthContext();
   const [hideProfile, setHideProfile] = useState<boolean>(
@@ -140,13 +155,20 @@ export default function PremiumSettingsPage() {
     },
   ];
 
+  const isCurrentlyBoosted =
+    profile.boostedUntil && profile.boostedUntil > Date.now();
+
   const premiumPlusFeatures = [
     {
       icon: <Zap className="w-5 h-5 text-primary-dark" />,
       title: "Profile Boost",
-      description: `Boost your profile visibility (${profile.boostsRemaining || 5} remaining this month)`,
+      description: isCurrentlyBoosted
+        ? `Profile is boosted! (${formatTimeRemaining(profile.boostedUntil!)})`
+        : `Boost your profile visibility (${profile.boostsRemaining || 5} remaining this month)`,
       available: isPremiumPlus,
-      action: () => handleNavigate("/profile"),
+      action: isCurrentlyBoosted ? undefined : handleBoost,
+      isBoost: true,
+      isBoosted: isCurrentlyBoosted,
     },
     {
       icon: <Eye className="w-5 h-5 text-primary-dark" />,
