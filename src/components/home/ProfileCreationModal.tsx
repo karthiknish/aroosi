@@ -156,7 +156,7 @@ const stepSchemas = [
 
 // Build comprehensive country list from countryCodes constant
 const countries: string[] = Array.from(
-  new Set(countryCodes.map((c) => c.country))
+  new Set(countryCodes.map((c) => c.country)),
 ).sort();
 
 const clerkAppearance = {
@@ -234,125 +234,11 @@ export function ProfileCreationModal({
   const { user } = useUser();
   const [profileSubmitted, setProfileSubmitted] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
-
-  useEffect(() => {
-    if (isOpen) {
-      localStorage.setItem("pendingProfileData", JSON.stringify(formData));
-    }
-  }, [formData, isOpen]);
-
-  useEffect(() => {
-    const saveProfileIfNeeded = async () => {
-      if (isSignedIn && displayStep === 7 && !profileSubmitted) {
-        try {
-          const token = contextToken ?? (await authCtxGetToken());
-          if (!token) return;
-
-          // 1) Upload any locally stored images (ids starting with "local-")
-          const uploadedImageIds: string[] = [];
-
-          try {
-            for (const img of pendingImages) {
-              if (!img.id.startsWith("local-")) {
-                uploadedImageIds.push(img.id);
-                continue;
-              }
-
-              // Reconstruct File from blob URL
-              const blobResp = await fetch(img.url);
-              const blob = await blobResp.blob();
-              const fileName = img.fileName || `photo_${Date.now()}.jpg`;
-              const fileType = blob.type || "image/jpeg";
-
-              // a) get upload URL
-              const uploadUrl = await getImageUploadUrl(token);
-
-              // b) upload file to storage
-              const storageResp = await fetch(uploadUrl, {
-                method: "POST",
-                headers: { "Content-Type": fileType },
-                body: blob,
-              });
-
-              if (!storageResp.ok) {
-                console.error("Failed uploading image blob");
-                continue;
-              }
-
-              const storageJson = await storageResp.json().catch(() => null);
-              const storageId =
-                storageJson?.storageId ||
-                (typeof storageJson === "string" ? storageJson : null);
-              if (!storageId) {
-                console.error("Invalid storage response", storageJson);
-                continue;
-              }
-
-              // c) save metadata
-              try {
-                await saveImageMeta({
-                  token,
-                  userId: user?.id || "",
-                  storageId,
-                  fileName,
-                  contentType: fileType,
-                  fileSize: blob.size,
-                });
-              } catch (err) {
-                console.error("Failed to save image meta", err);
-              }
-
-              uploadedImageIds.push(storageId);
-            }
-          } catch (imgErr) {
-            console.error("Image upload error", imgErr);
-          }
-
-          // Merge uploaded image IDs into profile values
-          const { profileFor, ...rest } = formData;
-          void profileFor;
-          const profileValues = {
-            ...rest,
-            profileImageIds: uploadedImageIds.length
-              ? uploadedImageIds
-              : rest.profileImageIds,
-          } as typeof rest;
-
-          const result = await submitProfile(token, profileValues, "create");
-          if (result.success) {
-            try {
-              await getCurrentUserWithProfile(token);
-            } catch {}
-
-            localStorage.removeItem("pendingProfileData");
-            setProfileSubmitted(true);
-
-            // redirect to success page after full profile creation
-            router.push("/success");
-          } else {
-            console.error("Failed to submit profile:", result.error);
-          }
-        } catch (err) {
-          console.error("Error submitting profile:", err);
-        }
-      }
-    };
-    void saveProfileIfNeeded();
-  }, [
-    isSignedIn,
-    displayStep,
-    profileSubmitted,
-    formData,
-    contextToken,
-    authCtxGetToken,
-    router,
-    pendingImages,
-    user,
-  ]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (
     field: keyof ProfileCreationData,
-    value: string | number | string[]
+    value: string | number | string[],
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -374,11 +260,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string"
+        (img): img is ImageType => typeof img !== "string",
       );
       setPendingImages(imgObjects);
     },
-    [formData.profileImageIds]
+    [formData.profileImageIds],
   );
 
   const validateStep = () => {
@@ -590,7 +476,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          }
+                          },
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -905,7 +791,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value)
+                              Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -925,7 +811,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value)
+                                : Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -952,7 +838,7 @@ export function ProfileCreationModal({
                             e.target.value
                               .split(",")
                               .map((s) => s.trim())
-                              .filter(Boolean)
+                              .filter(Boolean),
                           )
                         }
                         placeholder="e.g. London, Kabul"
