@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { deleteProfile } from "@/lib/utils/profileApi";
 import { useAuthContext } from "@/components/AuthProvider";
+import ProfileBoostButton from "@/components/profile/ProfileBoostButton";
 
 // Re-export types for backward compatibility
 type ApiImage = unknown;
@@ -156,7 +157,7 @@ const ProfileView: FC<ProfileViewProps> = ({
       const formattedImages = images.map(
         (
           img: string | { _id: string; url?: string; storageId?: string },
-          index: number
+          index: number,
         ) => {
           const imageId =
             typeof img === "string" ? img : img._id || `img-${index}`;
@@ -182,7 +183,7 @@ const ProfileView: FC<ProfileViewProps> = ({
             storageId:
               typeof img === "string" ? img : img.storageId || img._id || "",
           };
-        }
+        },
       );
       return formattedImages;
     }
@@ -232,7 +233,7 @@ const ProfileView: FC<ProfileViewProps> = ({
     if (profileData && profileData.isOnboardingComplete !== undefined) {
       localStorage.setItem(
         "onboarding",
-        profileData.isOnboardingComplete ? "complete" : "incomplete"
+        profileData.isOnboardingComplete ? "complete" : "incomplete",
       );
     }
   }
@@ -262,7 +263,8 @@ const ProfileView: FC<ProfileViewProps> = ({
                 View and manage your information.
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <ProfileBoostButton />
               <Button
                 onClick={() => {
                   refreshProfileLocalStorage();
@@ -368,7 +370,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                     value={
                       profileData.dateOfBirth
                         ? new Date(profileData.dateOfBirth).toLocaleDateString(
-                            "en-GB"
+                            "en-GB",
                           )
                         : "-"
                     }
@@ -407,7 +409,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                     value={
                       userConvexData?._creationTime
                         ? new Date(
-                            userConvexData._creationTime
+                            userConvexData._creationTime,
                           ).toLocaleDateString()
                         : "-"
                     }
