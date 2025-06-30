@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { errorResponse } from "@/lib/apiResponse";
 
 function getToken(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -18,15 +19,15 @@ export async function GET(req: NextRequest) {
   if (!userId || !token)
     return NextResponse.json(
       { success: false, error: "Missing params" },
-      { status: 400 }
+      { status: 400 },
     );
   if (!process.env.NEXT_PUBLIC_CONVEX_URL)
     return NextResponse.json(
       { success: false, error: "Server" },
-      { status: 500 }
+      { status: 500 },
     );
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   try {
     const counts = await convex.query(api.messages.getUnreadCountsForUser, {
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json(
       { success: false, error: "Failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
