@@ -76,9 +76,9 @@ export function PhoneInput({
       >
         <SelectTrigger
           className={cn(
-            "w-[140px] flex-shrink-0",
+            "w-[140px] flex-shrink-0 bg-white",
             error &&
-              "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
+              "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
           )}
         >
           <SelectValue>
@@ -116,7 +116,7 @@ export function PhoneInput({
         className={cn(
           "flex-1",
           error &&
-            "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
+            "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
         )}
       />
     </div>

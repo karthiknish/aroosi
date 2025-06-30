@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
 } from "@/lib/profile/adminProfileApi";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-
+import { PhoneInput } from "@/components/ui/phone-input";
 
 // Zod schema matches ProfileFormValues (allow string for enums for compatibility)
 const profileSchema = z.object({
@@ -27,7 +27,12 @@ const profileSchema = z.object({
   gender: z.string(),
   city: z.string().min(1, "City is required"),
   country: z.string().min(1, "Country is required"),
-  phoneNumber: z.string().min(1, "Phone number is required"),
+  phoneNumber: z
+    .string()
+    .regex(
+      /^\+\d{1,4}\s?\d{6,14}$/i,
+      "Enter a valid phone number with country code",
+    ),
   aboutMe: z.string().min(1, "About Me is required"),
   height: z.string().min(1, "Height is required"),
   maritalStatus: z.string(),
@@ -144,7 +149,7 @@ export default function ProfileEditForm({
       setImages((prev) => [...prev, img]);
     } catch (err: unknown) {
       setImageError(
-        isErrorWithMessage(err) ? err.message : "Failed to upload image"
+        isErrorWithMessage(err) ? err.message : "Failed to upload image",
       );
     } finally {
       setUploading(false);
@@ -158,11 +163,11 @@ export default function ProfileEditForm({
     try {
       await deleteAdminProfileImageById({ token, profileId, imageId });
       setImages((prev) =>
-        prev.filter((img) => (img.id ?? img.storageId) !== imageId)
+        prev.filter((img) => (img.id ?? img.storageId) !== imageId),
       );
     } catch (err: unknown) {
       setImageError(
-        isErrorWithMessage(err) ? err.message : "Failed to delete image"
+        isErrorWithMessage(err) ? err.message : "Failed to delete image",
       );
     }
   };
@@ -183,7 +188,7 @@ export default function ProfileEditForm({
         target = profiles.find((p) =>
           p.fullName
             .toLowerCase()
-            .includes(manualMatchName.trim().toLowerCase())
+            .includes(manualMatchName.trim().toLowerCase()),
         );
       }
       if (!target) throw new Error("No matching profile found");
@@ -337,10 +342,18 @@ export default function ProfileEditForm({
         </div>
         <div>
           <label className="block font-medium">Phone Number</label>
-          <input
-            {...register("phoneNumber")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Phone number"
+          <Controller
+            name="phoneNumber"
+            control={control}
+            render={({ field }) => (
+              <PhoneInput
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Phone number"
+                className="w-full"
+                error={!!errors.phoneNumber}
+              />
+            )}
           />
           {errors.phoneNumber && (
             <p className="text-red-600 text-sm">{errors.phoneNumber.message}</p>
@@ -603,9 +616,7 @@ export default function ProfileEditForm({
             <option value="sikh">Sikh</option>
           </select>
           {errors.religion && (
-            <p className="text-red-600 text-sm">
-              {errors.religion.message}
-            </p>
+            <p className="text-red-600 text-sm">{errors.religion.message}</p>
           )}
         </div>
 
@@ -631,9 +642,7 @@ export default function ProfileEditForm({
             <option value="punjabi">Punjabi</option>
           </select>
           {errors.ethnicity && (
-            <p className="text-red-600 text-sm">
-              {errors.ethnicity.message}
-            </p>
+            <p className="text-red-600 text-sm">{errors.ethnicity.message}</p>
           )}
         </div>
       </div>
