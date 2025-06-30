@@ -70,6 +70,22 @@ export default function PremiumSettingsPage() {
     }
   }
 
+  async function handleBoost() {
+    try {
+      setBoostLoading(true);
+      if (!token) throw new Error("No token");
+      const result = await boostProfile(token);
+      showSuccessToast(
+        `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`,
+      );
+      await refreshProfile();
+    } catch (error: unknown) {
+      showErrorToast(error, "Boost failed");
+    } finally {
+      setBoostLoading(false);
+    }
+  }
+
   const handleNavigate = (path: string) => {
     router.push(path);
   };
