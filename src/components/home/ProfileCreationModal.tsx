@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,13 +30,6 @@ import {
 } from "@/lib/constants/languages";
 import { Textarea } from "@/components/ui/textarea";
 import { useUser } from "@clerk/nextjs";
-import { useAuthContext } from "@/components/AuthProvider";
-import {
-  submitProfile,
-  getCurrentUserWithProfile,
-} from "@/lib/profile/userProfileApi";
-import { useRouter } from "next/navigation";
-import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
@@ -224,17 +217,8 @@ export function ProfileCreationModal({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const router = useRouter();
-  const {
-    token: contextToken,
-    isSignedIn,
-    getToken: authCtxGetToken,
-  } = useAuthContext();
-  const { user } = useUser();
-  const [profileSubmitted, setProfileSubmitted] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useUser();
 
   const handleInputChange = (
     field: keyof ProfileCreationData,
