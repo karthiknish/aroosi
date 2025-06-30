@@ -3,6 +3,7 @@ import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { requireUserToken } from "@/app/api/_utils/auth";
+import { errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (!userId) {
     return NextResponse.json(
       { success: false, error: "Missing userId parameter" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -22,12 +23,12 @@ export async function GET(req: NextRequest) {
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return NextResponse.json(
       { error: "Server configuration error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
 
   try {
@@ -51,11 +52,11 @@ export async function GET(req: NextRequest) {
           console.error(
             "[matches API] Error fetching profile for",
             match.userId,
-            e
+            e,
           );
         }
         return null;
-      })
+      }),
     );
     // Filter nulls and respond with flattened profile array
     return NextResponse.json(results.filter(Boolean), { status: 200 });
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
               : String(error)
             : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
