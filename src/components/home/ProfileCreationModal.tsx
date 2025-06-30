@@ -68,7 +68,7 @@ interface ProfileCreationData extends ProfileData {
   aboutMe: string;
   preferredGender: string;
   partnerPreferenceAgeMin: number;
-  partnerPreferenceAgeMax: number;
+  partnerPreferenceAgeMax?: number;
   partnerPreferenceCity: string[];
   profileImageIds?: string[];
 }
@@ -103,7 +103,7 @@ const profileSchema = z.object({
   aboutMe: z.string().min(10, "About Me is required"),
   preferredGender: z.string().min(1, "Preferred gender is required"),
   partnerPreferenceAgeMin: z.number().min(18, "Min age 18"),
-  partnerPreferenceAgeMax: z.number().max(99, "Max age 99"),
+  partnerPreferenceAgeMax: z.number().max(99, "Max age 99").optional(),
   partnerPreferenceCity: z.array(z.string()),
   profileImageIds: z.array(z.string()).optional(),
 });
@@ -218,7 +218,7 @@ export function ProfileCreationModal({
     aboutMe: initialData?.aboutMe || "",
     preferredGender: initialData?.preferredGender || "",
     partnerPreferenceAgeMin: initialData?.partnerPreferenceAgeMin || 18,
-    partnerPreferenceAgeMax: initialData?.partnerPreferenceAgeMax || 35,
+    partnerPreferenceAgeMax: initialData?.partnerPreferenceAgeMax,
     partnerPreferenceCity: initialData?.partnerPreferenceCity || [],
     profileImageIds: initialData?.profileImageIds || [],
   });
@@ -923,7 +923,9 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMax",
-                              Number(e.target.value)
+                              e.target.value === ""
+                                ? ""
+                                : Number(e.target.value)
                             )
                           }
                           className="w-20"
