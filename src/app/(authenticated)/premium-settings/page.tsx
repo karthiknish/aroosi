@@ -2,26 +2,48 @@
 import React, { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import { updateProfile } from "@/lib/utils/profileApi";
+import { updateProfile, boostProfile } from "@/lib/utils/profileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { Eye, Crown, Zap, Users, Filter, MessageCircle, Heart, BarChart } from "lucide-react";
+import {
+  Eye,
+  Crown,
+  Zap,
+  Users,
+  Filter,
+  MessageCircle,
+  Heart,
+  BarChart,
+  Rocket,
+  Clock,
+} from "lucide-react";
 import type { SubscriptionPlan } from "@/types/profile";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useProfileContext } from "@/contexts/ProfileContext";
 
 export default function PremiumSettingsPage() {
   const { profile, token, refreshProfile } = useAuthContext();
   const [hideProfile, setHideProfile] = useState<boolean>(
-    !!profile?.hideFromFreeUsers
+    !!profile?.hideFromFreeUsers,
   );
   const [saving, setSaving] = useState(false);
+  const [boostLoading, setBoostLoading] = useState(false);
   const router = useRouter();
 
   if (!profile) return null;
 
-  const isPremium = profile.subscriptionPlan === "premium" || profile.subscriptionPlan === "premiumPlus";
+  const isPremium =
+    profile.subscriptionPlan === "premium" ||
+    profile.subscriptionPlan === "premiumPlus";
   const isPremiumPlus = profile.subscriptionPlan === "premiumPlus";
 
   // Redirect free users
