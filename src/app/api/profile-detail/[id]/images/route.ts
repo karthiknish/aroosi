@@ -4,7 +4,7 @@ import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 
 // Add debug logging
-const debug = process.env.NODE_ENV === 'development';
+const debug = process.env.NODE_ENV === "development";
 
 function getTokenFromRequest(req: NextRequest): string | null {
   try {
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (debug) {
       console.log(
         `[${new Date().toISOString()}] [${requestId}] ${message}`,
-        data || ""
+        data || "",
       );
     }
   };
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       log("No valid token found");
       return NextResponse.json(
         { error: "Authorization token is required", requestId },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
           requestId,
           details: `URL path format should be /api/profile-detail/[id]/images`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,19 +83,17 @@ export async function GET(req: NextRequest) {
           requestId,
           details: "ID should only contain alphanumeric characters",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     log("Initializing Convex client");
-    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-    if (!convexUrl) {
-      const error = "Convex URL is not configured";
+    const convex = getConvexClient();
+    if (!convex) {
+      const error = "Convex client not configured";
       log(error);
       return NextResponse.json({ error, requestId }, { status: 500 });
     }
-
-    const convex = new ConvexHttpClient(convexUrl);
     convex.setAuth(token);
 
     log("Fetching profile details", { profileId: id });
@@ -151,7 +149,7 @@ export async function GET(req: NextRequest) {
             requestId,
             details: "The provided ID does not match any user or profile",
           },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -168,7 +166,7 @@ export async function GET(req: NextRequest) {
           userId: userId.toString(),
         });
         throw new Error(
-          `Failed to fetch images: ${queryError instanceof Error ? queryError.message : "Unknown error"}`
+          `Failed to fetch images: ${queryError instanceof Error ? queryError.message : "Unknown error"}`,
         );
       }
     } catch (error) {
@@ -179,7 +177,7 @@ export async function GET(req: NextRequest) {
           requestId,
           details: error instanceof Error ? error.message : "Unknown error",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -223,7 +221,7 @@ export async function GET(req: NextRequest) {
           "X-Request-ID": requestId,
           "X-Response-Time": `${duration}ms`,
         },
-      }
+      },
     );
   }
 }
