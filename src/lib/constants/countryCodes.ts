@@ -121,11 +121,8 @@ export function parsePhoneNumber(phoneNumber: string): {
 
 // Helper function to format phone number
 export function formatPhoneNumber(countryCode: string, number: string): string {
-  // Remove any existing country code from the number
-  const cleanNumber = number.replace(/^\+?\d{1,4}\s?/, "");
-
-  // Remove all non-digit characters
-  const digitsOnly = cleanNumber.replace(/\D/g, "");
+  // Remove all non-digit characters from the local part
+  const digitsOnly = number.replace(/\D/g, "");
 
   return `${countryCode} ${digitsOnly}`;
 }
