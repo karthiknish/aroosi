@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import type { SubscriptionPlan } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useProfileContext } from "@/contexts/ProfileContext";
 
 function formatTimeRemaining(boostedUntil: number): string {
   const now = Date.now();
@@ -52,7 +51,26 @@ export default function PremiumSettingsPage() {
   );
   const [saving, setSaving] = useState(false);
   const [boostLoading, setBoostLoading] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState("");
   const router = useRouter();
+
+  // Update time remaining every minute when boosted
+  useEffect(() => {
+    if (!profile?.boostedUntil) return;
+
+    const updateTime = () => {
+      if (profile.boostedUntil && profile.boostedUntil > Date.now()) {
+        setTimeRemaining(formatTimeRemaining(profile.boostedUntil));
+      } else {
+        setTimeRemaining("");
+      }
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [profile?.boostedUntil]);
 
   if (!profile) return null;
 
@@ -169,17 +187,17 @@ export default function PremiumSettingsPage() {
   const isCurrentlyBoosted =
     profile.boostedUntil && profile.boostedUntil > Date.now();
 
-  const premiumPlusFeatures = [
+  const premiumPlusFeatures: Feature[] = [
     {
       icon: <Zap className="w-5 h-5 text-primary-dark" />,
       title: "Profile Boost",
       description: isCurrentlyBoosted
-        ? `Profile is boosted! (${formatTimeRemaining(profile.boostedUntil!)})`
+        ? `Profile is boosted! (${timeRemaining || formatTimeRemaining(profile.boostedUntil!)})`
         : `Boost your profile visibility (${profile.boostsRemaining || 5} remaining this month)`,
       available: isPremiumPlus,
       action: isCurrentlyBoosted ? undefined : handleBoost,
       isBoost: true,
-      isBoosted: isCurrentlyBoosted,
+      isBoosted: !!isCurrentlyBoosted,
     },
     {
       icon: <Eye className="w-5 h-5 text-primary-dark" />,
@@ -375,10 +393,13 @@ export default function PremiumSettingsPage() {
                     {feature.available ? (
                       feature.isBoost ? (
                         feature.isBoosted ? (
-                          <Badge className="bg-pink-600 text-white flex items-center gap-1">
-                            <Zap className="h-3 w-3 fill-current" />
-                            Boosted
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-pink-600 text-white flex items-center gap-1">
+                              <Zap className="h-3 w-3 fill-current" />
+                              Boosted
+                            </Badge>
+                            <Clock className="h-4 w-4 text-gray-500" />
+                          </div>
                         ) : (
                           <Button
                             variant="default"
