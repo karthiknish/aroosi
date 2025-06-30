@@ -1,7 +1,7 @@
 // Admin API route for reordering profile images by profileId
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { requireAdminToken } from "@/app/api/_utils/auth";
 
@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
   const adminCheck = requireAdminToken(req);
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
   const { token } = adminCheck;
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   let body: Record<string, unknown>;
   try {

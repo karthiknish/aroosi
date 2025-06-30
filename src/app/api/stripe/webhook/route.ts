@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Notifications } from "@/lib/notify";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
@@ -119,7 +119,8 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+          const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
           
           await convex.action(api.users.stripeUpdateSubscription, {
             clerkId,
@@ -187,7 +188,8 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+          const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
           
           await convex.action(api.users.stripeUpdateSubscription, {
             clerkId,

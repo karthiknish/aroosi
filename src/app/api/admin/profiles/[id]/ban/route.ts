@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
 import type { Profile as AppProfile } from "@/types/profile";
@@ -11,7 +11,8 @@ export async function PUT(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   const url = new URL(req.url);
   const id = url.pathname.split("/").slice(-2, -1)[0]!; // get the [id] param from /profiles/[id]/ban

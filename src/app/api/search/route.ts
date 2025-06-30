@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
-const convexClient = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const convexClient = getConvexClient();
+    if (!convexClient) return errorResponse("Convex client not configured", 500);
 
 type Gender = "any" | "male" | "female" | "other";
 

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken, getAuthToken } from "@/app/api/_utils/auth";
@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
     const { token, userId } = authCheck;
     if (!userId) return errorResponse("User ID not found in token", 401);
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
     const userWithProfile = await convex.query(
       api.users.getCurrentUserWithProfile,
@@ -71,7 +72,8 @@ export async function PUT(request: NextRequest) {
         "[API /api/user/me] Calling fetchMutation with token and body"
       );
       // CHANGED: use updateProfile instead of updateCurrentUserProfile
-      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+      const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
       convex.setAuth(token);
       const updatedUser = await convex.mutation(api.users.updateProfile, body);
 

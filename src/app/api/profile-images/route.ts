@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
 
     // Get profile images for the user
@@ -37,7 +38,8 @@ export async function DELETE(req: NextRequest) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
 
     let body: { imageId?: string } = {};
@@ -66,7 +68,8 @@ export async function POST(req: NextRequest) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
 
     let body: {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 
 /**
@@ -57,7 +57,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
 
     try {
       // Set the auth token

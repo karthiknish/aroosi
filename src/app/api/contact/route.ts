@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { sendAdminNotification, sendUserNotification } from "@/lib/email";
 import {
   contactFormAdminTemplate,
@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   // Only admin can list contact submissions
   const result = await convex.query(api.contact.contactSubmissions, {});
@@ -44,7 +45,8 @@ export async function POST(req: NextRequest) {
       { status: 429 }
     );
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   // Do not set auth for public queries
   let body: Record<string, unknown>;
   try {

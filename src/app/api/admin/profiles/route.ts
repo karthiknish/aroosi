@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { requireAdminToken } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     if (!convex) {
       return errorResponse("Service temporarily unavailable", 503);
     }
@@ -96,7 +97,8 @@ export async function DELETE(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     if (!convex) {
       return errorResponse("Service temporarily unavailable", 503);
     }
@@ -171,7 +173,8 @@ export async function PUT(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     if (!convex) {
       return errorResponse("Service temporarily unavailable", 503);
     }

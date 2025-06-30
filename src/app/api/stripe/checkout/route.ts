@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
@@ -64,7 +64,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch user profile from Convex to pre-fill email and pass clerkId as metadata.
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
     const profile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,

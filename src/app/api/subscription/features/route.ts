@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
     const { token, userId } = authCheck;
     if (!userId) return errorResponse("User ID not found in token", 401);
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
 
     const profile = await convex.query(api.profiles.getProfileByUserId, {

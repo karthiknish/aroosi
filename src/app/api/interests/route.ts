@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
@@ -52,7 +52,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     }
 
     // Derive Convex internal user id from the auth token (Clerk id is not valid)
-    let convexClient: ConvexHttpClient;
+    let convexClient: ReturnType<typeof getConvexClient>;
     let fromUserIdConvex: Id<"users">;
 
     {
@@ -60,7 +60,8 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         return errorResponse("Interest service temporarily unavailable", 503);
       }
 
-      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+      const convex = getConvexClient();
+      if (!convex) return errorResponse("Convex client not configured", 500);
       convex.setAuth(token);
 
       let currentUserRecord;
@@ -107,7 +108,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         {
           fromUserId: fromUserIdConvex,
           toUserId: toUserId as Id<"users">,
-        }
+        },
       );
 
       // Validate result – Convex v0.16 may return the inserted id string
@@ -137,7 +138,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       }
 
       console.log(
-        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`
+        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`,
       );
 
       // Wrap normalised result in a standard envelope so the frontend has a consistent shape.
@@ -211,7 +212,8 @@ export async function GET(req: NextRequest) {
       return errorResponse("Interest service temporarily unavailable", 503);
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
 
     let currentUserRecord;

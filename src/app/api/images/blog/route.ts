@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 // POST /api/images/blog
@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
 
   // Call Convex mutation (admin guard happens server-side)
   try {
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
     const result = await convex.mutation(api.images.uploadBlogImage, {
       storageId,

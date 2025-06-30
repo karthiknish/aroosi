@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   // Public endpoint: do not require authentication
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   // Do not set auth for public queries
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "0", 10);
@@ -26,7 +27,8 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return errorResponse("Unauthorized", 401);
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   let body: unknown;
   try {
@@ -77,7 +79,8 @@ export async function DELETE(req: NextRequest) {
   if (!token) {
     return errorResponse("Unauthorized", 401);
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   let body: unknown;
   try {

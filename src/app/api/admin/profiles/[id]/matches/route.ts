@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { requireAdminToken } from "@/app/api/_utils/auth";
@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
 
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   try {
     const profileId = req.nextUrl.pathname.split("/").slice(-2)[0] as string;

@@ -218,7 +218,6 @@ export function ProfileCreationModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
-  const { user } = useUser();
 
   const handleInputChange = (
     field: keyof ProfileCreationData,

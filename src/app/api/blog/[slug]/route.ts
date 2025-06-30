@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
   if (entry.count > RATE_LIMIT_MAX) {
     return errorResponse("Too many requests. Please try again later.", 429);
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   // Do not set auth for public queries
   const url = new URL(req.url);
   const slug = url.pathname.split("/").pop()!;
@@ -39,7 +40,8 @@ export async function PUT(req: NextRequest) {
   if (!token) {
     return errorResponse("Unauthorized", 401);
   }
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = getConvexClient();
+    if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   let body: unknown;
   try {
