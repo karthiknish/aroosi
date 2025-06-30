@@ -45,7 +45,7 @@ export function SearchableSelect<T extends string>(
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white max-h-60 overflow-y-auto">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white">
         <div className="p-2">
           <Input
             placeholder="Search..."
@@ -53,7 +53,7 @@ export function SearchableSelect<T extends string>(
             onChange={(e) => setQuery(e.target.value)}
             className="mb-2"
           />
-          <div className="max-h-60 overflow-y-auto space-y-1">
+          <div className="max-h-72 overflow-y-auto space-y-1">
             {filtered.map((opt) => (
               <button
                 type="button"
