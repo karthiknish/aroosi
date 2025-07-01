@@ -16,7 +16,12 @@ export default function OAuthCallbackPage() {
     if (isSignedIn) {
       // Check if this is a popup window
       if (window.opener && !window.opener.closed) {
-        // Close the popup - the parent window will handle the rest
+        // Send message to parent window
+        window.opener.postMessage(
+          { type: "oauth-success", isSignedIn: true },
+          window.location.origin,
+        );
+        // Close the popup
         window.close();
         return;
       }
