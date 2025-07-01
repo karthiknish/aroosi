@@ -226,7 +226,7 @@ export default function PremiumSettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-rose-50">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <motion.div
@@ -235,7 +235,7 @@ export default function PremiumSettingsPage() {
           className="text-center mb-12"
         >
           <div className="flex items-center justify-center gap-3 mb-4">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-bold leading-[1.4] bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
               Premium Settings
             </h1>
             {getSubscriptionBadge(profile.subscriptionPlan as SubscriptionPlan)}
@@ -255,10 +255,10 @@ export default function PremiumSettingsPage() {
               transition={{ delay: 0.1 }}
             >
               <Card className="overflow-hidden shadow-lg border-0">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-1">
+                <div className="bg-gradient-to-r from-pink-600 to-rose-600 p-1">
                   <CardHeader className="bg-white rounded-t-lg">
                     <CardTitle className="flex items-center gap-2 text-xl">
-                      <Crown className="w-5 h-5 text-purple-600" />
+                      <Crown className="w-5 h-5 text-pink-600" />
                       Subscription Status
                     </CardTitle>
                     <CardDescription>
@@ -283,7 +283,7 @@ export default function PremiumSettingsPage() {
                     <Button
                       variant="outline"
                       onClick={() => handleNavigate("/subscription")}
-                      className="border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+                      className="border-pink-200 hover:bg-pink-50 hover:border-pink-300"
                     >
                       Manage Plan
                     </Button>
@@ -301,7 +301,7 @@ export default function PremiumSettingsPage() {
               <Card className="shadow-lg border-0">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-xl">
-                    <Crown className="w-5 h-5 text-purple-500" />
+                    <Crown className="w-5 h-5 text-pink-500" />
                     Premium Features
                   </CardTitle>
                   <CardDescription>
@@ -316,7 +316,7 @@ export default function PremiumSettingsPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + index * 0.05 }}
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg hover:shadow-md transition-shadow"
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-white rounded-full shadow-sm">
@@ -336,14 +336,14 @@ export default function PremiumSettingsPage() {
                             <Switch
                               checked={hideProfile}
                               onCheckedChange={setHideProfile}
-                              className="data-[state=checked]:bg-purple-600"
+                              className="data-[state=checked]:bg-pink-600"
                             />
                           ) : (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={feature.action}
-                              className="border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+                              className="border-pink-200 hover:bg-pink-50 hover:border-pink-300"
                             >
                               Access
                             </Button>
@@ -361,7 +361,7 @@ export default function PremiumSettingsPage() {
                       <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                        className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
                       >
                         {saving ? (
                           <LoadingSpinner size={16} className="mr-2" />
@@ -470,7 +470,7 @@ export default function PremiumSettingsPage() {
                             <Button
                               size="sm"
                               onClick={() => handleNavigate("/subscription")}
-                              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                              className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
                             >
                               Upgrade
                             </Button>
@@ -484,9 +484,9 @@ export default function PremiumSettingsPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 }}
-                      className="mt-6 p-6 bg-gradient-to-br from-pink-100 via-purple-100 to-rose-100 rounded-lg"
+                      className="mt-6 p-6 bg-gradient-to-br from-pink-100 via-rose-100 to-rose-100 rounded-lg"
                     >
-                      <p className="text-sm font-semibold text-purple-800 mb-2">
+                      <p className="text-sm font-semibold text-pink-800 mb-2">
                         Unlock Premium Plus Features
                       </p>
                       <p className="text-sm text-gray-700 mb-4">
@@ -514,10 +514,10 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+              <Card className="shadow-lg border-0 bg-gradient-to-br from-pink-50 to-rose-50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <BarChart className="w-5 h-5 text-purple-600" />
+                    <BarChart className="w-5 h-5 text-pink-600" />
                     Usage Tracking
                   </CardTitle>
                   <CardDescription>
@@ -537,7 +537,7 @@ export default function PremiumSettingsPage() {
                     <Button
                       variant="outline"
                       onClick={() => handleNavigate("/usage")}
-                      className="w-full border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+                      className="w-full border-pink-200 hover:bg-pink-50 hover:border-pink-300"
                     >
                       <BarChart className="w-4 h-4 mr-2" />
                       View Usage
@@ -553,7 +553,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="shadow-lg border-0 bg-gradient-to-br from-pink-50 via-purple-50 to-rose-50">
+              <Card className="shadow-lg border-0 bg-gradient-to-br from-pink-50 via-rose-50 to-rose-50">
                 <CardContent className="p-6">
                   <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
                     <Heart className="h-5 w-5 text-pink-500" />
@@ -567,7 +567,7 @@ export default function PremiumSettingsPage() {
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <Shield className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                      <Shield className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
                       <span className="text-gray-700">
                         Enhanced privacy controls and settings
                       </span>
@@ -579,9 +579,9 @@ export default function PremiumSettingsPage() {
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <Eye className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                      <Eye className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
                       <span className="text-gray-700">
-                        See who's interested in your profile
+                        See who&apos;s interested in your profile
                       </span>
                     </li>
                   </ul>
@@ -606,7 +606,7 @@ export default function PremiumSettingsPage() {
                   <Button
                     onClick={() => handleNavigate("/subscription")}
                     variant="outline"
-                    className="w-full border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+                    className="w-full border-pink-200 hover:bg-pink-50 hover:border-pink-300"
                   >
                     Manage Subscription
                   </Button>
