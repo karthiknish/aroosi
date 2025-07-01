@@ -314,12 +314,17 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         }
       }
 
-      if (isMobile) {
-        // On mobile, perform a full redirect
-        window.location.href = authUrl;
-      } else if (popup) {
-        // Navigate previously opened popup
-        popup.location.href = authUrl;
+      if (authUrl) {
+        if (isMobile) {
+          window.location.href = authUrl;
+        } else if (popup) {
+          popup.location.href = authUrl;
+        }
+      } else {
+        console.error("Could not find OAuth URL in response:", res);
+        if (popup) popup.close();
+        setError("Failed to initiate Google sign up. Please try again.");
+        setLoading(false);
       }
     } catch (err) {
       if (popup) popup.close();
