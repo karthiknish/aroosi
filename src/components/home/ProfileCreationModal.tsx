@@ -338,42 +338,53 @@ export function ProfileCreationModal({
   }, [displayStep, formData]);
 
   // ----- new hook for Clerk sign-in -----
-  const { signIn } = useSignIn();
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { isSignedIn } = useUser();
 
   const handleGoogleSignIn = async () => {
+    if (!signInLoaded || !signIn) return;
     try {
-      const res = await signIn?.create({
+      const res = await signIn.create({
         strategy: "oauth_google",
         redirectUrl: "/oauth/callback",
         actionCompleteRedirectUrl: "/oauth/callback",
       });
       let authUrl: string | undefined;
-      const maybeObj: unknown = res;
+      const obj = res as unknown;
       if (
-        typeof maybeObj === "object" &&
-        maybeObj !== null &&
-        "externalAccount" in maybeObj &&
-        typeof (maybeObj as { externalAccount: unknown }).externalAccount ===
-          "object" &&
-        (maybeObj as { externalAccount: { data?: unknown } }).externalAccount
-          .data &&
-        (maybeObj as { externalAccount: { data: unknown } }).externalAccount
-          .data !== null &&
-        typeof (
-          (
-            maybeObj as {
-              externalAccount: { data: { authorization_url?: unknown } };
-            }
-          ).externalAccount.data as { authorization_url?: unknown }
-        ).authorization_url === "string"
+        typeof obj === "object" &&
+        obj !== null &&
+        "externalVerificationRedirectURL" in (obj as Record<string, unknown>)
       ) {
-        authUrl = (
-          maybeObj as {
-            externalAccount: { data: { authorization_url: string } };
-          }
-        ).externalAccount.data.authorization_url;
+        authUrl = (obj as { externalVerificationRedirectURL?: string })
+          .externalVerificationRedirectURL;
       }
+
+      // type guards to avoid any
+      const hasExtUrl = (
+        value: unknown
+      ): value is { externalVerificationRedirectURL?: string } =>
+        typeof value === "object" &&
+        value !== null &&
+        "externalVerificationRedirectURL" in value &&
+        typeof (value as Record<string, unknown>)
+          .externalVerificationRedirectURL === "string";
+
+      const hasFirstFactor = (
+        value: unknown
+      ): value is { firstFactorVerification: unknown } =>
+        typeof value === "object" &&
+        value !== null &&
+        "firstFactorVerification" in value;
+
+      if (!authUrl && hasFirstFactor(obj)) {
+        const ff = (obj as { firstFactorVerification: unknown })
+          .firstFactorVerification;
+        if (hasExtUrl(ff)) {
+          authUrl = ff.externalVerificationRedirectURL;
+        }
+      }
+
       if (authUrl) {
         window.open(authUrl, "_blank", "noopener,noreferrer");
       }
