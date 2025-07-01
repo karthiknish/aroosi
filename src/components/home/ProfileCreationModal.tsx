@@ -219,12 +219,12 @@ export function ProfileCreationModal({
   // Use only the setter; the value isn't required yet
   const [, setPendingImages] = useState<ImageType[]>([]);
 
-  const handleInputChange = (
-    field: keyof ProfileCreationData,
-    value: string | number | string[]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  const handleInputChange = useCallback(
+    (field: keyof ProfileCreationData, value: string | number | string[]) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    },
+    [],
+  );
 
   const handleProfileImagesChange = useCallback(
     (imgs: (string | ImageType)[]) => {
@@ -243,11 +243,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string"
+        (img): img is ImageType => typeof img !== "string",
       );
       setPendingImages(imgObjects);
     },
-    [formData.profileImageIds]
+    [handleInputChange], // Remove formData.profileImageIds dependency to prevent infinite loop
   );
 
   const validateStep = () => {
@@ -459,7 +459,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          }
+                          },
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -774,7 +774,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value)
+                              Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -794,7 +794,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value)
+                                : Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -821,7 +821,7 @@ export function ProfileCreationModal({
                             e.target.value
                               .split(",")
                               .map((s) => s.trim())
-                              .filter(Boolean)
+                              .filter(Boolean),
                           )
                         }
                         placeholder="e.g. London, Kabul"

@@ -24,7 +24,10 @@ import {
   deleteAdminProfileImageById,
   adminUploadProfileImage,
 } from "@/lib/profile/adminProfileApi";
-import { fetchUserProfileImages, getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import {
+  fetchUserProfileImages,
+  getCurrentUserWithProfile,
+} from "@/lib/profile/userProfileApi";
 
 // Types
 type UploadImageResponse = {
@@ -95,7 +98,7 @@ export function ProfileImageUpload({
     queryFn: async () => {
       if (!token || !userId || userId === "user-id-placeholder") {
         console.warn(
-          "Missing or placeholder token/userId when fetching images"
+          "Missing or placeholder token/userId when fetching images",
         );
         return [];
       }
@@ -163,7 +166,7 @@ export function ProfileImageUpload({
       return [...localImages, ...optimisticImages];
     }
     const validImages = (orderedImages || []).filter((img): img is ImageType =>
-      Boolean(img?.url && img.id)
+      Boolean(img?.url && img.id),
     );
     // Combine server images with optimistic updates
     return [...validImages, ...optimisticImages];
@@ -177,19 +180,21 @@ export function ProfileImageUpload({
   useEffect(() => {
     // Only call onImagesChanged after initial load, not on mount
     if (onImagesChanged && hasInitialized) {
-      if (mode === "create") {
-        // In create mode, notify parent with the full image objects
-        onImagesChanged(memoizedOrderedImages);
-      } else {
-        // In edit mode, notify with image IDs
-        const imageIdsString = profileImageIds.join(",");
-        // Only notify if the image IDs actually changed
-        if (imageIdsString !== lastNotifiedImageIds.current) {
-          lastNotifiedImageIds.current = imageIdsString;
+      const imageIdsString = profileImageIds.join(",");
+
+      // Only notify if the image IDs actually changed
+      if (imageIdsString !== lastNotifiedImageIds.current) {
+        lastNotifiedImageIds.current = imageIdsString;
+
+        if (mode === "create") {
+          // In create mode, notify parent with the full image objects
+          onImagesChanged(memoizedOrderedImages);
+        } else {
+          // In edit mode, notify with image IDs
           onImagesChanged(profileImageIds);
         }
       }
-      
+
       // Show success toast only if uploading and image count increased
       if (
         isUploadingFile &&
@@ -206,16 +211,25 @@ export function ProfileImageUpload({
       }
       prevImageCount.current = memoizedOrderedImages.length;
     }
-  }, [profileImageIds, onImagesChanged, hasInitialized, isUploadingFile, mode, memoizedOrderedImages, refetchImages]);
+  }, [
+    profileImageIds,
+    onImagesChanged,
+    hasInitialized,
+    isUploadingFile,
+    mode,
+    memoizedOrderedImages,
+    refetchImages,
+  ]);
 
   // Clear optimistic images when server data is updated
   useEffect(() => {
     if (mode === "edit" && orderedImages.length > 0) {
       // Clear optimistic images that are now in server data
-      setOptimisticImages(prev => 
-        prev.filter(optimistic => 
-          !orderedImages.some(server => server.id === optimistic.id)
-        )
+      setOptimisticImages((prev) =>
+        prev.filter(
+          (optimistic) =>
+            !orderedImages.some((server) => server.id === optimistic.id),
+        ),
       );
     }
   }, [mode, orderedImages]);
@@ -254,7 +268,7 @@ export function ProfileImageUpload({
           storageId: args.storageId,
           fileName: args.fileName,
         };
-        setLocalImages(prev => [...prev, newImage]);
+        setLocalImages((prev) => [...prev, newImage]);
         return {
           success: true,
           imageId: args.storageId as Id<"_storage">,
@@ -269,7 +283,7 @@ export function ProfileImageUpload({
         message: "Image uploaded",
       };
     },
-    [token, mode]
+    [token, mode],
   );
 
   // For admin, override uploadImageFile in ImageUploader to use adminUploadProfileImage
@@ -292,10 +306,10 @@ export function ProfileImageUpload({
     mutationFn: async (imageId: string) => {
       if (mode === "create") {
         // In create mode, just remove from local state
-        setLocalImages(prev => prev.filter(img => img.id !== imageId));
+        setLocalImages((prev) => prev.filter((img) => img.id !== imageId));
         return imageId;
       }
-      
+
       if (!userId || !token) throw new Error("Missing userId or token");
       if (authIsAdmin && profileId) {
         // Use admin util for deleting images
@@ -330,25 +344,31 @@ export function ProfileImageUpload({
 
   // Optimistic update handlers
   const handleOptimisticUpload = useCallback((newImage: ImageType) => {
-    setOptimisticImages(prev => [...prev, newImage]);
+    setOptimisticImages((prev) => [...prev, newImage]);
   }, []);
 
-  const handleOptimisticDelete = useCallback((imageId: string) => {
-    // Remove from optimistic images first
-    setOptimisticImages(prev => prev.filter(img => img.id !== imageId));
-    // Also remove from local images if in create mode
-    if (mode === "create") {
-      setLocalImages(prev => prev.filter(img => img.id !== imageId));
-    }
-  }, [mode]);
+  const handleOptimisticDelete = useCallback(
+    (imageId: string) => {
+      // Remove from optimistic images first
+      setOptimisticImages((prev) => prev.filter((img) => img.id !== imageId));
+      // Also remove from local images if in create mode
+      if (mode === "create") {
+        setLocalImages((prev) => prev.filter((img) => img.id !== imageId));
+      }
+    },
+    [mode],
+  );
 
-  const handleOptimisticReorder = useCallback((newOrder: ImageType[]) => {
-    // Clear optimistic images since the new order includes everything
-    setOptimisticImages([]);
-    if (mode === "create") {
-      setLocalImages(newOrder);
-    }
-  }, [mode]);
+  const handleOptimisticReorder = useCallback(
+    (newOrder: ImageType[]) => {
+      // Clear optimistic images since the new order includes everything
+      setOptimisticImages([]);
+      if (mode === "create") {
+        setLocalImages(newOrder);
+      }
+    },
+    [mode],
+  );
 
   // Handle image deletion
   const handleDelete = useCallback(async () => {
