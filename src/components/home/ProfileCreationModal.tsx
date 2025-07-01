@@ -352,14 +352,31 @@ export function ProfileCreationModal({
   // ----- new hook for Clerk sign-in -----
   const { isSignedIn } = useUser();
 
+  // Listen for OAuth success messages from popup
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verify the message is from our domain
+      if (event.origin !== window.location.origin) return;
+
+      // Check if it's an OAuth success message
+      if (event.data?.type === "oauth-success" && event.data?.isSignedIn) {
+        console.log("ProfileCreationModal: Received OAuth success message");
+        // Force a re-check of the signed-in state
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   // Advance wizard automatically when OAuth completes
   useEffect(() => {
     if (isSignedIn && displayStep === 7) {
-      // Proceed to OTP step or close modal as needed
-      // Here we simply close modal; adjust as per flow
-      onClose();
+      // User is signed in, profile submission will happen automatically
+      console.log("User signed in at step 7, profile will be submitted");
     }
-  }, [isSignedIn, displayStep, onClose]);
+  }, [isSignedIn, displayStep]);
 
   // -------- Auto submit profile & images when user is signed in --------
   useEffect(() => {

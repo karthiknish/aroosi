@@ -4,6 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { showSuccessToast } from "@/lib/ui/toast";
+import {
+  openOAuthPopup,
+  setupOAuthMessageListener,
+} from "@/lib/utils/oauthPopup";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -185,6 +189,12 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
             if (popup.closed) {
               clearInterval(checkInterval);
               setLoading(false);
+              // Check if user is now signed in after a short delay
+              setTimeout(() => {
+                if (!isSignedIn) {
+                  console.log("Popup closed without completing sign-in");
+                }
+              }, 1000);
             }
           }, 1000);
           return;
@@ -325,6 +335,24 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
       setLoading(false);
     }
   };
+
+  // Listen for OAuth success messages from popup
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Verify the message is from our domain
+      if (event.origin !== window.location.origin) return;
+
+      // Check if it's an OAuth success message
+      if (event.data?.type === "oauth-success" && event.data?.isSignedIn) {
+        console.log("Received OAuth success message from popup");
+        // The popup has closed, and the user is signed in
+        // The isSignedIn state should update automatically via Clerk
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   // Fire completion callback when Clerk session becomes active
   useEffect(() => {
