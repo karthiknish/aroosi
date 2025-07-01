@@ -172,8 +172,13 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
   };
 
   // Fire completion callback when Clerk session becomes active
+  useEffect(() => {
+    if (isSignedIn && onComplete) {
+      onComplete();
+    }
+  }, [isSignedIn, onComplete]);
+
   if (isSignedIn) {
-    // Don't call onComplete immediately - let the parent handle profile submission
     return (
       <p className="text-center text-sm">
         Account created! Submitting your profile...
