@@ -61,8 +61,9 @@ const onboardingStepSchemas = [
 function HeroOnboardingInner() {
   const { step, setStep, formData, updateFormData } = useProfileWizard();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deliberate cast from loose record to strongly typed
-  const heroData = formData as any as OnboardingData;
+  // Cast through unknown to map generic wizard data to the specific onboarding shape
+
+  const heroData = formData as unknown as OnboardingData;
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -113,7 +114,7 @@ function HeroOnboardingInner() {
     } catch {
       /* ignore */
     }
-  }, [formData, step, showProfileModal]);
+  }, [formData, step, showProfileModal, STORAGE_KEY]);
 
   const handleInputChange = (field: keyof OnboardingData, value: string) => {
     updateFormData({ [field]: value });
