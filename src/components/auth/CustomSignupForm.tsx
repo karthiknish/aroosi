@@ -79,20 +79,6 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
       // If we get here, verification failed
       setError("Invalid or expired code. Please check and try again.");
-
-      // If not complete, check signUp status
-      if (signUp.status === "complete") {
-        // Create session if signUp is complete but verification isn't
-        const { createdSessionId } = signUp;
-        if (createdSessionId) {
-          await signUp.setActive({ session: createdSessionId });
-          console.log("Session activated from signUp");
-          return;
-        }
-      }
-
-      // If we get here, verification failed
-      setError("Invalid or expired code. Please check and try again.");
     } catch (err) {
       console.error("Verification error details:", err);
       // Check if it's a specific Clerk error
