@@ -243,11 +243,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string",
+        (img): img is ImageType => typeof img !== "string"
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange], // Remove formData.profileImageIds dependency to prevent infinite loop
+    [handleInputChange, formData.profileImageIds]
   );
 
   const validateStep = () => {
