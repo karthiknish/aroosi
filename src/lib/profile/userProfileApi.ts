@@ -320,15 +320,19 @@ export async function submitProfile(
 
   const requestData =
     mode === "create" ? profileData : { ...values, isProfileComplete: true };
+
   const url = "/api/profile";
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
+  // Use POST for profile creation, PUT for update
+  const method = mode === "create" ? "POST" : "PUT";
+
   try {
     const response = await fetchWithTimeout(url, {
-      method: "PUT",
+      method,
       headers,
       body: JSON.stringify(requestData),
     });
