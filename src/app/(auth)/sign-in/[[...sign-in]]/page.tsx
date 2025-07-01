@@ -6,6 +6,7 @@ import { CustomSignInForm } from "@/components/auth/CustomSignInForm";
 import { useSignIn, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 export default function SignInPage() {
   const { isProfileComplete, isOnboardingComplete } = useAuthContext();
@@ -106,10 +107,11 @@ export default function SignInPage() {
           <div className="space-y-4">
             <Button
               onClick={handleGoogleSignIn}
-              className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+              className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
               variant="outline"
             >
-              Continue with Google
+              <GoogleIcon className="h-5 w-5" />
+              <span>Continue with Google</span>
             </Button>
             <CustomSignInForm onComplete={() => router.push(finalRedirect)} />
           </div>

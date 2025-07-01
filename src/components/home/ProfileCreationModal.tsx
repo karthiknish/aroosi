@@ -948,6 +948,9 @@ export function ProfileCreationModal({
                 {displayStep === 7 && (
                   <div className="space-y-6">
                     <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-center">
+                        Create your account
+                      </h3>
                       <Button
                         onClick={handleGoogleSignIn}
                         className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"

@@ -12,6 +12,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
   const { isSignedIn } = useUser();
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [phase, setPhase] = useState<"email" | "code">("email");
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     setLoading(true);
     setError(null);
     try {
-      await signUp.create({ emailAddress: email });
+      await signUp.create({ emailAddress: email, password });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setPhase("code");
     } catch {
@@ -59,16 +60,25 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     <div className="space-y-4">
       {phase === "email" && (
         <>
+          <h3 className="text-lg font-semibold text-center">
+            Create your account
+          </h3>
           <Input
             type="email"
             placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <Input
+            type="password"
+            placeholder="Password (min 8 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
           <Button
             className="w-full"
             onClick={sendCode}
-            disabled={loading || !email}
+            disabled={loading || !email || password.length < 8}
           >
             {loading ? "Sending..." : "Send Code"}
           </Button>
