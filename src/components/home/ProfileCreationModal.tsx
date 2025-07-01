@@ -183,6 +183,53 @@ export function ProfileCreationModal({
   // React state for the current UI step (1-based within the displayed steps)
   const [step, setStep] = useState<number>(1);
 
+  // ---------- State persistence & redirect helpers ----------
+
+  // We'll initialise these after formData is declared below
+
+  const [currentPath, setCurrentPath] = useState<string>("/");
+
+  // Persist wizard state to localStorage to survive OAuth full-page redirects
+  const restoreWizardState = () => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("profileCreationWizardState");
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as {
+        step?: number;
+        formData?: ProfileCreationData;
+      };
+      if (parsed.formData) {
+        setFormData((prev) => ({ ...prev, ...parsed.formData }));
+      }
+      if (parsed.step && parsed.step >= 1 && parsed.step <= 7) {
+        setStep(parsed.step);
+      }
+    } catch {
+      console.warn("Failed to restore wizard state");
+    }
+  };
+
+  useEffect(() => {
+    restoreWizardState();
+    if (typeof window !== "undefined") {
+      setCurrentPath(window.location.pathname);
+    }
+  }, []);
+
+  // Save whenever form data or step changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        "profileCreationWizardState",
+        JSON.stringify({ step, formData })
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [formData, step]);
+
   // Display step that aligns with visible UI, accounting for skipped basic step
   const displayStep = hasBasicData ? step + 1 : step;
 
@@ -867,7 +914,12 @@ export function ProfileCreationModal({
                 {displayStep === 7 && (
                   <div className="space-y-6">
                     <div>
-                      <SignUp routing="virtual" appearance={clerkAppearance} />
+                      <SignUp
+                        routing="virtual"
+                        appearance={clerkAppearance}
+                        afterSignInUrl={currentPath}
+                        afterSignUpUrl={currentPath}
+                      />
                     </div>
                   </div>
                 )}

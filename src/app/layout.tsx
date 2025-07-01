@@ -159,12 +159,12 @@ export default function RootLayout({
               termsPageUrl: "/terms",
             },
             variables: {
-              colorPrimary: "#BFA67A",
+              colorPrimary: "#d90012", // primary pink
               colorText: "#000000",
               colorBackground: "#ffffff",
               colorInputBackground: "#f9fafb",
               colorInputText: "#000000",
-              colorTextSecondary: "#BFA67A",
+              colorTextSecondary: "#d90012", // use primary pink for secondary text as well
               colorTextOnPrimaryBackground: "#ffffff",
               colorDanger: "#d90012",
               colorSuccess: "#BFA67A",
