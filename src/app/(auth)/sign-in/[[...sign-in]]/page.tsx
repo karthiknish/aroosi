@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import { CustomSignInForm } from "@/components/auth/CustomSignInForm";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 
 import { useRouter } from "next/navigation";
 

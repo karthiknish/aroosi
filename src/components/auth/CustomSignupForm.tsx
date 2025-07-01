@@ -134,11 +134,30 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         // Check for authorization URL in the response
         let authUrl: string | undefined;
 
-        if (res && typeof res === "object") {
-          // Check the path used by sign-in: externalAccount.data.authorization_url
-          const externalAccount = (res as any).externalAccount;
-          if (externalAccount?.data?.authorization_url) {
-            authUrl = externalAccount.data.authorization_url;
+        if (res && typeof res === "object" && res !== null) {
+          // Narrow the potential externalAccount property safely without using 'any'
+          const maybeExternalAccount = (
+            res as unknown as Record<string, unknown>
+          ).externalAccount;
+
+          if (
+            typeof maybeExternalAccount === "object" &&
+            maybeExternalAccount !== null &&
+            "data" in maybeExternalAccount
+          ) {
+            const dataProp = (maybeExternalAccount as Record<string, unknown>)
+              .data;
+
+            if (
+              typeof dataProp === "object" &&
+              dataProp !== null &&
+              "authorization_url" in dataProp &&
+              typeof (dataProp as Record<string, unknown>).authorization_url ===
+                "string"
+            ) {
+              authUrl = (dataProp as { authorization_url: string })
+                .authorization_url;
+            }
           }
         }
 
