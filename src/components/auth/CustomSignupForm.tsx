@@ -55,15 +55,21 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         code,
       });
 
-      if (
-        (verification.status === "complete" || signUp.status === "complete") &&
-        signInLoaded
-      ) {
-        // Automatically sign the user in using the same credentials
+      const completed =
+        verification.status === "complete" || signUp.status === "complete";
+
+      if (!completed) {
+        setError("Invalid or expired code. Please check and try again.");
+        return;
+      }
+
+      // Try to create a session via signIn first
+      if (signInLoaded && signIn) {
         await signIn.create({ identifier: email, password });
       }
-    } catch {
-      setError("Invalid code. Please check and try again.");
+    } catch (err) {
+      console.error("Verification error", err);
+      setError("Incorrect or expired code. Please request a new one.");
     } finally {
       setLoading(false);
     }
