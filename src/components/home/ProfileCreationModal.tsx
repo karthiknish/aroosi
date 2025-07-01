@@ -159,7 +159,7 @@ const stepSchemas = [
 
 // Build comprehensive country list from countryCodes constant
 const countries: string[] = Array.from(
-  new Set(countryCodes.map((c) => c.country)),
+  new Set(countryCodes.map((c: { country: string }) => c.country)),
 ).sort();
 
 export function ProfileCreationModal({
@@ -225,7 +225,7 @@ export function ProfileCreationModal({
   // Persist wizard state to localStorage to survive OAuth full-page redirects
   const restoreWizardState = () => {
     if (typeof window === "undefined") return;
-    
+
     try {
       const saved = localStorage.getItem("profileCreationWizardState");
       if (!saved) return;
@@ -233,16 +233,16 @@ export function ProfileCreationModal({
         step?: number;
         formData?: Partial<ProfileCreationData>;
       };
-      
+
       if (parsed.formData) {
         // Merge saved data with current formData (which includes initialData)
         // This ensures HeroOnboarding data is preserved
-        setFormData((prev) => ({ 
-          ...prev, 
-          ...parsed.formData 
+        setFormData((prev) => ({
+          ...prev,
+          ...parsed.formData,
         }));
       }
-      
+
       if (parsed.step && parsed.step >= 1 && parsed.step <= 7) {
         setStep(parsed.step);
       }
@@ -267,20 +267,25 @@ export function ProfileCreationModal({
     try {
       // Only save fields that ProfileCreationModal is responsible for
       // Exclude fields from HeroOnboarding to avoid duplication
-      const { 
-        profileFor, 
-        gender, 
-        fullName, 
-        dateOfBirth, 
-        phoneNumber,
-        ...profileModalFields 
-      } = formData;
-      
+      const heroOnboardingFields = [
+        "profileFor",
+        "gender",
+        "fullName",
+        "dateOfBirth",
+        "phoneNumber",
+      ];
+      const profileModalFields = Object.keys(formData).reduce((acc, key) => {
+        if (!heroOnboardingFields.includes(key)) {
+          acc[key] = formData[key as keyof ProfileCreationData];
+        }
+        return acc;
+      }, {} as Partial<ProfileCreationData>);
+
       localStorage.setItem(
         "profileCreationWizardState",
-        JSON.stringify({ 
-          step, 
-          formData: profileModalFields 
+        JSON.stringify({
+          step,
+          formData: profileModalFields,
         }),
       );
     } catch {
@@ -685,6 +690,24 @@ export function ProfileCreationModal({
                       />
                     </div>
                     <div>
+                      <Label
+                        htmlFor="height"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Height")}
+                      </Label>
+                      <SearchableSelect
+                        options={Array.from(
+                          { length: 198 - 137 + 1 },
+                          (_, i) => {
+                            const cm = 137 + i;
+                            return {
+                              value: String(cm),
+                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
+                            };
+                          },
+                        )}
+                        value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
                         placeholder="Select height"
                       />
