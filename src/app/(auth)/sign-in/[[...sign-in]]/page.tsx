@@ -4,9 +4,8 @@ import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import { CustomSignInForm } from "@/components/auth/CustomSignInForm";
 import { useSignIn, useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
+
 import { useRouter } from "next/navigation";
-import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 export default function SignInPage() {
   const { isProfileComplete, isOnboardingComplete } = useAuthContext();
@@ -15,47 +14,6 @@ export default function SignInPage() {
 
   const router = useRouter();
   const { isSignedIn } = useUser();
-  const { signIn } = useSignIn();
-
-  const handleGoogleSignIn = async () => {
-    try {
-      const res = await signIn?.create({
-        strategy: "oauth_google",
-        redirectUrl: "/oauth/callback",
-        actionCompleteRedirectUrl: finalRedirect,
-      });
-
-      let authUrl: string | undefined;
-      const maybeObj: unknown = res;
-      if (
-        typeof maybeObj === "object" &&
-        maybeObj !== null &&
-        "externalAccount" in maybeObj &&
-        typeof (maybeObj as { externalAccount: unknown }).externalAccount ===
-          "object" &&
-        (maybeObj as { externalAccount: { data?: unknown } }).externalAccount
-          .data !== null &&
-        typeof (
-          (
-            maybeObj as {
-              externalAccount: { data: { authorization_url?: unknown } };
-            }
-          ).externalAccount.data as { authorization_url?: unknown }
-        ).authorization_url === "string"
-      ) {
-        authUrl = (
-          maybeObj as {
-            externalAccount: { data: { authorization_url: string } };
-          }
-        ).externalAccount.data.authorization_url;
-      }
-      if (authUrl) {
-        window.open(authUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      console.error("Google sign-in error", err);
-    }
-  };
 
   // redirect after sign-in
   if (isSignedIn) {
