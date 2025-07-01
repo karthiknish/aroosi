@@ -43,6 +43,7 @@ import {
   clearAllOnboardingData,
   STORAGE_KEYS,
 } from "@/lib/utils/onboardingStorage";
+import { separateProfileData } from "@/lib/utils/profileDataHelpers";
 
 interface ProfileData {
   profileFor: string;
@@ -267,19 +268,7 @@ export function ProfileCreationModal({
     try {
       // Only save fields that ProfileCreationModal is responsible for
       // Exclude fields from HeroOnboarding to avoid duplication
-      const heroOnboardingFields = [
-        "profileFor",
-        "gender",
-        "fullName",
-        "dateOfBirth",
-        "phoneNumber",
-      ];
-      const profileModalFields = Object.keys(formData).reduce((acc, key) => {
-        if (!heroOnboardingFields.includes(key)) {
-          acc[key] = formData[key as keyof ProfileCreationData];
-        }
-        return acc;
-      }, {} as Partial<ProfileCreationData>);
+      const { modalFields: profileModalFields } = separateProfileData(formData);
 
       localStorage.setItem(
         "profileCreationWizardState",
