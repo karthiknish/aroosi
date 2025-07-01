@@ -638,7 +638,7 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 2: Location, Contact & Physical */}
+                {/* Step 2: Location \Step 2: Location, Contact & Physical Physical */}
                 {displayStep === 2 && (
                   <div className="space-y-6">
                     <div>
@@ -672,24 +672,6 @@ export function ProfileCreationModal({
                       />
                     </div>
                     <div>
-                      <Label
-                        htmlFor="height"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Height")}
-                      </Label>
-                      <SearchableSelect
-                        options={Array.from(
-                          { length: 198 - 137 + 1 },
-                          (_, i) => {
-                            const cm = 137 + i;
-                            return {
-                              value: String(cm),
-                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
-                            };
-                          },
-                        )}
-                        value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
                         placeholder="Select height"
                       />
