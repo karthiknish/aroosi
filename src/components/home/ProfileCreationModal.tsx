@@ -113,10 +113,11 @@ const stepSchemas = [
     profileFor: true,
     gender: true,
   }),
-  // Step 2 – Location & Physical
+  // Step 2 – Location & Physical & Contact
   profileSchema.pick({
     country: true,
     city: true,
+    phoneNumber: true,
     height: true,
     maritalStatus: true,
     physicalStatus: true,
@@ -154,7 +155,7 @@ const stepSchemas = [
 
 // Build comprehensive country list from countryCodes constant
 const countries: string[] = Array.from(
-  new Set(countryCodes.map((c) => c.country)),
+  new Set(countryCodes.map((c) => c.country))
 ).sort();
 
 export function ProfileCreationModal({
@@ -238,7 +239,7 @@ export function ProfileCreationModal({
     try {
       localStorage.setItem(
         "profileCreationWizardState",
-        JSON.stringify({ step, formData }),
+        JSON.stringify({ step, formData })
       );
     } catch {
       /* ignore */
@@ -252,7 +253,7 @@ export function ProfileCreationModal({
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
     Array.isArray(formData.partnerPreferenceCity)
       ? formData.partnerPreferenceCity.join(", ")
-      : "",
+      : ""
   );
 
   // Keep local input synced if formData changes elsewhere
@@ -276,7 +277,7 @@ export function ProfileCreationModal({
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
-    [],
+    []
   );
 
   const handleProfileImagesChange = useCallback(
@@ -296,11 +297,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string",
+        (img): img is ImageType => typeof img !== "string"
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange, formData.profileImageIds],
+    [handleInputChange, formData.profileImageIds]
   );
 
   const validateStep = () => {
@@ -465,6 +466,13 @@ export function ProfileCreationModal({
     onClose,
   ]);
 
+  // Helper to add * to required labels
+  const required = (label: string) => (
+    <span>
+      {label} <span className="text-red-500">*</span>
+    </span>
+  );
+
   return (
     <Dialog
       open={isOpen}
@@ -580,7 +588,7 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 2: Location & Physical */}
+                {/* Step 2: Location, Contact & Physical */}
                 {displayStep === 2 && (
                   <div className="space-y-6">
                     <div>
@@ -588,7 +596,7 @@ export function ProfileCreationModal({
                         htmlFor="country"
                         className="text-gray-700 mb-2 block"
                       >
-                        Country
+                        {required("Country")}
                       </Label>
                       <SearchableSelect
                         options={countries.map((c) => ({ value: c, label: c }))}
@@ -599,10 +607,26 @@ export function ProfileCreationModal({
                     </div>
                     <div>
                       <Label
+                        htmlFor="phoneNumber"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Phone Number")}
+                      </Label>
+                      <Input
+                        id="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={(e) =>
+                          handleInputChange("phoneNumber", e.target.value)
+                        }
+                        placeholder="e.g. +44 7123 456789"
+                      />
+                    </div>
+                    <div>
+                      <Label
                         htmlFor="city"
                         className="text-gray-700 mb-2 block"
                       >
-                        City
+                        {required("City")}
                       </Label>
                       <Input
                         id="city"
@@ -618,7 +642,7 @@ export function ProfileCreationModal({
                         htmlFor="height"
                         className="text-gray-700 mb-2 block"
                       >
-                        Height
+                        {required("Height")}
                       </Label>
                       <SearchableSelect
                         options={Array.from(
@@ -629,7 +653,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          },
+                          }
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -641,7 +665,7 @@ export function ProfileCreationModal({
                         htmlFor="maritalStatus"
                         className="text-gray-700 mb-2 block"
                       >
-                        Marital Status
+                        {required("Marital Status")}
                       </Label>
                       <Select
                         value={formData.maritalStatus}
@@ -668,7 +692,7 @@ export function ProfileCreationModal({
                         htmlFor="physicalStatus"
                         className="text-gray-700 mb-2 block"
                       >
-                        Physical Status
+                        {required("Physical Status")}
                       </Label>
                       <Select
                         value={formData.physicalStatus}
@@ -944,7 +968,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value),
+                              Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -964,7 +988,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value),
+                                : Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -1029,7 +1053,7 @@ export function ProfileCreationModal({
                         onComplete={() => {
                           // Don't close immediately - the useEffect will handle profile submission
                           console.log(
-                            "Signup completed, profile submission will happen automatically",
+                            "Signup completed, profile submission will happen automatically"
                           );
                         }}
                       />
