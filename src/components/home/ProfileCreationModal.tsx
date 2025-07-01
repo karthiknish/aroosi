@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SignUp } from "@clerk/nextjs";
+import { SignUp, useSignIn, useUser } from "@clerk/nextjs";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -351,6 +351,60 @@ export function ProfileCreationModal({
     if (schemaIndex < 0 || schemaIndex >= stepSchemas.length) return true;
     return stepSchemas[schemaIndex].safeParse(formData).success;
   }, [displayStep, formData]);
+
+  // ----- new hook for Clerk sign-in -----
+  const { signIn } = useSignIn();
+  const { isSignedIn } = useUser();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const res = await signIn?.create({
+        strategy: "oauth_google",
+        redirectUrl: "/oauth/callback",
+        actionCompleteRedirectUrl: "/oauth/callback",
+      });
+      let authUrl: string | undefined;
+      const maybeObj: unknown = res;
+      if (
+        typeof maybeObj === "object" &&
+        maybeObj !== null &&
+        "externalAccount" in maybeObj &&
+        typeof (maybeObj as { externalAccount: unknown }).externalAccount ===
+          "object" &&
+        (maybeObj as { externalAccount: { data?: unknown } }).externalAccount
+          .data &&
+        (maybeObj as { externalAccount: { data: unknown } }).externalAccount
+          .data !== null &&
+        typeof (
+          (
+            maybeObj as {
+              externalAccount: { data: { authorization_url?: unknown } };
+            }
+          ).externalAccount.data as { authorization_url?: unknown }
+        ).authorization_url === "string"
+      ) {
+        authUrl = (
+          maybeObj as {
+            externalAccount: { data: { authorization_url: string } };
+          }
+        ).externalAccount.data.authorization_url;
+      }
+      if (authUrl) {
+        window.open(authUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      console.error("Google sign-in error", err);
+    }
+  };
+
+  // Advance wizard automatically when OAuth completes
+  useEffect(() => {
+    if (isSignedIn && displayStep === 7) {
+      // Proceed to OTP step or close modal as needed
+      // Here we simply close modal; adjust as per flow
+      onClose();
+    }
+  }, [isSignedIn, displayStep, onClose]);
 
   return (
     <Dialog
@@ -908,12 +962,21 @@ export function ProfileCreationModal({
                 {/* Step 7: Clerk SignUp */}
                 {displayStep === 7 && (
                   <div className="space-y-6">
-                    <div>
-                      <SignUp
-                        routing="virtual"
-                        appearance={clerkAppearance}
-                        /* Redirect handled after profile submission */
-                      />
+                    <div className="space-y-4">
+                      <Button
+                        onClick={handleGoogleSignIn}
+                        className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+                        variant="outline"
+                      >
+                        Continue with Google
+                      </Button>
+                      <div>
+                        <SignUp
+                          routing="virtual"
+                          appearance={clerkAppearance}
+                          /* Only email/phone sign-up visible */
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
