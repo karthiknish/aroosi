@@ -120,54 +120,19 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
   // ---- Google OAuth ----
   const handleGoogleSignUp = async () => {
-    const canUseSignIn = signInLoaded && signIn;
-    const canUseSignUp = signUpLoaded && signUp;
-
-    if (!canUseSignIn && !canUseSignUp) return;
+    if (!signUpLoaded || !signUp) return;
 
     setLoading(true);
     setError(null);
     try {
-      const authCreator = canUseSignIn ? signIn : signUp;
-      const res = await authCreator!.create({
+      await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/oauth/callback",
-        actionCompleteRedirectUrl: "/oauth/callback",
+        redirectUrlComplete: "/",
       });
-
-      // type guard helpers
-      const hasExtUrl = (
-        value: unknown,
-      ): value is { externalVerificationRedirectURL?: string } =>
-        typeof value === "object" &&
-        value !== null &&
-        "externalVerificationRedirectURL" in value &&
-        typeof (value as Record<string, unknown>)
-          .externalVerificationRedirectURL === "string";
-
-      let authUrl: string | undefined;
-      const obj = res as unknown;
-      if (hasExtUrl(obj)) {
-        authUrl = obj.externalVerificationRedirectURL;
-      } else if (
-        typeof obj === "object" &&
-        obj !== null &&
-        "firstFactorVerification" in obj
-      ) {
-        const ff = (obj as { firstFactorVerification: unknown })
-          .firstFactorVerification;
-        if (hasExtUrl(ff)) {
-          authUrl = ff.externalVerificationRedirectURL;
-        }
-      }
-
-      if (authUrl) {
-        window.open(authUrl, "_blank", "noopener,noreferrer");
-      }
     } catch (err) {
       console.error("Google signup error", err);
       setError("Failed to initiate Google sign up");
-    } finally {
       setLoading(false);
     }
   };
