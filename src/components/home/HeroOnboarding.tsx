@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,7 @@ const onboardingStepSchemas = [
 export function HeroOnboarding() {
   const { isSignedIn } = useAuthContext();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [formData, setFormData] = useState<OnboardingData>({
@@ -67,6 +67,40 @@ export function HeroOnboarding() {
     dateOfBirth: "",
     phoneNumber: "",
   });
+
+  // ---------- LocalStorage persistence (shared with ProfileCreationModal) ----------
+  const STORAGE_KEY = "profileCreationWizardState";
+
+  // Restore on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as {
+        step?: number;
+        formData?: Partial<OnboardingData & Record<string, unknown>>;
+      };
+      if (parsed.formData) {
+        setFormData((prev) => ({ ...prev, ...parsed.formData }));
+      }
+      if (parsed.step && parsed.step >= 1 && parsed.step <= 3) {
+        setStep(parsed.step);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Save when formData or step changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, formData }));
+    } catch {
+      /* ignore */
+    }
+  }, [formData, step]);
 
   if (isSignedIn) {
     return null;

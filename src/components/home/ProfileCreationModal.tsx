@@ -607,22 +607,6 @@ export function ProfileCreationModal({
                     </div>
                     <div>
                       <Label
-                        htmlFor="phoneNumber"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Phone Number")}
-                      </Label>
-                      <Input
-                        id="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={(e) =>
-                          handleInputChange("phoneNumber", e.target.value)
-                        }
-                        placeholder="e.g. +44 7123 456789"
-                      />
-                    </div>
-                    <div>
-                      <Label
                         htmlFor="city"
                         className="text-gray-700 mb-2 block"
                       >
