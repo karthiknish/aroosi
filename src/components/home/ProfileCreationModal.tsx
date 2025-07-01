@@ -169,9 +169,19 @@ export function ProfileCreationModal({
 }: ProfileCreationModalProps) {
   const router = useRouter();
 
+  // Debug log to see what data we're receiving
+  console.log("ProfileCreationModal initialData:", initialData);
+
+  // Debug log to see what data we're receiving
+  console.log("ProfileCreationModal initialData:", initialData);
+
   // Determine if we already have the basic fields (collected in HeroOnboarding)
   const hasBasicData =
-    Boolean(initialData?.profileFor) && Boolean(initialData?.gender);
+    Boolean(initialData?.profileFor) &&
+    Boolean(initialData?.gender) &&
+    Boolean(initialData?.fullName) &&
+    Boolean(initialData?.dateOfBirth) &&
+    Boolean(initialData?.phoneNumber);
 
   // Total number of steps adjusts when we skip the duplicate first step
   const totalSteps = hasBasicData ? 6 : 7;
@@ -215,6 +225,14 @@ export function ProfileCreationModal({
   // Persist wizard state to localStorage to survive OAuth full-page redirects
   const restoreWizardState = () => {
     if (typeof window === "undefined") return;
+
+    // Don't restore from localStorage if we have initialData
+    // This prevents overwriting data passed from HeroOnboarding
+    if (initialData && Object.keys(initialData).length > 0) {
+      console.log("Skipping localStorage restore - using initialData");
+      return;
+    }
+
     try {
       const saved = localStorage.getItem("profileCreationWizardState");
       if (!saved) return;
@@ -234,10 +252,14 @@ export function ProfileCreationModal({
   };
 
   useEffect(() => {
-    // Migrate any data from HeroOnboarding first
-    migrateHeroDataToProfile();
-    // Then restore wizard state
-    restoreWizardState();
+    // Only migrate if we don't have initialData
+    // If we have initialData, it's already being used in the state
+    if (!initialData || Object.keys(initialData).length === 0) {
+      // Migrate any data from HeroOnboarding first
+      migrateHeroDataToProfile();
+      // Then restore wizard state
+      restoreWizardState();
+    }
   }, []);
 
   // Save whenever form data or step changes
@@ -246,12 +268,25 @@ export function ProfileCreationModal({
     try {
       localStorage.setItem(
         "profileCreationWizardState",
-        JSON.stringify({ step, formData }),
+        JSON.stringify({ step, formData })
       );
     } catch {
       /* ignore */
     }
   }, [formData, step]);
+
+  // Clean up HeroOnboarding localStorage when modal unmounts
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+  }, []);
 
   // Display step that aligns with visible UI, accounting for skipped basic step
   const displayStep = hasBasicData ? step + 1 : step;
@@ -260,7 +295,7 @@ export function ProfileCreationModal({
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
     Array.isArray(formData.partnerPreferenceCity)
       ? formData.partnerPreferenceCity.join(", ")
-      : "",
+      : ""
   );
 
   // Keep local input synced if formData changes elsewhere
@@ -284,7 +319,7 @@ export function ProfileCreationModal({
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
-    [],
+    []
   );
 
   const handleProfileImagesChange = useCallback(
@@ -304,11 +339,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string",
+        (img): img is ImageType => typeof img !== "string"
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange, formData.profileImageIds],
+    [handleInputChange, formData.profileImageIds]
   );
 
   const validateStep = () => {
@@ -478,6 +513,7 @@ export function ProfileCreationModal({
     hasSubmittedProfile,
     refreshProfile,
     onClose,
+    router,
   ]);
 
   // Helper to add * to required labels
@@ -532,7 +568,7 @@ export function ProfileCreationModal({
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* Step 1: Profile For & Gender (only shown when data not yet provided) */}
+                {/* Step 1: Basic Info (only shown when data not yet provided) */}
                 {displayStep === 1 && !hasBasicData && (
                   <div className="space-y-6">
                     <div>
@@ -637,6 +673,24 @@ export function ProfileCreationModal({
                     </div>
                     <div>
                       <Label
+                        htmlFor="phoneNumber"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Phone Number")}
+                      </Label>
+                      <Input
+                        id="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={(e) =>
+                          handleInputChange("phoneNumber", e.target.value)
+                        }
+                        placeholder="Phone Number"
+                        readOnly={!!initialData?.phoneNumber}
+                        className={initialData?.phoneNumber ? "bg-gray-50" : ""}
+                      />
+                    </div>
+                    <div>
+                      <Label
                         htmlFor="height"
                         className="text-gray-700 mb-2 block"
                       >
@@ -651,7 +705,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          },
+                          }
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -966,7 +1020,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value),
+                              Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -986,7 +1040,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value),
+                                : Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -1051,7 +1105,7 @@ export function ProfileCreationModal({
                         onComplete={() => {
                           // Don't close immediately - the useEffect will handle profile submission
                           console.log(
-                            "Signup completed, profile submission will happen automatically",
+                            "Signup completed, profile submission will happen automatically"
                           );
                         }}
                       />

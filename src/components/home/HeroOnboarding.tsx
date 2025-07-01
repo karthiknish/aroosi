@@ -147,12 +147,9 @@ export function HeroOnboarding() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      // Clear HeroOnboarding localStorage before opening modal
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(STORAGE_KEY);
-      }
       // Open the profile creation modal with the collected data
       setShowProfileModal(true);
+      // Note: localStorage will be cleared by ProfileCreationModal after migration
     } catch {
       showErrorToast(null, "Something went wrong. Please try again.");
     } finally {
