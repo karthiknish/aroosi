@@ -66,6 +66,17 @@ export interface Profile {
   motherTongue?: string;
   religion?: string;
   ethnicity?: string;
+
+  /**
+   * Array of raw image URLs belonging to the user profile (legacy support).
+   * Prefer using `profileImageUrls` but `images` is retained for backward-compat.
+   */
+  images?: string[];
+
+  /**
+   * Comma-separated string or array of user interests/hobbies.
+   */
+  interests?: string[] | string;
 }
 
 export interface ProfileFormValues {

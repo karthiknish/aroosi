@@ -85,9 +85,9 @@ export function profileCompletionReminderTemplate(
   unsubscribeToken: string,
 ): MarketingEmailPayload {
   const subject = `${profile.fullName}, your profile is ${completionPercentage}% complete`;
-  const missingItems = [];
+  const missingItems: string[] = [];
 
-  if (!profile.bio) missingItems.push("Add your bio");
+  if (!profile.aboutMe) missingItems.push("Add your bio");
   if (!profile.images || profile.images.length === 0)
     missingItems.push("Upload photos");
   if (!profile.interests) missingItems.push("Share your interests");
@@ -263,6 +263,4 @@ export function profileViewsTemplate(
   };
 }
 
-export type MarketingEmailTemplateFn = (
-  ...args: any[]
-) => MarketingEmailPayload;
+export type MarketingEmailTemplateFn = (...args: unknown[]) => MarketingEmailPayload;
