@@ -187,7 +187,6 @@ export function ProfileCreationModal({
 
   // We'll initialise these after formData is declared below
 
-  const [currentPath, setCurrentPath] = useState<string>("/");
   const [formData, setFormData] = useState<ProfileCreationData>({
     profileFor: initialData?.profileFor || "",
     gender: initialData?.gender || "",
@@ -240,9 +239,6 @@ export function ProfileCreationModal({
 
   useEffect(() => {
     restoreWizardState();
-    if (typeof window !== "undefined") {
-      setCurrentPath(window.location.pathname);
-    }
   }, []);
 
   // Save whenever form data or step changes
@@ -260,7 +256,6 @@ export function ProfileCreationModal({
 
   // Display step that aligns with visible UI, accounting for skipped basic step
   const displayStep = hasBasicData ? step + 1 : step;
-
 
   // Local controlled input for preferred cities to allow commas while typing
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
@@ -917,8 +912,7 @@ export function ProfileCreationModal({
                       <SignUp
                         routing="virtual"
                         appearance={clerkAppearance}
-                        afterSignInUrl={currentPath}
-                        afterSignUpUrl={currentPath}
+                        /* Redirect handled after profile submission */
                       />
                     </div>
                   </div>
