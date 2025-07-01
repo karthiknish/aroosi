@@ -81,8 +81,22 @@ export function HeroOnboarding() {
         step?: number;
         formData?: Partial<OnboardingData & Record<string, unknown>>;
       };
-      if (parsed.formData) {
-        setFormData((prev) => ({ ...prev, ...parsed.formData }));
+      if (parsed.formData && typeof parsed.formData === "object") {
+        const cleaned: Partial<OnboardingData> = {};
+        Object.entries(parsed.formData).forEach(([k, v]) => {
+          const keep =
+            v !== undefined &&
+            v !== null &&
+            !(typeof v === "string" && v.trim() === "") &&
+            !(Array.isArray(v) && v.length === 0);
+          if (keep) {
+            (cleaned as Record<string, unknown>)[k] = v;
+          }
+        });
+
+        if (Object.keys(cleaned).length) {
+          setFormData((prev) => ({ ...prev, ...cleaned }));
+        }
       }
       if (parsed.step && parsed.step >= 1 && parsed.step <= 3) {
         setStep(parsed.step);
