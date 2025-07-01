@@ -66,6 +66,14 @@ export function QuickActions() {
       color: "bg-pink-50 text-pink-600 hover:bg-pink-100",
     },
     {
+      id: "marketing-email",
+      title: "Send Marketing Email",
+      description: "Promote to all users",
+      icon: <Mail className="h-4 w-4" />,
+      href: "/admin/marketing-email",
+      color: "bg-red-50 text-red-600 hover:bg-red-100",
+    },
+    {
       id: "settings",
       title: "Platform Settings",
       description: "Configure system",

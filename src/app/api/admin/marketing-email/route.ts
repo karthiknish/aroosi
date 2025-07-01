@@ -6,6 +6,9 @@ import {
   profileCompletionReminderTemplate,
   premiumPromoTemplate,
 } from "@/lib/marketingEmailTemplates";
+import { getConvexClient } from "@/lib/convexClient";
+import { api } from "@convex/_generated/api";
+import { sendUserNotification } from "@/lib/email";
 
 /**
  * Map of template keys to template functions.
@@ -25,7 +28,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { templateKey } = body as { templateKey: string };
+    const { templateKey, params } = body as {
+      templateKey: string;
+      params?: Record<string, unknown>;
+    };
 
     if (!templateKey || !(templateKey in TEMPLATE_MAP)) {
       return NextResponse.json(
@@ -34,16 +40,62 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO: Replace with actual database query to fetch user profiles
-    const profiles: unknown[] = [];
+    const convex = getConvexClient();
+    if (!convex) {
+      return NextResponse.json(apiResponse.error("Convex not configured"), {
+        status: 500,
+      });
+    }
+
+    const { token } = adminCheck;
+    convex.setAuth(token);
+
+    // Fetch first 1000 profiles (adjust as needed)
+    const result = await convex.query(api.users.adminListProfiles, {
+      search: undefined,
+      page: 0,
+      pageSize: 1000,
+    });
+
+    const profiles: Array<{
+      email?: string;
+      fullName?: string;
+      aboutMe?: string;
+      profileImageUrls?: string[];
+      images?: string[];
+      interests?: string[] | string;
+      isProfileComplete?: boolean;
+    }> = result?.profiles || [];
 
     const templateFn = TEMPLATE_MAP[templateKey];
 
-    // Placeholder loop; integration pending
-    profiles.forEach((p) => {
-      const payload = templateFn(p as never, 80, "");
-      console.log("Prepared email:", payload.subject);
-    });
+    // Iterate profiles and send emails via Resend
+    for (const p of profiles) {
+      try {
+        let emailPayload;
+        if (templateKey === "profileCompletionReminder") {
+          const completion = p.isProfileComplete ? 100 : 70;
+          emailPayload = templateFn(p as never, completion, "");
+        } else if (templateKey === "premiumPromo") {
+          emailPayload = templateFn(p as never, 30, "");
+        } else {
+          emailPayload = templateFn(
+            p as never,
+            ...((params?.args || []) as unknown[]),
+            ""
+          );
+        }
+        if (p.email) {
+          await sendUserNotification(
+            p.email,
+            emailPayload.subject,
+            emailPayload.html
+          );
+        }
+      } catch (err) {
+        console.error("Failed to send marketing email to", p.email, err);
+      }
+    }
 
     return NextResponse.json(apiResponse.success(null, "Emails queued"));
   } catch (error) {
