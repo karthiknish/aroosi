@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,6 @@ import { cn } from "@/lib/utils";
 import { ProfileCreationModal } from "@/components/home/ProfileCreationModal";
 import { PhoneInput } from "@/components/ui/phone-input";
 import * as z from "zod";
-import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 import {
   ProfileWizardProvider,
   useProfileWizard,
@@ -66,55 +65,6 @@ function HeroOnboardingInner() {
   const heroData = formData as unknown as OnboardingData;
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-
-  // ---------- LocalStorage persistence ----------
-  const STORAGE_KEY = STORAGE_KEYS.PROFILE_CREATION;
-
-  // Restore on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as {
-        step?: number;
-        formData?: Partial<OnboardingData & Record<string, unknown>>;
-      };
-      if (parsed.formData && typeof parsed.formData === "object") {
-        const cleaned: Partial<OnboardingData> = {};
-        Object.entries(parsed.formData).forEach(([k, v]) => {
-          const keep =
-            v !== undefined &&
-            v !== null &&
-            !(typeof v === "string" && v.trim() === "") &&
-            !(Array.isArray(v) && v.length === 0);
-          if (keep) {
-            (cleaned as Record<string, unknown>)[k] = v;
-          }
-        });
-
-        if (Object.keys(cleaned).length) {
-          updateFormData(cleaned);
-        }
-      }
-      if (parsed.step && parsed.step >= 1 && parsed.step <= 3) {
-        setStep(parsed.step);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [STORAGE_KEY, setStep, updateFormData]);
-
-  // Save when formData or step changes, but pause while the modal is open to avoid clobbering its updates
-  useEffect(() => {
-    if (showProfileModal) return; // modal takes ownership of persistence
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, formData }));
-    } catch {
-      /* ignore */
-    }
-  }, [formData, step, showProfileModal, STORAGE_KEY]);
 
   const handleInputChange = (field: keyof OnboardingData, value: string) => {
     updateFormData({ [field]: value });
