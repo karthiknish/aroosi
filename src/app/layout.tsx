@@ -11,7 +11,7 @@ export const viewport = "width=device-width, initial-scale=1";
 export const metadata: Metadata = {
   title: "Aroosi - Afghan Matrimony Platform",
   description:
-    "Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform.",
+    "No 1 Afghan matrimony site. Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform.",
   keywords:
     "matrimony, afghan matrimony, afghan marriage, aroosi, matrimonial site, rishta, afghan community, afghan singles, afghan wedding",
   robots: "index, follow",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Aroosi - Afghan Matrimony Platform",
     description:
-      "Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
+      "No 1 Afghan matrimony site. Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
     url: "https://aroosi.co.uk/",
     siteName: "Aroosi",
     images: [
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Aroosi - Afghan Matrimony Platform",
     description:
-      "Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
+      "No 1 Afghan matrimony site. Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
     images: ["/og-image.png"],
     site: "@aroosiuk",
   },
@@ -133,6 +133,12 @@ export default function RootLayout({
         {/* DNS prefetch for performance */}
         <link rel="dns-prefetch" href="https://aroosi.app" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
+        {/* Meta Description for SEO */}
+        <meta
+          name="description"
+          content="No 1 Afghan matrimony site. Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform."
+        />
       </head>
       <body suppressHydrationWarning>
         {/* Skip to main content link for screen readers */}
