@@ -125,45 +125,130 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     setLoading(true);
     setError(null);
     try {
-      // Create the sign up with OAuth
-      await signUp.create({
-        strategy: "oauth_google",
-      });
-
-      // Open Google OAuth in a popup window
-      const authUrl = signUp.authorizeWithOAuth({
+      const res = await signUp.create({
         strategy: "oauth_google",
         redirectUrl: window.location.origin + "/oauth/callback",
-        redirectUrlComplete: window.location.href,
+        actionCompleteRedirectUrl: window.location.href,
       });
 
-      // Open in a popup window
-      const width = 500;
-      const height = 600;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
+      // Extract the OAuth URL from the response
+      let authUrl: string | undefined;
 
-      const popup = window.open(
-        authUrl,
-        "Google Sign In",
-        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
-      );
+      // Type guard to check if object has a string property
+      const hasStringProp = (
+        obj: unknown,
+        prop: string,
+      ): obj is Record<string, unknown> => {
+        return (
+          typeof obj === "object" &&
+          obj !== null &&
+          prop in obj &&
+          typeof (obj as Record<string, unknown>)[prop] === "string"
+        );
+      };
 
-      // Check if popup was blocked
-      if (!popup || popup.closed) {
-        setError("Please allow popups for this site to sign in with Google");
-        setLoading(false);
-        return;
+      // Helper to safely access nested properties
+      const getNestedProp = (obj: unknown, path: string[]): unknown => {
+        let current: unknown = obj;
+        for (const key of path) {
+          if (
+            typeof current === "object" &&
+            current !== null &&
+            key in current
+          ) {
+            current = (current as Record<string, unknown>)[key];
+          } else {
+            return undefined;
+          }
+        }
+        return current;
+      };
+
+      // Check various possible locations for the auth URL
+      if (res && typeof res === "object") {
+        // Try different possible paths where Clerk might put the URL
+        const possiblePaths = [
+          ["externalVerificationRedirectURL"],
+          ["firstFactorVerification", "externalVerificationRedirectURL"],
+          [
+            "externalAccount",
+            "verification",
+            "externalVerificationRedirectURL",
+          ],
+          [
+            "verifications",
+            "externalAccount",
+            "externalVerificationRedirectURL",
+          ],
+        ];
+
+        for (const path of possiblePaths) {
+          const value = getNestedProp(res, path);
+          if (
+            typeof value === "string" &&
+            value.includes("accounts.google.com")
+          ) {
+            authUrl = value;
+            break;
+          }
+        }
+
+        // If not found in common paths, search recursively
+        if (!authUrl) {
+          const findAuthUrl = (obj: unknown): string | undefined => {
+            if (!obj || typeof obj !== "object") return undefined;
+
+            for (const key in obj) {
+              const value = (obj as Record<string, unknown>)[key];
+              if (
+                key === "externalVerificationRedirectURL" &&
+                typeof value === "string"
+              ) {
+                return value;
+              }
+              const found = findAuthUrl(value);
+              if (found) return found;
+            }
+            return undefined;
+          };
+
+          authUrl = findAuthUrl(res);
+        }
       }
 
-      // Poll to check if the popup is closed
-      const checkInterval = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkInterval);
+      if (authUrl) {
+        // Open in a popup window
+        const width = 500;
+        const height = 600;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+
+        const popup = window.open(
+          authUrl,
+          "Google Sign In",
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
+        );
+
+        // Check if popup was blocked
+        if (!popup || popup.closed) {
+          setError("Please allow popups for this site to sign in with Google");
           setLoading(false);
-          // The useEffect watching isSignedIn will handle the rest
+          return;
         }
-      }, 1000);
+
+        // Poll to check if the popup is closed
+        const checkInterval = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkInterval);
+            setLoading(false);
+            // The useEffect watching isSignedIn will handle the rest
+          }
+        }, 1000);
+      } else {
+        console.error("Could not find OAuth URL in response:", res);
+        setError("Failed to initiate Google sign up. Please try again.");
+        setLoading(false);
+      }
     } catch (err) {
       console.error("Google signup error", err);
       setError("Failed to initiate Google sign up");

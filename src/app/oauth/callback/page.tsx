@@ -14,7 +14,14 @@ export default function OAuthCallbackPage() {
     if (!isLoaded) return;
 
     if (isSignedIn) {
-      // Check if user needs to complete profile
+      // Check if this is a popup window
+      if (window.opener && !window.opener.closed) {
+        // Close the popup - the parent window will handle the rest
+        window.close();
+        return;
+      }
+
+      // Not a popup, handle normal redirect
       const needsWizard = !isProfileComplete || !isOnboardingComplete;
 
       if (needsWizard) {
@@ -35,6 +42,11 @@ export default function OAuthCallbackPage() {
       <div className="text-center">
         <h2 className="text-xl font-semibold mb-2">Completing sign in...</h2>
         <p className="text-gray-600">Please wait while we redirect you.</p>
+        {typeof window !== "undefined" && window.opener && (
+          <p className="text-sm text-gray-500 mt-2">
+            This window will close automatically.
+          </p>
+        )}
       </div>
     </div>
   );
