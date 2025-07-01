@@ -173,10 +173,10 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
   // Fire completion callback when Clerk session becomes active
   if (isSignedIn) {
-    onComplete?.();
+    // Don't call onComplete immediately - let the parent handle profile submission
     return (
       <p className="text-center text-sm">
-        Account created! You can close this window.
+        Account created! Submitting your profile...
       </p>
     );
   }
