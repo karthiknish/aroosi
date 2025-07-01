@@ -130,6 +130,13 @@ function HeroOnboardingInner() {
     return age;
   };
 
+  // Helper to show * for required fields
+  const required = (label: string) => (
+    <span>
+      {label} <span className="text-red-500">*</span>
+    </span>
+  );
+
   return (
     <div className="w-full max-w-md mx-auto">
       <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0 max-h-[80vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
@@ -185,7 +192,7 @@ function HeroOnboardingInner() {
                       htmlFor="profileFor"
                       className="text-gray-700 mb-2 block"
                     >
-                      This profile is for
+                      {required("This profile is for")}
                     </Label>
                     <Select
                       value={heroData.profileFor ?? ""}
@@ -250,7 +257,9 @@ function HeroOnboardingInner() {
                   </div>
 
                   <div>
-                    <Label className="text-gray-700 mb-2 block">Gender</Label>
+                    <Label className="text-gray-700 mb-2 block">
+                      {required("Gender")}
+                    </Label>
                     <div className="grid grid-cols-2 gap-4">
                       <Button
                         type="button"
@@ -297,7 +306,7 @@ function HeroOnboardingInner() {
                       htmlFor="fullName"
                       className="text-gray-700 mb-2 block"
                     >
-                      Full Name
+                      {required("Full Name")}
                     </Label>
                     <Input
                       id="fullName"
@@ -316,7 +325,7 @@ function HeroOnboardingInner() {
                       htmlFor="dateOfBirth"
                       className="text-gray-700 mb-2 block"
                     >
-                      Date of Birth
+                      {required("Date of Birth")}
                     </Label>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -387,7 +396,7 @@ function HeroOnboardingInner() {
                       htmlFor="phoneNumber"
                       className="text-gray-700 mb-2 block"
                     >
-                      Phone Number
+                      {required("Phone Number")}
                     </Label>
                     <PhoneInput
                       value={heroData.phoneNumber ?? ""}

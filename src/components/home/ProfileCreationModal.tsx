@@ -651,7 +651,7 @@ export function ProfileCreationModal({
                         htmlFor="profileFor"
                         className="text-gray-700 mb-2 block"
                       >
-                        This profile is for
+                        {required("This profile is for")}
                       </Label>
                       <Select
                         value={formData.profileFor}
@@ -678,7 +678,9 @@ export function ProfileCreationModal({
                     </div>
 
                     <div>
-                      <Label className="text-gray-700 mb-2 block">Gender</Label>
+                      <Label className="text-gray-700 mb-2 block">
+                        {required("Gender")}
+                      </Label>
                       <div className="grid grid-cols-2 gap-4">
                         <Button
                           type="button"
@@ -1160,7 +1162,9 @@ export function ProfileCreationModal({
                       </h3>
                       <CustomSignupForm
                         onComplete={() => {
-                          console.log("Signup completed; profile submission will auto-run");
+                          console.log(
+                            "Signup completed; profile submission will auto-run"
+                          );
                         }}
                         onProfileExists={() => {
                           // Close modal if profile already exists
