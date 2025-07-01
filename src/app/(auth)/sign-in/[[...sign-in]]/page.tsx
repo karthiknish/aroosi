@@ -1,13 +1,66 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
+import { CustomSignInForm } from "@/components/auth/CustomSignInForm";
+import { useSignIn, useUser } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
   const { isProfileComplete, isOnboardingComplete } = useAuthContext();
   const needsWizard = !isProfileComplete || !isOnboardingComplete;
-  const redirectUrl = needsWizard ? "/" : "/search";
+  const finalRedirect = needsWizard ? "/" : "/search";
+
+  const router = useRouter();
+  const { isSignedIn } = useUser();
+  const { signIn } = useSignIn();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const res = await signIn?.create({
+        strategy: "oauth_google",
+        redirectUrl: "/oauth/callback",
+        actionCompleteRedirectUrl: finalRedirect,
+      });
+
+      let authUrl: string | undefined;
+      const maybeObj: unknown = res;
+      if (
+        typeof maybeObj === "object" &&
+        maybeObj !== null &&
+        "externalAccount" in maybeObj &&
+        typeof (maybeObj as { externalAccount: unknown }).externalAccount ===
+          "object" &&
+        (maybeObj as { externalAccount: { data?: unknown } }).externalAccount
+          .data !== null &&
+        typeof (
+          (
+            maybeObj as {
+              externalAccount: { data: { authorization_url?: unknown } };
+            }
+          ).externalAccount.data as { authorization_url?: unknown }
+        ).authorization_url === "string"
+      ) {
+        authUrl = (
+          maybeObj as {
+            externalAccount: { data: { authorization_url: string } };
+          }
+        ).externalAccount.data.authorization_url;
+      }
+      if (authUrl) {
+        window.open(authUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      console.error("Google sign-in error", err);
+    }
+  };
+
+  // redirect after sign-in
+  if (isSignedIn) {
+    router.push(finalRedirect);
+    return null;
+  }
 
   return (
     <div className="w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
@@ -50,13 +103,16 @@ export default function SignInPage() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <SignIn
-            path="/sign-in"
-            routing="path"
-            signUpUrl="/"
-            afterSignInUrl={redirectUrl}
-            fallbackRedirectUrl={redirectUrl}
-          />
+          <div className="space-y-4">
+            <Button
+              onClick={handleGoogleSignIn}
+              className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+              variant="outline"
+            >
+              Continue with Google
+            </Button>
+            <CustomSignInForm onComplete={() => router.push(finalRedirect)} />
+          </div>
           <p className="text-center text-sm mt-4">
             <a
               href="/forgot-password"

@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SignUp, useSignIn, useUser } from "@clerk/nextjs";
+import { useSignIn, useUser } from "@clerk/nextjs";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
+import { CustomSignupForm } from "@/components/auth/CustomSignupForm";
 
 interface ProfileData {
   profileFor: string;
@@ -150,23 +151,6 @@ const stepSchemas = [
 const countries: string[] = Array.from(
   new Set(countryCodes.map((c) => c.country))
 ).sort();
-
-const clerkAppearance = {
-  layout: {
-    logoImageUrl: "", // Remove logo image altogether
-    logoPlacement: "outside" as const, // Ensure logo is not rendered inside the card
-  },
-  elements: {
-    logoImage: "hidden", // legacy selector
-    headerLogo: "hidden", // new selector for the logo
-    logoBox: "hidden", // container around the logo
-    headerTitle: "hidden", // hide title inside card
-    headerSubtitle: "hidden", // hide subtitle
-    socialButtons: "hidden", // hide social buttons section
-    footer: "hidden", // hide footer links
-    card: "shadow-none bg-transparent p-0", // remove default card shadow/padding
-  },
-};
 
 export function ProfileCreationModal({
   isOpen,
@@ -970,13 +954,7 @@ export function ProfileCreationModal({
                       >
                         Continue with Google
                       </Button>
-                      <div>
-                        <SignUp
-                          routing="virtual"
-                          appearance={clerkAppearance}
-                          /* Only email/phone sign-up visible */
-                        />
-                      </div>
+                      <CustomSignupForm onComplete={onClose} />
                     </div>
                   </div>
                 )}
