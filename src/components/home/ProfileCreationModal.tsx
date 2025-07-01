@@ -436,14 +436,27 @@ export function ProfileCreationModal({
       if (!authToken) return;
 
       try {
-        // Submit profile data first
+        // Mark as submitted immediately to avoid race conditions
+        setHasSubmittedProfile(true);
+
+        // Merge hero and modal fields explicitly (guarantees hero data present)
+        const plainData: Record<string, unknown> =
+          formData as unknown as Record<string, unknown>;
+        const { heroFields, modalFields } = separateProfileData(plainData);
+        const merged: Record<string, unknown> = {
+          ...heroFields,
+          ...modalFields,
+        };
+
         const payload: Partial<import("@/types/profile").ProfileFormValues> = {
-          ...formData,
-          profileFor: formData.profileFor as "self" | "friend" | "family",
-          // Ensure dateOfBirth is string and partnerPreferenceCity is array
-          dateOfBirth: formData.dateOfBirth,
-          partnerPreferenceCity: Array.isArray(formData.partnerPreferenceCity)
-            ? formData.partnerPreferenceCity
+          ...(merged as unknown as import("@/types/profile").ProfileFormValues),
+          profileFor: (merged.profileFor ?? "self") as
+            | "self"
+            | "friend"
+            | "family",
+          dateOfBirth: String(merged.dateOfBirth ?? ""),
+          partnerPreferenceCity: Array.isArray(merged.partnerPreferenceCity)
+            ? (merged.partnerPreferenceCity as string[])
             : [],
         };
 
@@ -495,13 +508,10 @@ export function ProfileCreationModal({
 
         // Refresh profile data and finish
         await refreshProfile();
-        setHasSubmittedProfile(true);
         // Clean up all onboarding data
         clearAllOnboardingData();
         showSuccessToast("Profile created successfully!");
         onClose();
-        // Redirect to success page
-        router.push("/success");
         // Redirect to success page
         router.push("/success");
       } catch (err) {
