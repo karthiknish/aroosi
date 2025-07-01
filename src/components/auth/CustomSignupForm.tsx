@@ -203,20 +203,26 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     // If sign-in didn't work, try sign-up
     if (!signUpLoaded || !signUp) return;
 
-    // Open a placeholder popup synchronously to avoid browser popup blockers
-    const width = 500;
-    const height = 600;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-    const popup = window.open(
-      "about:blank",
-      "Google Sign In",
-      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
-    );
+    // Determine if we're on a mobile device
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
-    if (!popup) {
-      setError("Please allow pop-ups for this site to sign in with Google");
-      return;
+    // Open placeholder popup for desktop to avoid blockers; on mobile we'll redirect
+    let popup: Window | null = null;
+    if (!isMobile) {
+      const width = 500;
+      const height = 600;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      popup = window.open(
+        "about:blank",
+        "Google Sign In",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+      );
+
+      if (!popup) {
+        setError("Please allow pop-ups for this site to sign in with Google");
+        return;
+      }
     }
 
     setLoading(true);
@@ -308,17 +314,15 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         }
       }
 
-      if (authUrl) {
+      if (isMobile) {
+        // On mobile, perform a full redirect
+        window.location.href = authUrl;
+      } else if (popup) {
         // Navigate previously opened popup
         popup.location.href = authUrl;
-      } else {
-        console.error("Could not find OAuth URL in response:", res);
-        popup.close();
-        setError("Failed to initiate Google sign up. Please try again.");
-        setLoading(false);
       }
     } catch (err) {
-      popup.close();
+      if (popup) popup.close();
       console.error("Google signup error", err);
       setError("Failed to initiate Google sign up");
       setLoading(false);
