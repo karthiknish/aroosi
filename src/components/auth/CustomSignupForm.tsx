@@ -61,21 +61,19 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
       // Check if verification is complete
       if (verification.status === "complete") {
-        // Set the active session
-        await setActive({ session: verification.createdSessionId });
-        console.log("Session activated successfully");
-        return;
+        if (verification.createdSessionId) {
+          await setActive({ session: verification.createdSessionId });
+          console.log("Session activated successfully");
+          return;
+        }
       }
 
       // If not complete, check signUp status
-      if (signUp.status === "complete") {
-        // Create session if signUp is complete but verification isn't
-        const { createdSessionId } = signUp;
-        if (createdSessionId) {
-          await setActive({ session: createdSessionId });
-          console.log("Session activated from signUp");
-          return;
-        }
+      if (signUp.status === "complete" && signUp.createdSessionId) {
+        // Activate session from signUp resource
+        await setActive({ session: signUp.createdSessionId });
+        console.log("Session activated from signUp");
+        return;
       }
 
       // If we get here, verification failed
