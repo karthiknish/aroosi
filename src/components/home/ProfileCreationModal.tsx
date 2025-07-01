@@ -225,24 +225,24 @@ export function ProfileCreationModal({
   // Persist wizard state to localStorage to survive OAuth full-page redirects
   const restoreWizardState = () => {
     if (typeof window === "undefined") return;
-
-    // Don't restore from localStorage if we have initialData
-    // This prevents overwriting data passed from HeroOnboarding
-    if (initialData && Object.keys(initialData).length > 0) {
-      console.log("Skipping localStorage restore - using initialData");
-      return;
-    }
-
+    
     try {
       const saved = localStorage.getItem("profileCreationWizardState");
       if (!saved) return;
       const parsed = JSON.parse(saved) as {
         step?: number;
-        formData?: ProfileCreationData;
+        formData?: Partial<ProfileCreationData>;
       };
+      
       if (parsed.formData) {
-        setFormData((prev) => ({ ...prev, ...parsed.formData }));
+        // Merge saved data with current formData (which includes initialData)
+        // This ensures HeroOnboarding data is preserved
+        setFormData((prev) => ({ 
+          ...prev, 
+          ...parsed.formData 
+        }));
       }
+      
       if (parsed.step && parsed.step >= 1 && parsed.step <= 7) {
         setStep(parsed.step);
       }
@@ -250,7 +250,6 @@ export function ProfileCreationModal({
       console.warn("Failed to restore wizard state");
     }
   };
-
   useEffect(() => {
     // Only migrate if we don't have initialData
     // If we have initialData, it's already being used in the state
@@ -266,9 +265,23 @@ export function ProfileCreationModal({
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      // Only save fields that ProfileCreationModal is responsible for
+      // Exclude fields from HeroOnboarding to avoid duplication
+      const { 
+        profileFor, 
+        gender, 
+        fullName, 
+        dateOfBirth, 
+        phoneNumber,
+        ...profileModalFields 
+      } = formData;
+      
       localStorage.setItem(
         "profileCreationWizardState",
-        JSON.stringify({ step, formData }),
+        JSON.stringify({ 
+          step, 
+          formData: profileModalFields 
+        }),
       );
     } catch {
       /* ignore */
