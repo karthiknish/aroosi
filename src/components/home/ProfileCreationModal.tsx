@@ -284,14 +284,13 @@ export function ProfileCreationModal({
         string,
         unknown
       >;
-      const { heroFields, modalFields: profileModalFields } =
-        separateProfileData(plainData);
+      const { heroFields, modalFields } = separateProfileData(plainData);
 
       localStorage.setItem(
         "profileCreationWizardState",
         JSON.stringify({
           step,
-          formData: { ...heroFields, ...profileModalFields },
+          formData: { ...heroFields, ...modalFields },
         })
       );
     } catch {
@@ -471,8 +470,37 @@ export function ProfileCreationModal({
         const plainData: Record<string, unknown> =
           formData as unknown as Record<string, unknown>;
         const { heroFields, modalFields } = separateProfileData(plainData);
+
+        // Load any previously saved hero data to avoid overwriting with blanks
+        let persistedHero: Record<string, unknown> = {};
+        if (typeof window !== "undefined") {
+          try {
+            const savedRaw = localStorage.getItem("profileCreationWizardState");
+            if (savedRaw) {
+              const savedParsed = JSON.parse(savedRaw) as {
+                formData?: Record<string, unknown>;
+              };
+              persistedHero = separateProfileData(
+                savedParsed.formData ?? {}
+              ).heroFields;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        // Merge hero fields, preferring non-empty values
+        const mergedHero: Record<string, unknown> = { ...persistedHero };
+        Object.entries(heroFields).forEach(([k, v]) => {
+          const keep =
+            v !== undefined &&
+            v !== null &&
+            !(typeof v === "string" && v.trim() === "");
+          if (keep) mergedHero[k] = v;
+        });
+
         const merged: Record<string, unknown> = {
-          ...heroFields,
+          ...mergedHero,
           ...modalFields,
         };
 
