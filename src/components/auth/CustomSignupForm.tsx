@@ -4,10 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { showSuccessToast } from "@/lib/ui/toast";
-import {
-  openOAuthPopup,
-  setupOAuthMessageListener,
-} from "@/lib/utils/oauthPopup";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -174,12 +170,12 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
           const popup = window.open(
             authUrl,
             "Google Sign In",
-            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
+            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
           );
 
           if (!popup || popup.closed) {
             setError(
-              "Please allow popups for this site to sign in with Google",
+              "Please allow popups for this site to sign in with Google"
             );
             return;
           }
@@ -206,6 +202,22 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
     // If sign-in didn't work, try sign-up
     if (!signUpLoaded || !signUp) return;
+
+    // Open a placeholder popup synchronously to avoid browser popup blockers
+    const width = 500;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    const popup = window.open(
+      "about:blank",
+      "Google Sign In",
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+    );
+
+    if (!popup) {
+      setError("Please allow pop-ups for this site to sign in with Google");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -297,39 +309,16 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
       }
 
       if (authUrl) {
-        // Open in a popup window
-        const width = 500;
-        const height = 600;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
-
-        const popup = window.open(
-          authUrl,
-          "Google Sign In",
-          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
-        );
-
-        // Check if popup was blocked
-        if (!popup || popup.closed) {
-          setError("Please allow popups for this site to sign in with Google");
-          setLoading(false);
-          return;
-        }
-
-        // Poll to check if the popup is closed
-        const checkInterval = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkInterval);
-            setLoading(false);
-            // The useEffect watching isSignedIn will handle the rest
-          }
-        }, 1000);
+        // Navigate previously opened popup
+        popup.location.href = authUrl;
       } else {
         console.error("Could not find OAuth URL in response:", res);
+        popup.close();
         setError("Failed to initiate Google sign up. Please try again.");
         setLoading(false);
       }
     } catch (err) {
+      popup.close();
       console.error("Google signup error", err);
       setError("Failed to initiate Google sign up");
       setLoading(false);
