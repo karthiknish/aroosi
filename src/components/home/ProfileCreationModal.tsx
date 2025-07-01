@@ -188,6 +188,34 @@ export function ProfileCreationModal({
   // We'll initialise these after formData is declared below
 
   const [currentPath, setCurrentPath] = useState<string>("/");
+  const [formData, setFormData] = useState<ProfileCreationData>({
+    profileFor: initialData?.profileFor || "",
+    gender: initialData?.gender || "",
+    fullName: initialData?.fullName || "",
+    dateOfBirth: initialData?.dateOfBirth || "",
+    email: initialData?.email || "",
+    phoneNumber: initialData?.phoneNumber || "",
+    country: initialData?.country || "",
+    city: initialData?.city || "",
+    height: initialData?.height || "",
+    maritalStatus: initialData?.maritalStatus || "",
+    physicalStatus: initialData?.physicalStatus || "",
+    motherTongue: initialData?.motherTongue || "",
+    religion: initialData?.religion || "",
+    ethnicity: initialData?.ethnicity || "",
+    diet: initialData?.diet || "",
+    smoking: initialData?.smoking || "",
+    drinking: initialData?.drinking || "",
+    education: initialData?.education || "",
+    occupation: initialData?.occupation || "",
+    annualIncome: initialData?.annualIncome || "",
+    aboutMe: initialData?.aboutMe || "",
+    preferredGender: initialData?.preferredGender || "",
+    partnerPreferenceAgeMin: initialData?.partnerPreferenceAgeMin || 18,
+    partnerPreferenceAgeMax: initialData?.partnerPreferenceAgeMax,
+    partnerPreferenceCity: initialData?.partnerPreferenceCity || [],
+    profileImageIds: initialData?.profileImageIds || [],
+  });
 
   // Persist wizard state to localStorage to survive OAuth full-page redirects
   const restoreWizardState = () => {
@@ -233,34 +261,6 @@ export function ProfileCreationModal({
   // Display step that aligns with visible UI, accounting for skipped basic step
   const displayStep = hasBasicData ? step + 1 : step;
 
-  const [formData, setFormData] = useState<ProfileCreationData>({
-    profileFor: initialData?.profileFor || "",
-    gender: initialData?.gender || "",
-    fullName: initialData?.fullName || "",
-    dateOfBirth: initialData?.dateOfBirth || "",
-    email: initialData?.email || "",
-    phoneNumber: initialData?.phoneNumber || "",
-    country: initialData?.country || "",
-    city: initialData?.city || "",
-    height: initialData?.height || "",
-    maritalStatus: initialData?.maritalStatus || "",
-    physicalStatus: initialData?.physicalStatus || "",
-    motherTongue: initialData?.motherTongue || "",
-    religion: initialData?.religion || "",
-    ethnicity: initialData?.ethnicity || "",
-    diet: initialData?.diet || "",
-    smoking: initialData?.smoking || "",
-    drinking: initialData?.drinking || "",
-    education: initialData?.education || "",
-    occupation: initialData?.occupation || "",
-    annualIncome: initialData?.annualIncome || "",
-    aboutMe: initialData?.aboutMe || "",
-    preferredGender: initialData?.preferredGender || "",
-    partnerPreferenceAgeMin: initialData?.partnerPreferenceAgeMin || 18,
-    partnerPreferenceAgeMax: initialData?.partnerPreferenceAgeMax,
-    partnerPreferenceCity: initialData?.partnerPreferenceCity || [],
-    profileImageIds: initialData?.profileImageIds || [],
-  });
 
   // Local controlled input for preferred cities to allow commas while typing
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
