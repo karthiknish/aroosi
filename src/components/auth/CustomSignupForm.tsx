@@ -125,11 +125,45 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     setLoading(true);
     setError(null);
     try {
-      await signUp.authenticateWithRedirect({
+      // Create the sign up with OAuth
+      await signUp.create({
         strategy: "oauth_google",
-        redirectUrl: "/oauth/callback",
-        redirectUrlComplete: "/",
       });
+
+      // Open Google OAuth in a popup window
+      const authUrl = signUp.authorizeWithOAuth({
+        strategy: "oauth_google",
+        redirectUrl: window.location.origin + "/oauth/callback",
+        redirectUrlComplete: window.location.href,
+      });
+
+      // Open in a popup window
+      const width = 500;
+      const height = 600;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+
+      const popup = window.open(
+        authUrl,
+        "Google Sign In",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
+      );
+
+      // Check if popup was blocked
+      if (!popup || popup.closed) {
+        setError("Please allow popups for this site to sign in with Google");
+        setLoading(false);
+        return;
+      }
+
+      // Poll to check if the popup is closed
+      const checkInterval = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkInterval);
+          setLoading(false);
+          // The useEffect watching isSignedIn will handle the rest
+        }
+      }, 1000);
     } catch (err) {
       console.error("Google signup error", err);
       setError("Failed to initiate Google sign up");
