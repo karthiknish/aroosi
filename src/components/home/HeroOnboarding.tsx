@@ -29,6 +29,7 @@ import { ProfileCreationModal } from "@/components/home/ProfileCreationModal";
 import { PhoneInput } from "@/components/ui/phone-input";
 import * as z from "zod";
 import { useAuthContext } from "@/components/AuthProvider";
+import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 
 interface OnboardingData {
   profileFor: string;
@@ -69,7 +70,7 @@ export function HeroOnboarding() {
   });
 
   // ---------- LocalStorage persistence ----------
-  const STORAGE_KEY = "heroOnboardingState";
+  const STORAGE_KEY = STORAGE_KEYS.PROFILE_CREATION;
 
   // Restore on mount
   useEffect(() => {
@@ -131,7 +132,7 @@ export function HeroOnboarding() {
     if (!res.success) {
       showErrorToast(
         null,
-        res.error.errors[0]?.message || "Please fill in all fields",
+        res.error.errors[0]?.message || "Please fill in all fields"
       );
       return false;
     }
@@ -145,7 +146,7 @@ export function HeroOnboarding() {
       if (isNaN(age) || age < 18) {
         showErrorToast(
           null,
-          "You must be at least 18 years old to use this app.",
+          "You must be at least 18 years old to use this app."
         );
         return;
       }
@@ -375,7 +376,7 @@ export function HeroOnboarding() {
                           variant="outline"
                           className={cn(
                             "w-full justify-start text-left font-normal bg-white",
-                            !formData.dateOfBirth && "text-muted-foreground",
+                            !formData.dateOfBirth && "text-muted-foreground"
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -401,7 +402,7 @@ export function HeroOnboarding() {
                             if (date) {
                               handleInputChange(
                                 "dateOfBirth",
-                                format(date, "yyyy-MM-dd"),
+                                format(date, "yyyy-MM-dd")
                               );
                             }
                           }}
@@ -410,7 +411,7 @@ export function HeroOnboarding() {
                             const minDate = new Date(
                               today.getFullYear() - 18,
                               today.getMonth(),
-                              today.getDate(),
+                              today.getDate()
                             );
                             return (
                               date > minDate || date < new Date("1900-01-01")
