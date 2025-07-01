@@ -41,6 +41,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import {
   migrateHeroDataToProfile,
   clearAllOnboardingData,
+  STORAGE_KEYS,
 } from "@/lib/utils/onboardingStorage";
 
 interface ProfileData {
@@ -268,7 +269,7 @@ export function ProfileCreationModal({
     try {
       localStorage.setItem(
         "profileCreationWizardState",
-        JSON.stringify({ step, formData })
+        JSON.stringify({ step, formData }),
       );
     } catch {
       /* ignore */
@@ -295,7 +296,7 @@ export function ProfileCreationModal({
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
     Array.isArray(formData.partnerPreferenceCity)
       ? formData.partnerPreferenceCity.join(", ")
-      : ""
+      : "",
   );
 
   // Keep local input synced if formData changes elsewhere
@@ -319,7 +320,7 @@ export function ProfileCreationModal({
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
-    []
+    [],
   );
 
   const handleProfileImagesChange = useCallback(
@@ -339,11 +340,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string"
+        (img): img is ImageType => typeof img !== "string",
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange, formData.profileImageIds]
+    [handleInputChange, formData.profileImageIds],
   );
 
   const validateStep = () => {
@@ -705,7 +706,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          }
+                          },
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -1020,7 +1021,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value)
+                              Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -1040,7 +1041,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value)
+                                : Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -1105,7 +1106,7 @@ export function ProfileCreationModal({
                         onComplete={() => {
                           // Don't close immediately - the useEffect will handle profile submission
                           console.log(
-                            "Signup completed, profile submission will happen automatically"
+                            "Signup completed, profile submission will happen automatically",
                           );
                         }}
                       />
