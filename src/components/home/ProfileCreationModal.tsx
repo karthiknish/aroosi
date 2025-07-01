@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -33,7 +33,6 @@ import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
 import { CustomSignupForm } from "@/components/auth/CustomSignupForm";
-import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 interface ProfileData {
   profileFor: string;
@@ -338,60 +337,7 @@ export function ProfileCreationModal({
   }, [displayStep, formData]);
 
   // ----- new hook for Clerk sign-in -----
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { isSignedIn } = useUser();
-
-  const handleGoogleSignIn = async () => {
-    if (!signInLoaded || !signIn) return;
-    try {
-      const res = await signIn.create({
-        strategy: "oauth_google",
-        redirectUrl: "/oauth/callback",
-        actionCompleteRedirectUrl: "/oauth/callback",
-      });
-      let authUrl: string | undefined;
-      const obj = res as unknown;
-      if (
-        typeof obj === "object" &&
-        obj !== null &&
-        "externalVerificationRedirectURL" in (obj as Record<string, unknown>)
-      ) {
-        authUrl = (obj as { externalVerificationRedirectURL?: string })
-          .externalVerificationRedirectURL;
-      }
-
-      // type guards to avoid any
-      const hasExtUrl = (
-        value: unknown
-      ): value is { externalVerificationRedirectURL?: string } =>
-        typeof value === "object" &&
-        value !== null &&
-        "externalVerificationRedirectURL" in value &&
-        typeof (value as Record<string, unknown>)
-          .externalVerificationRedirectURL === "string";
-
-      const hasFirstFactor = (
-        value: unknown
-      ): value is { firstFactorVerification: unknown } =>
-        typeof value === "object" &&
-        value !== null &&
-        "firstFactorVerification" in value;
-
-      if (!authUrl && hasFirstFactor(obj)) {
-        const ff = (obj as { firstFactorVerification: unknown })
-          .firstFactorVerification;
-        if (hasExtUrl(ff)) {
-          authUrl = ff.externalVerificationRedirectURL;
-        }
-      }
-
-      if (authUrl) {
-        window.open(authUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (err) {
-      console.error("Google sign-in error", err);
-    }
-  };
 
   // Advance wizard automatically when OAuth completes
   useEffect(() => {
@@ -962,14 +908,6 @@ export function ProfileCreationModal({
                       <h3 className="text-lg font-semibold text-center">
                         Create your account
                       </h3>
-                      <Button
-                        onClick={handleGoogleSignIn}
-                        className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
-                        variant="outline"
-                      >
-                        <GoogleIcon className="h-5 w-5" />
-                        <span>Continue with Google</span>
-                      </Button>
                       <CustomSignupForm onComplete={onClose} />
                     </div>
                   </div>
@@ -995,8 +933,6 @@ export function ProfileCreationModal({
                 </Button>
               )}
             </div>
-
-            {/* The modal is for users creating a profile after onboarding; hide sign-in prompt */}
           </div>
         </div>
       </DialogContent>
