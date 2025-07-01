@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { showSuccessToast } from "@/lib/ui/toast";
+import { checkEmailHasProfile } from "@/lib/profile/userProfileApi";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -34,6 +35,16 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
   const sendCode = async () => {
     if (!signUpLoaded || !signUp) return;
+
+    // Check if email is already tied to a completed profile
+    const { hasProfile } = await checkEmailHasProfile(email);
+    if (hasProfile) {
+      setError(
+        "An account with that email already has a completed profile. Please sign in instead."
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {

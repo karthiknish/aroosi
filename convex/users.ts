@@ -1933,3 +1933,16 @@ export const stripeUpdateSubscription = action({
     });
   },
 });
+
+export const getUserByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    const lower = email.toLowerCase();
+    const all = await ctx.db.query("users").collect();
+    return (
+      all.find(
+        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
+      ) || null
+    );
+  },
+});

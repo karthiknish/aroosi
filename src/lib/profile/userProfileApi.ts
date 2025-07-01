@@ -625,3 +625,28 @@ export async function deleteUserProfile(
     return handleApiError(error, "deleteUserProfile");
   }
 }
+
+// -----------------------------------------------------------
+// Public helper: check if an email already has a completed profile
+// -----------------------------------------------------------
+
+export async function checkEmailHasProfile(
+  email: string
+): Promise<{ exists: boolean; hasProfile: boolean }> {
+  try {
+    const res = await fetch(`/api/profile-exists?email=${encodeURIComponent(email)}`);
+    if (!res.ok) {
+      return { exists: false, hasProfile: false };
+    }
+    const data = (await res.json()) as {
+      exists?: boolean;
+      hasProfile?: boolean;
+    };
+    return {
+      exists: Boolean(data.exists),
+      hasProfile: Boolean(data.hasProfile),
+    };
+  } catch {
+    return { exists: false, hasProfile: false };
+  }
+}
