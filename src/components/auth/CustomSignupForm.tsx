@@ -87,9 +87,16 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
   // ---- Google OAuth ----
   const handleGoogleSignUp = async () => {
-    if (!signInLoaded || !signIn) return;
+    const canUseSignIn = signInLoaded && signIn;
+    const canUseSignUp = signUpLoaded && signUp;
+
+    if (!canUseSignIn && !canUseSignUp) return;
+
+    setLoading(true);
+    setError(null);
     try {
-      const res = await signIn.create({
+      const authCreator = canUseSignIn ? signIn : signUp;
+      const res = await authCreator!.create({
         strategy: "oauth_google",
         redirectUrl: "/oauth/callback",
         actionCompleteRedirectUrl: "/oauth/callback",
@@ -127,6 +134,8 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     } catch (err) {
       console.error("Google signup error", err);
       setError("Failed to initiate Google sign up");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,6 +157,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
             onClick={handleGoogleSignUp}
             className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
             variant="outline"
+            disabled={loading || (!signInLoaded && !signUpLoaded)}
           >
             <GoogleIcon className="h-5 w-5" />
             <span>Continue with Google</span>
