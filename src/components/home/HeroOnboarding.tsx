@@ -437,7 +437,7 @@ function HeroOnboardingInner() {
                     </Label>
                     <PhoneInput
                       value={heroData.phoneNumber}
-                      onChange={(value) =>
+                      onChange={(value: string) =>
                         handleInputChange("phoneNumber", value)
                       }
                       placeholder="7XXX XXXXXX"
