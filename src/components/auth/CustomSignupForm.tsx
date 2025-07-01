@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSignUp, useSignIn, useUser } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { showSuccessToast } from "@/lib/ui/toast";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -19,6 +20,16 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
   const [phase, setPhase] = useState<"email" | "code">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Countdown timer for resend button
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [resendCooldown]);
 
   const sendCode = async () => {
     if (!signUpLoaded || !signUp) return;
@@ -53,6 +64,22 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
       }
     } catch {
       setError("Invalid code. Please check and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendCode = async () => {
+    if (!signUpLoaded || !signUp) return;
+    if (resendCooldown > 0) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      showSuccessToast("Verification code sent");
+      setResendCooldown(30); // 30-second cooldown
+    } catch {
+      setError("Failed to resend code. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -159,6 +186,17 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
             disabled={loading || code.length === 0}
           >
             {loading ? "Verifying..." : "Verify & Create Account"}
+          </Button>
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={loading || resendCooldown > 0}
+            onClick={resendCode}
+            className="w-full text-sm text-gray-600"
+          >
+            {resendCooldown > 0
+              ? `Resend code in ${resendCooldown}s`
+              : "Resend Code"}
           </Button>
         </>
       )}
