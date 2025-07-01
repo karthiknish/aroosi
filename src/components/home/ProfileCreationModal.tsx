@@ -118,11 +118,10 @@ const stepSchemas = [
     profileFor: true,
     gender: true,
   }),
-  // Step 2 – Location & Physical & Contact
+  // Step 2 – Location & Physical
   profileSchema.pick({
     country: true,
     city: true,
-    phoneNumber: true,
     height: true,
     maritalStatus: true,
     physicalStatus: true,
@@ -670,24 +669,6 @@ export function ProfileCreationModal({
                           handleInputChange("city", e.target.value)
                         }
                         placeholder="City"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="phoneNumber"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Phone Number")}
-                      </Label>
-                      <Input
-                        id="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={(e) =>
-                          handleInputChange("phoneNumber", e.target.value)
-                        }
-                        placeholder="Phone Number"
-                        readOnly={!!initialData?.phoneNumber}
-                        className={initialData?.phoneNumber ? "bg-gray-50" : ""}
                       />
                     </div>
                     <div>
