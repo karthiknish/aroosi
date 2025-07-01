@@ -33,6 +33,10 @@ import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
 import { CustomSignupForm } from "@/components/auth/CustomSignupForm";
+import { useAuthContext } from "@/components/AuthProvider";
+import { submitProfile } from "@/lib/profile/userProfileApi";
+import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 interface ProfileData {
   profileFor: string;
@@ -258,7 +262,12 @@ export function ProfileCreationModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Use only the setter; the value isn't required yet
-  const [, setPendingImages] = useState<ImageType[]>([]);
+  const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
+
+  // Auth context for token and userId
+  const { token, getToken, userId, refreshProfile } = useAuthContext();
+
+  const [hasSubmittedProfile, setHasSubmittedProfile] = useState(false);
 
   const handleInputChange = useCallback(
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
@@ -347,6 +356,107 @@ export function ProfileCreationModal({
       onClose();
     }
   }, [isSignedIn, displayStep, onClose]);
+
+  // -------- Auto submit profile & images when user is signed in --------
+  useEffect(() => {
+    const submitProfileAndImages = async () => {
+      if (!isSignedIn) return;
+      if (hasSubmittedProfile) return; // guard
+
+      // Ensure we have a token
+      const authToken = token ?? (await getToken());
+      if (!authToken) return;
+
+      try {
+        // Submit profile data first
+        const payload: Partial<import("@/types/profile").ProfileFormValues> = {
+          ...formData,
+          profileFor: formData.profileFor as "self" | "friend" | "family",
+          // Ensure dateOfBirth is string and partnerPreferenceCity is array
+          dateOfBirth: formData.dateOfBirth,
+          partnerPreferenceCity: Array.isArray(formData.partnerPreferenceCity)
+            ? formData.partnerPreferenceCity
+            : [],
+        };
+
+        const profileRes = await submitProfile(authToken, payload, "create");
+        if (!profileRes.success) {
+          showErrorToast(profileRes.error, "Failed to create profile");
+          return;
+        }
+
+        // Upload any pending images collected during wizard
+        if (pendingImages.length > 0 && userId) {
+          for (const img of pendingImages) {
+            try {
+              // Fetch the blob from the object URL
+              const blob = await fetch(img.url).then((r) => r.blob());
+              const file = new File([blob], img.fileName || "photo.jpg", {
+                type: blob.type || "image/jpeg",
+              });
+
+              const uploadUrl = await getImageUploadUrl(authToken);
+
+              const uploadResp = await fetch(uploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": file.type },
+                body: file,
+              });
+              if (!uploadResp.ok) {
+                console.error("Upload failed", uploadResp.statusText);
+                continue;
+              }
+              const json = await uploadResp.json();
+              const storageId =
+                json?.storageId || (typeof json === "string" ? json : null);
+              if (!storageId) continue;
+
+              await saveImageMeta({
+                token: authToken,
+                userId,
+                storageId,
+                fileName: file.name,
+                contentType: file.type,
+                fileSize: file.size,
+              });
+            } catch (err) {
+              console.error("Image upload error", err);
+            }
+          }
+        }
+
+        // Refresh profile data and finish
+        await refreshProfile();
+        setHasSubmittedProfile(true);
+        // Clean up persisted wizard
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("profileCreationWizardState");
+          localStorage.removeItem("pendingProfileImages");
+        }
+        showSuccessToast("Profile created successfully!");
+        onClose();
+      } catch (err) {
+        console.error("Profile submission error", err);
+        showErrorToast(err, "Profile submission failed");
+      }
+    };
+
+    // Only attempt when on final step (7)
+    if (displayStep === 7) {
+      submitProfileAndImages();
+    }
+  }, [
+    isSignedIn,
+    token,
+    getToken,
+    formData,
+    pendingImages,
+    userId,
+    displayStep,
+    hasSubmittedProfile,
+    refreshProfile,
+    onClose,
+  ]);
 
   return (
     <Dialog
