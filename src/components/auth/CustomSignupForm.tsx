@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useSignUp, useUser } from "@clerk/nextjs";
+import { useSignUp, useSignIn, useUser } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -9,6 +10,7 @@ interface CustomSignupFormProps {
 
 export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { isSignedIn } = useUser();
 
   const [email, setEmail] = useState("");
@@ -38,11 +40,66 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     setLoading(true);
     setError(null);
     try {
-      await signUp.attemptEmailAddressVerification({ code });
+      const verification = await signUp.attemptEmailAddressVerification({
+        code,
+      });
+
+      if (
+        (verification.status === "complete" || signUp.status === "complete") &&
+        signInLoaded
+      ) {
+        // Automatically sign the user in using the same credentials
+        await signIn.create({ identifier: email, password });
+      }
     } catch {
       setError("Invalid code. Please check and try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ---- Google OAuth ----
+  const handleGoogleSignUp = async () => {
+    if (!signInLoaded || !signIn) return;
+    try {
+      const res = await signIn.create({
+        strategy: "oauth_google",
+        redirectUrl: "/oauth/callback",
+        actionCompleteRedirectUrl: "/oauth/callback",
+      });
+
+      // type guard helpers
+      const hasExtUrl = (
+        value: unknown
+      ): value is { externalVerificationRedirectURL?: string } =>
+        typeof value === "object" &&
+        value !== null &&
+        "externalVerificationRedirectURL" in value &&
+        typeof (value as Record<string, unknown>)
+          .externalVerificationRedirectURL === "string";
+
+      let authUrl: string | undefined;
+      const obj = res as unknown;
+      if (hasExtUrl(obj)) {
+        authUrl = obj.externalVerificationRedirectURL;
+      } else if (
+        typeof obj === "object" &&
+        obj !== null &&
+        "firstFactorVerification" in obj
+      ) {
+        const ff = (obj as { firstFactorVerification: unknown })
+          .firstFactorVerification;
+        if (hasExtUrl(ff)) {
+          authUrl = ff.externalVerificationRedirectURL;
+        }
+      }
+
+      if (authUrl) {
+        window.open(authUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      console.error("Google signup error", err);
+      setError("Failed to initiate Google sign up");
     }
   };
 
@@ -60,9 +117,14 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     <div className="space-y-4">
       {phase === "email" && (
         <>
-          <h3 className="text-lg font-semibold text-center">
-            Create your account
-          </h3>
+          <Button
+            onClick={handleGoogleSignUp}
+            className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
+            variant="outline"
+          >
+            <GoogleIcon className="h-5 w-5" />
+            <span>Continue with Google</span>
+          </Button>
           <Input
             type="email"
             placeholder="Email address"
