@@ -120,6 +120,64 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
   // ---- Google OAuth ----
   const handleGoogleSignUp = async () => {
+    // Try sign in first (for existing users)
+    if (signInLoaded && signIn) {
+      try {
+        const res = await signIn.create({
+          strategy: "oauth_google",
+          redirectUrl: window.location.origin + "/oauth/callback",
+          actionCompleteRedirectUrl: window.location.href,
+        });
+
+        console.log("OAuth sign-in response:", res);
+
+        // Check for authorization URL in the response
+        let authUrl: string | undefined;
+
+        if (res && typeof res === "object") {
+          // Check the path used by sign-in: externalAccount.data.authorization_url
+          const externalAccount = (res as any).externalAccount;
+          if (externalAccount?.data?.authorization_url) {
+            authUrl = externalAccount.data.authorization_url;
+          }
+        }
+
+        if (authUrl) {
+          console.log("Found auth URL from sign-in:", authUrl);
+          // Open in a popup window
+          const width = 500;
+          const height = 600;
+          const left = window.screen.width / 2 - width / 2;
+          const top = window.screen.height / 2 - height / 2;
+
+          const popup = window.open(
+            authUrl,
+            "Google Sign In",
+            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
+          );
+
+          if (!popup || popup.closed) {
+            setError(
+              "Please allow popups for this site to sign in with Google",
+            );
+            return;
+          }
+
+          // Poll to check if the popup is closed
+          const checkInterval = setInterval(() => {
+            if (popup.closed) {
+              clearInterval(checkInterval);
+              setLoading(false);
+            }
+          }, 1000);
+          return;
+        }
+      } catch (err) {
+        console.log("Sign-in attempt failed, trying sign-up:", err);
+      }
+    }
+
+    // If sign-in didn't work, try sign-up
     if (!signUpLoaded || !signUp) return;
 
     setLoading(true);
@@ -131,10 +189,10 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         actionCompleteRedirectUrl: window.location.href,
       });
 
+      console.log("OAuth sign-up response:", res);
+
       // Extract the OAuth URL from the response
       let authUrl: string | undefined;
-
-      // Type guard to check if object has a string property
 
       // Helper to safely access nested properties
       const getNestedProp = (obj: unknown, path: string[]): unknown => {
@@ -157,6 +215,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
       if (res && typeof res === "object") {
         // Try different possible paths where Clerk might put the URL
         const possiblePaths = [
+          ["externalAccount", "data", "authorization_url"],
           ["externalVerificationRedirectURL"],
           ["firstFactorVerification", "externalVerificationRedirectURL"],
           [
@@ -173,29 +232,34 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
         for (const path of possiblePaths) {
           const value = getNestedProp(res, path);
-          if (
-            typeof value === "string" &&
-            value.includes("accounts.google.com")
-          ) {
+          if (typeof value === "string" && value.length > 0) {
             authUrl = value;
+            console.log("Found OAuth URL at path:", path, "URL:", value);
             break;
           }
         }
 
         // If not found in common paths, search recursively
         if (!authUrl) {
-          const findAuthUrl = (obj: unknown): string | undefined => {
-            if (!obj || typeof obj !== "object") return undefined;
+          const findAuthUrl = (obj: unknown, depth = 0): string | undefined => {
+            if (!obj || typeof obj !== "object" || depth > 5) return undefined;
 
             for (const key in obj) {
               const value = (obj as Record<string, unknown>)[key];
+
+              // Check if this key might contain a URL
               if (
-                key === "externalVerificationRedirectURL" &&
-                typeof value === "string"
+                (key.toLowerCase().includes("url") ||
+                  key.toLowerCase().includes("auth") ||
+                  key.toLowerCase().includes("redirect")) &&
+                typeof value === "string" &&
+                value.startsWith("http")
               ) {
+                console.log(`Found potential URL at key "${key}":`, value);
                 return value;
               }
-              const found = findAuthUrl(value);
+
+              const found = findAuthUrl(value, depth + 1);
               if (found) return found;
             }
             return undefined;
@@ -215,7 +279,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         const popup = window.open(
           authUrl,
           "Google Sign In",
-          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
         );
 
         // Check if popup was blocked

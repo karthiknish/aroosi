@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useSignIn, useUser, useClerk } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { showSuccessToast } from "@/lib/ui/toast";
 
 interface CustomSignInFormProps {
@@ -11,6 +12,7 @@ interface CustomSignInFormProps {
 export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
   const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { isSignedIn } = useUser();
+  const { setActive } = useClerk();
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -52,13 +54,30 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
         code,
       });
 
-      if (res.status !== "complete") {
-        setError("Invalid or expired code. Please try again.");
+      if (res.status === "complete") {
+        // Set the active session
+        await setActive({ session: res.createdSessionId });
+        console.log("Session activated successfully");
         return;
       }
+
+      setError("Invalid or expired code. Please try again.");
     } catch (err) {
       console.error("Sign-in verification error", err);
-      setError("Incorrect or expired code. Please request a new one.");
+      if (err instanceof Error) {
+        if (
+          err.message.includes("incorrect_code") ||
+          err.message.includes("invalid")
+        ) {
+          setError("The code you entered is incorrect. Please try again.");
+        } else if (err.message.includes("expired")) {
+          setError("The code has expired. Please request a new one.");
+        } else {
+          setError(`Verification failed: ${err.message}`);
+        }
+      } else {
+        setError("Incorrect or expired code. Please request a new one.");
+      }
     } finally {
       setLoading(false);
     }
@@ -71,7 +90,7 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     setError(null);
     try {
       const hasPrepare = (
-        obj: unknown
+        obj: unknown,
       ): obj is {
         prepareFirstFactor: (args: { strategy: string }) => Promise<unknown>;
       } =>
@@ -99,8 +118,139 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     }
   };
 
+  // ---- Google OAuth ----
+  const handleGoogleSignIn = async () => {
+    if (!signInLoaded || !signIn) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await signIn.create({
+        strategy: "oauth_google",
+        redirectUrl: window.location.origin + "/oauth/callback",
+        actionCompleteRedirectUrl: window.location.href,
+      });
+
+      // Extract the OAuth URL from the response
+      let authUrl: string | undefined;
+
+      // Helper to safely access nested properties
+      const getNestedProp = (obj: unknown, path: string[]): unknown => {
+        let current: unknown = obj;
+        for (const key of path) {
+          if (
+            typeof current === "object" &&
+            current !== null &&
+            key in current
+          ) {
+            current = (current as Record<string, unknown>)[key];
+          } else {
+            return undefined;
+          }
+        }
+        return current;
+      };
+
+      // Check various possible locations for the auth URL
+      if (res && typeof res === "object") {
+        // Try different possible paths where Clerk might put the URL
+        const possiblePaths = [
+          ["externalVerificationRedirectURL"],
+          ["firstFactorVerification", "externalVerificationRedirectURL"],
+          [
+            "externalAccount",
+            "verification",
+            "externalVerificationRedirectURL",
+          ],
+          [
+            "verifications",
+            "externalAccount",
+            "externalVerificationRedirectURL",
+          ],
+        ];
+
+        for (const path of possiblePaths) {
+          const value = getNestedProp(res, path);
+          if (
+            typeof value === "string" &&
+            value.includes("accounts.google.com")
+          ) {
+            authUrl = value;
+            break;
+          }
+        }
+
+        // If not found in common paths, search recursively
+        if (!authUrl) {
+          const findAuthUrl = (obj: unknown): string | undefined => {
+            if (!obj || typeof obj !== "object") return undefined;
+
+            for (const key in obj) {
+              const value = (obj as Record<string, unknown>)[key];
+              if (
+                key === "externalVerificationRedirectURL" &&
+                typeof value === "string"
+              ) {
+                return value;
+              }
+              const found = findAuthUrl(value);
+              if (found) return found;
+            }
+            return undefined;
+          };
+
+          authUrl = findAuthUrl(res);
+        }
+      }
+
+      if (authUrl) {
+        // Open in a popup window
+        const width = 500;
+        const height = 600;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+
+        const popup = window.open(
+          authUrl,
+          "Google Sign In",
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
+        );
+
+        // Check if popup was blocked
+        if (!popup || popup.closed) {
+          setError("Please allow popups for this site to sign in with Google");
+          setLoading(false);
+          return;
+        }
+
+        // Poll to check if the popup is closed
+        const checkInterval = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkInterval);
+            setLoading(false);
+            // The useEffect watching isSignedIn will handle the rest
+          }
+        }, 1000);
+      } else {
+        console.error("Could not find OAuth URL in response:", res);
+        setError("Failed to initiate Google sign in. Please try again.");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Google signin error", err);
+      setError("Failed to initiate Google sign in");
+      setLoading(false);
+    }
+  };
+
+  // Fire completion callback when Clerk session becomes active
+  useEffect(() => {
+    if (isSignedIn && onComplete) {
+      onComplete();
+    }
+  }, [isSignedIn, onComplete]);
+
   if (isSignedIn) {
-    onComplete?.();
     return <p className="text-center text-sm">Signed in!</p>;
   }
 
@@ -108,6 +258,15 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     <div className="space-y-4">
       {phase === "email" && (
         <>
+          <Button
+            onClick={handleGoogleSignIn}
+            className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
+            variant="outline"
+            disabled={loading || !signInLoaded}
+          >
+            <GoogleIcon className="h-5 w-5" />
+            <span>Continue with Google</span>
+          </Button>
           <Input
             type="email"
             placeholder="Email address"

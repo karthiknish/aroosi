@@ -1,40 +1,11 @@
 "use client";
 
 import { CustomForgotPasswordForm } from "@/components/auth/CustomForgotPasswordForm";
-import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { useRouter } from "next/navigation";
-import { useSignIn } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
-
-  const handleGoogle = async () => {
-    if (!signInLoaded || !signIn) return;
-    try {
-      const res = await signIn.create({
-        strategy: "oauth_google",
-        redirectUrl: "/oauth/callback",
-        actionCompleteRedirectUrl: "/",
-      });
-      // minimal authUrl extraction reused from prior pages
-      const hasExtUrl = (
-        v: unknown
-      ): v is { externalVerificationRedirectURL?: string } =>
-        typeof v === "object" &&
-        v !== null &&
-        "externalVerificationRedirectURL" in v;
-      let authUrl: string | undefined;
-      if (hasExtUrl(res) && res.externalVerificationRedirectURL) {
-        authUrl = res.externalVerificationRedirectURL;
-      }
-      if (authUrl) window.open(authUrl, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      console.error("Google reset password error", err);
-    }
-  };
 
   return (
     <div className="w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
@@ -68,20 +39,9 @@ export default function ForgotPasswordPage() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <div className="space-y-4">
-            <Button
-              onClick={handleGoogle}
-              className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
-              variant="outline"
-              disabled={!signInLoaded}
-            >
-              <GoogleIcon className="h-5 w-5" />
-              <span>Continue with Google</span>
-            </Button>
-            <CustomForgotPasswordForm
-              onComplete={() => router.push("/sign-in")}
-            />
-          </div>
+          <CustomForgotPasswordForm
+            onComplete={() => router.push("/sign-in")}
+          />
         </motion.div>
       </div>
     </div>

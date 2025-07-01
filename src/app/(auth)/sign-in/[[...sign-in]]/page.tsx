@@ -104,17 +104,7 @@ export default function SignInPage() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <div className="space-y-4">
-            <Button
-              onClick={handleGoogleSignIn}
-              className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
-              variant="outline"
-            >
-              <GoogleIcon className="h-5 w-5" />
-              <span>Continue with Google</span>
-            </Button>
-            <CustomSignInForm onComplete={() => router.push(finalRedirect)} />
-          </div>
+          <CustomSignInForm onComplete={() => router.push(finalRedirect)} />
           <p className="text-center text-sm mt-4">
             <a
               href="/forgot-password"
