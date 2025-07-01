@@ -16,8 +16,8 @@ export type HeroOnboardingFields = (typeof HERO_ONBOARDING_FIELDS)[number];
 /**
  * Separates profile data into HeroOnboarding fields and ProfileModal fields
  */
-export function separateProfileData<T extends Record<string, any>>(
-  data: T,
+export function separateProfileData<T extends Record<string, unknown>>(
+  data: T
 ): {
   heroFields: Partial<T>;
   modalFields: Partial<T>;
@@ -27,9 +27,9 @@ export function separateProfileData<T extends Record<string, any>>(
 
   Object.entries(data).forEach(([key, value]) => {
     if (HERO_ONBOARDING_FIELDS.includes(key as HeroOnboardingFields)) {
-      heroFields[key as keyof T] = value;
+      heroFields[key as keyof T] = value as T[keyof T];
     } else {
-      modalFields[key as keyof T] = value;
+      modalFields[key as keyof T] = value as T[keyof T];
     }
   });
 
@@ -40,9 +40,9 @@ export function separateProfileData<T extends Record<string, any>>(
  * Merges data from HeroOnboarding with ProfileModal data
  * HeroOnboarding data takes precedence
  */
-export function mergeProfileData<T extends Record<string, any>>(
+export function mergeProfileData<T extends Record<string, unknown>>(
   heroData: Partial<T>,
-  modalData: Partial<T>,
+  modalData: Partial<T>
 ): T {
   return {
     ...modalData,

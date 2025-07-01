@@ -268,14 +268,19 @@ export function ProfileCreationModal({
     try {
       // Only save fields that ProfileCreationModal is responsible for
       // Exclude fields from HeroOnboarding to avoid duplication
-      const { modalFields: profileModalFields } = separateProfileData(formData);
+      const plainData: Record<string, unknown> = formData as unknown as Record<
+        string,
+        unknown
+      >;
+      const { heroFields, modalFields: profileModalFields } =
+        separateProfileData(plainData);
 
       localStorage.setItem(
         "profileCreationWizardState",
         JSON.stringify({
           step,
-          formData: profileModalFields,
-        }),
+          formData: { ...heroFields, ...profileModalFields },
+        })
       );
     } catch {
       /* ignore */
