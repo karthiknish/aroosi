@@ -301,8 +301,24 @@ export async function submitProfile(
     return { success: false, error: "No profile data provided" };
   }
 
-  // Format the data for profile creation/update
-  const profileData = {
+  // Remove empty/null/undefined values
+  const sanitize = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
+    const clean: Partial<T> = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      const keep =
+        v !== undefined &&
+        v !== null &&
+        !(typeof v === "string" && v.trim() === "") &&
+        !(Array.isArray(v) && v.length === 0);
+      if (keep) {
+        clean[k as keyof T] = v as T[keyof T];
+      }
+    });
+    return clean;
+  };
+
+  // Format the data for profile creation/update and sanitize
+  const profileData = sanitize({
     fullName: values.fullName,
     dateOfBirth: values.dateOfBirth,
     gender: values.gender,
@@ -315,8 +331,7 @@ export async function submitProfile(
     smoking: (values.smoking as "no" | "occasionally" | "yes" | "") || "no",
     drinking: values.drinking || "no",
     profileImageIds: values.profileImageIds || [],
-    isProfileComplete: true,
-  };
+  });
 
   const requestData =
     mode === "create" ? profileData : { ...values, isProfileComplete: true };
