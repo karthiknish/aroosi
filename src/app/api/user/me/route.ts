@@ -13,11 +13,36 @@ export async function GET(request: NextRequest) {
 
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
-    const userWithProfile = await convex.query(
-      api.users.getCurrentUserWithProfile,
-      {}
-    );
+
+    let userWithProfile;
+    try {
+      convex.setAuth(token);
+      userWithProfile = await convex.query(
+        api.users.getCurrentUserWithProfile,
+        {}
+      );
+    } catch (convexError: unknown) {
+      // If the provided JWT issuer isn\'t recognised in the Convex deployment
+      // we\'ll get NoAuthProvider. Retry the query without auth so at least
+      // public profile data can be returned.
+      if (
+        typeof convexError === "object" &&
+        convexError !== null &&
+        "code" in convexError &&
+        (convexError as { code?: string }).code === "NoAuthProvider"
+      ) {
+        console.warn(
+          "[API /api/user/me] NoAuthProvider for token – retrying without auth"
+        );
+        convex.setAuth("");
+        userWithProfile = await convex.query(
+          api.users.getCurrentUserWithProfile,
+          {}
+        );
+      } else {
+        throw convexError;
+      }
+    }
 
     if (!userWithProfile || !userWithProfile.profile) {
       return errorResponse("User profile not found", 404);

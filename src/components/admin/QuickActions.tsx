@@ -9,6 +9,7 @@ import {
   Settings,
   Plus,
   Search,
+  Bell,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -74,6 +75,14 @@ export function QuickActions() {
       color: "bg-red-50 text-red-600 hover:bg-red-100",
     },
     {
+      id: "push-notification",
+      title: "Send Push Notification",
+      description: "Notify all app users",
+      icon: <Bell className="h-4 w-4" />,
+      href: "/admin/push-notification",
+      color: "bg-yellow-50 text-yellow-600 hover:bg-yellow-100",
+    },
+    {
       id: "settings",
       title: "Platform Settings",
       description: "Configure system",
@@ -97,9 +106,7 @@ export function QuickActions() {
               className={`h-auto p-4 flex items-center justify-start space-x-3 transition-colors ${action.color}`}
               onClick={() => router.push(action.href)}
             >
-              <div className="flex-shrink-0">
-                {action.icon}
-              </div>
+              <div className="flex-shrink-0">{action.icon}</div>
               <div className="flex flex-col items-start space-y-1 min-w-0">
                 <span className="font-medium text-sm">{action.title}</span>
                 <span className="text-xs opacity-80 text-left">
