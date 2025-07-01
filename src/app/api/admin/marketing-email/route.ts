@@ -9,6 +9,7 @@ import {
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { sendUserNotification } from "@/lib/email";
+import { Profile } from "@/types/profile";
 
 /**
  * Map of template keys to template functions.
@@ -75,12 +76,12 @@ export async function POST(request: Request) {
         let emailPayload;
         if (templateKey === "profileCompletionReminder") {
           const completion = p.isProfileComplete ? 100 : 70;
-          emailPayload = templateFn(p as never, completion, "");
+          emailPayload = templateFn(p as Profile, completion, "");
         } else if (templateKey === "premiumPromo") {
-          emailPayload = templateFn(p as never, 30, "");
+          emailPayload = templateFn(p as Profile, 30, "");
         } else {
           emailPayload = templateFn(
-            p as never,
+            p as Profile,
             ...((params?.args || []) as unknown[]),
             ""
           );
