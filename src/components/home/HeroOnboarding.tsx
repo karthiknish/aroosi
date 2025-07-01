@@ -68,8 +68,8 @@ export function HeroOnboarding() {
     phoneNumber: "",
   });
 
-  // ---------- LocalStorage persistence (shared with ProfileCreationModal) ----------
-  const STORAGE_KEY = "profileCreationWizardState";
+  // ---------- LocalStorage persistence ----------
+  const STORAGE_KEY = "heroOnboardingState";
 
   // Restore on mount
   useEffect(() => {
@@ -92,15 +92,16 @@ export function HeroOnboarding() {
     }
   }, []);
 
-  // Save when formData or step changes
+  // Save when formData or step changes, but pause while the modal is open to avoid clobbering its updates
   useEffect(() => {
+    if (showProfileModal) return; // modal takes ownership of persistence
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, formData }));
     } catch {
       /* ignore */
     }
-  }, [formData, step]);
+  }, [formData, step, showProfileModal]);
 
   if (isSignedIn) {
     return null;
@@ -116,7 +117,7 @@ export function HeroOnboarding() {
     if (!res.success) {
       showErrorToast(
         null,
-        res.error.errors[0]?.message || "Please fill in all fields"
+        res.error.errors[0]?.message || "Please fill in all fields",
       );
       return false;
     }
@@ -130,7 +131,7 @@ export function HeroOnboarding() {
       if (isNaN(age) || age < 18) {
         showErrorToast(
           null,
-          "You must be at least 18 years old to use this app."
+          "You must be at least 18 years old to use this app.",
         );
         return;
       }
@@ -146,6 +147,10 @@ export function HeroOnboarding() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Clear HeroOnboarding localStorage before opening modal
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(STORAGE_KEY);
+      }
       // Open the profile creation modal with the collected data
       setShowProfileModal(true);
     } catch {
@@ -359,7 +364,7 @@ export function HeroOnboarding() {
                           variant="outline"
                           className={cn(
                             "w-full justify-start text-left font-normal bg-white",
-                            !formData.dateOfBirth && "text-muted-foreground"
+                            !formData.dateOfBirth && "text-muted-foreground",
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -385,7 +390,7 @@ export function HeroOnboarding() {
                             if (date) {
                               handleInputChange(
                                 "dateOfBirth",
-                                format(date, "yyyy-MM-dd")
+                                format(date, "yyyy-MM-dd"),
                               );
                             }
                           }}
@@ -394,7 +399,7 @@ export function HeroOnboarding() {
                             const minDate = new Date(
                               today.getFullYear() - 18,
                               today.getMonth(),
-                              today.getDate()
+                              today.getDate(),
                             );
                             return (
                               date > minDate || date < new Date("1900-01-01")

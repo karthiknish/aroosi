@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
+import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 
 export function useOnboardingData(): { hasOnboardingData: boolean } {
   const { isSignedIn, isLoaded } = useAuthContext();
@@ -10,7 +11,13 @@ export function useOnboardingData(): { hasOnboardingData: boolean } {
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded) return;
 
-    setHasOnboardingData(!!localStorage.getItem("onboardingData"));
+    // Check for any onboarding data in various keys
+    const hasData = !!(
+      localStorage.getItem(STORAGE_KEYS.HERO_ONBOARDING) ||
+      localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION) ||
+      localStorage.getItem("onboardingData") // Legacy key
+    );
+    setHasOnboardingData(hasData);
 
     if (isSignedIn) {
       // Check if we have onboarding data from the home page
