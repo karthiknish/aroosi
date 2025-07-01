@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -161,6 +162,8 @@ export function ProfileCreationModal({
   onClose,
   initialData,
 }: ProfileCreationModalProps) {
+  const router = useRouter();
+
   // Determine if we already have the basic fields (collected in HeroOnboarding)
   const hasBasicData =
     Boolean(initialData?.profileFor) && Boolean(initialData?.gender);
@@ -435,6 +438,10 @@ export function ProfileCreationModal({
         }
         showSuccessToast("Profile created successfully!");
         onClose();
+        // Redirect to success page
+        router.push("/success");
+        // Redirect to success page
+        router.push("/success");
       } catch (err) {
         console.error("Profile submission error", err);
         showErrorToast(err, "Profile submission failed");

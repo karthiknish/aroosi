@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSignUp, useSignIn, useUser } from "@clerk/nextjs";
+import { useSignUp, useSignIn, useUser, useClerk } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
@@ -13,6 +13,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { isSignedIn } = useUser();
+  const { setActive } = useClerk();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,7 +62,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
       // Check if verification is complete
       if (verification.status === "complete") {
         // Set the active session
-        await signUp.setActive({ session: verification.createdSessionId });
+        await setActive({ session: verification.createdSessionId });
         console.log("Session activated successfully");
         return;
       }
@@ -71,7 +72,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         // Create session if signUp is complete but verification isn't
         const { createdSessionId } = signUp;
         if (createdSessionId) {
-          await signUp.setActive({ session: createdSessionId });
+          await setActive({ session: createdSessionId });
           console.log("Session activated from signUp");
           return;
         }
