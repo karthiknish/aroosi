@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,7 +148,7 @@ const stepSchemas = [
 
 // Build comprehensive country list from countryCodes constant
 const countries: string[] = Array.from(
-  new Set(countryCodes.map((c) => c.country)),
+  new Set(countryCodes.map((c) => c.country))
 ).sort();
 
 const clerkAppearance = {
@@ -215,6 +215,21 @@ export function ProfileCreationModal({
     profileImageIds: initialData?.profileImageIds || [],
   });
 
+  // Local controlled input for preferred cities to allow commas while typing
+  const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
+    Array.isArray(formData.partnerPreferenceCity)
+      ? formData.partnerPreferenceCity.join(", ")
+      : ""
+  );
+
+  // Keep local input synced if formData changes elsewhere
+  useEffect(() => {
+    const joined = Array.isArray(formData.partnerPreferenceCity)
+      ? formData.partnerPreferenceCity.join(", ")
+      : "";
+    setPreferredCitiesInput(joined);
+  }, [formData.partnerPreferenceCity]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Use only the setter; the value isn't required yet
   const [, setPendingImages] = useState<ImageType[]>([]);
@@ -223,7 +238,7 @@ export function ProfileCreationModal({
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
-    [],
+    []
   );
 
   const handleProfileImagesChange = useCallback(
@@ -459,7 +474,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          },
+                          }
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -774,7 +789,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value),
+                              Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -794,7 +809,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value),
+                                : Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -810,20 +825,16 @@ export function ProfileCreationModal({
                       </Label>
                       <Input
                         id="partnerPreferenceCity"
-                        value={
-                          Array.isArray(formData.partnerPreferenceCity)
-                            ? formData.partnerPreferenceCity.join(", ")
-                            : ""
-                        }
-                        onChange={(e) =>
-                          handleInputChange(
-                            "partnerPreferenceCity",
-                            e.target.value
-                              .split(",")
-                              .map((s) => s.trim())
-                              .filter(Boolean),
-                          )
-                        }
+                        value={preferredCitiesInput}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setPreferredCitiesInput(raw);
+                          const parsed = raw
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          handleInputChange("partnerPreferenceCity", parsed);
+                        }}
                         placeholder="e.g. London, Kabul"
                       />
                     </div>
