@@ -188,7 +188,7 @@ function HeroOnboardingInner() {
                       This profile is for
                     </Label>
                     <Select
-                      value={heroData.profileFor}
+                      value={heroData.profileFor ?? ""}
                       onValueChange={(value: string) =>
                         handleInputChange("profileFor", value)
                       }
@@ -255,10 +255,12 @@ function HeroOnboardingInner() {
                       <Button
                         type="button"
                         variant={
-                          heroData.gender === "male" ? "default" : "outline"
+                          (heroData.gender ?? "") === "male"
+                            ? "default"
+                            : "outline"
                         }
                         className={`w-full ${
-                          heroData.gender === "male"
+                          (heroData.gender ?? "") === "male"
                             ? "bg-pink-600 hover:bg-pink-700"
                             : ""
                         }`}
@@ -269,10 +271,12 @@ function HeroOnboardingInner() {
                       <Button
                         type="button"
                         variant={
-                          heroData.gender === "female" ? "default" : "outline"
+                          (heroData.gender ?? "") === "female"
+                            ? "default"
+                            : "outline"
                         }
                         className={`w-full ${
-                          heroData.gender === "female"
+                          (heroData.gender ?? "") === "female"
                             ? "bg-pink-600 hover:bg-pink-700"
                             : ""
                         }`}
@@ -299,7 +303,7 @@ function HeroOnboardingInner() {
                       id="fullName"
                       type="text"
                       placeholder="Enter full name"
-                      value={heroData.fullName}
+                      value={heroData.fullName ?? ""}
                       onChange={(e) =>
                         handleInputChange("fullName", e.target.value)
                       }
@@ -386,7 +390,7 @@ function HeroOnboardingInner() {
                       Phone Number
                     </Label>
                     <PhoneInput
-                      value={heroData.phoneNumber}
+                      value={heroData.phoneNumber ?? ""}
                       onChange={(value: string) =>
                         handleInputChange("phoneNumber", value)
                       }

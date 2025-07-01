@@ -173,11 +173,8 @@ export function ProfileCreationModal({
 }: ProfileCreationModalProps) {
   const router = useRouter();
 
-  // Debug log to see what data we're receiving
-  console.log("ProfileCreationModal initialData:", initialData);
-
-  // Debug log to see what data we're receiving
-  console.log("ProfileCreationModal initialData:", initialData);
+  // Debug: comment out verbose logging in production
+  // console.log("ProfileCreationModal initialData:", initialData);
 
   // Determine if we already have the basic fields (collected in HeroOnboarding)
   const hasBasicData =
