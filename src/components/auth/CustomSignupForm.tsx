@@ -135,17 +135,6 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
       let authUrl: string | undefined;
 
       // Type guard to check if object has a string property
-      const hasStringProp = (
-        obj: unknown,
-        prop: string,
-      ): obj is Record<string, unknown> => {
-        return (
-          typeof obj === "object" &&
-          obj !== null &&
-          prop in obj &&
-          typeof (obj as Record<string, unknown>)[prop] === "string"
-        );
-      };
 
       // Helper to safely access nested properties
       const getNestedProp = (obj: unknown, path: string[]): unknown => {
@@ -226,7 +215,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         const popup = window.open(
           authUrl,
           "Google Sign In",
-          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
         );
 
         // Check if popup was blocked
