@@ -33,6 +33,7 @@ import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
 import { CustomSignupForm } from "@/components/auth/CustomSignupForm";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
 
 interface ProfileData {
   profileFor: string;
@@ -949,10 +950,11 @@ export function ProfileCreationModal({
                     <div className="space-y-4">
                       <Button
                         onClick={handleGoogleSignIn}
-                        className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
+                        className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
                         variant="outline"
                       >
-                        Continue with Google
+                        <GoogleIcon className="h-5 w-5" />
+                        <span>Continue with Google</span>
                       </Button>
                       <CustomSignupForm onComplete={onClose} />
                     </div>
