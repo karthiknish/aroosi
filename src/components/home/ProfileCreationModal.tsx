@@ -379,6 +379,11 @@ export function ProfileCreationModal({
           if (e.path[0]) fieldErrors[String(e.path[0])] = e.message;
         });
 
+        // Show toast with first error message
+        const firstError =
+          result.error.errors[0]?.message ?? "Please fill required fields";
+        showErrorToast(null, firstError);
+
         // Only update state if error set actually changed
         if (JSON.stringify(errors) !== JSON.stringify(fieldErrors)) {
           setErrors(fieldErrors);
