@@ -1656,12 +1656,15 @@ export const boostProfile = mutation({
       throw new ConvexError("Profile Boost is only available for Premium Plus");
     }
 
-    // Determine if we need to reset monthly quota
+    // Determine if we need to reset monthly quota. We store boostsMonth as a numeric key in
+    // the form YYYYMM (e.g., 202406 for June 2024) so it plays nicely with the Convex
+    // schema expecting `v.number()`.
     const now = new Date();
-    const currentMonthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`; // e.g. "2024-6"
+    const currentMonthKey =
+      now.getUTCFullYear() * 100 + (now.getUTCMonth() + 1); // 202406
 
     let boostsRemaining = profile.boostsRemaining as number | undefined;
-    let boostsMonth = (profile as any).boostsMonth as string | undefined;
+    let boostsMonth = (profile as any).boostsMonth as number | undefined;
 
     if (boostsMonth !== currentMonthKey) {
       // New month → reset quota to 5

@@ -59,7 +59,7 @@ export interface Profile {
   subscriptionPlan?: SubscriptionPlan;
   subscriptionExpiresAt?: number;
   boostsRemaining?: number;
-  boostsMonth?: string;
+  boostsMonth?: number;
   hasSpotlightBadge?: boolean;
   spotlightBadgeExpiresAt?: number;
   boostedUntil?: number;

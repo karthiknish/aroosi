@@ -11,22 +11,21 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 import { FeatureUsageTracker } from "@/components/subscription/FeatureUsageTracker";
-import { useSubscriptionGuard } from "@/hooks/useSubscription";
 
-function computeCurrentMonthKey() {
+function computeCurrentMonthKey(): number {
   const now = new Date();
-  return `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
+  return now.getUTCFullYear() * 100 + (now.getUTCMonth() + 1);
 }
 
 function formatTimeRemaining(boostedUntil: number): string {
   const now = Date.now();
   const timeLeft = boostedUntil - now;
-  
+
   if (timeLeft <= 0) return "";
-  
+
   const hours = Math.floor(timeLeft / (1000 * 60 * 60));
   const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m remaining`;
   }
@@ -36,14 +35,13 @@ function formatTimeRemaining(boostedUntil: number): string {
 const ProfileBoostButton = () => {
   const { profile, refetchProfileStatus, isLoading } = useProfileContext();
   const { token } = useAuthContext();
-  // const { canAccess } = useSubscriptionGuard(); // Commented out as not currently used
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
 
   // Update time remaining every minute when boosted
   useEffect(() => {
     if (!profile?.boostedUntil) return;
-    
+
     const updateTime = () => {
       if (profile.boostedUntil && profile.boostedUntil > Date.now()) {
         setTimeRemaining(formatTimeRemaining(profile.boostedUntil));
@@ -51,10 +49,10 @@ const ProfileBoostButton = () => {
         setTimeRemaining("");
       }
     };
-    
+
     updateTime();
     const interval = setInterval(updateTime, 60000); // Update every minute
-    
+
     return () => clearInterval(interval);
   }, [profile?.boostedUntil]);
 
@@ -79,7 +77,10 @@ const ProfileBoostButton = () => {
   };
 
   let boostsRemaining = profile.boostsRemaining ?? 0;
-  if (profile.boostsMonth && profile.boostsMonth !== computeCurrentMonthKey()) {
+  if (
+    typeof profile.boostsMonth === "number" &&
+    profile.boostsMonth !== computeCurrentMonthKey()
+  ) {
     boostsRemaining = 5; // reset quota client-side if month changed
   }
 
@@ -105,16 +106,16 @@ const ProfileBoostButton = () => {
   }
 
   return (
-    <PremiumFeatureGuard 
-      feature="profile_boost" 
+    <PremiumFeatureGuard
+      feature="profile_boost"
       requiredTier="premiumPlus"
-      onUpgrade={() => window.location.href = '/subscription'}
+      onUpgrade={() => (window.location.href = "/subscription")}
     >
       <FeatureUsageTracker feature="profile_boost_used">
         <div className="space-y-2">
-          <Button 
-            onClick={handleBoost} 
-            disabled={disabled} 
+          <Button
+            onClick={handleBoost}
+            disabled={disabled}
             variant={boostsRemaining > 0 ? "default" : "secondary"}
             className="bg-pink-600 hover:bg-pink-700 text-white"
           >
@@ -126,11 +127,9 @@ const ProfileBoostButton = () => {
             Boost Profile (24h)
           </Button>
           <div className="text-xs text-gray-500">
-            {boostsRemaining > 0 ? (
-              `${boostsRemaining} boost${boostsRemaining === 1 ? '' : 's'} remaining this month`
-            ) : (
-              "No boosts remaining this month"
-            )}
+            {boostsRemaining > 0
+              ? `${boostsRemaining} boost${boostsRemaining === 1 ? "" : "s"} remaining this month`
+              : "No boosts remaining this month"}
           </div>
         </div>
       </FeatureUsageTracker>
