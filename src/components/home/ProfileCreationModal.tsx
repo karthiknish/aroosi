@@ -35,7 +35,10 @@ import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
 import { CustomSignupForm } from "@/components/auth/CustomSignupForm";
 import { useAuthContext } from "@/components/AuthProvider";
-import { submitProfile } from "@/lib/profile/userProfileApi";
+import {
+  submitProfile,
+  getCurrentUserWithProfile,
+} from "@/lib/profile/userProfileApi";
 import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import {
@@ -160,7 +163,7 @@ const stepSchemas = [
 
 // Build comprehensive country list from countryCodes constant
 const countries: string[] = Array.from(
-  new Set(countryCodes.map((c: { country: string }) => c.country)),
+  new Set(countryCodes.map((c: { country: string }) => c.country))
 ).sort();
 
 export function ProfileCreationModal({
@@ -316,7 +319,7 @@ export function ProfileCreationModal({
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
     Array.isArray(formData.partnerPreferenceCity)
       ? formData.partnerPreferenceCity.join(", ")
-      : "",
+      : ""
   );
 
   // Keep local input synced if formData changes elsewhere
@@ -340,7 +343,7 @@ export function ProfileCreationModal({
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
-    [],
+    []
   );
 
   const handleProfileImagesChange = useCallback(
@@ -360,11 +363,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string",
+        (img): img is ImageType => typeof img !== "string"
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange, formData.profileImageIds],
+    [handleInputChange, formData.profileImageIds]
   );
 
   const validateStep = () => {
@@ -450,7 +453,18 @@ export function ProfileCreationModal({
       if (!authToken) return;
 
       try {
-        // Mark as submitted immediately to avoid race conditions
+        // Check for existing profile – do NOT allow update via modal
+        const existing = await getCurrentUserWithProfile(authToken);
+        if (existing.success && existing.data) {
+          showErrorToast(
+            null,
+            "A profile already exists for this account. Please edit it instead of creating a new one."
+          );
+          setHasSubmittedProfile(false);
+          return;
+        }
+
+        // Mark as submitted after passing duplicate check
         setHasSubmittedProfile(true);
 
         // Merge hero and modal fields explicitly (guarantees hero data present)
@@ -723,7 +737,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          },
+                          }
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -1038,7 +1052,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value),
+                              Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -1058,7 +1072,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value),
+                                : Number(e.target.value)
                             )
                           }
                           className="w-20"
@@ -1123,7 +1137,7 @@ export function ProfileCreationModal({
                         onComplete={() => {
                           // Don't close immediately - the useEffect will handle profile submission
                           console.log(
-                            "Signup completed, profile submission will happen automatically",
+                            "Signup completed, profile submission will happen automatically"
                           );
                         }}
                       />
