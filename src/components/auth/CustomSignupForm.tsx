@@ -55,21 +55,61 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
         code,
       });
 
-      const completed =
-        verification.status === "complete" || signUp.status === "complete";
+      console.log("Verification response:", verification);
+      console.log("SignUp status:", signUp.status);
 
-      if (!completed) {
-        setError("Invalid or expired code. Please check and try again.");
+      // Check if verification is complete
+      if (verification.status === "complete") {
+        // Set the active session
+        await signUp.setActive({ session: verification.createdSessionId });
+        console.log("Session activated successfully");
         return;
       }
 
-      // Try to create a session via signIn first
-      if (signInLoaded && signIn) {
-        await signIn.create({ identifier: email, password });
+      // If not complete, check signUp status
+      if (signUp.status === "complete") {
+        // Create session if signUp is complete but verification isn't
+        const { createdSessionId } = signUp;
+        if (createdSessionId) {
+          await signUp.setActive({ session: createdSessionId });
+          console.log("Session activated from signUp");
+          return;
+        }
       }
+
+      // If we get here, verification failed
+      setError("Invalid or expired code. Please check and try again.");
+
+      // If not complete, check signUp status
+      if (signUp.status === "complete") {
+        // Create session if signUp is complete but verification isn't
+        const { createdSessionId } = signUp;
+        if (createdSessionId) {
+          await signUp.setActive({ session: createdSessionId });
+          console.log("Session activated from signUp");
+          return;
+        }
+      }
+
+      // If we get here, verification failed
+      setError("Invalid or expired code. Please check and try again.");
     } catch (err) {
-      console.error("Verification error", err);
-      setError("Incorrect or expired code. Please request a new one.");
+      console.error("Verification error details:", err);
+      // Check if it's a specific Clerk error
+      if (err instanceof Error) {
+        if (
+          err.message.includes("incorrect_code") ||
+          err.message.includes("invalid")
+        ) {
+          setError("The code you entered is incorrect. Please try again.");
+        } else if (err.message.includes("expired")) {
+          setError("The code has expired. Please request a new one.");
+        } else {
+          setError(`Verification failed: ${err.message}`);
+        }
+      } else {
+        setError("Incorrect or expired code. Please request a new one.");
+      }
     } finally {
       setLoading(false);
     }
@@ -110,7 +150,7 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
 
       // type guard helpers
       const hasExtUrl = (
-        value: unknown
+        value: unknown,
       ): value is { externalVerificationRedirectURL?: string } =>
         typeof value === "object" &&
         value !== null &&

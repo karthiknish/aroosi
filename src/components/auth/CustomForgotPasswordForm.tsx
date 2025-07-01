@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import { useSignIn, useUser } from "@clerk/nextjs";
+import { useSignIn } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { showSuccessToast } from "@/lib/ui/toast";
 
-interface CustomSignInFormProps {
+interface CustomForgotPasswordFormProps {
   onComplete?: () => void;
 }
 
-export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
+export function CustomForgotPasswordForm({
+  onComplete,
+}: CustomForgotPasswordFormProps) {
   const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { isSignedIn } = useUser();
 
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -19,7 +20,7 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // cooldown timer
+  // cooldown timer for resend button
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const id = setInterval(() => {
@@ -28,15 +29,22 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     return () => clearInterval(id);
   }, [resendCooldown]);
 
+  // Send reset code to email
   const sendCode = async () => {
     if (!signInLoaded || !signIn) return;
     setLoading(true);
     setError(null);
     try {
-      await signIn.create({ identifier: email, strategy: "email_code" });
+      await signIn.create({
+        identifier: email,
+        strategy: "reset_password_email_code",
+      });
       setPhase("code");
-    } catch {
-      setError("Unable to send code. Please try again.");
+      showSuccessToast("Reset code sent to your email");
+      setResendCooldown(30);
+    } catch (err) {
+      console.error("Forgot password send code error", err);
+      setError("Unable to send code. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -48,7 +56,7 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     setError(null);
     try {
       const res = await signIn.attemptFirstFactor({
-        strategy: "email_code",
+        strategy: "reset_password_email_code",
         code,
       });
 
@@ -56,8 +64,13 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
         setError("Invalid or expired code. Please try again.");
         return;
       }
+
+      showSuccessToast(
+        "Code verified. Please check your email for reset link."
+      );
+      onComplete?.();
     } catch (err) {
-      console.error("Sign-in verification error", err);
+      console.error("Verify reset code error", err);
       setError("Incorrect or expired code. Please request a new one.");
     } finally {
       setLoading(false);
@@ -70,6 +83,7 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     setLoading(true);
     setError(null);
     try {
+      // prepareFirstFactor may exist
       const hasPrepare = (
         obj: unknown
       ): obj is {
@@ -83,13 +97,15 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
 
       if (hasPrepare(signIn)) {
         await signIn.prepareFirstFactor({
-          strategy: "email_code",
+          strategy: "reset_password_email_code",
         });
       } else {
-        // fallback: create again triggers code
-        await signIn.create({ identifier: email, strategy: "email_code" });
+        await signIn.create({
+          identifier: email,
+          strategy: "reset_password_email_code",
+        });
       }
-      showSuccessToast("Verification code sent");
+      showSuccessToast("Reset code sent");
       setResendCooldown(30);
     } catch (err) {
       console.error("Resend code error", err);
@@ -98,11 +114,6 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
       setLoading(false);
     }
   };
-
-  if (isSignedIn) {
-    onComplete?.();
-    return <p className="text-center text-sm">Signed in!</p>;
-  }
 
   return (
     <div className="space-y-4">
@@ -119,14 +130,14 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
             onClick={sendCode}
             disabled={loading || !email}
           >
-            {loading ? "Sending..." : "Send Code"}
+            {loading ? "Sending..." : "Send Reset Code"}
           </Button>
         </>
       )}
       {phase === "code" && (
         <>
           <Input
-            placeholder="Verification code"
+            placeholder="Reset code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
           />
@@ -135,7 +146,7 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
             onClick={verifyCode}
             disabled={loading || code.length === 0}
           >
-            {loading ? "Verifying..." : "Verify & Sign In"}
+            {loading ? "Verifying..." : "Verify Code"}
           </Button>
           <Button
             variant="ghost"
