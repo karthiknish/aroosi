@@ -60,8 +60,9 @@ const onboardingStepSchemas = [
 
 function HeroOnboardingInner() {
   const { step, setStep, formData, updateFormData } = useProfileWizard();
-  // We store arbitrary keys in formData; cast to OnboardingData for this component's usage
-  const heroData = formData as unknown as OnboardingData;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deliberate cast from loose record to strongly typed
+  const heroData = formData as any as OnboardingData;
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
