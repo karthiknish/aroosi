@@ -28,8 +28,11 @@ import { cn } from "@/lib/utils";
 import { ProfileCreationModal } from "@/components/home/ProfileCreationModal";
 import { PhoneInput } from "@/components/ui/phone-input";
 import * as z from "zod";
-import { useAuthContext } from "@/components/AuthProvider";
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
+import {
+  ProfileWizardProvider,
+  useProfileWizard,
+} from "@/contexts/ProfileWizardContext";
 
 interface OnboardingData {
   profileFor: string;
@@ -55,19 +58,12 @@ const onboardingStepSchemas = [
   onboardingSchema.pick({ phoneNumber: true }),
 ];
 
-export function HeroOnboarding() {
-  const { isSignedIn } = useAuthContext();
-
-  const [step, setStep] = useState<number>(1);
+function HeroOnboardingInner() {
+  const { step, setStep, formData, updateFormData } = useProfileWizard();
+  // We store arbitrary keys in formData; cast to OnboardingData for this component's usage
+  const heroData = formData as unknown as OnboardingData;
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [formData, setFormData] = useState<OnboardingData>({
-    profileFor: "",
-    gender: "",
-    fullName: "",
-    dateOfBirth: "",
-    phoneNumber: "",
-  });
 
   // ---------- LocalStorage persistence ----------
   const STORAGE_KEY = STORAGE_KEYS.PROFILE_CREATION;
@@ -96,7 +92,7 @@ export function HeroOnboarding() {
         });
 
         if (Object.keys(cleaned).length) {
-          setFormData((prev) => ({ ...prev, ...cleaned }));
+          updateFormData(cleaned);
         }
       }
       if (parsed.step && parsed.step >= 1 && parsed.step <= 3) {
@@ -105,7 +101,7 @@ export function HeroOnboarding() {
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [STORAGE_KEY, setStep, updateFormData]);
 
   // Save when formData or step changes, but pause while the modal is open to avoid clobbering its updates
   useEffect(() => {
@@ -118,17 +114,13 @@ export function HeroOnboarding() {
     }
   }, [formData, step, showProfileModal]);
 
-  if (isSignedIn) {
-    return null;
-  }
-
   const handleInputChange = (field: keyof OnboardingData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    updateFormData({ [field]: value });
   };
 
   const validateOnboardingStep = (): boolean => {
     const schema = onboardingStepSchemas[step - 1];
-    const res = schema.safeParse(formData);
+    const res = schema.safeParse(heroData);
     if (!res.success) {
       showErrorToast(
         null,
@@ -142,7 +134,7 @@ export function HeroOnboarding() {
   const handleNext = () => {
     if (!validateOnboardingStep()) return;
     if (step === 2) {
-      const age = calculateAge(formData.dateOfBirth);
+      const age = calculateAge(heroData.dateOfBirth);
       if (isNaN(age) || age < 18) {
         showErrorToast(
           null,
@@ -244,8 +236,8 @@ export function HeroOnboarding() {
                       This profile is for
                     </Label>
                     <Select
-                      value={formData.profileFor}
-                      onValueChange={(value) =>
+                      value={heroData.profileFor}
+                      onValueChange={(value: string) =>
                         handleInputChange("profileFor", value)
                       }
                     >
@@ -311,10 +303,10 @@ export function HeroOnboarding() {
                       <Button
                         type="button"
                         variant={
-                          formData.gender === "male" ? "default" : "outline"
+                          heroData.gender === "male" ? "default" : "outline"
                         }
                         className={`w-full ${
-                          formData.gender === "male"
+                          heroData.gender === "male"
                             ? "bg-pink-600 hover:bg-pink-700"
                             : ""
                         }`}
@@ -325,10 +317,10 @@ export function HeroOnboarding() {
                       <Button
                         type="button"
                         variant={
-                          formData.gender === "female" ? "default" : "outline"
+                          heroData.gender === "female" ? "default" : "outline"
                         }
                         className={`w-full ${
-                          formData.gender === "female"
+                          heroData.gender === "female"
                             ? "bg-pink-600 hover:bg-pink-700"
                             : ""
                         }`}
@@ -355,7 +347,7 @@ export function HeroOnboarding() {
                       id="fullName"
                       type="text"
                       placeholder="Enter full name"
-                      value={formData.fullName}
+                      value={heroData.fullName}
                       onChange={(e) =>
                         handleInputChange("fullName", e.target.value)
                       }
@@ -376,12 +368,12 @@ export function HeroOnboarding() {
                           variant="outline"
                           className={cn(
                             "w-full justify-start text-left font-normal bg-white",
-                            !formData.dateOfBirth && "text-muted-foreground"
+                            !heroData.dateOfBirth && "text-muted-foreground"
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {formData.dateOfBirth ? (
-                            format(new Date(formData.dateOfBirth), "PPP")
+                          {heroData.dateOfBirth ? (
+                            format(new Date(heroData.dateOfBirth), "PPP")
                           ) : (
                             <span>Pick a date</span>
                           )}
@@ -394,8 +386,8 @@ export function HeroOnboarding() {
                         <Calendar
                           mode="single"
                           selected={
-                            formData.dateOfBirth
-                              ? new Date(formData.dateOfBirth)
+                            heroData.dateOfBirth
+                              ? new Date(heroData.dateOfBirth)
                               : undefined
                           }
                           onSelect={(date) => {
@@ -422,9 +414,9 @@ export function HeroOnboarding() {
                         />
                       </PopoverContent>
                     </Popover>
-                    {formData.dateOfBirth && (
+                    {heroData.dateOfBirth && (
                       <p className="text-sm text-gray-500 mt-1">
-                        Age: {calculateAge(formData.dateOfBirth)} years
+                        Age: {calculateAge(heroData.dateOfBirth)} years
                       </p>
                     )}
                   </div>
@@ -442,7 +434,7 @@ export function HeroOnboarding() {
                       Phone Number
                     </Label>
                     <PhoneInput
-                      value={formData.phoneNumber}
+                      value={heroData.phoneNumber}
                       onChange={(value) =>
                         handleInputChange("phoneNumber", value)
                       }
@@ -517,8 +509,16 @@ export function HeroOnboarding() {
       <ProfileCreationModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
-        initialData={formData}
+        initialData={heroData}
       />
     </div>
+  );
+}
+
+export function HeroOnboarding() {
+  return (
+    <ProfileWizardProvider>
+      <HeroOnboardingInner />
+    </ProfileWizardProvider>
   );
 }
