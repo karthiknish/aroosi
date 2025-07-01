@@ -3,14 +3,18 @@ import { useSignUp, useSignIn, useUser, useClerk } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
-import { showSuccessToast } from "@/lib/ui/toast";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { checkEmailHasProfile } from "@/lib/profile/userProfileApi";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
+  onProfileExists?: () => void;
 }
 
-export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
+export function CustomSignupForm({
+  onComplete,
+  onProfileExists,
+}: CustomSignupFormProps) {
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { isSignedIn } = useUser();
@@ -39,9 +43,11 @@ export function CustomSignupForm({ onComplete }: CustomSignupFormProps) {
     // Check if email is already tied to a completed profile
     const { hasProfile } = await checkEmailHasProfile(email);
     if (hasProfile) {
-      setError(
-        "An account with that email already has a completed profile. Please sign in instead."
+      showErrorToast(
+        null,
+        "That email already has a profile. Please sign in instead."
       );
+      onProfileExists?.();
       return;
     }
 

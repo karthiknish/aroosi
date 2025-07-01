@@ -1160,10 +1160,11 @@ export function ProfileCreationModal({
                       </h3>
                       <CustomSignupForm
                         onComplete={() => {
-                          // Don't close immediately - the useEffect will handle profile submission
-                          console.log(
-                            "Signup completed, profile submission will happen automatically"
-                          );
+                          console.log("Signup completed; profile submission will auto-run");
+                        }}
+                        onProfileExists={() => {
+                          // Close modal if profile already exists
+                          onClose();
                         }}
                       />
                     </div>
