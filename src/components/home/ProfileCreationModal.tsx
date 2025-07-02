@@ -102,7 +102,9 @@ const profileSchema = z.object({
   religion: z.string().min(1, "Religion is required"),
   ethnicity: z.string().min(1, "Ethnicity is required"),
   diet: z.string().min(1, "Diet is required"),
-  smoking: z.string().min(1, "Smoking is required"),
+  smoking: z.enum(["no", "occasionally", "yes"], {
+    errorMap: () => ({ message: "Smoking is required" }),
+  }),
   drinking: z.string().min(1, "Drinking is required"),
   education: z.string().min(1, "Education is required"),
   occupation: z.string().min(1, "Occupation is required"),
