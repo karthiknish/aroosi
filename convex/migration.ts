@@ -273,3 +273,114 @@ export const createImageForMigration = mutation({
     return imageId;
   },
 });
+
+// Query to get all interests
+export const getAllInterests = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const interests = await ctx.db.query("interests").collect();
+    return interests;
+  },
+});
+
+// Mutation to create an interest
+export const createInterestForMigration = mutation({
+  args: {
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+    ),
+    createdAt: v.float64(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const interestId = await ctx.db.insert("interests", args);
+    return interestId;
+  },
+});
+
+// Query to get all messages
+export const getAllMessages = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const messages = await ctx.db.query("messages").collect();
+    return messages;
+  },
+});
+
+// Mutation to create a message
+export const createMessageForMigration = mutation({
+  args: {
+    conversationId: v.string(),
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    text: v.string(),
+    type: v.optional(
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
+    ),
+    audioStorageId: v.optional(v.string()),
+    duration: v.optional(v.number()),
+    fileSize: v.optional(v.number()),
+    mimeType: v.optional(v.string()),
+    createdAt: v.float64(),
+    readAt: v.optional(v.float64()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const messageId = await ctx.db.insert("messages", args);
+    return messageId;
+  },
+});
+
+// Query to get all profile views
+export const getAllProfileViews = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const views = await ctx.db.query("profileViews").collect();
+    return views;
+  },
+});
+
+// Mutation to create a profile view
+export const createProfileViewForMigration = mutation({
+  args: {
+    viewerId: v.id("users"),
+    profileId: v.id("profiles"),
+    createdAt: v.float64(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const viewId = await ctx.db.insert("profileViews", args);
+    return viewId;
+  },
+});
