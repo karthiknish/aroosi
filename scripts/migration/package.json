@@ -1,0 +1,18 @@
+{
+  "name": "aroosi-migration",
+  "version": "1.0.0",
+  "description": "Migration scripts for Aroosi Convex data",
+  "type": "module",
+  "scripts": {
+    "migrate-profiles": "tsx migrate-profiles.ts"
+  },
+  "dependencies": {
+    "convex": "^1.17.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

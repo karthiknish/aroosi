@@ -9,9 +9,26 @@ dotenv.config();
 const SOURCE_URL = "https://quirky-akita-969.convex.cloud";
 const DESTINATION_URL = "https://proper-gull-501.convex.cloud";
 
+// Get tokens from environment variables
+const SOURCE_TOKEN = process.env.SOURCE_CONVEX_TOKEN;
+const DEST_TOKEN = process.env.DEST_CONVEX_TOKEN;
+
+if (!SOURCE_TOKEN || !DEST_TOKEN) {
+  console.error(
+    "Error: Missing authentication tokens in environment variables",
+  );
+  console.error(
+    "Please set SOURCE_CONVEX_TOKEN and DEST_CONVEX_TOKEN in your .env file",
+  );
+  process.exit(1);
+}
+
 // Initialize Convex clients
 const sourceClient = new ConvexHttpClient(SOURCE_URL);
+sourceClient.setAuth(SOURCE_TOKEN);
+
 const destClient = new ConvexHttpClient(DESTINATION_URL);
+destClient.setAuth(DEST_TOKEN);
 
 interface Profile {
   _id: string;
@@ -171,28 +188,50 @@ async function migrateProfile(profile: Profile, user: User): Promise<boolean> {
     );
 
     // First, create the user if it doesn't exist
-    // await destClient.mutation(api.users.createUser, {
-    //   clerkId: user.clerkId,
-    //   email: user.email,
-    //   banned: user.banned,
-    //   role: user.role
-    // });
+    const newUserId = await destClient.mutation(
+      api.migration.createUserForMigration,
+      {
+        clerkId: user.clerkId,
+        email: user.email,
+        banned: user.banned,
+        role: user.role,
+      },
+    );
+
+    // Prepare profile data, removing fields that will be auto-generated
+    const { _id, _creationTime, userId, ...profileData } = profile;
 
     // Then create the profile
-    // await destClient.mutation(api.profiles.createProfile, {
-    //   ...profile,
-    //   // Remove _id and _creationTime as they'll be generated
-    //   _id: undefined,
-    //   _creationTime: undefined
-    // });
+    await destClient.mutation(api.migration.createProfileForMigration, {
+      ...profileData,
+      userId: newUserId,
+      // Ensure all enum fields have valid values
+      profileFor: profileData.profileFor as any,
+      gender: profileData.gender as any,
+      preferredGender: profileData.preferredGender as any,
+      maritalStatus: profileData.maritalStatus as any,
+      motherTongue: profileData.motherTongue as any,
+      religion: profileData.religion as any,
+      ethnicity: profileData.ethnicity as any,
+      diet: profileData.diet as any,
+      smoking: profileData.smoking as any,
+      drinking: profileData.drinking as any,
+      physicalStatus: profileData.physicalStatus as any,
+      subscriptionPlan: profileData.subscriptionPlan as any,
+      // Handle profileImageIds separately as they need to be migrated
+      profileImageIds: undefined,
+    });
 
     // Migrate associated images if any
     if (profile.profileImageIds && profile.profileImageIds.length > 0) {
       const images = await fetchUserImages(sourceClient, profile.userId);
       for (const image of images) {
-        // Migrate each image
         console.log(`  Migrating image: ${image.fileName}`);
-        // await destClient.mutation(api.images.createImage, { ... });
+        const { _id: imageId, userId: oldUserId, ...imageData } = image;
+        await destClient.mutation(api.migration.createImageForMigration, {
+          ...imageData,
+          userId: newUserId,
+        });
       }
     }
 
