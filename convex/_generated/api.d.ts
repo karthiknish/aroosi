@@ -20,6 +20,7 @@ import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as interests from "../interests.js";
 import type * as messages from "../messages.js";
+import type * as migration from "../migration.js";
 import type * as profiles from "../profiles.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as safety from "../safety.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   images: typeof images;
   interests: typeof interests;
   messages: typeof messages;
+  migration: typeof migration;
   profiles: typeof profiles;
   pushNotifications: typeof pushNotifications;
   safety: typeof safety;

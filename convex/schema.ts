@@ -16,7 +16,16 @@ export default defineSchema({
     userId: v.id("users"), // This will now link to the user record identified by Clerk ID
     clerkId: v.string(), // For easier linking from Clerk data if needed directly in profile queries
     profileFor: v.optional(
-      v.union(v.literal("self"), v.literal("friend"), v.literal("family")),
+      v.union(
+        v.literal("self"),
+        v.literal("son"),
+        v.literal("daughter"),
+        v.literal("brother"),
+        v.literal("sister"),
+        v.literal("friend"),
+        v.literal("relative"),
+        v.literal("")
+      )
     ),
     isProfileComplete: v.optional(v.boolean()), // ADDED: Flag to indicate profile completion
     isOnboardingComplete: v.optional(v.boolean()), // ADDED: Flag to indicate onboarding completion
@@ -24,15 +33,15 @@ export default defineSchema({
     fullName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()), // Consider v.float64() for timestamp if more precision needed
     gender: v.optional(
-      v.union(v.literal("male"), v.literal("female"), v.literal("other")),
+      v.union(v.literal("male"), v.literal("female"), v.literal("other"))
     ),
     preferredGender: v.optional(
       v.union(
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any"),
-      ),
+        v.literal("any")
+      )
     ),
     // Location fields
     city: v.optional(v.string()),
@@ -45,8 +54,8 @@ export default defineSchema({
         v.literal("single"),
         v.literal("divorced"),
         v.literal("widowed"),
-        v.literal("annulled"),
-      ),
+        v.literal("annulled")
+      )
     ),
     // Education and career
     education: v.optional(v.string()),
@@ -54,47 +63,84 @@ export default defineSchema({
     annualIncome: v.optional(v.number()), // Store as number
     // Personal details
     aboutMe: v.optional(v.string()), // A brief bio
-    motherTongue: v.optional(v.string()), // Primary language spoken
-    religion: v.optional(v.string()), // Religious affiliation
-    ethnicity: v.optional(v.string()), // Ethnic background
+    // Primary language spoken
+    motherTongue: v.optional(
+      v.union(
+        v.literal("farsi-dari"),
+        v.literal("pashto"),
+        v.literal("uzbeki"),
+        v.literal("hazaragi"),
+        v.literal("turkmeni"),
+        v.literal("balochi"),
+        v.literal("nuristani"),
+        v.literal("punjabi"),
+        v.literal("")
+      )
+    ),
+    religion: v.optional(
+      v.union(
+        v.literal("muslim"),
+        v.literal("hindu"),
+        v.literal("sikh"),
+        v.literal("")
+      )
+    ), // Religious affiliation
+    // Ethnic background
+    ethnicity: v.optional(
+      v.union(
+        v.literal("tajik"),
+        v.literal("pashtun"),
+        v.literal("uzbek"),
+        v.literal("hazara"),
+        v.literal("turkmen"),
+        v.literal("baloch"),
+        v.literal("nuristani"),
+        v.literal("aimaq"),
+        v.literal("pashai"),
+        v.literal("qizilbash"),
+        v.literal("punjabi"),
+        v.literal("")
+      )
+    ),
     // Lifestyle/contact fields
     phoneNumber: v.optional(v.string()),
     diet: v.optional(
       v.union(
         v.literal("vegetarian"),
         v.literal("non-vegetarian"),
+        v.literal("halal"),
         v.literal("vegan"),
         v.literal("eggetarian"),
         v.literal("other"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     smoking: v.optional(
       v.union(
         v.literal("no"),
         v.literal("occasionally"),
         v.literal("yes"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     drinking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
     ),
     physicalStatus: v.optional(
       v.union(
         v.literal("normal"),
         v.literal("differently-abled"),
         v.literal("other"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     // Partner Preferences (can be a separate table or embedded object if complex)
     // For simplicity, keeping a few optional fields here
     partnerPreferenceAgeMin: v.optional(
-      v.union(v.number(), v.string(), v.literal("")),
+      v.union(v.number(), v.string(), v.literal(""))
     ),
     partnerPreferenceAgeMax: v.optional(
-      v.union(v.number(), v.string(), v.literal("")),
+      v.union(v.number(), v.string(), v.literal(""))
     ),
     partnerPreferenceReligion: v.optional(v.array(v.string())),
     partnerPreferenceCity: v.optional(v.array(v.string())),
@@ -110,11 +156,7 @@ export default defineSchema({
     boostsRemaining: v.optional(v.number()),
     boostedUntil: v.optional(v.float64()),
     subscriptionPlan: v.optional(
-      v.union(
-        v.literal("free"),
-        v.literal("premium"),
-        v.literal("premiumPlus"),
-      ),
+      v.union(v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))
     ),
     subscriptionExpiresAt: v.optional(v.number()),
     // Spotlight badge fields
@@ -137,7 +179,7 @@ export default defineSchema({
         maxFailedAttempts: v.number(),
         enabledAt: v.optional(v.float64()),
         lastUsed: v.optional(v.float64()),
-      }),
+      })
     ),
 
     // Registered biometric devices
@@ -150,8 +192,8 @@ export default defineSchema({
           registeredAt: v.float64(),
           lastUsed: v.optional(v.float64()),
           isActive: v.boolean(),
-        }),
-      ),
+        })
+      )
     ),
   })
     .index("by_userId", ["userId"])
@@ -190,7 +232,7 @@ export default defineSchema({
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),
-      v.literal("rejected"),
+      v.literal("rejected")
     ),
     createdAt: v.float64(),
   })
@@ -203,7 +245,7 @@ export default defineSchema({
     status: v.union(
       v.literal("matched"),
       v.literal("blocked"),
-      v.literal("unmatched"),
+      v.literal("unmatched")
     ),
     conversationId: v.string(),
     createdAt: v.float64(),
@@ -219,7 +261,7 @@ export default defineSchema({
     toUserId: v.id("users"),
     text: v.string(),
     type: v.optional(
-      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image"))
     ), // message type
     audioStorageId: v.optional(v.string()), // Convex storage ID for voice messages
     duration: v.optional(v.number()), // duration in seconds for voice messages
@@ -297,7 +339,7 @@ export default defineSchema({
     status: v.union(
       v.literal("delivered"),
       v.literal("read"),
-      v.literal("failed"),
+      v.literal("failed")
     ),
     timestamp: v.float64(),
   })
@@ -321,7 +363,7 @@ export default defineSchema({
     result: v.string(), // 'success', 'failure', 'lockout', 'user_cancel', 'biometric_error'
     deviceId: v.string(),
     platform: v.optional(
-      v.union(v.literal("ios"), v.literal("android"), v.literal("web")),
+      v.union(v.literal("ios"), v.literal("android"), v.literal("web"))
     ),
     timestamp: v.float64(),
     ipAddress: v.optional(v.string()),
@@ -331,7 +373,7 @@ export default defineSchema({
         errorMessage: v.optional(v.string()),
         attemptCount: v.optional(v.number()),
         biometricType: v.optional(v.string()), // 'fingerprint', 'face', 'iris'
-      }),
+      })
     ),
   })
     .index("by_userId_timestamp", ["userId", "timestamp"])
@@ -346,7 +388,7 @@ export default defineSchema({
       v.literal("search_performed"),
       v.literal("interest_sent"),
       v.literal("profile_boost_used"),
-      v.literal("voice_message_sent"),
+      v.literal("voice_message_sent")
     ),
     timestamp: v.float64(),
     metadata: v.optional(
@@ -354,7 +396,7 @@ export default defineSchema({
         targetUserId: v.optional(v.id("users")),
         searchQuery: v.optional(v.string()),
         messageType: v.optional(v.string()),
-      }),
+      })
     ),
   })
     .index("by_userId_feature_timestamp", ["userId", "feature", "timestamp"])
@@ -370,7 +412,7 @@ export default defineSchema({
       v.literal("search_performed"),
       v.literal("interest_sent"),
       v.literal("profile_boost_used"),
-      v.literal("voice_message_sent"),
+      v.literal("voice_message_sent")
     ),
     count: v.number(),
     lastUpdated: v.float64(),

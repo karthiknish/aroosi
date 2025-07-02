@@ -98,9 +98,17 @@ const profileSchema = z.object({
   height: z.string().min(1, "Height is required"),
   maritalStatus: z.string().min(1, "Marital status is required"),
   physicalStatus: z.string().min(1, "Physical status is required"),
-  motherTongue: z.string().min(1, "Mother tongue is required"),
+  motherTongue: z
+    .string()
+    .refine((v) => MOTHER_TONGUE_OPTIONS.map((o) => o.value).includes(v), {
+      message: "Mother tongue is required",
+    }),
   religion: z.string().min(1, "Religion is required"),
-  ethnicity: z.string().min(1, "Ethnicity is required"),
+  ethnicity: z
+    .string()
+    .refine((v) => ETHNICITY_OPTIONS.map((o) => o.value).includes(v), {
+      message: "Ethnicity is required",
+    }),
   diet: z.string().min(1, "Diet is required"),
   smoking: z.enum(["no", "occasionally", "yes"], {
     errorMap: () => ({ message: "Smoking is required" }),

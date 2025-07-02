@@ -319,17 +319,46 @@ export async function submitProfile(
 
   // Format the data for profile creation/update and sanitize
   const profileData = sanitize({
+    // Basic info
     fullName: values.fullName,
     dateOfBirth: values.dateOfBirth,
     gender: values.gender,
+    profileFor: values.profileFor,
+
+    // Location
     city: values.city,
-    aboutMe: values.aboutMe,
-    occupation: values.occupation,
-    education: values.education,
+    country: values.country,
+
+    // Physical & lifestyle
     height: values.height,
     maritalStatus: values.maritalStatus,
+    physicalStatus: values.physicalStatus,
+    diet: values.diet,
     smoking: (values.smoking as "no" | "occasionally" | "yes" | "") || "no",
     drinking: values.drinking || "no",
+
+    // Cultural
+    motherTongue: values.motherTongue,
+    religion: values.religion,
+    ethnicity: values.ethnicity,
+
+    // Education & career
+    education: values.education,
+    occupation: values.occupation,
+    annualIncome: values.annualIncome,
+
+    // Contact
+    phoneNumber: values.phoneNumber,
+    email: values.email,
+
+    // Partner preferences
+    preferredGender: values.preferredGender,
+    partnerPreferenceAgeMin: values.partnerPreferenceAgeMin,
+    partnerPreferenceAgeMax: values.partnerPreferenceAgeMax,
+    partnerPreferenceCity: values.partnerPreferenceCity,
+
+    // Other
+    aboutMe: values.aboutMe,
     profileImageIds: values.profileImageIds || [],
   });
 

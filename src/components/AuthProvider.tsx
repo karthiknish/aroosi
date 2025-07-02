@@ -119,7 +119,10 @@ export function AuthProvider({
               return token;
             })
             .catch((error) => {
-              console.error("AuthProvider: Error forcing token refresh:", error);
+              console.error(
+                "AuthProvider: Error forcing token refresh:",
+                error
+              );
               setAuthError(error);
               throw error;
             })
@@ -134,12 +137,12 @@ export function AuthProvider({
 
         // For non-forced requests, use cached token if available
         const newToken = await clerkGetToken({ template: "convex" });
-        
+
         // Auto-update token state if it changed
         if (newToken && newToken !== token) {
           setTokenState(newToken);
         }
-        
+
         return newToken;
       } catch (error) {
         console.error("AuthProvider: Error getting token:", error);
@@ -160,15 +163,17 @@ export function AuthProvider({
       if (newToken) {
         try {
           const decoded = jwtDecode<JwtPayload>(newToken);
-          
+
           // Check if token is expired
           if (decoded.exp && decoded.exp < Date.now() / 1000) {
-            console.warn("AuthProvider: Received expired token, clearing auth state");
+            console.warn(
+              "AuthProvider: Received expired token, clearing auth state"
+            );
             setTokenState(null);
             setAuthError(new Error("Token expired"));
             return;
           }
-          
+
           // Clear any previous auth errors when setting valid token
           if (authError) {
             setAuthError(null);
@@ -240,7 +245,10 @@ export function AuthProvider({
           const userData = response.data as unknown; // raw response data from API
           // Some endpoints wrap payload in `data` field. Support both shapes.
           const envelope = (userData as { data?: unknown })?.data ?? userData;
-          const typedEnvelope = envelope as { profile?: Partial<Profile>; role?: string } & Partial<Profile>;
+          const typedEnvelope = envelope as {
+            profile?: Partial<Profile>;
+            role?: string;
+          } & Partial<Profile>;
 
           const nestedProfile = typedEnvelope.profile || {};
 
@@ -266,10 +274,13 @@ export function AuthProvider({
         return null;
       } catch (error) {
         console.error("AuthProvider: Error fetching user profile:", error);
-        
+
         // Handle specific error cases
         if (error instanceof Error) {
-          if (error.message.includes("401") || error.message.includes("Unauthorized")) {
+          if (
+            error.message.includes("401") ||
+            error.message.includes("Unauthorized")
+          ) {
             // Token might be expired or invalid, try to refresh
             try {
               const freshToken = await getToken(true);
@@ -282,7 +293,10 @@ export function AuthProvider({
                 return retryResponse.data;
               }
             } catch (retryError) {
-              console.error("AuthProvider: Failed to retry profile fetch:", retryError);
+              console.error(
+                "AuthProvider: Failed to retry profile fetch:",
+                retryError
+              );
               setAuthError(new Error("Session expired. Please sign in again."));
               await signOut();
             }
@@ -290,7 +304,7 @@ export function AuthProvider({
             setAuthError(error);
           }
         }
-        
+
         return null;
       }
     },
@@ -299,8 +313,11 @@ export function AuthProvider({
     refetchOnWindowFocus: false,
     retry: (failureCount, error) => {
       // Don't retry on auth errors
-      if (error instanceof Error && 
-          (error.message.includes("401") || error.message.includes("Unauthorized"))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("401") ||
+          error.message.includes("Unauthorized"))
+      ) {
         return false;
       }
       // Retry up to 2 times for other errors
@@ -340,7 +357,7 @@ export function AuthProvider({
       const decoded = jwtDecode<JwtPayload>(token);
       const now = Date.now() / 1000;
       const timeToExpiry = (decoded.exp || 0) - now;
-      
+
       // If token expires within 5 minutes, refresh it
       if (timeToExpiry < 300) {
         console.log("AuthProvider: Token expiring soon, refreshing...");
@@ -364,7 +381,7 @@ export function AuthProvider({
 
     // Set up interval to check every 2 minutes
     const interval = setInterval(checkTokenExpiration, 2 * 60 * 1000);
-    
+
     return () => clearInterval(interval);
   }, [token, checkTokenExpiration]);
 
@@ -411,6 +428,28 @@ export function AuthProvider({
     clerkIsSignedIn,
     getToken,
     setToken,
+    signOut,
+  ]);
+
+  // Auto-sign-out when both profile and onboarding are incomplete
+  useEffect(() => {
+    // Only run after auth and profile have fully loaded
+    if (!isFullyLoaded || isProfileLoading) return;
+
+    if (isSignedIn && !isProfileComplete && !isOnboardingComplete) {
+      console.warn(
+        "AuthProvider: Profile and onboarding both incomplete – signing user out."
+      );
+      // No need to await here; fire-and-forget is fine inside effect
+
+      signOut();
+    }
+  }, [
+    isFullyLoaded,
+    isProfileLoading,
+    isSignedIn,
+    isProfileComplete,
+    isOnboardingComplete,
     signOut,
   ]);
 
