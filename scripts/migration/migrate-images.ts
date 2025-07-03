@@ -88,13 +88,22 @@ async function migrateImages() {
     }
 
     try {
-      // 1. Download blob
-      const blobResp = await fetch(`${SOURCE_URL}/api/storage/${img.storageId}`);
-      if (!blobResp.ok) throw new Error(`Failed to fetch blob ${img.storageId}`);
+      // 1. Download blob (skip if missing)
+      const blobResp = await fetch(
+        `${SOURCE_URL}/api/storage/${img.storageId}`
+      );
+      if (!blobResp.ok) {
+        console.warn(`✗ Storage blob ${img.storageId} missing – skipping`);
+        skipped++;
+        continue;
+      }
       const arrayBuf = await blobResp.arrayBuffer();
 
       // 2. Get upload URL from destination
-      const generateRes = (await destClient.mutation(api.images.generateUploadUrl, {})) as any;
+      const generateRes = (await destClient.mutation(
+        api.images.generateUploadUrl,
+        {}
+      )) as any;
       const uploadUrl = generateRes.url as string;
       const newStorageId = generateRes.storageId as string;
 
