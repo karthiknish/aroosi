@@ -220,34 +220,8 @@ export function CustomForgotPasswordForm({
       }
 
       if (authUrl) {
-        // Open in a popup window
-        const width = 500;
-        const height = 600;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
-
-        const popup = window.open(
-          authUrl,
-          "Google Sign In",
-          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
-        );
-
-        // Check if popup was blocked
-        if (!popup || popup.closed) {
-          setError("Please allow popups for this site to sign in with Google");
-          setLoading(false);
-          return;
-        }
-
-        // Poll to check if the popup is closed
-        const checkInterval = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkInterval);
-            setLoading(false);
-            // User might be signed in now, trigger completion
-            onComplete?.();
-          }
-        }, 1000);
+        // Open in a new tab
+        window.open(authUrl, "_blank");
       } else {
         console.error("Could not find OAuth URL in response:", res);
         setError("Failed to initiate Google sign in. Please try again.");

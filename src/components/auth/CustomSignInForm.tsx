@@ -24,17 +24,42 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     setLoading(true);
     setError(null);
     try {
-      const clerkCallback = "https://clerk.aroosi.app/v1/oauth_callback";
-
-      await signIn.authenticateWithPopup({
+      const res = await signIn.create({
         strategy: "oauth_google",
-        redirectUrl: clerkCallback,
-        redirectUrlComplete: clerkCallback,
-        popup: null,
+        redirectUrl: window.location.origin + "/oauth/callback",
+        actionCompleteRedirectUrl: window.location.href,
       });
+
+      // Check various possible locations for the auth URL
+      const findAuthUrl = (obj: unknown, depth = 0): string | undefined => {
+        if (!obj || typeof obj !== "object" || depth > 5) return undefined;
+
+        for (const key in obj) {
+          const value = (obj as Record<string, unknown>)[key];
+          if (
+            key.includes("externalVerificationRedirectURL") &&
+            typeof value === "string"
+          ) {
+            return value;
+          }
+          const found = findAuthUrl(value, depth + 1);
+          if (found) return found;
+        }
+        return undefined;
+      };
+
+      const authUrl = findAuthUrl(res);
+
+      if (authUrl) {
+        window.open(authUrl, "_blank");
+      } else {
+        console.error("OAuth sign-in response:", res);
+        setError("Failed to get OAuth URL from response");
+      }
     } catch (err) {
       console.error("Google signin error", err);
       setError("Failed to initiate Google sign in");
+    } finally {
       setLoading(false);
     }
   };

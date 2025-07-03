@@ -45,7 +45,7 @@ export function CustomSignupForm({
     if (hasProfile) {
       showErrorToast(
         null,
-        "That email already has a profile. Please sign in instead."
+        "That email already has a profile. Please sign in instead.",
       );
       onProfileExists?.();
       return;
@@ -133,41 +133,85 @@ export function CustomSignupForm({
     }
   };
 
-  // Clerk OAuth callback URL configured in dashboard
-  const clerkCallback = "https://clerk.aroosi.app/v1/oauth_callback";
-
   // ---- Google OAuth ----
   const handleGoogleSignUp = async () => {
-    // Attempt sign-in first (existing accounts)
-    if (signInLoaded && signIn) {
-      try {
-        await signIn.authenticateWithPopup({
-          strategy: "oauth_google",
-          redirectUrl: clerkCallback,
-          redirectUrlComplete: clerkCallback,
-          popup: null,
-        });
-        return; // finished sign-in
-      } catch (err) {
-        console.log("Google sign-in failed, falling back to sign-up", err);
-        // fall through to sign-up flow
-      }
-    }
-
-    if (!signUpLoaded || !signUp) return;
-
     setLoading(true);
     setError(null);
+
     try {
-      await signUp.authenticateWithPopup({
+      // Try sign-in first for existing accounts
+      if (signInLoaded && signIn) {
+        const signInRes = await signIn.create({
+          strategy: "oauth_google",
+          redirectUrl: window.location.origin + "/oauth/callback",
+          actionCompleteRedirectUrl: window.location.href,
+        });
+
+        // Check various possible locations for the auth URL
+        const findAuthUrl = (obj: unknown, depth = 0): string | undefined => {
+          if (!obj || typeof obj !== "object" || depth > 5) return undefined;
+
+          for (const key in obj) {
+            const value = (obj as Record<string, unknown>)[key];
+            if (
+              key.includes("externalVerificationRedirectURL") &&
+              typeof value === "string"
+            ) {
+              return value;
+            }
+            const found = findAuthUrl(value, depth + 1);
+            if (found) return found;
+          }
+          return undefined;
+        };
+
+        const authUrl = findAuthUrl(signInRes);
+
+        if (authUrl) {
+          window.open(authUrl, "_blank");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fall back to sign-up for new accounts
+      if (!signUpLoaded || !signUp) return;
+
+      const signUpRes = await signUp.create({
         strategy: "oauth_google",
-        redirectUrl: clerkCallback,
-        redirectUrlComplete: clerkCallback,
-        popup: null,
+        redirectUrl: window.location.origin + "/oauth/callback",
+        actionCompleteRedirectUrl: window.location.href,
       });
+
+      // Check various possible locations for the auth URL
+      const findAuthUrl2 = (obj: unknown, depth = 0): string | undefined => {
+        if (!obj || typeof obj !== "object" || depth > 5) return undefined;
+
+        for (const key in obj) {
+          const value = (obj as Record<string, unknown>)[key];
+          if (
+            key.includes("externalVerificationRedirectURL") &&
+            typeof value === "string"
+          ) {
+            return value;
+          }
+          const found = findAuthUrl2(value, depth + 1);
+          if (found) return found;
+        }
+        return undefined;
+      };
+
+      const authUrl = findAuthUrl2(signUpRes);
+
+      if (authUrl) {
+        window.open(authUrl, "_blank");
+      } else {
+        console.error("OAuth sign-up response:", signUpRes);
+        setError("Failed to get OAuth URL from response");
+      }
     } catch (err) {
-      console.error("Google sign-up error", err);
-      setError("Failed to initiate Google sign up");
+      console.error("Google OAuth error", err);
+      setError("Failed to initiate Google sign in");
     } finally {
       setLoading(false);
     }
@@ -238,6 +282,8 @@ export function CustomSignupForm({
           >
             {loading ? "Sending..." : "Send Code"}
           </Button>
+          {/* CAPTCHA Widget - Required for bot protection */}
+          <div id="clerk-captcha" />
         </>
       )}
       {phase === "code" && (
