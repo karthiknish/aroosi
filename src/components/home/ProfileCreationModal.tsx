@@ -86,42 +86,35 @@ interface ProfileCreationModalProps {
   initialData?: Partial<ProfileData & Partial<ProfileCreationData>>;
 }
 
-// Zod schema for all fields (simplified for modal, can be extended)
+// Zod schema for all fields - only truly required fields are mandatory
 const profileSchema = z.object({
+  // Required fields (as per API)
   profileFor: z.string().min(1, "Profile for is required"),
   gender: z.string().min(1, "Gender is required"),
   fullName: z.string().min(2, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   phoneNumber: z.string().min(7, "Phone number is required"),
-  country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
   height: z.string().min(1, "Height is required"),
   maritalStatus: z.string().min(1, "Marital status is required"),
-  physicalStatus: z.string().min(1, "Physical status is required"),
-  motherTongue: z
-    .string()
-    .refine((v) => MOTHER_TONGUE_OPTIONS.map((o) => o.value).includes(v), {
-      message: "Mother tongue is required",
-    }),
-  religion: z.string().min(1, "Religion is required"),
-  ethnicity: z
-    .string()
-    .refine((v) => ETHNICITY_OPTIONS.map((o) => o.value).includes(v), {
-      message: "Ethnicity is required",
-    }),
-  diet: z.string().min(1, "Diet is required"),
-  smoking: z.enum(["no", "occasionally", "yes"], {
-    errorMap: () => ({ message: "Smoking is required" }),
-  }),
-  drinking: z.string().min(1, "Drinking is required"),
   education: z.string().min(1, "Education is required"),
   occupation: z.string().min(1, "Occupation is required"),
-  annualIncome: z.string().min(1, "Annual income is required"),
   aboutMe: z.string().min(10, "About Me is required"),
   preferredGender: z.string().min(1, "Preferred gender is required"),
-  partnerPreferenceAgeMin: z.number().min(18, "Min age 18"),
+
+  // Optional fields
+  country: z.string().optional(),
+  physicalStatus: z.string().optional(),
+  motherTongue: z.string().optional(),
+  religion: z.string().optional(),
+  ethnicity: z.string().optional(),
+  diet: z.string().optional(),
+  smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
+  drinking: z.string().optional(),
+  annualIncome: z.string().optional(),
+  partnerPreferenceAgeMin: z.number().min(18, "Min age 18").optional(),
   partnerPreferenceAgeMax: z.number().max(99, "Max age 99").optional(),
-  partnerPreferenceCity: z.array(z.string()),
+  partnerPreferenceCity: z.array(z.string()).optional(),
   profileImageIds: z.array(z.string()).optional(),
 });
 
@@ -132,7 +125,7 @@ const stepSchemas = [
     profileFor: true,
     gender: true,
   }),
-  // Step 2 – Location & Physical
+  // Step 2 – Location & Physical (only city, height, maritalStatus are required)
   profileSchema.pick({
     country: true,
     city: true,
@@ -140,33 +133,29 @@ const stepSchemas = [
     maritalStatus: true,
     physicalStatus: true,
   }),
-  // Step 3 – Cultural & Lifestyle
-  profileSchema.pick({
-    motherTongue: true,
-    religion: true,
-    ethnicity: true,
-    diet: true,
-    smoking: true,
-    drinking: true,
+  // Step 3 – Cultural & Lifestyle (all optional)
+  z.object({
+    motherTongue: z.string().optional(),
+    religion: z.string().optional(),
+    ethnicity: z.string().optional(),
+    diet: z.string().optional(),
+    smoking: z.string().optional(),
+    drinking: z.string().optional(),
   }),
-  // Step 4 – Education & Career
+  // Step 4 – Education & Career (education, occupation, aboutMe are required)
   profileSchema.pick({
     education: true,
     occupation: true,
     annualIncome: true,
     aboutMe: true,
   }),
-  // Step 5 – Partner Preferences
-  profileSchema
-    .pick({
-      preferredGender: true,
-      partnerPreferenceAgeMin: true,
-      partnerPreferenceAgeMax: true,
-      partnerPreferenceCity: true,
-    })
-    .extend({
-      partnerPreferenceCity: z.array(z.string()).optional(),
-    }),
+  // Step 5 – Partner Preferences (only preferredGender is required)
+  z.object({
+    preferredGender: z.string().min(1, "Preferred gender is required"),
+    partnerPreferenceAgeMin: z.number().min(18).optional(),
+    partnerPreferenceAgeMax: z.number().max(99).optional(),
+    partnerPreferenceCity: z.array(z.string()).optional(),
+  }),
   // Step 6 – Photos (optional but still validate array type)
   profileSchema.pick({ profileImageIds: true }),
 ];
@@ -413,29 +402,19 @@ export function ProfileCreationModal({
 
     // Additional validation before moving to sign-up step
     if (displayStep === 6) {
-      // Validate ALL required fields are present before moving to sign-up
+      // Validate only essential required fields are present before moving to sign-up
       const requiredFields = [
         "fullName",
         "dateOfBirth",
         "gender",
         "preferredGender",
         "city",
-        "country",
         "aboutMe",
         "occupation",
         "education",
         "height",
         "maritalStatus",
         "phoneNumber",
-        "motherTongue",
-        "religion",
-        "ethnicity",
-        "diet",
-        "smoking",
-        "drinking",
-        "annualIncome",
-        "physicalStatus",
-        "partnerPreferenceAgeMin",
       ];
 
       const missingFields = requiredFields.filter((field) => {
@@ -550,29 +529,19 @@ export function ProfileCreationModal({
           }
         });
 
-        // Validate ALL required fields before submission (comprehensive list)
+        // Validate only truly required fields before submission
         const requiredFields = [
           "fullName",
           "dateOfBirth",
           "gender",
           "preferredGender",
           "city",
-          "country",
           "aboutMe",
           "occupation",
           "education",
           "height",
           "maritalStatus",
           "phoneNumber",
-          "motherTongue",
-          "religion",
-          "ethnicity",
-          "diet",
-          "smoking",
-          "drinking",
-          "annualIncome",
-          "physicalStatus",
-          "partnerPreferenceAgeMin",
         ];
 
         const missingFields = requiredFields.filter(
@@ -824,7 +793,7 @@ export function ProfileCreationModal({
                         htmlFor="country"
                         className="text-gray-700 mb-2 block"
                       >
-                        {required("Country")}
+                        Country
                       </Label>
                       <SearchableSelect
                         options={countries.map((c) => ({ value: c, label: c }))}
@@ -904,7 +873,7 @@ export function ProfileCreationModal({
                         htmlFor="physicalStatus"
                         className="text-gray-700 mb-2 block"
                       >
-                        {required("Physical Status")}
+                        Physical Status
                       </Label>
                       <Select
                         value={formData.physicalStatus}
@@ -1070,7 +1039,7 @@ export function ProfileCreationModal({
                         htmlFor="education"
                         className="text-gray-700 mb-2 block"
                       >
-                        Education
+                        {required("Education")}
                       </Label>
                       <Input
                         id="education"
@@ -1086,7 +1055,7 @@ export function ProfileCreationModal({
                         htmlFor="occupation"
                         className="text-gray-700 mb-2 block"
                       >
-                        Occupation
+                        {required("Occupation")}
                       </Label>
                       <Input
                         id="occupation"
@@ -1118,7 +1087,7 @@ export function ProfileCreationModal({
                         htmlFor="aboutMe"
                         className="text-gray-700 mb-2 block"
                       >
-                        About Me
+                        {required("About Me")}
                       </Label>
                       <Textarea
                         id="aboutMe"
@@ -1142,7 +1111,7 @@ export function ProfileCreationModal({
                         htmlFor="preferredGender"
                         className="text-gray-700 mb-2 block"
                       >
-                        Preferred Gender
+                        {required("Preferred Gender")}
                       </Label>
                       <Select
                         value={formData.preferredGender}
@@ -1269,22 +1238,12 @@ export function ProfileCreationModal({
                           "gender",
                           "preferredGender",
                           "city",
-                          "country",
                           "aboutMe",
                           "occupation",
                           "education",
                           "height",
                           "maritalStatus",
                           "phoneNumber",
-                          "motherTongue",
-                          "religion",
-                          "ethnicity",
-                          "diet",
-                          "smoking",
-                          "drinking",
-                          "annualIncome",
-                          "physicalStatus",
-                          "partnerPreferenceAgeMin",
                         ];
 
                         const missingFields = requiredFields.filter((field) => {
