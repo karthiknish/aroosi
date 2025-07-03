@@ -57,7 +57,7 @@ export interface PublicProfile {
 // --- Helper function to get user by Clerk ID ---
 const getUserByClerkIdInternal = async (
   ctx: QueryCtx | MutationCtx,
-  clerkId: string
+  clerkId: string,
 ) => {
   return await ctx.db
     .query("users")
@@ -108,7 +108,7 @@ export const getCurrentUserWithProfile = query({
       // This can happen if the Clerk webhook for user creation hasn't fired yet
       // or if there was an issue creating the user record in Convex.
       console.warn(
-        `User with Clerk ID ${identity.subject} not found in Convex DB. Waiting for webhook or check webhook logs.`
+        `User with Clerk ID ${identity.subject} not found in Convex DB. Waiting for webhook or check webhook logs.`,
       );
       return null;
     }
@@ -149,7 +149,7 @@ export const internalUpsertUser = internalMutation(
       email: string;
       role?: string;
       fullName?: string;
-    }
+    },
   ) => {
     const existingUser = await ctx.db
       .query("users")
@@ -238,7 +238,7 @@ export const internalUpsertUser = internalMutation(
     }
 
     return userId;
-  }
+  },
 );
 
 /**
@@ -250,7 +250,7 @@ export const updateProfile = mutation({
       fullName: v.optional(v.string()),
       dateOfBirth: v.optional(v.string()),
       gender: v.optional(
-        v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+        v.union(v.literal("male"), v.literal("female"), v.literal("other")),
       ),
       city: v.optional(v.string()),
       aboutMe: v.optional(v.string()),
@@ -263,19 +263,19 @@ export const updateProfile = mutation({
           v.literal("single"),
           v.literal("divorced"),
           v.literal("widowed"),
-          v.literal("annulled")
-        )
+          v.literal("annulled"),
+        ),
       ),
       smoking: v.optional(
         v.union(
           v.literal("no"),
           v.literal("occasionally"),
           v.literal("yes"),
-          v.literal("")
-        )
+          v.literal(""),
+        ),
       ),
       drinking: v.optional(
-        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
       ),
       profileImageIds: v.optional(v.array(v.id("_storage"))),
       isProfileComplete: v.optional(v.boolean()),
@@ -289,22 +289,22 @@ export const updateProfile = mutation({
           v.literal("vegan"),
           v.literal("eggetarian"),
           v.literal("other"),
-          v.literal("")
-        )
+          v.literal(""),
+        ),
       ),
       physicalStatus: v.optional(
         v.union(
           v.literal("normal"),
           v.literal("differently-abled"),
           v.literal("other"),
-          v.literal("")
-        )
+          v.literal(""),
+        ),
       ),
       partnerPreferenceAgeMin: v.optional(
-        v.union(v.string(), v.number(), v.literal(""))
+        v.union(v.string(), v.number(), v.literal("")),
       ),
       partnerPreferenceAgeMax: v.optional(
-        v.union(v.string(), v.number(), v.literal(""))
+        v.union(v.string(), v.number(), v.literal("")),
       ),
       partnerPreferenceCity: v.optional(v.array(v.string())),
       preferredGender: v.optional(
@@ -312,8 +312,8 @@ export const updateProfile = mutation({
           v.literal("male"),
           v.literal("female"),
           v.literal("any"),
-          v.literal("other")
-        )
+          v.literal("other"),
+        ),
       ),
       updatedAt: v.optional(v.number()),
       // Subscription related fields
@@ -321,8 +321,8 @@ export const updateProfile = mutation({
         v.union(
           v.literal("free"),
           v.literal("premium"),
-          v.literal("premiumPlus")
-        )
+          v.literal("premiumPlus"),
+        ),
       ),
       subscriptionExpiresAt: v.optional(v.number()),
       boostsRemaining: v.optional(v.number()),
@@ -437,7 +437,7 @@ export const getUserPublicProfile = query({
     const user = await ctx.db.get(args.userId);
     if (!user) {
       console.warn(
-        `Public profile query: User with Convex ID ${args.userId} not found.`
+        `Public profile query: User with Convex ID ${args.userId} not found.`,
       );
       return null;
     }
@@ -449,7 +449,7 @@ export const getUserPublicProfile = query({
 
     if (!profile) {
       console.warn(
-        `Public profile query: Profile for user ${user._id} not found.`
+        `Public profile query: Profile for user ${user._id} not found.`,
       );
       return null;
     }
@@ -497,7 +497,7 @@ export const blockUser = mutation({
       .withIndex("by_blocker", (q) => q.eq("blockerUserId", args.blockerUserId))
       .collect();
     const existing = blocks.find(
-      (block) => block.blockedUserId === args.blockedUserId
+      (block) => block.blockedUserId === args.blockedUserId,
     );
     if (existing) return { success: true };
     await ctx.db.insert("blocks", {
@@ -521,7 +521,7 @@ export const unblockUser = mutation({
       .withIndex("by_blocker", (q) => q.eq("blockerUserId", args.blockerUserId))
       .collect();
     const block = blocks.find(
-      (block) => block.blockedUserId === args.blockedUserId
+      (block) => block.blockedUserId === args.blockedUserId,
     );
     if (block) await ctx.db.delete(block._id);
     return { success: true };
@@ -540,7 +540,7 @@ export const isBlocked = query({
       .withIndex("by_blocker", (q) => q.eq("blockerUserId", args.blockerUserId))
       .collect();
     const block = blocks.find(
-      (block) => block.blockedUserId === args.blockedUserId
+      (block) => block.blockedUserId === args.blockedUserId,
     );
     return !!block;
   },
@@ -550,7 +550,7 @@ export const batchGetPublicProfiles = action({
   args: { userIds: v.array(v.id("users")) },
   handler: async (
     ctx,
-    args
+    args,
   ): Promise<Array<{ userId: Id<"users">; profile: PublicProfile }>> => {
     if (!args.userIds.length) {
       // Return all public, complete, not-hidden, not-banned profiles
@@ -566,7 +566,7 @@ export const batchGetPublicProfiles = action({
             user.profile &&
             user.profile.profileFor !== undefined &&
             user.profile.isProfileComplete === true &&
-            user.profile.banned !== true
+            user.profile.banned !== true,
         )
         .map((user) => ({
           userId: user._id,
@@ -581,10 +581,10 @@ export const batchGetPublicProfiles = action({
       args.userIds.map(async (userId) => {
         const res: { profile: PublicProfile } | null = await ctx.runQuery(
           api.users.getUserPublicProfile,
-          { userId }
+          { userId },
         );
         return res && res.profile ? { userId, profile: res.profile } : null;
-      })
+      }),
     );
     return results.filter(Boolean) as Array<{
       userId: Id<"users">;
@@ -647,16 +647,16 @@ export const deleteCurrentUserProfile = mutation({
         try {
           await Promise.all(
             profile.profileImageIds.map((imageId) =>
-              ctx.storage.delete(imageId)
-            )
+              ctx.storage.delete(imageId),
+            ),
           );
           console.log(
-            `Deleted ${profile.profileImageIds.length} images for profile ${profile._id}`
+            `Deleted ${profile.profileImageIds.length} images for profile ${profile._id}`,
           );
         } catch (error) {
           console.error(
             `Error deleting images for profile ${profile._id}:`,
-            error
+            error,
           );
           // Non-fatal, continue with profile and user deletion
         }
@@ -664,7 +664,7 @@ export const deleteCurrentUserProfile = mutation({
       // Delete the profile document
       await ctx.db.delete(profile._id);
       console.log(
-        `Successfully deleted profile ${profile._id} for user ${user._id}`
+        `Successfully deleted profile ${profile._id} for user ${user._id}`,
       );
     } else {
       console.log(`No profile found for user ${user._id} to delete.`);
@@ -673,7 +673,7 @@ export const deleteCurrentUserProfile = mutation({
     // Delete the user document from Convex
     await ctx.db.delete(user._id);
     console.log(
-      `Successfully deleted user ${user._id} (Clerk ID: ${clerkId}) from Convex DB.`
+      `Successfully deleted user ${user._id} (Clerk ID: ${clerkId}) from Convex DB.`,
     );
 
     // Schedule an action to delete the user from Clerk
@@ -696,7 +696,7 @@ export const internalDeleteClerkUser = internalAction({
     const clerkSecretKey = process.env.CLERK_SECRET_KEY;
     if (!clerkSecretKey) {
       console.error(
-        "CLERK_SECRET_KEY environment variable not set. Cannot delete user from Clerk."
+        "CLERK_SECRET_KEY environment variable not set. Cannot delete user from Clerk.",
       );
       // Not throwing an error here as the Convex part is done.
       // The user will be orphaned in Clerk but deleted from the app.
@@ -712,7 +712,7 @@ export const internalDeleteClerkUser = internalAction({
     const clerkApiUrl = `https://api.clerk.com/v1/users/${clerkUserId}`;
 
     console.log(
-      `Attempting to delete user ${clerkUserId} from Clerk via API: ${clerkApiUrl}`
+      `Attempting to delete user ${clerkUserId} from Clerk via API: ${clerkApiUrl}`,
     );
 
     try {
@@ -727,7 +727,7 @@ export const internalDeleteClerkUser = internalAction({
       if (response.ok) {
         // const responseBody = await response.json(); // Clerk delete might return a body
         console.log(
-          `Successfully deleted user ${clerkUserId} from Clerk. Status: ${response.status}`
+          `Successfully deleted user ${clerkUserId} from Clerk. Status: ${response.status}`,
         );
         return {
           success: true,
@@ -744,7 +744,7 @@ export const internalDeleteClerkUser = internalAction({
         }
         console.error(
           `Failed to delete user ${clerkUserId} from Clerk. Status: ${response.status} ${response.statusText}. Body:`,
-          errorBodyJson || errorBodyText
+          errorBodyJson || errorBodyText,
         );
         return {
           success: false,
@@ -755,7 +755,7 @@ export const internalDeleteClerkUser = internalAction({
     } catch (e) {
       console.error(
         `Network or other error when trying to delete user ${clerkUserId} from Clerk:`,
-        e
+        e,
       );
       return {
         success: false,
@@ -773,7 +773,7 @@ export const adminUpdateProfile = mutation({
       fullName: v.optional(v.string()),
       city: v.optional(v.string()),
       gender: v.optional(
-        v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+        v.union(v.literal("male"), v.literal("female"), v.literal("other")),
       ),
       dateOfBirth: v.optional(v.string()),
       height: v.optional(v.string()),
@@ -782,8 +782,8 @@ export const adminUpdateProfile = mutation({
           v.literal("single"),
           v.literal("divorced"),
           v.literal("widowed"),
-          v.literal("annulled")
-        )
+          v.literal("annulled"),
+        ),
       ),
       education: v.optional(v.string()),
       occupation: v.optional(v.string()),
@@ -797,33 +797,33 @@ export const adminUpdateProfile = mutation({
           v.literal("vegan"),
           v.literal("eggetarian"),
           v.literal("other"),
-          v.literal("")
-        )
+          v.literal(""),
+        ),
       ),
       smoking: v.optional(
         v.union(
           v.literal("no"),
           v.literal("occasionally"),
           v.literal("yes"),
-          v.literal("")
-        )
+          v.literal(""),
+        ),
       ),
       drinking: v.optional(
-        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
       ),
       physicalStatus: v.optional(
         v.union(
           v.literal("normal"),
           v.literal("differently-abled"),
           v.literal("other"),
-          v.literal("")
-        )
+          v.literal(""),
+        ),
       ),
       partnerPreferenceAgeMin: v.optional(
-        v.union(v.string(), v.number(), v.literal(""))
+        v.union(v.string(), v.number(), v.literal("")),
       ),
       partnerPreferenceAgeMax: v.optional(
-        v.union(v.string(), v.number(), v.literal(""))
+        v.union(v.string(), v.number(), v.literal("")),
       ),
       partnerPreferenceCity: v.optional(v.array(v.string())),
       profileImageIds: v.optional(v.array(v.id("_storage"))),
@@ -836,8 +836,8 @@ export const adminUpdateProfile = mutation({
           v.literal("male"),
           v.literal("female"),
           v.literal("any"),
-          v.literal("other")
-        )
+          v.literal("other"),
+        ),
       ),
       updatedAt: v.optional(v.number()),
       // Subscription related fields
@@ -845,8 +845,8 @@ export const adminUpdateProfile = mutation({
         v.union(
           v.literal("free"),
           v.literal("premium"),
-          v.literal("premiumPlus")
-        )
+          v.literal("premiumPlus"),
+        ),
       ),
       subscriptionExpiresAt: v.optional(v.number()),
     }),
@@ -955,7 +955,7 @@ export const adminListProfiles = query({
         p.phoneNumber &&
         typeof p.fullName === "string" &&
         typeof p.city === "string" &&
-        typeof p.phoneNumber === "string"
+        typeof p.phoneNumber === "string",
     );
 
     // Apply search filter if provided
@@ -1051,8 +1051,8 @@ export const listUsersWithProfiles = query({
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any")
-      )
+        v.literal("any"),
+      ),
     ),
   },
   handler: async (ctx, args) => {
@@ -1068,7 +1068,7 @@ export const listUsersWithProfiles = query({
       }));
     if (args.preferredGender && args.preferredGender !== "any") {
       filtered = filtered.filter(
-        (u) => u.profile && u.profile.gender === args.preferredGender
+        (u) => u.profile && u.profile.gender === args.preferredGender,
       );
     }
     return filtered;
@@ -1126,22 +1126,35 @@ export const updateProfileImageOrder = mutation({
 export const createProfile = mutation({
   args: {
     profileFor: v.optional(
-      v.union(v.literal("self"), v.literal("friend"), v.literal("family"))
+      v.union(
+        v.literal("self"),
+        v.literal("son"),
+        v.literal("daughter"),
+        v.literal("brother"),
+        v.literal("sister"),
+        v.literal("friend"),
+        v.literal("relative"),
+        v.literal(""),
+      ),
     ),
     fullName: v.string(),
     dateOfBirth: v.string(),
     gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
     city: v.string(),
+    country: v.optional(v.string()),
     aboutMe: v.string(),
     height: v.string(),
     maritalStatus: v.union(
       v.literal("single"),
       v.literal("divorced"),
       v.literal("widowed"),
-      v.literal("annulled")
+      v.literal("annulled"),
     ),
     education: v.string(),
     occupation: v.string(),
+    annualIncome: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    email: v.optional(v.string()),
     profileImageIds: v.optional(v.array(v.id("_storage"))),
     isProfileComplete: v.optional(v.boolean()),
     preferredGender: v.optional(
@@ -1149,23 +1162,85 @@ export const createProfile = mutation({
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any")
-      )
+        v.literal("any"),
+      ),
+    ),
+    motherTongue: v.optional(
+      v.union(
+        v.literal("farsi-dari"),
+        v.literal("pashto"),
+        v.literal("uzbeki"),
+        v.literal("hazaragi"),
+        v.literal("turkmeni"),
+        v.literal("balochi"),
+        v.literal("nuristani"),
+        v.literal("punjabi"),
+        v.literal(""),
+      ),
+    ),
+    religion: v.optional(
+      v.union(
+        v.literal("muslim"),
+        v.literal("hindu"),
+        v.literal("sikh"),
+        v.literal(""),
+      ),
+    ),
+    ethnicity: v.optional(
+      v.union(
+        v.literal("tajik"),
+        v.literal("pashtun"),
+        v.literal("uzbek"),
+        v.literal("hazara"),
+        v.literal("turkmen"),
+        v.literal("baloch"),
+        v.literal("nuristani"),
+        v.literal("aimaq"),
+        v.literal("pashai"),
+        v.literal("qizilbash"),
+        v.literal("punjabi"),
+        v.literal(""),
+      ),
+    ),
+    diet: v.optional(
+      v.union(
+        v.literal("vegetarian"),
+        v.literal("non-vegetarian"),
+        v.literal("halal"),
+        v.literal("vegan"),
+        v.literal("eggetarian"),
+        v.literal("other"),
+        v.literal(""),
+      ),
+    ),
+    physicalStatus: v.optional(
+      v.union(
+        v.literal("normal"),
+        v.literal("physically-challenged"),
+        v.literal(""),
+      ),
     ),
     smoking: v.optional(
       v.union(
         v.literal("no"),
         v.literal("occasionally"),
         v.literal("yes"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     drinking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
     ),
+    partnerPreferenceAgeMin: v.optional(v.number()),
+    partnerPreferenceAgeMax: v.optional(v.number()),
+    partnerPreferenceCity: v.optional(v.array(v.string())),
     // Subscription related fields
     subscriptionPlan: v.optional(
-      v.union(v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))
+      v.union(
+        v.literal("free"),
+        v.literal("premium"),
+        v.literal("premiumPlus"),
+      ),
     ),
   },
   handler: async (ctx, args) => {
@@ -1196,26 +1271,57 @@ export const createProfile = mutation({
 
     // Create new profile
     const profileData: Omit<Profile, "_id"> = {
-      ...args,
       userId: user._id,
       clerkId: identity.subject,
-      email: user.email,
+      email: args.email || user.email,
       isProfileComplete: args.isProfileComplete ?? false,
-
       createdAt: Date.now(),
       updatedAt: Date.now(),
+
+      // Basic info
       profileFor: args.profileFor || "self",
       fullName: args.fullName || "",
       dateOfBirth: args.dateOfBirth || "",
       gender: args.gender || "",
       preferredGender: args.preferredGender || "",
+
+      // Location
       city: args.city || "",
-      aboutMe: args.aboutMe || "",
+      country: args.country || "",
+
+      // Physical & lifestyle
       height: args.height || "",
       maritalStatus: args.maritalStatus || "single",
+      physicalStatus: args.physicalStatus || "normal",
+      diet: args.diet || "",
+      smoking: args.smoking || "no",
+      drinking: args.drinking || "no",
+
+      // Cultural
+      motherTongue: args.motherTongue || "",
+      religion: args.religion || "",
+      ethnicity: args.ethnicity || "",
+
+      // Education & career
       education: args.education || "",
       occupation: args.occupation || "",
+      annualIncome: args.annualIncome ? Number(args.annualIncome) : undefined,
+
+      // Contact
+      phoneNumber: args.phoneNumber || "",
+
+      // About
+      aboutMe: args.aboutMe || "",
+
+      // Partner preferences
+      partnerPreferenceAgeMin: args.partnerPreferenceAgeMin,
+      partnerPreferenceAgeMax: args.partnerPreferenceAgeMax,
+      partnerPreferenceCity: args.partnerPreferenceCity || [],
+
+      // Images
       profileImageIds: args.profileImageIds || [],
+
+      // Subscription
       subscriptionPlan: args.subscriptionPlan || "free",
       subscriptionExpiresAt:
         args.subscriptionPlan && args.subscriptionPlan !== "free"
@@ -1310,39 +1416,42 @@ export const getMyMatches = query({
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .unique();
     if (!user) return [];
-    
+
     // Get matches from the matches table
     const matches1 = await ctx.db
       .query("matches")
       .withIndex("by_user1", (q) => q.eq("user1Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
-    
+
     const matches2 = await ctx.db
       .query("matches")
       .withIndex("by_user2", (q) => q.eq("user2Id", user._id))
       .filter((q) => q.eq(q.field("status"), "matched"))
       .collect();
-    
+
     // Combine and get the other user's profile for each match
     const allMatches = [...matches1, ...matches2];
     const matchProfiles = await Promise.all(
       allMatches.map(async (match) => {
-        const otherUserId = match.user1Id === user._id ? match.user2Id : match.user1Id;
+        const otherUserId =
+          match.user1Id === user._id ? match.user2Id : match.user1Id;
         const profile = await ctx.db
           .query("profiles")
           .withIndex("by_userId", (q) => q.eq("userId", otherUserId))
           .first();
-        
-        return profile ? {
-          ...profile,
-          conversationId: match.conversationId,
-          matchedAt: match.createdAt,
-          lastActivity: match.lastActivity,
-        } : null;
-      })
+
+        return profile
+          ? {
+              ...profile,
+              conversationId: match.conversationId,
+              matchedAt: match.createdAt,
+              lastActivity: match.lastActivity,
+            }
+          : null;
+      }),
     );
-    
+
     return matchProfiles.filter(Boolean);
   },
 });
@@ -1396,7 +1505,7 @@ export const getProfileDetailPageData = action({
     // Get current user
     const currentUser: User | null = await ctx.runQuery(
       api.users.getCurrentUserWithProfile,
-      {}
+      {},
     );
     const currentUserId = currentUser?._id as Id<"users"> | undefined;
 
@@ -1455,7 +1564,7 @@ export const getProfileDetailPageData = action({
         api.images.getProfileImages,
         {
           userId: currentUserId,
-        }
+        },
       );
     }
 
@@ -1479,8 +1588,8 @@ export const searchPublicProfiles = query({
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any")
-      )
+        v.literal("any"),
+      ),
     ),
     city: v.optional(v.string()),
     country: v.optional(v.string()),
@@ -1528,8 +1637,6 @@ export const searchPublicProfiles = query({
 
       // Skip incomplete profiles
       if (!u.profile.isProfileComplete) return false;
-
-
 
       // Skip banned profiles
       if (u.profile.banned) return false;
@@ -1714,13 +1821,18 @@ export const grantSpotlightBadge = mutation({
     if (!profile) throw new ConvexError("Profile not found");
 
     // Check if user has premium or premium plus subscription
-    if (profile.subscriptionPlan !== "premium" && profile.subscriptionPlan !== "premiumPlus") {
-      throw new ConvexError("Spotlight badge is only available for Premium and Premium Plus subscribers");
+    if (
+      profile.subscriptionPlan !== "premium" &&
+      profile.subscriptionPlan !== "premiumPlus"
+    ) {
+      throw new ConvexError(
+        "Spotlight badge is only available for Premium and Premium Plus subscribers",
+      );
     }
 
     // Calculate expiration (default 30 days)
     const durationDays = args.durationDays ?? 30;
-    const expiresAt = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+    const expiresAt = Date.now() + durationDays * 24 * 60 * 60 * 1000;
 
     const updates: Partial<ConvexProfile> = {
       hasSpotlightBadge: true,
@@ -1730,10 +1842,10 @@ export const grantSpotlightBadge = mutation({
 
     await ctx.db.patch(profile._id, updates as any);
 
-    return { 
-      hasSpotlightBadge: true, 
+    return {
+      hasSpotlightBadge: true,
       spotlightBadgeExpiresAt: expiresAt,
-      durationDays 
+      durationDays,
     };
   },
 });
@@ -1782,7 +1894,7 @@ export const adminGrantSpotlightBadge = mutation({
 
     // Calculate expiration (default 30 days)
     const durationDays = args.durationDays ?? 30;
-    const expiresAt = Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+    const expiresAt = Date.now() + durationDays * 24 * 60 * 60 * 1000;
 
     const updates: Partial<ConvexProfile> = {
       hasSpotlightBadge: true,
@@ -1792,10 +1904,10 @@ export const adminGrantSpotlightBadge = mutation({
 
     await ctx.db.patch(args.profileId, updates as any);
 
-    return { 
-      hasSpotlightBadge: true, 
+    return {
+      hasSpotlightBadge: true,
       spotlightBadgeExpiresAt: expiresAt,
-      durationDays 
+      durationDays,
     };
   },
 });
@@ -1870,7 +1982,7 @@ export const getProfileViewers = query({
     const views = await ctx.db
       .query("profileViews")
       .withIndex("by_profileId_createdAt", (q) =>
-        q.eq("profileId", args.profileId)
+        q.eq("profileId", args.profileId),
       )
       .order("desc")
       .take(100);
@@ -1891,7 +2003,7 @@ export const internalUpdateSubscription = internalMutation(
       clerkId: string;
       plan: "free" | "premium" | "premiumPlus";
       expiresAt?: number;
-    }
+    },
   ) => {
     const user = await ctx.db
       .query("users")
@@ -1913,7 +2025,7 @@ export const internalUpdateSubscription = internalMutation(
       subscriptionPlan: args.plan,
       subscriptionExpiresAt: args.expiresAt ?? undefined,
     });
-  }
+  },
 );
 
 export const stripeUpdateSubscription = action({
@@ -1922,7 +2034,7 @@ export const stripeUpdateSubscription = action({
     plan: v.union(
       v.literal("free"),
       v.literal("premium"),
-      v.literal("premiumPlus")
+      v.literal("premiumPlus"),
     ),
   },
   handler: async (ctx, args) => {
@@ -1941,7 +2053,7 @@ export const getUserByEmail = query({
     const all = await ctx.db.query("users").collect();
     return (
       all.find(
-        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
+        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower,
       ) || null
     );
   },
