@@ -24,11 +24,12 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     setLoading(true);
     setError(null);
     try {
-      // Use authenticateWithRedirect for OAuth flow
-      await signIn.authenticateWithRedirect({
+      // Open Google OAuth flow in a popup instead of full-page redirect
+      await signIn.authenticateWithPopup({
         strategy: "oauth_google",
         redirectUrl: window.location.origin + "/oauth/callback",
         redirectUrlComplete: window.location.origin + "/oauth/callback",
+        popup: null,
       });
     } catch (err) {
       console.error("Google signin error", err);
