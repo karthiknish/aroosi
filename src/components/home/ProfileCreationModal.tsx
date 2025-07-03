@@ -179,6 +179,19 @@ export function ProfileCreationModal({
   );
   console.log("ProfileCreationModal initialData prop:", initialData);
 
+  // Also log what's in localStorage to verify
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION);
+      console.log(
+        "ProfileCreationModal localStorage data:",
+        stored ? JSON.parse(stored) : null,
+      );
+    } catch (e) {
+      console.error("Error reading localStorage:", e);
+    }
+  }
+
   // Determine if we already have the basic fields (collected in HeroOnboarding)
   const hasBasicData = Boolean(
     contextData?.profileFor &&
@@ -312,7 +325,72 @@ export function ProfileCreationModal({
       restoreWizardState();
     }
   }, []);
-  // Save whenever form data or step changes
+
+  // Update formData when contextData changes (e.g., when loaded from localStorage)
+  useEffect(() => {
+    if (contextData && Object.keys(contextData).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        profileFor: (contextData.profileFor as string) || prev.profileFor,
+        gender: (contextData.gender as string) || prev.gender,
+        fullName: (contextData.fullName as string) || prev.fullName,
+        dateOfBirth: (contextData.dateOfBirth as string) || prev.dateOfBirth,
+        phoneNumber: (contextData.phoneNumber as string) || prev.phoneNumber,
+        // Only update other fields if they exist in context
+        ...(contextData.email && { email: contextData.email as string }),
+        ...(contextData.country && { country: contextData.country as string }),
+        ...(contextData.city && { city: contextData.city as string }),
+        ...(contextData.height && { height: contextData.height as string }),
+        ...(contextData.maritalStatus && {
+          maritalStatus: contextData.maritalStatus as string,
+        }),
+        ...(contextData.physicalStatus && {
+          physicalStatus: contextData.physicalStatus as string,
+        }),
+        ...(contextData.motherTongue && {
+          motherTongue: contextData.motherTongue as string,
+        }),
+        ...(contextData.religion && {
+          religion: contextData.religion as string,
+        }),
+        ...(contextData.ethnicity && {
+          ethnicity: contextData.ethnicity as string,
+        }),
+        ...(contextData.diet && { diet: contextData.diet as string }),
+        ...(contextData.smoking && { smoking: contextData.smoking as string }),
+        ...(contextData.drinking && {
+          drinking: contextData.drinking as string,
+        }),
+        ...(contextData.education && {
+          education: contextData.education as string,
+        }),
+        ...(contextData.occupation && {
+          occupation: contextData.occupation as string,
+        }),
+        ...(contextData.annualIncome && {
+          annualIncome: contextData.annualIncome as string,
+        }),
+        ...(contextData.aboutMe && { aboutMe: contextData.aboutMe as string }),
+        ...(contextData.preferredGender && {
+          preferredGender: contextData.preferredGender as string,
+        }),
+        ...(contextData.partnerPreferenceAgeMin && {
+          partnerPreferenceAgeMin:
+            contextData.partnerPreferenceAgeMin as number,
+        }),
+        ...(contextData.partnerPreferenceAgeMax && {
+          partnerPreferenceAgeMax:
+            contextData.partnerPreferenceAgeMax as number,
+        }),
+        ...(contextData.partnerPreferenceCity && {
+          partnerPreferenceCity: contextData.partnerPreferenceCity as string[],
+        }),
+        ...(contextData.profileImageIds && {
+          profileImageIds: contextData.profileImageIds as string[],
+        }),
+      }));
+    }
+  }, [contextData]); // Save whenever form data or step changes
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
