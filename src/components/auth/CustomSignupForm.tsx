@@ -38,27 +38,59 @@ export function CustomSignupForm({
   }, [resendCooldown]);
 
   const sendCode = async () => {
-    if (!signUpLoaded || !signUp) return;
-
-    // Check if email is already tied to a completed profile
-    const { hasProfile } = await checkEmailHasProfile(email);
-    if (hasProfile) {
-      showErrorToast(
-        null,
-        "That email already has a profile. Please sign in instead.",
-      );
-      onProfileExists?.();
+    if (!signUpLoaded || !signUp) {
+      setError("Sign up is not loaded yet. Please try again.");
       return;
     }
 
     setLoading(true);
     setError(null);
+
     try {
-      await signUp.create({ emailAddress: email, password });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      // Check if email is already tied to a completed profile
+      const { hasProfile } = await checkEmailHasProfile(email);
+      if (hasProfile) {
+        showErrorToast(
+          null,
+          "That email already has a profile. Please sign in instead.",
+        );
+        onProfileExists?.();
+        setLoading(false);
+        return;
+      }
+
+      // Create the sign-up
+      const signUpAttempt = await signUp.create({
+        emailAddress: email,
+        password,
+      });
+
+      console.log("Sign-up created:", signUpAttempt);
+
+      // Prepare email verification
+      await signUp.prepareEmailAddressVerification({
+        strategy: "email_code",
+      });
+
       setPhase("code");
-    } catch {
-      setError("Failed to send verification code. Please try again.");
+      showSuccessToast("Verification code sent to your email");
+    } catch (err: unknown) {
+      console.error("Sign-up error details:", err);
+
+      // Handle Clerk-specific errors
+      if (err && typeof err === "object" && "errors" in err) {
+        const clerkError = err as {
+          errors: Array<{ message: string; code?: string }>;
+        };
+        const errorMessage =
+          clerkError.errors?.[0]?.message ||
+          "Failed to send verification code.";
+        setError(errorMessage);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to send verification code. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -275,6 +307,8 @@ export function CustomSignupForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {/* CAPTCHA Widget - Must be present before calling signUp.create() */}
+          <div id="clerk-captcha" />
           <Button
             className="w-full"
             onClick={sendCode}
@@ -282,8 +316,6 @@ export function CustomSignupForm({
           >
             {loading ? "Sending..." : "Send Code"}
           </Button>
-          {/* CAPTCHA Widget - Required for bot protection */}
-          <div id="clerk-captcha" />
         </>
       )}
       {phase === "code" && (
