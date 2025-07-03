@@ -28,11 +28,12 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
   const [step, setStep] = useState<number>(1);
   const [formData, setFormData] = useState<WizardFormData>({});
 
-  // Load from localStorage once
+  // Load from localStorage once - use a unified storage key
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.HERO_ONBOARDING);
+      // Try to load from the unified profile creation storage
+      const raw = localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION);
       if (raw) {
         const parsed = JSON.parse(raw) as {
           step?: number;
@@ -46,12 +47,12 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Persist on change
+  // Persist on change - use the same unified storage key
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem(
-        STORAGE_KEYS.HERO_ONBOARDING,
+        STORAGE_KEYS.PROFILE_CREATION,
         JSON.stringify({ step, formData: filterNonEmpty(formData) }),
       );
     } catch {

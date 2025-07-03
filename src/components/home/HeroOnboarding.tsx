@@ -76,7 +76,7 @@ function HeroOnboardingInner() {
     if (!res.success) {
       showErrorToast(
         null,
-        res.error.errors[0]?.message || "Please fill in all fields"
+        res.error.errors[0]?.message || "Please fill in all fields",
       );
       return false;
     }
@@ -90,7 +90,7 @@ function HeroOnboardingInner() {
       if (isNaN(age) || age < 18) {
         showErrorToast(
           null,
-          "You must be at least 18 years old to use this app."
+          "You must be at least 18 years old to use this app.",
         );
         return;
       }
@@ -108,14 +108,13 @@ function HeroOnboardingInner() {
     try {
       // Open the profile creation modal with the collected data
       setShowProfileModal(true);
-      // Note: localStorage will be cleared by ProfileCreationModal after migration
+      // The data is already in the ProfileWizardContext
     } catch {
       showErrorToast(null, "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-
   const calculateAge = (dob: string) => {
     const birthDate = new Date(dob);
     const today = new Date();
@@ -333,7 +332,7 @@ function HeroOnboardingInner() {
                           variant="outline"
                           className={cn(
                             "w-full justify-start text-left font-normal bg-white",
-                            !heroData.dateOfBirth && "text-muted-foreground"
+                            !heroData.dateOfBirth && "text-muted-foreground",
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -359,7 +358,7 @@ function HeroOnboardingInner() {
                             if (date) {
                               handleInputChange(
                                 "dateOfBirth",
-                                format(date, "yyyy-MM-dd")
+                                format(date, "yyyy-MM-dd"),
                               );
                             }
                           }}
@@ -368,7 +367,7 @@ function HeroOnboardingInner() {
                             const minDate = new Date(
                               today.getFullYear() - 18,
                               today.getMonth(),
-                              today.getDate()
+                              today.getDate(),
                             );
                             return (
                               date > minDate || date < new Date("1900-01-01")
@@ -474,7 +473,6 @@ function HeroOnboardingInner() {
       <ProfileCreationModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
-        initialData={heroData}
       />
     </div>
   );

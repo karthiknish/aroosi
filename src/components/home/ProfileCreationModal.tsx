@@ -42,21 +42,18 @@ import {
 import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import {
-  migrateHeroDataToProfile,
   clearAllOnboardingData,
   STORAGE_KEYS,
 } from "@/lib/utils/onboardingStorage";
+import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 
-interface ProfileData {
+interface ProfileCreationData {
   profileFor: string;
   gender: string;
   fullName: string;
   dateOfBirth: string;
   email: string;
   phoneNumber: string;
-}
-
-interface ProfileCreationData extends ProfileData {
   country: string;
   city: string;
   height: string;
@@ -82,7 +79,7 @@ interface ProfileCreationData extends ProfileData {
 interface ProfileCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialData?: Partial<ProfileData & Partial<ProfileCreationData>>;
+  initialData?: Partial<ProfileCreationData>;
 }
 
 // Zod schema for all fields - only truly required fields are mandatory
@@ -171,54 +168,102 @@ export function ProfileCreationModal({
 }: ProfileCreationModalProps) {
   const router = useRouter();
 
+  // Get data from the shared ProfileWizard context
+  const { formData: contextData, updateFormData: updateContextData } =
+    useProfileWizard();
+
   // Debug: comment out verbose logging in production
-  // console.log("ProfileCreationModal initialData:", initialData);
+  console.log(
+    "ProfileCreationModal contextData from ProfileWizard:",
+    contextData,
+  );
+  console.log("ProfileCreationModal initialData prop:", initialData);
 
   // Determine if we already have the basic fields (collected in HeroOnboarding)
-  const hasBasicData =
-    Boolean(initialData?.profileFor) &&
-    Boolean(initialData?.gender) &&
-    Boolean(initialData?.fullName) &&
-    Boolean(initialData?.dateOfBirth) &&
-    Boolean(initialData?.phoneNumber);
+  const hasBasicData = Boolean(
+    contextData?.profileFor &&
+      contextData?.gender &&
+      contextData?.fullName &&
+      contextData?.dateOfBirth &&
+      contextData?.phoneNumber,
+  );
 
   // Total number of steps adjusts when we skip the duplicate first step
   const totalSteps = hasBasicData ? 6 : 7;
 
   // React state for the current UI step (1-based within the displayed steps)
   const [step, setStep] = useState<number>(1);
-
   // ---------- State persistence & redirect helpers ----------
 
   // We'll initialise these after formData is declared below
 
-  const [formData, setFormData] = useState<ProfileCreationData>({
-    profileFor: initialData?.profileFor || "",
-    gender: initialData?.gender || "",
-    fullName: initialData?.fullName || "",
-    dateOfBirth: initialData?.dateOfBirth || "",
-    email: initialData?.email || "",
-    phoneNumber: initialData?.phoneNumber || "",
-    country: initialData?.country || "",
-    city: initialData?.city || "",
-    height: initialData?.height || "",
-    maritalStatus: initialData?.maritalStatus || "",
-    physicalStatus: initialData?.physicalStatus || "",
-    motherTongue: initialData?.motherTongue || "",
-    religion: initialData?.religion || "",
-    ethnicity: initialData?.ethnicity || "",
-    diet: initialData?.diet || "",
-    smoking: initialData?.smoking || "",
-    drinking: initialData?.drinking || "",
-    education: initialData?.education || "",
-    occupation: initialData?.occupation || "",
-    annualIncome: initialData?.annualIncome || "",
-    aboutMe: initialData?.aboutMe || "",
-    preferredGender: initialData?.preferredGender || "",
-    partnerPreferenceAgeMin: initialData?.partnerPreferenceAgeMin || 18,
-    partnerPreferenceAgeMax: initialData?.partnerPreferenceAgeMax,
-    partnerPreferenceCity: initialData?.partnerPreferenceCity || [],
-    profileImageIds: initialData?.profileImageIds || [],
+  const [formData, setFormData] = useState<ProfileCreationData>(() => {
+    // Use context data as the base, then merge with any initialData prop
+    const mergedData: ProfileCreationData = {
+      profileFor:
+        (contextData?.profileFor as string) || initialData?.profileFor || "",
+      gender: (contextData?.gender as string) || initialData?.gender || "",
+      fullName:
+        (contextData?.fullName as string) || initialData?.fullName || "",
+      dateOfBirth:
+        (contextData?.dateOfBirth as string) || initialData?.dateOfBirth || "",
+      email: (contextData?.email as string) || initialData?.email || "",
+      phoneNumber:
+        (contextData?.phoneNumber as string) || initialData?.phoneNumber || "",
+      country: (contextData?.country as string) || initialData?.country || "",
+      city: (contextData?.city as string) || initialData?.city || "",
+      height: (contextData?.height as string) || initialData?.height || "",
+      maritalStatus:
+        (contextData?.maritalStatus as string) ||
+        initialData?.maritalStatus ||
+        "",
+      physicalStatus:
+        (contextData?.physicalStatus as string) ||
+        initialData?.physicalStatus ||
+        "",
+      motherTongue:
+        (contextData?.motherTongue as string) ||
+        initialData?.motherTongue ||
+        "",
+      religion:
+        (contextData?.religion as string) || initialData?.religion || "",
+      ethnicity:
+        (contextData?.ethnicity as string) || initialData?.ethnicity || "",
+      diet: (contextData?.diet as string) || initialData?.diet || "",
+      smoking: (contextData?.smoking as string) || initialData?.smoking || "",
+      drinking:
+        (contextData?.drinking as string) || initialData?.drinking || "",
+      education:
+        (contextData?.education as string) || initialData?.education || "",
+      occupation:
+        (contextData?.occupation as string) || initialData?.occupation || "",
+      annualIncome:
+        (contextData?.annualIncome as string) ||
+        initialData?.annualIncome ||
+        "",
+      aboutMe: (contextData?.aboutMe as string) || initialData?.aboutMe || "",
+      preferredGender:
+        (contextData?.preferredGender as string) ||
+        initialData?.preferredGender ||
+        "",
+      partnerPreferenceAgeMin:
+        (contextData?.partnerPreferenceAgeMin as number) ||
+        initialData?.partnerPreferenceAgeMin ||
+        18,
+      partnerPreferenceAgeMax: contextData?.partnerPreferenceAgeMax as
+        | number
+        | undefined,
+      partnerPreferenceCity:
+        (contextData?.partnerPreferenceCity as string[]) ||
+        initialData?.partnerPreferenceCity ||
+        [],
+      profileImageIds:
+        (contextData?.profileImageIds as string[]) ||
+        initialData?.profileImageIds ||
+        [],
+    };
+    console.log("ProfileCreationModal merged formData:", mergedData);
+    return mergedData;
   });
 
   // Persist wizard state to localStorage to survive OAuth full-page redirects
@@ -259,20 +304,11 @@ export function ProfileCreationModal({
     }
   };
   useEffect(() => {
-    // If we have initialData from HeroOnboarding, it takes precedence
-    if (initialData && Object.keys(initialData).length > 0) {
-      // Clear any stale hero onboarding data from localStorage
-      try {
-        localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
-        // Also clear any stale profile creation data to avoid conflicts
-        localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
-      } catch {
-        /* ignore */
-      }
-    } else {
-      // No initialData, so try to migrate from localStorage
-      migrateHeroDataToProfile();
-      // Only restore wizard state if we don't have initialData
+    // Since we're using the shared context, we don't need to migrate data
+    // The context already has all the data from HeroOnboarding
+
+    // Only restore wizard state if we don't have context data
+    if (!hasBasicData) {
       restoreWizardState();
     }
   }, []);
@@ -337,8 +373,10 @@ export function ProfileCreationModal({
   const handleInputChange = useCallback(
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
+      // Also update the context so data is shared with HeroOnboarding
+      updateContextData({ [field]: value });
     },
-    [],
+    [updateContextData],
   );
 
   const handleProfileImagesChange = useCallback(
