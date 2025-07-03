@@ -329,66 +329,69 @@ export function ProfileCreationModal({
   // Update formData when contextData changes (e.g., when loaded from localStorage)
   useEffect(() => {
     if (contextData && Object.keys(contextData).length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        profileFor: (contextData.profileFor as string) || prev.profileFor,
-        gender: (contextData.gender as string) || prev.gender,
-        fullName: (contextData.fullName as string) || prev.fullName,
-        dateOfBirth: (contextData.dateOfBirth as string) || prev.dateOfBirth,
-        phoneNumber: (contextData.phoneNumber as string) || prev.phoneNumber,
-        // Only update other fields if they exist in context
-        ...(contextData.email && { email: contextData.email as string }),
-        ...(contextData.country && { country: contextData.country as string }),
-        ...(contextData.city && { city: contextData.city as string }),
-        ...(contextData.height && { height: contextData.height as string }),
-        ...(contextData.maritalStatus && {
-          maritalStatus: contextData.maritalStatus as string,
-        }),
-        ...(contextData.physicalStatus && {
-          physicalStatus: contextData.physicalStatus as string,
-        }),
-        ...(contextData.motherTongue && {
-          motherTongue: contextData.motherTongue as string,
-        }),
-        ...(contextData.religion && {
-          religion: contextData.religion as string,
-        }),
-        ...(contextData.ethnicity && {
-          ethnicity: contextData.ethnicity as string,
-        }),
-        ...(contextData.diet && { diet: contextData.diet as string }),
-        ...(contextData.smoking && { smoking: contextData.smoking as string }),
-        ...(contextData.drinking && {
-          drinking: contextData.drinking as string,
-        }),
-        ...(contextData.education && {
-          education: contextData.education as string,
-        }),
-        ...(contextData.occupation && {
-          occupation: contextData.occupation as string,
-        }),
-        ...(contextData.annualIncome && {
-          annualIncome: contextData.annualIncome as string,
-        }),
-        ...(contextData.aboutMe && { aboutMe: contextData.aboutMe as string }),
-        ...(contextData.preferredGender && {
-          preferredGender: contextData.preferredGender as string,
-        }),
-        ...(contextData.partnerPreferenceAgeMin && {
-          partnerPreferenceAgeMin:
-            contextData.partnerPreferenceAgeMin as number,
-        }),
-        ...(contextData.partnerPreferenceAgeMax && {
-          partnerPreferenceAgeMax:
-            contextData.partnerPreferenceAgeMax as number,
-        }),
-        ...(contextData.partnerPreferenceCity && {
-          partnerPreferenceCity: contextData.partnerPreferenceCity as string[],
-        }),
-        ...(contextData.profileImageIds && {
-          profileImageIds: contextData.profileImageIds as string[],
-        }),
-      }));
+      setFormData((prev) => {
+        const updated: ProfileCreationData = { ...prev };
+
+        // Update hero onboarding fields if they exist
+        if (contextData.profileFor)
+          updated.profileFor = contextData.profileFor as string;
+        if (contextData.gender) updated.gender = contextData.gender as string;
+        if (contextData.fullName)
+          updated.fullName = contextData.fullName as string;
+        if (contextData.dateOfBirth)
+          updated.dateOfBirth = contextData.dateOfBirth as string;
+        if (contextData.phoneNumber)
+          updated.phoneNumber = contextData.phoneNumber as string;
+
+        // Update other fields if they exist
+        if (contextData.email) updated.email = contextData.email as string;
+        if (contextData.country)
+          updated.country = contextData.country as string;
+        if (contextData.city) updated.city = contextData.city as string;
+        if (contextData.height) updated.height = contextData.height as string;
+        if (contextData.maritalStatus)
+          updated.maritalStatus = contextData.maritalStatus as string;
+        if (contextData.physicalStatus)
+          updated.physicalStatus = contextData.physicalStatus as string;
+        if (contextData.motherTongue)
+          updated.motherTongue = contextData.motherTongue as string;
+        if (contextData.religion)
+          updated.religion = contextData.religion as string;
+        if (contextData.ethnicity)
+          updated.ethnicity = contextData.ethnicity as string;
+        if (contextData.diet) updated.diet = contextData.diet as string;
+        if (contextData.smoking)
+          updated.smoking = contextData.smoking as string;
+        if (contextData.drinking)
+          updated.drinking = contextData.drinking as string;
+        if (contextData.education)
+          updated.education = contextData.education as string;
+        if (contextData.occupation)
+          updated.occupation = contextData.occupation as string;
+        if (contextData.annualIncome)
+          updated.annualIncome = contextData.annualIncome as string;
+        if (contextData.aboutMe)
+          updated.aboutMe = contextData.aboutMe as string;
+        if (contextData.preferredGender)
+          updated.preferredGender = contextData.preferredGender as string;
+        if (contextData.partnerPreferenceAgeMin)
+          updated.partnerPreferenceAgeMin =
+            contextData.partnerPreferenceAgeMin as number;
+        if (contextData.partnerPreferenceAgeMax !== undefined)
+          updated.partnerPreferenceAgeMax =
+            contextData.partnerPreferenceAgeMax as number;
+        if (contextData.partnerPreferenceCity)
+          updated.partnerPreferenceCity =
+            contextData.partnerPreferenceCity as string[];
+        if (contextData.profileImageIds)
+          updated.profileImageIds = contextData.profileImageIds as string[];
+
+        console.log(
+          "ProfileCreationModal - Updated formData from context:",
+          updated,
+        );
+        return updated;
+      });
     }
   }, [contextData]); // Save whenever form data or step changes
   useEffect(() => {
