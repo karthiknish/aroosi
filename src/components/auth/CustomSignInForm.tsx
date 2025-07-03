@@ -24,11 +24,12 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
     setLoading(true);
     setError(null);
     try {
-      // Open Google OAuth flow in a popup instead of full-page redirect
+      const clerkCallback = "https://clerk.aroosi.app/v1/oauth_callback";
+
       await signIn.authenticateWithPopup({
         strategy: "oauth_google",
-        redirectUrl: window.location.origin + "/oauth/callback",
-        redirectUrlComplete: window.location.origin + "/oauth/callback",
+        redirectUrl: clerkCallback,
+        redirectUrlComplete: clerkCallback,
         popup: null,
       });
     } catch (err) {
