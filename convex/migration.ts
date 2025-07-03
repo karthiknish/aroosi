@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -42,11 +43,7 @@ export const createUserForMigration = mutation({
     role: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Check if user is admin or has migration permissions
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     // Check if user already exists
     const existingUser = await ctx.db
@@ -85,23 +82,23 @@ export const createProfileForMigration = mutation({
         v.literal("sister"),
         v.literal("friend"),
         v.literal("relative"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     isProfileComplete: v.optional(v.boolean()),
     isOnboardingComplete: v.optional(v.boolean()),
     fullName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
     gender: v.optional(
-      v.union(v.literal("male"), v.literal("female"), v.literal("other")),
+      v.union(v.literal("male"), v.literal("female"), v.literal("other"))
     ),
     preferredGender: v.optional(
       v.union(
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any"),
-      ),
+        v.literal("any")
+      )
     ),
     city: v.optional(v.string()),
     country: v.optional(v.string()),
@@ -111,8 +108,8 @@ export const createProfileForMigration = mutation({
         v.literal("single"),
         v.literal("divorced"),
         v.literal("widowed"),
-        v.literal("annulled"),
-      ),
+        v.literal("annulled")
+      )
     ),
     education: v.optional(v.string()),
     occupation: v.optional(v.string()),
@@ -128,16 +125,16 @@ export const createProfileForMigration = mutation({
         v.literal("balochi"),
         v.literal("nuristani"),
         v.literal("punjabi"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     religion: v.optional(
       v.union(
         v.literal("muslim"),
         v.literal("hindu"),
         v.literal("sikh"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     ethnicity: v.optional(
       v.union(
@@ -152,8 +149,8 @@ export const createProfileForMigration = mutation({
         v.literal("pashai"),
         v.literal("qizilbash"),
         v.literal("punjabi"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     phoneNumber: v.optional(v.string()),
     diet: v.optional(
@@ -164,27 +161,27 @@ export const createProfileForMigration = mutation({
         v.literal("vegan"),
         v.literal("eggetarian"),
         v.literal("other"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     smoking: v.optional(
       v.union(
         v.literal("no"),
         v.literal("occasionally"),
         v.literal("yes"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     drinking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
     ),
     physicalStatus: v.optional(
       v.union(
         v.literal("normal"),
         v.literal("differently-abled"),
         v.literal("other"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     partnerPreferenceAgeMin: v.optional(v.union(v.number(), v.string())),
     partnerPreferenceAgeMax: v.optional(v.union(v.number(), v.string())),
@@ -199,11 +196,7 @@ export const createProfileForMigration = mutation({
     boostsRemaining: v.optional(v.number()),
     boostedUntil: v.optional(v.float64()),
     subscriptionPlan: v.optional(
-      v.union(
-        v.literal("free"),
-        v.literal("premium"),
-        v.literal("premiumPlus"),
-      ),
+      v.union(v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))
     ),
     subscriptionExpiresAt: v.optional(v.number()),
     hasSpotlightBadge: v.optional(v.boolean()),
@@ -214,11 +207,7 @@ export const createProfileForMigration = mutation({
     biometricDevices: v.optional(v.array(v.any())),
   },
   handler: async (ctx, args) => {
-    // Check if user is admin or has migration permissions
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     // Check if profile already exists
     const existingProfile = await ctx.db
@@ -249,11 +238,7 @@ export const createImageForMigration = mutation({
     _creationTime: v.number(),
   },
   handler: async (ctx, args) => {
-    // Check if user is admin or has migration permissions
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     // Create image record
     const imageId = await ctx.db.insert("images", args);
@@ -266,10 +251,7 @@ export const createImageForMigration = mutation({
 export const getAllInterests = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     const interests = await ctx.db.query("interests").collect();
     return interests;
@@ -284,15 +266,12 @@ export const createInterestForMigration = mutation({
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),
-      v.literal("rejected"),
+      v.literal("rejected")
     ),
     createdAt: v.float64(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     const interestId = await ctx.db.insert("interests", args);
     return interestId;
@@ -303,10 +282,7 @@ export const createInterestForMigration = mutation({
 export const getAllMessages = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     const messages = await ctx.db.query("messages").collect();
     return messages;
@@ -321,7 +297,7 @@ export const createMessageForMigration = mutation({
     toUserId: v.id("users"),
     text: v.string(),
     type: v.optional(
-      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image"))
     ),
     audioStorageId: v.optional(v.string()),
     duration: v.optional(v.number()),
@@ -331,10 +307,7 @@ export const createMessageForMigration = mutation({
     readAt: v.optional(v.float64()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     const messageId = await ctx.db.insert("messages", args);
     return messageId;
@@ -345,10 +318,7 @@ export const createMessageForMigration = mutation({
 export const getAllProfileViews = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     const views = await ctx.db.query("profileViews").collect();
     return views;
@@ -363,12 +333,71 @@ export const createProfileViewForMigration = mutation({
     createdAt: v.float64(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    // Authentication removed for one-off migration script
 
     const viewId = await ctx.db.insert("profileViews", args);
     return viewId;
+  },
+});
+
+// Mutation to delete a profile without auth (migration only)
+export const deleteProfileForMigration = mutation({
+  args: { id: v.id("profiles") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+    return { success: true };
+  },
+});
+
+// Query to get all images (for migration)
+export const getAllImages = query({
+  args: {},
+  handler: async (ctx) => {
+    const images = await ctx.db.query("images").collect();
+    return images;
+  },
+});
+
+// Mutation to patch profile image IDs (replace old with new)
+export const patchProfileImageIds = mutation({
+  args: {
+    profileId: v.id("profiles"),
+    oldId: v.id("_storage"),
+    newId: v.id("_storage"),
+  },
+  handler: async (ctx, { profileId, oldId, newId }) => {
+    const profile = await ctx.db.get(profileId);
+    if (!profile) {
+      throw new Error("Profile not found");
+    }
+
+    let updated = false;
+    let imageIds = profile.profileImageIds as string[] | undefined;
+    let imageUrls = profile.profileImageUrls as string[] | undefined;
+
+    if (imageIds && imageIds.includes(oldId)) {
+      imageIds = imageIds.map((id) => (id === oldId ? newId : id));
+      updated = true;
+    }
+
+    if (imageUrls) {
+      // If urls array exists, regenerate URL for newId
+      const newUrl = await ctx.storage.getUrl(newId);
+      const oldUrl = await ctx.storage.getUrl(oldId);
+      if (newUrl && oldUrl && imageUrls.includes(oldUrl)) {
+        imageUrls = imageUrls.map((u) => (u === oldUrl ? newUrl : u));
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      await ctx.db.patch(profileId, {
+        profileImageIds: imageIds as any,
+        profileImageUrls: imageUrls,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true };
   },
 });

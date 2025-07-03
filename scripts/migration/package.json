@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "migrate-profiles": "tsx migrate-profiles.ts",
-    "migrate-all": "tsx migrate-all-data.ts"
+    "migrate-all": "tsx migrate-all-data.ts",
+    "clean-empty-profiles": "tsx clean-empty-profiles.ts",
+    "migrate-images": "tsx migrate-images.ts"
   },
   "dependencies": {
     "convex": "^1.17.3",

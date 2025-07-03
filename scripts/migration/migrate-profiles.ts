@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ConvexHttpClient } from "convex/browser";
 import dotenv from "dotenv";
 import { api } from "../../convex/_generated/api";
@@ -31,10 +33,10 @@ console.log("DEST_TOKEN exists:", !!DEST_TOKEN);
 
 if (!SOURCE_TOKEN || !DEST_TOKEN) {
   console.error(
-    "Error: Missing authentication tokens in environment variables",
+    "Error: Missing authentication tokens in environment variables"
   );
   console.error(
-    "Please set SOURCE_CONVEX_TOKEN and DEST_CONVEX_TOKEN in your .env file",
+    "Please set SOURCE_CONVEX_TOKEN and DEST_CONVEX_TOKEN in your .env file"
   );
   console.error("Current working directory:", process.cwd());
   console.error("Script directory:", __dirname);
@@ -43,10 +45,10 @@ if (!SOURCE_TOKEN || !DEST_TOKEN) {
 
 // Initialize Convex clients
 const sourceClient = new ConvexHttpClient(SOURCE_URL);
-// sourceClient.setAuth(SOURCE_TOKEN);
+// sourceClient.setAuth(SOURCE_TOKEN!);
 
 const destClient = new ConvexHttpClient(DESTINATION_URL);
-// destClient.setAuth(DEST_TOKEN);
+// destClient.setAuth(DEST_TOKEN!);
 
 interface Profile {
   _id: string;
@@ -121,7 +123,7 @@ async function fetchAllProfiles(client: ConvexHttpClient): Promise<Profile[]> {
   try {
     console.log(
       "Fetching profiles from:",
-      client === sourceClient ? SOURCE_URL : DESTINATION_URL,
+      client === sourceClient ? SOURCE_URL : DESTINATION_URL
     );
 
     const profiles = await client.query(api.migration.getAllProfiles);
@@ -136,7 +138,7 @@ async function fetchAllUsers(client: ConvexHttpClient): Promise<User[]> {
   try {
     console.log(
       "Fetching users from:",
-      client === sourceClient ? SOURCE_URL : DESTINATION_URL,
+      client === sourceClient ? SOURCE_URL : DESTINATION_URL
     );
 
     const users = await client.query(api.migration.getAllUsers);
@@ -149,7 +151,7 @@ async function fetchAllUsers(client: ConvexHttpClient): Promise<User[]> {
 
 async function fetchUserImages(
   client: ConvexHttpClient,
-  userId: string,
+  userId: string
 ): Promise<Image[]> {
   try {
     const images = await client.query(api.migration.getImagesByUserId, {
@@ -187,10 +189,10 @@ async function findMissingProfiles(): Promise<{
 
   // Find profiles that exist in source but not in destination
   const missingProfiles = sourceProfiles.filter(
-    (profile) => !destClerkIds.has(profile.clerkId),
+    (profile) => !destClerkIds.has(profile.clerkId)
   );
   const missingUsers = sourceUsers.filter(
-    (user) => !destUserClerkIds.has(user.clerkId),
+    (user) => !destUserClerkIds.has(user.clerkId)
   );
 
   console.log(`Found ${missingProfiles.length} missing profiles`);
@@ -202,7 +204,7 @@ async function findMissingProfiles(): Promise<{
 async function migrateProfile(profile: Profile, user: User): Promise<boolean> {
   try {
     console.log(
-      `Migrating profile for ${profile.fullName || profile.clerkId}...`,
+      `Migrating profile for ${profile.fullName || profile.clerkId}...`
     );
 
     // First, create the user if it doesn't exist
@@ -213,7 +215,7 @@ async function migrateProfile(profile: Profile, user: User): Promise<boolean> {
         email: user.email,
         banned: user.banned,
         role: user.role,
-      },
+      }
     );
 
     // Prepare profile data, removing fields that will be auto-generated
