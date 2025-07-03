@@ -133,6 +133,9 @@ export function CustomSignupForm({
     }
   };
 
+  // Clerk OAuth callback URL configured in dashboard
+  const clerkCallback = "https://clerk.aroosi.app/v1/oauth_callback";
+
   // ---- Google OAuth ----
   const handleGoogleSignUp = async () => {
     // Try sign in first (for existing users)
@@ -140,7 +143,7 @@ export function CustomSignupForm({
       try {
         const res = await signIn.create({
           strategy: "oauth_google",
-          redirectUrl: window.location.origin + "/oauth/callback",
+          redirectUrl: clerkCallback,
           actionCompleteRedirectUrl: window.location.href,
         });
 
@@ -247,7 +250,7 @@ export function CustomSignupForm({
     try {
       const res = await signUp.create({
         strategy: "oauth_google",
-        redirectUrl: window.location.origin + "/oauth/callback",
+        redirectUrl: clerkCallback,
         actionCompleteRedirectUrl: window.location.href,
       });
 
