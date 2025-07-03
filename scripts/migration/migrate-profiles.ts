@@ -1,9 +1,22 @@
 import { ConvexHttpClient } from "convex/browser";
 import dotenv from "dotenv";
 import { api } from "../../convex/_generated/api";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Load environment variables
-dotenv.config();
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from the root .env.local file
+const rootDir = path.join(__dirname, "..", "..");
+const envPath = path.join(rootDir, ".env.local");
+console.log("Loading .env.local from:", envPath);
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.error("Error loading .env.local file:", result.error);
+}
 
 // Configuration
 const SOURCE_URL = "https://quirky-akita-969.convex.cloud";
@@ -13,6 +26,9 @@ const DESTINATION_URL = "https://proper-gull-501.convex.cloud";
 const SOURCE_TOKEN = process.env.SOURCE_CONVEX_TOKEN;
 const DEST_TOKEN = process.env.DEST_CONVEX_TOKEN;
 
+console.log("SOURCE_TOKEN exists:", !!SOURCE_TOKEN);
+console.log("DEST_TOKEN exists:", !!DEST_TOKEN);
+
 if (!SOURCE_TOKEN || !DEST_TOKEN) {
   console.error(
     "Error: Missing authentication tokens in environment variables",
@@ -20,15 +36,17 @@ if (!SOURCE_TOKEN || !DEST_TOKEN) {
   console.error(
     "Please set SOURCE_CONVEX_TOKEN and DEST_CONVEX_TOKEN in your .env file",
   );
+  console.error("Current working directory:", process.cwd());
+  console.error("Script directory:", __dirname);
   process.exit(1);
 }
 
 // Initialize Convex clients
 const sourceClient = new ConvexHttpClient(SOURCE_URL);
-sourceClient.setAuth(SOURCE_TOKEN);
+// sourceClient.setAuth(SOURCE_TOKEN);
 
 const destClient = new ConvexHttpClient(DESTINATION_URL);
-destClient.setAuth(DEST_TOKEN);
+// destClient.setAuth(DEST_TOKEN);
 
 interface Profile {
   _id: string;

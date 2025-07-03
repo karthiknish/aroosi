@@ -1,9 +1,17 @@
 import { ConvexHttpClient } from "convex/browser";
 import dotenv from "dotenv";
 import { api } from "../../convex/_generated/api";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Load environment variables
-dotenv.config();
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables from the root .env.local file
+const rootDir = path.join(__dirname, "..", "..");
+const envPath = path.join(rootDir, ".env.local");
+dotenv.config({ path: envPath });
 
 // Configuration
 const SOURCE_URL = "https://quirky-akita-969.convex.cloud";

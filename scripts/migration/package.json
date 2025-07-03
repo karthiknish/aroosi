@@ -4,7 +4,8 @@
   "description": "Migration scripts for Aroosi Convex data",
   "type": "module",
   "scripts": {
-    "migrate-profiles": "tsx migrate-profiles.ts"
+    "migrate-profiles": "tsx migrate-profiles.ts",
+    "migrate-all": "tsx migrate-all-data.ts"
   },
   "dependencies": {
     "convex": "^1.17.3",

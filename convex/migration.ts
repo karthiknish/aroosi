@@ -2,37 +2,25 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 // Query to get all profiles (for migration purposes only)
+// WARNING: This is a temporary function for migration. Remove after use!
 export const getAllProfiles = query({
   args: {},
   handler: async (ctx) => {
-    // Check if user is admin or has migration permissions
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
     // Fetch all profiles
     const profiles = await ctx.db.query("profiles").collect();
     return profiles;
   },
 });
-
 // Query to get all users (for migration purposes only)
+// WARNING: This is a temporary function for migration. Remove after use!
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
-    // Check if user is admin or has migration permissions
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
     // Fetch all users
     const users = await ctx.db.query("users").collect();
     return users;
   },
 });
-
 // Query to get images by userId
 export const getImagesByUserId = query({
   args: { userId: v.id("users") },

@@ -173,7 +173,7 @@ const stepSchemas = [
 
 // Build comprehensive country list from countryCodes constant
 const countries: string[] = Array.from(
-  new Set(countryCodes.map((c: { country: string }) => c.country))
+  new Set(countryCodes.map((c: { country: string }) => c.country)),
 ).sort();
 
 export function ProfileCreationModal({
@@ -298,7 +298,7 @@ export function ProfileCreationModal({
         JSON.stringify({
           step,
           formData: { ...heroFields, ...modalFields },
-        })
+        }),
       );
     } catch {
       /* ignore */
@@ -325,7 +325,7 @@ export function ProfileCreationModal({
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
     Array.isArray(formData.partnerPreferenceCity)
       ? formData.partnerPreferenceCity.join(", ")
-      : ""
+      : "",
   );
 
   // Keep local input synced if formData changes elsewhere
@@ -349,7 +349,7 @@ export function ProfileCreationModal({
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
-    []
+    [],
   );
 
   const handleProfileImagesChange = useCallback(
@@ -369,11 +369,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string"
+        (img): img is ImageType => typeof img !== "string",
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange, formData.profileImageIds]
+    [handleInputChange, formData.profileImageIds],
   );
 
   const validateStep = () => {
@@ -410,6 +410,44 @@ export function ProfileCreationModal({
 
   const handleNext = () => {
     if (!validateStep()) return;
+
+    // Additional validation for the final step
+    if (displayStep === 6) {
+      // Validate all required fields are present before moving to sign-up
+      const requiredFields = [
+        "country",
+        "city",
+        "height",
+        "maritalStatus",
+        "physicalStatus",
+        "motherTongue",
+        "religion",
+        "ethnicity",
+        "diet",
+        "smoking",
+        "drinking",
+        "education",
+        "occupation",
+        "annualIncome",
+        "aboutMe",
+        "preferredGender",
+        "partnerPreferenceAgeMin",
+      ];
+
+      const missingFields = requiredFields.filter((field) => {
+        const value = formData[field as keyof ProfileCreationData];
+        return !value || (typeof value === "string" && value.trim() === "");
+      });
+
+      if (missingFields.length > 0) {
+        showErrorToast(
+          null,
+          `Please complete all required fields before proceeding. Missing: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}`,
+        );
+        return;
+      }
+    }
+
     if (step < totalSteps) setStep(step + 1);
   };
 
@@ -420,7 +458,7 @@ export function ProfileCreationModal({
   };
 
   // ----- new hook for Clerk sign-in -----
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
 
   // Listen for OAuth success messages from popup
   useEffect(() => {
@@ -454,6 +492,9 @@ export function ProfileCreationModal({
       if (!isSignedIn) return;
       if (hasSubmittedProfile) return; // guard
 
+      // Only submit if we're on the final step
+      if (displayStep !== 7) return;
+
       // Ensure we have a token
       const authToken = token ?? (await getToken());
       if (!authToken) return;
@@ -464,7 +505,7 @@ export function ProfileCreationModal({
         if (existing.success && existing.data) {
           showErrorToast(
             null,
-            "A profile already exists for this account. Please edit it instead of creating a new one."
+            "A profile already exists for this account. Please edit it instead of creating a new one.",
           );
           setHasSubmittedProfile(false);
           return;
@@ -473,56 +514,80 @@ export function ProfileCreationModal({
         // Mark as submitted after passing duplicate check
         setHasSubmittedProfile(true);
 
-        // Merge hero and modal fields explicitly (guarantees hero data present)
-        const plainData: Record<string, unknown> =
-          formData as unknown as Record<string, unknown>;
-        const { heroFields, modalFields } = separateProfileData(plainData);
+        // Simply use the current formData which already contains all the data
+        // The formData state was initialized with initialData and has been updated throughout the wizard
+        const merged: Record<string, unknown> = formData as unknown as Record<
+          string,
+          unknown
+        >;
 
-        // Load any previously saved hero data to avoid overwriting with blanks
-        let persistedHero: Record<string, unknown> = {};
-        if (typeof window !== "undefined") {
-          try {
-            const savedRaw = localStorage.getItem("profileCreationWizardState");
-            if (savedRaw) {
-              const savedParsed = JSON.parse(savedRaw) as {
-                formData?: Record<string, unknown>;
-              };
-              persistedHero = separateProfileData(
-                savedParsed.formData ?? {}
-              ).heroFields;
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-
-        // Merge hero fields, preferring non-empty values
-        const mergedHero: Record<string, unknown> = { ...persistedHero };
-        Object.entries(heroFields).forEach(([k, v]) => {
-          const keep =
-            v !== undefined &&
-            v !== null &&
-            !(typeof v === "string" && v.trim() === "");
-          if (keep) mergedHero[k] = v;
+        // Debug logging
+        console.log("ProfileCreationModal - Submitting profile with data:", {
+          formData,
+          initialData,
+          hasBasicData,
         });
 
-        const merged: Record<string, unknown> = {
-          ...mergedHero,
-          ...modalFields,
-        };
+        // Filter out empty values
+        const cleanedData: Record<string, unknown> = {};
+        Object.entries(merged).forEach(([k, v]) => {
+          const isValidValue =
+            v !== undefined &&
+            v !== null &&
+            !(typeof v === "string" && v.trim() === "") &&
+            !(Array.isArray(v) && v.length === 0);
+          if (isValidValue) {
+            cleanedData[k] = v;
+          }
+        });
+
+        // Validate required fields before submission
+        const requiredFields = [
+          "fullName",
+          "dateOfBirth",
+          "gender",
+          "preferredGender",
+          "city",
+          "aboutMe",
+          "occupation",
+          "education",
+          "height",
+          "maritalStatus",
+          "phoneNumber",
+        ];
+
+        const missingFields = requiredFields.filter(
+          (field) => !cleanedData[field],
+        );
+        if (missingFields.length > 0) {
+          console.error("Missing required fields:", missingFields);
+          showErrorToast(
+            null,
+            `Please complete all required fields: ${missingFields.join(", ")}`,
+          );
+          setHasSubmittedProfile(false);
+          return;
+        }
 
         const payload: Partial<import("@/types/profile").ProfileFormValues> = {
-          ...(merged as unknown as import("@/types/profile").ProfileFormValues),
-          profileFor: (merged.profileFor ?? "self") as
+          ...(cleanedData as unknown as import("@/types/profile").ProfileFormValues),
+          profileFor: (cleanedData.profileFor ?? "self") as
             | "self"
             | "friend"
             | "family",
-          dateOfBirth: String(merged.dateOfBirth ?? ""),
-          partnerPreferenceCity: Array.isArray(merged.partnerPreferenceCity)
-            ? (merged.partnerPreferenceCity as string[])
+          dateOfBirth: String(cleanedData.dateOfBirth ?? ""),
+          partnerPreferenceCity: Array.isArray(
+            cleanedData.partnerPreferenceCity,
+          )
+            ? (cleanedData.partnerPreferenceCity as string[])
             : [],
+          email:
+            user?.primaryEmailAddress?.emailAddress ||
+            (cleanedData.email as string) ||
+            "",
         };
 
+        console.log("Submitting profile with payload:", payload);
         const profileRes = await submitProfile(authToken, payload, "create");
         if (!profileRes.success) {
           showErrorToast(profileRes.error, "Failed to create profile");
@@ -580,13 +645,11 @@ export function ProfileCreationModal({
       } catch (err) {
         console.error("Profile submission error", err);
         showErrorToast(err, "Profile submission failed");
+        setHasSubmittedProfile(false); // Allow retry
       }
     };
 
-    // Only attempt when on final step (7)
-    if (displayStep === 7) {
-      submitProfileAndImages();
-    }
+    submitProfileAndImages();
   }, [
     isSignedIn,
     token,
@@ -774,7 +837,7 @@ export function ProfileCreationModal({
                               value: String(cm),
                               label: `${cmToFeetInches(cm)} (${cm} cm)`,
                             };
-                          }
+                          },
                         )}
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
@@ -1089,7 +1152,7 @@ export function ProfileCreationModal({
                           onChange={(e) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value)
+                              Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -1109,7 +1172,7 @@ export function ProfileCreationModal({
                               "partnerPreferenceAgeMax",
                               e.target.value === ""
                                 ? ""
-                                : Number(e.target.value)
+                                : Number(e.target.value),
                             )
                           }
                           className="w-20"
@@ -1173,7 +1236,7 @@ export function ProfileCreationModal({
                       <CustomSignupForm
                         onComplete={() => {
                           console.log(
-                            "Signup completed; profile submission will auto-run"
+                            "Signup completed; profile submission will auto-run",
                           );
                         }}
                         onProfileExists={() => {

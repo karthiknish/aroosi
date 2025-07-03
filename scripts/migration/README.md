@@ -11,7 +11,7 @@ cd scripts/migration
 npm install
 ```
 
-2. Create a `.env` file in the migration directory with your authentication tokens:
+2. Add the following tokens to your root `.env.local` file:
 
 ```env
 # Source instance token (read access)
@@ -20,6 +20,8 @@ SOURCE_CONVEX_TOKEN=your_source_token_here
 # Destination instance token (write access)
 DEST_CONVEX_TOKEN=your_destination_token_here
 ```
+
+Note: The migration scripts will load environment variables from the root `.env.local` file.
 
 ## Usage
 
