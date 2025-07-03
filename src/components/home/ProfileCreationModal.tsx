@@ -226,7 +226,7 @@ export function ProfileCreationModal({
     if (typeof window === "undefined") return;
 
     try {
-      const saved = localStorage.getItem("profileCreationWizardState");
+      const saved = localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION);
       if (!saved) return;
       const parsed = JSON.parse(saved) as {
         step?: number;
@@ -264,18 +264,18 @@ export function ProfileCreationModal({
       // Clear any stale hero onboarding data from localStorage
       try {
         localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
+        // Also clear any stale profile creation data to avoid conflicts
+        localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
       } catch {
         /* ignore */
       }
     } else {
       // No initialData, so try to migrate from localStorage
       migrateHeroDataToProfile();
+      // Only restore wizard state if we don't have initialData
+      restoreWizardState();
     }
-
-    // Always restore wizard state (this will merge with initialData if present)
-    restoreWizardState();
   }, []);
-
   // Save whenever form data or step changes
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -283,7 +283,7 @@ export function ProfileCreationModal({
       // Save all form data to localStorage
       // The separation logic is only needed when reading/restoring data
       localStorage.setItem(
-        "profileCreationWizardState",
+        STORAGE_KEYS.PROFILE_CREATION,
         JSON.stringify({
           step,
           formData,
