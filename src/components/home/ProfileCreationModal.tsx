@@ -46,7 +46,6 @@ import {
   clearAllOnboardingData,
   STORAGE_KEYS,
 } from "@/lib/utils/onboardingStorage";
-import { separateProfileData } from "@/lib/utils/profileDataHelpers";
 
 interface ProfileData {
   profileFor: string;
@@ -260,33 +259,34 @@ export function ProfileCreationModal({
     }
   };
   useEffect(() => {
-    // Only migrate if we don't have initialData
-    // If we have initialData, it's already being used in the state
-    if (!initialData || Object.keys(initialData).length === 0) {
-      // Migrate any data from HeroOnboarding first
+    // If we have initialData from HeroOnboarding, it takes precedence
+    if (initialData && Object.keys(initialData).length > 0) {
+      // Clear any stale hero onboarding data from localStorage
+      try {
+        localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      // No initialData, so try to migrate from localStorage
       migrateHeroDataToProfile();
-      // Then restore wizard state
-      restoreWizardState();
     }
+
+    // Always restore wizard state (this will merge with initialData if present)
+    restoreWizardState();
   }, []);
 
   // Save whenever form data or step changes
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      // Only save fields that ProfileCreationModal is responsible for
-      // Exclude fields from HeroOnboarding to avoid duplication
-      const plainData: Record<string, unknown> = formData as unknown as Record<
-        string,
-        unknown
-      >;
-      const { heroFields, modalFields } = separateProfileData(plainData);
-
+      // Save all form data to localStorage
+      // The separation logic is only needed when reading/restoring data
       localStorage.setItem(
         "profileCreationWizardState",
         JSON.stringify({
           step,
-          formData: { ...heroFields, ...modalFields },
+          formData,
         }),
       );
     } catch {

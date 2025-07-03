@@ -21,7 +21,7 @@ interface ProfileWizardState {
 }
 
 const ProfileWizardContext = createContext<ProfileWizardState | undefined>(
-  undefined
+  undefined,
 );
 
 export function ProfileWizardProvider({ children }: { children: ReactNode }) {
@@ -32,7 +32,7 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION);
+      const raw = localStorage.getItem(STORAGE_KEYS.HERO_ONBOARDING);
       if (raw) {
         const parsed = JSON.parse(raw) as {
           step?: number;
@@ -51,8 +51,8 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem(
-        STORAGE_KEYS.PROFILE_CREATION,
-        JSON.stringify({ step, formData: filterNonEmpty(formData) })
+        STORAGE_KEYS.HERO_ONBOARDING,
+        JSON.stringify({ step, formData: filterNonEmpty(formData) }),
       );
     } catch {
       /* ignore */
@@ -81,7 +81,7 @@ export function useProfileWizard(): ProfileWizardState {
   const ctx = useContext(ProfileWizardContext);
   if (!ctx) {
     throw new Error(
-      "useProfileWizard must be used within ProfileWizardProvider"
+      "useProfileWizard must be used within ProfileWizardProvider",
     );
   }
   return ctx;
