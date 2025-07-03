@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -411,26 +411,30 @@ export function ProfileCreationModal({
   const handleNext = () => {
     if (!validateStep()) return;
 
-    // Additional validation for the final step
+    // Additional validation before moving to sign-up step
     if (displayStep === 6) {
-      // Validate all required fields are present before moving to sign-up
+      // Validate ALL required fields are present before moving to sign-up
       const requiredFields = [
-        "country",
+        "fullName",
+        "dateOfBirth",
+        "gender",
+        "preferredGender",
         "city",
+        "country",
+        "aboutMe",
+        "occupation",
+        "education",
         "height",
         "maritalStatus",
-        "physicalStatus",
+        "phoneNumber",
         "motherTongue",
         "religion",
         "ethnicity",
         "diet",
         "smoking",
         "drinking",
-        "education",
-        "occupation",
         "annualIncome",
-        "aboutMe",
-        "preferredGender",
+        "physicalStatus",
         "partnerPreferenceAgeMin",
       ];
 
@@ -442,7 +446,11 @@ export function ProfileCreationModal({
       if (missingFields.length > 0) {
         showErrorToast(
           null,
-          `Please complete all required fields before proceeding. Missing: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}`,
+          `Please complete all required fields before creating account. Missing: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}`,
+        );
+        console.error(
+          "Cannot proceed to sign-up - missing fields:",
+          missingFields,
         );
         return;
       }
@@ -459,6 +467,7 @@ export function ProfileCreationModal({
 
   // ----- new hook for Clerk sign-in -----
   const { isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
 
   // Listen for OAuth success messages from popup
   useEffect(() => {
@@ -541,31 +550,50 @@ export function ProfileCreationModal({
           }
         });
 
-        // Validate required fields before submission
+        // Validate ALL required fields before submission (comprehensive list)
         const requiredFields = [
           "fullName",
           "dateOfBirth",
           "gender",
           "preferredGender",
           "city",
+          "country",
           "aboutMe",
           "occupation",
           "education",
           "height",
           "maritalStatus",
           "phoneNumber",
+          "motherTongue",
+          "religion",
+          "ethnicity",
+          "diet",
+          "smoking",
+          "drinking",
+          "annualIncome",
+          "physicalStatus",
+          "partnerPreferenceAgeMin",
         ];
 
         const missingFields = requiredFields.filter(
           (field) => !cleanedData[field],
         );
         if (missingFields.length > 0) {
-          console.error("Missing required fields:", missingFields);
+          console.error(
+            "CRITICAL: Blocking profile submission - missing required fields:",
+            missingFields,
+          );
           showErrorToast(
             null,
-            `Please complete all required fields: ${missingFields.join(", ")}`,
+            `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`,
           );
           setHasSubmittedProfile(false);
+
+          // Sign out the user to prevent incomplete profile
+          await signOut();
+
+          // Reset to first step
+          setStep(1);
           return;
         }
 
@@ -1233,17 +1261,82 @@ export function ProfileCreationModal({
                       <h3 className="text-lg font-semibold text-center">
                         Create your account
                       </h3>
-                      <CustomSignupForm
-                        onComplete={() => {
-                          console.log(
-                            "Signup completed; profile submission will auto-run",
+                      {/* Final validation guard before showing signup form */}
+                      {(() => {
+                        const requiredFields = [
+                          "fullName",
+                          "dateOfBirth",
+                          "gender",
+                          "preferredGender",
+                          "city",
+                          "country",
+                          "aboutMe",
+                          "occupation",
+                          "education",
+                          "height",
+                          "maritalStatus",
+                          "phoneNumber",
+                          "motherTongue",
+                          "religion",
+                          "ethnicity",
+                          "diet",
+                          "smoking",
+                          "drinking",
+                          "annualIncome",
+                          "physicalStatus",
+                          "partnerPreferenceAgeMin",
+                        ];
+
+                        const missingFields = requiredFields.filter((field) => {
+                          const value =
+                            formData[field as keyof ProfileCreationData];
+                          return (
+                            !value ||
+                            (typeof value === "string" && value.trim() === "")
                           );
-                        }}
-                        onProfileExists={() => {
-                          // Close modal if profile already exists
-                          onClose();
-                        }}
-                      />
+                        });
+
+                        if (missingFields.length > 0) {
+                          return (
+                            <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                              <p className="text-red-600 font-semibold mb-2">
+                                ⚠️ Cannot create account - Profile incomplete
+                              </p>
+                              <p className="text-sm text-red-500 mb-4">
+                                You must complete all profile sections before
+                                creating an account.
+                              </p>
+                              <p className="text-xs text-red-400 mb-4">
+                                Missing: {missingFields.slice(0, 5).join(", ")}
+                                {missingFields.length > 5 &&
+                                  ` and ${missingFields.length - 5} more fields`}
+                              </p>
+                              <Button
+                                variant="outline"
+                                onClick={() => setStep(1)}
+                                className="border-red-300 text-red-600 hover:bg-red-50"
+                              >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Go back to complete profile
+                              </Button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <CustomSignupForm
+                            onComplete={() => {
+                              console.log(
+                                "Signup completed; profile submission will auto-run",
+                              );
+                            }}
+                            onProfileExists={() => {
+                              // Close modal if profile already exists
+                              onClose();
+                            }}
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
