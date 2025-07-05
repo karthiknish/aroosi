@@ -105,7 +105,8 @@
     "eslint-config-next": "^15.2.0",
     "json5": "2.2.3",
     "lightningcss": "^1.28.2",
-    "node-mocks-http": "1.17.2"
+    "node-mocks-http": "1.17.2",
+    "eslint": "^8.57.0"
   },
   "scripts": {
     "dev": "next dev",
