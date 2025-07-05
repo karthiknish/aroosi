@@ -1,5 +1,5 @@
 {
-  "extends": [],
+  "extends": ["next/core-web-vitals"],
   "env": {
     "browser": true,
     "es2021": true,
@@ -8,12 +8,6 @@
   "parserOptions": {
     "ecmaVersion": "latest",
     "sourceType": "module"
-  },
-  "rules": {},
-  "ignorePatterns": [
-    "**/*"
-  ]
-}
   },
   "rules": {
     "react/no-unescaped-entities": "off",
