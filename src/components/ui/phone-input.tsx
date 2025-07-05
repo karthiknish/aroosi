@@ -78,7 +78,7 @@ export function PhoneInput({
           className={cn(
             "w-[140px] flex-shrink-0 bg-white",
             error &&
-              "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+              "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
           )}
         >
           <SelectValue>
@@ -114,9 +114,9 @@ export function PhoneInput({
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "flex-1",
+          "flex-1 bg-white",
           error &&
-            "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500 bg-white"
+            "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
         )}
       />
     </div>
