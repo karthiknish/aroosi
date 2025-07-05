@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
@@ -19,9 +20,9 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return errorResponse("User ID not found", 401);
     }
-    
+
     const profile = await client.query(api.profiles.getProfileByUserId, {
-      userId: userId as any,
+      userId: userId as Id<"users">,
     });
     if (!profile) return errorResponse("Profile not found", 404);
 
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     // 4. Update profile image URLs
 
     console.log(
-      `Confirming image upload for user ${userId}: ${fileName} (${uploadId})`
+      `Confirming image upload for user ${userId}: ${fileName} (${uploadId})`,
     );
 
     return successResponse({

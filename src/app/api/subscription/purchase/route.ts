@@ -6,10 +6,17 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { Notifications } from "@/lib/notify";
 
+// Type for Apple receipt item
+interface AppleReceiptItem {
+  product_id: string;
+  expires_date_ms?: string;
+  [key: string]: unknown;
+}
+
 // Apple App Store receipt validation helper
 async function validateAppleReceipt(
   productId: string,
-  receiptData: string
+  receiptData: string,
 ): Promise<{ valid: boolean; expiresAt?: number; error?: string }> {
   const appleSharedSecret = process.env.APPLE_SHARED_SECRET;
   if (!appleSharedSecret) {
@@ -59,7 +66,7 @@ async function validateAppleReceipt(
     // Find the subscription in the receipt
     const latestReceiptInfo = data.latest_receipt_info || [];
     const subscription = latestReceiptInfo.find(
-      (item: any) => item.product_id === productId
+      (item: AppleReceiptItem) => item.product_id === productId,
     );
 
     if (!subscription) {
@@ -95,7 +102,7 @@ async function validateAppleReceipt(
 // Google Play API validation helper
 async function validateGooglePurchase(
   productId: string,
-  purchaseToken: string
+  purchaseToken: string,
 ): Promise<{ valid: boolean; expiresAt?: number; error?: string }> {
   const packageName = process.env.GOOGLE_PLAY_PACKAGE_NAME;
   const apiKey = process.env.GOOGLE_PLAY_API_KEY;
@@ -139,11 +146,12 @@ export async function POST(request: NextRequest) {
     if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
 
-    const { productId, purchaseToken, platform, receiptData } = await request.json();
+    const { productId, purchaseToken, platform, receiptData } =
+      await request.json();
     if (!productId || !purchaseToken) {
       return errorResponse("Missing productId or purchaseToken", 400);
     }
-    
+
     // For iOS, we need receiptData instead of purchaseToken
     if (platform === "ios" && !receiptData) {
       return errorResponse("Missing receiptData for iOS purchase", 400);
@@ -165,7 +173,7 @@ export async function POST(request: NextRequest) {
       if (!result.valid) {
         return errorResponse(
           `Google Play validation failed: ${result.error || "Unknown error"}`,
-          400
+          400,
         );
       }
       // Use the expiry from Google
@@ -186,7 +194,7 @@ export async function POST(request: NextRequest) {
         try {
           await Notifications.subscriptionPurchasedAdmin(
             profile as import("@/types/profile").Profile,
-            plan
+            plan,
           );
         } catch (e) {
           console.error("Failed to send admin subscription notification", e);
@@ -206,7 +214,7 @@ export async function POST(request: NextRequest) {
       if (!result.valid) {
         return errorResponse(
           `Apple receipt validation failed: ${result.error || "Unknown error"}`,
-          400
+          400,
         );
       }
       // Use the expiry from Apple
@@ -227,7 +235,7 @@ export async function POST(request: NextRequest) {
         try {
           await Notifications.subscriptionPurchasedAdmin(
             profile as import("@/types/profile").Profile,
-            plan
+            plan,
           );
         } catch (e) {
           console.error("Failed to send admin subscription notification", e);

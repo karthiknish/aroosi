@@ -23,8 +23,10 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return errorResponse("User ID not found", 401);
     }
-    
-    const images = await convex.query(api.images.getProfileImages, { userId: userId as any });
+
+    const images = await convex.query(api.images.getProfileImages, {
+      userId: userId as Id<"users">,
+    });
     return successResponse({ images });
   } catch (error) {
     console.error("Error fetching profile images:", error);
@@ -113,7 +115,7 @@ export async function POST(req: NextRequest) {
     ) {
       return errorResponse(
         `You can only display up to ${MAX_IMAGES_PER_USER} images on your profile`,
-        400
+        400,
       );
     }
 
@@ -131,7 +133,7 @@ export async function POST(req: NextRequest) {
     ) {
       return errorResponse(
         (result as { message?: string }).message || "Upload failed",
-        400
+        400,
       );
     }
     return successResponse(result);
@@ -139,7 +141,7 @@ export async function POST(req: NextRequest) {
     console.error("/api/profile-images POST error", err);
     return errorResponse(
       err instanceof Error ? err.message : "Failed to upload image",
-      500
+      500,
     );
   }
 }

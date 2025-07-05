@@ -7,16 +7,34 @@ import { cn } from "@/lib/utils";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  formatMessageTime,
-  getMessagePreview,
-  calculateUnreadCount,
-  ConversationData,
-  getOtherUserId,
-} from "@/lib/utils/messageUtils";
+import { formatMessageTime, ConversationData } from "@/lib/utils/messageUtils";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { getConversations } from "@/lib/api/conversation";
 import { useAuthContext } from "@/components/AuthProvider";
+
+// Type for conversation from API
+interface ApiConversation {
+  _id: string;
+  id: string;
+  conversationId: string;
+  participants: Array<{
+    userId: string;
+    firstName: string;
+    profileImageUrls?: string[];
+  }>;
+  lastMessage?: {
+    _id: string;
+    content: string;
+    timestamp: number;
+    [key: string]: unknown;
+  } | null;
+  lastActivity: number;
+  lastMessageAt?: number;
+  unreadCount: number;
+  createdAt: number;
+  updatedAt: number;
+  messages?: unknown[];
+}
 
 interface ConversationListProps {
   onConversationSelect: (
@@ -47,7 +65,7 @@ export default function ConversationList({
   const { token: contextToken, userId } = useAuthContext();
   const subscriptionStatus = useSubscriptionStatus();
   const [conversations, setConversations] = useState<ConversationWithUser[]>(
-    []
+    [],
   );
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,26 +81,44 @@ export default function ConversationList({
       if (!token) throw new Error("Authentication required");
 
       const result = await getConversations({ token });
-      const conversationsData = (result.conversations as unknown[]) || [];
+      const conversationsData =
+        (result.conversations as ApiConversation[]) || [];
 
       // Transform conversations to include user info and metadata
       const transformedConversations: ConversationWithUser[] =
-        conversationsData.map((conv: any) => {
-          const otherUserId = getOtherUserId(conv._id, userId);
-          const unreadCount = calculateUnreadCount(conv.messages || [], userId);
-          const lastMessage = conv.lastMessage;
+        conversationsData.map((conv: ApiConversation) => {
+          const otherParticipant = conv.participants.find(
+            (p) => p.userId !== userId,
+          );
+          const otherUserId = otherParticipant?.userId || "";
 
           return {
-            ...conv,
+            _id: conv._id,
+            participants: conv.participants.map((p) => p.userId),
+            lastMessage: conv.lastMessage
+              ? {
+                  _id: conv.lastMessage._id,
+                  conversationId: conv.conversationId,
+                  fromUserId: "",
+                  toUserId: "",
+                  text: conv.lastMessage.content,
+                  content: conv.lastMessage.content,
+                  type: "text" as const,
+                  isRead: false, // Default to false, should be updated based on actual read status
+                  createdAt: conv.lastMessage.timestamp,
+                  _creationTime: conv.lastMessage.timestamp,
+                }
+              : undefined,
+            lastMessageAt: conv.lastMessageAt,
+            unreadCount: conv.unreadCount,
             otherUser: {
-              _id: otherUserId || "",
-              fullName: conv.otherUserName || "Unknown User",
-              profileImage: conv.otherUserImage,
-              isOnline: conv.otherUserOnline,
+              _id: otherUserId,
+              fullName: otherParticipant?.firstName || "Unknown User",
+              profileImage: otherParticipant?.profileImageUrls?.[0],
+              isOnline: false,
             },
-            unreadCount,
-            lastMessagePreview: lastMessage
-              ? getMessagePreview(lastMessage)
+            lastMessagePreview: conv.lastMessage
+              ? conv.lastMessage.content
               : "No messages yet",
           };
         });
@@ -92,7 +128,7 @@ export default function ConversationList({
     } catch (err) {
       console.error("Error fetching conversations:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to load conversations"
+        err instanceof Error ? err.message : "Failed to load conversations",
       );
     } finally {
       setLoading(false);
@@ -217,7 +253,10 @@ export default function ConversationList({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   className={cn(
-                    "font-medium text-sm truncate",
+                    "font-medium text-sm truncate cursor-pointer p-2 rounded-lg transition-colors",
+                    selectedConversationId === conv._id
+                      ? "bg-primary-light/20"
+                      : "hover:bg-secondary-light/10",
                     conv.unreadCount > 0
                       ? "text-neutral"
                       : "text-neutral-light",

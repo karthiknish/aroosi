@@ -5,6 +5,7 @@ import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { stripe } from "@/lib/stripe";
+import type { Profile } from "@/types/profile";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,11 +29,13 @@ export async function POST(request: NextRequest) {
       return errorResponse("User already has free subscription", 400);
     }
 
-    const stripeSubscriptionId = (profile as any).stripeSubscriptionId;
+    const stripeSubscriptionId = (
+      profile as Profile & { stripeSubscriptionId?: string }
+    ).stripeSubscriptionId;
     if (!stripeSubscriptionId) {
       return errorResponse(
         "No Stripe subscription found for this user. Please contact support.",
-        400
+        400,
       );
     }
 
@@ -49,7 +52,7 @@ export async function POST(request: NextRequest) {
             stripeError instanceof Error
               ? stripeError.message
               : String(stripeError),
-        }
+        },
       );
     }
 

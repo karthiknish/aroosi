@@ -1,22 +1,29 @@
-import { render, screen } from '@testing-library/react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { useAuthContext } from '@/components/AuthProvider';
+import { render, screen } from "@testing-library/react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import type { ReadonlyURLSearchParams } from "next/navigation";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuthContext } from "@/components/AuthProvider";
+import type { Profile } from "@/types/profile";
 
 // Mock hooks
-jest.mock('next/navigation');
-jest.mock('@/components/AuthProvider');
+jest.mock("next/navigation");
+jest.mock("@/components/AuthProvider");
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>;
-const mockUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>;
-const mockUseAuthContext = useAuthContext as jest.MockedFunction<typeof useAuthContext>;
+const mockUseSearchParams = useSearchParams as jest.MockedFunction<
+  typeof useSearchParams
+>;
+const mockUseAuthContext = useAuthContext as jest.MockedFunction<
+  typeof useAuthContext
+>;
 
 // Test component
 const TestComponent = () => <div>Protected Content</div>;
 
-describe('ProtectedRoute Component', () => {
+describe("ProtectedRoute Component", () => {
   beforeEach(() => {
     mockUseRouter.mockReturnValue({
       push: mockPush,
@@ -25,20 +32,22 @@ describe('ProtectedRoute Component', () => {
       forward: jest.fn(),
       refresh: jest.fn(),
       prefetch: jest.fn(),
-    } as any);
-    
-    mockUsePathname.mockReturnValue('/test');
-    mockUseSearchParams.mockReturnValue({} as any);
-    
+    } as AppRouterInstance);
+
+    mockUsePathname.mockReturnValue("/test");
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams() as ReadonlyURLSearchParams,
+    );
+
     jest.clearAllMocks();
   });
 
-  test('shows loading state when auth is loading', () => {
+  test("shows loading state when auth is loading", () => {
     mockUseAuthContext.mockReturnValue({
       isLoaded: false,
       isSignedIn: false,
       isLoading: true,
-      userId: '',
+      userId: "",
       token: null,
       profile: null,
       isProfileComplete: false,
@@ -54,19 +63,19 @@ describe('ProtectedRoute Component', () => {
     render(
       <ProtectedRoute>
         <TestComponent />
-      </ProtectedRoute>
+      </ProtectedRoute>,
     );
 
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.queryByText("Protected Content")).not.toBeInTheDocument();
   });
 
-  test('redirects to sign-in when not authenticated', async () => {
+  test("redirects to sign-in when not authenticated", async () => {
     mockUseAuthContext.mockReturnValue({
       isLoaded: true,
       isSignedIn: false,
       isLoading: false,
-      userId: '',
+      userId: "",
       token: null,
       profile: null,
       isProfileComplete: false,
@@ -82,24 +91,24 @@ describe('ProtectedRoute Component', () => {
     render(
       <ProtectedRoute>
         <TestComponent />
-      </ProtectedRoute>
+      </ProtectedRoute>,
     );
 
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.queryByText("Protected Content")).not.toBeInTheDocument();
   });
 
-  test('shows content when authenticated and profile complete', () => {
+  test("shows content when authenticated and profile complete", () => {
     mockUseAuthContext.mockReturnValue({
       isLoaded: true,
       isSignedIn: true,
       isLoading: false,
-      userId: 'user_123',
-      token: 'token_123',
-      profile: { 
-        _id: 'profile_123',
-        userId: 'user_123',
-        subscriptionPlan: 'free'
-      } as any,
+      userId: "user_123",
+      token: "token_123",
+      profile: {
+        _id: "profile_123",
+        userId: "user_123",
+        subscriptionPlan: "free",
+      } as Partial<Profile> as Profile,
       isProfileComplete: true,
       isOnboardingComplete: true,
       error: null,
@@ -113,24 +122,24 @@ describe('ProtectedRoute Component', () => {
     render(
       <ProtectedRoute requireProfileComplete={true}>
         <TestComponent />
-      </ProtectedRoute>
+      </ProtectedRoute>,
     );
 
-    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    expect(screen.getByText("Protected Content")).toBeInTheDocument();
   });
 
-  test('redirects when profile incomplete and required', () => {
+  test("redirects when profile incomplete and required", () => {
     mockUseAuthContext.mockReturnValue({
       isLoaded: true,
       isSignedIn: true,
       isLoading: false,
-      userId: 'user_123',
-      token: 'token_123',
-      profile: { 
-        _id: 'profile_123',
-        userId: 'user_123',
-        subscriptionPlan: 'free'
-      } as any,
+      userId: "user_123",
+      token: "token_123",
+      profile: {
+        _id: "profile_123",
+        userId: "user_123",
+        subscriptionPlan: "free",
+      } as Partial<Profile> as Profile,
       isProfileComplete: false,
       isOnboardingComplete: false,
       error: null,
@@ -144,19 +153,19 @@ describe('ProtectedRoute Component', () => {
     render(
       <ProtectedRoute requireProfileComplete={true}>
         <TestComponent />
-      </ProtectedRoute>
+      </ProtectedRoute>,
     );
 
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.queryByText("Protected Content")).not.toBeInTheDocument();
   });
 
-  test('shows content when profile not required', () => {
+  test("shows content when profile not required", () => {
     mockUseAuthContext.mockReturnValue({
       isLoaded: true,
       isSignedIn: true,
       isLoading: false,
-      userId: 'user_123',
-      token: 'token_123',
+      userId: "user_123",
+      token: "token_123",
       profile: null,
       isProfileComplete: false,
       isOnboardingComplete: false,
@@ -171,9 +180,9 @@ describe('ProtectedRoute Component', () => {
     render(
       <ProtectedRoute requireProfileComplete={false}>
         <TestComponent />
-      </ProtectedRoute>
+      </ProtectedRoute>,
     );
 
-    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    expect(screen.getByText("Protected Content")).toBeInTheDocument();
   });
 });
