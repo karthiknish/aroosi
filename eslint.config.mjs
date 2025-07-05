@@ -25,6 +25,12 @@ const eslintConfig = [
       "react/no-unescaped-entities": "error",
     },
   },
+  {
+    files: ["**/__tests__/**/*", "**/*.test.*", "**/*.spec.*"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

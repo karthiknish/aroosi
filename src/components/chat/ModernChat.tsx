@@ -58,7 +58,7 @@ function ModernChat({
 }: ModernChatProps) {
   const subscriptionStatus = useSubscriptionStatus(token);
   const { trackUsage } = useUsageTracking(token);
-  const [connectionStatus, setConnectionStatus] = useState<
+  const [_connectionStatus] = useState<
     "connected" | "connecting" | "disconnected"
   >("connecting");
 
@@ -450,9 +450,9 @@ function ModernChat({
             <div
               className={cn(
                 "w-2 h-2 rounded-full",
-                connectionStatus === "connected"
+                _connectionStatus === "connected"
                   ? "bg-success"
-                  : connectionStatus === "connecting"
+                  : _connectionStatus === "connecting"
                     ? "bg-accent animate-pulse"
                     : "bg-danger",
               )}

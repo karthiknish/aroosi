@@ -8,10 +8,7 @@ interface GoogleAuthButtonProps {
   disabled?: boolean;
 }
 
-export function GoogleAuthButton({
-  mode: _mode,
-  disabled,
-}: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ disabled }: GoogleAuthButtonProps) {
   const { signIn, isLoaded } = useSignIn();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
