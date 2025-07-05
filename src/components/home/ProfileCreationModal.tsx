@@ -279,6 +279,24 @@ export function ProfileCreationModal({
     return mergedData;
   });
 
+  // Sync context data changes to form data
+  useEffect(() => {
+    if (contextData && Object.keys(contextData).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        profileFor:
+          (contextData?.profileFor as string) || prev.profileFor || "",
+        gender: (contextData?.gender as string) || prev.gender || "",
+        fullName: (contextData?.fullName as string) || prev.fullName || "",
+        dateOfBirth:
+          (contextData?.dateOfBirth as string) || prev.dateOfBirth || "",
+        email: (contextData?.email as string) || prev.email || "",
+        phoneNumber:
+          (contextData?.phoneNumber as string) || prev.phoneNumber || "",
+      }));
+    }
+  }, [contextData]);
+
   // Persist wizard state to localStorage to survive OAuth full-page redirects
   const restoreWizardState = () => {
     if (typeof window === "undefined") return;
@@ -450,6 +468,7 @@ export function ProfileCreationModal({
   const { token, getToken, userId, refreshProfile } = useAuthContext();
 
   const [hasSubmittedProfile, setHasSubmittedProfile] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = useCallback(
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
@@ -598,9 +617,18 @@ export function ProfileCreationModal({
     const submitProfileAndImages = async () => {
       if (!isSignedIn) return;
       if (hasSubmittedProfile) return; // guard
+      if (isSubmitting) return; // prevent double submission
 
       // Only submit if we're on the final step
-      if (displayStep !== 7) return;
+      if (displayStep !== 7) {
+        console.log(
+          "Not on final step, skipping submission. Current step:",
+          displayStep,
+        );
+        return;
+      }
+
+      setIsSubmitting(true);
 
       // Ensure we have a token
       const authToken = token ?? (await getToken());
@@ -610,11 +638,16 @@ export function ProfileCreationModal({
         // Check for existing profile – do NOT allow update via modal
         const existing = await getCurrentUserWithProfile(authToken);
         if (existing.success && existing.data) {
+          console.log("Profile already exists");
           showErrorToast(
             null,
-            "A profile already exists for this account. Please edit it instead of creating a new one.",
+            "A profile already exists for this account. Please use the profile edit feature instead.",
           );
           setHasSubmittedProfile(false);
+          // Clear any stale onboarding data
+          clearAllOnboardingData();
+          // Close the modal
+          onClose();
           return;
         }
 
@@ -628,13 +661,6 @@ export function ProfileCreationModal({
           unknown
         >;
 
-        // Debug logging
-        console.log("ProfileCreationModal - Submitting profile with data:", {
-          formData,
-          initialData,
-          hasBasicData,
-        });
-
         // Filter out empty values
         const cleanedData: Record<string, unknown> = {};
         Object.entries(merged).forEach(([k, v]) => {
@@ -646,6 +672,16 @@ export function ProfileCreationModal({
           if (isValidValue) {
             cleanedData[k] = v;
           }
+        });
+
+        // Debug logging
+        console.log("ProfileCreationModal - Submitting profile with data:", {
+          formData,
+          initialData,
+          hasBasicData,
+          contextData,
+          cleanedDataKeys: Object.keys(cleanedData),
+          cleanedData,
         });
 
         // Validate only truly required fields before submission
@@ -671,6 +707,8 @@ export function ProfileCreationModal({
             "CRITICAL: Blocking profile submission - missing required fields:",
             missingFields,
           );
+          console.error("Current cleanedData:", cleanedData);
+          console.error("Current formData:", formData);
           showErrorToast(
             null,
             `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`,
@@ -680,8 +718,10 @@ export function ProfileCreationModal({
           // Sign out the user to prevent incomplete profile
           await signOut();
 
-          // Reset to first step
-          setStep(1);
+          // Close the modal and reset
+          onClose();
+          // Clear any stale data
+          clearAllOnboardingData();
           return;
         }
 
@@ -762,6 +802,8 @@ export function ProfileCreationModal({
         console.error("Profile submission error", err);
         showErrorToast(err, "Profile submission failed");
         setHasSubmittedProfile(false); // Allow retry
+      } finally {
+        setIsSubmitting(false);
       }
     };
 
@@ -775,9 +817,11 @@ export function ProfileCreationModal({
     userId,
     displayStep,
     hasSubmittedProfile,
+    isSubmitting,
     refreshProfile,
     onClose,
     router,
+    signOut,
   ]);
 
   // Helper to add * to required labels
