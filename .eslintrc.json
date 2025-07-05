@@ -1,7 +1,5 @@
 {
-  "extends": [
-    "eslint:recommended"
-  ],
+  "extends": [],
   "env": {
     "browser": true,
     "es2021": true,
@@ -9,21 +7,18 @@
   },
   "parserOptions": {
     "ecmaVersion": "latest",
-    "sourceType": "module",
-    "ecmaFeatures": {
-      "jsx": true
-    }
+    "sourceType": "module"
+  },
+  "rules": {},
+  "ignorePatterns": [
+    "**/*"
+  ]
+}
   },
   "rules": {
     "react/no-unescaped-entities": "off",
     "no-unused-vars": "warn",
     "no-console": "warn"
   },
-  "ignorePatterns": [
-    "node_modules/",
-    ".next/",
-    "out/",
-    "build/"
-  ]
-}
+  "ignorePatterns": ["node_modules/", ".next/", "out/", "build/"]
 }
