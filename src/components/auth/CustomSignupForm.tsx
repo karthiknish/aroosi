@@ -11,6 +11,56 @@ interface CustomSignupFormProps {
   onProfileExists?: () => void;
 }
 
+// --- Simple OTP input -----------------------------
+interface OtpInputProps {
+  value: string;
+  onChange: (val: string) => void;
+  length?: number;
+}
+
+function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
+  const inputs = Array.from({ length });
+  const refs = Array.from({ length }, () =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useState<HTMLInputElement | null>(null)
+  );
+
+  const handleChange = (idx: number, char: string) => {
+    if (!/^[0-9]?$/.test(char)) return; // allow only digits
+    const chars = value.split("").slice(0, length);
+    chars[idx] = char;
+    const newVal = chars.join("");
+    onChange(newVal);
+    if (char && idx < length - 1) {
+      refs[idx + 1][0]?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
+    if (e.key === "Backspace" && !value[idx] && idx > 0) {
+      refs[idx - 1][0]?.focus();
+    }
+  };
+
+  return (
+    <div className="flex justify-center gap-2">
+      {inputs.map((_, i) => (
+        <Input
+          key={i}
+          ref={(el) => refs[i][1](el)}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] || ""}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(e, i)}
+          className="w-12 text-center font-mono tracking-widest"
+        />
+      ))}
+    </div>
+  );
+}
+
 export function CustomSignupForm({
   onComplete,
   onProfileExists,
@@ -320,11 +370,7 @@ export function CustomSignupForm({
       )}
       {phase === "code" && (
         <>
-          <Input
-            placeholder="Verification code"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
+          <OtpInput value={code} onChange={setCode} length={6} />
           <Button
             className="w-full"
             onClick={verifyCode}
