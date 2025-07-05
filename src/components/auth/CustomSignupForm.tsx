@@ -42,6 +42,28 @@ function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
     }
   };
 
+  const handlePaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    idx: number
+  ) => {
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, length);
+    if (!pasted) return;
+
+    const chars = value.split("").slice(0, length);
+    for (let i = 0; i < pasted.length && idx + i < length; i++) {
+      chars[idx + i] = pasted[i];
+    }
+    const newVal = chars.join("");
+    onChange(newVal);
+
+    const focusPos = Math.min(idx + pasted.length - 1, length - 1);
+    refs[focusPos][0]?.focus();
+  };
+
   return (
     <div className="flex justify-center gap-2">
       {inputs.map((_, i) => (
@@ -54,6 +76,7 @@ function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
           value={value[i] || ""}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(e, i)}
+          onPaste={(e) => handlePaste(e, i)}
           className="w-12 text-center font-mono tracking-widest"
         />
       ))}
