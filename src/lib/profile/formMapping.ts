@@ -10,11 +10,11 @@ type Gender = "male" | "female" | "non-binary" | "prefer-not-to-say" | "other";
  * editor can share it.
  */
 export function mapProfileToFormValues(
-  profile: Profile | null | undefined
+  profile: Profile | null | undefined,
 ): Partial<ProfileFormValues> {
   if (!profile || typeof profile !== "object") return {};
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const { profileImageUrls: _profileImageUrls, ...p } =
     profile as unknown as Record<string, unknown>;
 
@@ -24,7 +24,7 @@ export function mapProfileToFormValues(
       const g = typeof p.gender === "string" ? p.gender.toLowerCase() : "";
       return (
         ["male", "female", "non-binary", "prefer-not-to-say", "other"].includes(
-          g
+          g,
         )
           ? g
           : "other"
