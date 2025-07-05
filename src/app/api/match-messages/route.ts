@@ -5,10 +5,10 @@ import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { 
-  validateMessagePayload, 
-  validateConversationId, 
-  validateUserCanMessage 
+import {
+  validateMessagePayload,
+  validateConversationId,
+  validateUserCanMessage,
 } from "@/lib/utils/messageValidation";
 
 // Initialize Convex client
@@ -23,7 +23,11 @@ export async function GET(request: NextRequest) {
     const { token, userId } = authCheck;
 
     // Rate limiting
-    const rateLimitResult = checkApiRateLimit(`get_messages_${userId}`, 100, 60000); // 100 requests per minute
+    const rateLimitResult = checkApiRateLimit(
+      `get_messages_${userId}`,
+      100,
+      60000,
+    ); // 100 requests per minute
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
     }
@@ -33,12 +37,12 @@ export async function GET(request: NextRequest) {
     const conversationId = searchParams.get("conversationId");
     const limitParam = searchParams.get("limit");
     const beforeParam = searchParams.get("before");
-    
+
     // Validate conversation ID format
     if (!conversationId || !validateConversationId(conversationId)) {
       return errorResponse("Invalid or missing conversationId parameter", 400);
     }
-    
+
     // Validate and sanitize limit parameter
     let limit: number | undefined;
     if (limitParam) {
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
       }
       limit = parsedLimit;
     }
-    
+
     // Validate before parameter for pagination
     let before: number | undefined;
     if (beforeParam) {
@@ -75,11 +79,11 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return errorResponse("User ID not found", 401);
     }
-    const userIds = conversationId.split('_');
+    const userIds = conversationId.split("_");
     if (!userIds.includes(userId)) {
       return errorResponse("Unauthorized access to conversation", 403);
     }
-    
+
     const result = await client.query(api.messages.getMessages, {
       conversationId,
       limit,
@@ -87,19 +91,19 @@ export async function GET(request: NextRequest) {
     });
 
     return successResponse(result);
-
   } catch (error) {
     console.error("Error fetching messages:", error);
-    
+
     // Check for auth-specific errors
-    const isAuthError = error instanceof Error && 
-      (error.message.includes("Unauthenticated") || 
-       error.message.includes("Unauthorized") ||
-       error.message.includes("token"));
-       
+    const isAuthError =
+      error instanceof Error &&
+      (error.message.includes("Unauthenticated") ||
+        error.message.includes("Unauthorized") ||
+        error.message.includes("token"));
+
     return errorResponse(
-      isAuthError ? "Authentication failed" : "Failed to fetch messages", 
-      isAuthError ? 401 : 500
+      isAuthError ? "Authentication failed" : "Failed to fetch messages",
+      isAuthError ? 401 : 500,
     );
   }
 }
@@ -113,24 +117,34 @@ export async function POST(request: NextRequest) {
     const { token, userId } = authCheck;
 
     // Rate limiting for sending messages
-    const rateLimitResult = checkApiRateLimit(`send_message_${userId}`, 20, 60000); // 20 messages per minute
+    const rateLimitResult = checkApiRateLimit(
+      `send_message_${userId}`,
+      20,
+      60000,
+    ); // 20 messages per minute
     if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded. Please wait before sending more messages.", 429);
+      return errorResponse(
+        "Rate limit exceeded. Please wait before sending more messages.",
+        429,
+      );
     }
 
     // Parse and validate request body
     let body;
     try {
       body = await request.json();
-    } catch (e) {
+    } catch {
       return errorResponse("Invalid request body", 400);
     }
-    
+
     const { conversationId, fromUserId, toUserId, text } = body || {};
-    
+
     // Basic required field validation
     if (!conversationId || !fromUserId || !toUserId || !text) {
-      return errorResponse("Missing required fields: conversationId, fromUserId, toUserId, text", 400);
+      return errorResponse(
+        "Missing required fields: conversationId, fromUserId, toUserId, text",
+        400,
+      );
     }
 
     // Verify the fromUserId matches the authenticated user
@@ -139,7 +153,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Comprehensive payload validation
-    const validation = validateMessagePayload({ conversationId, fromUserId, toUserId, text });
+    const validation = validateMessagePayload({
+      conversationId,
+      fromUserId,
+      toUserId,
+      text,
+    });
     if (!validation.isValid) {
       return errorResponse(validation.error || "Invalid message payload", 400);
     }
@@ -159,7 +178,10 @@ export async function POST(request: NextRequest) {
     // Verify users are matched and can message each other
     const canMessage = await validateUserCanMessage(fromUserId, toUserId);
     if (!canMessage) {
-      return errorResponse("Users are not authorized to message each other", 403);
+      return errorResponse(
+        "Users are not authorized to message each other",
+        403,
+      );
     }
 
     // Check if either user has blocked the other
@@ -171,17 +193,17 @@ export async function POST(request: NextRequest) {
     if (blockStatus) {
       return errorResponse("Cannot send message to this user", 403);
     }
-    
+
     // Use sanitized text from validation
     const sanitizedText = validation.sanitizedText || text;
-    
+
     const result = await client.mutation(api.messages.sendMessage, {
       conversationId,
       fromUserId: fromUserId as Id<"users">,
       toUserId: toUserId as Id<"users">,
       text: sanitizedText,
     });
-    
+
     // Broadcast to real-time subscribers
     try {
       const { eventBus } = await import("@/lib/eventBus");
@@ -202,20 +224,19 @@ export async function POST(request: NextRequest) {
     // }
 
     return successResponse(result);
-
   } catch (error) {
     console.error("Error sending message:", error);
-    
+
     const isAuthError =
       error instanceof Error &&
       (error.message.includes("Unauthenticated") ||
         error.message.includes("token") ||
         error.message.includes("authentication") ||
         error.message.includes("Unauthorized"));
-        
+
     return errorResponse(
       isAuthError ? "Authentication failed" : "Failed to send message",
-      isAuthError ? 401 : 500
+      isAuthError ? 401 : 500,
     );
   }
 }

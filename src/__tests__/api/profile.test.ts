@@ -61,7 +61,7 @@ describe("/api/profile API Routes", () => {
         method: "GET",
         headers: { authorization: "Bearer valid-token" },
       });
-      const response = await GET(req);
+      await GET(req);
 
       expect(mockClient.query).toHaveBeenCalled();
     });

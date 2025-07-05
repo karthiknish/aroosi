@@ -18,7 +18,11 @@ export async function POST(request: NextRequest) {
     const { token, userId } = authCheck;
 
     // Rate limiting
-    const rateLimitResult = checkApiRateLimit(`mark_conversation_read_${userId}`, 50, 60000); // 50 requests per minute
+    const rateLimitResult = checkApiRateLimit(
+      `mark_conversation_read_${userId}`,
+      50,
+      60000,
+    ); // 50 requests per minute
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
     }
@@ -27,7 +31,7 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
-    } catch (e) {
+    } catch {
       return errorResponse("Invalid request body", 400);
     }
 
@@ -45,7 +49,10 @@ export async function POST(request: NextRequest) {
 
     // If userId is provided in request, verify it matches authenticated user
     if (requestUserId && requestUserId !== userId) {
-      return errorResponse("Cannot mark conversation as read for another user", 403);
+      return errorResponse(
+        "Cannot mark conversation as read for another user",
+        403,
+      );
     }
 
     // Database operations
@@ -61,7 +68,7 @@ export async function POST(request: NextRequest) {
     client.setAuth(token);
 
     // Verify user is part of this conversation
-    const userIds = conversationId.split('_');
+    const userIds = conversationId.split("_");
     if (!userIds.includes(userId)) {
       return errorResponse("Unauthorized access to conversation", 403);
     }
@@ -70,7 +77,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return errorResponse("User ID not found", 401);
     }
-    
+
     await client.mutation(api.messages.markConversationRead, {
       conversationId,
       userId: userId as Id<"users">,
@@ -80,29 +87,32 @@ export async function POST(request: NextRequest) {
       message: "Conversation marked as read",
       conversationId,
       userId,
-      readAt: Date.now()
+      readAt: Date.now(),
     });
-
   } catch (error) {
     console.error("Error marking conversation as read:", error);
-    
-    // Check for specific error types
-    const isAuthError = error instanceof Error && 
-      (error.message.includes("Unauthenticated") || 
-       error.message.includes("Unauthorized") ||
-       error.message.includes("token"));
 
-    const isPermissionError = error instanceof Error &&
-      error.message.includes("permission");
-       
+    // Check for specific error types
+    const isAuthError =
+      error instanceof Error &&
+      (error.message.includes("Unauthenticated") ||
+        error.message.includes("Unauthorized") ||
+        error.message.includes("token"));
+
+    const isPermissionError =
+      error instanceof Error && error.message.includes("permission");
+
     if (isAuthError) {
       return errorResponse("Authentication failed", 401);
     }
-    
+
     if (isPermissionError) {
-      return errorResponse("Insufficient permissions to mark this conversation as read", 403);
+      return errorResponse(
+        "Insufficient permissions to mark this conversation as read",
+        403,
+      );
     }
-    
+
     return errorResponse("Failed to mark conversation as read", 500);
   }
 }

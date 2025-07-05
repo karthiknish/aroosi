@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   images: {
     domains: [
@@ -44,8 +44,8 @@ const nextConfig: NextConfig = {
               ? [ignoredExisting]
               : []),
           ...extraIgnores,
-        ].filter((s) => typeof s === "string" && s.trim().length > 0)
-      )
+        ].filter((s) => typeof s === "string" && s.trim().length > 0),
+      ),
     );
 
     // Assign a fresh object to avoid mutating read-only config

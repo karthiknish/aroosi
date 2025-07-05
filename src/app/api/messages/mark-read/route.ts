@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
-    } catch (e) {
+    } catch {
       return errorResponse("Invalid request body", 400);
     }
 
@@ -39,11 +39,14 @@ export async function POST(request: NextRequest) {
 
     // Validate array length to prevent abuse
     if (messageIds.length > 100) {
-      return errorResponse("Cannot mark more than 100 messages as read at once", 400);
+      return errorResponse(
+        "Cannot mark more than 100 messages as read at once",
+        400,
+      );
     }
 
     // Validate that all messageIds are strings
-    if (!messageIds.every(id => typeof id === 'string' && id.length > 0)) {
+    if (!messageIds.every((id) => typeof id === "string" && id.length > 0)) {
       return errorResponse("All messageIds must be non-empty strings", 400);
     }
 
@@ -63,39 +66,42 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return errorResponse("User ID not found", 401);
     }
-    
-    const result = await client.mutation(api.messages.markConversationRead, {
+
+    await client.mutation(api.messages.markConversationRead, {
       conversationId: messageIds[0], // Use first message ID as conversation ID for now
-      userId: userId as Id<"users">
+      userId: userId as Id<"users">,
     });
 
     return successResponse({
       message: `Marked ${messageIds.length} messages as read`,
       messageIds,
       readAt: Date.now(),
-      updatedCount: messageIds.length
+      updatedCount: messageIds.length,
     });
-
   } catch (error) {
     console.error("Error marking messages as read:", error);
-    
-    // Check for specific error types
-    const isAuthError = error instanceof Error && 
-      (error.message.includes("Unauthenticated") || 
-       error.message.includes("Unauthorized") ||
-       error.message.includes("token"));
 
-    const isPermissionError = error instanceof Error &&
-      error.message.includes("permission");
-       
+    // Check for specific error types
+    const isAuthError =
+      error instanceof Error &&
+      (error.message.includes("Unauthenticated") ||
+        error.message.includes("Unauthorized") ||
+        error.message.includes("token"));
+
+    const isPermissionError =
+      error instanceof Error && error.message.includes("permission");
+
     if (isAuthError) {
       return errorResponse("Authentication failed", 401);
     }
-    
+
     if (isPermissionError) {
-      return errorResponse("Insufficient permissions to mark these messages as read", 403);
+      return errorResponse(
+        "Insufficient permissions to mark these messages as read",
+        403,
+      );
     }
-    
+
     return errorResponse("Failed to mark messages as read", 500);
   }
 }

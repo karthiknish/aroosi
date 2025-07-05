@@ -807,7 +807,7 @@ export function ProfileCreationModal({
       }
     };
 
-    submitProfileAndImages();
+    void submitProfileAndImages();
   }, [
     isSignedIn,
     token,

@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const rateLimitResult = checkApiRateLimit(
       `stripe_checkout_${userId}`,
       10,
-      60000
+      60000,
     ); // 10 checkouts per minute
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
           userRecordClerkId: profile.clerkId,
           action: "stripe_checkout_user_mismatch",
         },
-        req
+        req,
       );
       return errorResponse("User verification failed", 403);
     }
@@ -95,13 +95,13 @@ export async function POST(req: NextRequest) {
     const origin = req.headers.get("origin");
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
-      (origin && isValidOrigin(origin) ? origin : null) ||
+      (origin && isValidOrigin() ? origin : null) ||
       "http://localhost:3000";
     // Validate email if provided
     const customerEmail =
       profile.email && isValidEmail(profile.email) ? profile.email : undefined;
     console.log(
-      `Creating Stripe checkout session for user ${userId}, plan: ${planId}`
+      `Creating Stripe checkout session for user ${userId}, plan: ${planId}`,
     );
     // Create Stripe checkout session with security considerations
     const session = await stripe.checkout.sessions.create({
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Failed to create checkout session", 500);
     }
     console.log(
-      `Stripe checkout session created: ${session.id} for user ${userId}`
+      `Stripe checkout session created: ${session.id} for user ${userId}`,
     );
     return successResponse({ url: session.url, sessionId: session.id });
   } catch (error) {
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
         endpoint: "stripe/checkout",
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      req
+      req,
     );
     if (error instanceof Error && error.message.includes("Unauthenticated")) {
       return errorResponse("Authentication failed", 401);
@@ -170,7 +170,7 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email) && email.length <= 255;
 }
 
-function isValidOrigin(origin: string): boolean {
+function isValidOrigin(): boolean {
   // Add your allowed origins here if needed
   return true;
 }

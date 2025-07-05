@@ -12,7 +12,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
-import { postcodeSchema } from "@/lib/utils/validation";
+// import { postcodeSchema } from "@/lib/utils/validation";
 
 interface Props {
   form: import("react-hook-form").UseFormReturn<Partial<ProfileFormValues>>;
@@ -21,27 +21,118 @@ interface Props {
 }
 
 const globalCities = [
-  "London", "Manchester", "Birmingham", "Leeds", "Glasgow", "Sheffield", "Bradford",
-  "Liverpool", "Edinburgh", "Bristol", "Cardiff", "Leicester", "Wakefield", "Coventry",
-  "Nottingham", "Newcastle", "Brighton", "Hull", "Plymouth", "Stoke-on-Trent",
-  "Wolverhampton", "Derby", "Swansea", "Southampton", // UK cities
-  "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio",
-  "San Diego", "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus",
-  "Charlotte", "San Francisco", "Indianapolis", "Seattle", "Denver", "Washington", "Boston", // US cities
-  "Toronto", "Montreal", "Vancouver", "Calgary", "Edmonton", "Ottawa", "Winnipeg", "Quebec City", // Canadian cities
-  "Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Gold Coast", "Newcastle", "Canberra", // Australian cities
-  "Kabul", "Kandahar", "Herat", "Mazar-i-Sharif", "Jalalabad", "Kunduz", "Ghazni", "Balkh", // Afghan cities
-  "Dubai", "Abu Dhabi", "Sharjah", "Al Ain", "Ajman", "Ras Al Khaimah", "Fujairah", // UAE cities
-  "Doha", "Al Rayyan", "Al Wakrah", "Al Khor", "Umm Salal", // Qatar cities
-  "Other"
+  "London",
+  "Manchester",
+  "Birmingham",
+  "Leeds",
+  "Glasgow",
+  "Sheffield",
+  "Bradford",
+  "Liverpool",
+  "Edinburgh",
+  "Bristol",
+  "Cardiff",
+  "Leicester",
+  "Wakefield",
+  "Coventry",
+  "Nottingham",
+  "Newcastle",
+  "Brighton",
+  "Hull",
+  "Plymouth",
+  "Stoke-on-Trent",
+  "Wolverhampton",
+  "Derby",
+  "Swansea",
+  "Southampton", // UK cities
+  "New York",
+  "Los Angeles",
+  "Chicago",
+  "Houston",
+  "Phoenix",
+  "Philadelphia",
+  "San Antonio",
+  "San Diego",
+  "Dallas",
+  "San Jose",
+  "Austin",
+  "Jacksonville",
+  "Fort Worth",
+  "Columbus",
+  "Charlotte",
+  "San Francisco",
+  "Indianapolis",
+  "Seattle",
+  "Denver",
+  "Washington",
+  "Boston", // US cities
+  "Toronto",
+  "Montreal",
+  "Vancouver",
+  "Calgary",
+  "Edmonton",
+  "Ottawa",
+  "Winnipeg",
+  "Quebec City", // Canadian cities
+  "Sydney",
+  "Melbourne",
+  "Brisbane",
+  "Perth",
+  "Adelaide",
+  "Gold Coast",
+  "Newcastle",
+  "Canberra", // Australian cities
+  "Kabul",
+  "Kandahar",
+  "Herat",
+  "Mazar-i-Sharif",
+  "Jalalabad",
+  "Kunduz",
+  "Ghazni",
+  "Balkh", // Afghan cities
+  "Dubai",
+  "Abu Dhabi",
+  "Sharjah",
+  "Al Ain",
+  "Ajman",
+  "Ras Al Khaimah",
+  "Fujairah", // UAE cities
+  "Doha",
+  "Al Rayyan",
+  "Al Wakrah",
+  "Al Khor",
+  "Umm Salal", // Qatar cities
+  "Other",
 ];
 
 const countries = [
-  "United Kingdom", "United States", "Canada", "Australia", "New Zealand",
-  "Afghanistan", "United Arab Emirates", "Qatar", "Saudi Arabia", "Kuwait",
-  "Bahrain", "Oman", "Germany", "France", "Netherlands", "Belgium", "Switzerland",
-  "Austria", "Sweden", "Norway", "Denmark", "Finland", "Italy", "Spain",
-  "Portugal", "Ireland", "Other"
+  "United Kingdom",
+  "United States",
+  "Canada",
+  "Australia",
+  "New Zealand",
+  "Afghanistan",
+  "United Arab Emirates",
+  "Qatar",
+  "Saudi Arabia",
+  "Kuwait",
+  "Bahrain",
+  "Oman",
+  "Germany",
+  "France",
+  "Netherlands",
+  "Belgium",
+  "Switzerland",
+  "Austria",
+  "Sweden",
+  "Norway",
+  "Denmark",
+  "Finland",
+  "Italy",
+  "Spain",
+  "Portugal",
+  "Ireland",
+  "Other",
 ];
 
 const dietOptions = [
@@ -159,7 +250,10 @@ export default function EnhancedLocationStep({ form }: Props) {
               form={form}
               placeholder="Select your city"
               isRequired={true}
-              options={globalCities.map((city: string) => ({ value: city, label: city }))}
+              options={globalCities.map((city: string) => ({
+                value: city,
+                label: city,
+              }))}
             />
 
             {/* Country */}
@@ -169,7 +263,10 @@ export default function EnhancedLocationStep({ form }: Props) {
               form={form}
               placeholder="Select your country"
               isRequired={true}
-              options={countries.map((country: string) => ({ value: country, label: country }))}
+              options={countries.map((country: string) => ({
+                value: country,
+                label: country,
+              }))}
             />
           </div>
         </Card>
@@ -206,7 +303,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                           "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md",
                           field.value === option.value
                             ? "border-[#BFA67A] bg-[#BFA67A]/10 shadow-md"
-                            : "border-gray-200 hover:border-[#BFA67A]/50"
+                            : "border-gray-200 hover:border-[#BFA67A]/50",
                         )}
                       >
                         <span className="text-2xl mb-2">{option.icon}</span>
@@ -215,7 +312,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                             "text-sm font-medium text-center",
                             field.value === option.value
                               ? "text-[#BFA67A]"
-                              : "text-gray-700"
+                              : "text-gray-700",
                           )}
                         >
                           {option.label}
@@ -265,7 +362,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                               "w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 hover:shadow-sm text-left",
                               field.value === option.value
                                 ? "border-[#BFA67A] bg-[#BFA67A]/10"
-                                : "border-gray-200 hover:border-[#BFA67A]/50"
+                                : "border-gray-200 hover:border-[#BFA67A]/50",
                             )}
                           >
                             <span className="text-xl">{option.icon}</span>
@@ -275,7 +372,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                                   "font-medium text-sm",
                                   field.value === option.value
                                     ? "text-[#BFA67A]"
-                                    : "text-gray-700"
+                                    : "text-gray-700",
                                 )}
                               >
                                 {option.label}
@@ -313,7 +410,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                               "w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200 hover:shadow-sm text-left",
                               field.value === option.value
                                 ? "border-[#BFA67A] bg-[#BFA67A]/10"
-                                : "border-gray-200 hover:border-[#BFA67A]/50"
+                                : "border-gray-200 hover:border-[#BFA67A]/50",
                             )}
                           >
                             <span className="text-xl">{option.icon}</span>
@@ -323,7 +420,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                                   "font-medium text-sm",
                                   field.value === option.value
                                     ? "text-[#BFA67A]"
-                                    : "text-gray-700"
+                                    : "text-gray-700",
                                 )}
                               >
                                 {option.label}
@@ -376,7 +473,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                           "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md",
                           field.value === option.value
                             ? "border-[#BFA67A] bg-[#BFA67A]/10 shadow-md"
-                            : "border-gray-200 hover:border-[#BFA67A]/50"
+                            : "border-gray-200 hover:border-[#BFA67A]/50",
                         )}
                       >
                         <span className="text-2xl mb-2">{option.icon}</span>
@@ -386,7 +483,7 @@ export default function EnhancedLocationStep({ form }: Props) {
                               "text-sm font-medium",
                               field.value === option.value
                                 ? "text-[#BFA67A]"
-                                : "text-gray-700"
+                                : "text-gray-700",
                             )}
                           >
                             {option.label}

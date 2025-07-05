@@ -19,27 +19,37 @@ export async function POST(request: NextRequest) {
     const { token, userId } = authCheck;
 
     // Rate limiting for voice message uploads
-    const rateLimitResult = checkApiRateLimit(`voice_upload_${userId}`, 10, 60000); // 10 uploads per minute
+    const rateLimitResult = checkApiRateLimit(
+      `voice_upload_${userId}`,
+      10,
+      60000,
+    ); // 10 uploads per minute
     if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded. Please wait before uploading more voice messages.", 429);
+      return errorResponse(
+        "Rate limit exceeded. Please wait before uploading more voice messages.",
+        429,
+      );
     }
 
     // Parse form data
     let formData;
     try {
       formData = await request.formData();
-    } catch (e) {
+    } catch {
       return errorResponse("Invalid form data", 400);
     }
 
-    const audioFile = formData.get('audio') as File;
-    const conversationId = formData.get('conversationId') as string;
-    const duration = parseFloat(formData.get('duration') as string);
-    const toUserId = formData.get('toUserId') as string;
+    const audioFile = formData.get("audio") as File;
+    const conversationId = formData.get("conversationId") as string;
+    const duration = parseFloat(formData.get("duration") as string);
+    const toUserId = formData.get("toUserId") as string;
 
     // Validate required fields
     if (!audioFile || !conversationId || !duration || !toUserId) {
-      return errorResponse("Missing required fields: audio, conversationId, duration, toUserId", 400);
+      return errorResponse(
+        "Missing required fields: audio, conversationId, duration, toUserId",
+        400,
+      );
     }
 
     // Validate conversation ID format
@@ -48,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type
-    if (!audioFile.type.startsWith('audio/')) {
+    if (!audioFile.type.startsWith("audio/")) {
       return errorResponse("Invalid file type. Must be audio.", 400);
     }
 
@@ -60,7 +70,10 @@ export async function POST(request: NextRequest) {
 
     // Validate duration (limit to 5 minutes)
     if (duration <= 0 || duration > 300) {
-      return errorResponse("Invalid duration. Must be between 1 second and 5 minutes.", 400);
+      return errorResponse(
+        "Invalid duration. Must be between 1 second and 5 minutes.",
+        400,
+      );
     }
 
     // Database operations
@@ -79,7 +92,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return errorResponse("User ID not found", 401);
     }
-    const userIds = conversationId.split('_');
+    const userIds = conversationId.split("_");
     if (!userIds.includes(userId)) {
       return errorResponse("Unauthorized access to conversation", 403);
     }
@@ -95,30 +108,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Check subscription limits for voice messages
-    const canSendVoice = await client.query(api.subscriptions.checkFeatureAccess, {
-      userId: userId as Id<"users">,
-      feature: "voice_messages"
-    });
+    const canSendVoice = await client.query(
+      api.subscriptions.checkFeatureAccess,
+      {
+        userId: userId as Id<"users">,
+        feature: "voice_messages",
+      },
+    );
 
     if (!canSendVoice) {
-      return errorResponse("Voice messages require a premium subscription", 403);
+      return errorResponse(
+        "Voice messages require a premium subscription",
+        403,
+      );
     }
 
     // Generate upload URL for the audio file
     const uploadUrl = await client.mutation(api.messages.generateUploadUrl, {});
-    
+
     // Upload the audio file to Convex storage
     const uploadResponse = await fetch(uploadUrl, {
-      method: 'POST',
+      method: "POST",
       body: audioFile,
     });
-    
+
     if (!uploadResponse.ok) {
       return errorResponse("Failed to upload audio file", 500);
     }
-    
+
     const { storageId } = await uploadResponse.json();
-    
+
     // Create the voice message record
     const message = await client.mutation(api.messages.sendMessage, {
       conversationId,
@@ -131,11 +150,11 @@ export async function POST(request: NextRequest) {
       fileSize: audioFile.size,
       mimeType: audioFile.type,
     });
-    
+
     if (!message) {
       return errorResponse("Failed to create voice message record", 500);
     }
-    
+
     return successResponse({
       message: "Voice message uploaded successfully",
       messageId: message._id,

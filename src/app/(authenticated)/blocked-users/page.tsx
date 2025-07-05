@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Shield, ShieldCheck, Users, ExternalLink } from 'lucide-react';
-import { useBlockedUsers, useUnblockUser } from '@/hooks/useSafety';
-import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorState } from '@/components/ui/error-state';
-import Link from 'next/link';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Shield, ShieldCheck, Users, ExternalLink } from "lucide-react";
+import { useBlockedUsers, useUnblockUser } from "@/hooks/useSafety";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import Link from "next/link";
 
 export default function BlockedUsersPage() {
   const { data: blockedUsers, isLoading, error, refetch } = useBlockedUsers();
@@ -65,7 +65,8 @@ export default function BlockedUsersPage() {
           Blocked Users
         </h1>
         <p className="text-gray-600">
-          Manage users you've blocked. Blocked users cannot send you messages or see your profile.
+          Manage users you&apos;ve blocked. Blocked users cannot send you
+          messages or see your profile.
         </p>
       </div>
 
@@ -78,9 +79,12 @@ export default function BlockedUsersPage() {
                 <Shield className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-medium text-blue-900">Need help staying safe?</h3>
+                <h3 className="font-medium text-blue-900">
+                  Need help staying safe?
+                </h3>
                 <p className="text-sm text-blue-700">
-                  Learn about our safety features and get tips for online dating.
+                  Learn about our safety features and get tips for online
+                  dating.
                 </p>
               </div>
             </div>
@@ -115,7 +119,8 @@ export default function BlockedUsersPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
-              {blockedUsers.length} blocked user{blockedUsers.length !== 1 ? 's' : ''}
+              {blockedUsers.length} blocked user
+              {blockedUsers.length !== 1 ? "s" : ""}
             </h2>
           </div>
 
@@ -139,10 +144,11 @@ export default function BlockedUsersPage() {
                   {/* User Info */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 truncate">
-                      {blockedUser.blockedProfile?.fullName || 'Unknown User'}
+                      {blockedUser.blockedProfile?.fullName || "Unknown User"}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      Blocked on {new Date(blockedUser.createdAt).toLocaleDateString()}
+                      Blocked on{" "}
+                      {new Date(blockedUser.createdAt).toLocaleDateString()}
                     </p>
                   </div>
 

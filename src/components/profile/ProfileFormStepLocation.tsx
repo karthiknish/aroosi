@@ -1,5 +1,5 @@
 import React from "react";
-import { FormField, FormSelectField } from "./ProfileFormFields";
+import { FormSelectField } from "./ProfileFormFields";
 import type { ProfileFormValues } from "@/types/profile";
 
 type Props = {
@@ -8,7 +8,11 @@ type Props = {
   countryOptions: { value: string; label: string }[];
 };
 
-const ProfileFormStepLocation: React.FC<Props> = ({ form, cityOptions, countryOptions }) => (
+const ProfileFormStepLocation: React.FC<Props> = ({
+  form,
+  cityOptions,
+  countryOptions,
+}) => (
   <>
     <FormSelectField
       name="city"

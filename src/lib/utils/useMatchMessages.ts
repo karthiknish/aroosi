@@ -9,13 +9,7 @@ import { getConversationEventsSSEUrl } from "@/lib/api/conversation";
 // Use the MatchMessage type from the API
 type Message = MatchMessage;
 
-export function useMatchMessages(
-  conversationId: string,
-  token: string,
-  onConnectionStatusChange?: (
-    status: "connected" | "connecting" | "disconnected",
-  ) => void,
-) {
+export function useMatchMessages(conversationId: string, token: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -137,7 +131,7 @@ export function useMatchMessages(
 
   // Initial fetch on mount or when conversation changes
   useEffect(() => {
-    fetchMessages();
+    void fetchMessages();
   }, [fetchMessages]);
 
   // Preload next batch when hasMore true and not loading

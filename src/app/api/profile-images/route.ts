@@ -59,7 +59,7 @@ export async function DELETE(req: NextRequest) {
     });
     if (result.success) return successResponse();
     return errorResponse(result.message || "Failed to delete image", 400);
-  } catch (error) {
+  } catch {
     return errorResponse("Failed to delete image", 500);
   }
 }

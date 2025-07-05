@@ -114,7 +114,7 @@ export function useTypingIndicators({
   const stopTyping = useCallback(() => {
     if (isTyping) {
       setIsTyping(false);
-      sendTypingStatus("stop");
+      void sendTypingStatus("stop");
     }
 
     if (typingTimeoutRef.current) {
@@ -125,7 +125,7 @@ export function useTypingIndicators({
 
   // Poll for typing users every 2 seconds
   useEffect(() => {
-    fetchTypingUsers();
+    void fetchTypingUsers();
 
     pollIntervalRef.current = setInterval(() => {
       void fetchTypingUsers();

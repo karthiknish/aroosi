@@ -36,7 +36,7 @@ export const useSubscriptionActions = (token?: string) => {
     mutationFn: () => subscriptionAPI.cancel(token),
     onSuccess: (data) => {
       showSuccessToast(data.message);
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
       showErrorToast(error.message || "Failed to cancel subscription");

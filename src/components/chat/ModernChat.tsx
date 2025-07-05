@@ -70,7 +70,7 @@ function ModernChat({
     fetchOlder,
     sendMessage,
     error,
-  } = useMatchMessages(conversationId, token, setConnectionStatus);
+  } = useMatchMessages(conversationId, token);
 
   // Typing indicators
   const { typingUsers, startTyping, stopTyping } = useTypingIndicators({
@@ -349,7 +349,7 @@ function ModernChat({
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleSendMessage(text);
+        void handleSendMessage(text);
       } else if (e.key === "Escape") {
         // Clear input on escape
         setText("");
@@ -667,7 +667,7 @@ function ModernChat({
           className="flex items-end gap-3 relative"
           onSubmit={async (e) => {
             e.preventDefault();
-            handleSendMessage(text);
+            void handleSendMessage(text);
           }}
         >
           <div className="flex-1 relative">
@@ -926,7 +926,7 @@ function VoiceMessage({
       audioRef.current.pause();
       onPlayToggle(false);
     } else {
-      audioRef.current.play();
+      void audioRef.current.play();
       onPlayToggle(true);
     }
   }, [audioUrl, isPlaying, onPlayToggle, fetchAudioUrl]);

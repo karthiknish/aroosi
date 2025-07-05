@@ -210,7 +210,7 @@ export async function POST(req: NextRequest) {
     if (existingProfile) return errorResponse("Profile already exists", 409);
     // Format the data for createProfile mutation
     const profileData = { ...sanitizedBody, userId: userId as Id<"users"> };
-    // @ts-ignore - Type mismatch needs refactoring
+    // @ts-expect-error - Type mismatch needs refactoring
     await convex.mutation(api.users.createProfile, profileData);
     // Fetch the latest profile
     const newProfile = await convex.query(api.profiles.getProfileByUserId, {

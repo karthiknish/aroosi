@@ -358,7 +358,7 @@ export default function SubscriptionPage() {
                     <li className="flex items-start gap-3">
                       <Eye className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
                       <span className="text-gray-700">
-                        Know who's interested with profile view tracking
+                        Know who&apos;s interested with profile view tracking
                       </span>
                     </li>
                   </ul>

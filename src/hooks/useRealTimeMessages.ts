@@ -451,7 +451,7 @@ export function useRealTimeMessages({
 
     if (unreadMessages.length > 0) {
       const messageIds = unreadMessages.map((msg) => msg._id);
-      markAsRead(messageIds);
+      void markAsRead(messageIds);
     }
   }, [messages, userId, markAsRead]);
 
