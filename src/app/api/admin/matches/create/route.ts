@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return NextResponse.json(
       { success: false, error: "Server config error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -25,19 +25,19 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json(
       { success: false, error: "Invalid JSON" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   const { fromProfileId, toProfileId } = body;
   if (!fromProfileId || !toProfileId || fromProfileId === toProfileId) {
     return NextResponse.json(
       { success: false, error: "Invalid profile IDs" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
 
   try {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     if (!fromProfile || !toProfile) {
       return NextResponse.json(
         { success: false, error: "Profile not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     const upsertAcceptedInterest = async (
       fromUser: Id<"users">,
-      toUser: Id<"users">
+      toUser: Id<"users">,
     ) => {
       // check existing interest
       const existing = (await convex.query(api.interests.getSentInterests, {
@@ -95,19 +95,19 @@ export async function POST(req: NextRequest) {
     await upsertAcceptedInterest(toUserId, fromUserId);
 
     // send match emails, non-blocking
-    (async () => {
+    void (async () => {
       try {
         if (fromProfile.email && toProfile.email) {
           await Promise.all([
             Notifications.newMatch(
               fromProfile.email,
               fromProfile.fullName || "",
-              toProfile.fullName || "A user"
+              toProfile.fullName || "A user",
             ),
             Notifications.newMatch(
               toProfile.email,
               toProfile.fullName || "",
-              fromProfile.fullName || "A user"
+              fromProfile.fullName || "A user",
             ),
           ]);
         }
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
               : String(err)
             : "Failed to create match",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

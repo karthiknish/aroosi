@@ -22,7 +22,7 @@ export function useDeliveryReceipts({
   receipts: Record<string, DeliveryReceipt[]>;
   getMessageDeliveryStatus: (
     messageId: string,
-    isCurrentUser: boolean
+    isCurrentUser: boolean,
   ) => DeliveryStatus;
   markMessageAsPending: (messageId: string) => void;
   markMessageAsSent: (messageId: string) => void;
@@ -30,14 +30,14 @@ export function useDeliveryReceipts({
   markMessageAsDelivered: (messageId: string) => void;
   sendDeliveryReceipt: (
     messageId: string,
-    status: "delivered" | "read" | "failed"
+    status: "delivered" | "read" | "failed",
   ) => Promise<void>;
 } {
   const [receipts, setReceipts] = useState<Record<string, DeliveryReceipt[]>>(
-    {}
+    {},
   );
   const [pendingMessages, setPendingMessages] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Send delivery receipt
@@ -68,7 +68,7 @@ export function useDeliveryReceipts({
         }
       }
     },
-    [token]
+    [token],
   );
 
   // Fetch delivery receipts for conversation
@@ -80,7 +80,7 @@ export function useDeliveryReceipts({
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -91,7 +91,7 @@ export function useDeliveryReceipts({
           data !== null &&
           "deliveryReceipts" in data &&
           Array.isArray(
-            (data as { deliveryReceipts: unknown }).deliveryReceipts
+            (data as { deliveryReceipts: unknown }).deliveryReceipts,
           )
         ) {
           (
@@ -146,7 +146,7 @@ export function useDeliveryReceipts({
 
       return "sent";
     },
-    [receipts, pendingMessages]
+    [receipts, pendingMessages],
   );
 
   // Mark message as pending
@@ -166,17 +166,17 @@ export function useDeliveryReceipts({
   // Mark message as read (for incoming messages)
   const markMessageAsRead = useCallback(
     (messageId: string) => {
-      sendDeliveryReceipt(messageId, "read");
+      void sendDeliveryReceipt(messageId, "read");
     },
-    [sendDeliveryReceipt]
+    [sendDeliveryReceipt],
   );
 
   // Mark message as delivered (for incoming messages)
   const markMessageAsDelivered = useCallback(
     (messageId: string) => {
-      sendDeliveryReceipt(messageId, "delivered");
+      void sendDeliveryReceipt(messageId, "delivered");
     },
-    [sendDeliveryReceipt]
+    [sendDeliveryReceipt],
   );
 
   // Fetch receipts on mount and periodically

@@ -3,17 +3,13 @@
     "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended",
     "plugin:react/recommended",
-    "plugin:prettier/recommended" // Add this line for Prettier integration
+    "plugin:prettier/recommended"
   ],
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/no-unused-vars": "warn",
-    "react/no-unescaped-entities": "warn",
-    "prettier/prettier": "warn"
-  },
-  "settings": {
-    "react": {
-      "version": "detect" // Automatically detect the React version
-    }
+    "@typescript-eslint/no-floating-promises": "error"
   }
 }

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   // Only admin can list contact submissions
   const result = await convex.query(api.contact.contactSubmissions, {});
@@ -43,11 +43,11 @@ export async function POST(req: NextRequest) {
   if (entry.count > RATE_LIMIT_MAX) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
-      { status: 429 }
+      { status: 429 },
     );
   }
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   // Do not set auth for public queries
   let body: Record<string, unknown>;
   try {
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   if (!body || typeof body !== "object") {
     return NextResponse.json(
       { error: "Missing or invalid body" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   const { email, name, subject, message } = body;
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   ) {
     return NextResponse.json(
       { error: "Missing or invalid contact fields" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   try {
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Fire-and-forget email notifications (no need to block response)
-    (async () => {
+    void (async () => {
       try {
         // Notify admin
         const adminTemplate = contactFormAdminTemplate({
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         await sendUserNotification(
           email,
           userTemplate.subject,
-          userTemplate.html
+          userTemplate.html,
         );
       } catch (e) {
         // Silently log – notification failure shouldn't break API

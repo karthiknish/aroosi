@@ -19,7 +19,9 @@ import type { ImageType } from "@/types/image";
 export default function AdminMatchesPage() {
   const { token } = useAuthContext();
   const [matches, setMatches] = useState<AdminProfileMatchesResult>([]);
-  const [profileImages, setProfileImages] = useState<Record<string, ImageType[]>>({});
+  const [profileImages, setProfileImages] = useState<
+    Record<string, ImageType[]>
+  >({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,26 +29,26 @@ export default function AdminMatchesPage() {
     if (!token) return;
     setLoading(true);
     setError(null);
-    
+
     try {
       const matchesData = await fetchAdminAllMatches({ token });
       setMatches(matchesData);
-      
+
       // Collect all unique profile IDs from matches
       const allProfileIds = new Set<string>();
-      matchesData.forEach(item => {
-        item.matches.forEach(match => {
+      matchesData.forEach((item) => {
+        item.matches.forEach((match) => {
           allProfileIds.add(match._id);
         });
       });
-      
+
       // Fetch images for all matched profiles
       if (allProfileIds.size > 0) {
-        const profilesForImages = Array.from(allProfileIds).map(id => ({
+        const profilesForImages = Array.from(allProfileIds).map((id) => ({
           _id: id,
           userId: id, // Using profile ID as userId for image fetching
         }));
-        
+
         const imagesData = await fetchAllAdminProfileImages({
           token,
           profiles: profilesForImages,
@@ -54,14 +56,14 @@ export default function AdminMatchesPage() {
         setProfileImages(imagesData);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [token]);
 
   // Helper function to get age from date of birth
@@ -77,7 +79,10 @@ export default function AdminMatchesPage() {
   };
 
   // Calculate total matches count
-  const totalMatches = matches.reduce((sum, item) => sum + item.matches.length, 0);
+  const totalMatches = matches.reduce(
+    (sum, item) => sum + item.matches.length,
+    0,
+  );
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
@@ -86,7 +91,8 @@ export default function AdminMatchesPage() {
         <div>
           <h1 className="text-3xl font-bold mb-1">Matches Overview</h1>
           <p className="text-muted-foreground">
-            View all matches across user profiles. Total: {totalMatches} matches across {matches.length} profiles.
+            View all matches across user profiles. Total: {totalMatches} matches
+            across {matches.length} profiles.
           </p>
         </div>
         <div className="flex gap-2">
@@ -119,7 +125,10 @@ export default function AdminMatchesPage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {matches.map((item) => (
-                <Card key={item.profileId} className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+                <Card
+                  key={item.profileId}
+                  className="bg-white shadow-lg hover:shadow-xl transition-shadow"
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg truncate">
@@ -131,7 +140,11 @@ export default function AdminMatchesPage() {
                           {item.matches.length}
                         </div>
                         <Link href={`/admin/profile/${item.profileId}`}>
-                          <Button size="icon" variant="ghost" className="h-6 w-6">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                          >
                             <ExternalLink className="w-3 h-3" />
                           </Button>
                         </Link>
@@ -154,8 +167,9 @@ export default function AdminMatchesPage() {
                         {item.matches.map((match) => {
                           const age = getAge(match.dateOfBirth);
                           const matchImages = profileImages[match._id] || [];
-                          const imageUrl = matchImages.length > 0 ? matchImages[0].url : null;
-                          
+                          const imageUrl =
+                            matchImages.length > 0 ? matchImages[0].url : null;
+
                           return (
                             <div
                               key={match._id}
@@ -175,7 +189,7 @@ export default function AdminMatchesPage() {
                                   </div>
                                 )}
                               </div>
-                              
+
                               {/* Profile Info */}
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-sm truncate">
@@ -189,10 +203,14 @@ export default function AdminMatchesPage() {
                                   {match.occupation}
                                 </div>
                               </div>
-                              
+
                               {/* Action Button */}
                               <Link href={`/admin/profile/${match._id}`}>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 flex-shrink-0"
+                                >
                                   <ExternalLink className="w-3 h-3" />
                                 </Button>
                               </Link>

@@ -18,7 +18,7 @@ interface UseRealTimeMessagesReturn {
   sendVoiceMessage: (
     blob: Blob,
     toUserId: string,
-    duration: number
+    duration: number,
   ) => Promise<void>;
   sendTypingStart: () => void;
   sendTypingStop: () => void;
@@ -55,7 +55,7 @@ export function useRealTimeMessages({
 
       // Create new EventSource connection
       const eventSource = new EventSource(
-        `/api/messages/events?conversationId=${conversationId}&token=${token}`
+        `/api/messages/events?conversationId=${conversationId}&token=${token}`,
       );
 
       eventSource.onopen = () => {
@@ -71,7 +71,7 @@ export function useRealTimeMessages({
           } else {
             console.error(
               "Received malformed real-time message:",
-              messageEvent
+              messageEvent,
             );
           }
         } catch (err: unknown) {
@@ -89,7 +89,7 @@ export function useRealTimeMessages({
 
         // Attempt to reconnect after 3 seconds
         setTimeout(() => {
-          initializeConnection();
+          void initializeConnection();
         }, 3000);
       };
 
@@ -109,7 +109,7 @@ export function useRealTimeMessages({
             setMessages((prev) => {
               // Avoid duplicates
               const exists = prev.some(
-                (msg) => msg._id === (event.data as MessageData)._id
+                (msg) => msg._id === (event.data as MessageData)._id,
               );
               if (exists) return prev;
               return [...prev, event.data as MessageData];
@@ -122,11 +122,11 @@ export function useRealTimeMessages({
             setMessages((prev) =>
               prev.map((msg) =>
                 (event.data as { messageIds: string[] }).messageIds.includes(
-                  msg._id
+                  msg._id,
                 )
                   ? { ...msg, isRead: true, readAt: event.timestamp }
-                  : msg
-              )
+                  : msg,
+              ),
             );
           }
           break;
@@ -150,7 +150,7 @@ export function useRealTimeMessages({
           break;
       }
     },
-    [conversationId, userId]
+    [conversationId, userId],
   );
 
   // Send a text message
@@ -228,7 +228,7 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId, contextToken]
+    [userId, conversationId, contextToken],
   );
 
   // Send voice message
@@ -273,7 +273,7 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId, contextToken]
+    [userId, conversationId, contextToken],
   );
 
   // Send typing indicators
@@ -347,8 +347,8 @@ export function useRealTimeMessages({
           prev.map((msg) =>
             messageIds.includes(msg._id)
               ? { ...msg, isRead: true, readAt: Date.now() }
-              : msg
-          )
+              : msg,
+          ),
         );
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -360,7 +360,7 @@ export function useRealTimeMessages({
         }
       }
     },
-    [userId, contextToken]
+    [userId, contextToken],
   );
 
   // Refresh messages from server
@@ -377,7 +377,7 @@ export function useRealTimeMessages({
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -407,11 +407,11 @@ export function useRealTimeMessages({
         result.data !== null &&
         "messages" in (result as { data: { messages?: unknown } }).data &&
         Array.isArray(
-          (result as { data: { messages?: unknown } }).data.messages
+          (result as { data: { messages?: unknown } }).data.messages,
         )
       ) {
         setMessages(
-          (result as { data: { messages: MessageData[] } }).data.messages || []
+          (result as { data: { messages: MessageData[] } }).data.messages || [],
         );
       }
       // else: do not update if response is malformed
@@ -428,7 +428,7 @@ export function useRealTimeMessages({
 
   // Initialize connection on mount
   useEffect(() => {
-    initializeConnection();
+    void initializeConnection();
 
     // Cleanup on unmount
     return () => {
@@ -446,7 +446,7 @@ export function useRealTimeMessages({
     if (!userId) return;
 
     const unreadMessages = messages.filter(
-      (msg) => msg.toUserId === userId && !msg.isRead
+      (msg) => msg.toUserId === userId && !msg.isRead,
     );
 
     if (unreadMessages.length > 0) {

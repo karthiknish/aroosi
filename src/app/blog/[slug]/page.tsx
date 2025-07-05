@@ -218,7 +218,7 @@ export default function BlogDetailPage() {
                 className="text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-lg"
                 onClick={() => {
                   if (navigator.share) {
-                    navigator.share({
+                    void navigator.share({
                       title: post.title,
                       text: post.excerpt, // Ensure excerpt is available on BlogPost type
                       url: window.location.href,

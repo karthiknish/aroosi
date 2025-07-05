@@ -9,12 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,15 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  Grid,
-  List,
-} from "lucide-react";
+import { Search, Plus, Edit, Trash2, Eye, Grid, List } from "lucide-react";
 
 export default function AdminBlogPage() {
   const { token, isAdmin, isLoaded } = useAuthContext();
@@ -58,10 +45,13 @@ export default function AdminBlogPage() {
   });
 
   // Filter blogs based on search term
-  const filteredBlogs = blogs.filter((blog) =>
-    blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    blog.excerpt?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    blog.categories?.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredBlogs = blogs.filter(
+    (blog) =>
+      blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      blog.excerpt?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      blog.categories?.some((cat) =>
+        cat.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
   );
 
   // Handle bulk selection
@@ -69,15 +59,15 @@ export default function AdminBlogPage() {
     if (selectedPosts.length === filteredBlogs.length) {
       setSelectedPosts([]);
     } else {
-      setSelectedPosts(filteredBlogs.map(blog => blog._id!));
+      setSelectedPosts(filteredBlogs.map((blog) => blog._id!));
     }
   };
 
   const handleSelectPost = (id: string) => {
-    setSelectedPosts(prev => 
-      prev.includes(id) 
-        ? prev.filter(postId => postId !== id)
-        : [...prev, id]
+    setSelectedPosts((prev) =>
+      prev.includes(id)
+        ? prev.filter((postId) => postId !== id)
+        : [...prev, id],
     );
   };
 
@@ -89,26 +79,25 @@ export default function AdminBlogPage() {
   const handleDelete = async (id: string) => {
     if (typeof deleteBlogPost === "function" && typeof token === "string") {
       await deleteBlogPost(token, id);
-      refetch();
-      setSelectedPosts(prev => prev.filter(postId => postId !== id));
+      void refetch();
+      setSelectedPosts((prev) => prev.filter((postId) => postId !== id));
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedPosts.length === 0 || !token) return;
-    
+
     for (const id of selectedPosts) {
       await deleteBlogPost(token, id);
     }
-    refetch();
+    void refetch();
     setSelectedPosts([]);
   };
-
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -140,7 +129,9 @@ export default function AdminBlogPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Blog Management</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Blog Management
+          </h1>
           <p className="text-gray-600">Manage your blog posts and content</p>
         </div>
         <Button asChild>
@@ -208,9 +199,11 @@ export default function AdminBlogPage() {
 
       {/* Content */}
       {filteredBlogs.length === 0 ? (
-        <EmptyState 
-          message={searchTerm ? "No posts match your search." : "No blog posts found."} 
-          className="py-16" 
+        <EmptyState
+          message={
+            searchTerm ? "No posts match your search." : "No blog posts found."
+          }
+          className="py-16"
         />
       ) : viewMode === "table" ? (
         <Card>
@@ -255,7 +248,9 @@ export default function AdminBlogPage() {
                         />
                       )}
                       <div>
-                        <p className="font-medium text-gray-900">{blog.title}</p>
+                        <p className="font-medium text-gray-900">
+                          {blog.title}
+                        </p>
                         <p className="text-sm text-gray-500 truncate max-w-xs">
                           {blog.excerpt}
                         </p>
@@ -265,7 +260,11 @@ export default function AdminBlogPage() {
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {blog.categories?.slice(0, 2).map((cat) => (
-                        <Badge key={cat} variant="secondary" className="text-xs">
+                        <Badge
+                          key={cat}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {cat}
                         </Badge>
                       ))}
@@ -277,7 +276,9 @@ export default function AdminBlogPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className="bg-green-100 text-green-700">Published</Badge>
+                    <Badge className="bg-green-100 text-green-700">
+                      Published
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-gray-500">
                     {blog.createdAt && formatDate(blog.createdAt)}
@@ -287,7 +288,9 @@ export default function AdminBlogPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(`/blog/${blog.slug}`, '_blank')}
+                        onClick={() =>
+                          window.open(`/blog/${blog.slug}`, "_blank")
+                        }
                       >
                         <Eye className="h-3 w-3" />
                       </Button>
@@ -316,7 +319,10 @@ export default function AdminBlogPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredBlogs.map((blog) => (
-            <Card key={blog._id} className="group hover:shadow-lg transition-shadow">
+            <Card
+              key={blog._id}
+              className="group hover:shadow-lg transition-shadow"
+            >
               {blog.imageUrl && (
                 <div className="relative">
                   <Image
@@ -360,7 +366,9 @@ export default function AdminBlogPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => window.open(`/blog/${blog.slug}`, '_blank')}
+                      onClick={() =>
+                        window.open(`/blog/${blog.slug}`, "_blank")
+                      }
                     >
                       <Eye className="h-3 w-3" />
                     </Button>

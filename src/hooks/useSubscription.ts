@@ -60,7 +60,7 @@ export const useSubscriptionActions = (token?: string) => {
     onSuccess: (data) => {
       showSuccessToast(data.message);
       if (data.restored) {
-        queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        void queryClient.invalidateQueries({ queryKey: ["subscription"] });
       }
     },
     onError: (error: Error) => {
@@ -101,11 +101,16 @@ export const useFeatureUsage = () => {
       const usage = usageCache[feature];
       if (!usage) return true; // Allow if we don't have usage data yet
 
-      const typedUsage = usage as { isUnlimited?: boolean; remainingQuota?: number };
+      const typedUsage = usage as {
+        isUnlimited?: boolean;
+        remainingQuota?: number;
+      };
       if (typedUsage.isUnlimited) return true;
-      return Boolean(typedUsage.remainingQuota && typedUsage.remainingQuota > 0);
+      return Boolean(
+        typedUsage.remainingQuota && typedUsage.remainingQuota > 0,
+      );
     },
-    [usageCache]
+    [usageCache],
   );
 
   return {
@@ -137,7 +142,7 @@ export const useSubscriptionGuard = (token?: string) => {
 
       return false;
     },
-    [isActive, isPremium, isPremiumPlus]
+    [isActive, isPremium, isPremiumPlus],
   );
 
   const requiresPremium = useCallback((feature: string) => {

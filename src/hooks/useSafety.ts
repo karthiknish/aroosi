@@ -1,8 +1,12 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { safetyAPI, type ReportData, type ReportReason } from '@/lib/api/safety';
-import { showSuccessToast, showErrorToast } from '@/lib/ui/toast';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  safetyAPI,
+  type ReportData,
+  type ReportReason,
+} from "@/lib/api/safety";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 
 // Hook for reporting users
@@ -13,7 +17,7 @@ export const useReportUser = () => {
     mutationFn: (data: ReportData) => safetyAPI.reportUser(token, data),
     onSuccess: () => {
       showSuccessToast(
-        "User reported successfully. Our team will review this report."
+        "User reported successfully. Our team will review this report.",
       );
     },
     onError: (error: Error) => {
@@ -33,11 +37,11 @@ export const useBlockUser = () => {
     onSuccess: (_, blockedUserId) => {
       showSuccessToast("User blocked successfully");
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
+      void queryClient.invalidateQueries({
         queryKey: ["blockStatus", blockedUserId],
       });
-      queryClient.invalidateQueries({ queryKey: ["profiles"] }); // Refresh search results
+      void queryClient.invalidateQueries({ queryKey: ["profiles"] }); // Refresh search results
     },
     onError: (error: Error) => {
       showErrorToast(error, "Failed to block user");
@@ -82,7 +86,7 @@ export const useBlockedUsers = () => {
 
 // Hook for checking if a user is blocked (matching mobile app pattern)
 export const useBlockStatus = (
-  input: string | { profileId?: string; userId?: string }
+  input: string | { profileId?: string; userId?: string },
 ) => {
   const { token } = useAuthContext();
 
@@ -137,7 +141,7 @@ export const useSafety = () => {
     reportUser: async (
       userId: string,
       reason: ReportReason,
-      description?: string
+      description?: string,
     ): Promise<boolean> => {
       try {
         await reportUser.mutateAsync({

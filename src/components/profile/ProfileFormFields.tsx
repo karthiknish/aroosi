@@ -289,7 +289,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                     onMonthChange={setCalendarMonth}
                     onSelect={(date) => {
                       field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                      if (name === "dateOfBirth") trigger("dateOfBirth");
+                      if (name === "dateOfBirth") void trigger("dateOfBirth");
                       setCalendarMonth(date ?? undefined);
                       setOpen(false);
                     }}

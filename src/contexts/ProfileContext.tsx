@@ -41,7 +41,7 @@ export const ProfileProvider = ({
 
   // Initial load
   useEffect(() => {
-    fetchProfile();
+    void fetchProfile();
   }, [fetchProfile]);
 
   const contextValue: ProfileContextType = {

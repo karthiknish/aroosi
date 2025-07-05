@@ -97,7 +97,7 @@ export default function ProfileDetailPage() {
         return result.data.map((img: unknown) =>
           typeof img === "object" && img !== null && "url" in img
             ? (img as { url: string }).url
-            : (img as string)
+            : (img as string),
         );
       }
       return [];
@@ -105,7 +105,7 @@ export default function ProfileDetailPage() {
     enabled: !!token && !!userId && !skipImagesQuery,
   });
   const isOwnProfile = Boolean(
-    currentUserProfile?._id && userId && currentUserProfile._id === userId
+    currentUserProfile?._id && userId && currentUserProfile._id === userId,
   );
 
   const localCurrentUserImageOrder: string[] = useMemo(() => {
@@ -217,7 +217,7 @@ export default function ProfileDetailPage() {
       "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID.";
     showErrorToast(
       null,
-      "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID."
+      "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID.",
     );
   }
 
@@ -229,7 +229,10 @@ export default function ProfileDetailPage() {
   // Record profile view when this component mounts (only if viewing someone else's profile)
   useEffect(() => {
     if (!isOwnProfile && token && profile?._id) {
-      recordProfileView({ token, profileId: profile._id as unknown as string });
+      void recordProfileView({
+        token,
+        profileId: profile._id as unknown as string,
+      });
       // Track profile view usage
       trackUsage({
         feature: "profile_view",
@@ -506,7 +509,7 @@ export default function ProfileDetailPage() {
                       priority
                       sizes="(max-width: 768px) 100vw, 768px"
                       onError={(
-                        e: React.SyntheticEvent<HTMLImageElement, Event>
+                        e: React.SyntheticEvent<HTMLImageElement, Event>,
                       ) => {
                         const target = e.target as HTMLImageElement;
                         target.src = "/placeholder.png";
@@ -518,7 +521,7 @@ export default function ProfileDetailPage() {
                         className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow"
                         onClick={() =>
                           setCurrentImageIdx((idx) =>
-                            Math.min(imagesToShow.length - 1, idx + 1)
+                            Math.min(imagesToShow.length - 1, idx + 1),
                           )
                         }
                         disabled={currentImageIdx === imagesToShow.length - 1}
@@ -626,7 +629,10 @@ export default function ProfileDetailPage() {
                               className="object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                               onClick={() => setCurrentImageIdx(idx)}
                               onError={(
-                                e: React.SyntheticEvent<HTMLImageElement, Event>
+                                e: React.SyntheticEvent<
+                                  HTMLImageElement,
+                                  Event
+                                >,
                               ) => {
                                 const target = e.target as HTMLImageElement;
                                 target.src = "/placeholder.png";

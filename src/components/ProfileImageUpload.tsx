@@ -140,7 +140,9 @@ export function ProfileImageUpload({
     try {
       await _refetchImages();
       if (userId) {
-        queryClient.invalidateQueries({ queryKey: ["profile-images", userId] });
+        void queryClient.invalidateQueries({
+          queryKey: ["profile-images", userId],
+        });
       }
       await refreshProfile();
     } catch (error) {
@@ -405,7 +407,7 @@ export function ProfileImageUpload({
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {
-                onFileSelect(file);
+                void onFileSelect(file);
               }
               // Reset the input to allow selecting the same file again
               e.target.value = "";

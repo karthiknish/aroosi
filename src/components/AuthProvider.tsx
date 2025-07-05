@@ -82,7 +82,7 @@ export function AuthProvider({
 
   // Combined overall loaded state (Clerk + AuthProvider initial tasks)
   const isFullyLoaded = Boolean(
-    isClerkLoaded && isUserLoaded && !authProviderLoading
+    isClerkLoaded && isUserLoaded && !authProviderLoading,
   );
 
   // Derived states
@@ -121,7 +121,7 @@ export function AuthProvider({
             .catch((error) => {
               console.error(
                 "AuthProvider: Error forcing token refresh:",
-                error
+                error,
               );
               setAuthError(error);
               throw error;
@@ -150,7 +150,7 @@ export function AuthProvider({
         return null;
       }
     },
-    [clerkGetToken, token]
+    [clerkGetToken, token],
   );
 
   // Set token in state with enhanced validation and session persistence
@@ -167,7 +167,7 @@ export function AuthProvider({
           // Check if token is expired
           if (decoded.exp && decoded.exp < Date.now() / 1000) {
             console.warn(
-              "AuthProvider: Received expired token, clearing auth state"
+              "AuthProvider: Received expired token, clearing auth state",
             );
             setTokenState(null);
             setAuthError(new Error("Token expired"));
@@ -196,7 +196,7 @@ export function AuthProvider({
         setIsOnboardingComplete(false);
       }
     },
-    [token, queryClient, authError]
+    [token, queryClient, authError],
   );
 
   // Sign out function
@@ -262,7 +262,7 @@ export function AuthProvider({
           // Completion flags are now directly read from the correctly built profileData
           const rawIsProfileComplete = Boolean(profileData.isProfileComplete);
           const rawIsOnboardingComplete = Boolean(
-            profileData.isOnboardingComplete
+            profileData.isOnboardingComplete,
           );
 
           // Ensure flags are always boolean to unblock UI logic
@@ -295,7 +295,7 @@ export function AuthProvider({
             } catch (retryError) {
               console.error(
                 "AuthProvider: Failed to retry profile fetch:",
-                retryError
+                retryError,
               );
               setAuthError(new Error("Session expired. Please sign in again."));
               await signOut();
@@ -346,7 +346,7 @@ export function AuthProvider({
         setIsOnboardingComplete(isOnboardingCompleteParam);
       }
     },
-    [clerkUser?.id]
+    [clerkUser?.id],
   );
 
   // Token expiration check
@@ -377,7 +377,7 @@ export function AuthProvider({
     if (!token) return;
 
     // Check immediately
-    checkTokenExpiration();
+    void checkTokenExpiration();
 
     // Set up interval to check every 2 minutes
     const interval = setInterval(checkTokenExpiration, 2 * 60 * 1000);
@@ -404,7 +404,7 @@ export function AuthProvider({
             setToken(freshToken);
           } else {
             console.warn(
-              "AuthProvider: Clerk session active but no token. Signing out."
+              "AuthProvider: Clerk session active but no token. Signing out.",
             );
             await signOut();
           }
@@ -421,7 +421,7 @@ export function AuthProvider({
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, [
     isClerkLoaded,
     isUserLoaded,
@@ -438,11 +438,11 @@ export function AuthProvider({
 
     if (isSignedIn && !isProfileComplete && !isOnboardingComplete) {
       console.warn(
-        "AuthProvider: Profile and onboarding both incomplete – signing user out."
+        "AuthProvider: Profile and onboarding both incomplete – signing user out.",
       );
       // No need to await here; fire-and-forget is fine inside effect
 
-      signOut();
+      void signOut();
     }
   }, [
     isFullyLoaded,
@@ -495,7 +495,7 @@ export function AuthProvider({
       signOut,
       getToken,
       userId,
-    ]
+    ],
   ) as AuthContextType;
 
   if (!isFullyLoaded && !token) {

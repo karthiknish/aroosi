@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { useFeatureUsage } from '@/hooks/useSubscription';
+import React, { useEffect } from "react";
+import { useFeatureUsage } from "@/hooks/useSubscription";
 
 interface FeatureUsageTrackerProps {
   feature: string;
@@ -19,26 +19,22 @@ export const FeatureUsageTracker: React.FC<FeatureUsageTrackerProps> = ({
   const handleTrackUsage = async () => {
     try {
       const result = await trackUsage(feature);
-      
+
       // Check if user has reached their limit
       if (result.remainingQuota <= 0 && !result.isUnlimited) {
         onLimitReached?.();
       }
     } catch (error) {
-      console.error('Failed to track feature usage:', error);
+      console.error("Failed to track feature usage:", error);
     }
   };
 
   // Auto-track usage when component is rendered (for passive tracking)
   useEffect(() => {
-    handleTrackUsage();
+    void handleTrackUsage();
   }, []);
 
-  return (
-    <>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 };
 
 interface UsageWarningProps {
@@ -64,17 +60,27 @@ export const UsageWarning: React.FC<UsageWarningProps> = ({
   if (!isNearLimit) return null;
 
   return (
-    <div className={`p-3 rounded-lg border ${isAtLimit ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'} ${className}`}>
+    <div
+      className={`p-3 rounded-lg border ${isAtLimit ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"} ${className}`}
+    >
       <div className="flex items-center gap-2">
-        <span className={`text-lg ${isAtLimit ? 'text-red-600' : 'text-yellow-600'}`}>
-          {isAtLimit ? '⚠️' : '⚡'}
+        <span
+          className={`text-lg ${isAtLimit ? "text-red-600" : "text-yellow-600"}`}
+        >
+          {isAtLimit ? "⚠️" : "⚡"}
         </span>
         <div className="flex-1">
-          <p className={`text-sm font-medium ${isAtLimit ? 'text-red-800' : 'text-yellow-800'}`}>
-            {isAtLimit ? 'Usage Limit Reached' : 'Approaching Usage Limit'}
+          <p
+            className={`text-sm font-medium ${isAtLimit ? "text-red-800" : "text-yellow-800"}`}
+          >
+            {isAtLimit ? "Usage Limit Reached" : "Approaching Usage Limit"}
           </p>
-          <p className={`text-xs ${isAtLimit ? 'text-red-600' : 'text-yellow-600'}`}>
-            You've used {(usage as { currentUsage?: number }).currentUsage} of {(usage as { limit?: number }).limit} {feature.replace('_', ' ')} this month
+          <p
+            className={`text-xs ${isAtLimit ? "text-red-600" : "text-yellow-600"}`}
+          >
+            You&apos;ve used {(usage as { currentUsage?: number }).currentUsage}{" "}
+            of {(usage as { limit?: number }).limit} {feature.replace("_", " ")}{" "}
+            this month
           </p>
         </div>
       </div>
@@ -101,7 +107,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
 
   const handleFeatureUse = () => {
     if (canUseFeature) {
-      trackUsage(feature);
+      void trackUsage(feature);
     } else {
       onBlock?.();
     }
@@ -115,9 +121,5 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
   }
 
   // Wrap children with usage tracking
-  return (
-    <div onClick={handleFeatureUse}>
-      {children}
-    </div>
-  );
+  return <div onClick={handleFeatureUse}>{children}</div>;
 };

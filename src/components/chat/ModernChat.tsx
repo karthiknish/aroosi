@@ -111,7 +111,7 @@ function ModernChat({
       try {
         const blockStatus = await safetyAPI.checkBlockStatus(
           token,
-          matchUserId
+          matchUserId,
         );
         setIsBlocked(!!(blockStatus?.isBlocked || blockStatus?.isBlockedBy));
       } catch (error) {
@@ -119,14 +119,14 @@ function ModernChat({
       }
     };
 
-    checkBlockStatus();
+    void checkBlockStatus();
   }, [token, matchUserId]);
 
   // Mark incoming messages as read when they come into view
   useEffect(() => {
     if (messages.length > 0 && !isBlocked) {
       const incomingMessages = messages.filter(
-        (msg) => msg.fromUserId === matchUserId
+        (msg) => msg.fromUserId === matchUserId,
       );
 
       // Mark the latest incoming message as read
@@ -169,7 +169,7 @@ function ModernChat({
     // Load older messages when near top (improved threshold)
     if (!loadingOlder && hasMore && el.scrollTop < 200) {
       const currentScrollHeight = el.scrollHeight;
-      fetchOlder().then(() => {
+      void fetchOlder().then(() => {
         // Maintain scroll position after loading older messages
         requestAnimationFrame(() => {
           if (el && el.scrollHeight > currentScrollHeight) {
@@ -223,15 +223,15 @@ function ModernChat({
       (subscriptionStatus.data as { plan?: string }).plan) ||
     "free";
   const features = getSubscriptionFeatures(
-    userPlan as "free" | "premium" | "premiumPlus"
+    userPlan as "free" | "premium" | "premiumPlus",
   );
 
   // Determine if user is allowed to send a message (initiate or reply)
   const hasSentMessage = messages.some(
-    (msg) => msg.fromUserId === currentUserId
+    (msg) => msg.fromUserId === currentUserId,
   );
   const hasReceivedMessage = messages.some(
-    (msg) => msg.fromUserId === matchUserId
+    (msg) => msg.fromUserId === matchUserId,
   );
   const isInitiating = !hasSentMessage && !hasReceivedMessage;
   const canInitiateChat = features.canInitiateChat;
@@ -246,7 +246,7 @@ function ModernChat({
       if (!canInitiateChat && isInitiating) {
         showErrorToast(
           null,
-          "Upgrade to Premium to initiate new chats. You can reply to messages from your matches."
+          "Upgrade to Premium to initiate new chats. You can reply to messages from your matches.",
         );
         return;
       }
@@ -260,13 +260,14 @@ function ModernChat({
         const todaysMessages = messages.filter(
           (msg) =>
             msg.fromUserId === currentUserId &&
-            new Date(msg.createdAt).toDateString() === new Date().toDateString()
+            new Date(msg.createdAt).toDateString() ===
+              new Date().toDateString(),
         ).length;
 
         if (todaysMessages >= 5) {
           showErrorToast(
             null,
-            "Daily message limit reached. Upgrade to Premium for unlimited messaging."
+            "Daily message limit reached. Upgrade to Premium for unlimited messaging.",
           );
           return;
         }
@@ -325,7 +326,7 @@ function ModernChat({
       trackUsage,
       matchUserId,
       sendMessage,
-    ]
+    ],
   );
 
   // Handle input change with typing indicators
@@ -340,7 +341,7 @@ function ModernChat({
         stopTyping();
       }
     },
-    [startTyping, stopTyping, isBlocked]
+    [startTyping, stopTyping, isBlocked],
   );
 
   // Enhanced keyboard shortcuts
@@ -355,7 +356,7 @@ function ModernChat({
         stopTyping();
       }
     },
-    [text, handleSendMessage, stopTyping]
+    [text, handleSendMessage, stopTyping],
   );
 
   // Voice message sender using shared util
@@ -381,7 +382,7 @@ function ModernChat({
         showErrorToast(null, "Failed to send voice message");
       }
     },
-    [token, conversationId, currentUserId, trackUsage]
+    [token, conversationId, currentUserId, trackUsage],
   );
 
   // Block user handler
@@ -414,14 +415,14 @@ function ModernChat({
         showErrorToast(null, "Failed to submit report");
       }
     },
-    [token, matchUserId]
+    [token, matchUserId],
   );
 
   return (
     <div
       className={cn(
         "bg-white text-neutral-900 rounded-xl shadow-sm flex flex-col h-full mb-6",
-        className
+        className,
       )}
     >
       {/* Chat Header */}
@@ -453,7 +454,7 @@ function ModernChat({
                   ? "bg-success"
                   : connectionStatus === "connecting"
                     ? "bg-accent animate-pulse"
-                    : "bg-danger"
+                    : "bg-danger",
               )}
             />
 
@@ -583,7 +584,7 @@ function ModernChat({
                             "max-w-[280px] px-4 py-3 rounded-2xl shadow-sm text-sm break-words",
                             isCurrentUser
                               ? "bg-primary text-white rounded-br-md"
-                              : "bg-gray-100 text-gray-900 rounded-bl-md"
+                              : "bg-gray-100 text-gray-900 rounded-bl-md",
                           )}
                         >
                           {isVoice ? (
@@ -604,7 +605,7 @@ function ModernChat({
                               "text-xs mt-2 flex items-center gap-1",
                               isCurrentUser
                                 ? "text-purple-100 justify-end"
-                                : "text-gray-500"
+                                : "text-gray-500",
                             )}
                           >
                             <span>
@@ -616,7 +617,7 @@ function ModernChat({
                             <DeliveryStatus
                               status={getMessageDeliveryStatus(
                                 msg._id,
-                                isCurrentUser
+                                isCurrentUser,
                               )}
                               isCurrentUser={isCurrentUser}
                             />{" "}
@@ -681,7 +682,7 @@ function ModernChat({
               disabled={isSending || isBlocked}
               className={cn(
                 "w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 transition-all",
-                (isSending || isBlocked) && "opacity-50 cursor-not-allowed"
+                (isSending || isBlocked) && "opacity-50 cursor-not-allowed",
               )}
             />
 
@@ -728,7 +729,7 @@ function ModernChat({
             className={cn(
               "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl",
               (!text.trim() || isSending || isBlocked) &&
-                "opacity-50 cursor-not-allowed transform-none shadow-none"
+                "opacity-50 cursor-not-allowed transform-none shadow-none",
             )}
           >
             {isSending ? (
@@ -821,7 +822,7 @@ function ModernChat({
                     onClick={() =>
                       handleReportUser(
                         "harassment",
-                        "User engaged in harassment"
+                        "User engaged in harassment",
                       )
                     }
                     className="w-full"
@@ -833,7 +834,7 @@ function ModernChat({
                     onClick={() =>
                       handleReportUser(
                         "inappropriate_content",
-                        "User sent inappropriate content"
+                        "User sent inappropriate content",
                       )
                     }
                     className="w-full"
@@ -950,7 +951,7 @@ function VoiceMessage({
           "p-2 rounded-full",
           isCurrentUser
             ? "hover:bg-white/20 text-white"
-            : "hover:bg-gray-200 text-gray-600"
+            : "hover:bg-gray-200 text-gray-600",
         )}
       >
         {loading ? (
@@ -965,13 +966,13 @@ function VoiceMessage({
         <div
           className={cn(
             "h-1 rounded-full",
-            isCurrentUser ? "bg-white/30" : "bg-gray-300"
+            isCurrentUser ? "bg-white/30" : "bg-gray-300",
           )}
         >
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              isCurrentUser ? "bg-white" : "bg-purple-500"
+              isCurrentUser ? "bg-white" : "bg-purple-500",
             )}
             style={{ width: isPlaying ? "100%" : "0%" }}
           />
@@ -979,7 +980,7 @@ function VoiceMessage({
         <div
           className={cn(
             "text-xs mt-1",
-            isCurrentUser ? "text-purple-100" : "text-gray-500"
+            isCurrentUser ? "text-purple-100" : "text-gray-500",
           )}
         >
           🎤 {formatVoiceDuration(message.duration || 0)}

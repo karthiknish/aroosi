@@ -99,7 +99,7 @@ function HeroOnboardingInner() {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      handleSubmit();
+      void handleSubmit();
     }
   };
 

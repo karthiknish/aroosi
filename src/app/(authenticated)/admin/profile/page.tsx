@@ -99,7 +99,7 @@ export default function AdminProfilePage() {
     loading,
     error: error?.message,
     profileCount: profiles.length,
-    hasData: !!data
+    hasData: !!data,
   });
 
   // Filtered profiles
@@ -112,7 +112,7 @@ export default function AdminProfilePage() {
         (p) =>
           p.fullName?.toLowerCase().includes(s) ||
           p.city?.toLowerCase().includes(s) ||
-          p.phoneNumber?.toLowerCase().includes(s)
+          p.phoneNumber?.toLowerCase().includes(s),
       );
     }
     if (status === "active") filtered = filtered.filter((p) => !p.banned);
@@ -125,14 +125,14 @@ export default function AdminProfilePage() {
     if (!token) return;
     await deleteAdminProfile({ token, id });
     setConfirmDeleteId(null);
-    loadProfiles();
+    void loadProfiles();
     showSuccessToast("Profile deleted");
   };
   const onToggleBan = async (id: string, banned: boolean) => {
     if (!token) return;
     await setProfileBannedStatus(token, id, !banned);
     setConfirmBanId(null);
-    loadProfiles();
+    void loadProfiles();
     showSuccessToast(banned ? "Profile unbanned" : "Profile banned");
   };
 
@@ -229,7 +229,9 @@ export default function AdminProfilePage() {
       {/* Profile Grid */}
       {filteredProfiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center gap-4 py-8">
-          <div className="text-gray-500">No profiles match your search/filter.</div>
+          <div className="text-gray-500">
+            No profiles match your search/filter.
+          </div>
           {!loading && (
             <Button variant="outline" onClick={() => loadProfiles()}>
               Refresh
@@ -284,7 +286,6 @@ export default function AdminProfilePage() {
                     </span>
                   )}
                 </div>
-
               </div>
               {/* Actions */}
               <div className="flex justify-center gap-2 mt-2">
@@ -395,7 +396,7 @@ export default function AdminProfilePage() {
                   onToggleBan(
                     confirmBanId,
                     !!filteredProfiles.find((p) => p._id === confirmBanId)
-                      ?.banned
+                      ?.banned,
                   )
                 }
               >

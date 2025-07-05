@@ -146,7 +146,7 @@ export default function ConversationList({
 
   // Initial load
   useEffect(() => {
-    fetchConversations();
+    void fetchConversations();
   }, [fetchConversations]);
 
   // Handle conversation selection

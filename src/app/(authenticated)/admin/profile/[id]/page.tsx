@@ -131,7 +131,7 @@ export default function AdminProfileDetailPage() {
         {
           headers,
           next: { revalidate: 300 },
-        }
+        },
       );
       if (!imagesRes.ok) {
         throw new Error("Failed to fetch profile images");
@@ -171,7 +171,7 @@ export default function AdminProfileDetailPage() {
         {
           headers,
           next: { revalidate: 300 },
-        }
+        },
       );
       if (!matchesRes.ok) {
         throw new Error("Failed to fetch profile matches");
@@ -194,7 +194,7 @@ export default function AdminProfileDetailPage() {
     const validImages: ImageType[] = Array.isArray(images) ? images : [];
     if (validImages.length === 0) return defaultReturn;
     const map: Record<string, ImageType> = Object.fromEntries(
-      validImages.map((img) => [String(img.storageId), img])
+      validImages.map((img) => [String(img.storageId), img]),
     );
     const all = [...validImages];
     let ordered: ImageType[] = [];
@@ -291,12 +291,12 @@ export default function AdminProfileDetailPage() {
 
   const handlePrev = () => {
     setCurrentImageIdx((prev) =>
-      prev === 0 ? orderedImages.length - 1 : prev - 1
+      prev === 0 ? orderedImages.length - 1 : prev - 1,
     );
   };
   const handleNext = () => {
     setCurrentImageIdx((prev) =>
-      prev === orderedImages.length - 1 ? 0 : prev + 1
+      prev === orderedImages.length - 1 ? 0 : prev + 1,
     );
   };
 
@@ -315,8 +315,6 @@ export default function AdminProfileDetailPage() {
     );
   };
 
-
-
   const handleToggleSpotlightBadge = async (id: string) => {
     if (!profile?._id) return;
     try {
@@ -326,19 +324,24 @@ export default function AdminProfileDetailPage() {
           hasSpotlightBadge: !profile.hasSpotlightBadge,
           durationDays: 30,
         },
-        token ?? undefined
+        token ?? undefined,
       );
 
       showSuccessToast(
         profile.hasSpotlightBadge
           ? "Spotlight badge removed."
-          : "Spotlight badge granted for 30 days."
+          : "Spotlight badge granted for 30 days.",
       );
-      
+
       // Refresh profile data
-      refetchProfile();
+      void refetchProfile();
     } catch (error) {
-      showErrorToast(null, error instanceof Error ? error.message : "Failed to update spotlight badge");
+      showErrorToast(
+        null,
+        error instanceof Error
+          ? error.message
+          : "Failed to update spotlight badge",
+      );
     }
   };
 
@@ -448,7 +451,7 @@ export default function AdminProfileDetailPage() {
                       if (orderedImages[currentImageIdx]?.storageId) {
                         openDeleteModal(
                           orderedImages[currentImageIdx].storageId,
-                          currentImageIdx === 0
+                          currentImageIdx === 0,
                         );
                       }
                       return false;
@@ -608,8 +611,6 @@ export default function AdminProfileDetailPage() {
           <CardTitle>Profile Details</CardTitle>
           <div className="flex flex-col gap-2 mt-2">
             <div className="flex gap-2">
-
-              
               {/* Add spotlight badge management */}
               <Button
                 variant={profile?.hasSpotlightBadge ? "default" : "outline"}
@@ -617,15 +618,18 @@ export default function AdminProfileDetailPage() {
                 className="flex items-center gap-1"
               >
                 <SpotlightIcon className="w-4 h-4" />
-                {profile?.hasSpotlightBadge ? "Remove Spotlight" : "Add Spotlight"}
+                {profile?.hasSpotlightBadge
+                  ? "Remove Spotlight"
+                  : "Add Spotlight"}
               </Button>
             </div>
-            
+
             {/* Show spotlight badge expiration if active */}
             {profile?.hasSpotlightBadge && profile?.spotlightBadgeExpiresAt && (
               <div className="text-sm text-gray-600 flex items-center gap-1">
                 <SpotlightIcon className="w-3 h-3" />
-                Spotlight expires: {new Date(profile.spotlightBadgeExpiresAt).toLocaleDateString()}
+                Spotlight expires:{" "}
+                {new Date(profile.spotlightBadgeExpiresAt).toLocaleDateString()}
               </div>
             )}
           </div>
@@ -644,9 +648,7 @@ export default function AdminProfileDetailPage() {
             </div>
             <div>
               <span className="font-semibold">Postcode:</span>{" "}
-              {typeof profile?.country === "string"
-                ? profile.country
-                : "-"}
+              {typeof profile?.country === "string" ? profile.country : "-"}
             </div>
             <div>
               <span className="font-semibold">Height:</span>{" "}

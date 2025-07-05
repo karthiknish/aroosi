@@ -65,7 +65,7 @@ export default function ProfileCreateWizard({
   }, []);
 
   const handleImageDelete = useCallback(async (imageId: string) => {
-    setUploadedImages(prev => prev.filter(img => img.id !== imageId));
+    setUploadedImages((prev) => prev.filter((img) => img.id !== imageId));
   }, []);
 
   const handleImageReorder = useCallback((newOrder: ImageType[]) => {
@@ -78,9 +78,12 @@ export default function ProfileCreateWizard({
     } else {
       const finalData = {
         ...data,
-        profileImageIds: uploadedImages.length > 0 ? uploadedImages.map(img => img.id) : undefined,
+        profileImageIds:
+          uploadedImages.length > 0
+            ? uploadedImages.map((img) => img.id)
+            : undefined,
       } as ProfileFormValues;
-      onSubmit(finalData);
+      void onSubmit(finalData);
     }
   });
 
@@ -94,7 +97,13 @@ export default function ProfileCreateWizard({
           />
         );
       case 1:
-        return <ProfileFormStepLocation form={form} cityOptions={[]} countryOptions={[]} />;
+        return (
+          <ProfileFormStepLocation
+            form={form}
+            cityOptions={[]}
+            countryOptions={[]}
+          />
+        );
       case 2:
         return <ProfileFormStepCultural form={form} />;
       case 3:

@@ -238,7 +238,7 @@ const ChatBot: React.FC = () => {
                 className="flex items-center gap-2 border-t border-primary-100 bg-background p-3"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (!loading) sendMessage();
+                  if (!loading) void sendMessage();
                 }}
               >
                 <input
