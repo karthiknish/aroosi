@@ -181,10 +181,10 @@ export function useDeliveryReceipts({
 
   // Fetch receipts on mount and periodically
   useEffect(() => {
-    fetchDeliveryReceipts();
+    void fetchDeliveryReceipts();
 
     const interval = setInterval(() => {
-      fetchDeliveryReceipts();
+      void fetchDeliveryReceipts();
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(interval);

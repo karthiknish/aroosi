@@ -42,7 +42,7 @@ export function useUsageTracking(providedToken?: string): {
   const { token: contextToken } = useAuthContext();
   const queryClient = useQueryClient();
   const { data: subscription } = useSubscriptionStatus(
-    (providedToken ?? undefined) || (contextToken ?? undefined)
+    (providedToken ?? undefined) || (contextToken ?? undefined),
   );
 
   const trackUsage = useMutation({
@@ -67,7 +67,7 @@ export function useUsageTracking(providedToken?: string): {
         }
         if (typeof error === "object" && error !== null && "error" in error) {
           throw new Error(
-            (error as { error?: string }).error || "Failed to track usage"
+            (error as { error?: string }).error || "Failed to track usage",
           );
         }
         throw new Error("Failed to track usage");
@@ -86,7 +86,7 @@ export function useUsageTracking(providedToken?: string): {
     },
     onSuccess: (data) => {
       // Invalidate usage stats query to refresh the UI
-      queryClient.invalidateQueries({ queryKey: ["usage-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["usage-stats"] });
 
       // Show warning if approaching limit
       const usage = data.data;
@@ -96,12 +96,12 @@ export function useUsageTracking(providedToken?: string): {
         usage.remainingQuota > 0
       ) {
         showWarningToast(
-          `Only ${usage.remainingQuota} ${getFeatureName(usage.feature)} remaining this month`
+          `Only ${usage.remainingQuota} ${getFeatureName(usage.feature)} remaining this month`,
         );
       } else if (!usage.isUnlimited && usage.remainingQuota === 0) {
         showErrorToast(
           null,
-          `Monthly limit reached for ${getFeatureName(usage.feature)}`
+          `Monthly limit reached for ${getFeatureName(usage.feature)}`,
         );
       }
     },
@@ -120,7 +120,7 @@ export function useUsageTracking(providedToken?: string): {
       if (error.message.includes("limit reached")) {
         showErrorToast(null, error.message);
         showInfoToast(
-          "Upgrade to Premium for higher limits. Visit pricing page."
+          "Upgrade to Premium for higher limits. Visit pricing page.",
         );
       } else {
         showErrorToast(null, error.message);
@@ -135,7 +135,7 @@ export function useUsageTracking(providedToken?: string): {
 }
 
 export function useCanUseFeature(
-  feature: Feature
+  feature: Feature,
 ): ReturnType<typeof useQuery> {
   const { token: contextToken } = useAuthContext();
 

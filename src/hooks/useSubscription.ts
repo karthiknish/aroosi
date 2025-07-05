@@ -48,7 +48,7 @@ export const useSubscriptionActions = (token?: string) => {
       subscriptionAPI.upgrade(tier, token),
     onSuccess: (data) => {
       showSuccessToast(data.message);
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
       showErrorToast(error.message || "Failed to upgrade subscription");
@@ -59,9 +59,7 @@ export const useSubscriptionActions = (token?: string) => {
     mutationFn: () => subscriptionAPI.restorePurchases(token),
     onSuccess: (data) => {
       showSuccessToast(data.message);
-      if (data.restored) {
-        void queryClient.invalidateQueries({ queryKey: ["subscription"] });
-      }
+      void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
       showErrorToast(error.message || "Failed to restore purchases");

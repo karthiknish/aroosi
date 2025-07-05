@@ -51,7 +51,7 @@ export function useTypingIndicators({
         }
       }
     },
-    [conversationId, token]
+    [conversationId, token],
   );
 
   // Fetch current typing users
@@ -63,7 +63,7 @@ export function useTypingIndicators({
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -78,7 +78,7 @@ export function useTypingIndicators({
           otherTypingUsers = (
             data as { typingUsers: TypingUser[] }
           ).typingUsers.filter(
-            (user: TypingUser) => user.userId !== currentUserId
+            (user: TypingUser) => user.userId !== currentUserId,
           );
         }
         setTypingUsers(otherTypingUsers);
@@ -96,7 +96,7 @@ export function useTypingIndicators({
   const startTyping = useCallback(() => {
     if (!isTyping) {
       setIsTyping(true);
-      sendTypingStatus("start");
+      void sendTypingStatus("start");
     }
 
     // Clear existing timeout
@@ -128,7 +128,7 @@ export function useTypingIndicators({
     fetchTypingUsers();
 
     pollIntervalRef.current = setInterval(() => {
-      fetchTypingUsers();
+      void fetchTypingUsers();
     }, 2000);
 
     return () => {
@@ -148,7 +148,7 @@ export function useTypingIndicators({
         clearInterval(pollIntervalRef.current);
       }
       if (isTyping) {
-        sendTypingStatus("stop");
+        void sendTypingStatus("stop");
       }
     };
   }, [isTyping, sendTypingStatus]);

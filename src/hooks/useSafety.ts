@@ -60,8 +60,8 @@ export const useUnblockUser = () => {
     onSuccess: (_, blockedUserId) => {
       showSuccessToast("User unblocked successfully");
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
+      void queryClient.invalidateQueries({
         queryKey: ["blockStatus", blockedUserId],
       });
     },
