@@ -1,6 +1,13 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
+
+const getResendClient = () => {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+};
 
 interface SendEmailOptions {
   to: string | string[];
@@ -11,7 +18,13 @@ interface SendEmailOptions {
 
 export const sendEmail = async (options: SendEmailOptions) => {
   try {
-    const { data, error } = await resend.emails.send({
+    const resendClient = getResendClient();
+    if (!resendClient) {
+      console.error("Resend API key not configured");
+      return { error: "Email service not configured" };
+    }
+    
+    const { data, error } = await resendClient.emails.send({
       from: options.from || "Aroosi <noreply@aroosi.app>",
       to: options.to,
       subject: options.subject,

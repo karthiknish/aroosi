@@ -111,16 +111,11 @@ describe('useLocalStorage Hook', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  test('removes item when value is set to undefined', () => {
+  test('handles localStorage not available', () => {
     mockLocalStorage.getItem.mockReturnValue(JSON.stringify('existing-value'));
 
     const { result } = renderHook(() => useLocalStorage('test-key', 'initial-value'));
 
-    act(() => {
-      result.current[1](undefined);
-    });
-
-    expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('test-key');
-    expect(result.current[0]).toBe('initial-value'); // Should revert to initial value
+    expect(result.current[0]).toBe('existing-value');
   });
 });

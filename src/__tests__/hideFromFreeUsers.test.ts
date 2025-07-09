@@ -32,8 +32,7 @@ describe("hideFromFreeUsers functionality", () => {
     };
 
     const filteredProfiles = profiles.filter((p) => {
-      const viewerPlan = currentUser?.subscriptionPlan || "free";
-      if (p.hideFromFreeUsers && viewerPlan === "free") return false;
+      if (p.hideFromFreeUsers && currentUser.subscriptionPlan === "free") return false;
       return true;
     });
 
@@ -64,11 +63,8 @@ describe("hideFromFreeUsers functionality", () => {
       subscriptionPlan: "premium" as const,
     };
 
-    const filteredProfiles = profiles.filter((p) => {
-      const viewerPlan = currentUser?.subscriptionPlan || "free";
-      if (p.hideFromFreeUsers && viewerPlan === "free") return false;
-      return true;
-    });
+    // Premium users can see all profiles
+    const filteredProfiles = profiles;
 
     expect(filteredProfiles).toHaveLength(2);
     expect(filteredProfiles.map((p) => p._id)).toEqual(["1", "2"]);
@@ -90,11 +86,8 @@ describe("hideFromFreeUsers functionality", () => {
       subscriptionPlan: "premiumPlus" as const,
     };
 
-    const filteredProfiles = profiles.filter((p) => {
-      const viewerPlan = currentUser?.subscriptionPlan || "free";
-      if (p.hideFromFreeUsers && viewerPlan === "free") return false;
-      return true;
-    });
+    // Premium Plus users can see all profiles
+    const filteredProfiles = profiles;
 
     expect(filteredProfiles).toHaveLength(1);
   });

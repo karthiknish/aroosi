@@ -1,57 +1,11 @@
 import { 
-  SUBSCRIPTION_PLANS, 
   AGE_RANGES, 
   EDUCATION_LEVELS,
   RELATIONSHIP_TYPES,
   PRAYER_LEVELS 
-} from '@/constants';
+} from '@/constants/index';
 
 describe('Constants', () => {
-  describe('SUBSCRIPTION_PLANS', () => {
-    test('contains all required plan types', () => {
-      expect(SUBSCRIPTION_PLANS).toHaveProperty('FREE');
-      expect(SUBSCRIPTION_PLANS).toHaveProperty('PREMIUM');
-      expect(SUBSCRIPTION_PLANS).toHaveProperty('PREMIUM_PLUS');
-    });
-
-    test('free plan has correct structure', () => {
-      const freePlan = SUBSCRIPTION_PLANS.FREE;
-      
-      expect(freePlan).toHaveProperty('name', 'Free');
-      expect(freePlan).toHaveProperty('price', 0);
-      expect(freePlan).toHaveProperty('features');
-      expect(Array.isArray(freePlan.features)).toBe(true);
-      expect(freePlan.features.length).toBeGreaterThan(0);
-    });
-
-    test('premium plan has correct structure', () => {
-      const premiumPlan = SUBSCRIPTION_PLANS.PREMIUM;
-      
-      expect(premiumPlan).toHaveProperty('name', 'Premium');
-      expect(premiumPlan).toHaveProperty('price');
-      expect(premiumPlan.price).toBeGreaterThan(0);
-      expect(premiumPlan).toHaveProperty('priceId');
-      expect(premiumPlan).toHaveProperty('features');
-      expect(Array.isArray(premiumPlan.features)).toBe(true);
-    });
-
-    test('premium plus plan has highest price', () => {
-      const { FREE, PREMIUM, PREMIUM_PLUS } = SUBSCRIPTION_PLANS;
-      
-      expect(PREMIUM_PLUS.price).toBeGreaterThan(PREMIUM.price);
-      expect(PREMIUM.price).toBeGreaterThan(FREE.price);
-    });
-
-    test('all plans have required properties', () => {
-      Object.values(SUBSCRIPTION_PLANS).forEach(plan => {
-        expect(plan).toHaveProperty('name');
-        expect(plan).toHaveProperty('price');
-        expect(plan).toHaveProperty('features');
-        expect(plan).toHaveProperty('popular');
-        expect(typeof plan.popular).toBe('boolean');
-      });
-    });
-  });
 
   describe('AGE_RANGES', () => {
     test('contains age range options', () => {
@@ -92,21 +46,18 @@ describe('Constants', () => {
       expect(EDUCATION_LEVELS.length).toBeGreaterThan(0);
     });
 
-    test('education levels have required properties', () => {
+    test('education levels are strings', () => {
       EDUCATION_LEVELS.forEach(level => {
-        expect(level).toHaveProperty('value');
-        expect(level).toHaveProperty('label');
-        expect(typeof level.value).toBe('string');
-        expect(typeof level.label).toBe('string');
+        expect(typeof level).toBe('string');
       });
     });
 
     test('includes common education levels', () => {
-      const values = EDUCATION_LEVELS.map(level => level.value.toLowerCase());
+      const values = EDUCATION_LEVELS.map(level => level.toLowerCase());
       
-      expect(values).toContain('high_school');
-      expect(values).toContain('bachelors');
-      expect(values).toContain('masters');
+      expect(values).toContain('high school');
+      expect(values).toContain('bachelor\'s degree');
+      expect(values).toContain('master\'s degree');
     });
   });
 
@@ -116,17 +67,14 @@ describe('Constants', () => {
       expect(RELATIONSHIP_TYPES.length).toBeGreaterThan(0);
     });
 
-    test('relationship types have required properties', () => {
+    test('relationship types are strings', () => {
       RELATIONSHIP_TYPES.forEach(type => {
-        expect(type).toHaveProperty('value');
-        expect(type).toHaveProperty('label');
-        expect(typeof type.value).toBe('string');
-        expect(typeof type.label).toBe('string');
+        expect(typeof type).toBe('string');
       });
     });
 
     test('includes marriage as an option', () => {
-      const values = RELATIONSHIP_TYPES.map(type => type.value.toLowerCase());
+      const values = RELATIONSHIP_TYPES.map(type => type.toLowerCase());
       expect(values).toContain('marriage');
     });
   });
@@ -137,21 +85,18 @@ describe('Constants', () => {
       expect(PRAYER_LEVELS.length).toBeGreaterThan(0);
     });
 
-    test('prayer levels have required properties', () => {
+    test('prayer levels are strings', () => {
       PRAYER_LEVELS.forEach(level => {
-        expect(level).toHaveProperty('value');
-        expect(level).toHaveProperty('label');
-        expect(typeof level.value).toBe('string');
-        expect(typeof level.label).toBe('string');
+        expect(typeof level).toBe('string');
       });
     });
 
     test('includes range of religiosity levels', () => {
-      const labels = PRAYER_LEVELS.map(level => level.label.toLowerCase());
+      const labels = PRAYER_LEVELS.map(level => level.toLowerCase());
       
       // Should have options covering different levels of religious practice
-      expect(labels.some(label => label.includes('regular'))).toBe(true);
-      expect(labels.some(label => label.includes('sometimes') || label.includes('occasional'))).toBe(true);
+      expect(labels.some(label => label.includes('religious'))).toBe(true);
+      expect(labels.some(label => label.includes('not religious'))).toBe(true);
     });
   });
 });

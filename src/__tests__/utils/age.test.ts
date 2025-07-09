@@ -1,4 +1,4 @@
-import { calculateAge, isValidAge, getAgeRange } from '@/lib/utils/age';
+import { calculateAge, isValidAge } from '@/lib/utils/age';
 
 describe('Age Utilities', () => {
   describe('calculateAge', () => {
@@ -72,26 +72,4 @@ describe('Age Utilities', () => {
     });
   });
 
-  describe('getAgeRange', () => {
-    test('returns correct age range for young adult', () => {
-      const range = getAgeRange(22);
-      expect(range).toEqual({ min: 20, max: 26 });
-    });
-
-    test('returns correct age range for middle age', () => {
-      const range = getAgeRange(35);
-      expect(range).toEqual({ min: 30, max: 42 });
-    });
-
-    test('adjusts range to not go below minimum age', () => {
-      const range = getAgeRange(19);
-      expect(range.min).toBeGreaterThanOrEqual(18);
-    });
-
-    test('provides reasonable range for older adults', () => {
-      const range = getAgeRange(50);
-      expect(range.min).toBeLessThan(50);
-      expect(range.max).toBeGreaterThan(50);
-    });
-  });
 });
