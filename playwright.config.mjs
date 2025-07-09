@@ -2,10 +2,10 @@ import { config as loadEnv } from "dotenv";
 loadEnv();
 loadEnv({ path: ".env.local" });
 console.log(
-  "Clerk key loaded in Playwright:",
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-    ? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.slice(0, 6) + "…"
-    : "<missing>"
+  "Native auth config loaded in Playwright:",
+  process.env.JWT_ACCESS_SECRET
+    ? "JWT secrets configured"
+    : "JWT secrets missing"
 );
 import { devices } from "@playwright/test";
 

@@ -1,12 +1,3 @@
-export default {
-  jwt: {
-    issuer: process.env.CLERK_JWT_ISSUER_DOMAIN,
-    applicationID: "proper-gull-501",
-  },
-  providers: [
-    {
-      domain: process.env.CLERK_JWT_ISSUER_DOMAIN,
-      applicationID: "proper-gull-501",
-    },
-  ],
-};
+// This file is no longer needed since we've migrated to native authentication
+// Convex auth configuration is now handled through our custom JWT implementation
+export default {};

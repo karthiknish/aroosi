@@ -1,10 +1,12 @@
+'use client';
+
 import { useState, useEffect } from "react";
-import { useSignUp, useSignIn, useUser, useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { checkEmailHasProfile } from "@/lib/profile/userProfileApi";
+import Link from "next/link";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -88,332 +90,195 @@ export function CustomSignupForm({
   onComplete,
   onProfileExists,
 }: CustomSignupFormProps) {
-  const { signUp, isLoaded: signUpLoaded } = useSignUp();
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { isSignedIn } = useUser();
-  const { setActive } = useClerk();
+  const router = useRouter();
+  const auth = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [phase, setPhase] = useState<"email" | "code">("email");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [success, setSuccess] = useState(false);
 
-  // Countdown timer for resend button
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const id = setInterval(() => {
-      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [resendCooldown]);
-
-  const sendCode = async () => {
-    if (!signUpLoaded || !signUp) {
-      setError("Sign up is not loaded yet. Please try again.");
-      return;
+  const validateForm = () => {
+    if (!fullName.trim()) {
+      setError("Full name is required");
+      return false;
     }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Check if email is already tied to a completed profile
-      const { hasProfile } = await checkEmailHasProfile(email);
-      if (hasProfile) {
-        showErrorToast(
-          null,
-          "That email already has a profile. Please sign in instead.",
-        );
-        onProfileExists?.();
-        setLoading(false);
-        return;
-      }
-
-      // Create the sign-up
-      const signUpAttempt = await signUp.create({
-        emailAddress: email,
-        password,
-      });
-
-      console.log("Sign-up created:", signUpAttempt);
-
-      // Prepare email verification
-      await signUp.prepareEmailAddressVerification({
-        strategy: "email_code",
-      });
-
-      setPhase("code");
-      showSuccessToast("Verification code sent to your email");
-    } catch (err: unknown) {
-      console.error("Sign-up error details:", err);
-
-      // Handle Clerk-specific errors
-      if (err && typeof err === "object" && "errors" in err) {
-        const clerkError = err as {
-          errors: Array<{ message: string; code?: string }>;
-        };
-        const errorMessage =
-          clerkError.errors?.[0]?.message ||
-          "Failed to send verification code.";
-        setError(errorMessage);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to send verification code. Please try again.");
-      }
-    } finally {
-      setLoading(false);
+    if (!email.trim()) {
+      setError("Email is required");
+      return false;
     }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return false;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return false;
+    }
+    return true;
   };
 
-  const verifyCode = async () => {
-    if (!signUpLoaded || !signUp) return;
+  const handleSignUp = async () => {
+    if (!validateForm()) return;
+    
     setLoading(true);
     setError(null);
+    
     try {
-      const verification = await signUp.attemptEmailAddressVerification({
-        code,
+      const result = await auth.signUp({ 
+        email, 
+        password, 
+        fullName 
       });
-
-      console.log("Verification response:", verification);
-      console.log("SignUp status:", signUp.status);
-
-      // Check if verification is complete
-      if (verification.status === "complete") {
-        if (verification.createdSessionId) {
-          await setActive({ session: verification.createdSessionId });
-          console.log("Session activated successfully");
-          return;
-        }
-      }
-
-      // If not complete, check signUp status
-      if (signUp.status === "complete" && signUp.createdSessionId) {
-        // Activate session from signUp resource
-        await setActive({ session: signUp.createdSessionId });
-        console.log("Session activated from signUp");
-        return;
-      }
-
-      // If we get here, verification failed
-      setError("Invalid or expired code. Please check and try again.");
-    } catch (err) {
-      console.error("Verification error details:", err);
-      // Check if it's a specific Clerk error
-      if (err instanceof Error) {
-        if (
-          err.message.includes("incorrect_code") ||
-          err.message.includes("invalid")
-        ) {
-          setError("The code you entered is incorrect. Please try again.");
-        } else if (err.message.includes("expired")) {
-          setError("The code has expired. Please request a new one.");
+      
+      if (result.success) {
+        setSuccess(true);
+        if (onComplete) {
+          onComplete();
         } else {
-          setError(`Verification failed: ${err.message}`);
+          router.push('/sign-in?message=account-created');
         }
       } else {
-        setError("Incorrect or expired code. Please request a new one.");
+        if (result.error?.includes('already exists')) {
+          setError('An account with this email already exists. Please sign in instead.');
+          onProfileExists?.();
+        } else {
+          setError(result.error || 'Sign up failed');
+        }
       }
+    } catch (err) {
+      console.error("Sign-up error:", err);
+      setError("An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   };
 
-  const resendCode = async () => {
-    if (!signUpLoaded || !signUp) return;
-    if (resendCooldown > 0) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      showSuccessToast("Verification code sent");
-      setResendCooldown(30); // 30-second cooldown
-    } catch {
-      setError("Failed to resend code. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ---- Google OAuth ----
   const handleGoogleSignUp = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      // Try sign-in first for existing accounts
-      if (signInLoaded && signIn) {
-        const signInRes = await signIn.create({
-          strategy: "oauth_google",
-          redirectUrl: window.location.origin + "/oauth/callback",
-          actionCompleteRedirectUrl: window.location.href,
-        });
-
-        // Check various possible locations for the auth URL
-        const findAuthUrl = (obj: unknown, depth = 0): string | undefined => {
-          if (!obj || typeof obj !== "object" || depth > 5) return undefined;
-
-          for (const key in obj) {
-            const value = (obj as Record<string, unknown>)[key];
-            if (
-              key.includes("externalVerificationRedirectURL") &&
-              typeof value === "string"
-            ) {
-              return value;
-            }
-            const found = findAuthUrl(value, depth + 1);
-            if (found) return found;
-          }
-          return undefined;
-        };
-
-        const authUrl = findAuthUrl(signInRes);
-
-        if (authUrl) {
-          window.open(authUrl, "_blank");
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Fall back to sign-up for new accounts
-      if (!signUpLoaded || !signUp) return;
-
-      const signUpRes = await signUp.create({
-        strategy: "oauth_google",
-        redirectUrl: window.location.origin + "/oauth/callback",
-        actionCompleteRedirectUrl: window.location.href,
-      });
-
-      // Check various possible locations for the auth URL
-      const findAuthUrl2 = (obj: unknown, depth = 0): string | undefined => {
-        if (!obj || typeof obj !== "object" || depth > 5) return undefined;
-
-        for (const key in obj) {
-          const value = (obj as Record<string, unknown>)[key];
-          if (
-            key.includes("externalVerificationRedirectURL") &&
-            typeof value === "string"
-          ) {
-            return value;
-          }
-          const found = findAuthUrl2(value, depth + 1);
-          if (found) return found;
-        }
-        return undefined;
-      };
-
-      const authUrl = findAuthUrl2(signUpRes);
-
-      if (authUrl) {
-        window.open(authUrl, "_blank");
-      } else {
-        console.error("OAuth sign-up response:", signUpRes);
-        setError("Failed to get OAuth URL from response");
-      }
+      // TODO: Implement Google OAuth with native auth
+      setError("Google sign-up will be available soon");
     } catch (err) {
       console.error("Google OAuth error", err);
-      setError("Failed to initiate Google sign in");
+      setError("Failed to initiate Google sign up");
     } finally {
       setLoading(false);
     }
   };
 
-  // Listen for OAuth success messages from popup
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSignUp();
+    }
+  };
+
+  // Fire completion callback when user is authenticated
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Verify the message is from our domain
-      if (event.origin !== window.location.origin) return;
-
-      // Check if it's an OAuth success message
-      if (event.data?.type === "oauth-success" && event.data?.isSignedIn) {
-        console.log("Received OAuth success message from popup");
-        // The popup has closed, and the user is signed in
-        // The isSignedIn state should update automatically via Clerk
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
-
-  // Fire completion callback when Clerk session becomes active
-  useEffect(() => {
-    if (isSignedIn && onComplete) {
+    if (auth.isAuthenticated && onComplete) {
       onComplete();
     }
-  }, [isSignedIn, onComplete]);
+  }, [auth.isAuthenticated, onComplete]);
 
-  if (isSignedIn) {
+  if (success) {
+    return (
+      <div className="text-center space-y-4">
+        <p className="text-green-600 text-sm">
+          Account created successfully! Please check your email for verification.
+        </p>
+        <p className="text-sm text-gray-600">
+          You can now sign in with your credentials.
+        </p>
+      </div>
+    );
+  }
+
+  if (auth.isAuthenticated) {
     return (
       <p className="text-center text-sm">
-        Account created! Submitting your profile...
+        Account created! Setting up your profile...
       </p>
     );
   }
 
   return (
     <div className="space-y-4">
-      {phase === "email" && (
-        <>
-          <Button
-            onClick={handleGoogleSignUp}
-            className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
-            variant="outline"
-            disabled={loading || (!signInLoaded && !signUpLoaded)}
-          >
-            <GoogleIcon className="h-5 w-5" />
-            <span>Continue with Google</span>
-          </Button>
-          <Input
-            type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Input
-            type="password"
-            placeholder="Password (min 8 characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {/* CAPTCHA Widget - Must be present before calling signUp.create() */}
-          <div id="clerk-captcha" />
-          <Button
-            className="w-full"
-            onClick={sendCode}
-            disabled={loading || !email || password.length < 8}
-          >
-            {loading ? "Sending..." : "Send Code"}
-          </Button>
-        </>
-      )}
-      {phase === "code" && (
-        <>
-          <OtpInput value={code} onChange={setCode} length={6} />
-          <Button
-            className="w-full"
-            onClick={verifyCode}
-            disabled={loading || code.length === 0}
-          >
-            {loading ? "Verifying..." : "Verify & Create Account"}
-          </Button>
-          <Button
-            variant="ghost"
-            type="button"
-            disabled={loading || resendCooldown > 0}
-            onClick={resendCode}
-            className="w-full text-sm text-gray-600"
-          >
-            {resendCooldown > 0
-              ? `Resend code in ${resendCooldown}s`
-              : "Resend Code"}
-          </Button>
-        </>
-      )}
+      <Button
+        onClick={handleGoogleSignUp}
+        className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
+        variant="outline"
+        disabled={loading}
+      >
+        <GoogleIcon className="h-5 w-5" />
+        <span>Continue with Google</span>
+      </Button>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with email
+          </span>
+        </div>
+      </div>
+
+      <Input
+        type="text"
+        placeholder="Full Name"
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={loading}
+      />
+      <Input
+        type="email"
+        placeholder="Email address"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={loading}
+      />
+      <Input
+        type="password"
+        placeholder="Password (min 8 characters)"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={loading}
+      />
+      <Input
+        type="password"
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={loading}
+      />
+      
+      <Button
+        className="w-full"
+        onClick={handleSignUp}
+        disabled={loading || !fullName || !email || !password || !confirmPassword}
+      >
+        {loading ? "Creating Account..." : "Create Account"}
+      </Button>
+
+      <div className="text-center text-sm">
+        Already have an account?{" "}
+        <Link 
+          href="/sign-in"
+          className="text-primary hover:underline"
+        >
+          Sign in
+        </Link>
+      </div>
+
       {error && <p className="text-red-500 text-sm text-center">{error}</p>}
     </div>
   );

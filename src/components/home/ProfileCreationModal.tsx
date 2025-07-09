@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useUser, useClerk } from "@clerk/nextjs";
+// Note: Clerk imports removed - now using native authentication
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -582,9 +582,8 @@ export function ProfileCreationModal({
     }
   };
 
-  // ----- new hook for Clerk sign-in -----
-  const { isSignedIn, user } = useUser();
-  const { signOut } = useClerk();
+  // Auth context for native authentication
+  const { isAuthenticated, user: authUser, signOut } = useAuthContext();
 
   // Listen for OAuth success messages from popup
   useEffect(() => {
@@ -593,9 +592,9 @@ export function ProfileCreationModal({
       if (event.origin !== window.location.origin) return;
 
       // Check if it's an OAuth success message
-      if (event.data?.type === "oauth-success" && event.data?.isSignedIn) {
+      if (event.data?.type === "oauth-success" && event.data?.isAuthenticated) {
         console.log("ProfileCreationModal: Received OAuth success message");
-        // Force a re-check of the signed-in state
+        // Force a re-check of the authentication state
         window.location.reload();
       }
     };
@@ -606,16 +605,16 @@ export function ProfileCreationModal({
 
   // Advance wizard automatically when OAuth completes
   useEffect(() => {
-    if (isSignedIn && displayStep === 7) {
-      // User is signed in, profile submission will happen automatically
-      console.log("User signed in at step 7, profile will be submitted");
+    if (isAuthenticated && displayStep === 7) {
+      // User is authenticated, profile submission will happen automatically
+      console.log("User authenticated at step 7, profile will be submitted");
     }
-  }, [isSignedIn, displayStep]);
+  }, [isAuthenticated, displayStep]);
 
-  // -------- Auto submit profile & images when user is signed in --------
+  // -------- Auto submit profile & images when user is authenticated --------
   useEffect(() => {
     const submitProfileAndImages = async () => {
-      if (!isSignedIn) return;
+      if (!isAuthenticated) return;
       if (hasSubmittedProfile) return; // guard
       if (isSubmitting) return; // prevent double submission
 
@@ -738,7 +737,7 @@ export function ProfileCreationModal({
             ? (cleanedData.partnerPreferenceCity as string[])
             : [],
           email:
-            user?.primaryEmailAddress?.emailAddress ||
+            authUser?.email ||
             (cleanedData.email as string) ||
             "",
         };
@@ -809,7 +808,7 @@ export function ProfileCreationModal({
 
     void submitProfileAndImages();
   }, [
-    isSignedIn,
+    isAuthenticated,
     token,
     getToken,
     formData,
@@ -822,6 +821,7 @@ export function ProfileCreationModal({
     onClose,
     router,
     signOut,
+    authUser,
   ]);
 
   // Helper to add * to required labels

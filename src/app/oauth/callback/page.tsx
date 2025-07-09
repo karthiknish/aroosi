@@ -2,23 +2,21 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { useAuthContext } from "@/components/AuthProvider";
 
 export default function OAuthCallbackPage() {
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useUser();
-  const { isProfileComplete, isOnboardingComplete } = useAuthContext();
+  const { isAuthenticated, isLoaded, isProfileComplete, isOnboardingComplete } = useAuthContext();
 
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (isSignedIn) {
+    if (isAuthenticated) {
       // Check if this is a popup window
       if (window.opener && !window.opener.closed) {
         // Send message to parent window
         window.opener.postMessage(
-          { type: "oauth-success", isSignedIn: true },
+          { type: "oauth-success", isAuthenticated: true },
           window.location.origin,
         );
         // Close the popup
@@ -37,10 +35,10 @@ export default function OAuthCallbackPage() {
         router.push("/search");
       }
     } else {
-      // Not signed in, redirect to sign-in page
+      // Not authenticated, redirect to sign-in page
       router.push("/sign-in");
     }
-  }, [isSignedIn, isLoaded, isProfileComplete, isOnboardingComplete, router]);
+  }, [isAuthenticated, isLoaded, isProfileComplete, isOnboardingComplete, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
