@@ -3,20 +3,17 @@
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import { CustomSignInForm } from "@/components/auth/CustomSignInForm";
-import { useUser } from "@clerk/nextjs";
-
 import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
-  const { isProfileComplete, isOnboardingComplete } = useAuthContext();
+  const { isProfileComplete, isOnboardingComplete, isAuthenticated } = useAuthContext();
   const needsWizard = !isProfileComplete || !isOnboardingComplete;
   const finalRedirect = needsWizard ? "/" : "/search";
 
   const router = useRouter();
-  const { isSignedIn } = useUser();
 
   // redirect after sign-in
-  if (isSignedIn) {
+  if (isAuthenticated) {
     router.push(finalRedirect);
     return null;
   }

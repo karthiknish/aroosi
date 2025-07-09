@@ -1,61 +1,32 @@
+'use client';
+
 import { useState, useEffect } from "react";
-import { useSignIn, useUser, useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import Link from "next/link";
 
 interface CustomSignInFormProps {
   onComplete?: () => void;
 }
 
 export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { isSignedIn } = useUser();
-  const { setActive } = useClerk();
-
+  const router = useRouter();
+  const auth = useAuth();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleGoogleSignIn = async () => {
-    if (!signInLoaded || !signIn) return;
-
     setLoading(true);
     setError(null);
     try {
-      const res = await signIn.create({
-        strategy: "oauth_google",
-        redirectUrl: window.location.origin + "/oauth/callback",
-        actionCompleteRedirectUrl: window.location.href,
-      });
-
-      // Check various possible locations for the auth URL
-      const findAuthUrl = (obj: unknown, depth = 0): string | undefined => {
-        if (!obj || typeof obj !== "object" || depth > 5) return undefined;
-
-        for (const key in obj) {
-          const value = (obj as Record<string, unknown>)[key];
-          if (
-            key.includes("externalVerificationRedirectURL") &&
-            typeof value === "string"
-          ) {
-            return value;
-          }
-          const found = findAuthUrl(value, depth + 1);
-          if (found) return found;
-        }
-        return undefined;
-      };
-
-      const authUrl = findAuthUrl(res);
-
-      if (authUrl) {
-        window.open(authUrl, "_blank");
-      } else {
-        console.error("OAuth sign-in response:", res);
-        setError("Failed to get OAuth URL from response");
-      }
+      // TODO: Implement Google OAuth with native auth
+      setError("Google sign-in will be available soon");
     } catch (err) {
       console.error("Google signin error", err);
       setError("Failed to initiate Google sign in");
@@ -65,46 +36,46 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
   };
 
   const handlePasswordSignIn = async () => {
-    if (!signInLoaded || !signIn) return;
+    if (!email || !password) return;
+    
     setLoading(true);
     setError(null);
+    
     try {
-      const res = await signIn.create({ identifier: email, password });
-
-      if (res.status === "complete") {
-        await setActive({ session: res.createdSessionId });
-        return;
-      }
-
-      // If status is needs_first_factor etc., attempt first factor
-      if (res.status === "needs_first_factor") {
-        const attempt = await signIn.attemptFirstFactor({
-          strategy: "password",
-          password,
-        });
-        if (attempt.status === "complete") {
-          await setActive({ session: attempt.createdSessionId });
-          return;
+      const result = await auth.signIn({ email, password });
+      
+      if (result.success) {
+        // Redirect will be handled by middleware or onComplete callback
+        if (onComplete) {
+          onComplete();
+        } else {
+          router.push('/search');
         }
+      } else {
+        setError(result.error || 'Sign in failed');
       }
-
-      setError("Invalid credentials. Please try again.");
     } catch (err) {
       console.error("Password sign-in error", err);
-      setError("Invalid email or password.");
+      setError("An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fire completion callback when Clerk session becomes active
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handlePasswordSignIn();
+    }
+  };
+
+  // Fire completion callback when user is authenticated
   useEffect(() => {
-    if (isSignedIn && onComplete) {
+    if (auth.isAuthenticated && onComplete) {
       onComplete();
     }
-  }, [isSignedIn, onComplete]);
+  }, [auth.isAuthenticated, onComplete]);
 
-  if (isSignedIn) {
+  if (auth.isAuthenticated) {
     return <p className="text-center text-sm">Signed in!</p>;
   }
 
@@ -114,24 +85,49 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
         onClick={handleGoogleSignIn}
         className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
         variant="outline"
-        disabled={loading || !signInLoaded}
+        disabled={loading}
       >
         <GoogleIcon className="h-5 w-5" />
         <span>Continue with Google</span>
       </Button>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with email
+          </span>
+        </div>
+      </div>
 
       <Input
         type="email"
         placeholder="Email address"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={loading}
       />
       <Input
         type="password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={loading}
       />
+      
+      <div className="text-right">
+        <Link 
+          href="/forgot-password"
+          className="text-sm text-primary hover:underline"
+        >
+          Forgot password?
+        </Link>
+      </div>
+
       <Button
         className="w-full"
         onClick={handlePasswordSignIn}
@@ -139,6 +135,16 @@ export function CustomSignInForm({ onComplete }: CustomSignInFormProps) {
       >
         {loading ? "Signing in..." : "Sign In"}
       </Button>
+
+      <div className="text-center text-sm">
+        Don't have an account?{" "}
+        <Link 
+          href="/sign-up"
+          className="text-primary hover:underline"
+        >
+          Sign up
+        </Link>
+      </div>
 
       {error && <p className="text-red-500 text-sm text-center">{error}</p>}
     </div>

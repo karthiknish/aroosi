@@ -35,7 +35,7 @@ export default function ProtectedRoute({
 
   const {
     isLoaded,
-    isSignedIn,
+    isAuthenticated,
     isProfileComplete,
     isOnboardingComplete,
     isLoading: isAuthLoading,
@@ -125,7 +125,7 @@ export default function ProtectedRoute({
     }
 
     // Handle unauthenticated users
-    if (isSignedIn === false) {
+    if (isAuthenticated === false) {
       if (requireAuth && !isPublicRoute) {
         // Only show toast if we're not already on the sign-in page
         if (!pathname.startsWith("/sign-in")) {
@@ -144,10 +144,10 @@ export default function ProtectedRoute({
     }
 
     // If we're still checking auth state, don't proceed
-    if (isSignedIn === undefined) return;
+    if (isAuthenticated === undefined) return;
 
     // Handle authenticated users
-    if (isSignedIn === true) {
+    if (isAuthenticated === true) {
       // If we're still loading profile data, wait
       if (profileComplete === undefined) return;
 
@@ -201,7 +201,7 @@ export default function ProtectedRoute({
     }
   }, [
     isLoaded,
-    isSignedIn,
+    isAuthenticated,
     profileComplete,
     onboardingComplete,
     isAuthLoading,
@@ -228,8 +228,8 @@ export default function ProtectedRoute({
     !isLoaded ||
     isAuthLoading ||
     (isClient &&
-      (isSignedIn === undefined ||
-        (isSignedIn && profileComplete === undefined)));
+      (isAuthenticated === undefined ||
+        (isAuthenticated && profileComplete === undefined)));
 
   // Allow the create-profile wizard to render even while profile flags load.
   const isLoading = isCreateProfileRoute ? false : baseLoading;
@@ -244,13 +244,13 @@ export default function ProtectedRoute({
     isLoading ||
     // If profile is incomplete, *show* loader only when we are NOT allowed to be on the
     // create-profile wizard or edit-profile screen. Otherwise let the wizard render.
-    (isSignedIn &&
+    (isAuthenticated &&
       requireProfileComplete &&
       !profileComplete &&
       !isProfileEditRoute &&
       !isCreateProfileRoute) ||
     // Same idea for onboarding: don't block the create-profile wizard itself.
-    (isSignedIn &&
+    (isAuthenticated &&
       requireOnboardingComplete &&
       !onboardingComplete &&
       !isOnboardingRoute &&
@@ -266,8 +266,8 @@ export default function ProtectedRoute({
     );
   }
 
-  // If not signed in and route requires auth, show nothing (will redirect)
-  if (!isSignedIn && requireAuth) {
+  // If not authenticated and route requires auth, show nothing (will redirect)
+  if (!isAuthenticated && requireAuth) {
     return null;
   }
 
