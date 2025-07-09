@@ -3,18 +3,57 @@ import { v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
-    // Clerk user ID, generally a string like "user_xxxxxxxxxxxxxx"
-    clerkId: v.string(),
     email: v.string(),
+    passwordHash: v.string(),
+    emailVerified: v.optional(v.boolean()),
     banned: v.optional(v.boolean()),
     role: v.optional(v.string()),
-    // We might not need to store username if Clerk handles it and we can derive it
-    // username: v.optional(v.string()),
-  }).index("by_clerk_id", ["clerkId"]),
+    // OAuth fields for future Google OAuth support
+    googleId: v.optional(v.string()),
+    // Account creation and security
+    createdAt: v.float64(),
+    updatedAt: v.optional(v.float64()),
+    lastLoginAt: v.optional(v.float64()),
+    loginAttempts: v.optional(v.number()),
+    lockedUntil: v.optional(v.float64()),
+  })
+    .index("by_email", ["email"])
+    .index("by_google_id", ["googleId"]),
+
+  // Sessions table for native auth
+  sessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.float64(),
+    createdAt: v.float64(),
+    // Optional fields for session management
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    deviceInfo: v.optional(v.string()),
+    lastActivity: v.optional(v.float64()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_token", ["token"])
+    .index("by_expiresAt", ["expiresAt"]),
+
+  // Email verification tokens
+  verificationTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    type: v.union(
+      v.literal("email_verification"),
+      v.literal("password_reset"),
+      v.literal("email_change")
+    ),
+    expiresAt: v.float64(),
+    createdAt: v.float64(),
+    usedAt: v.optional(v.float64()),
+  })
+    .index("by_token", ["token"])
+    .index("by_userId_type", ["userId", "type"]),
 
   profiles: defineTable({
-    userId: v.id("users"), // This will now link to the user record identified by Clerk ID
-    clerkId: v.string(), // For easier linking from Clerk data if needed directly in profile queries
+    userId: v.id("users"), // Links to native users table
     profileFor: v.optional(
       v.union(
         v.literal("self"),
@@ -196,16 +235,8 @@ export default defineSchema({
       )
     ),
   })
-    .index("by_userId", ["userId"])
-    .index("by_clerkId", ["clerkId"]),
+    .index("by_userId", ["userId"]),
 
-  // The sessions table is no longer needed with Clerk
-  // sessions: defineTable({
-  //   userId: v.id("users"),
-  //   token: v.string(),
-  //   expiresAt: v.float64(),
-  // })
-  // .index("by_userId", ["userId"]),
 
   contactSubmissions: defineTable({
     name: v.string(),

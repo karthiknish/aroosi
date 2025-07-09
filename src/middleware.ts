@@ -1,10 +1,11 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { JWTUtils } from "./lib/utils/jwt";
 
 // Define public routes that don't require authentication
 const publicRoutes = [
   "/",
   "/sign-in(.*)",
+  "/sign-up(.*)",
   "/about",
   "/how-it-works",
   "/privacy",
@@ -13,11 +14,15 @@ const publicRoutes = [
   "/faq",
   "/blog(.*)",
   "/contact",
-  "/api(.*)",
+  "/api/auth(.*)",
+  "/api/webhook(.*)",
+  "/verify-email(.*)",
+  "/reset-password(.*)",
+  "/forgot-password(.*)",
 ];
 
-export default clerkMiddleware(async (auth, req) => {
-  const { pathname } = req.nextUrl;
+export default async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
   // Skip middleware for public routes
   if (
@@ -30,23 +35,57 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  // Get auth state
-  const { userId } = await auth();
+  // Get session token from cookie
+  const sessionToken = request.cookies.get('session')?.value;
 
-  // If user is not signed in, redirect to sign-in
-  if (!userId) {
-    // Don't redirect if we're already on the sign-in page to prevent loops
-    if (pathname.startsWith("/sign-in")) {
-      return NextResponse.next();
-    }
-    const signInUrl = new URL("/sign-in", req.url);
+  // If no session token, redirect to sign-in
+  if (!sessionToken) {
+    const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", pathname);
     return NextResponse.redirect(signInUrl);
   }
 
+  // Verify session token
+  const payload = JWTUtils.verifySessionToken(sessionToken);
+  if (!payload) {
+    // Invalid token, redirect to sign-in
+    const signInUrl = new URL("/sign-in", request.url);
+    signInUrl.searchParams.set("redirect_url", pathname);
+    
+    // Clear invalid session cookie
+    const response = NextResponse.redirect(signInUrl);
+    response.cookies.set('session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 0,
+      path: '/',
+    });
+    
+    return response;
+  }
+
+  // Check if token is expired
+  if (JWTUtils.isTokenExpired(sessionToken)) {
+    const signInUrl = new URL("/sign-in", request.url);
+    signInUrl.searchParams.set("redirect_url", pathname);
+    
+    // Clear expired session cookie
+    const response = NextResponse.redirect(signInUrl);
+    response.cookies.set('session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 0,
+      path: '/',
+    });
+    
+    return response;
+  }
+
   // Let client-side ProtectedRoute handle profile and onboarding checks
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: [
