@@ -81,12 +81,14 @@ describe('useLocalStorage Hook', () => {
 
   test('handles invalid JSON gracefully', () => {
     mockLocalStorage.getItem.mockReturnValue('invalid-json');
-    console.error = jest.fn(); // Mock console.error to avoid test output
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const { result } = renderHook(() => useLocalStorage('test-key', 'initial-value'));
 
     expect(result.current[0]).toBe('initial-value');
-    expect(console.error).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    
+    consoleErrorSpy.mockRestore();
   });
 
   test('handles localStorage errors gracefully', () => {
@@ -94,7 +96,7 @@ describe('useLocalStorage Hook', () => {
     mockLocalStorage.setItem.mockImplementation(() => {
       throw new Error('Storage quota exceeded');
     });
-    console.error = jest.fn();
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const { result } = renderHook(() => useLocalStorage('test-key', 'initial-value'));
 
@@ -102,9 +104,11 @@ describe('useLocalStorage Hook', () => {
       result.current[1]('new-value');
     });
 
-    expect(console.error).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalled();
     // Value should still update in memory even if localStorage fails
     expect(result.current[0]).toBe('new-value');
+    
+    consoleErrorSpy.mockRestore();
   });
 
   test('removes item when value is set to undefined', () => {
