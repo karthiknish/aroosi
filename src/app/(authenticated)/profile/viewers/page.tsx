@@ -9,7 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
 export default function ProfileViewersPage() {
-  const { token, profile } = useAuthContext();
+  const { token, profile: rawProfile } = useAuthContext();
+  const profile = rawProfile as {
+    _id?: string;
+    subscriptionPlan?: string;
+  } | null;
   const router = useRouter();
 
   const enabled = Boolean(token && profile?._id);

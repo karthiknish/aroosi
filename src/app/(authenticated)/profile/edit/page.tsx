@@ -162,7 +162,8 @@ function fromProfileFormComponentValues(
 export default function EditProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { token, profile: authProfile, isSignedIn } = useAuthContext();
+  const { token, profile: rawAuthProfile, isSignedIn } = useAuthContext();
+  const authProfile = rawAuthProfile as { _id?: string } | null;
   const userId = authProfile?._id;
   const [serverError, setServerError] = useState<string | null>(null);
   const [profileDataState, setProfileDataState] = useState<Profile | null>(
