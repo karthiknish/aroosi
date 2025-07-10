@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
@@ -14,7 +14,7 @@ import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 
-export default function AdminEditBlogPage() {
+function AdminEditBlogPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const slugParam = searchParams.get("slug");
@@ -71,7 +71,7 @@ export default function AdminEditBlogPage() {
       setAiLoading((prev) => ({ ...prev, [field]: false }));
       return text;
     },
-    []
+    [],
   );
 
   // Mutation for saving
@@ -223,5 +223,13 @@ export default function AdminEditBlogPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function AdminEditBlogPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner size={32} />}>
+      <AdminEditBlogPageInner />
+    </Suspense>
   );
 }

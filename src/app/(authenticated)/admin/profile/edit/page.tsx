@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import type { ProfileFormValues } from "@/types/profile";
 import ProfileEditForm from "@/components/admin/ProfileEditForm";
 import type { ImageType } from "@/types/image";
 
-export default function AdminEditProfilePage() {
+function AdminEditProfilePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -88,7 +88,7 @@ export default function AdminEditProfilePage() {
       "annulled",
     ] as const;
     const maritalStatus = allowedStatuses.includes(
-      values.maritalStatus as string as (typeof allowedStatuses)[number]
+      values.maritalStatus as string as (typeof allowedStatuses)[number],
     )
       ? (values.maritalStatus as (typeof allowedStatuses)[number])
       : "single";
@@ -107,50 +107,62 @@ export default function AdminEditProfilePage() {
         : values.annualIncome;
     const allowedGenders = ["male", "female", "any", ""] as const;
     const preferredGender = allowedGenders.includes(
-      values.preferredGender as string as (typeof allowedGenders)[number]
+      values.preferredGender as string as (typeof allowedGenders)[number],
     )
       ? (values.preferredGender as (typeof allowedGenders)[number])
       : "any";
-    
+
     // Map gender to correct union type
     const allowedGenderTypes = ["male", "female", "other"] as const;
     const gender = allowedGenderTypes.includes(
-      values.gender as string as (typeof allowedGenderTypes)[number]
+      values.gender as string as (typeof allowedGenderTypes)[number],
     )
       ? (values.gender as (typeof allowedGenderTypes)[number])
       : "other";
-    
+
     // Map diet to correct union type
-    const allowedDiets = ["vegetarian", "non-vegetarian", "vegan", "eggetarian", "other", ""] as const;
+    const allowedDiets = [
+      "vegetarian",
+      "non-vegetarian",
+      "vegan",
+      "eggetarian",
+      "other",
+      "",
+    ] as const;
     const diet = allowedDiets.includes(
-      values.diet as string as (typeof allowedDiets)[number]
+      values.diet as string as (typeof allowedDiets)[number],
     )
       ? (values.diet as (typeof allowedDiets)[number])
       : "";
-    
+
     // Map smoking to correct union type
     const allowedSmokingDrinking = ["no", "occasionally", "yes", ""] as const;
     const smoking = allowedSmokingDrinking.includes(
-      values.smoking as string as (typeof allowedSmokingDrinking)[number]
+      values.smoking as string as (typeof allowedSmokingDrinking)[number],
     )
       ? (values.smoking as (typeof allowedSmokingDrinking)[number])
       : "";
-    
+
     // Map drinking to correct union type
     const drinking = allowedSmokingDrinking.includes(
-      values.drinking as string as (typeof allowedSmokingDrinking)[number]
+      values.drinking as string as (typeof allowedSmokingDrinking)[number],
     )
       ? (values.drinking as (typeof allowedSmokingDrinking)[number])
       : "";
-    
+
     // Map physicalStatus to correct union type
-    const allowedPhysicalStatus = ["normal", "differently-abled", "other", ""] as const;
+    const allowedPhysicalStatus = [
+      "normal",
+      "differently-abled",
+      "other",
+      "",
+    ] as const;
     const physicalStatus = allowedPhysicalStatus.includes(
-      values.physicalStatus as string as (typeof allowedPhysicalStatus)[number]
+      values.physicalStatus as string as (typeof allowedPhysicalStatus)[number],
     )
       ? (values.physicalStatus as (typeof allowedPhysicalStatus)[number])
       : "";
-    
+
     const updates = {
       ...values,
       gender,
@@ -171,7 +183,7 @@ export default function AdminEditProfilePage() {
     } catch (error) {
       showErrorToast(
         null,
-        (error as Error).message || "Failed to update profile"
+        (error as Error).message || "Failed to update profile",
       );
     }
   };
@@ -231,5 +243,13 @@ export default function AdminEditProfilePage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function AdminEditProfilePage() {
+  return (
+    <Suspense fallback={<LoadingSpinner size={32} />}>
+      <AdminEditProfilePageInner />
+    </Suspense>
   );
 }
