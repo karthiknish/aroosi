@@ -1,420 +1,302 @@
-import { useState, useEffect } from "react";
-import { useSignUp, useSignIn, useUser, useClerk } from "@clerk/nextjs";
-import { Input } from "@/components/ui/input";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { GoogleIcon } from "@/components/icons/GoogleIcon";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { checkEmailHasProfile } from "@/lib/profile/userProfileApi";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Alert } from "@/components/ui/alert";
+import GoogleAuthButton from "./GoogleAuthButton";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
-  onProfileExists?: () => void;
 }
 
-// --- Simple OTP input -----------------------------
-interface OtpInputProps {
-  value: string;
-  onChange: (val: string) => void;
-  length?: number;
-}
-
-function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
-  const inputs = Array.from({ length });
-  const refs = Array.from({ length }, () =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useState<HTMLInputElement | null>(null)
-  );
-
-  const handleChange = (idx: number, char: string) => {
-    if (!/^[0-9]?$/.test(char)) return; // allow only digits
-    const chars = value.split("").slice(0, length);
-    chars[idx] = char;
-    const newVal = chars.join("");
-    onChange(newVal);
-    if (char && idx < length - 1) {
-      refs[idx + 1][0]?.focus();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
-    if (e.key === "Backspace" && !value[idx] && idx > 0) {
-      refs[idx - 1][0]?.focus();
-    }
-  };
-
-  const handlePaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
-    idx: number
-  ) => {
-    e.preventDefault();
-    const pasted = e.clipboardData
-      .getData("text")
-      .replace(/\D/g, "")
-      .slice(0, length);
-    if (!pasted) return;
-
-    const chars = value.split("").slice(0, length);
-    for (let i = 0; i < pasted.length && idx + i < length; i++) {
-      chars[idx + i] = pasted[i];
-    }
-    const newVal = chars.join("");
-    onChange(newVal);
-
-    const focusPos = Math.min(idx + pasted.length - 1, length - 1);
-    refs[focusPos][0]?.focus();
-  };
-
-  return (
-    <div className="flex justify-center gap-2">
-      {inputs.map((_, i) => (
-        <Input
-          key={i}
-          ref={(el) => refs[i][1](el)}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={value[i] || ""}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(e, i)}
-          onPaste={(e) => handlePaste(e, i)}
-          className="w-12 text-center font-mono tracking-widest"
-        />
-      ))}
-    </div>
-  );
-}
-
-export function CustomSignupForm({
+export default function CustomSignupForm({
   onComplete,
-  onProfileExists,
 }: CustomSignupFormProps) {
-  const { signUp, isLoaded: signUpLoaded } = useSignUp();
-  const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { isSignedIn } = useUser();
-  const { setActive } = useClerk();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [phase, setPhase] = useState<"email" | "code">("email");
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [showOTPForm, setShowOTPForm] = useState(false);
+  const [otp, setOtp] = useState("");
 
-  // Countdown timer for resend button
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const id = setInterval(() => {
-      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [resendCooldown]);
+  const { signUp, verifyOTP } = useAuth();
+  const router = useRouter();
 
-  const sendCode = async () => {
-    if (!signUpLoaded || !signUp) {
-      setError("Sign up is not loaded yet. Please try again.");
-      return;
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const validateForm = () => {
+    if (!formData.firstName.trim()) {
+      setError("First name is required");
+      return false;
     }
+    if (!formData.lastName.trim()) {
+      setError("Last name is required");
+      return false;
+    }
+    if (!formData.email.trim()) {
+      setError("Email is required");
+      return false;
+    }
+    if (!formData.password) {
+      setError("Password is required");
+      return false;
+    }
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return false;
+    }
+    return true;
+  };
 
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    setIsLoading(true);
     setError(null);
 
     try {
-      // Check if email is already tied to a completed profile
-      const { hasProfile } = await checkEmailHasProfile(email);
-      if (hasProfile) {
-        showErrorToast(
-          null,
-          "That email already has a profile. Please sign in instead.",
-        );
-        onProfileExists?.();
-        setLoading(false);
-        return;
-      }
+      const result = await signUp(
+        formData.email,
+        formData.password,
+        formData.firstName,
+        formData.lastName,
+      );
 
-      // Create the sign-up
-      const signUpAttempt = await signUp.create({
-        emailAddress: email,
-        password,
-      });
-
-      console.log("Sign-up created:", signUpAttempt);
-
-      // Prepare email verification
-      await signUp.prepareEmailAddressVerification({
-        strategy: "email_code",
-      });
-
-      setPhase("code");
-      showSuccessToast("Verification code sent to your email");
-    } catch (err: unknown) {
-      console.error("Sign-up error details:", err);
-
-      // Handle Clerk-specific errors
-      if (err && typeof err === "object" && "errors" in err) {
-        const clerkError = err as {
-          errors: Array<{ message: string; code?: string }>;
-        };
-        const errorMessage =
-          clerkError.errors?.[0]?.message ||
-          "Failed to send verification code.";
-        setError(errorMessage);
-      } else if (err instanceof Error) {
-        setError(err.message);
+      if (result.success) {
+        setShowOTPForm(true);
       } else {
-        setError("Failed to send verification code. Please try again.");
+        setError(result.error || "Sign up failed");
       }
+    } catch (err) {
+      setError("An unexpected error occurred");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const verifyCode = async () => {
-    if (!signUpLoaded || !signUp) return;
-    setLoading(true);
+  const handleOTPSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
     setError(null);
+
     try {
-      const verification = await signUp.attemptEmailAddressVerification({
-        code,
-      });
+      const result = await verifyOTP(formData.email, otp);
 
-      console.log("Verification response:", verification);
-      console.log("SignUp status:", signUp.status);
-
-      // Check if verification is complete
-      if (verification.status === "complete") {
-        if (verification.createdSessionId) {
-          await setActive({ session: verification.createdSessionId });
-          console.log("Session activated successfully");
-          return;
-        }
-      }
-
-      // If not complete, check signUp status
-      if (signUp.status === "complete" && signUp.createdSessionId) {
-        // Activate session from signUp resource
-        await setActive({ session: signUp.createdSessionId });
-        console.log("Session activated from signUp");
-        return;
-      }
-
-      // If we get here, verification failed
-      setError("Invalid or expired code. Please check and try again.");
-    } catch (err) {
-      console.error("Verification error details:", err);
-      // Check if it's a specific Clerk error
-      if (err instanceof Error) {
-        if (
-          err.message.includes("incorrect_code") ||
-          err.message.includes("invalid")
-        ) {
-          setError("The code you entered is incorrect. Please try again.");
-        } else if (err.message.includes("expired")) {
-          setError("The code has expired. Please request a new one.");
+      if (result.success) {
+        if (onComplete) {
+          onComplete();
         } else {
-          setError(`Verification failed: ${err.message}`);
+          router.push("/profile/create");
         }
       } else {
-        setError("Incorrect or expired code. Please request a new one.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resendCode = async () => {
-    if (!signUpLoaded || !signUp) return;
-    if (resendCooldown > 0) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      showSuccessToast("Verification code sent");
-      setResendCooldown(30); // 30-second cooldown
-    } catch {
-      setError("Failed to resend code. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ---- Google OAuth ----
-  const handleGoogleSignUp = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Try sign-in first for existing accounts
-      if (signInLoaded && signIn) {
-        const signInRes = await signIn.create({
-          strategy: "oauth_google",
-          redirectUrl: window.location.origin + "/oauth/callback",
-          actionCompleteRedirectUrl: window.location.href,
-        });
-
-        // Check various possible locations for the auth URL
-        const findAuthUrl = (obj: unknown, depth = 0): string | undefined => {
-          if (!obj || typeof obj !== "object" || depth > 5) return undefined;
-
-          for (const key in obj) {
-            const value = (obj as Record<string, unknown>)[key];
-            if (
-              key.includes("externalVerificationRedirectURL") &&
-              typeof value === "string"
-            ) {
-              return value;
-            }
-            const found = findAuthUrl(value, depth + 1);
-            if (found) return found;
-          }
-          return undefined;
-        };
-
-        const authUrl = findAuthUrl(signInRes);
-
-        if (authUrl) {
-          window.open(authUrl, "_blank");
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Fall back to sign-up for new accounts
-      if (!signUpLoaded || !signUp) return;
-
-      const signUpRes = await signUp.create({
-        strategy: "oauth_google",
-        redirectUrl: window.location.origin + "/oauth/callback",
-        actionCompleteRedirectUrl: window.location.href,
-      });
-
-      // Check various possible locations for the auth URL
-      const findAuthUrl2 = (obj: unknown, depth = 0): string | undefined => {
-        if (!obj || typeof obj !== "object" || depth > 5) return undefined;
-
-        for (const key in obj) {
-          const value = (obj as Record<string, unknown>)[key];
-          if (
-            key.includes("externalVerificationRedirectURL") &&
-            typeof value === "string"
-          ) {
-            return value;
-          }
-          const found = findAuthUrl2(value, depth + 1);
-          if (found) return found;
-        }
-        return undefined;
-      };
-
-      const authUrl = findAuthUrl2(signUpRes);
-
-      if (authUrl) {
-        window.open(authUrl, "_blank");
-      } else {
-        console.error("OAuth sign-up response:", signUpRes);
-        setError("Failed to get OAuth URL from response");
+        setError(result.error || "OTP verification failed");
       }
     } catch (err) {
-      console.error("Google OAuth error", err);
-      setError("Failed to initiate Google sign in");
+      setError("An unexpected error occurred");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Listen for OAuth success messages from popup
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Verify the message is from our domain
-      if (event.origin !== window.location.origin) return;
-
-      // Check if it's an OAuth success message
-      if (event.data?.type === "oauth-success" && event.data?.isSignedIn) {
-        console.log("Received OAuth success message from popup");
-        // The popup has closed, and the user is signed in
-        // The isSignedIn state should update automatically via Clerk
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
-
-  // Fire completion callback when Clerk session becomes active
-  useEffect(() => {
-    if (isSignedIn && onComplete) {
-      onComplete();
-    }
-  }, [isSignedIn, onComplete]);
-
-  if (isSignedIn) {
+  if (showOTPForm) {
     return (
-      <p className="text-center text-sm">
-        Account created! Submitting your profile...
-      </p>
+      <div className="space-y-6">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-2">Verify Your Email</h3>
+          <p className="text-sm text-muted-foreground">
+            We've sent a verification code to {formData.email}
+          </p>
+        </div>
+
+        {error && <Alert variant="destructive">{error}</Alert>}
+
+        <form onSubmit={handleOTPSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="otp">Verification Code</Label>
+            <Input
+              id="otp"
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="Enter 6-digit code"
+              maxLength={6}
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={isLoading || !otp}>
+            {isLoading ? (
+              <>
+                <LoadingSpinner className="mr-2 h-4 w-4" />
+                Verifying...
+              </>
+            ) : (
+              "Verify Email"
+            )}
+          </Button>
+        </form>
+
+        <div className="text-center text-sm">
+          <button
+            type="button"
+            onClick={() => setShowOTPForm(false)}
+            className="text-primary hover:underline"
+          >
+            Back to sign up
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {phase === "email" && (
-        <>
-          <Button
-            onClick={handleGoogleSignUp}
-            className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 flex items-center justify-center space-x-2"
-            variant="outline"
-            disabled={loading || (!signInLoaded && !signUpLoaded)}
-          >
-            <GoogleIcon className="h-5 w-5" />
-            <span>Continue with Google</span>
-          </Button>
+    <div className="space-y-6">
+      {error && <Alert variant="destructive">{error}</Alert>}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="firstName">First Name</Label>
+            <Input
+              id="firstName"
+              type="text"
+              value={formData.firstName}
+              onChange={(e) => handleInputChange("firstName", e.target.value)}
+              placeholder="Enter your first name"
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="lastName">Last Name</Label>
+            <Input
+              id="lastName"
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => handleInputChange("lastName", e.target.value)}
+              placeholder="Enter your last name"
+              required
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
           <Input
+            id="email"
             type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={formData.email}
+            onChange={(e) => handleInputChange("email", e.target.value)}
+            placeholder="Enter your email"
+            required
+            disabled={isLoading}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
           <Input
+            id="password"
             type="password"
-            placeholder="Password (min 8 characters)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={formData.password}
+            onChange={(e) => handleInputChange("password", e.target.value)}
+            placeholder="Create a password (min. 8 characters)"
+            required
+            disabled={isLoading}
           />
-          {/* CAPTCHA Widget - Must be present before calling signUp.create() */}
-          <div id="clerk-captcha" />
-          <Button
-            className="w-full"
-            onClick={sendCode}
-            disabled={loading || !email || password.length < 8}
-          >
-            {loading ? "Sending..." : "Send Code"}
-          </Button>
-        </>
-      )}
-      {phase === "code" && (
-        <>
-          <OtpInput value={code} onChange={setCode} length={6} />
-          <Button
-            className="w-full"
-            onClick={verifyCode}
-            disabled={loading || code.length === 0}
-          >
-            {loading ? "Verifying..." : "Verify & Create Account"}
-          </Button>
-          <Button
-            variant="ghost"
-            type="button"
-            disabled={loading || resendCooldown > 0}
-            onClick={resendCode}
-            className="w-full text-sm text-gray-600"
-          >
-            {resendCooldown > 0
-              ? `Resend code in ${resendCooldown}s`
-              : "Resend Code"}
-          </Button>
-        </>
-      )}
-      {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={formData.confirmPassword}
+            onChange={(e) =>
+              handleInputChange("confirmPassword", e.target.value)
+            }
+            placeholder="Confirm your password"
+            required
+            disabled={isLoading}
+          />
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={
+            isLoading ||
+            !formData.firstName ||
+            !formData.lastName ||
+            !formData.email ||
+            !formData.password ||
+            !formData.confirmPassword
+          }
+        >
+          {isLoading ? (
+            <>
+              <LoadingSpinner className="mr-2 h-4 w-4" />
+              Creating account...
+            </>
+          ) : (
+            "Create Account"
+          )}
+        </Button>
+      </form>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-2 text-muted-foreground">
+            Or continue with
+          </span>
+        </div>
+      </div>
+
+      <GoogleAuthButton
+        onSuccess={() => {
+          if (onComplete) {
+            onComplete();
+          } else {
+            router.push("/profile/create");
+          }
+        }}
+        onError={(error: string) => setError(error)}
+      />
+
+      <div className="text-center text-sm">
+        <span className="text-muted-foreground">Already have an account? </span>
+        <button
+          type="button"
+          onClick={() => router.push("/sign-in")}
+          className="text-primary hover:underline font-medium"
+        >
+          Sign in
+        </button>
+      </div>
     </div>
   );
 }

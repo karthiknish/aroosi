@@ -15,7 +15,7 @@ export const checkFeatureAccess = query({
     // Get user profile to check subscription
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
 
     if (!user) {
@@ -33,8 +33,11 @@ export const checkFeatureAccess = query({
 
     // Check if subscription is still active
     const now = Date.now();
-    const isSubscriptionActive = profile.subscriptionExpiresAt && profile.subscriptionExpiresAt > now;
-    const currentPlan = isSubscriptionActive ? (profile.subscriptionPlan || "free") : "free";
+    const isSubscriptionActive =
+      profile.subscriptionExpiresAt && profile.subscriptionExpiresAt > now;
+    const currentPlan = isSubscriptionActive
+      ? profile.subscriptionPlan || "free"
+      : "free";
 
     // Define feature access rules
     const featureAccess: Record<string, string[]> = {

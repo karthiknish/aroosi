@@ -30,7 +30,7 @@ export const sendMessage = mutation({
     toUserId: v.id("users"),
     text: v.optional(v.string()),
     type: v.optional(
-      v.union(v.literal("text"), v.literal("voice"), v.literal("image"))
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
     ),
     audioStorageId: v.optional(v.string()),
     duration: v.optional(v.number()),
@@ -40,9 +40,7 @@ export const sendMessage = mutation({
   handler: async (ctx, args) => {
     // Ensure users are matched before allowing message
     const matches = await ctx.runQuery(api.users.getMyMatches, {});
-    const isMatched = matches.some(
-      (p: Profile | null) => p?.userId === args.toUserId
-    );
+    const isMatched = matches.some((p: any) => p?.userId === args.toUserId);
     if (!isMatched) {
       throw new Error("You can only message users you are matched with.");
     }
@@ -97,7 +95,7 @@ export const getMessages = query({
     const query = ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversationId)
+        q.eq("conversationId", conversationId),
       )
       .order("desc");
 
@@ -123,7 +121,7 @@ export const markConversationRead = mutation({
     const unread = await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversationId)
+        q.eq("conversationId", conversationId),
       )
       .collect();
     await Promise.all(
@@ -131,7 +129,7 @@ export const markConversationRead = mutation({
         if (msg.toUserId === userId && msg.readAt === undefined) {
           await ctx.db.patch(msg._id as Id<"messages">, { readAt: Date.now() });
         }
-      })
+      }),
     );
     return { success: true };
   },
@@ -199,7 +197,7 @@ export const getVoiceMessages = query({
     return await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", conversationId)
+        q.eq("conversationId", conversationId),
       )
       .filter((q) => q.eq(q.field("type"), "voice"))
       .collect();

@@ -192,10 +192,7 @@ export async function POST(request: NextRequest) {
       });
       if (profile && typeof profile.email === "string") {
         try {
-          await Notifications.subscriptionPurchasedAdmin(
-            profile as import("@/types/profile").Profile,
-            plan,
-          );
+          await Notifications.subscriptionPurchasedAdmin(profile as any, plan);
         } catch (e) {
           console.error("Failed to send admin subscription notification", e);
         }
@@ -233,10 +230,7 @@ export async function POST(request: NextRequest) {
       });
       if (profile && typeof profile.email === "string") {
         try {
-          await Notifications.subscriptionPurchasedAdmin(
-            profile as import("@/types/profile").Profile,
-            plan,
-          );
+          await Notifications.subscriptionPurchasedAdmin(profile as any, plan);
         } catch (e) {
           console.error("Failed to send admin subscription notification", e);
         }

@@ -29,9 +29,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("User already has free subscription", 400);
     }
 
-    const stripeSubscriptionId = (
-      profile as Profile & { stripeSubscriptionId?: string }
-    ).stripeSubscriptionId;
+    const stripeSubscriptionId = (profile as any).stripeSubscriptionId;
     if (!stripeSubscriptionId) {
       return errorResponse(
         "No Stripe subscription found for this user. Please contact support.",

@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useUser, useClerk } from "@clerk/nextjs";
+// import { useUser, useClerk } from "@clerk/nextjs"; // Removed for native auth
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { countryCodes } from "@/lib/constants/countryCodes";
-import { CustomSignupForm } from "@/components/auth/CustomSignupForm";
+import CustomSignupForm from "@/components/auth/CustomSignupForm";
 import { useAuthContext } from "@/components/AuthProvider";
 import {
   submitProfile,
@@ -582,9 +582,12 @@ export function ProfileCreationModal({
     }
   };
 
-  // ----- new hook for Clerk sign-in -----
-  const { isSignedIn, user } = useUser();
-  const { signOut } = useClerk();
+  // ----- Temporarily disabled for native auth migration -----
+  // const { isSignedIn, user } = useUser();
+  // const { signOut } = useClerk();
+  const isSignedIn = false;
+  const user = null;
+  const signOut = async () => {};
 
   // Listen for OAuth success messages from popup
   useEffect(() => {
@@ -738,9 +741,8 @@ export function ProfileCreationModal({
             ? (cleanedData.partnerPreferenceCity as string[])
             : [],
           email:
-            user?.primaryEmailAddress?.emailAddress ||
-            (cleanedData.email as string) ||
-            "",
+            // user?.primaryEmailAddress?.emailAddress || // Disabled for native auth
+            (cleanedData.email as string) || "",
         };
 
         console.log("Submitting profile with payload:", payload);
@@ -1451,10 +1453,6 @@ export function ProfileCreationModal({
                               console.log(
                                 "Signup completed; profile submission will auto-run",
                               );
-                            }}
-                            onProfileExists={() => {
-                              // Close modal if profile already exists
-                              onClose();
                             }}
                           />
                         );

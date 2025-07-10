@@ -2,12 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+// import { useUser } from "@clerk/nextjs"; // Removed for native auth
 import { useAuthContext } from "@/components/AuthProvider";
 
 export default function OAuthCallbackPage() {
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useUser();
+  // Temporarily disabled for native auth migration
+  // const { isSignedIn, isLoaded } = useUser();
+  const isSignedIn = false;
+  const isLoaded = true;
   const { isProfileComplete, isOnboardingComplete } = useAuthContext();
 
   useEffect(() => {

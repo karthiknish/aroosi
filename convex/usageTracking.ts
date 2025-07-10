@@ -10,13 +10,15 @@ export const trackUsage = mutation({
       v.literal("search_performed"),
       v.literal("interest_sent"),
       v.literal("profile_boost_used"),
-      v.literal("voice_message_sent")
+      v.literal("voice_message_sent"),
     ),
-    metadata: v.optional(v.object({
-      targetUserId: v.optional(v.id("users")),
-      searchQuery: v.optional(v.string()),
-      messageType: v.optional(v.string()),
-    })),
+    metadata: v.optional(
+      v.object({
+        targetUserId: v.optional(v.id("users")),
+        searchQuery: v.optional(v.string()),
+        messageType: v.optional(v.string()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -24,7 +26,7 @@ export const trackUsage = mutation({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) throw new Error("User not found");
 
@@ -38,12 +40,12 @@ export const trackUsage = mutation({
 
     // Update monthly summary
     const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
     const existingSummary = await ctx.db
       .query("usageSummaries")
-      .withIndex("by_userId_month_feature", (q) => 
-        q.eq("userId", user._id).eq("month", month).eq("feature", args.feature)
+      .withIndex("by_userId_month_feature", (q) =>
+        q.eq("userId", user._id).eq("month", month).eq("feature", args.feature),
       )
       .first();
 
@@ -75,7 +77,7 @@ export const getUsageStats = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) throw new Error("User not found");
 
@@ -86,21 +88,24 @@ export const getUsageStats = query({
     if (!profile) throw new Error("Profile not found");
 
     const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
     // Get current month's usage
     const monthlyUsage = await ctx.db
       .query("usageSummaries")
-      .withIndex("by_userId_month", (q) => 
-        q.eq("userId", user._id).eq("month", currentMonth)
+      .withIndex("by_userId_month", (q) =>
+        q.eq("userId", user._id).eq("month", currentMonth),
       )
       .collect();
 
     // Convert to a map for easier access
-    const usageMap = monthlyUsage.reduce((acc, item) => {
-      acc[item.feature] = item.count;
-      return acc;
-    }, {} as Record<string, number>);
+    const usageMap = monthlyUsage.reduce(
+      (acc, item) => {
+        acc[item.feature] = item.count;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Define limits based on subscription plan
     const plan = profile.subscriptionPlan || "free";
@@ -132,7 +137,7 @@ export const getUsageStats = query({
     };
 
     const userLimits = limits[plan as keyof typeof limits];
-    
+
     // Build usage response
     const features = [
       "message_sent",
@@ -143,17 +148,22 @@ export const getUsageStats = query({
       "voice_message_sent",
     ] as const;
 
-    const usage = features.map(feature => ({
+    const usage = features.map((feature) => ({
       feature,
       used: usageMap[feature] || 0,
       limit: userLimits[feature],
       unlimited: userLimits[feature] === -1,
-      remaining: userLimits[feature] === -1 
-        ? -1 
-        : Math.max(0, userLimits[feature] - (usageMap[feature] || 0)),
-      percentageUsed: userLimits[feature] === -1 
-        ? 0 
-        : Math.min(100, ((usageMap[feature] || 0) / userLimits[feature]) * 100),
+      remaining:
+        userLimits[feature] === -1
+          ? -1
+          : Math.max(0, userLimits[feature] - (usageMap[feature] || 0)),
+      percentageUsed:
+        userLimits[feature] === -1
+          ? 0
+          : Math.min(
+              100,
+              ((usageMap[feature] || 0) / userLimits[feature]) * 100,
+            ),
     }));
 
     return {
@@ -174,7 +184,7 @@ export const canUseFeature = query({
       v.literal("search_performed"),
       v.literal("interest_sent"),
       v.literal("profile_boost_used"),
-      v.literal("voice_message_sent")
+      v.literal("voice_message_sent"),
     ),
   },
   handler: async (ctx, args) => {
@@ -183,7 +193,7 @@ export const canUseFeature = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) return { canUse: false, reason: "User not found" };
 
@@ -195,19 +205,22 @@ export const canUseFeature = query({
 
     // Get usage stats directly instead of using runQuery
     const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
     const monthlyUsage = await ctx.db
       .query("usageSummaries")
-      .withIndex("by_userId_month", (q) => 
-        q.eq("userId", user._id).eq("month", currentMonth)
+      .withIndex("by_userId_month", (q) =>
+        q.eq("userId", user._id).eq("month", currentMonth),
       )
       .collect();
 
-    const usageMap = monthlyUsage.reduce((acc, item) => {
-      acc[item.feature] = item.count;
-      return acc;
-    }, {} as Record<string, number>);
+    const usageMap = monthlyUsage.reduce(
+      (acc, item) => {
+        acc[item.feature] = item.count;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     const plan = profile.subscriptionPlan || "free";
     const limits = {
@@ -241,18 +254,18 @@ export const canUseFeature = query({
     const currentUsage = usageMap[args.feature] || 0;
     const limit = userLimits[args.feature];
     const unlimited = limit === -1;
-    
+
     if (unlimited) {
       return { canUse: true, unlimited: true };
     }
-    
+
     const remaining = Math.max(0, limit - currentUsage);
     if (remaining > 0) {
       return { canUse: true, remaining };
     }
-    
-    return { 
-      canUse: false, 
+
+    return {
+      canUse: false,
       reason: "Monthly limit reached",
       limit,
       used: currentUsage,
@@ -264,14 +277,16 @@ export const canUseFeature = query({
 // Get detailed usage history
 export const getUsageHistory = query({
   args: {
-    feature: v.optional(v.union(
-      v.literal("message_sent"),
-      v.literal("profile_view"),
-      v.literal("search_performed"),
-      v.literal("interest_sent"),
-      v.literal("profile_boost_used"),
-      v.literal("voice_message_sent")
-    )),
+    feature: v.optional(
+      v.union(
+        v.literal("message_sent"),
+        v.literal("profile_view"),
+        v.literal("search_performed"),
+        v.literal("interest_sent"),
+        v.literal("profile_boost_used"),
+        v.literal("voice_message_sent"),
+      ),
+    ),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -280,7 +295,7 @@ export const getUsageHistory = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
     if (!user) throw new Error("User not found");
 
@@ -293,11 +308,10 @@ export const getUsageHistory = query({
       // Filter by feature if specified
       const results = await query.collect();
       return results
-        .filter(item => item.feature === args.feature)
+        .filter((item) => item.feature === args.feature)
         .slice(0, args.limit || 100);
     }
 
     return await query.take(args.limit || 100);
   },
 });
-

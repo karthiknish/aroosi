@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
+// import { ClerkProvider } from "@clerk/nextjs"; // Removed for native auth
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
@@ -148,94 +148,12 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <ClerkProvider
-          appearance={{
-            layout: {
-              socialButtonsVariant: "iconButton",
-              logoImageUrl: "/logo.png",
-              logoPlacement: "inside",
-              showOptionalFields: false,
-              privacyPageUrl: "/privacy",
-              termsPageUrl: "/terms",
-            },
-            variables: {
-              colorPrimary: "#d90012", // primary pink
-              colorText: "#000000",
-              colorBackground: "#ffffff",
-              colorInputBackground: "#f9fafb",
-              colorInputText: "#000000",
-              colorTextSecondary: "#d90012", // use primary pink for secondary text as well
-              colorTextOnPrimaryBackground: "#ffffff",
-              colorDanger: "#d90012",
-              colorSuccess: "#BFA67A",
-              colorWarning: "#f59e0b",
-              borderRadius: "0.5rem",
-              fontFamily: "var(--font-sans), 'Open Sans', Arial, sans-serif",
-            },
-            elements: {
-              formButtonPrimary: {
-                backgroundColor: "#BFA67A",
-                color: "#fff",
-                "&:hover": {
-                  backgroundColor: "#a68d54",
-                },
-              },
-              card: {
-                boxShadow:
-                  "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-                borderRadius: "1rem",
-                border: "1.5px solid #BFA67A",
-              },
-              headerTitle: {
-                fontFamily: "Boldonse, serif",
-                fontSize: "1.5rem",
-                fontWeight: "700",
-                color: "#d90012",
-              },
-              headerSubtitle: {
-                fontFamily: "var(--font-sans), 'Open Sans', Arial, sans-serif",
-                fontSize: "1rem",
-                color: "#BFA67A",
-              },
-              socialButtonsBlockButton: {
-                border: "1px solid #e5e7eb",
-                "&:hover": {
-                  backgroundColor: "#f9fafb",
-                },
-              },
-              formFieldInput: {
-                border: "1px solid #e5e7eb",
-                "&:focus": {
-                  borderColor: "#BFA67A",
-                  boxShadow: "0 0 0 1px #BFA67A",
-                },
-              },
-              formFieldLabel: {
-                color: "#000000",
-                fontSize: "0.875rem",
-                fontFamily: "'Open Sans', Arial, sans-serif",
-              },
-              formFieldInputShowPasswordButton: {
-                color: "#BFA67A",
-                "&:hover": {
-                  color: "#d90012",
-                },
-              },
-              footerActionLink: {
-                color: "#BFA67A",
-                "&:hover": {
-                  color: "#d90012",
-                },
-              },
-            },
-          }}
-        >
-          <ReactQueryProvider>
-            <AuthProvider>
-              <ClientRoot>{children}</ClientRoot>
-            </AuthProvider>
-          </ReactQueryProvider>
-        </ClerkProvider>
+        {/* ClerkProvider removed for native auth */}
+        <ReactQueryProvider>
+          <AuthProvider>
+            <ClientRoot>{children}</ClientRoot>
+          </AuthProvider>
+        </ReactQueryProvider>
 
         {/* OneSignal SDK v16 */}
         <Script

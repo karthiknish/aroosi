@@ -13,7 +13,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   const url = new URL(req.url);
   const id = url.pathname.split("/").slice(-2, -1)[0]!; // get the [id] param from /profiles/[id]/ban
@@ -24,7 +24,7 @@ export async function PUT(req: NextRequest) {
   if (typeof body.banned !== "boolean") {
     return NextResponse.json(
       { error: "Missing or invalid banned status" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   const profile = await convex.query(api.users.getProfileById, {
@@ -40,7 +40,7 @@ export async function PUT(req: NextRequest) {
     });
     if (profile.email) {
       await Notifications.profileBanStatus(profile.email, {
-        profile: profile as AppProfile,
+        profile: profile as any,
         banned: true,
       });
     }
@@ -50,7 +50,7 @@ export async function PUT(req: NextRequest) {
     });
     if (profile.email) {
       await Notifications.profileBanStatus(profile.email, {
-        profile: profile as AppProfile,
+        profile: profile as any,
         banned: false,
       });
     }

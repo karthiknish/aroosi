@@ -1,5 +1,5 @@
 "use strict";
- 
+
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -50,13 +50,13 @@ http.route({
             email_address: string;
           }>
         )?.find(
-          (addr) => addr.id === event.data.primary_email_address_id
+          (addr) => addr.id === event.data.primary_email_address_id,
         )?.email_address;
 
         if (!clerkId || !email) {
           console.error(
             "Clerk webhook error: missing clerkId or primary email",
-            event.data
+            event.data,
           );
           return new Response("Error: Missing clerkId or primary email", {
             status: 400,
@@ -64,9 +64,8 @@ http.route({
         }
 
         await ctx.runMutation(internal.users.internalUpsertUser, {
-          clerkId: clerkId as string,
           email: email as string,
-
+          hashedPassword: "", // Clerk users don't have passwords in our system
           fullName: `${first_name ?? ""} ${last_name ?? ""}`.trim(),
         });
         break;
@@ -87,5 +86,3 @@ http.route({
 });
 
 export default http;
-
- 

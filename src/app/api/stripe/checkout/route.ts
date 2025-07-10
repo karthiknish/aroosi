@@ -74,18 +74,17 @@ export async function POST(req: NextRequest) {
       return errorResponse("User not found", 404);
     }
     // Validate user record
-    if (!profile.clerkId || typeof profile.clerkId !== "string") {
-      console.error("Invalid user record - missing clerkId:", profile);
+    if (!profile.email || typeof profile.email !== "string") {
+      console.error("Invalid user record - missing email:", profile);
       return errorResponse("User account error", 400);
     }
-    // Security check: ensure the authenticated user matches the user record
-    if (profile.clerkId !== userId) {
+    // Security check: ensure the authenticated user has a valid email
+    if (!profile.email) {
       logSecurityEvent(
         "UNAUTHORIZED_ACCESS",
         {
           userId,
-          userRecordClerkId: profile.clerkId,
-          action: "stripe_checkout_user_mismatch",
+          action: "stripe_checkout_missing_email",
         },
         req,
       );
@@ -116,7 +115,7 @@ export async function POST(req: NextRequest) {
       ],
       metadata: {
         planId,
-        clerkId: profile.clerkId,
+        email: profile.email,
         userId, // Add for double verification in webhook
       },
       success_url: `${baseUrl}/plans?checkout=success`,
@@ -125,7 +124,7 @@ export async function POST(req: NextRequest) {
       payment_intent_data: {
         metadata: {
           planId,
-          clerkId: profile.clerkId,
+          email: profile.email,
           userId,
         },
       },

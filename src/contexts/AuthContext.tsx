@@ -29,16 +29,6 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   token: string | null;
-  // Legacy compatibility properties
-  isSignedIn: boolean;
-  isLoaded: boolean;
-  isProfileComplete: boolean;
-  isOnboardingComplete: boolean;
-  isAdmin: boolean;
-  userId: string;
-  profile: any | null;
-  error: string | null;
-  // Auth methods
   signIn: (
     email: string,
     password: string,
@@ -58,9 +48,6 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
-  // Legacy compatibility methods
-  getToken: (forceRefresh?: boolean) => Promise<string | null>;
-  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -73,9 +60,6 @@ export function useAuth() {
   return context;
 }
 
-// Alias for backward compatibility
-export const useAuthContext = useAuth;
-
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -84,7 +68,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Get token from localStorage or cookie
@@ -147,22 +130,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(userData);
   }, [token, getStoredToken, fetchUser]);
 
-  // Legacy compatibility method
-  const refreshProfile = useCallback(async () => {
-    await refreshUser();
-  }, [refreshUser]);
-
-  // Legacy compatibility method
-  const getToken = useCallback(
-    async (forceRefresh?: boolean) => {
-      if (forceRefresh) {
-        await refreshUser();
-      }
-      return token || getStoredToken();
-    },
-    [token, getStoredToken, refreshUser],
-  );
-
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
@@ -187,7 +154,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        setError(null);
         const response = await fetch("/api/auth/signin", {
           method: "POST",
           headers: {
@@ -199,9 +165,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const data = await response.json();
 
         if (!response.ok) {
-          const errorMessage = data.error || "Sign in failed";
-          setError(errorMessage);
-          return { success: false, error: errorMessage };
+          return { success: false, error: data.error || "Sign in failed" };
         }
 
         storeToken(data.token);
@@ -209,9 +173,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: true };
       } catch (error) {
         console.error("Sign in error:", error);
-        const errorMessage = "Network error";
-        setError(errorMessage);
-        return { success: false, error: errorMessage };
+        return { success: false, error: "Network error" };
       }
     },
     [storeToken],
@@ -226,7 +188,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       lastName: string,
     ) => {
       try {
-        setError(null);
         const response = await fetch("/api/auth/signup", {
           method: "POST",
           headers: {
@@ -238,17 +199,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const data = await response.json();
 
         if (!response.ok) {
-          const errorMessage = data.error || "Sign up failed";
-          setError(errorMessage);
-          return { success: false, error: errorMessage };
+          return { success: false, error: data.error || "Sign up failed" };
         }
 
         return { success: true };
       } catch (error) {
         console.error("Sign up error:", error);
-        const errorMessage = "Network error";
-        setError(errorMessage);
-        return { success: false, error: errorMessage };
+        return { success: false, error: "Network error" };
       }
     },
     [],
@@ -258,7 +215,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const verifyOTP = useCallback(
     async (email: string, otp: string) => {
       try {
-        setError(null);
         const response = await fetch("/api/auth/verify-otp", {
           method: "POST",
           headers: {
@@ -270,11 +226,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const data = await response.json();
 
         if (!response.ok) {
-          const errorMessage = data.error || "OTP verification failed";
-          setError(errorMessage);
           return {
             success: false,
-            error: errorMessage,
+            error: data.error || "OTP verification failed",
           };
         }
 
@@ -283,9 +237,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: true };
       } catch (error) {
         console.error("OTP verification error:", error);
-        const errorMessage = "Network error";
-        setError(errorMessage);
-        return { success: false, error: errorMessage };
+        return { success: false, error: "Network error" };
       }
     },
     [storeToken],
@@ -295,7 +247,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signInWithGoogle = useCallback(
     async (credential: string) => {
       try {
-        setError(null);
         const response = await fetch("/api/auth/google", {
           method: "POST",
           headers: {
@@ -307,11 +258,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const data = await response.json();
 
         if (!response.ok) {
-          const errorMessage = data.error || "Google sign in failed";
-          setError(errorMessage);
           return {
             success: false,
-            error: errorMessage,
+            error: data.error || "Google sign in failed",
           };
         }
 
@@ -320,9 +269,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: true };
       } catch (error) {
         console.error("Google sign in error:", error);
-        const errorMessage = "Network error";
-        setError(errorMessage);
-        return { success: false, error: errorMessage };
+        return { success: false, error: "Network error" };
       }
     },
     [storeToken],
@@ -332,44 +279,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signOut = useCallback(() => {
     removeToken();
     setUser(null);
-    setError(null);
     router.push("/");
   }, [removeToken, router]);
-
-  // Computed values for legacy compatibility
-  const isAuthenticated = !!user && !!token;
-  const isSignedIn = isAuthenticated;
-  const isLoaded = !isLoading;
-  const isProfileComplete = user?.profile?.isProfileComplete || false;
-  const isOnboardingComplete = user?.profile?.isOnboardingComplete || false;
-  const isAdmin = user?.role === "admin";
-  const userId = user?.id || "";
-  const profile = user?.profile || null;
 
   const value: AuthContextType = {
     user,
     isLoading,
-    isAuthenticated,
+    isAuthenticated: !!user && !!token,
     token,
-    // Legacy compatibility
-    isSignedIn,
-    isLoaded,
-    isProfileComplete,
-    isOnboardingComplete,
-    isAdmin,
-    userId,
-    profile,
-    error,
-    // Auth methods
     signIn,
     signUp,
     verifyOTP,
     signInWithGoogle,
     signOut,
     refreshUser,
-    // Legacy compatibility methods
-    getToken,
-    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

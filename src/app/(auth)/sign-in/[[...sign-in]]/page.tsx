@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
-import { CustomSignInForm } from "@/components/auth/CustomSignInForm";
-import { useUser } from "@clerk/nextjs";
+import CustomSignInForm from "@/components/auth/CustomSignInForm";
+// import { useUser } from "@clerk/nextjs"; // Removed for native auth
 
 import { useRouter } from "next/navigation";
 
@@ -13,7 +13,9 @@ export default function SignInPage() {
   const finalRedirect = needsWizard ? "/" : "/search";
 
   const router = useRouter();
-  const { isSignedIn } = useUser();
+  // Temporarily disabled for native auth migration
+  // const { isSignedIn } = useUser();
+  const isSignedIn = false; // Placeholder
 
   // redirect after sign-in
   if (isSignedIn) {

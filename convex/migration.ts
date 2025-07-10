@@ -37,8 +37,8 @@ export const getImagesByUserId = query({
 // Mutation to create a user (for migration)
 export const createUserForMigration = mutation({
   args: {
-    clerkId: v.string(),
     email: v.string(),
+    hashedPassword: v.optional(v.string()),
     banned: v.optional(v.boolean()),
     role: v.optional(v.string()),
   },
@@ -48,20 +48,21 @@ export const createUserForMigration = mutation({
     // Check if user already exists
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
 
     if (existingUser) {
-      console.log(`User ${args.clerkId} already exists, skipping...`);
+      console.log(`User ${args.email} already exists, skipping...`);
       return existingUser._id;
     }
 
     // Create new user
     const userId = await ctx.db.insert("users", {
-      clerkId: args.clerkId,
       email: args.email,
+      hashedPassword: args.hashedPassword || "",
       banned: args.banned,
       role: args.role,
+      createdAt: Date.now(),
     });
 
     return userId;
@@ -72,7 +73,7 @@ export const createUserForMigration = mutation({
 export const createProfileForMigration = mutation({
   args: {
     userId: v.id("users"),
-    clerkId: v.string(),
+    email: v.string(),
     profileFor: v.optional(
       v.union(
         v.literal("self"),
@@ -82,23 +83,23 @@ export const createProfileForMigration = mutation({
         v.literal("sister"),
         v.literal("friend"),
         v.literal("relative"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     isProfileComplete: v.optional(v.boolean()),
     isOnboardingComplete: v.optional(v.boolean()),
     fullName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
     gender: v.optional(
-      v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+      v.union(v.literal("male"), v.literal("female"), v.literal("other")),
     ),
     preferredGender: v.optional(
       v.union(
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any")
-      )
+        v.literal("any"),
+      ),
     ),
     city: v.optional(v.string()),
     country: v.optional(v.string()),
@@ -108,8 +109,8 @@ export const createProfileForMigration = mutation({
         v.literal("single"),
         v.literal("divorced"),
         v.literal("widowed"),
-        v.literal("annulled")
-      )
+        v.literal("annulled"),
+      ),
     ),
     education: v.optional(v.string()),
     occupation: v.optional(v.string()),
@@ -125,16 +126,16 @@ export const createProfileForMigration = mutation({
         v.literal("balochi"),
         v.literal("nuristani"),
         v.literal("punjabi"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     religion: v.optional(
       v.union(
         v.literal("muslim"),
         v.literal("hindu"),
         v.literal("sikh"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     ethnicity: v.optional(
       v.union(
@@ -149,8 +150,8 @@ export const createProfileForMigration = mutation({
         v.literal("pashai"),
         v.literal("qizilbash"),
         v.literal("punjabi"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     phoneNumber: v.optional(v.string()),
     diet: v.optional(
@@ -161,27 +162,27 @@ export const createProfileForMigration = mutation({
         v.literal("vegan"),
         v.literal("eggetarian"),
         v.literal("other"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     smoking: v.optional(
       v.union(
         v.literal("no"),
         v.literal("occasionally"),
         v.literal("yes"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     drinking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
     ),
     physicalStatus: v.optional(
       v.union(
         v.literal("normal"),
         v.literal("differently-abled"),
         v.literal("other"),
-        v.literal("")
-      )
+        v.literal(""),
+      ),
     ),
     partnerPreferenceAgeMin: v.optional(v.union(v.number(), v.string())),
     partnerPreferenceAgeMax: v.optional(v.union(v.number(), v.string())),
@@ -190,13 +191,16 @@ export const createProfileForMigration = mutation({
     profileImageIds: v.optional(v.array(v.id("_storage"))),
     profileImageUrls: v.optional(v.array(v.string())),
     banned: v.optional(v.boolean()),
-    email: v.optional(v.string()),
     createdAt: v.float64(),
     updatedAt: v.optional(v.float64()),
     boostsRemaining: v.optional(v.number()),
     boostedUntil: v.optional(v.float64()),
     subscriptionPlan: v.optional(
-      v.union(v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))
+      v.union(
+        v.literal("free"),
+        v.literal("premium"),
+        v.literal("premiumPlus"),
+      ),
     ),
     subscriptionExpiresAt: v.optional(v.number()),
     hasSpotlightBadge: v.optional(v.boolean()),
@@ -212,11 +216,11 @@ export const createProfileForMigration = mutation({
     // Check if profile already exists
     const existingProfile = await ctx.db
       .query("profiles")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
 
     if (existingProfile) {
-      console.log(`Profile for ${args.clerkId} already exists, skipping...`);
+      console.log(`Profile for ${args.email} already exists, skipping...`);
       return existingProfile._id;
     }
 
@@ -266,7 +270,7 @@ export const createInterestForMigration = mutation({
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),
-      v.literal("rejected")
+      v.literal("rejected"),
     ),
     createdAt: v.float64(),
   },
@@ -297,7 +301,7 @@ export const createMessageForMigration = mutation({
     toUserId: v.id("users"),
     text: v.string(),
     type: v.optional(
-      v.union(v.literal("text"), v.literal("voice"), v.literal("image"))
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
     ),
     audioStorageId: v.optional(v.string()),
     duration: v.optional(v.number()),

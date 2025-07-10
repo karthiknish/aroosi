@@ -21,7 +21,6 @@ import { internal } from "./_generated/api"; // Ensure internal is imported
 export interface ConvexProfile {
   _id: Id<"profiles">;
   userId: Id<"users">;
-  clerkId: string;
   email?: string;
   // Allow any additional fields with flexible types
   [key: string]: any;
@@ -33,10 +32,12 @@ export type Profile = ConvexProfile;
 // Types based on schema
 export interface User {
   _id: Id<"users">;
-  clerkId: string;
   email: string;
   banned?: boolean;
   role?: string;
+  googleId?: string;
+  emailVerified?: boolean;
+  hashedPassword: string;
 }
 
 // Public-facing profile type (for getUserPublicProfile)
@@ -50,18 +51,18 @@ export interface PublicProfile {
   aboutMe?: string;
   profileImageIds?: Id<"_storage">[];
   createdAt: number;
-  // Add more fields as needed, but do not include _id, userId, clerkId
+  // Add more fields as needed, but do not include _id, userId, email
   [key: string]: unknown;
 }
 
-// --- Helper function to get user by Clerk ID ---
-const getUserByClerkIdInternal = async (
+// --- Helper function to get user by email ---
+const getUserByEmailInternal = async (
   ctx: QueryCtx | MutationCtx,
-  clerkId: string,
+  email: string,
 ) => {
   return await ctx.db
     .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+    .withIndex("by_email", (q) => q.eq("email", email))
     .unique();
 };
 
@@ -91,7 +92,7 @@ export const getProfile = query({
 });
 
 /**
- * Retrieves the user record and their profile for the currently authenticated Clerk user.
+ * Retrieves the user record and their profile for the currently authenticated user.
  */
 export const getCurrentUserWithProfile = query({
   args: {},
@@ -102,14 +103,10 @@ export const getCurrentUserWithProfile = query({
       return null;
     }
 
-    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    const user = await getUserByEmailInternal(ctx, identity.email!);
 
     if (!user) {
-      // This can happen if the Clerk webhook for user creation hasn't fired yet
-      // or if there was an issue creating the user record in Convex.
-      console.warn(
-        `User with Clerk ID ${identity.subject} not found in Convex DB. Waiting for webhook or check webhook logs.`,
-      );
+      console.warn(`User with email ${identity.email} not found in Convex DB.`);
       return null;
     }
 
@@ -127,60 +124,55 @@ export const getCurrentUserWithProfile = query({
         }
       : null;
 
-    return { ...user, profile: profileWithImages }; // Profile might not exist if webhook created user but not profile yet
+    return { ...user, profile: profileWithImages };
   },
 });
 
 /**
- * Internal mutation to create or update a user from a Clerk webhook.
- * This should ONLY be called by an HTTP action triggered by Clerk.
- * Ensures user exists in Convex and a basic profile record is created.
+ * Internal mutation to create or update a user.
+ * Used by auth system to ensure user exists in Convex.
  */
 export const internalUpsertUser = internalMutation(
   async (
     ctx,
     {
-      clerkId,
       email,
+      hashedPassword,
       role,
       fullName,
+      googleId,
     }: {
-      clerkId: string;
       email: string;
+      hashedPassword?: string;
       role?: string;
       fullName?: string;
+      googleId?: string;
     },
   ) => {
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
     let userId;
 
     if (existingUser) {
       userId = existingUser._id;
-      const update: Partial<User> = { email };
+      const update: Partial<User> = {};
       if (role && existingUser.role !== role) update.role = role;
-      if (existingUser.email !== email || update.role) {
+      if (googleId && !existingUser.googleId) update.googleId = googleId;
+      if (Object.keys(update).length > 0) {
         await ctx.db.patch(userId, update);
       }
     } else {
-      // Defensive: check again before insert (handles race conditions)
-      const doubleCheck = await ctx.db
-        .query("users")
-        .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
-        .unique();
-      if (doubleCheck) {
-        userId = doubleCheck._id;
-        const update: Partial<User> = { email };
-        if (role && doubleCheck.role !== role) update.role = role;
-        if (doubleCheck.email !== email || update.role) {
-          await ctx.db.patch(userId, update);
-        }
-      } else {
-        userId = await ctx.db.insert("users", { clerkId, email, role });
-      }
+      userId = await ctx.db.insert("users", {
+        email,
+        hashedPassword: hashedPassword || "",
+        role,
+        googleId,
+        emailVerified: !!googleId, // Google users are pre-verified
+        createdAt: Date.now(),
+      });
     }
 
     const existingProfile = await ctx.db
@@ -189,18 +181,13 @@ export const internalUpsertUser = internalMutation(
       .first();
 
     if (!existingProfile) {
-      // Insert with broad type casting to avoid compile-time literal mismatches
-
       await ctx.db.insert("profiles", {
         userId,
-        clerkId,
         email,
         isProfileComplete: false,
         isOnboardingComplete: false,
-
         createdAt: Date.now(),
         profileFor: "self",
-        // Initialize other fields as undefined or with defaults if necessary
         fullName: fullName,
         dateOfBirth: undefined,
         subscriptionPlan: "free",
@@ -208,9 +195,6 @@ export const internalUpsertUser = internalMutation(
       console.log(`Created new profile for user ${userId}`);
     } else {
       const profileUpdates: any = {};
-      if (!existingProfile.clerkId || existingProfile.clerkId !== clerkId) {
-        profileUpdates.clerkId = clerkId;
-      }
       if (existingProfile.email !== email) {
         profileUpdates.email = email;
       }
@@ -223,15 +207,12 @@ export const internalUpsertUser = internalMutation(
       if (existingProfile.isProfileComplete === undefined) {
         profileUpdates.isProfileComplete = false;
       }
-
       if (existingProfile.subscriptionPlan === undefined) {
         profileUpdates.subscriptionPlan = "free";
       }
       if (Object.keys(profileUpdates).length > 0) {
         await ctx.db.patch(existingProfile._id, profileUpdates);
       }
-      // If profile exists but createdAt is missing (e.g. old data), patch it.
-      // This is less likely if all new profiles get it, but good for data integrity.
       if (existingProfile.createdAt === undefined) {
         await ctx.db.patch(existingProfile._id, { createdAt: Date.now() });
       }
@@ -337,7 +318,7 @@ export const updateProfile = mutation({
     // Find user by Clerk ID
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .unique();
 
     if (!user) {
@@ -432,7 +413,7 @@ export const updateProfile = mutation({
  * This is for displaying profiles to other users. Filter sensitive information.
  */
 export const getUserPublicProfile = query({
-  args: { userId: v.id("users") }, // Or use clerkId: v.string() if you want to query by that
+  args: { userId: v.id("users") }, // Or use email: v.string() if you want to query by that
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) {
@@ -462,7 +443,7 @@ export const getUserPublicProfile = query({
     // Explicitly list fields to return for public view to ensure privacy
     return {
       // User-related info (be cautious)
-      // clerkId: user.clerkId, // Usually not public
+      // email: user.email, // Usually not public
       // email: user.email, // Usually not public
 
       // Profile-related info
@@ -629,12 +610,12 @@ export const deleteCurrentUserProfile = mutation({
       throw new ConvexError("User not authenticated");
     }
 
-    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user) {
       throw new ConvexError("User not found in Convex DB");
     }
 
-    const clerkId = user.clerkId; // Store clerkId before potentially deleting user document
+    const email = user.email; // Store email before potentially deleting user document
 
     const profile = await ctx.db
       .query("profiles")
@@ -673,12 +654,12 @@ export const deleteCurrentUserProfile = mutation({
     // Delete the user document from Convex
     await ctx.db.delete(user._id);
     console.log(
-      `Successfully deleted user ${user._id} (Clerk ID: ${clerkId}) from Convex DB.`,
+      `Successfully deleted user ${user._id} (Clerk ID: ${email}) from Convex DB.`,
     );
 
     // Schedule an action to delete the user from Clerk
     await ctx.scheduler.runAfter(0, internal.users.internalDeleteClerkUser, {
-      clerkId: clerkId,
+      email: email,
     });
 
     return {
@@ -691,7 +672,7 @@ export const deleteCurrentUserProfile = mutation({
 
 // Internal action to delete user from Clerk
 export const internalDeleteClerkUser = internalAction({
-  args: { clerkId: v.string() },
+  args: { email: v.string() },
   handler: async (_ctx, args) => {
     const clerkSecretKey = process.env.CLERK_SECRET_KEY;
     if (!clerkSecretKey) {
@@ -707,7 +688,7 @@ export const internalDeleteClerkUser = internalAction({
       };
     }
 
-    const clerkUserId = args.clerkId;
+    const clerkUserId = args.email;
     // Ensure this URL is correct as per Clerk API v1 documentation
     const clerkApiUrl = `https://api.clerk.com/v1/users/${clerkUserId}`;
 
@@ -1106,7 +1087,7 @@ export const updateProfileImageOrder = mutation({
     // Only allow updating your own profile
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .unique();
     if (!user || user._id !== userId) {
       return { success: false, error: "Unauthorized" };
@@ -1252,7 +1233,7 @@ export const createProfile = mutation({
     // Find user by Clerk ID
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .unique();
 
     if (!user) {
@@ -1272,7 +1253,6 @@ export const createProfile = mutation({
     // Create new profile
     const profileData: Omit<Profile, "_id"> = {
       userId: user._id,
-      clerkId: identity.subject,
       email: args.email || user.email,
       isProfileComplete: args.isProfileComplete ?? false,
       createdAt: Date.now(),
@@ -1413,7 +1393,7 @@ export const getMyMatches = query({
     if (!identity) return [];
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .unique();
     if (!user) return [];
 
@@ -1607,7 +1587,7 @@ export const searchPublicProfiles = query({
     // Get current user
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .unique();
 
     if (!user) {
@@ -1750,7 +1730,7 @@ export const boostProfile = mutation({
     if (!identity) throw new ConvexError("Not authenticated");
 
     // Get user & profile
-    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user) throw new ConvexError("User not found");
 
     const profile = await ctx.db
@@ -1811,7 +1791,7 @@ export const grantSpotlightBadge = mutation({
     if (!identity) throw new ConvexError("Not authenticated");
 
     // Get user & profile
-    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user) throw new ConvexError("User not found");
 
     const profile = await ctx.db
@@ -1858,7 +1838,7 @@ export const removeSpotlightBadge = mutation({
     if (!identity) throw new ConvexError("Not authenticated");
 
     // Get user & profile
-    const user = await getUserByClerkIdInternal(ctx, identity.subject);
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user) throw new ConvexError("User not found");
 
     const profile = await ctx.db
@@ -1945,7 +1925,7 @@ export const recordProfileView = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return;
 
-    const viewer = await getUserByClerkIdInternal(ctx, identity.subject);
+    const viewer = await getUserByEmailInternal(ctx, identity.email!);
     if (!viewer) return;
 
     // Prevent logging self views
@@ -1970,7 +1950,7 @@ export const getProfileViewers = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const viewerUser = await getUserByClerkIdInternal(ctx, identity.subject);
+    const viewerUser = await getUserByEmailInternal(ctx, identity.email!);
     if (!viewerUser) return [];
 
     const profile = await ctx.db.get(args.profileId);
@@ -2000,17 +1980,17 @@ export const internalUpdateSubscription = internalMutation(
   async (
     ctx,
     args: {
-      clerkId: string;
+      email: string;
       plan: "free" | "premium" | "premiumPlus";
       expiresAt?: number;
     },
   ) => {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
     if (!user) {
-      console.error("internalUpdateSubscription: user not found", args.clerkId);
+      console.error("internalUpdateSubscription: user not found", args.email);
       return;
     }
     const profile = await ctx.db
@@ -2030,7 +2010,7 @@ export const internalUpdateSubscription = internalMutation(
 
 export const stripeUpdateSubscription = action({
   args: {
-    clerkId: v.string(),
+    email: v.string(),
     plan: v.union(
       v.literal("free"),
       v.literal("premium"),
@@ -2039,7 +2019,7 @@ export const stripeUpdateSubscription = action({
   },
   handler: async (ctx, args) => {
     await ctx.runMutation(internal.users.internalUpdateSubscription, {
-      clerkId: args.clerkId,
+      email: args.email,
       plan: args.plan,
       expiresAt: Date.now() + 31 * 24 * 60 * 60 * 1000, // extend 31 days
     });

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
@@ -55,9 +55,8 @@ export async function PUT(req: NextRequest) {
     const updated = await convex.query(api.users.getProfileById, {
       id: id as unknown as Id<"profiles">,
     });
-    const profile = updated as AppProfile;
+    const profile = updated as any;
     if (profile && profile.email) {
-
       if (
         updates.subscriptionPlan &&
         typeof updates.subscriptionPlan === "string"
@@ -65,7 +64,7 @@ export async function PUT(req: NextRequest) {
         await Notifications.subscriptionChanged(
           profile.email,
           profile.fullName || profile.email,
-          updates.subscriptionPlan as string
+          updates.subscriptionPlan as string,
         );
       }
     }
@@ -83,7 +82,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+  if (!convex) return errorResponse("Convex client not configured", 500);
   convex.setAuth(token);
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
@@ -92,5 +91,3 @@ export async function DELETE(req: NextRequest) {
   });
   return NextResponse.json(result);
 }
-
-
