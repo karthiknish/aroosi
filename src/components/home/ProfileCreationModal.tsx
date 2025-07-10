@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 // import { useUser, useClerk } from "@clerk/nextjs"; // Removed for native auth
+import { useAuth } from "@/components/AuthProvider";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -29,10 +30,8 @@ import {
   RELIGION_OPTIONS,
   ETHNICITY_OPTIONS,
 } from "@/lib/constants/languages";
-import { Textarea } from "@/components/ui/textarea";
-import type { ImageType } from "@/types/image";
-import { cmToFeetInches } from "@/lib/utils/height";
-import { countryCodes } from "@/lib/constants/countryCodes";
+import { COUNTRIES } from "@/lib/constants/countries";
+import { CITIES } from "@/lib/constants/cities";
 import CustomSignupForm from "@/components/auth/CustomSignupForm";
 import { useAuthContext } from "@/components/AuthProvider";
 import {
@@ -465,7 +464,8 @@ export function ProfileCreationModal({
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
 
   // Auth context for token and userId
-  const { token, getToken, userId, refreshProfile } = useAuthContext();
+  const { token, getToken, user: authUser, refreshUser } = useAuth();
+  const userId = authUser?.id;
 
   const [hasSubmittedProfile, setHasSubmittedProfile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -582,23 +582,20 @@ export function ProfileCreationModal({
     }
   };
 
-  // ----- Temporarily disabled for native auth migration -----
-  // const { isSignedIn, user } = useUser();
-  // const { signOut } = useClerk();
-  const isSignedIn = false;
-  const user = null;
-  const signOut = async () => {};
+  // Native authentication
+  const { isAuthenticated, user, signOut } = useAuth();
 
-  // Listen for OAuth success messages from popup
+  // Listen for authentication success (native auth doesn't use popups)
+  // This effect is kept for potential future OAuth integrations
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       // Verify the message is from our domain
       if (event.origin !== window.location.origin) return;
 
-      // Check if it's an OAuth success message
-      if (event.data?.type === "oauth-success" && event.data?.isSignedIn) {
-        console.log("ProfileCreationModal: Received OAuth success message");
-        // Force a re-check of the signed-in state
+      // Check if it's an auth success message
+      if (event.data?.type === "auth-success" && event.data?.isAuthenticated) {
+        console.log("ProfileCreationModal: Received auth success message");
+        // Refresh auth state
         window.location.reload();
       }
     };
@@ -609,16 +606,16 @@ export function ProfileCreationModal({
 
   // Advance wizard automatically when OAuth completes
   useEffect(() => {
-    if (isSignedIn && displayStep === 7) {
+    if (isAuthenticated && displayStep === 7) {
       // User is signed in, profile submission will happen automatically
       console.log("User signed in at step 7, profile will be submitted");
     }
-  }, [isSignedIn, displayStep]);
+  }, [isAuthenticated, displayStep]);
 
   // -------- Auto submit profile & images when user is signed in --------
   useEffect(() => {
     const submitProfileAndImages = async () => {
-      if (!isSignedIn) return;
+      if (!isAuthenticated) return;
       if (hasSubmittedProfile) return; // guard
       if (isSubmitting) return; // prevent double submission
 
@@ -793,7 +790,7 @@ export function ProfileCreationModal({
         }
 
         // Refresh profile data and finish
-        await refreshProfile();
+        await refreshUser();
         // Clean up all onboarding data
         clearAllOnboardingData();
         showSuccessToast("Profile created successfully!");
@@ -811,7 +808,7 @@ export function ProfileCreationModal({
 
     void submitProfileAndImages();
   }, [
-    isSignedIn,
+    isAuthenticated,
     token,
     getToken,
     formData,
@@ -820,7 +817,7 @@ export function ProfileCreationModal({
     displayStep,
     hasSubmittedProfile,
     isSubmitting,
-    refreshProfile,
+    refreshUser,
     onClose,
     router,
     signOut,
