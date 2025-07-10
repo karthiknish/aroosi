@@ -44,9 +44,11 @@ describe("ProtectedRoute Component", () => {
 
   test("shows loading state when auth is loading", () => {
     mockUseAuthContext.mockReturnValue({
+      user: null,
       isLoaded: false,
       isSignedIn: false,
       isLoading: true,
+      isAuthenticated: false,
       userId: "",
       token: null,
       profile: null,
@@ -54,8 +56,12 @@ describe("ProtectedRoute Component", () => {
       isOnboardingComplete: false,
       error: null,
       isAdmin: false,
+      signIn: jest.fn(),
+      signUp: jest.fn(),
+      verifyOTP: jest.fn(),
+      signInWithGoogle: jest.fn(),
+      refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
-      updateProfileCompletion: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
     });
@@ -72,9 +78,11 @@ describe("ProtectedRoute Component", () => {
 
   test("redirects to sign-in when not authenticated", async () => {
     mockUseAuthContext.mockReturnValue({
+      user: null,
       isLoaded: true,
       isSignedIn: false,
       isLoading: false,
+      isAuthenticated: false,
       userId: "",
       token: null,
       profile: null,
@@ -82,8 +90,12 @@ describe("ProtectedRoute Component", () => {
       isOnboardingComplete: false,
       error: null,
       isAdmin: false,
+      signIn: jest.fn(),
+      signUp: jest.fn(),
+      verifyOTP: jest.fn(),
+      signInWithGoogle: jest.fn(),
+      refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
-      updateProfileCompletion: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
     });
@@ -99,9 +111,11 @@ describe("ProtectedRoute Component", () => {
 
   test("shows content when authenticated and profile complete", () => {
     mockUseAuthContext.mockReturnValue({
+      user: { id: "user_123", email: "test@example.com", role: "user" },
       isLoaded: true,
       isSignedIn: true,
       isLoading: false,
+      isAuthenticated: true,
       userId: "user_123",
       token: "token_123",
       profile: {
@@ -113,8 +127,12 @@ describe("ProtectedRoute Component", () => {
       isOnboardingComplete: true,
       error: null,
       isAdmin: false,
+      signIn: jest.fn(),
+      signUp: jest.fn(),
+      verifyOTP: jest.fn(),
+      signInWithGoogle: jest.fn(),
+      refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
-      updateProfileCompletion: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
     });
@@ -130,9 +148,11 @@ describe("ProtectedRoute Component", () => {
 
   test("redirects when profile incomplete and required", () => {
     mockUseAuthContext.mockReturnValue({
+      user: { id: "user_123", email: "test@example.com", role: "user" },
       isLoaded: true,
       isSignedIn: true,
       isLoading: false,
+      isAuthenticated: true,
       userId: "user_123",
       token: "token_123",
       profile: {
@@ -144,8 +164,12 @@ describe("ProtectedRoute Component", () => {
       isOnboardingComplete: false,
       error: null,
       isAdmin: false,
+      signIn: jest.fn(),
+      signUp: jest.fn(),
+      verifyOTP: jest.fn(),
+      signInWithGoogle: jest.fn(),
+      refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
-      updateProfileCompletion: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
     });
@@ -161,9 +185,11 @@ describe("ProtectedRoute Component", () => {
 
   test("shows content when profile not required", () => {
     mockUseAuthContext.mockReturnValue({
+      user: { id: "user_123", email: "test@example.com", role: "user" },
       isLoaded: true,
       isSignedIn: true,
       isLoading: false,
+      isAuthenticated: true,
       userId: "user_123",
       token: "token_123",
       profile: null,
@@ -171,8 +197,12 @@ describe("ProtectedRoute Component", () => {
       isOnboardingComplete: false,
       error: null,
       isAdmin: false,
+      signIn: jest.fn(),
+      signUp: jest.fn(),
+      verifyOTP: jest.fn(),
+      signInWithGoogle: jest.fn(),
+      refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
-      updateProfileCompletion: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
     });

@@ -31,7 +31,7 @@ import {
   RELIGION_OPTIONS,
   ETHNICITY_OPTIONS,
 } from "@/lib/constants/languages";
-import { COUNTRIES } from "@/lib/constants/countries";
+import { COUNTRIES, countryCodes } from "@/lib/constants/countries";
 import { CITIES } from "@/lib/constants/cities";
 import CustomSignupForm from "@/components/auth/CustomSignupForm";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -46,6 +46,8 @@ import {
   STORAGE_KEYS,
 } from "@/lib/utils/onboardingStorage";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
+import type { ImageType } from "@/types/image";
+import { cmToFeetInches } from "@/lib/utils/height";
 
 interface ProfileCreationData {
   profileFor: string;
@@ -156,10 +158,8 @@ const stepSchemas = [
   profileSchema.pick({ profileImageIds: true }),
 ];
 
-// Build comprehensive country list from countryCodes constant
-const countries: string[] = Array.from(
-  new Set(countryCodes.map((c: { country: string }) => c.country)),
-).sort();
+// Build comprehensive country list from COUNTRIES constant
+const countries: string[] = COUNTRIES.map((c) => c.name).sort();
 
 export function ProfileCreationModal({
   isOpen,

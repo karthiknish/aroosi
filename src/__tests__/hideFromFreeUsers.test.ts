@@ -61,7 +61,7 @@ describe("hideFromFreeUsers functionality", () => {
 
     const currentUser = {
       userId: "viewer",
-      subscriptionPlan: "premium" as const,
+      subscriptionPlan: "premium" as "free" | "premium" | "premiumPlus",
     };
 
     const filteredProfiles = profiles.filter((p) => {
@@ -87,11 +87,12 @@ describe("hideFromFreeUsers functionality", () => {
 
     const currentUser = {
       userId: "viewer",
-      subscriptionPlan: "premiumPlus" as const,
+      subscriptionPlan: "premiumPlus" as "free" | "premium" | "premiumPlus",
     };
 
     const filteredProfiles = profiles.filter((p) => {
-      const viewerPlan = currentUser?.subscriptionPlan || "free";
+      const viewerPlan: "free" | "premium" | "premiumPlus" =
+        currentUser?.subscriptionPlan || "free";
       if (p.hideFromFreeUsers && viewerPlan === "free") return false;
       return true;
     });
