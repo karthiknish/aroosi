@@ -117,7 +117,8 @@ export const useImageReorder = (profileId: string) => {
  * Handles deletion of a profile image
  */
 export const useDeleteImage = (profileId: string) => {
-  const { token, profile } = useAuthContext();
+  const { token, profile: rawProfile } = useAuthContext();
+  const profile = rawProfile as { userId?: string } | null;
   const queryClient = useQueryClient();
 
   return async (imageId: string, skipPrompt: boolean = false) => {
@@ -126,7 +127,7 @@ export const useDeleteImage = (profileId: string) => {
     // Show confirmation prompt only if skipPrompt is false
     if (!skipPrompt) {
       const confirmed = window.confirm(
-        "Are you sure you want to delete this image?"
+        "Are you sure you want to delete this image?",
       );
       if (!confirmed) return false;
     }
@@ -261,7 +262,7 @@ export const mapApiImage = (img: ApiImage): MappedImage => ({
  */
 export const getOrderedImages = (
   imageOrder: string[],
-  mappedImages: MappedImage[]
+  mappedImages: MappedImage[],
 ) => {
   if (!imageOrder?.length) {
     return mappedImages.map((img) => ({

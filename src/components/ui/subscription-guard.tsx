@@ -1,13 +1,19 @@
 import React from "react";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { Crown, Zap, Lock } from "lucide-react";
-import { 
-  isFeatureAvailable, 
-  type SubscriptionFeatures 
+import {
+  isFeatureAvailable,
+  type SubscriptionFeatures,
 } from "@/lib/utils/subscriptionUtils";
 import type { SubscriptionPlan } from "@/types/profile";
 
@@ -26,7 +32,8 @@ export function SubscriptionGuard({
   showUpgradeCard = true,
   className = "",
 }: SubscriptionGuardProps) {
-  const { profile } = useAuthContext();
+  const { profile: rawProfile } = useAuthContext();
+  const profile = rawProfile as { subscriptionPlan?: SubscriptionPlan } | null;
   console.log("SubscriptionGuard profile:", profile);
   const router = useRouter();
 
@@ -63,9 +70,11 @@ export function SubscriptionGuard({
             </Badge>
           ),
           title: "Premium Feature",
-          description: "This feature is available to Premium and Premium Plus subscribers.",
+          description:
+            "This feature is available to Premium and Premium Plus subscribers.",
           buttonText: "Upgrade to Premium",
-          buttonClass: "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+          buttonClass:
+            "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600",
         };
       case "premiumPlus":
         return {
@@ -77,9 +86,11 @@ export function SubscriptionGuard({
             </Badge>
           ),
           title: "Premium Plus Feature",
-          description: "This exclusive feature is only available to Premium Plus subscribers.",
+          description:
+            "This exclusive feature is only available to Premium Plus subscribers.",
           buttonText: "Upgrade to Premium Plus",
-          buttonClass: "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+          buttonClass:
+            "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600",
         };
       default:
         return {
@@ -88,33 +99,28 @@ export function SubscriptionGuard({
           title: "Feature Locked",
           description: "Upgrade your plan to access this feature.",
           buttonText: "View Plans",
-          buttonClass: "bg-gray-600 hover:bg-gray-700"
+          buttonClass: "bg-gray-600 hover:bg-gray-700",
         };
     }
   };
 
-  const cardContent = getUpgradeCardContent(featureCheck.requiredPlan || "premium");
+  const cardContent = getUpgradeCardContent(
+    featureCheck.requiredPlan || "premium",
+  );
 
   return (
     <div className={className}>
       <Card className="border-2 border-dashed">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-2">
-            {cardContent.icon}
-          </div>
-          <div className="flex justify-center mb-2">
-            {cardContent.badge}
-          </div>
+          <div className="flex justify-center mb-2">{cardContent.icon}</div>
+          <div className="flex justify-center mb-2">{cardContent.badge}</div>
           <CardTitle className="text-lg">{cardContent.title}</CardTitle>
           <CardDescription>
             {featureCheck.message || cardContent.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center">
-          <Button 
-            onClick={handleUpgrade}
-            className={cardContent.buttonClass}
-          >
+          <Button onClick={handleUpgrade} className={cardContent.buttonClass}>
             {cardContent.buttonText}
           </Button>
         </CardContent>
@@ -129,7 +135,13 @@ interface FeatureButtonProps {
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
 }
 
@@ -142,7 +154,8 @@ export function FeatureButton({
   variant = "default",
   size = "default",
 }: FeatureButtonProps) {
-  const { profile } = useAuthContext();
+  const { profile: rawProfile } = useAuthContext();
+  const profile = rawProfile as { subscriptionPlan?: SubscriptionPlan } | null;
   const router = useRouter();
 
   if (!profile) return null;
@@ -181,14 +194,18 @@ export function FeatureBadge({ plan, className = "" }: FeatureBadgeProps) {
   switch (plan) {
     case "premium":
       return (
-        <Badge className={`bg-gradient-to-r from-purple-500 to-pink-500 text-white ${className}`}>
+        <Badge
+          className={`bg-gradient-to-r from-purple-500 to-pink-500 text-white ${className}`}
+        >
           <Crown className="w-3 h-3 mr-1" />
           Premium
         </Badge>
       );
     case "premiumPlus":
       return (
-        <Badge className={`bg-gradient-to-r from-yellow-500 to-orange-500 text-white ${className}`}>
+        <Badge
+          className={`bg-gradient-to-r from-yellow-500 to-orange-500 text-white ${className}`}
+        >
           <Zap className="w-3 h-3 mr-1" />
           Premium Plus
         </Badge>
