@@ -20,7 +20,7 @@ interface User {
     fullName?: string;
     isProfileComplete?: boolean;
     isOnboardingComplete?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   } | null;
 }
 
@@ -36,7 +36,7 @@ export interface AuthContextType {
   isOnboardingComplete: boolean;
   isAdmin: boolean;
   userId: string;
-  profile: any | null;
+  profile: unknown | null;
   error: string | null;
   // Auth methods
   signIn: (

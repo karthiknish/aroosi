@@ -3,7 +3,7 @@ import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
-import type { Profile as AppProfile } from "@/types/profile";
+import type { Profile } from "@/types/profile";
 import { errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
@@ -55,7 +55,7 @@ export async function PUT(req: NextRequest) {
     const updated = await convex.query(api.users.getProfileById, {
       id: id as unknown as Id<"profiles">,
     });
-    const profile = updated as any;
+    const profile = updated as Profile;
     if (profile && profile.email) {
       if (
         updates.subscriptionPlan &&

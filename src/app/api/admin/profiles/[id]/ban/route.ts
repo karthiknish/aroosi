@@ -3,7 +3,7 @@ import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
-import type { Profile as AppProfile } from "@/types/profile";
+import type { Profile } from "@/types/profile";
 import { errorResponse } from "@/lib/apiResponse";
 
 export async function PUT(req: NextRequest) {
@@ -40,7 +40,7 @@ export async function PUT(req: NextRequest) {
     });
     if (profile.email) {
       await Notifications.profileBanStatus(profile.email, {
-        profile: profile as any,
+        profile: profile as Profile,
         banned: true,
       });
     }
@@ -50,7 +50,7 @@ export async function PUT(req: NextRequest) {
     });
     if (profile.email) {
       await Notifications.profileBanStatus(profile.email, {
-        profile: profile as any,
+        profile: profile as Profile,
         banned: false,
       });
     }

@@ -31,10 +31,9 @@ import {
   RELIGION_OPTIONS,
   ETHNICITY_OPTIONS,
 } from "@/lib/constants/languages";
-import { COUNTRIES, countryCodes } from "@/lib/constants/countries";
-import { CITIES } from "@/lib/constants/cities";
+import { COUNTRIES } from "@/lib/constants/countries";
 import CustomSignupForm from "@/components/auth/CustomSignupForm";
-import { useAuthContext } from "@/components/AuthProvider";
+// useAuthContext removed as it's not used
 import {
   submitProfile,
   getCurrentUserWithProfile,
@@ -584,7 +583,7 @@ export function ProfileCreationModal({
   };
 
   // Native authentication
-  const { isAuthenticated, user, signOut } = useAuth();
+  const { isAuthenticated, signOut } = useAuth();
 
   // Listen for authentication success (native auth doesn't use popups)
   // This effect is kept for potential future OAuth integrations
@@ -717,7 +716,7 @@ export function ProfileCreationModal({
           setHasSubmittedProfile(false);
 
           // Sign out the user to prevent incomplete profile
-          await signOut();
+          signOut();
 
           // Close the modal and reset
           onClose();

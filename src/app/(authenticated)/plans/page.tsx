@@ -2,7 +2,16 @@
 import { useAuthContext } from "@/components/AuthProvider";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, CheckCircle, Crown, Zap, Heart, Sparkles, ArrowRight, Check } from "lucide-react";
+import {
+  Star,
+  CheckCircle,
+  Crown,
+  Zap,
+  Heart,
+  Sparkles,
+  ArrowRight,
+  Check,
+} from "lucide-react";
 import { showErrorToast, showInfoToast } from "@/lib/ui/toast";
 import { createCheckoutSession } from "@/lib/utils/stripeUtil";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/types/profile";
@@ -13,14 +22,15 @@ type PlanId = SubscriptionPlan;
 export default function ManagePlansPage() {
   const { profile, getToken } = useAuthContext();
   const [loading, setLoading] = useState<string | null>(null);
-  const currentPlan = (profile?.subscriptionPlan || "free") as PlanId;
+  const currentPlan = ((profile as { subscriptionPlan?: string })
+    ?.subscriptionPlan || "free") as PlanId;
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (planId === currentPlan) {
       showInfoToast("You&apos;re already on this plan!");
       return;
     }
-    
+
     if (planId === "free") {
       showInfoToast("To downgrade to free plan, please contact support.");
       return;
@@ -33,19 +43,19 @@ export default function ManagePlansPage() {
         showErrorToast("Authentication required", "Please sign in first");
         return;
       }
-      
+
       showInfoToast("Redirecting to secure checkout...");
-      
+
       const result = await createCheckoutSession(t, {
         planType: planId as "premium" | "premiumPlus",
         successUrl: `${window.location.origin}/profile?subscription=success`,
         cancelUrl: `${window.location.origin}/plans`,
       });
-      
+
       if (!result.success || !result.checkoutUrl) {
         throw new Error(result.error || "Unknown error");
       }
-      
+
       window.location.href = result.checkoutUrl;
     } catch (err) {
       showErrorToast(err as Error, "Failed to start checkout");

@@ -20,7 +20,7 @@ interface User {
     fullName?: string;
     isProfileComplete?: boolean;
     isOnboardingComplete?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   } | null;
 }
 

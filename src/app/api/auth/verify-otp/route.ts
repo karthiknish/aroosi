@@ -69,11 +69,14 @@ export async function POST(request: NextRequest) {
           name: `${tempUser.firstName} ${tempUser.lastName}`,
         },
       });
-    } catch (convexError: any) {
+    } catch (convexError: unknown) {
       // Clean up temporary data even if user creation fails
       deleteTempUser(email);
 
-      if (convexError.message?.includes("already exists")) {
+      if (
+        convexError instanceof Error &&
+        convexError.message?.includes("already exists")
+      ) {
         return NextResponse.json(
           { error: "User already exists" },
           { status: 400 },
