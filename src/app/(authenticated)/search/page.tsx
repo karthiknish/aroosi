@@ -124,7 +124,8 @@ export interface ProfileSearchResult {
 }
 
 export default function SearchProfilesPage() {
-  const { token, isSignedIn, profile } = useAuthContext();
+  const { token, isSignedIn, profile: rawProfile } = useAuthContext();
+  const profile = rawProfile as { subscriptionPlan?: string } | null;
   const router = useRouter();
   const { trackUsage } = useUsageTracking(token ?? undefined);
   const [city, setCity] = React.useState("");
@@ -260,12 +261,17 @@ export default function SearchProfilesPage() {
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: ProfileSearchResult) => u.profile && u.profile.isProfileComplete
+      (u: ProfileSearchResult) => u.profile && u.profile.isProfileComplete,
     );
   }, [profiles]);
 
   // Get current user from auth context
-  const { profile: currentUser } = useAuthContext();
+  const { profile: rawCurrentUser } = useAuthContext();
+  const currentUser = rawCurrentUser as {
+    subscriptionPlan?: string;
+    userId?: string;
+    email?: string;
+  } | null;
 
   // Get blocked users to filter them out
   const { data: blockedUsers } = useBlockedUsers();
@@ -588,7 +594,7 @@ export default function SearchProfilesPage() {
                           {getAge(
                             typeof p.dateOfBirth === "string"
                               ? p.dateOfBirth
-                              : ""
+                              : "",
                           )}
                         </div>
                         <Button
@@ -601,10 +607,10 @@ export default function SearchProfilesPage() {
                             ) {
                               console.warn(
                                 "Attempted to navigate with Clerk ID instead of Convex user ID:",
-                                u.userId
+                                u.userId,
                               );
                               alert(
-                                "Internal error: Invalid user ID for navigation."
+                                "Internal error: Invalid user ID for navigation.",
                               );
                               return;
                             }
