@@ -26,7 +26,13 @@ type MockConvexClient = {
 const mockConvexHttpClient = ConvexHttpClient as jest.MockedClass<
   typeof ConvexHttpClient
 >;
-const { requireUserToken } = require("@/app/api/_utils/auth");
+import { requireUserToken } from "@/app/api/_utils/auth";
+
+// Mock the auth utility
+jest.mock("@/app/api/_utils/auth");
+const mockRequireUserToken = requireUserToken as jest.MockedFunction<
+  typeof requireUserToken
+>;
 
 describe("/api/profile API Routes", () => {
   beforeEach(() => {
@@ -35,7 +41,7 @@ describe("/api/profile API Routes", () => {
 
   describe("GET /api/profile", () => {
     test("returns user profile when authenticated", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         token: "valid-token",
         userId: "user_123",
       });
@@ -67,7 +73,7 @@ describe("/api/profile API Routes", () => {
     });
 
     test("returns 401 when not authenticated", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         errorResponse: new Response("Unauthorized", { status: 401 }),
       });
 
@@ -78,7 +84,7 @@ describe("/api/profile API Routes", () => {
     });
 
     test("handles profile not found", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         token: "valid-token",
         userId: "user_123",
       });
@@ -101,7 +107,7 @@ describe("/api/profile API Routes", () => {
     });
 
     test("handles database errors gracefully", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         token: "valid-token",
         userId: "user_123",
       });
@@ -126,7 +132,7 @@ describe("/api/profile API Routes", () => {
 
   describe("POST /api/profile", () => {
     test("creates new profile when authenticated", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         token: "valid-token",
         userId: "user_123",
       });
@@ -166,7 +172,7 @@ describe("/api/profile API Routes", () => {
     });
 
     test("returns 401 when not authenticated", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         errorResponse: new Response("Unauthorized", { status: 401 }),
       });
 
@@ -183,7 +189,7 @@ describe("/api/profile API Routes", () => {
 
   describe("PUT /api/profile", () => {
     test("updates existing profile when authenticated", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         token: "valid-token",
         userId: "user_123",
       });
@@ -224,7 +230,7 @@ describe("/api/profile API Routes", () => {
 
   describe("DELETE /api/profile", () => {
     test("deletes profile when authenticated", async () => {
-      requireUserToken.mockReturnValue({
+      mockRequireUserToken.mockReturnValue({
         token: "valid-token",
         userId: "user_123",
       });

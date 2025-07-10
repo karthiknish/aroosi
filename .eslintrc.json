@@ -1,5 +1,5 @@
 {
-  "extends": ["next/core-web-vitals"],
+  "extends": ["next", "next/typescript"],
   "env": {
     "browser": true,
     "es2021": true,
@@ -12,7 +12,9 @@
   "rules": {
     "react/no-unescaped-entities": "off",
     "no-unused-vars": "warn",
-    "no-console": "warn"
+    "no-console": "warn",
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-explicit-any": "warn"
   },
   "ignorePatterns": ["node_modules/", ".next/", "out/", "build/"]
 }
