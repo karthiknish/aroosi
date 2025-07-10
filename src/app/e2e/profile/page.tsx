@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { sendInterest, removeInterest } from "@/lib/interestUtils";
 import { Heart, HeartOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
-export default function InterestE2ETestPage() {
+function InterestE2ETestPageInner() {
   const params = useSearchParams();
   const toUserId = params.get("other") ?? "user2";
   const token = params.get("token") ?? "test-token";
@@ -43,5 +43,13 @@ export default function InterestE2ETestPage() {
       </button>
       <div data-testid="status">{status}</div>
     </div>
+  );
+}
+
+export default function InterestE2ETestPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <InterestE2ETestPageInner />
+    </Suspense>
   );
 }

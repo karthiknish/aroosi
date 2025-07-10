@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { showInfoToast, showErrorToast } from "@/lib/ui/toast";
 
@@ -16,7 +16,7 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-export default function ProtectedRoute({
+function ProtectedRouteInner({
   children,
   requireAuth = true,
   requireProfileComplete = true,
@@ -296,4 +296,18 @@ export default function ProtectedRoute({
 
   // Return children wrapped in a fragment to maintain consistent structure
   return <>{children}</>;
+}
+
+export default function ProtectedRoute(props: ProtectedRouteProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <LoadingSpinner size={32} />
+        </div>
+      }
+    >
+      <ProtectedRouteInner {...props} />
+    </Suspense>
+  );
 }

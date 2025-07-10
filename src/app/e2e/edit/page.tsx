@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { updateUserProfile } from "@/lib/profile/userProfileApi";
 import { useSearchParams } from "next/navigation";
 
-export default function EditProfileE2ETestPage() {
+function EditProfileE2ETestPageInner() {
   const params = useSearchParams();
   const token = params.get("token") ?? "test-token";
 
@@ -16,7 +16,7 @@ export default function EditProfileE2ETestPage() {
       const res = await updateUserProfile(
         token,
         { fullName },
-        0 // retries
+        0, // retries
       );
       setStatus(res.success ? "success" : "error");
     } catch {
@@ -41,5 +41,13 @@ export default function EditProfileE2ETestPage() {
       </button>
       <div data-testid="status">{status}</div>
     </div>
+  );
+}
+
+export default function EditProfileE2ETestPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <EditProfileE2ETestPageInner />
+    </Suspense>
   );
 }
