@@ -7,15 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Bell,
-  Search,
-  Menu,
-  User,
-  Settings,
-  LogOut,
-  Home,
-} from "lucide-react";
+import { Bell, Search, Menu, User, Settings, LogOut, Home } from "lucide-react";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -31,7 +23,8 @@ export function AdminHeader({
   setSidebarCollapsed,
   currentPath,
 }: AdminHeaderProps) {
-  const { profile } = useAuthContext();
+  const { profile: rawProfile } = useAuthContext();
+  const profile = rawProfile as { fullName?: string; email?: string } | null;
   const router = useRouter();
 
   const getPageTitle = (path: string) => {
@@ -47,13 +40,14 @@ export function AdminHeader({
   const getBreadcrumbs = (path: string) => {
     const segments = path.split("/").filter(Boolean);
     const breadcrumbs = [{ label: "Admin", href: "/admin" }];
-    
+
     if (segments.length > 1) {
       const currentPage = segments[segments.length - 1];
-      const pageLabel = currentPage.charAt(0).toUpperCase() + currentPage.slice(1);
+      const pageLabel =
+        currentPage.charAt(0).toUpperCase() + currentPage.slice(1);
       breadcrumbs.push({ label: pageLabel, href: path });
     }
-    
+
     return breadcrumbs;
   };
 
@@ -72,7 +66,7 @@ export function AdminHeader({
           >
             <Menu className="h-4 w-4" />
           </Button>
-          
+
           <div>
             <h1 className="text-xl font-semibold text-gray-900">
               {getPageTitle(currentPath)}
@@ -124,9 +118,7 @@ export function AdminHeader({
             <PopoverContent align="end" className="w-56 p-0">
               <div className="flex items-center justify-start gap-2 p-3 border-b">
                 <div className="flex flex-col space-y-1 leading-none">
-                  <p className="font-medium text-sm">
-                    {profile?.fullName}
-                  </p>
+                  <p className="font-medium text-sm">{profile?.fullName}</p>
                   <p className="w-[200px] truncate text-xs text-gray-500">
                     {profile?.email}
                   </p>

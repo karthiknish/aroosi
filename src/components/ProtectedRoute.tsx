@@ -40,11 +40,12 @@ export default function ProtectedRoute({
     isOnboardingComplete,
     isLoading: isAuthLoading,
 
-    profile,
+    profile: rawProfile,
     error: authError,
   } = useAuthContext();
 
   // Directly use context values; undefined indicates still loading
+  const profile = rawProfile as { subscriptionPlan?: string } | null;
   const profileComplete = isProfileComplete;
   const onboardingComplete = isOnboardingComplete;
   const userPlan = profile?.subscriptionPlan || "free";

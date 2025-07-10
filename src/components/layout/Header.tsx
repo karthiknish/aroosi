@@ -27,7 +27,13 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     setHydrated(true);
   }, []);
 
-  const { isAdmin, isSignedIn, signOut, profile } = useAuthContext();
+  const {
+    isAdmin,
+    isSignedIn,
+    signOut,
+    profile: rawProfile,
+  } = useAuthContext();
+  const profile = rawProfile as { subscriptionPlan?: string } | null;
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   // Close mobile menu on route change

@@ -22,7 +22,8 @@ const ProfileFormStepImages: React.FC<Props> = ({
   isLoading,
   profileId,
 }) => {
-  const { profile, isAdmin } = useAuthContext();
+  const { profile: rawProfile, isAdmin } = useAuthContext();
+  const profile = rawProfile as { userId?: string } | null;
   const userId = profile?.userId || "user-id-placeholder";
 
   // Notify parent of image changes (run even during loading to reset state)
