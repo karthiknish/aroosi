@@ -1,14 +1,5 @@
 {
-  "extends": ["next/core-web-vitals"],
-  "env": {
-    "browser": true,
-    "es2021": true,
-    "node": true
-  },
-  "parserOptions": {
-    "ecmaVersion": "latest",
-    "sourceType": "module"
-  },
+  "extends": ["next"],
   "rules": {
     "react/no-unescaped-entities": "off",
     "no-unused-vars": "off",
@@ -17,5 +8,15 @@
     "@next/next/no-img-element": "off",
     "@next/next/no-page-custom-font": "off"
   },
-  "ignorePatterns": ["node_modules/", ".next/", "out/", "build/"]
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "build/",
+    "src/__tests__/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ]
 }
