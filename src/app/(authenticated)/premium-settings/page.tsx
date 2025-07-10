@@ -47,8 +47,17 @@ function formatTimeRemaining(boostedUntil: number): string {
   return `${minutes}m remaining`;
 }
 
+interface ProfileData {
+  hideFromFreeUsers?: boolean;
+  boostedUntil?: number;
+  subscriptionPlan?: string;
+  subscriptionExpiresAt?: number;
+  boostsRemaining?: number;
+}
+
 export default function PremiumSettingsPage() {
-  const { profile, token, refreshProfile } = useAuthContext();
+  const { profile: rawProfile, token, refreshProfile } = useAuthContext();
+  const profile = rawProfile as ProfileData;
   const [hideProfile, setHideProfile] = useState<boolean>(
     !!profile?.hideFromFreeUsers,
   );

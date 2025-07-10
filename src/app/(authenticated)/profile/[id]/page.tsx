@@ -52,7 +52,11 @@ type Interest = {
 
 export default function ProfileDetailPage() {
   const params = useParams();
-  const { token, profile: currentUserProfile } = useAuthContext();
+  const { token, profile: rawCurrentUserProfile } = useAuthContext();
+  const currentUserProfile = rawCurrentUserProfile as {
+    _id?: string;
+    userId?: string;
+  } | null;
   const offline = useOffline();
   const { trackUsage } = useUsageTracking(token ?? undefined);
 
