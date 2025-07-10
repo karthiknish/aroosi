@@ -25,7 +25,6 @@ export type ProfileFor = "self" | "friend" | "family";
 export interface Profile {
   _id: Id<"profiles">;
   userId: Id<"users">;
-  clerkId: string;
   email: string;
   role?: string;
   profileFor: ProfileFor;
@@ -88,7 +87,6 @@ export interface Profile {
 export interface ProfileFormValues {
   _id?: Id<"profiles">;
   userId?: Id<"users">;
-  clerkId?: string;
   email?: string;
   role?: string;
   fullName: string;

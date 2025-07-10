@@ -28,7 +28,6 @@ import React from "react";
 const defaultProfile: Profile = {
   _id: "" as Id<"profiles">,
   userId: "" as Id<"users">,
-  clerkId: "",
   email: "",
   fullName: "",
   dateOfBirth: "",
@@ -68,15 +67,15 @@ function convertFormValuesToProfile(
   formValues: ProfileFormValues,
   existingProfile: Partial<Profile> = {},
 ): Profile {
-  // Remove _creationTime, _id, and clerkId from both formValues and existingProfile
+  // Remove _creationTime and _id from both formValues and existingProfile
   const cleanFormValues = Object.fromEntries(
     Object.entries(formValues).filter(
-      ([k]) => k !== "_creationTime" && k !== "_id" && k !== "clerkId",
+      ([k]) => k !== "_creationTime" && k !== "_id",
     ),
   );
   const cleanExistingProfile = Object.fromEntries(
     Object.entries(existingProfile).filter(
-      ([k]) => k !== "_creationTime" && k !== "_id" && k !== "clerkId",
+      ([k]) => k !== "_creationTime" && k !== "_id",
     ),
   );
   return {
@@ -272,11 +271,10 @@ export default function EditProfilePage() {
     mutationFn: async (values: ProfileFormValues) => {
       if (!token)
         throw new Error("Authentication required. Please sign in again.");
-      // Remove userId, _id, and clerkId before sending to API
+      // Remove userId and _id before sending to API
       const {
         userId: _omitUserId, // eslint-disable-line no-unused-vars
         _id: _omitId, // eslint-disable-line no-unused-vars
-        clerkId: _omitClerkId, // eslint-disable-line no-unused-vars
         ...safeValues
       } = values;
       const apiResult = await submitProfile(token, safeValues, "edit");

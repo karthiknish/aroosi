@@ -1,11 +1,13 @@
+// Auth config for native authentication
+// Clerk configuration removed - using native JWT authentication
 export default {
   jwt: {
-    issuer: process.env.CLERK_JWT_ISSUER_DOMAIN,
+    issuer: "aroosi-native-auth",
     applicationID: "proper-gull-501",
   },
   providers: [
     {
-      domain: process.env.CLERK_JWT_ISSUER_DOMAIN,
+      domain: "aroosi.app",
       applicationID: "proper-gull-501",
     },
   ],

@@ -75,7 +75,7 @@ export const getUserById = query({
 });
 
 /**
- * Retrieves the user record and their profile for the currently authenticated Clerk user.
+ * Retrieves the user record and their profile for the currently authenticated user.
  */
 /**
  * Get a profile by its ID (for internal use)
@@ -654,98 +654,17 @@ export const deleteCurrentUserProfile = mutation({
     // Delete the user document from Convex
     await ctx.db.delete(user._id);
     console.log(
-      `Successfully deleted user ${user._id} (Clerk ID: ${email}) from Convex DB.`,
+      `Successfully deleted user ${user._id} (email: ${email}) from Convex DB.`,
     );
-
-    // Schedule an action to delete the user from Clerk
-    await ctx.scheduler.runAfter(0, internal.users.internalDeleteClerkUser, {
-      email: email,
-    });
 
     return {
       success: true,
-      message:
-        "Profile and user deletion from Convex initiated. Clerk deletion scheduled.",
+      message: "Profile and user deletion completed successfully.",
     };
   },
 });
 
-// Internal action to delete user from Clerk
-export const internalDeleteClerkUser = internalAction({
-  args: { email: v.string() },
-  handler: async (_ctx, args) => {
-    const clerkSecretKey = process.env.CLERK_SECRET_KEY;
-    if (!clerkSecretKey) {
-      console.error(
-        "CLERK_SECRET_KEY environment variable not set. Cannot delete user from Clerk.",
-      );
-      // Not throwing an error here as the Convex part is done.
-      // The user will be orphaned in Clerk but deleted from the app.
-      return {
-        success: false,
-        message:
-          "Clerk secret key not configured. User not deleted from Clerk.",
-      };
-    }
-
-    const clerkUserId = args.email;
-    // Ensure this URL is correct as per Clerk API v1 documentation
-    const clerkApiUrl = `https://api.clerk.com/v1/users/${clerkUserId}`;
-
-    console.log(
-      `Attempting to delete user ${clerkUserId} from Clerk via API: ${clerkApiUrl}`,
-    );
-
-    try {
-      const response = await fetch(clerkApiUrl, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${clerkSecretKey}`,
-          "Content-Type": "application/json", // Though not strictly necessary for DELETE with no body
-        },
-      });
-
-      if (response.ok) {
-        // const responseBody = await response.json(); // Clerk delete might return a body
-        console.log(
-          `Successfully deleted user ${clerkUserId} from Clerk. Status: ${response.status}`,
-        );
-        return {
-          success: true,
-          message: "User successfully deleted from Clerk.",
-        };
-      } else {
-        const errorBodyText = await response.text(); // Read as text first
-        let errorBodyJson = null;
-        try {
-          errorBodyJson = JSON.parse(errorBodyText);
-        } catch (e) {
-          console.error("errorBodyText:", e);
-          // ignore if not json
-        }
-        console.error(
-          `Failed to delete user ${clerkUserId} from Clerk. Status: ${response.status} ${response.statusText}. Body:`,
-          errorBodyJson || errorBodyText,
-        );
-        return {
-          success: false,
-          message: `Clerk API error: ${response.status} ${response.statusText}`,
-          details: errorBodyJson || errorBodyText,
-        };
-      }
-    } catch (e) {
-      console.error(
-        `Network or other error when trying to delete user ${clerkUserId} from Clerk:`,
-        e,
-      );
-      return {
-        success: false,
-        message: "Failed to communicate with Clerk API.",
-        details: e instanceof Error ? e.message : String(e),
-      };
-    }
-  },
-});
+// Clerk user deletion function removed - using native authentication
 
 export const adminUpdateProfile = mutation({
   args: {

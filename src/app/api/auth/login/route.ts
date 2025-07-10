@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-// Login is handled by Clerk. This endpoint expects a valid Clerk JWT.
-// You can optionally validate the JWT here or just return a message.
+// Login is handled by native authentication. Use /api/auth/signin instead.
+// This endpoint is deprecated and kept for backward compatibility.
 
 export async function POST() {
   return NextResponse.json({
     message:
-      "Login is handled by Clerk. Send your credentials to Clerk and use the JWT for authenticated requests.",
+      "Login is handled by native authentication. Use /api/auth/signin for authentication.",
   });
 }
