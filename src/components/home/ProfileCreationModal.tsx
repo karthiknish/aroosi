@@ -515,9 +515,16 @@ export function ProfileCreationModal({
           if (e.path[0]) fieldErrors[String(e.path[0])] = e.message;
         });
 
-        // Show toast with first error message
-        const firstError =
-          result.error.errors[0]?.message ?? "Please fill required fields";
+        // Build more descriptive error message with field name
+        const firstIssue = result.error.errors[0];
+        const fieldLabel = firstIssue?.path?.[0]
+          ? String(firstIssue.path[0])
+              .replace(/([A-Z])/g, " $1") // split camelCase
+              .replace(/^\w/, (c) => c.toUpperCase())
+          : "Field";
+        const firstError = firstIssue
+          ? `${fieldLabel}: ${firstIssue.message}`
+          : "Please fill required fields";
         showErrorToast(null, firstError);
 
         // Only update state if error set actually changed
