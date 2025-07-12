@@ -6,7 +6,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"; // retained for backward compatibility if needed
+import { SearchableSelect, Option } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import {
   countryCodes,
@@ -35,7 +36,7 @@ export function PhoneInput({
   // Parse the initial value to separate country code and number
   const parsed = parsePhoneNumber(value);
   const [selectedCountryCode, setSelectedCountryCode] = useState(
-    parsed.countryCode,
+    parsed.countryCode
   );
   const [phoneNumber, setPhoneNumber] = useState(parsed.number);
 
@@ -67,45 +68,30 @@ export function PhoneInput({
     countryCodes.find((c) => c.code === selectedCountryCode) ||
     defaultCountryCode;
 
+  // Deduplicate by country code to avoid duplicate option keys like +1
+  const uniqueCountryCodes = Array.from(
+    new Map(countryCodes.map((c) => [c.code, c])).values()
+  );
+
+  const countryOptions: Option<string>[] = uniqueCountryCodes.map((c) => ({
+    value: c.code,
+    label: `${c.flag} ${c.code} ${c.country}`,
+  }));
+
   return (
     <div className={cn("flex gap-2", className)}>
-      <Select
-        value={selectedCountryCode}
-        onValueChange={handleCountryCodeChange}
-        disabled={disabled}
-      >
-        <SelectTrigger
+      <div className="w-[180px] flex-shrink-0">
+        <SearchableSelect
+          options={countryOptions}
+          value={selectedCountryCode}
+          onValueChange={handleCountryCodeChange}
+          placeholder="Country code"
           className={cn(
-            "w-[140px] flex-shrink-0 bg-white",
             error &&
               "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
           )}
-        >
-          <SelectValue>
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{selectedCountry.flag}</span>
-              <span className="text-sm">{selectedCountry.code}</span>
-            </div>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="max-h-[300px] bg-white">
-          {countryCodes.map((country) => (
-            <SelectItem
-              key={`${country.code}-${country.country}`}
-              value={country.code}
-              className="bg-white"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{country.flag}</span>
-                <span className="font-medium">{country.code}</span>
-                <span className="text-sm text-muted-foreground">
-                  {country.country}
-                </span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        />
+      </div>
 
       <Input
         type="tel"
