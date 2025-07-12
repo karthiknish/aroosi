@@ -78,7 +78,7 @@ export function PhoneInput({
           className={cn(
             "w-[140px] flex-shrink-0 bg-white",
             error &&
-              "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
+              "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
           )}
         >
           <SelectValue>
@@ -88,7 +88,7 @@ export function PhoneInput({
             </div>
           </SelectValue>
         </SelectTrigger>
-        <SelectContent className="max-h-[300px]">
+        <SelectContent className="max-h-[300px] bg-white">
           {countryCodes.map((country) => (
             <SelectItem
               key={`${country.code}-${country.country}`}
@@ -116,7 +116,7 @@ export function PhoneInput({
         className={cn(
           "flex-1 bg-white",
           error &&
-            "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
+            "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
         )}
       />
     </div>

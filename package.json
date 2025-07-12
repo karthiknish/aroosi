@@ -2,6 +2,10 @@
   "name": "aroosi",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "htmlparser2": "^10.0.0",
+    "entities": "^6.0.1"
+  },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/modifiers": "9.0.0",

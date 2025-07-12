@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Alert } from "@/components/ui/alert";
 import GoogleAuthButton from "./GoogleAuthButton";
+import { useProfileWizard } from "@/contexts/ProfileWizardContext";
+import { Eye, EyeOff } from "lucide-react";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -18,8 +20,6 @@ export default function CustomSignupForm({
   onComplete,
 }: CustomSignupFormProps) {
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -29,6 +29,13 @@ export default function CustomSignupForm({
   const [showOTPForm, setShowOTPForm] = useState(false);
   const [otp, setOtp] = useState("");
 
+  // Toggle visibility for password fields
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Access wizard data to derive names
+  const { formData: wizardData } = useProfileWizard();
+
   const { signUp, verifyOTP } = useAuth();
   const router = useRouter();
 
@@ -37,14 +44,6 @@ export default function CustomSignupForm({
   };
 
   const validateForm = () => {
-    if (!formData.firstName.trim()) {
-      setError("First name is required");
-      return false;
-    }
-    if (!formData.lastName.trim()) {
-      setError("Last name is required");
-      return false;
-    }
     if (!formData.email.trim()) {
       setError("Email is required");
       return false;
@@ -73,11 +72,16 @@ export default function CustomSignupForm({
     setError(null);
 
     try {
+      // Derive first and last name from the wizard's fullName (if available)
+      const fullName = (wizardData?.fullName as string) || "";
+      const [derivedFirstName, ...derivedRest] = fullName.trim().split(" ");
+      const derivedLastName = derivedRest.join(" ");
+
       const result = await signUp(
         formData.email,
         formData.password,
-        formData.firstName,
-        formData.lastName,
+        derivedFirstName || "N/A",
+        derivedLastName || "N/A"
       );
 
       if (result.success) {
@@ -173,34 +177,6 @@ export default function CustomSignupForm({
       {error && <Alert variant="destructive">{error}</Alert>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="firstName">First Name</Label>
-            <Input
-              id="firstName"
-              type="text"
-              value={formData.firstName}
-              onChange={(e) => handleInputChange("firstName", e.target.value)}
-              placeholder="Enter your first name"
-              required
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name</Label>
-            <Input
-              id="lastName"
-              type="text"
-              value={formData.lastName}
-              onChange={(e) => handleInputChange("lastName", e.target.value)}
-              placeholder="Enter your last name"
-              required
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -216,30 +192,60 @@ export default function CustomSignupForm({
 
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            value={formData.password}
-            onChange={(e) => handleInputChange("password", e.target.value)}
-            placeholder="Create a password (min. 8 characters)"
-            required
-            disabled={isLoading}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={(e) => handleInputChange("password", e.target.value)}
+              placeholder="Create a password (min. 8 characters)"
+              required
+              disabled={isLoading}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+              disabled={isLoading}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <Input
-            id="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={(e) =>
-              handleInputChange("confirmPassword", e.target.value)
-            }
-            placeholder="Confirm your password"
-            required
-            disabled={isLoading}
-          />
+          <div className="relative">
+            <Input
+              id="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              value={formData.confirmPassword}
+              onChange={(e) =>
+                handleInputChange("confirmPassword", e.target.value)
+              }
+              placeholder="Confirm your password"
+              required
+              disabled={isLoading}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+              disabled={isLoading}
+            >
+              {showConfirmPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         <Button
@@ -247,8 +253,6 @@ export default function CustomSignupForm({
           className="w-full"
           disabled={
             isLoading ||
-            !formData.firstName ||
-            !formData.lastName ||
             !formData.email ||
             !formData.password ||
             !formData.confirmPassword
@@ -286,17 +290,6 @@ export default function CustomSignupForm({
         }}
         onError={(error: string) => setError(error)}
       />
-
-      <div className="text-center text-sm">
-        <span className="text-muted-foreground">Already have an account? </span>
-        <button
-          type="button"
-          onClick={() => router.push("/sign-in")}
-          className="text-primary hover:underline font-medium"
-        >
-          Sign in
-        </button>
-      </div>
     </div>
   );
 }
