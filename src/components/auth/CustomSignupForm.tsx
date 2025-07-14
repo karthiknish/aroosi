@@ -11,6 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import GoogleAuthButton from "./GoogleAuthButton";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 import { Eye, EyeOff } from "lucide-react";
+import { OtpInput } from "@/components/ui/otp-input";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -102,7 +103,7 @@ export default function CustomSignupForm({
     setError(null);
 
     try {
-      const result = await verifyOTP(formData.email, otp);
+      const result = await verifyOTP(formData.email, otp.trim());
 
       if (result.success) {
         if (onComplete) {
@@ -135,15 +136,12 @@ export default function CustomSignupForm({
         <form onSubmit={handleOTPSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="otp">Verification Code</Label>
-            <Input
-              id="otp"
-              type="text"
+            <OtpInput
               value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="Enter 6-digit code"
-              maxLength={6}
-              required
+              onChange={(value) => setOtp(value)}
+              length={6}
               disabled={isLoading}
+              className="w-full"
             />
           </div>
 
