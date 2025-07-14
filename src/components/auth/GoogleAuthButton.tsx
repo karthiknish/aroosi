@@ -54,8 +54,10 @@ export default function GoogleAuthButton({
     }
 
     try {
-      // Trigger the Google sign-in prompt; credential handled in the callback
-      (window as any).google.accounts.id.prompt();
+      // Trigger the Google sign-in prompt using FedCM when supported
+      (window as any).google.accounts.id.prompt(undefined, {
+        use_fedcm_for_prompt: true,
+      });
     } catch (e) {
       console.error("Google prompt error", e);
       onError?.("Google sign in failed");
