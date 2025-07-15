@@ -303,15 +303,25 @@ export function ProfileCreationModal({
 
   const handleInputChange = useCallback(
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
-      // Update the context so data is shared with HeroOnboarding
-      updateContextData({ [field]: value });
+      try {
+        // Update the context so data is shared with HeroOnboarding
+        updateContextData({ [field]: value });
 
-      // Debounced validation for better performance
-      const timeoutId = setTimeout(() => {
-        validateField(field, value);
-      }, 300);
+        // Debounced validation for better performance
+        const timeoutId = setTimeout(() => {
+          try {
+            validateField(field, value);
+          } catch (err) {
+            console.error(`Validation error for field ${field}:`, err);
+            // Don't block user input for validation errors
+          }
+        }, 300);
 
-      return () => clearTimeout(timeoutId);
+        return () => clearTimeout(timeoutId);
+      } catch (err) {
+        console.error(`Error updating field ${field}:`, err);
+        showErrorToast(null, `Failed to update ${field}. Please try again.`);
+      }
     },
     [updateContextData]
   );
@@ -509,7 +519,22 @@ export function ProfileCreationModal({
       setIsSubmitting(true);
 
       // Ensure we have a token
-      const authToken = token ?? (await getToken());
+      let authToken = token;
+      if (!authToken) {
+        try {
+          authToken = await getToken();
+        } catch (err) {
+          console.error("Failed to get authentication token:", err);
+          showErrorToast(
+            null,
+            "Failed to get authentication token. Please try signing in again."
+          );
+          setHasSubmittedProfile(false);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       if (!authToken) {
         console.error("No authentication token available");
         showErrorToast(
@@ -630,7 +655,10 @@ export function ProfileCreationModal({
         console.log("Submitting profile with payload:", payload);
         const profileRes = await submitProfile(authToken, payload, "create");
         if (!profileRes.success) {
+          console.error("Profile submission failed:", profileRes.error);
           showErrorToast(profileRes.error, "Failed to create profile");
+          setHasSubmittedProfile(false); // Allow retry
+          setIsSubmitting(false);
           return;
         }
 
@@ -713,13 +741,32 @@ export function ProfileCreationModal({
         }
 
         // Refresh profile data and finish
-        await refreshUser();
+        try {
+          await refreshUser();
+        } catch (err) {
+          console.warn("Failed to refresh user data:", err);
+          // Don't block the success flow for this
+        }
+
         // Clean up all onboarding data
-        clearAllOnboardingData();
+        try {
+          clearAllOnboardingData();
+        } catch (err) {
+          console.warn("Failed to clear onboarding data:", err);
+          // Don't block the success flow for this
+        }
+
         showSuccessToast("Profile created successfully!");
         onClose();
+
         // Redirect to success page
-        router.push("/success");
+        try {
+          router.push("/success");
+        } catch (err) {
+          console.error("Failed to redirect to success page:", err);
+          // Fallback: reload the page to ensure clean state
+          window.location.href = "/success";
+        }
       } catch (err) {
         console.error("Profile submission error", err);
 
