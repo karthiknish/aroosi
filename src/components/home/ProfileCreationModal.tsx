@@ -305,12 +305,12 @@ export function ProfileCreationModal({
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
       // Update the context so data is shared with HeroOnboarding
       updateContextData({ [field]: value });
-      
+
       // Debounced validation for better performance
       const timeoutId = setTimeout(() => {
         validateField(field, value);
       }, 300);
-      
+
       return () => clearTimeout(timeoutId);
     },
     [updateContextData]
@@ -382,13 +382,13 @@ export function ProfileCreationModal({
   // Validate individual field
   const validateField = (field: keyof ProfileCreationData, value: unknown) => {
     // Find which step this field belongs to
-    let fieldSchema: z.ZodSchema | null = null;
+    let fieldSchema: z.ZodTypeAny | null = null;
 
     for (const schema of stepSchemas) {
       if (schema instanceof z.ZodObject) {
         const shape = schema.shape;
         if (field in shape) {
-          fieldSchema = shape[field as keyof typeof shape];
+          fieldSchema = shape[field as keyof typeof shape] as z.ZodTypeAny;
           break;
         }
       }
@@ -722,25 +722,40 @@ export function ProfileCreationModal({
         router.push("/success");
       } catch (err) {
         console.error("Profile submission error", err);
-        
+
         // Provide specific error messages based on error type
         let errorMessage = "Profile submission failed";
         if (err instanceof Error) {
-          if (err.message.includes("network") || err.message.includes("fetch")) {
-            errorMessage = "Network error. Please check your connection and try again.";
+          if (
+            err.message.includes("network") ||
+            err.message.includes("fetch")
+          ) {
+            errorMessage =
+              "Network error. Please check your connection and try again.";
           } else if (err.message.includes("timeout")) {
             errorMessage = "Request timed out. Please try again.";
-          } else if (err.message.includes("401") || err.message.includes("unauthorized")) {
+          } else if (
+            err.message.includes("401") ||
+            err.message.includes("unauthorized")
+          ) {
             errorMessage = "Authentication expired. Please sign in again.";
-          } else if (err.message.includes("409") || err.message.includes("duplicate")) {
-            errorMessage = "Profile already exists. Please use the profile edit feature.";
-          } else if (err.message.includes("400") || err.message.includes("validation")) {
-            errorMessage = "Invalid profile data. Please check your information and try again.";
+          } else if (
+            err.message.includes("409") ||
+            err.message.includes("duplicate")
+          ) {
+            errorMessage =
+              "Profile already exists. Please use the profile edit feature.";
+          } else if (
+            err.message.includes("400") ||
+            err.message.includes("validation")
+          ) {
+            errorMessage =
+              "Invalid profile data. Please check your information and try again.";
           } else {
             errorMessage = `Profile submission failed: ${err.message}`;
           }
         }
-        
+
         showErrorToast(null, errorMessage);
         setHasSubmittedProfile(false); // Allow retry
       } finally {
@@ -885,544 +900,517 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 2: Location \Step 2: Location, Contact & Physical Physical */}
-                {
-                  displayStep === 2 && (
-                    <div className="space-y-6">
-                      <div>
-                        <Label
-                          htmlFor="country"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Country
-                        </Label>
-                        <SearchableSelect
-                          options={countries.map((c) => ({
-                            value: c,
-                            label: c,
-                          }))}
-                          value={formData.country}
-                          onValueChange={(v) => handleInputChange("country", v)}
-                          placeholder="Select country"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="city"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          {required("City")}
-                        </Label>
-                        <Input
-                          id="city"
-                          value={formData.city}
-                          onChange={(e) =>
-                            handleInputChange("city", e.target.value)
-                          }
-                          placeholder="City"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="height"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          {required("Height")}
-                        </Label>
-                        <SearchableSelect
-                          options={Array.from(
-                            { length: 198 - 137 + 1 },
-                            (_, i) => {
-                              const cm = 137 + i;
-                              return {
-                                value: String(cm),
-                                label: `${cmToFeetInches(cm)} (${cm} cm)`,
-                              };
-                            }
-                          )}
-                          value={formData.height}
-                          onValueChange={(v) => handleInputChange("height", v)}
-                          placeholder="Select height"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="maritalStatus"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          {required("Marital Status")}
-                        </Label>
-                        <Select
-                          value={formData.maritalStatus}
-                          onValueChange={(v) =>
-                            handleInputChange("maritalStatus", v)
-                          }
-                        >
-                          <SelectTrigger
-                            id="maritalStatus"
-                            className="w-full bg-white"
-                          >
-                            <SelectValue placeholder="Select..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border border-gray-200">
-                            <SelectItem value="single">Single</SelectItem>
-                            <SelectItem value="divorced">Divorced</SelectItem>
-                            <SelectItem value="widowed">Widowed</SelectItem>
-                            <SelectItem value="annulled">Annulled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="physicalStatus"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Physical Status
-                        </Label>
-                        <Select
-                          value={formData.physicalStatus}
-                          onValueChange={(v) =>
-                            handleInputChange("physicalStatus", v)
-                          }
-                        >
-                          <SelectTrigger
-                            id="physicalStatus"
-                            className="w-full bg-white"
-                          >
-                            <SelectValue placeholder="Select..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border border-gray-200">
-                            <SelectItem value="normal">Normal</SelectItem>
-                            <SelectItem value="differently-abled">
-                              Differently-abled
-                            </SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                {displayStep === 2 && (
+                  <div className="space-y-6">
+                    <div>
+                      <Label
+                        htmlFor="country"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Country
+                      </Label>
+                      <SearchableSelect
+                        options={countries.map((c) => ({
+                          value: c,
+                          label: c,
+                        }))}
+                        value={formData.country}
+                        onValueChange={(v) => handleInputChange("country", v)}
+                        placeholder="Select country"
+                      />
                     </div>
-                  )
-                }
+                    <div>
+                      <Label
+                        htmlFor="city"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("City")}
+                      </Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) =>
+                          handleInputChange("city", e.target.value)
+                        }
+                        placeholder="City"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="height"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Height")}
+                      </Label>
+                      <SearchableSelect
+                        options={Array.from(
+                          { length: 198 - 137 + 1 },
+                          (_, i) => {
+                            const cm = 137 + i;
+                            return {
+                              value: String(cm),
+                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
+                            };
+                          }
+                        )}
+                        value={formData.height}
+                        onValueChange={(v) => handleInputChange("height", v)}
+                        placeholder="Select height"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="maritalStatus"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Marital Status")}
+                      </Label>
+                      <Select
+                        value={formData.maritalStatus}
+                        onValueChange={(v) =>
+                          handleInputChange("maritalStatus", v)
+                        }
+                      >
+                        <SelectTrigger
+                          id="maritalStatus"
+                          className="w-full bg-white"
+                        >
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="single">Single</SelectItem>
+                          <SelectItem value="divorced">Divorced</SelectItem>
+                          <SelectItem value="widowed">Widowed</SelectItem>
+                          <SelectItem value="annulled">Annulled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="physicalStatus"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Physical Status
+                      </Label>
+                      <Select
+                        value={formData.physicalStatus}
+                        onValueChange={(v) =>
+                          handleInputChange("physicalStatus", v)
+                        }
+                      >
+                        <SelectTrigger
+                          id="physicalStatus"
+                          className="w-full bg-white"
+                        >
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="differently-abled">
+                            Differently-abled
+                          </SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
                 {/* Step 3: Cultural & Lifestyle */}
-                {
-                  displayStep === 3 && (
-                    <div className="space-y-6">
-                      <div>
-                        <Label
-                          htmlFor="motherTongue"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Mother Tongue
-                        </Label>
-                        <SearchableSelect
-                          options={MOTHER_TONGUE_OPTIONS.map((o) => ({
-                            value: o.value,
-                            label: o.label,
-                          }))}
-                          value={formData.motherTongue}
-                          onValueChange={(v) =>
-                            handleInputChange("motherTongue", v)
-                          }
-                          placeholder="Select language"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="religion"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Religion
-                        </Label>
-                        <SearchableSelect
-                          options={RELIGION_OPTIONS.map((o) => ({
-                            value: o.value,
-                            label: o.label,
-                          }))}
-                          value={formData.religion}
-                          onValueChange={(v) =>
-                            handleInputChange("religion", v)
-                          }
-                          placeholder="Select religion"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="ethnicity"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Ethnicity
-                        </Label>
-                        <SearchableSelect
-                          options={ETHNICITY_OPTIONS.map((o) => ({
-                            value: o.value,
-                            label: o.label,
-                          }))}
-                          value={formData.ethnicity}
-                          onValueChange={(v) =>
-                            handleInputChange("ethnicity", v)
-                          }
-                          placeholder="Select ethnicity"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="diet"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Diet
-                        </Label>
-                        <Select
-                          value={formData.diet}
-                          onValueChange={(v) => handleInputChange("diet", v)}
-                        >
-                          <SelectTrigger id="diet" className="w-full bg-white">
-                            <SelectValue placeholder="Select..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border border-gray-200">
-                            <SelectItem value="vegetarian">
-                              Vegetarian
-                            </SelectItem>
-                            <SelectItem value="non-vegetarian">
-                              Non-Vegetarian
-                            </SelectItem>
-                            <SelectItem value="halal">Halal Only</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="smoking"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Smoking
-                        </Label>
-                        <Select
-                          value={formData.smoking}
-                          onValueChange={(v) => handleInputChange("smoking", v)}
-                        >
-                          <SelectTrigger
-                            id="smoking"
-                            className="w-full bg-white"
-                          >
-                            <SelectValue placeholder="Select..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border border-gray-200">
-                            <SelectItem value="no">No</SelectItem>
-                            <SelectItem value="occasionally">
-                              Occasionally
-                            </SelectItem>
-                            <SelectItem value="yes">Yes</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="drinking"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Drinking
-                        </Label>
-                        <Select
-                          value={formData.drinking}
-                          onValueChange={(v) =>
-                            handleInputChange("drinking", v)
-                          }
-                        >
-                          <SelectTrigger
-                            id="drinking"
-                            className="w-full bg-white"
-                          >
-                            <SelectValue placeholder="Select..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border border-gray-200">
-                            <SelectItem value="no">No</SelectItem>
-                            <SelectItem value="occasionally">
-                              Occasionally
-                            </SelectItem>
-                            <SelectItem value="yes">Yes</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                {displayStep === 3 && (
+                  <div className="space-y-6">
+                    <div>
+                      <Label
+                        htmlFor="motherTongue"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Mother Tongue
+                      </Label>
+                      <SearchableSelect
+                        options={MOTHER_TONGUE_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
+                        value={formData.motherTongue}
+                        onValueChange={(v) =>
+                          handleInputChange("motherTongue", v)
+                        }
+                        placeholder="Select language"
+                      />
                     </div>
-                  )
-                }
+                    <div>
+                      <Label
+                        htmlFor="religion"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Religion
+                      </Label>
+                      <SearchableSelect
+                        options={RELIGION_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
+                        value={formData.religion}
+                        onValueChange={(v) => handleInputChange("religion", v)}
+                        placeholder="Select religion"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="ethnicity"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Ethnicity
+                      </Label>
+                      <SearchableSelect
+                        options={ETHNICITY_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                        }))}
+                        value={formData.ethnicity}
+                        onValueChange={(v) => handleInputChange("ethnicity", v)}
+                        placeholder="Select ethnicity"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="diet"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Diet
+                      </Label>
+                      <Select
+                        value={formData.diet}
+                        onValueChange={(v) => handleInputChange("diet", v)}
+                      >
+                        <SelectTrigger id="diet" className="w-full bg-white">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="vegetarian">Vegetarian</SelectItem>
+                          <SelectItem value="non-vegetarian">
+                            Non-Vegetarian
+                          </SelectItem>
+                          <SelectItem value="halal">Halal Only</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="smoking"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Smoking
+                      </Label>
+                      <Select
+                        value={formData.smoking}
+                        onValueChange={(v) => handleInputChange("smoking", v)}
+                      >
+                        <SelectTrigger id="smoking" className="w-full bg-white">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="no">No</SelectItem>
+                          <SelectItem value="occasionally">
+                            Occasionally
+                          </SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="drinking"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Drinking
+                      </Label>
+                      <Select
+                        value={formData.drinking}
+                        onValueChange={(v) => handleInputChange("drinking", v)}
+                      >
+                        <SelectTrigger
+                          id="drinking"
+                          className="w-full bg-white"
+                        >
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="no">No</SelectItem>
+                          <SelectItem value="occasionally">
+                            Occasionally
+                          </SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
 
                 {/* Step 4: Education & Career */}
-                {
-                  displayStep === 4 && (
-                    <div className="space-y-6">
-                      <div>
-                        <Label
-                          htmlFor="education"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          {required("Education")}
-                        </Label>
-                        <Input
-                          id="education"
-                          value={formData.education}
-                          onChange={(e) =>
-                            handleInputChange("education", e.target.value)
-                          }
-                          placeholder="e.g. Bachelor's, Master's"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="occupation"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          {required("Occupation")}
-                        </Label>
-                        <Input
-                          id="occupation"
-                          value={formData.occupation}
-                          onChange={(e) =>
-                            handleInputChange("occupation", e.target.value)
-                          }
-                          placeholder="Occupation"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="annualIncome"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Annual Income
-                        </Label>
-                        <Input
-                          id="annualIncome"
-                          value={formData.annualIncome}
-                          onChange={(e) =>
-                            handleInputChange("annualIncome", e.target.value)
-                          }
-                          placeholder="e.g. £30,000"
-                        />
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="aboutMe"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          {required("About Me")}
-                        </Label>
-                        <Textarea
-                          id="aboutMe"
-                          value={formData.aboutMe}
-                          onChange={(e) =>
-                            handleInputChange("aboutMe", e.target.value)
-                          }
-                          placeholder="Tell us a little about yourself..."
-                          rows={4}
-                          className="w-full bg-white"
-                        />
-                      </div>
+                {displayStep === 4 && (
+                  <div className="space-y-6">
+                    <div>
+                      <Label
+                        htmlFor="education"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Education")}
+                      </Label>
+                      <Input
+                        id="education"
+                        value={formData.education}
+                        onChange={(e) =>
+                          handleInputChange("education", e.target.value)
+                        }
+                        placeholder="e.g. Bachelor's, Master's"
+                      />
                     </div>
-                  )
-                }
+                    <div>
+                      <Label
+                        htmlFor="occupation"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Occupation")}
+                      </Label>
+                      <Input
+                        id="occupation"
+                        value={formData.occupation}
+                        onChange={(e) =>
+                          handleInputChange("occupation", e.target.value)
+                        }
+                        placeholder="Occupation"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="annualIncome"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Annual Income
+                      </Label>
+                      <Input
+                        id="annualIncome"
+                        value={formData.annualIncome}
+                        onChange={(e) =>
+                          handleInputChange("annualIncome", e.target.value)
+                        }
+                        placeholder="e.g. £30,000"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="aboutMe"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("About Me")}
+                      </Label>
+                      <Textarea
+                        id="aboutMe"
+                        value={formData.aboutMe}
+                        onChange={(e) =>
+                          handleInputChange("aboutMe", e.target.value)
+                        }
+                        placeholder="Tell us a little about yourself..."
+                        rows={4}
+                        className="w-full bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Step 5: Partner Preferences */}
-                {
-                  displayStep === 5 && (
-                    <div className="space-y-6">
-                      <div>
-                        <Label
-                          htmlFor="preferredGender"
-                          className="text-gray-700 mb-2 block"
+                {displayStep === 5 && (
+                  <div className="space-y-6">
+                    <div>
+                      <Label
+                        htmlFor="preferredGender"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Preferred Gender")}
+                      </Label>
+                      <Select
+                        value={formData.preferredGender}
+                        onValueChange={(v) =>
+                          handleInputChange("preferredGender", v)
+                        }
+                      >
+                        <SelectTrigger
+                          id="preferredGender"
+                          className="w-full bg-white"
                         >
-                          {required("Preferred Gender")}
-                        </Label>
-                        <Select
-                          value={formData.preferredGender}
-                          onValueChange={(v) =>
-                            handleInputChange("preferredGender", v)
-                          }
-                        >
-                          <SelectTrigger
-                            id="preferredGender"
-                            className="w-full bg-white"
-                          >
-                            <SelectValue placeholder="Select..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border border-gray-200">
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-gray-700 mb-2 block">
-                          Age Range
-                        </Label>
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            type="number"
-                            min={18}
-                            max={99}
-                            value={
-                              formData.partnerPreferenceAgeMin !== undefined
-                                ? String(formData.partnerPreferenceAgeMin)
-                                : ""
-                            }
-                            onChange={(e) =>
-                              handleInputChange(
-                                "partnerPreferenceAgeMin",
-                                Number(e.target.value)
-                              )
-                            }
-                            className="w-20"
-                          />
-                          <span>to</span>
-                          <Input
-                            type="number"
-                            min={18}
-                            max={99}
-                            value={
-                              formData.partnerPreferenceAgeMax !== undefined
-                                ? String(formData.partnerPreferenceAgeMax)
-                                : ""
-                            }
-                            onChange={(e) =>
-                              handleInputChange(
-                                "partnerPreferenceAgeMax",
-                                e.target.value === ""
-                                  ? ""
-                                  : Number(e.target.value)
-                              )
-                            }
-                            className="w-20"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label
-                          htmlFor="partnerPreferenceCity"
-                          className="text-gray-700 mb-2 block"
-                        >
-                          Preferred Cities
-                        </Label>
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-gray-700 mb-2 block">
+                        Age Range
+                      </Label>
+                      <div className="flex gap-2 items-center">
                         <Input
-                          id="partnerPreferenceCity"
-                          value={preferredCitiesInput}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            setPreferredCitiesInput(raw);
-                            const parsed = raw
-                              .split(",")
-                              .map((s) => s.trim())
-                              .filter(Boolean);
-                            handleInputChange("partnerPreferenceCity", parsed);
-                          }}
-                          placeholder="e.g. London, Kabul"
+                          type="number"
+                          min={18}
+                          max={99}
+                          value={
+                            formData.partnerPreferenceAgeMin !== undefined
+                              ? String(formData.partnerPreferenceAgeMin)
+                              : ""
+                          }
+                          onChange={(e) =>
+                            handleInputChange(
+                              "partnerPreferenceAgeMin",
+                              Number(e.target.value)
+                            )
+                          }
+                          className="w-20"
+                        />
+                        <span>to</span>
+                        <Input
+                          type="number"
+                          min={18}
+                          max={99}
+                          value={
+                            formData.partnerPreferenceAgeMax !== undefined
+                              ? String(formData.partnerPreferenceAgeMax)
+                              : ""
+                          }
+                          onChange={(e) =>
+                            handleInputChange(
+                              "partnerPreferenceAgeMax",
+                              e.target.value === ""
+                                ? ""
+                                : Number(e.target.value)
+                            )
+                          }
+                          className="w-20"
                         />
                       </div>
                     </div>
-                  )
-                }
+                    <div>
+                      <Label
+                        htmlFor="partnerPreferenceCity"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Preferred Cities
+                      </Label>
+                      <Input
+                        id="partnerPreferenceCity"
+                        value={preferredCitiesInput}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setPreferredCitiesInput(raw);
+                          const parsed = raw
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean);
+                          handleInputChange("partnerPreferenceCity", parsed);
+                        }}
+                        placeholder="e.g. London, Kabul"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Step 6: Photos (Optional) */}
-                {
-                  displayStep === 6 && (
-                    <div className="space-y-6">
-                      <div>
-                        <Label className="text-gray-700 mb-2 block">
-                          Profile Photos
-                        </Label>
-                        <ProfileImageUpload
-                          userId={"user-id-placeholder"}
-                          mode="create"
-                          onImagesChanged={handleProfileImagesChange}
-                          className="w-full h-48"
-                        />
-                        {errors.profileImageIds && (
-                          <div className="text-red-500 text-xs mt-1">
-                            {errors.profileImageIds}
-                          </div>
-                        )}
-                      </div>
+                {displayStep === 6 && (
+                  <div className="space-y-6">
+                    <div>
+                      <Label className="text-gray-700 mb-2 block">
+                        Profile Photos
+                      </Label>
+                      <ProfileImageUpload
+                        userId={"user-id-placeholder"}
+                        mode="create"
+                        onImagesChanged={handleProfileImagesChange}
+                        className="w-full h-48"
+                      />
+                      {errors.profileImageIds && (
+                        <div className="text-red-500 text-xs mt-1">
+                          {errors.profileImageIds}
+                        </div>
+                      )}
                     </div>
-                  )
-                }
+                  </div>
+                )}
 
                 {/* Step 7: Clerk SignUp */}
-                {
-                  displayStep === 7 && (
-                    <div className="space-y-6">
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-center">
-                          Create your account
-                        </h3>
-                        {/* Final validation guard before showing signup form */}
-                        {(() => {
-                          const requiredFields = [
-                            "fullName",
-                            "dateOfBirth",
-                            "gender",
-                            "preferredGender",
-                            "city",
-                            "aboutMe",
-                            "occupation",
-                            "education",
-                            "height",
-                            "maritalStatus",
-                            "phoneNumber",
-                          ];
+                {displayStep === 7 && (
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-center">
+                        Create your account
+                      </h3>
+                      {/* Final validation guard before showing signup form */}
+                      {(() => {
+                        const requiredFields = [
+                          "fullName",
+                          "dateOfBirth",
+                          "gender",
+                          "preferredGender",
+                          "city",
+                          "aboutMe",
+                          "occupation",
+                          "education",
+                          "height",
+                          "maritalStatus",
+                          "phoneNumber",
+                        ];
 
-                          const missingFields = requiredFields.filter(
-                            (field) => {
-                              const value =
-                                formData[field as keyof ProfileCreationData];
-                              return (
-                                !value ||
-                                (typeof value === "string" &&
-                                  value.trim() === "")
-                              );
-                            }
-                          );
-
-                          if (missingFields.length > 0) {
-                            return (
-                              <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                                <p className="text-red-600 font-semibold mb-2">
-                                  ⚠️ Cannot create account - Profile incomplete
-                                </p>
-                                <p className="text-sm text-red-500 mb-4">
-                                  You must complete all profile sections before
-                                  creating an account.
-                                </p>
-                                <p className="text-xs text-red-400 mb-4">
-                                  Missing:{" "}
-                                  {missingFields.slice(0, 5).join(", ")}
-                                  {missingFields.length > 5 &&
-                                    ` and ${missingFields.length - 5} more fields`}
-                                </p>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => setStep(1)}
-                                  className="border-red-300 text-red-600 hover:bg-red-50"
-                                >
-                                  <ArrowLeft className="mr-2 h-4 w-4" />
-                                  Go back to complete profile
-                                </Button>
-                              </div>
-                            );
-                          }
-
+                        const missingFields = requiredFields.filter((field) => {
+                          const value =
+                            formData[field as keyof ProfileCreationData];
                           return (
-                            <CustomSignupForm
-                              onComplete={() => {
-                                console.log(
-                                  "Signup completed; profile submission will auto-run"
-                                );
-                              }}
-                            />
+                            !value ||
+                            (typeof value === "string" && value.trim() === "")
                           );
-                        })()}
-                      </div>
+                        });
+
+                        if (missingFields.length > 0) {
+                          return (
+                            <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                              <p className="text-red-600 font-semibold mb-2">
+                                ⚠️ Cannot create account - Profile incomplete
+                              </p>
+                              <p className="text-sm text-red-500 mb-4">
+                                You must complete all profile sections before
+                                creating an account.
+                              </p>
+                              <p className="text-xs text-red-400 mb-4">
+                                Missing: {missingFields.slice(0, 5).join(", ")}
+                                {missingFields.length > 5 &&
+                                  ` and ${missingFields.length - 5} more fields`}
+                              </p>
+                              <Button
+                                variant="outline"
+                                onClick={() => setStep(1)}
+                                className="border-red-300 text-red-600 hover:bg-red-50"
+                              >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Go back to complete profile
+                              </Button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <CustomSignupForm
+                            onComplete={() => {
+                              console.log(
+                                "Signup completed; profile submission will auto-run"
+                              );
+                            }}
+                          />
+                        );
+                      })()}
                     </div>
-                  );
-                }
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
 
