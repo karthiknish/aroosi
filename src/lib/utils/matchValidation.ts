@@ -118,7 +118,7 @@ export function extractUserIdFromToken(token: string): string | null {
     const json = Buffer.from(padded, "base64").toString("utf-8");
     const payload = JSON.parse(json);
 
-    // Clerk typically puts user ID in 'sub' field
+    // JWT typically puts user ID in 'sub' field
     return payload.sub || payload.userId || null;
   } catch (error) {
     console.error("Error extracting user ID from token:", error);

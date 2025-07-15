@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-// import { useUser, useClerk } from "@clerk/nextjs"; // Removed for native auth
+
 import { useAuth } from "@/components/AuthProvider";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
@@ -839,7 +839,7 @@ export function ProfileCreationModal({
       <DialogContent
         className="max-w-md w-full p-0 overflow-hidden bg-white sm:max-h-[90vh] max-h-screen sm:rounded-lg rounded-none"
         onInteractOutside={(e) => {
-          e.preventDefault(); // keep modal open even when Clerk portals register outside clicks
+          e.preventDefault(); // keep modal open even when external portals register outside clicks
         }}
         onPointerDownOutside={(e) => {
           e.preventDefault();
@@ -1386,7 +1386,7 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 7: Clerk SignUp */}
+                {/* Step 7: Account Creation */}
                 {displayStep === 7 && (
                   <div className="space-y-6">
                     <div className="space-y-4">

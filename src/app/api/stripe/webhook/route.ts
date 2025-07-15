@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const email = (sub.metadata.email || sub.metadata.clerk_id) as
+        const email = (sub.metadata.email || sub.metadata.user_id) as
           | string
           | undefined;
 

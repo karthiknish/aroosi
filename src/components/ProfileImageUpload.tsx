@@ -96,26 +96,54 @@ export function ProfileImageUpload({
   const { data: orderedImages = [], refetch: _refetchImages } = useQuery({
     queryKey: ["profileImages", userId, token, authIsAdmin, profileId],
     queryFn: async () => {
-      if (!token || !userId || userId === "user-id-placeholder") {
-        console.warn(
-          "Missing or placeholder token/userId when fetching images",
+      try {
+        if (!token || !userId || userId === "user-id-placeholder") {
+          console.warn(
+            "Missing or placeholder token/userId when fetching images"
+          );
+          return [];
+        }
+
+        if (authIsAdmin && profileId) {
+          // Use admin util for fetching images
+          try {
+            return await fetchAdminProfileImagesById({ token, profileId });
+          } catch (error) {
+            console.error("Error fetching admin profile images:", error);
+            showErrorToast(null, "Failed to load profile images");
+            return [];
+          }
+        }
+
+        // Use existing utility function
+        const result = await fetchUserProfileImages(token, userId);
+        if (!result.success) {
+          console.error("Error fetching user profile images:", result.error);
+          if (result.error?.includes("Authentication")) {
+            showErrorToast(null, "Please sign in again to view images");
+          } else {
+            showErrorToast(null, "Failed to load profile images");
+          }
+          return [];
+        }
+
+        if (!result.data) return [];
+
+        return (result.data || [])
+          .filter((img) => !!img?.url && !!img?.storageId)
+          .map((img) => ({
+            ...img,
+            id: img.storageId,
+            storageId: img.storageId,
+          })) as ImageType[];
+      } catch (error) {
+        console.error("Unexpected error fetching profile images:", error);
+        showErrorToast(
+          null,
+          "An unexpected error occurred while loading images"
         );
         return [];
       }
-      if (authIsAdmin && profileId) {
-        // Use admin util for fetching images
-        return await fetchAdminProfileImagesById({ token, profileId });
-      }
-      // Use existing utility function
-      const result = await fetchUserProfileImages(token, userId);
-      if (!result.success || !result.data) return [];
-      return (result.data || [])
-        .filter((img) => !!img?.url && !!img?.storageId)
-        .map((img) => ({
-          ...img,
-          id: img.storageId,
-          storageId: img.storageId,
-        })) as ImageType[];
     },
     enabled:
       mode === "edit" &&
@@ -123,6 +151,14 @@ export function ProfileImageUpload({
       !!userId &&
       userId !== "user-id-placeholder",
     staleTime: 60 * 1000, // Consider data fresh for 1 minute
+    retry: (failureCount, error) => {
+      // Don't retry on authentication errors
+      if (error instanceof Error && error.message.includes("Authentication")) {
+        return false;
+      }
+      // Retry up to 2 times for other errors
+      return failureCount < 2;
+    },
   });
 
   // Initialize hasInitialized after first query or in create mode

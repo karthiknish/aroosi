@@ -7,7 +7,7 @@ import { Id } from "@convex/_generated/dataModel";
 
 export async function GET(request: NextRequest) {
   try {
-    // Rate limiting based on IP (no Clerk ID dependency)
+    // Rate limiting based on IP (no user ID dependency)
     const rateLimitResult = checkApiRateLimit(
       `safety_check_block_${request.headers.get("x-forwarded-for") ?? "ip"}`,
       100,

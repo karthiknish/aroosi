@@ -7,6 +7,7 @@ import Footer from "@/components/layout/Footer";
 import RouteTransition from "@/components/RouteTransition";
 import { Toaster } from "sonner";
 import ChatBot from "@/components/ChatBot";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function ClientRoot({ children }: { children: ReactNode }) {
   const { isSignedIn, isProfileComplete, isOnboardingComplete } =
@@ -22,7 +23,9 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
         className="pt-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden"
         tabIndex={-1}
       >
-        <RouteTransition>{children}</RouteTransition>
+        <ErrorBoundary>
+          <RouteTransition>{children}</RouteTransition>
+        </ErrorBoundary>
       </main>
       <Footer />
       <Toaster

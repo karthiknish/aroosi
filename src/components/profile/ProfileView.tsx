@@ -229,11 +229,11 @@ const ProfileView: FC<ProfileViewProps> = ({
 
   // Utility to refresh localStorage values (customize keys as needed)
   function refreshProfileLocalStorage() {
-    // Only update 'onboarding' key, do not save 'profile' or any _id/clerkId/userId
+    // Only update 'onboarding' key, do not save 'profile' or any _id/userId
     if (profileData && profileData.isOnboardingComplete !== undefined) {
       localStorage.setItem(
         "onboarding",
-        profileData.isOnboardingComplete ? "complete" : "incomplete",
+        profileData.isOnboardingComplete ? "complete" : "incomplete"
       );
     }
   }

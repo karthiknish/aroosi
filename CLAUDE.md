@@ -25,8 +25,8 @@ Aroosi is an Afghan matrimony platform built with Next.js 15. This is the web ap
 ### Convex Database Commands
 - `npx convex dev` - Start Convex development environment
 - `npx convex deploy` - Deploy Convex functions to production
-- `npx convex run scripts/cleanupDuplicateClerkUsers:findDuplicateClerkUsers` - Find duplicate user entries
-- `npx convex run scripts/cleanupDuplicateClerkUsers:cleanupDuplicateClerkUsers --clerkId="clerk-id"` - Clean up specific duplicate users
+- `npx convex run scripts/cleanupDuplicateUsers:findDuplicateUsers` - Find duplicate user entries
+- `npx convex run scripts/cleanupDuplicateUsers:cleanupDuplicateUsers --userId="user-id"` - Clean up specific duplicate users
 
 ## Architecture Overview
 
@@ -38,7 +38,7 @@ Aroosi is an Afghan matrimony platform built with Next.js 15. This is the web ap
 
 ### Technology Stack
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript
-- **Authentication**: Clerk (OAuth + email/password)
+- **Authentication**: Native JWT-based auth (OAuth + email/password)
 - **Database**: Convex (real-time, serverless)
 - **Styling**: Tailwind CSS 4.0, shadcn/ui components
 - **State Management**: React Query for server state, React Context for auth
@@ -57,7 +57,7 @@ Aroosi is an Afghan matrimony platform built with Next.js 15. This is the web ap
 ## Authentication & User Flow
 
 ### User States
-1. **Unauthenticated** - Clerk handles sign-in/sign-up
+1. **Unauthenticated** - Native auth handles sign-in/sign-up
 2. **Authenticated but no profile** - Redirected to profile creation wizard
 3. **Profile incomplete** - Guided through 6-step completion process
 4. **Profile pending approval** - Admin must approve before search access
@@ -65,14 +65,14 @@ Aroosi is an Afghan matrimony platform built with Next.js 15. This is the web ap
 
 ### Protected Route Structure
 - **Public**: `/`, `/about`, `/pricing`, `/privacy`, `/terms`, `/blog/*`
-- **Auth Required**: `/sign-in`, `/sign-up` (Clerk pages)
+- **Auth Required**: `/sign-in`, `/sign-up` (Native auth pages)
 - **Profile Required**: `/search`, `/matches/*`, `/profile/*`, `/premium-settings`
 - **Admin Only**: `/admin/*` (role-based access)
 
 ## Database Schema (Convex)
 
 ### Core Tables
-- **users** - Clerk integration, basic user data, roles
+- **users** - Native auth integration, basic user data, roles
 - **profiles** - Detailed matrimonial profiles, preferences, completion status
 - **interests** - Like/reject interactions between users
 - **messages** - Real-time messaging system with conversation tracking
@@ -174,4 +174,4 @@ const userData = await fetchQuery(api.users.getCurrentUserWithProfile, {}, { tok
 ### Deployment Considerations
 - Web app deploys to Vercel
 - Convex functions deploy separately
-- Environment variables required for Clerk, Stripe, OneSignal
+- Environment variables required for JWT auth, Stripe, OneSignal

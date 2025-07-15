@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const rateLimitResult = checkApiRateLimit(
       `stripe_checkout_${userId}`,
       10,
-      60000,
+      60000
     ); // 10 checkouts per minute
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Payment service temporarily unavailable", 503);
     }
 
-    // Fetch user profile from Convex to pre-fill email and pass clerkId as metadata.
+    // Fetch user profile from Convex to pre-fill email and pass userId as metadata.
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
     convex.setAuth(token);
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
           userId,
           action: "stripe_checkout_missing_email",
         },
-        req,
+        req
       );
       return errorResponse("User verification failed", 403);
     }
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     const customerEmail =
       profile.email && isValidEmail(profile.email) ? profile.email : undefined;
     console.log(
-      `Creating Stripe checkout session for user ${userId}, plan: ${planId}`,
+      `Creating Stripe checkout session for user ${userId}, plan: ${planId}`
     );
     // Create Stripe checkout session with security considerations
     const session = await stripe.checkout.sessions.create({
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Failed to create checkout session", 500);
     }
     console.log(
-      `Stripe checkout session created: ${session.id} for user ${userId}`,
+      `Stripe checkout session created: ${session.id} for user ${userId}`
     );
     return successResponse({ url: session.url, sessionId: session.id });
   } catch (error) {

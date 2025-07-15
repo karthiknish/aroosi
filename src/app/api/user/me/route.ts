@@ -59,8 +59,8 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   console.log(
-    "[API /api/user/me] PUT Server CLERK_JWT_ISSUER_DOMAIN:",
-    process.env.CLERK_JWT_ISSUER_DOMAIN
+    "[API /api/user/me] PUT Server JWT_SECRET:",
+    process.env.JWT_SECRET ? "***" : "undefined"
   );
 
   try {

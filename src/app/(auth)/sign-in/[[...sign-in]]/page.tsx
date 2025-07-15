@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
-// import { useUser } from "@clerk/nextjs"; // Removed for native auth
+
 
 import { useRouter } from "next/navigation";
 

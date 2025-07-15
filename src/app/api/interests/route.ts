@@ -27,7 +27,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     const rateLimitResult = checkApiRateLimit(
       `interest_${action}_${userId}`,
       action === "send" ? 50 : 100, // 50 sends or 100 removes per hour
-      60000,
+      60000
     );
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
@@ -51,12 +51,11 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       return errorResponse("Invalid or missing toUserId", 400);
     }
 
-    // Derive Convex internal user id from the auth token (Clerk id is not valid)
+    // Derive Convex internal user id from the auth token (JWT user id)
     let convexClient: ReturnType<typeof getConvexClient>;
     let fromUserIdConvex: Id<"users">;
 
     {
-
       const convex = getConvexClient();
       if (!convex) return errorResponse("Convex client not configured", 500);
       convex.setAuth(token);
@@ -65,7 +64,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       try {
         currentUserRecord = await convex.query(
           api.users.getCurrentUserWithProfile,
-          {},
+          {}
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -73,7 +72,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
           message.includes("Unauthenticated") || message.includes("token");
         return errorResponse(
           isAuth ? "Authentication failed" : "Failed to fetch current user",
-          isAuth ? 401 : 400,
+          isAuth ? 401 : 400
         );
       }
 
@@ -105,7 +104,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         {
           fromUserId: fromUserIdConvex,
           toUserId: toUserId as Id<"users">,
-        },
+        }
       );
 
       // Validate result – Convex v0.16 may return the inserted id string
@@ -135,7 +134,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       }
 
       console.log(
-        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`,
+        `Interest ${action} successful: ${fromUserIdConvex} -> ${toUserId}`
       );
 
       // Wrap normalised result in a standard envelope so the frontend has a consistent shape.
@@ -153,7 +152,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
           error:
             convexErr instanceof Error ? convexErr.message : "Unknown error",
         },
-        req,
+        req
       );
 
       const error = convexErr as Error;

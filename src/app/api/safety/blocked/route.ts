@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     // Set authentication token
     client.setAuth(token);
 
-    // Retrieve the Convex user id for the caller (we currently have the Clerk id)
+    // Retrieve the Convex user id for the caller (we currently have the JWT user id)
     const currentUser = (await client.query(
       api.users.getCurrentUserWithProfile,
       {}

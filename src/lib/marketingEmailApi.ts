@@ -3,7 +3,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 /**
  * Send a marketing email campaign.
- * @param token JWT or Clerk session token for authentication
+ * @param token JWT session token for authentication
  * @param payload request body containing templateKey or custom subject/body
  */
 export async function sendMarketingEmail(
