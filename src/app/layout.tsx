@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-// import { ClerkProvider } from "@clerk/nextjs"; // Removed for native auth
+
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
@@ -148,7 +148,7 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        {/* ClerkProvider removed for native auth */}
+
         <ReactQueryProvider>
           <AuthProvider>
             <ClientRoot>{children}</ClientRoot>
