@@ -600,17 +600,17 @@ export default function SearchProfilesPage() {
                         <Button
                           className="bg-primary hover:bg-primary/90 text-white w-full mt-2"
                           onClick={() => {
-                            // Convex user IDs are 15+ chars, Clerk IDs start with 'user_'
+                            // Convex user IDs are 15+ chars, JWT user IDs have different format
                             if (
                               typeof u.userId !== "string" ||
                               u.userId.startsWith("user_")
                             ) {
                               console.warn(
-                                "Attempted to navigate with Clerk ID instead of Convex user ID:",
-                                u.userId,
+                                "Attempted to navigate with JWT user ID instead of Convex user ID:",
+                                u.userId
                               );
                               alert(
-                                "Internal error: Invalid user ID for navigation.",
+                                "Internal error: Invalid user ID for navigation."
                               );
                               return;
                             }

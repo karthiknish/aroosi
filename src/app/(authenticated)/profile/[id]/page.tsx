@@ -218,10 +218,10 @@ export default function ProfileDetailPage() {
     toUserId.startsWith("user_")
   ) {
     invalidIdError =
-      "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID.";
+      "Internal error: Attempted to fetch profile with JWT user ID instead of Convex user ID.";
     showErrorToast(
       null,
-      "Internal error: Attempted to fetch profile with Clerk ID instead of Convex user ID.",
+      "Internal error: Attempted to fetch profile with JWT user ID instead of Convex user ID."
     );
   }
 

@@ -24,7 +24,7 @@ export function getAuthToken(req: import("next/server").NextRequest): {
   return { token };
 }
 
-// Decode a JWT and extract the role from Clerk public metadata
+// Decode a JWT and extract the role from JWT public metadata
 export function extractRoleFromToken(token: string): string | undefined {
   try {
     const [, payloadPart] = token.split(".");
@@ -35,13 +35,13 @@ export function extractRoleFromToken(token: string): string | undefined {
       .replace(/-/g, "+")
       .replace(/_/g, "/");
     const json = Buffer.from(padded, "base64").toString("utf-8");
-    interface ClerkJwtPayload {
+    interface JwtPayload {
       publicMetadata?: { role?: string };
       public_metadata?: { role?: string };
       [key: string]: unknown;
     }
-    const payload = JSON.parse(json) as ClerkJwtPayload;
-    // Clerk puts role in publicMetadata or public_metadata
+    const payload = JSON.parse(json) as JwtPayload;
+    // JWT puts role in publicMetadata or public_metadata
     if (
       payload.publicMetadata &&
       typeof payload.publicMetadata.role === "string"
@@ -64,17 +64,17 @@ export function extractUserIdFromToken(token: string): string | null {
   try {
     const [, payloadPart] = token.split(".");
     if (!payloadPart) return null;
-    
+
     // Base64url decode
     const padded = payloadPart
       .padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), "=")
       .replace(/-/g, "+")
       .replace(/_/g, "/");
-    
+
     const json = Buffer.from(padded, "base64").toString("utf-8");
     const payload = JSON.parse(json);
-    
-    // Clerk typically puts user ID in 'sub' field
+
+    // JWT typically puts user ID in 'sub' field
     return payload.sub || payload.userId || null;
   } catch (error) {
     console.error('Error extracting user ID from token:', error);
