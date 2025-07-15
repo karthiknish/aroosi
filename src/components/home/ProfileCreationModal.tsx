@@ -773,12 +773,7 @@ export function ProfileCreationModal({
   );
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose(); // only close when intended, ignore internal true events
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         className="max-w-md w-full p-0 overflow-hidden bg-white sm:max-h-[90vh] max-h-screen sm:rounded-lg rounded-none"
         onInteractOutside={(e) => {
@@ -1005,12 +1000,9 @@ export function ProfileCreationModal({
                         </Select>
                       </div>
                     </div>
-                  );
+                  )
                 }
-
-                {
-                  /* Step 3: Cultural & Lifestyle */
-                }
+                {/* Step 3: Cultural & Lifestyle */}
                 {
                   displayStep === 3 && (
                     <div className="space-y-6">
@@ -1152,12 +1144,10 @@ export function ProfileCreationModal({
                         </Select>
                       </div>
                     </div>
-                  );
+                  )
                 }
 
-                {
-                  /* Step 4: Education & Career */
-                }
+                {/* Step 4: Education & Career */}
                 {
                   displayStep === 4 && (
                     <div className="space-y-6">
@@ -1228,12 +1218,10 @@ export function ProfileCreationModal({
                         />
                       </div>
                     </div>
-                  );
+                  )
                 }
 
-                {
-                  /* Step 5: Partner Preferences */
-                }
+                {/* Step 5: Partner Preferences */}
                 {
                   displayStep === 5 && (
                     <div className="space-y-6">
@@ -1330,12 +1318,10 @@ export function ProfileCreationModal({
                         />
                       </div>
                     </div>
-                  );
+                  )
                 }
 
-                {
-                  /* Step 6: Photos (Optional) */
-                }
+                {/* Step 6: Photos (Optional) */}
                 {
                   displayStep === 6 && (
                     <div className="space-y-6">
@@ -1356,12 +1342,10 @@ export function ProfileCreationModal({
                         )}
                       </div>
                     </div>
-                  );
+                  )
                 }
 
-                {
-                  /* Step 7: Clerk SignUp */
-                }
+                {/* Step 7: Clerk SignUp */}
                 {
                   displayStep === 7 && (
                     <div className="space-y-6">
