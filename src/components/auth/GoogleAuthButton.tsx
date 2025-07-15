@@ -21,25 +21,28 @@ export default function GoogleAuthButton({
   const initializedRef = useRef(false);
   const { signInWithGoogle } = useAuth();
 
-  // Load Google Identity Services script and initialize once
+  // Initialize Google OAuth2 when script loads
   useEffect(() => {
     if (typeof window === "undefined") return;
     if ((window as any).google && !initializedRef.current) {
       try {
-        (window as any).google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-          callback: async (response: { credential: string }) => {
-            if (!response?.credential) return;
-            setIsLoading(true);
-            const result = await signInWithGoogle(response.credential);
-            if (result.success) {
-              onSuccess?.();
-            } else {
-              onError?.(result.error || "Google sign in failed");
-            }
-            setIsLoading(false);
-          },
-        });
+        // Initialize both ID and OAuth2 for fallback compatibility
+        if ((window as any).google.accounts.id) {
+          (window as any).google.accounts.id.initialize({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+            callback: async (response: { credential: string }) => {
+              if (!response?.credential) return;
+              setIsLoading(true);
+              const result = await signInWithGoogle(response.credential);
+              if (result.success) {
+                onSuccess?.();
+              } else {
+                onError?.(result.error || "Google sign in failed");
+              }
+              setIsLoading(false);
+            },
+          });
+        }
         initializedRef.current = true;
       } catch (e) {
         console.error("Google init error", e);
@@ -53,14 +56,65 @@ export default function GoogleAuthButton({
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      // Trigger the Google sign-in prompt using FedCM when supported
-      (window as any).google.accounts.id.prompt(undefined, {
-        use_fedcm_for_prompt: true,
+      // Use popup-based authentication for better modal compatibility
+      const client = (window as any).google.accounts.oauth2.initTokenClient({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        scope: "email profile openid",
+        callback: async (response: any) => {
+          if (response.error) {
+            console.error("Google OAuth error:", response.error);
+            onError?.(response.error || "Google sign in failed");
+            setIsLoading(false);
+            return;
+          }
+
+          try {
+            // Get user info using the access token
+            const userInfoResponse = await fetch(
+              `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${response.access_token}`
+            );
+            const userInfo = await userInfoResponse.json();
+
+            // Create a credential-like object for our backend
+            const result = await signInWithGoogle(
+              JSON.stringify({
+                email: userInfo.email,
+                name: userInfo.name,
+                given_name: userInfo.given_name,
+                family_name: userInfo.family_name,
+                picture: userInfo.picture,
+                verified_email: userInfo.verified_email,
+              })
+            );
+
+            if (result.success) {
+              onSuccess?.();
+            } else {
+              onError?.(result.error || "Google sign in failed");
+            }
+          } catch (error) {
+            console.error("Error processing Google auth:", error);
+            onError?.("Failed to process Google authentication");
+          } finally {
+            setIsLoading(false);
+          }
+        },
+        error_callback: (error: any) => {
+          console.error("Google OAuth error:", error);
+          onError?.(error.message || "Google sign in failed");
+          setIsLoading(false);
+        },
       });
+
+      // Request access token (opens popup)
+      client.requestAccessToken();
     } catch (e) {
-      console.error("Google prompt error", e);
+      console.error("Google auth error", e);
       onError?.("Google sign in failed");
+      setIsLoading(false);
     }
   };
 

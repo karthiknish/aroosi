@@ -122,13 +122,13 @@ const stepSchemas = [
     profileFor: true,
     gender: true,
   }),
-  // Step 2 – Location & Physical (only city, height, maritalStatus are required)
-  profileSchema.pick({
-    country: true,
-    city: true,
-    height: true,
-    maritalStatus: true,
-    physicalStatus: true,
+  // Step 2 – Location & Physical (city, height, maritalStatus are required)
+  z.object({
+    country: z.string().optional(),
+    city: z.string().min(1, "City is required"),
+    height: z.string().min(1, "Height is required"),
+    maritalStatus: z.string().min(1, "Marital status is required"),
+    physicalStatus: z.string().optional(),
   }),
   // Step 3 – Cultural & Lifestyle (all optional)
   z.object({
@@ -136,25 +136,37 @@ const stepSchemas = [
     religion: z.string().optional(),
     ethnicity: z.string().optional(),
     diet: z.string().optional(),
-    smoking: z.string().optional(),
+    smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
     drinking: z.string().optional(),
   }),
   // Step 4 – Education & Career (education, occupation, aboutMe are required)
-  profileSchema.pick({
-    education: true,
-    occupation: true,
-    annualIncome: true,
-    aboutMe: true,
+  z.object({
+    education: z.string().min(1, "Education is required"),
+    occupation: z.string().min(1, "Occupation is required"),
+    annualIncome: z.string().optional(),
+    aboutMe: z.string().min(10, "About Me must be at least 10 characters"),
   }),
-  // Step 5 – Partner Preferences (only preferredGender is required)
+  // Step 5 – Partner Preferences (preferredGender is required)
   z.object({
     preferredGender: z.string().min(1, "Preferred gender is required"),
-    partnerPreferenceAgeMin: z.number().min(18).optional(),
-    partnerPreferenceAgeMax: z.number().max(99).optional(),
+    partnerPreferenceAgeMin: z
+      .number()
+      .min(18, "Minimum age must be at least 18")
+      .optional(),
+    partnerPreferenceAgeMax: z
+      .number()
+      .max(99, "Maximum age cannot exceed 99")
+      .optional(),
     partnerPreferenceCity: z.array(z.string()).optional(),
   }),
-  // Step 6 – Photos (optional but still validate array type)
-  profileSchema.pick({ profileImageIds: true }),
+  // Step 6 – Photos (optional)
+  z.object({
+    profileImageIds: z.array(z.string()).optional(),
+  }),
+  // Step 7 – Account Creation (handled by CustomSignupForm)
+  z.object({
+    email: z.string().email("Valid email is required").optional(),
+  }),
 ];
 
 // Build comprehensive country list from COUNTRIES constant
@@ -168,28 +180,19 @@ export function ProfileCreationModal({
   const router = useRouter();
 
   // Get data from the shared ProfileWizard context
-  const { formData: contextData, updateFormData: updateContextData } =
-    useProfileWizard();
+  const {
+    formData: contextData,
+    updateFormData: updateContextData,
+    step: contextStep,
+    setStep: setContextStep,
+  } = useProfileWizard();
 
   // Debug: comment out verbose logging in production
   console.log(
     "ProfileCreationModal contextData from ProfileWizard:",
-    contextData,
+    contextData
   );
   console.log("ProfileCreationModal initialData prop:", initialData);
-
-  // Also log what's in localStorage to verify
-  if (typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION);
-      console.log(
-        "ProfileCreationModal localStorage data:",
-        stored ? JSON.parse(stored) : null,
-      );
-    } catch (e) {
-      console.error("Error reading localStorage:", e);
-    }
-  }
 
   // Determine if we already have the basic fields (collected in HeroOnboarding)
   const hasBasicData = Boolean(
@@ -197,258 +200,86 @@ export function ProfileCreationModal({
       contextData?.gender &&
       contextData?.fullName &&
       contextData?.dateOfBirth &&
-      contextData?.phoneNumber,
+      contextData?.phoneNumber
   );
 
   // Total number of steps adjusts when we skip the duplicate first step
   const totalSteps = hasBasicData ? 6 : 7;
 
-  // React state for the current UI step (1-based within the displayed steps)
-  const [step, setStep] = useState<number>(1);
-  // ---------- State persistence & redirect helpers ----------
-
-  // We'll initialise these after formData is declared below
-
-  const [formData, setFormData] = useState<ProfileCreationData>(() => {
-    // Use context data as the base, then merge with any initialData prop
-    const mergedData: ProfileCreationData = {
-      profileFor:
-        (contextData?.profileFor as string) || initialData?.profileFor || "",
-      gender: (contextData?.gender as string) || initialData?.gender || "",
-      fullName:
-        (contextData?.fullName as string) || initialData?.fullName || "",
-      dateOfBirth:
-        (contextData?.dateOfBirth as string) || initialData?.dateOfBirth || "",
-      email: (contextData?.email as string) || initialData?.email || "",
-      phoneNumber:
-        (contextData?.phoneNumber as string) || initialData?.phoneNumber || "",
-      country: (contextData?.country as string) || initialData?.country || "",
-      city: (contextData?.city as string) || initialData?.city || "",
-      height: (contextData?.height as string) || initialData?.height || "",
-      maritalStatus:
-        (contextData?.maritalStatus as string) ||
-        initialData?.maritalStatus ||
-        "",
-      physicalStatus:
-        (contextData?.physicalStatus as string) ||
-        initialData?.physicalStatus ||
-        "",
-      motherTongue:
-        (contextData?.motherTongue as string) ||
-        initialData?.motherTongue ||
-        "",
-      religion:
-        (contextData?.religion as string) || initialData?.religion || "",
-      ethnicity:
-        (contextData?.ethnicity as string) || initialData?.ethnicity || "",
-      diet: (contextData?.diet as string) || initialData?.diet || "",
-      smoking: (contextData?.smoking as string) || initialData?.smoking || "",
-      drinking:
-        (contextData?.drinking as string) || initialData?.drinking || "",
-      education:
-        (contextData?.education as string) || initialData?.education || "",
-      occupation:
-        (contextData?.occupation as string) || initialData?.occupation || "",
-      annualIncome:
-        (contextData?.annualIncome as string) ||
-        initialData?.annualIncome ||
-        "",
-      aboutMe: (contextData?.aboutMe as string) || initialData?.aboutMe || "",
-      preferredGender:
-        (contextData?.preferredGender as string) ||
-        initialData?.preferredGender ||
-        "",
-      partnerPreferenceAgeMin:
-        (contextData?.partnerPreferenceAgeMin as number) ||
-        initialData?.partnerPreferenceAgeMin ||
-        18,
-      partnerPreferenceAgeMax: contextData?.partnerPreferenceAgeMax as
-        | number
-        | undefined,
-      partnerPreferenceCity:
-        (contextData?.partnerPreferenceCity as string[]) ||
-        initialData?.partnerPreferenceCity ||
-        [],
-      profileImageIds:
-        (contextData?.profileImageIds as string[]) ||
-        initialData?.profileImageIds ||
-        [],
-    };
-    console.log("ProfileCreationModal merged formData:", mergedData);
-    return mergedData;
-  });
-
-  // Sync context data changes to form data
-  useEffect(() => {
-    if (contextData && Object.keys(contextData).length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        profileFor:
-          (contextData?.profileFor as string) || prev.profileFor || "",
-        gender: (contextData?.gender as string) || prev.gender || "",
-        fullName: (contextData?.fullName as string) || prev.fullName || "",
-        dateOfBirth:
-          (contextData?.dateOfBirth as string) || prev.dateOfBirth || "",
-        email: (contextData?.email as string) || prev.email || "",
-        phoneNumber:
-          (contextData?.phoneNumber as string) || prev.phoneNumber || "",
-      }));
-    }
-  }, [contextData]);
-
-  // Persist wizard state to localStorage to survive OAuth full-page redirects
-  const restoreWizardState = () => {
-    if (typeof window === "undefined") return;
-
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as {
-        step?: number;
-        formData?: Partial<ProfileCreationData>;
-      };
-
-      if (parsed.formData && typeof parsed.formData === "object") {
-        const cleaned: Partial<ProfileCreationData> = {};
-        Object.entries(parsed.formData).forEach(([k, v]) => {
-          const keep =
-            v !== undefined &&
-            v !== null &&
-            !(typeof v === "string" && v.trim() === "") &&
-            !(Array.isArray(v) && v.length === 0);
-          if (keep) {
-            (cleaned as Record<string, unknown>)[k] = v;
-          }
-        });
-
-        if (Object.keys(cleaned).length) {
-          setFormData((prev) => ({ ...prev, ...cleaned }));
-        }
-      }
-
-      if (parsed.step && parsed.step >= 1 && parsed.step <= 7) {
-        setStep(parsed.step);
-      }
-    } catch {
-      console.warn("Failed to restore wizard state");
-    }
+  // Create a unified formData object from context data and initial data
+  const formData: ProfileCreationData = {
+    profileFor:
+      (contextData?.profileFor as string) || initialData?.profileFor || "",
+    gender: (contextData?.gender as string) || initialData?.gender || "",
+    fullName: (contextData?.fullName as string) || initialData?.fullName || "",
+    dateOfBirth:
+      (contextData?.dateOfBirth as string) || initialData?.dateOfBirth || "",
+    email: (contextData?.email as string) || initialData?.email || "",
+    phoneNumber:
+      (contextData?.phoneNumber as string) || initialData?.phoneNumber || "",
+    country: (contextData?.country as string) || initialData?.country || "",
+    city: (contextData?.city as string) || initialData?.city || "",
+    height: (contextData?.height as string) || initialData?.height || "",
+    maritalStatus:
+      (contextData?.maritalStatus as string) ||
+      initialData?.maritalStatus ||
+      "",
+    physicalStatus:
+      (contextData?.physicalStatus as string) ||
+      initialData?.physicalStatus ||
+      "",
+    motherTongue:
+      (contextData?.motherTongue as string) || initialData?.motherTongue || "",
+    religion: (contextData?.religion as string) || initialData?.religion || "",
+    ethnicity:
+      (contextData?.ethnicity as string) || initialData?.ethnicity || "",
+    diet: (contextData?.diet as string) || initialData?.diet || "",
+    smoking: (contextData?.smoking as string) || initialData?.smoking || "",
+    drinking: (contextData?.drinking as string) || initialData?.drinking || "",
+    education:
+      (contextData?.education as string) || initialData?.education || "",
+    occupation:
+      (contextData?.occupation as string) || initialData?.occupation || "",
+    annualIncome:
+      (contextData?.annualIncome as string) || initialData?.annualIncome || "",
+    aboutMe: (contextData?.aboutMe as string) || initialData?.aboutMe || "",
+    preferredGender:
+      (contextData?.preferredGender as string) ||
+      initialData?.preferredGender ||
+      "",
+    partnerPreferenceAgeMin:
+      (contextData?.partnerPreferenceAgeMin as number) ||
+      initialData?.partnerPreferenceAgeMin ||
+      18,
+    partnerPreferenceAgeMax:
+      (contextData?.partnerPreferenceAgeMax as number) ||
+      initialData?.partnerPreferenceAgeMax,
+    partnerPreferenceCity:
+      (contextData?.partnerPreferenceCity as string[]) ||
+      initialData?.partnerPreferenceCity ||
+      [],
+    profileImageIds:
+      (contextData?.profileImageIds as string[]) ||
+      initialData?.profileImageIds ||
+      [],
   };
-  useEffect(() => {
-    // Since we're using the shared context, we don't need to migrate data
-    // The context already has all the data from HeroOnboarding
 
-    // Only restore wizard state if we don't have context data
-    if (!hasBasicData) {
-      restoreWizardState();
-    }
-  }, []);
+  console.log("ProfileCreationModal unified formData:", formData);
 
-  // Update formData when contextData changes (e.g., when loaded from localStorage)
-  useEffect(() => {
-    if (contextData && Object.keys(contextData).length > 0) {
-      setFormData((prev) => {
-        const updated: ProfileCreationData = { ...prev };
+  // Use the context step directly, but adjust for modal display
+  const step = contextStep;
+  const setStep = setContextStep;
 
-        // Update hero onboarding fields if they exist
-        if (contextData.profileFor)
-          updated.profileFor = contextData.profileFor as string;
-        if (contextData.gender) updated.gender = contextData.gender as string;
-        if (contextData.fullName)
-          updated.fullName = contextData.fullName as string;
-        if (contextData.dateOfBirth)
-          updated.dateOfBirth = contextData.dateOfBirth as string;
-        if (contextData.phoneNumber)
-          updated.phoneNumber = contextData.phoneNumber as string;
-
-        // Update other fields if they exist
-        if (contextData.email) updated.email = contextData.email as string;
-        if (contextData.country)
-          updated.country = contextData.country as string;
-        if (contextData.city) updated.city = contextData.city as string;
-        if (contextData.height) updated.height = contextData.height as string;
-        if (contextData.maritalStatus)
-          updated.maritalStatus = contextData.maritalStatus as string;
-        if (contextData.physicalStatus)
-          updated.physicalStatus = contextData.physicalStatus as string;
-        if (contextData.motherTongue)
-          updated.motherTongue = contextData.motherTongue as string;
-        if (contextData.religion)
-          updated.religion = contextData.religion as string;
-        if (contextData.ethnicity)
-          updated.ethnicity = contextData.ethnicity as string;
-        if (contextData.diet) updated.diet = contextData.diet as string;
-        if (contextData.smoking)
-          updated.smoking = contextData.smoking as string;
-        if (contextData.drinking)
-          updated.drinking = contextData.drinking as string;
-        if (contextData.education)
-          updated.education = contextData.education as string;
-        if (contextData.occupation)
-          updated.occupation = contextData.occupation as string;
-        if (contextData.annualIncome)
-          updated.annualIncome = contextData.annualIncome as string;
-        if (contextData.aboutMe)
-          updated.aboutMe = contextData.aboutMe as string;
-        if (contextData.preferredGender)
-          updated.preferredGender = contextData.preferredGender as string;
-        if (contextData.partnerPreferenceAgeMin)
-          updated.partnerPreferenceAgeMin =
-            contextData.partnerPreferenceAgeMin as number;
-        if (contextData.partnerPreferenceAgeMax !== undefined)
-          updated.partnerPreferenceAgeMax =
-            contextData.partnerPreferenceAgeMax as number;
-        if (contextData.partnerPreferenceCity)
-          updated.partnerPreferenceCity =
-            contextData.partnerPreferenceCity as string[];
-        if (contextData.profileImageIds)
-          updated.profileImageIds = contextData.profileImageIds as string[];
-
-        console.log(
-          "ProfileCreationModal - Updated formData from context:",
-          updated,
-        );
-        return updated;
-      });
-    }
-  }, [contextData]); // Save whenever form data or step changes
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      // Save all form data to localStorage
-      // The separation logic is only needed when reading/restoring data
-      localStorage.setItem(
-        STORAGE_KEYS.PROFILE_CREATION,
-        JSON.stringify({
-          step,
-          formData,
-        }),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [formData, step]);
-
-  // Clean up HeroOnboarding localStorage when modal unmounts
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-  }, []);
-
-  // Display step that aligns with visible UI, accounting for skipped basic step
-  const displayStep = hasBasicData ? step + 1 : step;
+  // Calculate the actual step to display based on whether we have basic data
+  // If we have basic data from HeroOnboarding, we start from step 2 (Location & Physical)
+  // Otherwise, we start from step 1 (Basic Info)
+  const displayStep = hasBasicData ? Math.max(step, 2) : step;
 
   // Local controlled input for preferred cities to allow commas while typing
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
     Array.isArray(formData.partnerPreferenceCity)
       ? formData.partnerPreferenceCity.join(", ")
-      : "",
+      : ""
   );
 
   // Keep local input synced if formData changes elsewhere
@@ -472,11 +303,17 @@ export function ProfileCreationModal({
 
   const handleInputChange = useCallback(
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-      // Also update the context so data is shared with HeroOnboarding
+      // Update the context so data is shared with HeroOnboarding
       updateContextData({ [field]: value });
+      
+      // Debounced validation for better performance
+      const timeoutId = setTimeout(() => {
+        validateField(field, value);
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
     },
-    [updateContextData],
+    [updateContextData]
   );
 
   const handleProfileImagesChange = useCallback(
@@ -496,11 +333,11 @@ export function ProfileCreationModal({
 
       // Extract ImageType objects for later upload
       const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string",
+        (img): img is ImageType => typeof img !== "string"
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange, formData.profileImageIds],
+    [handleInputChange, formData.profileImageIds]
   );
 
   const validateStep = () => {
@@ -542,6 +379,40 @@ export function ProfileCreationModal({
     return true;
   };
 
+  // Validate individual field
+  const validateField = (field: keyof ProfileCreationData, value: unknown) => {
+    // Find which step this field belongs to
+    let fieldSchema: z.ZodSchema | null = null;
+
+    for (const schema of stepSchemas) {
+      if (schema instanceof z.ZodObject) {
+        const shape = schema.shape;
+        if (field in shape) {
+          fieldSchema = shape[field as keyof typeof shape];
+          break;
+        }
+      }
+    }
+
+    if (fieldSchema) {
+      const result = fieldSchema.safeParse(value);
+      if (!result.success) {
+        const error = result.error.errors[0]?.message || "Invalid value";
+        setErrors((prev) => ({ ...prev, [field]: error }));
+        return false;
+      } else {
+        // Clear error for this field
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+        return true;
+      }
+    }
+    return true;
+  };
+
   const handleNext = () => {
     if (!validateStep()) return;
 
@@ -570,11 +441,11 @@ export function ProfileCreationModal({
       if (missingFields.length > 0) {
         showErrorToast(
           null,
-          `Please complete all required fields before creating account. Missing: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}`,
+          `Please complete all required fields before creating account. Missing: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}`
         );
         console.error(
           "Cannot proceed to sign-up - missing fields:",
-          missingFields,
+          missingFields
         );
         return;
       }
@@ -630,7 +501,7 @@ export function ProfileCreationModal({
       if (displayStep !== 7) {
         console.log(
           "Not on final step, skipping submission. Current step:",
-          displayStep,
+          displayStep
         );
         return;
       }
@@ -639,7 +510,16 @@ export function ProfileCreationModal({
 
       // Ensure we have a token
       const authToken = token ?? (await getToken());
-      if (!authToken) return;
+      if (!authToken) {
+        console.error("No authentication token available");
+        showErrorToast(
+          null,
+          "Authentication failed. Please try signing in again."
+        );
+        setHasSubmittedProfile(false);
+        setIsSubmitting(false);
+        return;
+      }
 
       try {
         // Check for existing profile – do NOT allow update via modal
@@ -648,7 +528,7 @@ export function ProfileCreationModal({
           console.log("Profile already exists");
           showErrorToast(
             null,
-            "A profile already exists for this account. Please use the profile edit feature instead.",
+            "A profile already exists for this account. Please use the profile edit feature instead."
           );
           setHasSubmittedProfile(false);
           // Clear any stale onboarding data
@@ -706,29 +586,27 @@ export function ProfileCreationModal({
           "phoneNumber",
         ];
 
-        const missingFields = requiredFields.filter(
-          (field) => !cleanedData[field],
-        );
+        const missingFields = requiredFields.filter((field) => {
+          const value = cleanedData[field];
+          return !value || (typeof value === "string" && value.trim() === "");
+        });
+
         if (missingFields.length > 0) {
           console.error(
             "CRITICAL: Blocking profile submission - missing required fields:",
-            missingFields,
+            missingFields
           );
           console.error("Current cleanedData:", cleanedData);
           console.error("Current formData:", formData);
           showErrorToast(
             null,
-            `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`,
+            `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`
           );
           setHasSubmittedProfile(false);
 
-          // Sign out the user to prevent incomplete profile
-          signOut();
-
-          // Close the modal and reset
-          onClose();
-          // Clear any stale data
-          clearAllOnboardingData();
+          // Don't sign out the user, just reset the submission state
+          // Allow them to go back and fix the missing fields
+          setIsSubmitting(false);
           return;
         }
 
@@ -740,7 +618,7 @@ export function ProfileCreationModal({
             | "family",
           dateOfBirth: String(cleanedData.dateOfBirth ?? ""),
           partnerPreferenceCity: Array.isArray(
-            cleanedData.partnerPreferenceCity,
+            cleanedData.partnerPreferenceCity
           )
             ? (cleanedData.partnerPreferenceCity as string[])
             : [],
@@ -758,29 +636,55 @@ export function ProfileCreationModal({
 
         // Upload any pending images collected during wizard
         if (pendingImages.length > 0 && userId) {
+          console.log(`Uploading ${pendingImages.length} images...`);
+          let uploadedCount = 0;
+
           for (const img of pendingImages) {
             try {
+              // Validate image before upload
+              if (!img.url || !img.url.startsWith("blob:")) {
+                console.warn("Invalid image URL, skipping:", img);
+                continue;
+              }
+
               // Fetch the blob from the object URL
               const blob = await fetch(img.url).then((r) => r.blob());
+
+              // Validate file size (max 5MB)
+              if (blob.size > 5 * 1024 * 1024) {
+                console.warn("Image too large, skipping:", img.fileName);
+                continue;
+              }
+
               const file = new File([blob], img.fileName || "photo.jpg", {
                 type: blob.type || "image/jpeg",
               });
 
               const uploadUrl = await getImageUploadUrl(authToken);
+              if (!uploadUrl) {
+                console.error("Failed to get upload URL");
+                continue;
+              }
 
               const uploadResp = await fetch(uploadUrl, {
                 method: "POST",
                 headers: { "Content-Type": file.type },
                 body: file,
               });
+
               if (!uploadResp.ok) {
                 console.error("Upload failed", uploadResp.statusText);
                 continue;
               }
+
               const json = await uploadResp.json();
               const storageId =
                 json?.storageId || (typeof json === "string" ? json : null);
-              if (!storageId) continue;
+
+              if (!storageId) {
+                console.error("No storage ID returned from upload");
+                continue;
+              }
 
               await saveImageMeta({
                 token: authToken,
@@ -790,9 +694,21 @@ export function ProfileCreationModal({
                 contentType: file.type,
                 fileSize: file.size,
               });
+
+              uploadedCount++;
+              console.log(
+                `Successfully uploaded image ${uploadedCount}/${pendingImages.length}`
+              );
             } catch (err) {
-              console.error("Image upload error", err);
+              console.error("Image upload error for", img.fileName, ":", err);
+              // Continue with other images even if one fails
             }
+          }
+
+          if (uploadedCount > 0) {
+            console.log(
+              `Successfully uploaded ${uploadedCount} out of ${pendingImages.length} images`
+            );
           }
         }
 
@@ -806,7 +722,26 @@ export function ProfileCreationModal({
         router.push("/success");
       } catch (err) {
         console.error("Profile submission error", err);
-        showErrorToast(err, "Profile submission failed");
+        
+        // Provide specific error messages based on error type
+        let errorMessage = "Profile submission failed";
+        if (err instanceof Error) {
+          if (err.message.includes("network") || err.message.includes("fetch")) {
+            errorMessage = "Network error. Please check your connection and try again.";
+          } else if (err.message.includes("timeout")) {
+            errorMessage = "Request timed out. Please try again.";
+          } else if (err.message.includes("401") || err.message.includes("unauthorized")) {
+            errorMessage = "Authentication expired. Please sign in again.";
+          } else if (err.message.includes("409") || err.message.includes("duplicate")) {
+            errorMessage = "Profile already exists. Please use the profile edit feature.";
+          } else if (err.message.includes("400") || err.message.includes("validation")) {
+            errorMessage = "Invalid profile data. Please check your information and try again.";
+          } else {
+            errorMessage = `Profile submission failed: ${err.message}`;
+          }
+        }
+        
+        showErrorToast(null, errorMessage);
         setHasSubmittedProfile(false); // Allow retry
       } finally {
         setIsSubmitting(false);
@@ -845,7 +780,7 @@ export function ProfileCreationModal({
       }}
     >
       <DialogContent
-        className="max-w-md w-full p-0 overflow-hidden bg-white"
+        className="max-w-md w-full p-0 overflow-hidden bg-white sm:max-h-[90vh] max-h-screen sm:rounded-lg rounded-none"
         onInteractOutside={(e) => {
           e.preventDefault(); // keep modal open even when Clerk portals register outside clicks
         }}
@@ -858,7 +793,7 @@ export function ProfileCreationModal({
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
             <div
               className="h-full bg-pink-600 transition-all duration-300"
-              style={{ width: `${(step / totalSteps) * 100}%` }}
+              style={{ width: `${(displayStep / totalSteps) * 100}%` }}
             />
           </div>
 
@@ -955,515 +890,555 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 2: Location \Step 2: Location, Contact & Physical Physical */}
-                {displayStep === 2 && (
-                  <div className="space-y-6">
-                    <div>
-                      <Label
-                        htmlFor="country"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Country
-                      </Label>
-                      <SearchableSelect
-                        options={countries.map((c) => ({ value: c, label: c }))}
-                        value={formData.country}
-                        onValueChange={(v) => handleInputChange("country", v)}
-                        placeholder="Select country"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="city"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("City")}
-                      </Label>
-                      <Input
-                        id="city"
-                        value={formData.city}
-                        onChange={(e) =>
-                          handleInputChange("city", e.target.value)
-                        }
-                        placeholder="City"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="height"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Height")}
-                      </Label>
-                      <SearchableSelect
-                        options={Array.from(
-                          { length: 198 - 137 + 1 },
-                          (_, i) => {
-                            const cm = 137 + i;
-                            return {
-                              value: String(cm),
-                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
-                            };
-                          },
-                        )}
-                        value={formData.height}
-                        onValueChange={(v) => handleInputChange("height", v)}
-                        placeholder="Select height"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="maritalStatus"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Marital Status")}
-                      </Label>
-                      <Select
-                        value={formData.maritalStatus}
-                        onValueChange={(v) =>
-                          handleInputChange("maritalStatus", v)
-                        }
-                      >
-                        <SelectTrigger
-                          id="maritalStatus"
-                          className="w-full bg-white"
+                {
+                  displayStep === 2 && (
+                    <div className="space-y-6">
+                      <div>
+                        <Label
+                          htmlFor="country"
+                          className="text-gray-700 mb-2 block"
                         >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="single">Single</SelectItem>
-                          <SelectItem value="divorced">Divorced</SelectItem>
-                          <SelectItem value="widowed">Widowed</SelectItem>
-                          <SelectItem value="annulled">Annulled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="physicalStatus"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Physical Status
-                      </Label>
-                      <Select
-                        value={formData.physicalStatus}
-                        onValueChange={(v) =>
-                          handleInputChange("physicalStatus", v)
-                        }
-                      >
-                        <SelectTrigger
-                          id="physicalStatus"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="differently-abled">
-                            Differently-abled
-                          </SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3: Cultural & Lifestyle */}
-                {displayStep === 3 && (
-                  <div className="space-y-6">
-                    <div>
-                      <Label
-                        htmlFor="motherTongue"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Mother Tongue
-                      </Label>
-                      <SearchableSelect
-                        options={MOTHER_TONGUE_OPTIONS.map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        value={formData.motherTongue}
-                        onValueChange={(v) =>
-                          handleInputChange("motherTongue", v)
-                        }
-                        placeholder="Select language"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="religion"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Religion
-                      </Label>
-                      <SearchableSelect
-                        options={RELIGION_OPTIONS.map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        value={formData.religion}
-                        onValueChange={(v) => handleInputChange("religion", v)}
-                        placeholder="Select religion"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="ethnicity"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Ethnicity
-                      </Label>
-                      <SearchableSelect
-                        options={ETHNICITY_OPTIONS.map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        value={formData.ethnicity}
-                        onValueChange={(v) => handleInputChange("ethnicity", v)}
-                        placeholder="Select ethnicity"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="diet"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Diet
-                      </Label>
-                      <Select
-                        value={formData.diet}
-                        onValueChange={(v) => handleInputChange("diet", v)}
-                      >
-                        <SelectTrigger id="diet" className="w-full bg-white">
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="vegetarian">Vegetarian</SelectItem>
-                          <SelectItem value="non-vegetarian">
-                            Non-Vegetarian
-                          </SelectItem>
-                          <SelectItem value="halal">Halal Only</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="smoking"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Smoking
-                      </Label>
-                      <Select
-                        value={formData.smoking}
-                        onValueChange={(v) => handleInputChange("smoking", v)}
-                      >
-                        <SelectTrigger id="smoking" className="w-full bg-white">
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="no">No</SelectItem>
-                          <SelectItem value="occasionally">
-                            Occasionally
-                          </SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="drinking"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Drinking
-                      </Label>
-                      <Select
-                        value={formData.drinking}
-                        onValueChange={(v) => handleInputChange("drinking", v)}
-                      >
-                        <SelectTrigger
-                          id="drinking"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="no">No</SelectItem>
-                          <SelectItem value="occasionally">
-                            Occasionally
-                          </SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Education & Career */}
-                {displayStep === 4 && (
-                  <div className="space-y-6">
-                    <div>
-                      <Label
-                        htmlFor="education"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Education")}
-                      </Label>
-                      <Input
-                        id="education"
-                        value={formData.education}
-                        onChange={(e) =>
-                          handleInputChange("education", e.target.value)
-                        }
-                        placeholder="e.g. Bachelor's, Master's"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="occupation"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Occupation")}
-                      </Label>
-                      <Input
-                        id="occupation"
-                        value={formData.occupation}
-                        onChange={(e) =>
-                          handleInputChange("occupation", e.target.value)
-                        }
-                        placeholder="Occupation"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="annualIncome"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Annual Income
-                      </Label>
-                      <Input
-                        id="annualIncome"
-                        value={formData.annualIncome}
-                        onChange={(e) =>
-                          handleInputChange("annualIncome", e.target.value)
-                        }
-                        placeholder="e.g. £30,000"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="aboutMe"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("About Me")}
-                      </Label>
-                      <Textarea
-                        id="aboutMe"
-                        value={formData.aboutMe}
-                        onChange={(e) =>
-                          handleInputChange("aboutMe", e.target.value)
-                        }
-                        placeholder="Tell us a little about yourself..."
-                        rows={4}
-                        className="w-full bg-white"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 5: Partner Preferences */}
-                {displayStep === 5 && (
-                  <div className="space-y-6">
-                    <div>
-                      <Label
-                        htmlFor="preferredGender"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Preferred Gender")}
-                      </Label>
-                      <Select
-                        value={formData.preferredGender}
-                        onValueChange={(v) =>
-                          handleInputChange("preferredGender", v)
-                        }
-                      >
-                        <SelectTrigger
-                          id="preferredGender"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-gray-700 mb-2 block">
-                        Age Range
-                      </Label>
-                      <div className="flex gap-2 items-center">
-                        <Input
-                          type="number"
-                          min={18}
-                          max={99}
-                          value={
-                            formData.partnerPreferenceAgeMin !== undefined
-                              ? String(formData.partnerPreferenceAgeMin)
-                              : ""
-                          }
-                          onChange={(e) =>
-                            handleInputChange(
-                              "partnerPreferenceAgeMin",
-                              Number(e.target.value),
-                            )
-                          }
-                          className="w-20"
+                          Country
+                        </Label>
+                        <SearchableSelect
+                          options={countries.map((c) => ({
+                            value: c,
+                            label: c,
+                          }))}
+                          value={formData.country}
+                          onValueChange={(v) => handleInputChange("country", v)}
+                          placeholder="Select country"
                         />
-                        <span>to</span>
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="city"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          {required("City")}
+                        </Label>
                         <Input
-                          type="number"
-                          min={18}
-                          max={99}
-                          value={
-                            formData.partnerPreferenceAgeMax !== undefined
-                              ? String(formData.partnerPreferenceAgeMax)
-                              : ""
-                          }
+                          id="city"
+                          value={formData.city}
                           onChange={(e) =>
-                            handleInputChange(
-                              "partnerPreferenceAgeMax",
-                              e.target.value === ""
-                                ? ""
-                                : Number(e.target.value),
-                            )
+                            handleInputChange("city", e.target.value)
                           }
-                          className="w-20"
+                          placeholder="City"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="height"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          {required("Height")}
+                        </Label>
+                        <SearchableSelect
+                          options={Array.from(
+                            { length: 198 - 137 + 1 },
+                            (_, i) => {
+                              const cm = 137 + i;
+                              return {
+                                value: String(cm),
+                                label: `${cmToFeetInches(cm)} (${cm} cm)`,
+                              };
+                            }
+                          )}
+                          value={formData.height}
+                          onValueChange={(v) => handleInputChange("height", v)}
+                          placeholder="Select height"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="maritalStatus"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          {required("Marital Status")}
+                        </Label>
+                        <Select
+                          value={formData.maritalStatus}
+                          onValueChange={(v) =>
+                            handleInputChange("maritalStatus", v)
+                          }
+                        >
+                          <SelectTrigger
+                            id="maritalStatus"
+                            className="w-full bg-white"
+                          >
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200">
+                            <SelectItem value="single">Single</SelectItem>
+                            <SelectItem value="divorced">Divorced</SelectItem>
+                            <SelectItem value="widowed">Widowed</SelectItem>
+                            <SelectItem value="annulled">Annulled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="physicalStatus"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Physical Status
+                        </Label>
+                        <Select
+                          value={formData.physicalStatus}
+                          onValueChange={(v) =>
+                            handleInputChange("physicalStatus", v)
+                          }
+                        >
+                          <SelectTrigger
+                            id="physicalStatus"
+                            className="w-full bg-white"
+                          >
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200">
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="differently-abled">
+                              Differently-abled
+                            </SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                }
+
+                {
+                  /* Step 3: Cultural & Lifestyle */
+                }
+                {
+                  displayStep === 3 && (
+                    <div className="space-y-6">
+                      <div>
+                        <Label
+                          htmlFor="motherTongue"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Mother Tongue
+                        </Label>
+                        <SearchableSelect
+                          options={MOTHER_TONGUE_OPTIONS.map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          value={formData.motherTongue}
+                          onValueChange={(v) =>
+                            handleInputChange("motherTongue", v)
+                          }
+                          placeholder="Select language"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="religion"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Religion
+                        </Label>
+                        <SearchableSelect
+                          options={RELIGION_OPTIONS.map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          value={formData.religion}
+                          onValueChange={(v) =>
+                            handleInputChange("religion", v)
+                          }
+                          placeholder="Select religion"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="ethnicity"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Ethnicity
+                        </Label>
+                        <SearchableSelect
+                          options={ETHNICITY_OPTIONS.map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          value={formData.ethnicity}
+                          onValueChange={(v) =>
+                            handleInputChange("ethnicity", v)
+                          }
+                          placeholder="Select ethnicity"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="diet"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Diet
+                        </Label>
+                        <Select
+                          value={formData.diet}
+                          onValueChange={(v) => handleInputChange("diet", v)}
+                        >
+                          <SelectTrigger id="diet" className="w-full bg-white">
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200">
+                            <SelectItem value="vegetarian">
+                              Vegetarian
+                            </SelectItem>
+                            <SelectItem value="non-vegetarian">
+                              Non-Vegetarian
+                            </SelectItem>
+                            <SelectItem value="halal">Halal Only</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="smoking"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Smoking
+                        </Label>
+                        <Select
+                          value={formData.smoking}
+                          onValueChange={(v) => handleInputChange("smoking", v)}
+                        >
+                          <SelectTrigger
+                            id="smoking"
+                            className="w-full bg-white"
+                          >
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200">
+                            <SelectItem value="no">No</SelectItem>
+                            <SelectItem value="occasionally">
+                              Occasionally
+                            </SelectItem>
+                            <SelectItem value="yes">Yes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="drinking"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Drinking
+                        </Label>
+                        <Select
+                          value={formData.drinking}
+                          onValueChange={(v) =>
+                            handleInputChange("drinking", v)
+                          }
+                        >
+                          <SelectTrigger
+                            id="drinking"
+                            className="w-full bg-white"
+                          >
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200">
+                            <SelectItem value="no">No</SelectItem>
+                            <SelectItem value="occasionally">
+                              Occasionally
+                            </SelectItem>
+                            <SelectItem value="yes">Yes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                }
+
+                {
+                  /* Step 4: Education & Career */
+                }
+                {
+                  displayStep === 4 && (
+                    <div className="space-y-6">
+                      <div>
+                        <Label
+                          htmlFor="education"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          {required("Education")}
+                        </Label>
+                        <Input
+                          id="education"
+                          value={formData.education}
+                          onChange={(e) =>
+                            handleInputChange("education", e.target.value)
+                          }
+                          placeholder="e.g. Bachelor's, Master's"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="occupation"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          {required("Occupation")}
+                        </Label>
+                        <Input
+                          id="occupation"
+                          value={formData.occupation}
+                          onChange={(e) =>
+                            handleInputChange("occupation", e.target.value)
+                          }
+                          placeholder="Occupation"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="annualIncome"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Annual Income
+                        </Label>
+                        <Input
+                          id="annualIncome"
+                          value={formData.annualIncome}
+                          onChange={(e) =>
+                            handleInputChange("annualIncome", e.target.value)
+                          }
+                          placeholder="e.g. £30,000"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="aboutMe"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          {required("About Me")}
+                        </Label>
+                        <Textarea
+                          id="aboutMe"
+                          value={formData.aboutMe}
+                          onChange={(e) =>
+                            handleInputChange("aboutMe", e.target.value)
+                          }
+                          placeholder="Tell us a little about yourself..."
+                          rows={4}
+                          className="w-full bg-white"
                         />
                       </div>
                     </div>
-                    <div>
-                      <Label
-                        htmlFor="partnerPreferenceCity"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Preferred Cities
-                      </Label>
-                      <Input
-                        id="partnerPreferenceCity"
-                        value={preferredCitiesInput}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          setPreferredCitiesInput(raw);
-                          const parsed = raw
-                            .split(",")
-                            .map((s) => s.trim())
-                            .filter(Boolean);
-                          handleInputChange("partnerPreferenceCity", parsed);
-                        }}
-                        placeholder="e.g. London, Kabul"
-                      />
-                    </div>
-                  </div>
-                )}
+                  );
+                }
 
-                {/* Step 6: Photos (Optional) */}
-                {displayStep === 6 && (
-                  <div className="space-y-6">
-                    <div>
-                      <Label className="text-gray-700 mb-2 block">
-                        Profile Photos
-                      </Label>
-                      <ProfileImageUpload
-                        userId={"user-id-placeholder"}
-                        mode="create"
-                        onImagesChanged={handleProfileImagesChange}
-                        className="w-full h-48"
-                      />
-                      {errors.profileImageIds && (
-                        <div className="text-red-500 text-xs mt-1">
-                          {errors.profileImageIds}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 7: Clerk SignUp */}
-                {displayStep === 7 && (
-                  <div className="space-y-6">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-center">
-                        Create your account
-                      </h3>
-                      {/* Final validation guard before showing signup form */}
-                      {(() => {
-                        const requiredFields = [
-                          "fullName",
-                          "dateOfBirth",
-                          "gender",
-                          "preferredGender",
-                          "city",
-                          "aboutMe",
-                          "occupation",
-                          "education",
-                          "height",
-                          "maritalStatus",
-                          "phoneNumber",
-                        ];
-
-                        const missingFields = requiredFields.filter((field) => {
-                          const value =
-                            formData[field as keyof ProfileCreationData];
-                          return (
-                            !value ||
-                            (typeof value === "string" && value.trim() === "")
-                          );
-                        });
-
-                        if (missingFields.length > 0) {
-                          return (
-                            <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                              <p className="text-red-600 font-semibold mb-2">
-                                ⚠️ Cannot create account - Profile incomplete
-                              </p>
-                              <p className="text-sm text-red-500 mb-4">
-                                You must complete all profile sections before
-                                creating an account.
-                              </p>
-                              <p className="text-xs text-red-400 mb-4">
-                                Missing: {missingFields.slice(0, 5).join(", ")}
-                                {missingFields.length > 5 &&
-                                  ` and ${missingFields.length - 5} more fields`}
-                              </p>
-                              <Button
-                                variant="outline"
-                                onClick={() => setStep(1)}
-                                className="border-red-300 text-red-600 hover:bg-red-50"
-                              >
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Go back to complete profile
-                              </Button>
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <CustomSignupForm
-                            onComplete={() => {
-                              console.log(
-                                "Signup completed; profile submission will auto-run",
-                              );
-                            }}
+                {
+                  /* Step 5: Partner Preferences */
+                }
+                {
+                  displayStep === 5 && (
+                    <div className="space-y-6">
+                      <div>
+                        <Label
+                          htmlFor="preferredGender"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          {required("Preferred Gender")}
+                        </Label>
+                        <Select
+                          value={formData.preferredGender}
+                          onValueChange={(v) =>
+                            handleInputChange("preferredGender", v)
+                          }
+                        >
+                          <SelectTrigger
+                            id="preferredGender"
+                            className="w-full bg-white"
+                          >
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border border-gray-200">
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-gray-700 mb-2 block">
+                          Age Range
+                        </Label>
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            type="number"
+                            min={18}
+                            max={99}
+                            value={
+                              formData.partnerPreferenceAgeMin !== undefined
+                                ? String(formData.partnerPreferenceAgeMin)
+                                : ""
+                            }
+                            onChange={(e) =>
+                              handleInputChange(
+                                "partnerPreferenceAgeMin",
+                                Number(e.target.value)
+                              )
+                            }
+                            className="w-20"
                           />
-                        );
-                      })()}
+                          <span>to</span>
+                          <Input
+                            type="number"
+                            min={18}
+                            max={99}
+                            value={
+                              formData.partnerPreferenceAgeMax !== undefined
+                                ? String(formData.partnerPreferenceAgeMax)
+                                : ""
+                            }
+                            onChange={(e) =>
+                              handleInputChange(
+                                "partnerPreferenceAgeMax",
+                                e.target.value === ""
+                                  ? ""
+                                  : Number(e.target.value)
+                              )
+                            }
+                            className="w-20"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="partnerPreferenceCity"
+                          className="text-gray-700 mb-2 block"
+                        >
+                          Preferred Cities
+                        </Label>
+                        <Input
+                          id="partnerPreferenceCity"
+                          value={preferredCitiesInput}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            setPreferredCitiesInput(raw);
+                            const parsed = raw
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean);
+                            handleInputChange("partnerPreferenceCity", parsed);
+                          }}
+                          placeholder="e.g. London, Kabul"
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                }
+
+                {
+                  /* Step 6: Photos (Optional) */
+                }
+                {
+                  displayStep === 6 && (
+                    <div className="space-y-6">
+                      <div>
+                        <Label className="text-gray-700 mb-2 block">
+                          Profile Photos
+                        </Label>
+                        <ProfileImageUpload
+                          userId={"user-id-placeholder"}
+                          mode="create"
+                          onImagesChanged={handleProfileImagesChange}
+                          className="w-full h-48"
+                        />
+                        {errors.profileImageIds && (
+                          <div className="text-red-500 text-xs mt-1">
+                            {errors.profileImageIds}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                {
+                  /* Step 7: Clerk SignUp */
+                }
+                {
+                  displayStep === 7 && (
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-center">
+                          Create your account
+                        </h3>
+                        {/* Final validation guard before showing signup form */}
+                        {(() => {
+                          const requiredFields = [
+                            "fullName",
+                            "dateOfBirth",
+                            "gender",
+                            "preferredGender",
+                            "city",
+                            "aboutMe",
+                            "occupation",
+                            "education",
+                            "height",
+                            "maritalStatus",
+                            "phoneNumber",
+                          ];
+
+                          const missingFields = requiredFields.filter(
+                            (field) => {
+                              const value =
+                                formData[field as keyof ProfileCreationData];
+                              return (
+                                !value ||
+                                (typeof value === "string" &&
+                                  value.trim() === "")
+                              );
+                            }
+                          );
+
+                          if (missingFields.length > 0) {
+                            return (
+                              <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                                <p className="text-red-600 font-semibold mb-2">
+                                  ⚠️ Cannot create account - Profile incomplete
+                                </p>
+                                <p className="text-sm text-red-500 mb-4">
+                                  You must complete all profile sections before
+                                  creating an account.
+                                </p>
+                                <p className="text-xs text-red-400 mb-4">
+                                  Missing:{" "}
+                                  {missingFields.slice(0, 5).join(", ")}
+                                  {missingFields.length > 5 &&
+                                    ` and ${missingFields.length - 5} more fields`}
+                                </p>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setStep(1)}
+                                  className="border-red-300 text-red-600 hover:bg-red-50"
+                                >
+                                  <ArrowLeft className="mr-2 h-4 w-4" />
+                                  Go back to complete profile
+                                </Button>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <CustomSignupForm
+                              onComplete={() => {
+                                console.log(
+                                  "Signup completed; profile submission will auto-run"
+                                );
+                              }}
+                            />
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  );
+                }
               </motion.div>
             </AnimatePresence>
 

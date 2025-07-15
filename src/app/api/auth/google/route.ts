@@ -13,7 +13,7 @@ const client = new OAuth2Client(
 );
 
 const googleAuthSchema = z.object({
-  credential: z.string(), // Google ID token
+  credential: z.string(), // Google user info JSON or ID token
 });
 
 export async function POST(request: NextRequest) {
@@ -21,28 +21,50 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { credential } = googleAuthSchema.parse(body);
 
-    // Verify Google ID token
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+    let payload: any;
+    let googleId: string;
+    let email: string;
+    let name: string;
+    let given_name: string;
+    let family_name: string;
+    let email_verified: boolean;
 
-    const payload = ticket.getPayload();
-    if (!payload) {
-      return NextResponse.json(
-        { error: "Invalid Google token" },
-        { status: 400 },
-      );
+    try {
+      // Try to parse as user info JSON first (new popup method)
+      const userInfo = JSON.parse(credential);
+      if (userInfo.email && userInfo.verified_email !== undefined) {
+        payload = userInfo;
+        googleId = userInfo.id || userInfo.email; // Use email as fallback ID
+        email = userInfo.email;
+        name = userInfo.name;
+        given_name = userInfo.given_name;
+        family_name = userInfo.family_name;
+        email_verified = userInfo.verified_email;
+      } else {
+        throw new Error("Not user info format");
+      }
+    } catch {
+      // Fallback to ID token verification (original method)
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      payload = ticket.getPayload();
+      if (!payload) {
+        return NextResponse.json(
+          { error: "Invalid Google token" },
+          { status: 400 }
+        );
+      }
+
+      googleId = payload.sub;
+      email = payload.email;
+      name = payload.name;
+      given_name = payload.given_name;
+      family_name = payload.family_name;
+      email_verified = payload.email_verified;
     }
-
-    const {
-      sub: googleId,
-      email,
-      name,
-      given_name,
-      family_name,
-      email_verified,
-    } = payload;
 
     if (!email || !email_verified) {
       return NextResponse.json(

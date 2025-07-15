@@ -27,10 +27,12 @@ const ProfileWizardContext = createContext<ProfileWizardState | undefined>(
 export function ProfileWizardProvider({ children }: { children: ReactNode }) {
   const [step, setStep] = useState<number>(1);
   const [formData, setFormData] = useState<WizardFormData>({});
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage once - use a unified storage key
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     try {
       // Try to load from the unified profile creation storage
       const raw = localStorage.getItem(STORAGE_KEYS.PROFILE_CREATION);
@@ -39,34 +41,75 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
           step?: number;
           formData?: WizardFormData;
         };
-        if (parsed.step) setStep(parsed.step);
-        if (parsed.formData) setFormData(parsed.formData);
+
+        if (parsed.step && parsed.step >= 1) {
+          setStep(parsed.step);
+        }
+
+        if (parsed.formData && typeof parsed.formData === "object") {
+          // Filter out empty values when loading
+          const cleanedData = filterNonEmpty(parsed.formData);
+          if (Object.keys(cleanedData).length > 0) {
+            setFormData(cleanedData);
+          }
+        }
       }
-    } catch {
-      /* ignore */
+    } catch (error) {
+      console.warn(
+        "Failed to load ProfileWizard data from localStorage:",
+        error
+      );
+    } finally {
+      setIsLoaded(true);
     }
   }, []);
 
   // Persist on change - use the same unified storage key
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    // Don't persist until we've loaded initial data
+    if (!isLoaded || typeof window === "undefined") return;
+
     try {
+      const dataToStore = {
+        step,
+        formData: filterNonEmpty(formData),
+      };
+
       localStorage.setItem(
         STORAGE_KEYS.PROFILE_CREATION,
-        JSON.stringify({ step, formData: filterNonEmpty(formData) }),
+        JSON.stringify(dataToStore)
       );
-    } catch {
-      /* ignore */
+    } catch (error) {
+      console.warn("Failed to save ProfileWizard data to localStorage:", error);
     }
-  }, [step, formData]);
+  }, [step, formData, isLoaded]);
 
   const updateFormData = (updates: Partial<WizardFormData>) => {
-    setFormData((prev) => ({ ...prev, ...updates }));
+    setFormData((prev) => {
+      const newData = { ...prev, ...updates };
+      // Log data updates for debugging
+      console.log("ProfileWizardContext: Updating formData", {
+        updates,
+        newData,
+      });
+      return newData;
+    });
   };
 
   const reset = () => {
     setStep(1);
     setFormData({});
+    // Clear localStorage when resetting
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
+        // Also clear any legacy storage keys
+        localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
+        localStorage.removeItem(STORAGE_KEYS.PENDING_IMAGES);
+      } catch {
+        /* ignore */
+      }
+    }
   };
 
   return (
