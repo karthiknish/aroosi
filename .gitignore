@@ -89,3 +89,19 @@ tasks.json
 tasks/ 
 # auth configuration (can include secrets)
 /.auth/
+
+# Development and planning markdown files
+*_PLAN.md
+*_GUIDE.md
+*_SUMMARY.md
+*_FIXES.md
+CLAUDE.md
+BACKEND_*.md
+PROFILE_*.md
+TAILWIND_*.md
+IAP_*.md
+# Keep important docs
+!README.md
+!CHANGELOG.md
+!LICENSE.md
+!CONTRIBUTING.md
