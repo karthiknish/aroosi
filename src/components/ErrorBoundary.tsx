@@ -24,7 +24,10 @@ export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
-    this.errorHandler = createErrorBoundaryHandler("ErrorBoundary");
+    this.errorHandler = (error: Error, errorInfo: React.ErrorInfo) => {
+      const handler = createErrorBoundaryHandler("ErrorBoundary");
+      handler(error, { componentStack: errorInfo.componentStack || "" });
+    };
   }
 
   static getDerivedStateFromError(error: Error): State {

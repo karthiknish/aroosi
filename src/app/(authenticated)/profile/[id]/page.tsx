@@ -16,6 +16,16 @@ import {
   Ruler,
   Info,
   Calendar,
+  DollarSign,
+  Heart as HeartIcon,
+  Utensils,
+  Cigarette,
+  Wine,
+  Accessibility,
+  Users,
+  Target,
+  Award,
+  Building2,
 } from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
@@ -41,6 +51,13 @@ import { SafetyActionButton } from "@/components/safety/SafetyActionButton";
 import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
 import { useBlockStatus } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
+import {
+  calculateAge,
+  formatHeight,
+  formatCurrency,
+  formatArrayToString,
+  formatBoolean,
+} from "@/lib/utils/profileFormatting";
 
 type Interest = {
   id: string;
@@ -101,15 +118,16 @@ export default function ProfileDetailPage() {
         return result.data.map((img: unknown) =>
           typeof img === "object" && img !== null && "url" in img
             ? (img as { url: string }).url
-            : (img as string),
+            : (img as string)
         );
       }
       return [];
     },
     enabled: !!token && !!userId && !skipImagesQuery,
   });
+
   const isOwnProfile = Boolean(
-    currentUserProfile?._id && userId && currentUserProfile._id === userId,
+    currentUserProfile?._id && userId && currentUserProfile._id === userId
   );
 
   const localCurrentUserImageOrder: string[] = useMemo(() => {
@@ -462,7 +480,7 @@ export default function ProfileDetailPage() {
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="max-w-3xl w-full mx-auto"
+          className="max-w-4xl w-full mx-auto"
         >
           <Card className="shadow-xl rounded-2xl overflow-hidden bg-white/90 backdrop-blur-md border-0">
             <CardHeader className="p-0 relative">
@@ -513,7 +531,7 @@ export default function ProfileDetailPage() {
                       priority
                       sizes="(max-width: 768px) 100vw, 768px"
                       onError={(
-                        e: React.SyntheticEvent<HTMLImageElement, Event>,
+                        e: React.SyntheticEvent<HTMLImageElement, Event>
                       ) => {
                         const target = e.target as HTMLImageElement;
                         target.src = "/placeholder.png";
@@ -525,7 +543,7 @@ export default function ProfileDetailPage() {
                         className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow"
                         onClick={() =>
                           setCurrentImageIdx((idx) =>
-                            Math.min(imagesToShow.length - 1, idx + 1),
+                            Math.min(imagesToShow.length - 1, idx + 1)
                           )
                         }
                         disabled={currentImageIdx === imagesToShow.length - 1}
@@ -581,11 +599,14 @@ export default function ProfileDetailPage() {
                 </div>
                 <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
                   <MapPin className="w-5 h-5 text-accent" />
-                  City: {profile?.city ?? "-"}
+                  {profile?.city ?? "-"}, {profile?.country ?? "-"}
                 </div>
-
                 <div className="flex items-center gap-2 text-sm text-accent-600 mb-2 font-nunito">
                   <Calendar className="w-4 h-4 text-accent-200" />
+                  <span>
+                    Age: {calculateAge(profile?.dateOfBirth || "") || "-"}
+                  </span>
+                  <span>•</span>
                   <span>Member since:</span>
                   <span>
                     {profile?.createdAt
@@ -594,6 +615,7 @@ export default function ProfileDetailPage() {
                   </span>
                 </div>
               </motion.div>
+
               {imagesLoading && skeletonCount > 0 && (
                 <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
                   {Array.from({ length: skeletonCount }).map((_, idx) => (
@@ -633,10 +655,7 @@ export default function ProfileDetailPage() {
                               className="object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                               onClick={() => setCurrentImageIdx(idx)}
                               onError={(
-                                e: React.SyntheticEvent<
-                                  HTMLImageElement,
-                                  Event
-                                >,
+                                e: React.SyntheticEvent<HTMLImageElement, Event>
                               ) => {
                                 const target = e.target as HTMLImageElement;
                                 target.src = "/placeholder.png";
@@ -653,7 +672,40 @@ export default function ProfileDetailPage() {
                   </AnimatePresence>
                 </motion.div>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-8 mb-8">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 mb-8">
+                {/* Basic Information */}
+                <div className="space-y-6">
+                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
+                    <UserCircle className="w-5 h-5 text-accent" />
+                    Basic Information
+                  </h3>
+                  <IconRow
+                    icon={<Calendar className="w-4 h-4" />}
+                    label="Age"
+                    value={
+                      calculateAge(profile?.dateOfBirth || "")?.toString() ||
+                      "-"
+                    }
+                  />
+                  <IconRow
+                    icon={<Ruler className="w-4 h-4" />}
+                    label="Height"
+                    value={formatHeight(profile?.height || "")}
+                  />
+                  <IconRow
+                    icon={<Users className="w-4 h-4" />}
+                    label="Marital Status"
+                    value={formatBoolean(profile?.maritalStatus || "")}
+                  />
+                  <IconRow
+                    icon={<DollarSign className="w-4 h-4" />}
+                    label="Annual Income"
+                    value={formatCurrency(profile?.annualIncome || "")}
+                  />
+                </div>
+
+                {/* Education & Career */}
                 <div className="space-y-6">
                   <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
                     <BookOpen className="w-5 h-5 text-accent" />
@@ -669,12 +721,9 @@ export default function ProfileDetailPage() {
                     label="Occupation"
                     value={profile?.occupation ?? "-"}
                   />
-                  <IconRow
-                    icon={<Ruler className="w-4 h-4" />}
-                    label="Height"
-                    value={profile?.height ?? "-"}
-                  />
                 </div>
+
+                {/* Location */}
                 <div className="space-y-6">
                   <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
                     <MapPin className="w-5 h-5 text-accent" />
@@ -685,16 +734,105 @@ export default function ProfileDetailPage() {
                     label="City"
                     value={profile?.city ?? "-"}
                   />
-                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg mt-8">
-                    <Info className="w-5 h-5 text-accent" />
-                    About Me
+                  <IconRow
+                    icon={<MapPin className="w-4 h-4" />}
+                    label="Country"
+                    value={profile?.country ?? "-"}
+                  />
+                </div>
+
+                {/* Lifestyle */}
+                <div className="space-y-6">
+                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
+                    <HeartIcon className="w-5 h-5 text-accent" />
+                    Lifestyle
                   </h3>
-                  <div className="flex items-start gap-2 text-neutral">
-                    <Info className="w-4 h-4 mt-0.5 text-accent" />
-                    <span>{profile?.aboutMe ?? "-"}</span>
-                  </div>
+                  <IconRow
+                    icon={<Utensils className="w-4 h-4" />}
+                    label="Diet"
+                    value={formatBoolean(profile?.diet || "")}
+                  />
+                  <IconRow
+                    icon={<Cigarette className="w-4 h-4" />}
+                    label="Smoking"
+                    value={formatBoolean(profile?.smoking || "")}
+                  />
+                  <IconRow
+                    icon={<Wine className="w-4 h-4" />}
+                    label="Drinking"
+                    value={formatBoolean(profile?.drinking || "")}
+                  />
+                  <IconRow
+                    icon={<Accessibility className="w-4 h-4" />}
+                    label="Physical Status"
+                    value={formatBoolean(profile?.physicalStatus || "")}
+                  />
+                </div>
+
+                {/* Religious Information */}
+                <div className="space-y-6">
+                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
+                    <Building2 className="w-5 h-5 text-accent" />
+                    Religious Information
+                  </h3>
+                  <IconRow
+                    icon={<Building2 className="w-4 h-4" />}
+                    label="Religion"
+                    value={formatBoolean(profile?.religion || "")}
+                  />
+                  <IconRow
+                    icon={<Users className="w-4 h-4" />}
+                    label="Mother Tongue"
+                    value={formatBoolean(profile?.motherTongue || "")}
+                  />
+                  <IconRow
+                    icon={<Users className="w-4 h-4" />}
+                    label="Ethnicity"
+                    value={formatBoolean(profile?.ethnicity || "")}
+                  />
+                </div>
+
+                {/* Partner Preferences */}
+                <div className="space-y-6">
+                  <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
+                    <Target className="w-5 h-5 text-accent" />
+                    Partner Preferences
+                  </h3>
+                  <IconRow
+                    icon={<Calendar className="w-4 h-4" />}
+                    label="Age Range"
+                    value={
+                      profile?.partnerPreferenceAgeMin &&
+                      profile?.partnerPreferenceAgeMax
+                        ? `${profile.partnerPreferenceAgeMin} - ${profile.partnerPreferenceAgeMax}`
+                        : "-"
+                    }
+                  />
+                  <IconRow
+                    icon={<MapPin className="w-4 h-4" />}
+                    label="Preferred Location"
+                    value={formatArrayToString(profile?.partnerPreferenceCity)}
+                  />
+                  <IconRow
+                    icon={<Users className="w-4 h-4" />}
+                    label="Preferred Gender"
+                    value={formatBoolean(profile?.preferredGender || "")}
+                  />
                 </div>
               </div>
+
+              {/* About Me */}
+              <div className="space-y-6">
+                <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
+                  <Info className="w-5 h-5 text-accent" />
+                  About Me
+                </h3>
+                <div className="flex items-start gap-2 text-neutral">
+                  <Info className="w-4 h-4 mt-0.5 text-accent" />
+                  <span>{profile?.aboutMe ?? "-"}</span>
+                </div>
+              </div>
+
               <div className="flex justify-center gap-8 mt-8 mb-2 relative">
                 <AnimatePresence>
                   {!isOwnProfile && canInteract && (
