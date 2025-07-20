@@ -171,6 +171,26 @@ class SubscriptionAPI {
       token
     );
   }
+
+  async checkFeatureAccess(
+    feature: string,
+    token?: string
+  ): Promise<{
+    feature: string;
+    hasAccess: boolean;
+    plan: string;
+    limit?: number;
+    currentUsage?: number;
+  }> {
+    return this.makeRequest(
+      "/check-feature",
+      {
+        method: "POST",
+        body: JSON.stringify({ feature }),
+      },
+      token
+    );
+  }
 }
 
 export const subscriptionAPI = new SubscriptionAPI();
