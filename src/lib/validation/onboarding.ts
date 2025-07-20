@@ -339,27 +339,27 @@ export class OnboardingValidator {
    * Sanitize and clean input data
    */
   static sanitizeInput<T extends Record<string, any>>(data: T): T {
-    const sanitized = { ...data };
-    
+    const sanitized = { ...data } as Record<string, any>;
+
     Object.keys(sanitized).forEach((key) => {
       const value = sanitized[key];
-      
+
       // Trim string values
-      if (typeof value === 'string') {
-        sanitized[key] = value.trim() as T[typeof key];
+      if (typeof value === "string") {
+        sanitized[key] = value.trim();
       }
-      
+
       // Remove empty strings
-      if (value === '') {
+      if (value === "") {
         delete sanitized[key];
       }
-      
+
       // Sanitize phone numbers
-      if (key === 'phoneNumber' && typeof value === 'string') {
-        sanitized[key] = value.replace(/\D/g, '') as T[typeof key];
+      if (key === "phoneNumber" && typeof value === "string") {
+        sanitized[key] = value.replace(/\D/g, "");
       }
     });
     
-    return sanitized;
+    return sanitized as T;
   }
 }
