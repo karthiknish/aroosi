@@ -45,10 +45,10 @@ import {
 } from "@/hooks/useMessagingFeatures";
 import { TypingIndicator } from "./TypingIndicator";
 import { DeliveryStatus } from "./DeliveryStatus";
-import VoiceMessage from "./VoiceMessageBubble";
+import VoiceMessageBubble from "./VoiceMessageBubble";
 import type { ReportReason } from "@/lib/api/safety";
 import VoiceRecorderButton from "./VoiceRecorderButton";
-import { useMessagingErrorHandler } from "@/utils/messagingErrors";
+// Error handling utilities will be handled inline
 import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
 import {
   MessageFeedback,
@@ -283,8 +283,53 @@ function ModernChat({
   const { remainingMessages, hasReachedLimit, recordMessage } =
     useDailyMessageLimit(token);
 
-  // Enhanced error handling
-  const { handleError, withRetry } = useMessagingErrorHandler();
+  // Enhanced error handling - inline implementation
+  const handleError = (error: any): { type: string; message: string } => {
+    console.error("Messaging error:", error);
+    
+    let errorType = "UNKNOWN";
+    let errorMessage = "An error occurred";
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Map common error messages to types
+      if (error.message.includes("Unauthorized") || error.message.includes("401")) {
+        errorType = "UNAUTHORIZED";
+      } else if (error.message.includes("Token expired") || error.message.includes("403")) {
+        errorType = "TOKEN_EXPIRED";
+      } else if (error.message.includes("Network") || error.message.includes("network")) {
+        errorType = "NETWORK_ERROR";
+      }
+    }
+    
+    return { type: errorType, message: errorMessage };
+  };
+
+  const withRetry = async <T,>(
+    operation: () => Promise<T>,
+    maxRetries = 3,
+    onRetry?: (error: any, attempt: number) => void
+  ): Promise<T> => {
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        if (onRetry) onRetry(error, attempt);
+        if (attempt === maxRetries) throw error;
+
+        // Exponential backoff
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt) * 1000)
+        );
+      }
+    }
+
+    throw lastError;
+  };
 
   const userPlan = subscriptionTier;
   const features = getSubscriptionFeatures(
@@ -387,7 +432,10 @@ function ModernChat({
         setTimeout(() => inputRef.current?.focus(), 100);
       } catch (error) {
         console.error("Failed to send message:", error);
-        const messagingError = handleError(error, showErrorToast);
+        const messagingError = handleError(error);
+        
+        // Show error toast
+        showErrorToast(null, messagingError.message);
 
         // Additional handling for specific error types
         if (
@@ -497,7 +545,7 @@ function ModernChat({
           duration,
           fileSize: blob.size,
           mimeType: blob.type || "audio/webm",
-          token,
+          token: token,
         });
 
         if (!messageResponse.success) {
@@ -715,7 +763,7 @@ function ModernChat({
                           )}
                         >
                           {isVoice ? (
-                            <VoiceMessage
+                            <VoiceMessageBubble
                               message={msg}
                               isPlaying={playingVoice === msg._id}
                               onPlayToggle={(playing) => {
@@ -1042,18 +1090,18 @@ function VoiceMessage({
 
     setLoading(true);
     try {
-      const response = await fetch(getVoiceMessageUrl(message._id), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await getVoiceMessageUrl({
+        storageId: message.audioStorageId!,
+        token: token,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch voice message");
+      if (!response.success || !response.data) {
+        throw new Error(
+          response.error?.message || "Failed to fetch voice message"
+        );
       }
 
-      const data = await response.json();
-      setAudioUrl(data.audioUrl);
+      setAudioUrl(response.data.url);
     } catch (error) {
       console.error("Error fetching voice message:", error);
       showErrorToast(null, "Failed to load voice message");
@@ -1102,7 +1150,7 @@ function VoiceMessage({
           "p-2 rounded-full",
           isCurrentUser
             ? "hover:bg-white/20 text-white"
-            : "hover:bg-gray-200 text-gray-600",
+            : "hover:bg-gray-200 text-gray-600"
         )}
       >
         {loading ? (
@@ -1117,13 +1165,13 @@ function VoiceMessage({
         <div
           className={cn(
             "h-1 rounded-full",
-            isCurrentUser ? "bg-white/30" : "bg-gray-300",
+            isCurrentUser ? "bg-white/30" : "bg-gray-300"
           )}
         >
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              isCurrentUser ? "bg-white" : "bg-purple-500",
+              isCurrentUser ? "bg-white" : "bg-purple-500"
             )}
             style={{ width: isPlaying ? "100%" : "0%" }}
           />
@@ -1131,7 +1179,7 @@ function VoiceMessage({
         <div
           className={cn(
             "text-xs mt-1",
-            isCurrentUser ? "text-purple-100" : "text-gray-500",
+            isCurrentUser ? "text-purple-100" : "text-gray-500"
           )}
         >
           🎤 {formatVoiceDuration(message.duration || 0)}
