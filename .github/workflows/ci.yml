@@ -1,45 +1,158 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
 
 jobs:
-  build-test:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js 20
-        uses: actions/setup-node@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: aroosi/package-lock.json
+      
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
-      - name: Lint
+        working-directory: aroosi
+        run: npm ci
+      
+      - name: Run ESLint
+        working-directory: aroosi
         run: npm run lint
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: aroosi/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: aroosi
+        run: npm ci
+      
       - name: Type check
+        working-directory: aroosi
         run: npm run type-check
-      - name: Unit / Integration tests (with coverage)
-        run: npm test -- --runInBand --coverage
-      - name: Build (static analysis)
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: aroosi/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: aroosi
+        run: npm ci
+      
+      - name: Run Jest tests
+        working-directory: aroosi
+        run: npm test -- --coverage --watchAll=false
+        
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: aroosi/coverage
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, type-check, test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: aroosi/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: aroosi
+        run: npm ci
+      
+      - name: Build application
+        working-directory: aroosi
         run: npm run build
-      - name: Install Playwright browsers
-        run: pnpx playwright install --with-deps
-      - name: E2E tests
-        run: pnpx playwright test --reporter="dot,html"
-      - name: Generate sitemap
-        run: npm run next-sitemap
-      - name: Upload coverage report
-        if: always()
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage
+          name: build-files
+          path: aroosi/.next/
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: aroosi/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: aroosi
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        working-directory: aroosi
+        run: npx playwright install --with-deps
+      
+      - name: Run Playwright tests
+        working-directory: aroosi
+        run: npx playwright test
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      
       - name: Upload Playwright report
-        if: always()
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: playwright-report
-          path: playwright-report 
+          path: aroosi/playwright-report/
+          retention-days: 30

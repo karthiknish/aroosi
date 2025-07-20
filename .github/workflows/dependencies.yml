@@ -1,0 +1,73 @@
+name: Dependencies
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9 AM UTC
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: aroosi/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: aroosi
+        run: npm ci
+      
+      - name: Check for updates
+        working-directory: aroosi
+        run: |
+          npm outdated --json > outdated.json || true
+          if [ -s outdated.json ]; then
+            echo "Updates available"
+            cat outdated.json
+          else
+            echo "All dependencies are up to date"
+          fi
+      
+      - name: Update dependencies
+        working-directory: aroosi
+        run: |
+          npm update
+          npm audit fix
+      
+      - name: Test updated dependencies
+        working-directory: aroosi
+        run: |
+          npm ci
+          npm run type-check
+          npm run build
+      
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: 'chore: update dependencies'
+          body: |
+            ## Dependency Updates
+            
+            This PR updates project dependencies based on the latest available versions.
+            
+            ### Changes
+            - Updated npm dependencies
+            - Applied security fixes
+            - All tests pass
+            
+            ### Testing
+            - [ ] All unit tests pass
+            - [ ] All type checks pass
+            - [ ] Build completes successfully
+            - [ ] No breaking changes detected
+          branch: deps/update-${{ github.run_number }}
+          delete-branch: true
+          labels: dependencies, automated

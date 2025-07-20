@@ -5,6 +5,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { subscriptionAPI } from "@/lib/api/subscription";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
+import {
+  handleSubscriptionError,
+  SubscriptionErrorHandler,
+} from "@/lib/utils/subscriptionErrorHandler";
 
 export const useSubscriptionStatus = (providedToken?: string) => {
   // Prefer explicit token, fall back to AuthProvider context
@@ -39,7 +43,13 @@ export const useSubscriptionActions = (token?: string) => {
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
-      showErrorToast(error.message || "Failed to cancel subscription");
+      const subscriptionError = handleSubscriptionError(
+        error,
+        "cancelSubscription"
+      );
+      showErrorToast(
+        SubscriptionErrorHandler.getUserFriendlyMessage(subscriptionError)
+      );
     },
   });
 
@@ -51,7 +61,13 @@ export const useSubscriptionActions = (token?: string) => {
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
-      showErrorToast(error.message || "Failed to upgrade subscription");
+      const subscriptionError = handleSubscriptionError(
+        error,
+        "upgradeSubscription"
+      );
+      showErrorToast(
+        SubscriptionErrorHandler.getUserFriendlyMessage(subscriptionError)
+      );
     },
   });
 
@@ -62,7 +78,13 @@ export const useSubscriptionActions = (token?: string) => {
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
-      showErrorToast(error.message || "Failed to restore purchases");
+      const subscriptionError = handleSubscriptionError(
+        error,
+        "restorePurchases"
+      );
+      showErrorToast(
+        SubscriptionErrorHandler.getUserFriendlyMessage(subscriptionError)
+      );
     },
   });
 
