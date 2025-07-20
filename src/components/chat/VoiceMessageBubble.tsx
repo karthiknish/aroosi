@@ -2,14 +2,13 @@ import React, { useState, useRef, useEffect } from "react";
 import { Play, Pause, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
-import { getVoiceMessageUrl, type MatchMessage } from "@/lib/api/matchMessages";
+import { matchMessages, type MatchMessage } from "@/lib/api/matchMessages";
 
 interface VoiceMessageProps {
   message: MatchMessage;
   isPlaying: boolean;
   onPlayToggle: (playing: boolean) => void;
   isCurrentUser: boolean;
-  token: string;
 }
 
 /**
@@ -21,7 +20,6 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({
   isPlaying,
   onPlayToggle,
   isCurrentUser,
-  token,
 }) => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -41,15 +39,14 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({
       setError(null);
 
       try {
-        const response = await getVoiceMessageUrl({
+        const response = await matchMessages.getVoiceMessageUrl({
           storageId: message.audioStorageId,
-          token,
         });
 
-        if (response.success && response.data?.url) {
-          setAudioUrl(response.data.url);
+        if (response.success && response.data) {
+          setAudioUrl(response.data);
         } else {
-          setError(response.error?.message || "Failed to load audio");
+          setError(response.error || "Failed to load audio");
         }
       } catch (err) {
         console.error("Error loading voice message URL:", err);
@@ -60,7 +57,7 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({
     };
 
     loadAudioUrl();
-  }, [message.audioStorageId, token]);
+  }, [message.audioStorageId]);
 
   // Handle play/pause toggle
   const handlePlayToggle = async () => {

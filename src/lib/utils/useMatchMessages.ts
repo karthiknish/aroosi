@@ -1,9 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import {
-  getMatchMessages,
-  sendMatchMessage,
-  type MatchMessage,
-} from "@/lib/api/matchMessages";
+import { matchMessagesAPI, type MatchMessage } from "@/lib/api/matchMessages";
 import { getConversationEventsSSEUrl } from "@/lib/api/conversation";
 
 // Use the MatchMessage type from the API
@@ -20,9 +16,8 @@ export function useMatchMessages(conversationId: string, token: string) {
     setLoading(true);
     setError(null);
     try {
-      const response = await getMatchMessages({
+      const response = await matchMessagesAPI.getMessages(token, {
         conversationId,
-        token,
         limit: 20,
       });
 
@@ -30,14 +25,10 @@ export function useMatchMessages(conversationId: string, token: string) {
         setMessages(response.data);
         setHasMore(response.data.length === 20);
       } else {
-        setError(response.error?.message || "Failed to fetch messages");
+        setError(response.error || "Failed to fetch messages");
       }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message || "Failed to fetch messages");
-      } else {
-        setError("Failed to fetch messages");
-      }
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch messages");
     } finally {
       setLoading(false);
     }
@@ -49,25 +40,20 @@ export function useMatchMessages(conversationId: string, token: string) {
     setError(null);
     try {
       const oldestTimestamp = messages[0].createdAt;
-      const response = await getMatchMessages({
+      const response = await matchMessagesAPI.getMessages(token, {
         conversationId,
-        token,
         limit: 20,
         before: oldestTimestamp,
       });
 
       if (response.success && response.data) {
-        setMessages((prev) => [...response.data!, ...prev]);
-        if (response.data.length < 20) setHasMore(false);
+        setMessages((prev) => [...(response.data || []), ...prev]);
+        if (response.data && response.data.length < 20) setHasMore(false);
       } else {
-        setError(response.error?.message || "Failed to fetch older messages");
+        setError(response.error || "Failed to fetch older messages");
       }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message || "Failed to fetch older messages");
-      } else {
-        setError("Failed to fetch older messages");
-      }
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch older messages");
     } finally {
       setLoadingOlder(false);
     }
@@ -107,35 +93,31 @@ export function useMatchMessages(conversationId: string, token: string) {
         } as Message;
         setMessages((prev) => [...prev, optimisticMsg]);
 
-        sendMatchMessage({
-          fromUserId,
-          toUserId,
-          text,
-          conversationId,
-          token,
-          type: "text",
-        })
-          .then((response) => {
+        matchMessagesAPI
+          .sendMessage(token, {
+            fromUserId,
+            toUserId,
+            text,
+            conversationId,
+            type: "text",
+          })
+          .then((response: any) => {
             if (response.success && response.data) {
               setMessages((prev) =>
                 prev.map((m) =>
-                  m._id && m._id.startsWith("tmp-") ? response.data! : m
+                  m._id && m._id.startsWith("tmp-") ? response.data : m
                 )
               );
             } else {
-              setError(response.error?.message || "Failed to send message");
+              setError(response.error || "Failed to send message");
               // Remove optimistic message on failure
               setMessages((prev) =>
                 prev.filter((m) => !m._id?.startsWith("tmp-"))
               );
             }
           })
-          .catch((err) => {
-            if (err instanceof Error) {
-              setError(err.message || "Failed to send message");
-            } else {
-              setError("Failed to send message");
-            }
+          .catch((err: Error) => {
+            setError(err.message || "Failed to send message");
             // Remove optimistic message on failure
             setMessages((prev) =>
               prev.filter((m) => !m._id?.startsWith("tmp-"))
@@ -219,7 +201,7 @@ export function useMatchMessages(conversationId: string, token: string) {
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = reconnectDelay * Math.pow(2, reconnectAttempts);
           console.log(
-            `[SSE] Attempting reconnection in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`,
+            `[SSE] Attempting reconnection in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`
           );
 
           setTimeout(() => {

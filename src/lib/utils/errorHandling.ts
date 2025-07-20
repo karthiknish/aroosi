@@ -253,7 +253,7 @@ export async function retryWithBackoff<T>(
     baseDelay = 1000,
     maxDelay = 10000,
     backoffFactor = 2,
-    shouldRetry = (error) => {
+    shouldRetry = (error: unknown) => {
       const errorType = classifyError(error);
       // Don't retry authentication, validation, or permission errors
       return ![

@@ -6,11 +6,7 @@ import { useTypingIndicators } from "@/hooks/useTypingIndicators";
 import { useDeliveryReceipts } from "@/hooks/useDeliveryReceipts";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import {
-  getMatchMessages,
-  sendMatchMessage,
-  markConversationAsRead,
-  generateVoiceUploadUrl,
-  getVoiceMessageUrl,
+  matchMessages,
   type MatchMessage,
   type ApiResponse,
 } from "@/lib/api/matchMessages";
@@ -166,16 +162,17 @@ function ModernChat({
         markMessageAsRead(latestMessage._id);
 
         // Also mark conversation as read using unified API
-        markConversationAsRead({ conversationId, token })
-          .then((response) => {
+        matchMessages
+          .markConversationAsRead({ conversationId, userId: currentUserId })
+          .then((response: ApiResponse<void>) => {
             if (!response.success) {
               console.warn(
                 "Failed to mark conversation as read:",
-                response.error?.message
+                response.error
               );
             }
           })
-          .catch((error) => {
+          .catch((error: Error) => {
             console.warn("Error marking conversation as read:", error);
           });
       }
@@ -286,23 +283,32 @@ function ModernChat({
   // Enhanced error handling - inline implementation
   const handleError = (error: any): { type: string; message: string } => {
     console.error("Messaging error:", error);
-    
+
     let errorType = "UNKNOWN";
     let errorMessage = "An error occurred";
-    
+
     if (error instanceof Error) {
       errorMessage = error.message;
-      
+
       // Map common error messages to types
-      if (error.message.includes("Unauthorized") || error.message.includes("401")) {
+      if (
+        error.message.includes("Unauthorized") ||
+        error.message.includes("401")
+      ) {
         errorType = "UNAUTHORIZED";
-      } else if (error.message.includes("Token expired") || error.message.includes("403")) {
+      } else if (
+        error.message.includes("Token expired") ||
+        error.message.includes("403")
+      ) {
         errorType = "TOKEN_EXPIRED";
-      } else if (error.message.includes("Network") || error.message.includes("network")) {
+      } else if (
+        error.message.includes("Network") ||
+        error.message.includes("network")
+      ) {
         errorType = "NETWORK_ERROR";
       }
     }
-    
+
     return { type: errorType, message: errorMessage };
   };
 
@@ -433,7 +439,7 @@ function ModernChat({
       } catch (error) {
         console.error("Failed to send message:", error);
         const messagingError = handleError(error);
-        
+
         // Show error toast
         showErrorToast(null, messagingError.message);
 
@@ -514,11 +520,14 @@ function ModernChat({
         }
 
         // 1. Generate upload URL using unified API
-        const uploadResponse = await generateVoiceUploadUrl(token);
+        const uploadResponse = await matchMessages.generateUploadUrl({
+          userId: currentUserId,
+          fileName: `voice_${Date.now()}.webm`,
+          contentType: blob.type || "audio/webm",
+          fileSize: blob.size,
+        });
         if (!uploadResponse.success || !uploadResponse.data) {
-          throw new Error(
-            uploadResponse.error?.message || "Failed to get upload URL"
-          );
+          throw new Error(uploadResponse.error || "Failed to get upload URL");
         }
 
         // 2. Upload the audio file to storage
@@ -535,7 +544,7 @@ function ModernChat({
         }
 
         // 3. Send message with voice metadata using unified API
-        const messageResponse = await sendMatchMessage({
+        const messageResponse = await matchMessages.sendMessage({
           conversationId,
           fromUserId: currentUserId,
           toUserId,
@@ -545,12 +554,11 @@ function ModernChat({
           duration,
           fileSize: blob.size,
           mimeType: blob.type || "audio/webm",
-          token: token,
         });
 
         if (!messageResponse.success) {
           throw new Error(
-            messageResponse.error?.message || "Failed to send voice message"
+            messageResponse.error || "Failed to send voice message"
           );
         }
 
@@ -770,7 +778,6 @@ function ModernChat({
                                 setPlayingVoice(playing ? msg._id : null);
                               }}
                               isCurrentUser={isCurrentUser}
-                              token={token}
                             />
                           ) : (
                             <p className="leading-relaxed">{msg.text}</p>
@@ -1090,18 +1097,15 @@ function VoiceMessage({
 
     setLoading(true);
     try {
-      const response = await getVoiceMessageUrl({
+      const response = await matchMessages.getVoiceMessageUrl({
         storageId: message.audioStorageId!,
-        token: token,
       });
 
       if (!response.success || !response.data) {
-        throw new Error(
-          response.error?.message || "Failed to fetch voice message"
-        );
+        throw new Error(response.error || "Failed to fetch voice message");
       }
 
-      setAudioUrl(response.data.url);
+      setAudioUrl(response.data);
     } catch (error) {
       console.error("Error fetching voice message:", error);
       showErrorToast(null, "Failed to load voice message");

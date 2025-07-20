@@ -198,7 +198,7 @@ export function handleApiError(
     url: request?.url,
     method: request?.method,
     userAgent: request?.headers.get("user-agent"),
-    ip: request?.ip || request?.headers.get("x-forwarded-for"),
+    ip: (request as any)?.ip || request?.headers.get("x-forwarded-for"),
   });
 
   // Log error if it should be logged
@@ -210,7 +210,10 @@ export function handleApiError(
   const clientMessage = sanitizeErrorForClient(error, isDevelopment);
 
   // Return appropriate error response
-  return errorResponse(clientMessage, statusCode);
+  return NextResponse.json(
+    { success: false, error: clientMessage },
+    { status: statusCode }
+  );
 }
 
 // Wrapper for API route handlers with error handling

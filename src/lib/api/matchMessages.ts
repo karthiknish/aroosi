@@ -1,93 +1,27 @@
-import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
-import { Id } from "@convex/_generated/dataModel";
-
-// Unified API response structure aligned with mobile
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-}
-
-// Message type for match messages - aligned with mobile
-export type MatchMessage = {
+interface MatchMessage {
   _id: string;
   conversationId: string;
   fromUserId: string;
   toUserId: string;
   text: string;
   type: "text" | "voice" | "image";
-
-  // Voice message fields
   audioStorageId?: string;
   duration?: number;
-
-  // Image message fields
-  imageStorageId?: string;
-
-  // Common metadata
   fileSize?: number;
   mimeType?: string;
   createdAt: number;
   readAt?: number;
+}
 
-  // Client-side fields
-  status?: "pending" | "sent" | "delivered" | "read" | "failed";
-  isOptimistic?: boolean;
-};
+interface Conversation {
+  _id: string;
+  participants: string[];
+  lastMessage?: MatchMessage;
+  lastMessageAt?: number;
+  createdAt: number;
+}
 
-// Unified API client aligned with mobile implementation
-export const getMatchMessages = async (params: {
-  conversationId: string;
-  token: string;
-  limit?: number;
-  before?: number;
-}): Promise<ApiResponse<MatchMessage[]>> => {
-  try {
-    const client = getConvexClient();
-    if (!client) {
-      return {
-        success: false,
-        error: {
-          code: "CLIENT_ERROR",
-          message: "Failed to initialize Convex client",
-        },
-      };
-    }
-
-    client.setAuth(params.token);
-
-    const messages = await client.query(api.messages.getMessages, {
-      conversationId: params.conversationId,
-      limit: params.limit || 50,
-      before: params.before,
-    });
-
-    // Normalize messages for backward compatibility
-    const normalizedMessages = messages.map(normalizeMessage);
-
-    return {
-      success: true,
-      data: normalizedMessages as MatchMessage[],
-    };
-  } catch (error) {
-    console.error("Error fetching match messages:", error);
-    return {
-      success: false,
-      error: {
-        code: "FETCH_ERROR",
-        message:
-          error instanceof Error ? error.message : "Failed to fetch messages",
-      },
-    };
-  }
-};
-
-export const sendMatchMessage = async (data: {
+interface SendMessageParams {
   conversationId: string;
   fromUserId: string;
   toUserId: string;
@@ -97,221 +31,271 @@ export const sendMatchMessage = async (data: {
   duration?: number;
   fileSize?: number;
   mimeType?: string;
-  token: string;
-}): Promise<ApiResponse<MatchMessage>> => {
-  try {
-    const client = getConvexClient();
-    if (!client) {
-      return {
-        success: false,
-        error: {
-          code: "CLIENT_ERROR",
-          message: "Failed to initialize Convex client",
-        },
-      };
-    }
+}
 
-    client.setAuth(data.token);
-
-    const savedMessage = await client.mutation(api.messages.sendMessage, {
-      conversationId: data.conversationId,
-      fromUserId: data.fromUserId as Id<"users">,
-      toUserId: data.toUserId as Id<"users">,
-      text: data.text || "",
-      type: data.type || "text",
-      audioStorageId: data.audioStorageId,
-      duration: data.duration,
-      fileSize: data.fileSize,
-      mimeType: data.mimeType,
-    });
-
-    // Normalize message for backward compatibility
-    const normalizedMessage = normalizeMessage(savedMessage);
-
-    return {
-      success: true,
-      data: normalizedMessage as MatchMessage,
-    };
-  } catch (error) {
-    console.error("Error sending match message:", error);
-    return {
-      success: false,
-      error: {
-        code: "SEND_ERROR",
-        message:
-          error instanceof Error ? error.message : "Failed to send message",
-      },
-    };
-  }
-};
-
-// Mark conversation as read - aligned with mobile API
-export const markConversationAsRead = async (params: {
+interface GetMessagesParams {
   conversationId: string;
-  token: string;
-}): Promise<ApiResponse<void>> => {
-  try {
-    const client = getConvexClient();
-    if (!client) {
-      return {
-        success: false,
-        error: {
-          code: "CLIENT_ERROR",
-          message: "Failed to initialize Convex client",
-        },
-      };
-    }
+  limit?: number;
+  before?: number;
+}
 
-    client.setAuth(params.token);
+interface MarkReadParams {
+  conversationId: string;
+  userId: string;
+}
 
-    await client.mutation(api.messages.markConversationAsRead, {
-      conversationId: params.conversationId,
-    });
+interface GenerateUploadUrlParams {
+  userId: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+}
 
-    return {
-      success: true,
-    };
-  } catch (error) {
-    console.error("Error marking conversation as read:", error);
-    return {
-      success: false,
-      error: {
-        code: "READ_ERROR",
-        message:
-          error instanceof Error ? error.message : "Failed to mark as read",
-      },
-    };
-  }
-};
-
-// Voice message operations - aligned with mobile API
-export const generateVoiceUploadUrl = async (
-  token: string
-): Promise<ApiResponse<{ uploadUrl: string; storageId: string }>> => {
-  try {
-    const client = getConvexClient();
-    if (!client) {
-      return {
-        success: false,
-        error: {
-          code: "CLIENT_ERROR",
-          message: "Failed to initialize Convex client",
-        },
-      };
-    }
-
-    client.setAuth(token);
-
-    const result = await client.mutation(api.storage.generateUploadUrl);
-
-    return {
-      success: true,
-      data: {
-        uploadUrl: result.uploadUrl,
-        storageId: result.storageId,
-      },
-    };
-  } catch (error) {
-    console.error("Error generating voice upload URL:", error);
-    return {
-      success: false,
-      error: {
-        code: "UPLOAD_URL_ERROR",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate upload URL",
-      },
-    };
-  }
-};
-
-export const getVoiceMessageUrl = async (params: {
+interface GenerateUploadUrlResponse {
+  uploadUrl: string;
   storageId: string;
-  token: string;
-}): Promise<ApiResponse<{ url: string }>> => {
-  try {
-    const client = getConvexClient();
-    if (!client) {
-      return {
-        success: false,
-        error: {
-          code: "CLIENT_ERROR",
-          message: "Failed to initialize Convex client",
-        },
-      };
-    }
+}
 
-    client.setAuth(params.token);
+interface GetVoiceMessageUrlParams {
+  storageId: string;
+}
 
-    const url = await client.query(api.storage.getUrl, {
-      storageId: params.storageId,
+interface StorageUploadParams {
+  userId: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  storageId: string;
+}
+
+interface StorageDeleteParams {
+  storageId: string;
+  userId: string;
+}
+
+interface StorageListParams {
+  userId: string;
+}
+
+interface StorageItem {
+  _id: string;
+  url: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  createdAt: number;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+class MatchMessagesAPI {
+  private async makeRequest<T>(
+    endpoint: string,
+    options?: RequestInit,
+    token?: string | null
+  ): Promise<T> {
+    const baseHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const headers: Record<string, string> = {
+      ...baseHeaders,
+      ...((options?.headers as Record<string, string>) || {}),
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(`/api/messages${endpoint}`, {
+      headers,
+      ...options,
     });
 
-    return {
-      success: true,
-      data: { url: url || "" },
-    };
-  } catch (error) {
-    console.error("Error getting voice message URL:", error);
-    return {
-      success: false,
-      error: {
-        code: "URL_ERROR",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to get voice message URL",
-      },
-    };
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || "Request failed");
+    }
+
+    return data.data || data;
   }
+
+  async sendMessage(
+    token: string | null,
+    params: SendMessageParams
+  ): Promise<ApiResponse<MatchMessage>> {
+    return this.makeRequest<ApiResponse<MatchMessage>>(
+      "/send",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      },
+      token
+    );
+  }
+
+  async getMessages(
+    token: string | null,
+    params: GetMessagesParams
+  ): Promise<ApiResponse<MatchMessage[]>> {
+    const queryParams = new URLSearchParams({
+      conversationId: params.conversationId,
+      ...(params.limit && { limit: params.limit.toString() }),
+      ...(params.before && { before: params.before.toString() }),
+    });
+
+    return this.makeRequest<ApiResponse<MatchMessage[]>>(
+      `/messages?${queryParams.toString()}`,
+      undefined,
+      token
+    );
+  }
+
+  async markConversationAsRead(
+    token: string | null,
+    params: MarkReadParams
+  ): Promise<ApiResponse<void>> {
+    return this.makeRequest<ApiResponse<void>>(
+      "/mark-read",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      },
+      token
+    );
+  }
+
+  async getUnreadCounts(
+    token: string | null,
+    userId: string
+  ): Promise<ApiResponse<number>> {
+    return this.makeRequest<ApiResponse<number>>(
+      `/unread-count/${userId}`,
+      undefined,
+      token
+    );
+  }
+
+  async generateUploadUrl(
+    token: string | null,
+    params: GenerateUploadUrlParams
+  ): Promise<ApiResponse<GenerateUploadUrlResponse>> {
+    return this.makeRequest<ApiResponse<GenerateUploadUrlResponse>>(
+      "/upload-url",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      },
+      token
+    );
+  }
+
+  async getVoiceMessageUrl(
+    token: string | null,
+    params: GetVoiceMessageUrlParams
+  ): Promise<ApiResponse<string>> {
+    return this.makeRequest<ApiResponse<string>>(
+      `/voice-url/${params.storageId}`,
+      undefined,
+      token
+    );
+  }
+
+  async uploadImage(
+    token: string | null,
+    params: StorageUploadParams
+  ): Promise<ApiResponse<void>> {
+    return this.makeRequest<ApiResponse<void>>(
+      "/upload-image",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      },
+      token
+    );
+  }
+
+  async deleteImage(
+    token: string | null,
+    params: StorageDeleteParams
+  ): Promise<ApiResponse<void>> {
+    return this.makeRequest<ApiResponse<void>>(
+      "/delete-image",
+      {
+        method: "POST",
+        body: JSON.stringify(params),
+      },
+      token
+    );
+  }
+
+  async listImages(
+    token: string | null,
+    userId: string
+  ): Promise<ApiResponse<StorageItem[]>> {
+    return this.makeRequest<ApiResponse<StorageItem[]>>(
+      `/list-images/${userId}`,
+      undefined,
+      token
+    );
+  }
+
+  async getConversations(
+    token: string | null,
+    userId: string
+  ): Promise<ApiResponse<Conversation[]>> {
+    return this.makeRequest<ApiResponse<Conversation[]>>(
+      `/conversations/${userId}`,
+      undefined,
+      token
+    );
+  }
+}
+
+export const matchMessagesAPI = new MatchMessagesAPI();
+export type {
+  MatchMessage,
+  Conversation,
+  SendMessageParams,
+  GetMessagesParams,
+  MarkReadParams,
+  GenerateUploadUrlParams,
+  GenerateUploadUrlResponse,
+  GetVoiceMessageUrlParams,
+  StorageUploadParams,
+  StorageDeleteParams,
+  StorageListParams,
+  StorageItem,
+  ApiResponse,
 };
 
-// Message normalization for backward compatibility - aligned with mobile
-function normalizeMessage(rawMessage: any): MatchMessage {
-  return {
-    _id: rawMessage._id || rawMessage.id,
-    conversationId: rawMessage.conversationId,
-    fromUserId: rawMessage.fromUserId || rawMessage.senderId,
-    toUserId: rawMessage.toUserId || rawMessage.recipientId,
-    text: rawMessage.text || rawMessage.content || "",
-    type: rawMessage.type || "text",
-    createdAt: rawMessage.createdAt || rawMessage.timestamp || Date.now(),
-    readAt: rawMessage.readAt,
+// Backward compatibility exports
+export const matchMessages = {
+  sendMessage: (params: SendMessageParams) =>
+    matchMessagesAPI.sendMessage(null, params),
+  getMessages: (params: GetMessagesParams) =>
+    matchMessagesAPI.getMessages(null, params),
+  markConversationAsRead: (params: MarkReadParams) =>
+    matchMessagesAPI.markConversationAsRead(null, params),
+  getUnreadCounts: (userId: string) =>
+    matchMessagesAPI.getUnreadCounts(null, userId),
+  generateUploadUrl: (params: GenerateUploadUrlParams) =>
+    matchMessagesAPI.generateUploadUrl(null, params),
+  getVoiceMessageUrl: (params: GetVoiceMessageUrlParams) =>
+    matchMessagesAPI.getVoiceMessageUrl(null, params),
+  uploadImage: (params: StorageUploadParams) =>
+    matchMessagesAPI.uploadImage(null, params),
+  deleteImage: (params: StorageDeleteParams) =>
+    matchMessagesAPI.deleteImage(null, params),
+  listImages: (userId: string) => matchMessagesAPI.listImages(null, userId),
+  getConversations: (userId: string) =>
+    matchMessagesAPI.getConversations(null, userId),
+};
 
-    // Voice message fields
-    audioStorageId: rawMessage.audioStorageId,
-    duration: rawMessage.duration || rawMessage.voiceDuration,
-
-    // Image message fields
-    imageStorageId: rawMessage.imageStorageId,
-
-    // Common metadata
-    fileSize: rawMessage.fileSize,
-    mimeType: rawMessage.mimeType,
-
-    // Client-side fields
-    status: normalizeMessageStatus(rawMessage.status),
-    isOptimistic: rawMessage.isOptimistic || false,
-  };
-}
-
-// Normalize message status for consistency - aligned with mobile
-function normalizeMessageStatus(
-  status: any
-): "pending" | "sent" | "delivered" | "read" | "failed" | undefined {
-  if (!status) return undefined;
-
-  // Map legacy statuses to new ones
-  switch (status) {
-    case "sending":
-      return "pending";
-    case "sent":
-    case "delivered":
-    case "read":
-    case "failed":
-      return status;
-    default:
-      return "sent"; // Default fallback
-  }
-}
+export default matchMessages;
