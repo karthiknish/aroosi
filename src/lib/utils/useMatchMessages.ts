@@ -20,13 +20,18 @@ export function useMatchMessages(conversationId: string, token: string) {
     setLoading(true);
     setError(null);
     try {
-      const msgs = (await getMatchMessages({
+      const response = await getMatchMessages({
         conversationId,
         token,
         limit: 20,
-      })) as Message[];
-      setMessages(msgs);
-      setHasMore(msgs.length === 20);
+      });
+
+      if (response.success && response.data) {
+        setMessages(response.data);
+        setHasMore(response.data.length === 20);
+      } else {
+        setError(response.error?.message || "Failed to fetch messages");
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message || "Failed to fetch messages");
@@ -44,14 +49,19 @@ export function useMatchMessages(conversationId: string, token: string) {
     setError(null);
     try {
       const oldestTimestamp = messages[0].createdAt;
-      const older = (await getMatchMessages({
+      const response = await getMatchMessages({
         conversationId,
         token,
         limit: 20,
         before: oldestTimestamp,
-      })) as Message[];
-      setMessages((prev) => [...older, ...prev]);
-      if (older.length < 20) setHasMore(false);
+      });
+
+      if (response.success && response.data) {
+        setMessages((prev) => [...response.data!, ...prev]);
+        if (response.data.length < 20) setHasMore(false);
+      } else {
+        setError(response.error?.message || "Failed to fetch older messages");
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message || "Failed to fetch older messages");
@@ -105,13 +115,18 @@ export function useMatchMessages(conversationId: string, token: string) {
           token,
           type: "text",
         })
-          .then((saved) => {
-            if (saved) {
-              const savedMsg = saved as Message;
+          .then((response) => {
+            if (response.success && response.data) {
               setMessages((prev) =>
                 prev.map((m) =>
-                  m._id && m._id.startsWith("tmp-") ? savedMsg : m,
-                ),
+                  m._id && m._id.startsWith("tmp-") ? response.data! : m
+                )
+              );
+            } else {
+              setError(response.error?.message || "Failed to send message");
+              // Remove optimistic message on failure
+              setMessages((prev) =>
+                prev.filter((m) => !m._id?.startsWith("tmp-"))
               );
             }
           })
@@ -121,12 +136,16 @@ export function useMatchMessages(conversationId: string, token: string) {
             } else {
               setError("Failed to send message");
             }
+            // Remove optimistic message on failure
+            setMessages((prev) =>
+              prev.filter((m) => !m._id?.startsWith("tmp-"))
+            );
           });
       } finally {
         /* no-op */
       }
     },
-    [conversationId, token],
+    [conversationId, token]
   );
 
   // Initial fetch on mount or when conversation changes
