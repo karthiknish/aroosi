@@ -321,19 +321,8 @@ export function ProfileImageUpload({
         throw new Error("Authentication token not available.");
       }
 
-      // Save image metadata regardless of mode to ensure it persists
+      // Save image metadata to ensure it persists
       const result = await saveImageMeta({ token, ...args });
-
-      // Optimistically add to local state in create mode so UI shows images before profile saved
-      if (mode === "create") {
-        const newImage: ImageType = {
-          id: result.imageId,
-          url: `${process.env.NEXT_PUBLIC_CONVEX_URL}/api/storage/${result.imageId}`,
-          storageId: result.imageId,
-          fileName: args.fileName,
-        };
-        setLocalImages((prev) => [...prev, newImage]);
-      }
 
       return {
         success: true,
