@@ -37,12 +37,14 @@ export async function POST(request: NextRequest) {
     convex.setAuth(token);
 
     // Check if user can use the feature
-    const canUse = await convex.query(api.usageTracking.canUseFeature, { feature });
-    if (!canUse.canUse) {
-      return errorResponse(canUse.reason || "Feature usage limit reached", 403, {
+    const canUse = await convex.query(api.usageTracking.checkActionLimit, {
+      action: feature,
+    });
+    if (!canUse.canPerform) {
+      return errorResponse("Feature usage limit reached", 403, {
         limit: canUse.limit,
-        used: canUse.used,
-        resetDate: canUse.resetDate,
+        used: canUse.currentUsage,
+        remaining: canUse.remaining,
       });
     }
 
@@ -61,7 +63,6 @@ export async function POST(request: NextRequest) {
       limit: featureStats?.limit || 0,
       remainingQuota: featureStats?.remaining || 0,
       isUnlimited: featureStats?.unlimited || false,
-      resetDate: stats.resetDate,
     });
   } catch (error) {
     console.error("Error tracking feature usage:", error);

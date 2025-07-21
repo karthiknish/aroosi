@@ -94,45 +94,67 @@ export const getUsageStats = query({
     const monthlyUsage = await ctx.db
       .query("usageSummaries")
       .withIndex("by_userId_month", (q) =>
-        q.eq("userId", user._id).eq("month", currentMonth),
+        q.eq("userId", user._id).eq("month", currentMonth)
       )
       .collect();
 
-    // Convert to a map for easier access
-    const usageMap = monthlyUsage.reduce(
+    // Get daily usage for the last 24 hours for daily-limited features
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const allUsage = await ctx.db
+      .query("usageTracking")
+      .withIndex("by_userId_feature_timestamp", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const recentDailyUsage = allUsage.filter(
+      (item) => item.timestamp > twentyFourHoursAgo
+    );
+
+    // Calculate daily usage for profile views and searches
+    const dailyUsageMap: Record<string, number> = {};
+    recentDailyUsage.forEach((item) => {
+      if (
+        item.feature === "profile_view" ||
+        item.feature === "search_performed"
+      ) {
+        dailyUsageMap[item.feature] = (dailyUsageMap[item.feature] || 0) + 1;
+      }
+    });
+
+    // Convert to maps for easier access
+    const monthlyUsageMap = monthlyUsage.reduce(
       (acc, item) => {
         acc[item.feature] = item.count;
         return acc;
       },
-      {} as Record<string, number>,
+      {} as Record<string, number>
     );
 
-    // Define limits based on subscription plan
+    // Define limits based on subscription plan - aligned with mobile
     const plan = profile.subscriptionPlan || "free";
     const limits = {
       free: {
-        message_sent: 50,
-        profile_view: 10,
-        search_performed: 20,
-        interest_sent: 5,
-        profile_boost_used: 0,
-        voice_message_sent: 0,
+        message_sent: 5,
+        profile_view: 10, // daily
+        search_performed: 20, // daily
+        interest_sent: 3, // monthly
+        profile_boost_used: 0, // monthly
+        voice_message_sent: 0, // monthly
       },
       premium: {
         message_sent: -1, // unlimited
-        profile_view: 50,
-        search_performed: -1,
-        interest_sent: -1,
-        profile_boost_used: 0,
-        voice_message_sent: 10,
+        profile_view: 50, // daily
+        search_performed: -1, // unlimited daily
+        interest_sent: -1, // unlimited monthly
+        profile_boost_used: 1, // monthly
+        voice_message_sent: 10, // monthly
       },
       premiumPlus: {
-        message_sent: -1,
-        profile_view: -1,
-        search_performed: -1,
-        interest_sent: -1,
-        profile_boost_used: 5,
-        voice_message_sent: -1,
+        message_sent: -1, // unlimited
+        profile_view: -1, // unlimited daily
+        search_performed: -1, // unlimited daily
+        interest_sent: -1, // unlimited monthly
+        profile_boost_used: -1, // unlimited monthly
+        voice_message_sent: -1, // unlimited monthly
       },
     };
 
@@ -148,146 +170,48 @@ export const getUsageStats = query({
       "voice_message_sent",
     ] as const;
 
-    const usage = features.map((feature) => ({
-      feature,
-      used: usageMap[feature] || 0,
-      limit: userLimits[feature],
-      unlimited: userLimits[feature] === -1,
-      remaining:
-        userLimits[feature] === -1
-          ? -1
-          : Math.max(0, userLimits[feature] - (usageMap[feature] || 0)),
-      percentageUsed:
-        userLimits[feature] === -1
-          ? 0
-          : Math.min(
-              100,
-              ((usageMap[feature] || 0) / userLimits[feature]) * 100,
-            ),
-    }));
+    const usage = features.map((feature) => {
+      const isDaily =
+        feature === "profile_view" || feature === "search_performed";
+      const monthlyUsed = monthlyUsageMap[feature] || 0;
+      const dailyUsed = dailyUsageMap[feature] || 0;
+
+      const used = isDaily ? dailyUsed : monthlyUsed;
+      const limit = userLimits[feature as keyof typeof userLimits];
+
+      return {
+        feature,
+        used,
+        limit,
+        unlimited: limit === -1,
+        remaining: limit === -1 ? -1 : Math.max(0, limit - used),
+        percentageUsed:
+          limit === -1 ? 0 : Math.min(100, Math.round((used / limit) * 100)),
+        isDailyLimit: isDaily,
+      };
+    });
 
     return {
       plan,
-      currentMonth,
       usage,
-      resetDate: new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(),
+      monthlyUsage: monthlyUsageMap,
+      dailyUsage: dailyUsageMap,
+      limits: userLimits,
     };
   },
 });
 
-// Check if user can use a feature
-export const canUseFeature = query({
+// Check if user can perform a specific action
+export const checkActionLimit = query({
   args: {
-    feature: v.union(
+    action: v.union(
       v.literal("message_sent"),
       v.literal("profile_view"),
       v.literal("search_performed"),
       v.literal("interest_sent"),
       v.literal("profile_boost_used"),
-      v.literal("voice_message_sent"),
+      v.literal("voice_message_sent")
     ),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return { canUse: false, reason: "Not authenticated" };
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-    if (!user) return { canUse: false, reason: "User not found" };
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .first();
-    if (!profile) return { canUse: false, reason: "Profile not found" };
-
-    // Get usage stats directly instead of using runQuery
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-    const monthlyUsage = await ctx.db
-      .query("usageSummaries")
-      .withIndex("by_userId_month", (q) =>
-        q.eq("userId", user._id).eq("month", currentMonth),
-      )
-      .collect();
-
-    const usageMap = monthlyUsage.reduce(
-      (acc, item) => {
-        acc[item.feature] = item.count;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-
-    const plan = profile.subscriptionPlan || "free";
-    const limits = {
-      free: {
-        message_sent: 50,
-        profile_view: 10,
-        search_performed: 20,
-        interest_sent: 5,
-        profile_boost_used: 0,
-        voice_message_sent: 0,
-      },
-      premium: {
-        message_sent: -1,
-        profile_view: 50,
-        search_performed: -1,
-        interest_sent: -1,
-        profile_boost_used: 0,
-        voice_message_sent: 10,
-      },
-      premiumPlus: {
-        message_sent: -1,
-        profile_view: -1,
-        search_performed: -1,
-        interest_sent: -1,
-        profile_boost_used: 5,
-        voice_message_sent: -1,
-      },
-    };
-
-    const userLimits = limits[plan as keyof typeof limits];
-    const currentUsage = usageMap[args.feature] || 0;
-    const limit = userLimits[args.feature];
-    const unlimited = limit === -1;
-
-    if (unlimited) {
-      return { canUse: true, unlimited: true };
-    }
-
-    const remaining = Math.max(0, limit - currentUsage);
-    if (remaining > 0) {
-      return { canUse: true, remaining };
-    }
-
-    return {
-      canUse: false,
-      reason: "Monthly limit reached",
-      limit,
-      used: currentUsage,
-      resetDate: new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(),
-    };
-  },
-});
-
-// Get detailed usage history
-export const getUsageHistory = query({
-  args: {
-    feature: v.optional(
-      v.union(
-        v.literal("message_sent"),
-        v.literal("profile_view"),
-        v.literal("search_performed"),
-        v.literal("interest_sent"),
-        v.literal("profile_boost_used"),
-        v.literal("voice_message_sent"),
-      ),
-    ),
-    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -299,19 +223,126 @@ export const getUsageHistory = query({
       .first();
     if (!user) throw new Error("User not found");
 
-    let query = ctx.db
-      .query("usageTracking")
-      .withIndex("by_userId_timestamp", (q) => q.eq("userId", user._id))
-      .order("desc");
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .first();
+    if (!profile) throw new Error("Profile not found");
 
-    if (args.feature) {
-      // Filter by feature if specified
-      const results = await query.collect();
-      return results
-        .filter((item) => item.feature === args.feature)
-        .slice(0, args.limit || 100);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    const plan = profile.subscriptionPlan || "free";
+
+    // Define limits aligned with mobile
+    const limits = {
+      free: {
+        message_sent: 5,
+        profile_view: 10, // daily
+        search_performed: 20, // daily
+        interest_sent: 3, // monthly
+        profile_boost_used: 0, // monthly
+        voice_message_sent: 0, // monthly
+      },
+      premium: {
+        message_sent: -1, // unlimited
+        profile_view: 50, // daily
+        search_performed: -1, // unlimited daily
+        interest_sent: -1, // unlimited monthly
+        profile_boost_used: 1, // monthly
+        voice_message_sent: 10, // monthly
+      },
+      premiumPlus: {
+        message_sent: -1, // unlimited
+        profile_view: -1, // unlimited daily
+        search_performed: -1, // unlimited daily
+        interest_sent: -1, // unlimited monthly
+        profile_boost_used: -1, // unlimited monthly
+        voice_message_sent: -1, // unlimited monthly
+      },
+    };
+
+    const userLimits = limits[plan as keyof typeof limits];
+    const limit = userLimits[args.action as keyof typeof userLimits];
+
+    // Check current usage
+    let currentUsage = 0;
+
+    if (args.action === "profile_view" || args.action === "search_performed") {
+      // For daily limits, check usage in last 24 hours
+      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const allUsage = await ctx.db
+        .query("usageTracking")
+        .withIndex("by_userId_feature_timestamp", (q) =>
+          q.eq("userId", user._id)
+        )
+        .collect();
+      const recentUsage = allUsage.filter(
+        (item) =>
+          item.feature === args.action && item.timestamp > twentyFourHoursAgo
+      );
+      currentUsage = recentUsage.length;
+    } else {
+      // Monthly limits
+      const monthlySummary = await ctx.db
+        .query("usageSummaries")
+        .withIndex("by_userId_month_feature", (q) =>
+          q
+            .eq("userId", user._id)
+            .eq("month", currentMonth)
+            .eq("feature", args.action)
+        )
+        .first();
+      currentUsage = monthlySummary?.count || 0;
     }
 
-    return await query.take(args.limit || 100);
+    const canPerform = limit === -1 || currentUsage < limit;
+    const remaining = limit === -1 ? -1 : Math.max(0, limit - currentUsage);
+
+    return {
+      canPerform,
+      currentUsage,
+      limit,
+      remaining,
+      plan,
+    };
+  },
+});
+
+// Get usage history for a specific feature
+export const getUsageHistory = query({
+  args: {
+    feature: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    days: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    let allUsage = await ctx.db
+      .query("usageTracking")
+      .withIndex("by_userId_feature_timestamp", (q) => q.eq("userId", user._id))
+      .collect();
+
+    if (args.days) {
+      const cutoff = Date.now() - args.days * 24 * 60 * 60 * 1000;
+      allUsage = allUsage.filter((item) => item.timestamp > cutoff);
+    }
+
+    if (args.feature) {
+      allUsage = allUsage.filter((item) => item.feature === args.feature);
+    }
+
+    // Sort by timestamp descending and limit results
+    allUsage.sort((a, b) => b.timestamp - a.timestamp);
+
+    return allUsage.slice(0, args.limit || 100);
   },
 });

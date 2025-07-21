@@ -38,7 +38,9 @@ export async function GET(
     convex.setAuth(token);
     
     // Check if user can use the feature
-    const result = await convex.query(api.usageTracking.canUseFeature, { feature });
+    const result = await convex.query(api.usageTracking.checkActionLimit, {
+      action: feature,
+    });
     
     return successResponse(result);
   } catch (error) {

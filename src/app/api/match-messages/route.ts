@@ -5,6 +5,7 @@ import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import {
   validateMessagePayload,
   validateConversationId,
@@ -22,14 +23,30 @@ export async function GET(request: NextRequest) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    // Rate limiting
-    const rateLimitResult = checkApiRateLimit(
-      `get_messages_${userId}`,
-      100,
-      60000,
-    ); // 100 requests per minute
+    // Subscription-based rate limiting for getting messages
+    if (!userId) {
+      return errorResponse("User ID not found", 401);
+    }
+    
+    const rateLimitResult = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      request,
+      token,
+      userId,
+      "message_sent",
+      60000
+    );
+    
     if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded", 429);
+      return errorResponse(
+        rateLimitResult.error || "Rate limit exceeded",
+        429,
+        {
+          plan: rateLimitResult.plan,
+          limit: rateLimitResult.limit,
+          remaining: rateLimitResult.remaining,
+          resetTime: new Date(rateLimitResult.resetTime).toISOString(),
+        }
+      );
     }
 
     // Parse and validate query parameters
@@ -116,16 +133,31 @@ export async function POST(request: NextRequest) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    // Rate limiting for sending messages
-    const rateLimitResult = checkApiRateLimit(
-      `send_message_${userId}`,
-      20,
-      60000,
-    ); // 20 messages per minute
+    // Subscription-based rate limiting for sending messages
+    if (!userId) {
+      return errorResponse("User ID not found", 401);
+    }
+    
+    const rateLimitResult =
+      await subscriptionRateLimiter.checkSubscriptionRateLimit(
+        request,
+        token,
+        userId,
+        "message_sent",
+        60000
+      );
+
     if (!rateLimitResult.allowed) {
       return errorResponse(
-        "Rate limit exceeded. Please wait before sending more messages.",
+        rateLimitResult.error ||
+          "Rate limit exceeded. Please wait before sending more messages.",
         429,
+        {
+          plan: rateLimitResult.plan,
+          limit: rateLimitResult.limit,
+          remaining: rateLimitResult.remaining,
+          resetTime: new Date(rateLimitResult.resetTime).toISOString(),
+        }
       );
     }
 
@@ -143,7 +175,7 @@ export async function POST(request: NextRequest) {
     if (!conversationId || !fromUserId || !toUserId || !text) {
       return errorResponse(
         "Missing required fields: conversationId, fromUserId, toUserId, text",
-        400,
+        400
       );
     }
 
@@ -180,7 +212,7 @@ export async function POST(request: NextRequest) {
     if (!canMessage) {
       return errorResponse(
         "Users are not authorized to message each other",
-        403,
+        403
       );
     }
 

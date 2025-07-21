@@ -8,6 +8,7 @@ import {
   checkApiRateLimit,
   logSecurityEvent,
 } from "@/lib/utils/securityHeaders";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
 type InterestAction = "send" | "remove";
 
@@ -23,14 +24,24 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    // Rate limiting for interest actions
-    const rateLimitResult = checkApiRateLimit(
-      `interest_${action}_${userId}`,
-      action === "send" ? 50 : 100, // 50 sends or 100 removes per hour
-      60000
-    );
-    if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded", 429);
+    // Subscription-based rate limiting for interest actions
+    if (!userId) {
+      return errorResponse("User ID is required", 400);
+    }
+
+    const subscriptionRateLimit =
+      await subscriptionRateLimiter.checkSubscriptionRateLimit(
+        req,
+        token,
+        userId,
+        "interest_sent"
+      );
+
+    if (!subscriptionRateLimit.allowed) {
+      return errorResponse(
+        subscriptionRateLimit.error || "Subscription limit exceeded",
+        429
+      );
     }
 
     // Parse request body
@@ -187,14 +198,24 @@ export async function GET(req: NextRequest) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId: authenticatedUserId } = authCheck;
 
-    // Rate limiting for interest queries
-    const rateLimitResult = checkApiRateLimit(
-      `interest_get_${authenticatedUserId}`,
-      100,
-      60000,
-    ); // 100 requests per minute
-    if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded", 429);
+    // Subscription-based rate limiting for interest queries
+    if (!authenticatedUserId) {
+      return errorResponse("User ID is required", 400);
+    }
+
+    const subscriptionRateLimit =
+      await subscriptionRateLimiter.checkSubscriptionRateLimit(
+        req,
+        token,
+        authenticatedUserId,
+        "interest_sent"
+      );
+
+    if (!subscriptionRateLimit.allowed) {
+      return errorResponse(
+        subscriptionRateLimit.error || "Subscription limit exceeded",
+        429
+      );
     }
 
     // Get optional userId from query string; default to current authenticated user
@@ -213,7 +234,7 @@ export async function GET(req: NextRequest) {
     try {
       currentUserRecord = await convex.query(
         api.users.getCurrentUserWithProfile,
-        {},
+        {}
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -221,7 +242,7 @@ export async function GET(req: NextRequest) {
         message.includes("Unauthenticated") || message.includes("token");
       return errorResponse(
         isAuth ? "Authentication failed" : "Failed to fetch current user",
-        isAuth ? 401 : 400,
+        isAuth ? 401 : 400
       );
     }
 
@@ -239,11 +260,11 @@ export async function GET(req: NextRequest) {
           attemptedUserId: userIdParam,
           action: "get_interests",
         },
-        req,
+        req
       );
       return errorResponse(
         "Unauthorized: can only view your own interests",
-        403,
+        403
       );
     }
 

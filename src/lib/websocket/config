@@ -1,0 +1,49 @@
+// WebSocket configuration for real-time messaging
+export const WEBSOCKET_CONFIG = {
+  // WebSocket server URL
+  WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001',
+  
+  // Reconnection settings
+  MAX_RECONNECT_ATTEMPTS: 5,
+  RECONNECT_BASE_DELAY: 1000,
+  RECONNECT_MAX_DELAY: 10000,
+  
+  // Heartbeat settings
+  HEARTBEAT_INTERVAL: 30000,
+  HEARTBEAT_TIMEOUT: 5000,
+  
+  // Message types
+  MESSAGE_TYPES: {
+    // Connection
+    CONNECT: 'connect',
+    DISCONNECT: 'disconnect',
+    
+    // Messages
+    MESSAGE_SEND: 'message:send',
+    MESSAGE_NEW: 'message:new',
+    MESSAGE_READ: 'message:read',
+    MESSAGE_DELIVERED: 'message:delivered',
+    
+    // Typing
+    TYPING_START: 'typing:start',
+    TYPING_STOP: 'typing:stop',
+    
+    // Conversations
+    JOIN_CONVERSATION: 'join:conversation',
+    LEAVE_CONVERSATION: 'leave:conversation',
+    
+    // Presence
+    USER_ONLINE: 'user:online',
+    USER_OFFLINE: 'user:offline',
+  },
+  
+  // Error codes
+  ERROR_CODES: {
+    UNAUTHORIZED: 4001,
+    FORBIDDEN: 4003,
+    RATE_LIMITED: 4008,
+    SERVER_ERROR: 4009,
+  },
+} as const;
+
+export type WebSocketMessageType = typeof WEBSOCKET_CONFIG.MESSAGE_TYPES[keyof typeof WEBSOCKET_CONFIG.MESSAGE_TYPES];

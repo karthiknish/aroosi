@@ -4,6 +4,7 @@ import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
 type Gender = "any" | "male" | "female" | "other";
 
@@ -14,10 +15,24 @@ export async function GET(request: NextRequest) {
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    // Rate limiting
-    const rateLimitResult = checkApiRateLimit(`search_${userId}`, 200, 60000); // 200 searches per minute
-    if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded", 429);
+    // Subscription-based rate limiting
+    if (!userId) {
+      return errorResponse("User ID is required", 400);
+    }
+
+    const subscriptionRateLimit =
+      await subscriptionRateLimiter.checkSubscriptionRateLimit(
+        request,
+        token,
+        userId,
+        "search_performed"
+      );
+
+    if (!subscriptionRateLimit.allowed) {
+      return errorResponse(
+        subscriptionRateLimit.error || "Subscription limit exceeded",
+        429
+      );
     }
 
     const convexClient = getConvexClient();
@@ -71,7 +86,7 @@ export async function GET(request: NextRequest) {
     if (ageMin && ageMax && ageMin > ageMax) {
       return errorResponse(
         "Minimum age cannot be greater than maximum age",
-        400,
+        400
       );
     }
 
@@ -126,7 +141,7 @@ export async function GET(request: NextRequest) {
 
     // Log search for analytics (without sensitive data)
     console.log(
-      `Profile search by user ${userId}: page=${page}, filters=${JSON.stringify({ city: !!city, ageMin, ageMax, preferredGender })}`,
+      `Profile search by user ${userId}: page=${page}, filters=${JSON.stringify({ city: !!city, ageMin, ageMax, preferredGender })}`
     );
 
     return successResponse({

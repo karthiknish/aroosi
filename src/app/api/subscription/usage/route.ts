@@ -20,9 +20,7 @@ export async function GET(request: NextRequest) {
     // Transform the data to match the expected format
     const usage = {
       plan: stats.plan,
-      currentMonth: stats.currentMonth,
-      resetDate: stats.resetDate,
-      features: stats.usage.map(feature => ({
+      features: stats.usage.map((feature) => ({
         name: feature.feature,
         used: feature.used,
         limit: feature.limit,
@@ -32,20 +30,28 @@ export async function GET(request: NextRequest) {
       })),
       // Legacy format for backward compatibility
       messaging: {
-        sent: stats.usage.find(u => u.feature === "message_sent")?.used || 0,
-        limit: stats.usage.find(u => u.feature === "message_sent")?.limit || 0,
+        sent: stats.usage.find((u) => u.feature === "message_sent")?.used || 0,
+        limit:
+          stats.usage.find((u) => u.feature === "message_sent")?.limit || 0,
       },
       profileViews: {
-        count: stats.usage.find(u => u.feature === "profile_view")?.used || 0,
-        limit: stats.usage.find(u => u.feature === "profile_view")?.limit || 0,
+        count: stats.usage.find((u) => u.feature === "profile_view")?.used || 0,
+        limit:
+          stats.usage.find((u) => u.feature === "profile_view")?.limit || 0,
       },
       searches: {
-        count: stats.usage.find(u => u.feature === "search_performed")?.used || 0,
-        limit: stats.usage.find(u => u.feature === "search_performed")?.limit || 0,
+        count:
+          stats.usage.find((u) => u.feature === "search_performed")?.used || 0,
+        limit:
+          stats.usage.find((u) => u.feature === "search_performed")?.limit || 0,
       },
       boosts: {
-        used: stats.usage.find(u => u.feature === "profile_boost_used")?.used || 0,
-        monthlyLimit: stats.usage.find(u => u.feature === "profile_boost_used")?.limit || 0,
+        used:
+          stats.usage.find((u) => u.feature === "profile_boost_used")?.used ||
+          0,
+        monthlyLimit:
+          stats.usage.find((u) => u.feature === "profile_boost_used")?.limit ||
+          0,
       },
     };
     
