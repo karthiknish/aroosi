@@ -281,9 +281,13 @@ export function ProfileImageUpload({
   const handleStartUpload = () => setIsUploadingFile(true);
 
   const generateUploadUrl = useCallback(async () => {
+    if (mode === "create") {
+      // In create mode, return a dummy URL since we'll handle locally
+      return "dummy-url-for-create-mode";
+    }
     if (!token) throw new Error("No token");
     return await getImageUploadUrl(token);
-  }, [token]);
+  }, [token, mode]);
 
   // Move uploadImage definition above uploadImageToUse
   const uploadImage = useCallback(
@@ -294,6 +298,25 @@ export function ProfileImageUpload({
       contentType: string;
       fileSize: number;
     }): Promise<UploadImageResponse> => {
+      if (mode === "create") {
+        // In create mode, create a local image object with a temporary ID
+        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const newImage: ImageType = {
+          id: tempId,
+          url: URL.createObjectURL(new Blob()), // Will be replaced with actual file preview
+          storageId: tempId,
+          fileName: args.fileName,
+        };
+        setLocalImages((prev) => [...prev, newImage]);
+
+        // Return success for create mode
+        return {
+          success: true,
+          imageId: tempId as Id<"_storage">,
+          message: "Image added locally",
+        };
+      }
+
       if (!token) {
         throw new Error("Authentication token not available.");
       }

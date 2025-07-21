@@ -85,13 +85,23 @@ function HeroOnboardingInner() {
 
   const handleNext = () => {
     if (!validateOnboardingStep()) return;
+
+    // Enhanced age validation with better feedback
     if (step === 2) {
       const age = calculateAge(heroData.dateOfBirth);
-      if (isNaN(age) || age < 18) {
+      if (isNaN(age)) {
+        showErrorToast(null, "Please select a valid date of birth.");
+        return;
+      }
+      if (age < 18) {
         showErrorToast(
           null,
-          "You must be at least 18 years old to use this app.",
+          `You must be at least 18 years old to use this app. Current age: ${age}`
         );
+        return;
+      }
+      if (age > 100) {
+        showErrorToast(null, "Please enter a valid date of birth.");
         return;
       }
     }

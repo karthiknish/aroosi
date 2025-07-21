@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import * as z from "zod";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
+import { LocalImageUpload } from "@/components/LocalImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   MOTHER_TONGUE_OPTIONS,
@@ -203,8 +204,8 @@ export function ProfileCreationModal({
       contextData?.phoneNumber
   );
 
-  // Total number of steps adjusts when we skip the duplicate first step
-  const totalSteps = hasBasicData ? 6 : 7;
+  // Total number of steps - always 7 steps including account creation
+  const totalSteps = 7;
 
   // Create a unified formData object from context data and initial data
   const formData: ProfileCreationData = {
@@ -328,17 +329,17 @@ export function ProfileCreationModal({
 
   const handleProfileImagesChange = useCallback(
     (imgs: (string | ImageType)[]) => {
-      // Separate IDs and image objects
+      // Always accept the images and update immediately
       const ids = imgs.map((img) => (typeof img === "string" ? img : img.id));
-      if (
-        JSON.stringify(ids) !== JSON.stringify(formData.profileImageIds ?? [])
-      ) {
-        handleInputChange("profileImageIds", ids);
-        try {
-          localStorage.setItem("pendingProfileImages", JSON.stringify(ids));
-        } catch (err) {
-          console.warn("Unable to store images in localStorage", err);
-        }
+      
+      // Update context immediately
+      handleInputChange("profileImageIds", ids);
+      
+      // Store in localStorage for persistence
+      try {
+        localStorage.setItem("pendingProfileImages", JSON.stringify(ids));
+      } catch (err) {
+        console.warn("Unable to store images in localStorage", err);
       }
 
       // Extract ImageType objects for later upload
@@ -347,11 +348,12 @@ export function ProfileCreationModal({
       );
       setPendingImages(imgObjects);
     },
-    [handleInputChange, formData.profileImageIds]
+    [handleInputChange]
   );
 
   const validateStep = () => {
-    const schemaIndex = displayStep - 1;
+    // Use the actual step for validation, not displayStep
+    const schemaIndex = step - 1;
     if (schemaIndex >= 0 && schemaIndex < stepSchemas.length) {
       const schema = stepSchemas[schemaIndex];
       const result = schema.safeParse(formData);
@@ -427,7 +429,8 @@ export function ProfileCreationModal({
     if (!validateStep()) return;
 
     // Additional validation before moving to sign-up step
-    if (displayStep === 6) {
+    // This should happen when we're at the last step before account creation
+    if (displayStep === totalSteps) {
       // Validate only essential required fields are present before moving to sign-up
       const requiredFields = [
         "fullName",
@@ -1371,9 +1374,7 @@ export function ProfileCreationModal({
                       <Label className="text-gray-700 mb-2 block">
                         Profile Photos
                       </Label>
-                      <ProfileImageUpload
-                        userId={"user-id-placeholder"}
-                        mode="create"
+                      <LocalImageUpload
                         onImagesChanged={handleProfileImagesChange}
                         className="w-full h-48"
                       />
@@ -1462,13 +1463,13 @@ export function ProfileCreationModal({
             </AnimatePresence>
 
             <div className="mt-8 flex justify-between">
-              {step > 1 && step <= 7 && (
+              {step > 1 && step <= totalSteps && (
                 <Button variant="outline" onClick={handleBack} disabled={false}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
               )}
-              {step < 7 && (
+              {step < totalSteps && (
                 <Button
                   onClick={handleNext}
                   // Allow click; handleNext will perform validation and show errors
