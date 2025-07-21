@@ -12,6 +12,9 @@ jobs:
   security:
     runs-on: ubuntu-latest
     
+    env:
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+    
     steps:
     - uses: actions/checkout@v4
     
