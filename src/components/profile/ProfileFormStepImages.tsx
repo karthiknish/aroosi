@@ -58,7 +58,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
             userId={userId}
             isAdmin={isAdmin}
             profileId={profileId}
-            mode="create"
+            mode="edit"
             onImagesChanged={onImagesChanged}
             className="w-full h-48"
           />
