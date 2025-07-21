@@ -50,11 +50,9 @@ jobs:
           cache-dependency-path: package-lock.json
       
       - name: Install dependencies
-        working-directory: aroosi
         run: npm ci
       
       - name: Run npm audit
-        working-directory: aroosi
         run: npm audit --audit-level=high
       
       - name: Run Snyk to check for vulnerabilities

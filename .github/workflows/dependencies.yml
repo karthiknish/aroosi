@@ -20,11 +20,9 @@ jobs:
           cache-dependency-path: package-lock.json
       
       - name: Install dependencies
-        working-directory: aroosi
         run: npm ci
       
       - name: Check for updates
-        working-directory: aroosi
         run: |
           npm outdated --json > outdated.json || true
           if [ -s outdated.json ]; then
@@ -35,13 +33,11 @@ jobs:
           fi
       
       - name: Update dependencies
-        working-directory: aroosi
         run: |
           npm update
           npm audit fix
       
       - name: Test updated dependencies
-        working-directory: aroosi
         run: |
           npm ci
           npm run type-check

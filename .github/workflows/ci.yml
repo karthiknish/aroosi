@@ -24,11 +24,9 @@ jobs:
           cache-dependency-path: aroosi/package-lock.json
       
       - name: Install dependencies
-        working-directory: aroosi
         run: npm ci
       
       - name: Run ESLint
-        working-directory: aroosi
         run: npm run lint
 
   type-check:
@@ -45,11 +43,9 @@ jobs:
           cache-dependency-path: aroosi/package-lock.json
       
       - name: Install dependencies
-        working-directory: aroosi
         run: npm ci
       
       - name: Type check
-        working-directory: aroosi
         run: npm run type-check
 
   test:
@@ -63,21 +59,19 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: aroosi/package-lock.json
+          cache-dependency-path: package-lock.json
       
       - name: Install dependencies
-        working-directory: aroosi
         run: npm ci
       
       - name: Run Jest tests
-        working-directory: aroosi
         run: npm test -- --coverage --watchAll=false
         
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          directory: aroosi/coverage
+          directory: coverage
 
   build:
     name: Build
@@ -94,11 +88,9 @@ jobs:
           cache-dependency-path: package-lock.json
       
       - name: Install dependencies
-        working-directory: aroosi
         run: npm ci
       
       - name: Build application
-        working-directory: aroosi
         run: npm run build
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -113,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-files
-          path: aroosi/.next/
+          path: .next/
 
   e2e:
     name: E2E Tests
@@ -130,15 +122,12 @@ jobs:
           cache-dependency-path: aroosi/package-lock.json
       
       - name: Install dependencies
-        working-directory: aroosi
         run: npm ci
       
       - name: Install Playwright browsers
-        working-directory: aroosi
         run: npx playwright install --with-deps
       
       - name: Run Playwright tests
-        working-directory: aroosi
         run: npx playwright test
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
@@ -154,5 +143,5 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: aroosi/playwright-report/
+          path: playwright-report/
           retention-days: 30
