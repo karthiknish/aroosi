@@ -124,15 +124,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Unexpected error in verify-otp endpoint:", error);
     if (error instanceof z.ZodError) {
+      // For Zod validation errors, we can safely log the request details
+      // since the error occurred during parsing
       console.warn(
-        "Validation error for request:",
-        { email: body?.email, hasOtp: !!body?.otp },
+        "Validation error in verify-otp endpoint:",
         "Errors:",
         error.errors
       );
       return NextResponse.json(
         { error: "Invalid input data", details: error.errors },
-        { status: 400 },
+        { status: 400 }
       );
     }
     return NextResponse.json(
