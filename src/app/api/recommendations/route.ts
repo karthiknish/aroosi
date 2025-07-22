@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     convexClient.setAuth(token);
 
     // Get user's profile to understand their preferences
-    const userProfile = await convexClient.query(api.users.getUserProfile, {
+    const userProfile = await convexClient.query(api.users.getProfile, {
       userId: userId as string,
     });
 
