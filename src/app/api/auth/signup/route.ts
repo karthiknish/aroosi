@@ -4,6 +4,8 @@ import { z } from "zod";
 import { generateOTP, storeOTP } from "@/lib/auth/otp";
 import { sendOTPEmail } from "@/lib/auth/email";
 import { storeTempUser } from "@/lib/auth/tempStorage";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@convex/_generated/api";
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -17,8 +19,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password, firstName, lastName } = signupSchema.parse(body);
 
-    // For now, we'll skip the user existence check since Convex has errors
-    // We'll handle this in the verify-otp endpoint when creating the user
+    // Check if user already exists
+    try {
+      const existingUser = await fetchQuery(api.auth.getUserByEmail, { email });
+      if (existingUser) {
+        return NextResponse.json(
+          {
+            error: "An account with this email already exists",
+            code: "EMAIL_EXISTS",
+            suggestion: "Please sign in or use a different email address",
+          },
+          { status: 409 }
+        );
+      }
+    } catch (error) {
+      console.error("Error checking for existing user:", error);
+      // Continue with signup if we can't verify - will be caught in verify-otp
+    }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -35,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (!emailSent) {
       return NextResponse.json(
         { error: "Failed to send verification email" },
-        { status: 500 },
+        { status: 500 }
       );
     }
 

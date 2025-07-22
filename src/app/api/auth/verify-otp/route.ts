@@ -105,8 +105,12 @@ export async function POST(request: NextRequest) {
       ) {
         console.warn("User already exists for email:", email);
         return NextResponse.json(
-          { error: "User already exists" },
-          { status: 400 },
+          {
+            error: "An account with this email already exists",
+            code: "EMAIL_EXISTS",
+            suggestion: "Please sign in instead of creating a new account",
+          },
+          { status: 409 }
         );
       }
 
@@ -117,8 +121,13 @@ export async function POST(request: NextRequest) {
         convexError
       );
       return NextResponse.json(
-        { error: "Failed to create account" },
-        { status: 500 },
+        {
+          error: "Failed to create account",
+          code: "ACCOUNT_CREATION_FAILED",
+          suggestion:
+            "Please try again or contact support if the issue persists",
+        },
+        { status: 500 }
       );
     }
   } catch (error) {

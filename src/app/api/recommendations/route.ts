@@ -90,38 +90,59 @@ export async function GET(request: NextRequest) {
 }
 
 function calculateMatchScore(currentProfile: any, targetProfile: any): number {
-  let score = 50; // Base score
+  let score = 0; // Start from 0 for more accurate scoring
 
-  // Location matching
+  // Location matching (higher weight for same city)
   if (currentProfile.city && targetProfile.city) {
     if (currentProfile.city === targetProfile.city) {
-      score += 20;
+      score += 30; // Same city is very important
     } else if (currentProfile.country === targetProfile.country) {
-      score += 10;
+      score += 15; // Same country is good
     }
   }
 
-  // Age range matching
+  // Age compatibility (using a more nuanced approach)
   if (currentProfile.age && targetProfile.age) {
     const ageDiff = Math.abs(currentProfile.age - targetProfile.age);
-    if (ageDiff <= 5) {
-      score += 15;
-    } else if (ageDiff <= 10) {
-      score += 10;
+    if (ageDiff <= 3) {
+      score += 25; // Very compatible age range
+    } else if (ageDiff <= 7) {
+      score += 15; // Compatible age range
+    } else if (ageDiff <= 12) {
+      score += 8; // Acceptable age range
     }
   }
 
-  // Gender preference matching (simplified)
-  if (currentProfile.gender && targetProfile.gender) {
-    // This would need more sophisticated preference matching
-    score += 5;
+  // Profile completeness (higher weight for complete profiles)
+  const targetCompleteness = calculateProfileCompleteness(targetProfile);
+  score += Math.floor(targetCompleteness * 0.3); // Higher weight for completeness
+
+  // Education level compatibility (if available)
+  if (currentProfile.education && targetProfile.education) {
+    if (currentProfile.education === targetProfile.education) {
+      score += 10;
+    } else if (currentProfile.education && targetProfile.education) {
+      score += 5; // Both have education info
+    }
   }
 
-  // Profile completeness bonus
-  const targetCompleteness = calculateProfileCompleteness(targetProfile);
-  score += Math.floor(targetCompleteness * 0.1);
+  // Religion compatibility (if specified)
+  if (currentProfile.religion && targetProfile.religion) {
+    if (currentProfile.religion === targetProfile.religion) {
+      score += 15;
+    }
+  }
 
-  return Math.min(score, 100);
+  // Height compatibility (if both have height)
+  if (currentProfile.height && targetProfile.height) {
+    const heightDiff = Math.abs(currentProfile.height - targetProfile.height);
+    if (heightDiff <= 10) {
+      score += 8;
+    }
+  }
+
+  // Ensure score is between 0 and 100
+  return Math.max(0, Math.min(score, 100));
 }
 
 function calculateProfileCompleteness(profile: any): number {
