@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       console.warn(
         "Validation error for request:",
-        body,
+        { email: body?.email, hasOtp: !!body?.otp },
         "Errors:",
         error.errors
       );
