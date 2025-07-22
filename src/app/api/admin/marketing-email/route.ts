@@ -5,6 +5,7 @@ import {
   MarketingEmailTemplateFn,
   profileCompletionReminderTemplate,
   premiumPromoTemplate,
+  recommendedProfilesTemplate,
 } from "@/lib/marketingEmailTemplates";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
@@ -19,6 +20,8 @@ const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
   profileCompletionReminder:
     profileCompletionReminderTemplate as unknown as MarketingEmailTemplateFn,
   premiumPromo: premiumPromoTemplate as unknown as MarketingEmailTemplateFn,
+  recommendedProfiles:
+    recommendedProfilesTemplate as unknown as MarketingEmailTemplateFn,
 };
 
 export async function POST(request: Request) {
@@ -79,6 +82,26 @@ export async function POST(request: Request) {
           emailPayload = templateFn(p as Profile, completion, "");
         } else if (templateKey === "premiumPromo") {
           emailPayload = templateFn(p as Profile, 30, "");
+        } else if (templateKey === "recommendedProfiles") {
+          // Fetch recommended profiles for this user
+          const recommendationsResponse = await fetch("/api/recommendations", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (recommendationsResponse.ok) {
+            const recommendationsData = await recommendationsResponse.json();
+            emailPayload = templateFn(
+              p as Profile,
+              recommendationsData.recommendations,
+              ""
+            );
+          } else {
+            console.error("Failed to fetch recommendations for user:", p.email);
+            continue;
+          }
         } else {
           emailPayload = templateFn(
             p as Profile,

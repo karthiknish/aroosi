@@ -84,7 +84,7 @@ export function profileApprovedTemplate(profile: Profile): EmailPayload {
   const subject = "Your Aroosi profile has been approved";
   const body = `
     <h1 style="margin-top:0;">✅ Your profile is now live!</h1>
-    <p style="font-size:16px; line-height:1.6;">Hi ${profile.fullName}, our moderators just approved your profile.  Members can now discover &amp; message you.</p>
+    <p style="font-size:16px; line-height:1.6;">Hi ${profile.fullName}, our moderators just approved your profile.  Members can now discover & message you.</p>
     <p style="font-size:16px; line-height:1.6;">Tips for success:</p>
     <ul style="font-size:15px; line-height:1.6; padding-left:20px;">
       <li>Be genuine and polite in conversations</li>
@@ -222,7 +222,7 @@ export function profileCreatedAdminTemplate(profile: Profile): EmailPayload {
 // Admin: Subscription purchased notification
 export function subscriptionPurchasedAdminTemplate(
   profile: Profile,
-  plan: string,
+  plan: string
 ): EmailPayload {
   const subject = `New subscription: ${profile.fullName} purchased ${plan}`;
   const body = `
@@ -235,6 +235,59 @@ export function subscriptionPurchasedAdminTemplate(
     </ul>
     <p style="font-size:16px; line-height:1.6;">Check the admin dashboard for more details.</p>
   `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+// 9. Recommended profiles (user)
+export function recommendedProfilesTemplate(options: {
+  fullName: string;
+  profiles: Array<{
+    id: string;
+    fullName: string;
+    city: string;
+    country: string;
+    profileImageUrl: string;
+    compatibilityScore: number;
+    aboutMe: string;
+  }>;
+}): EmailPayload {
+  const { fullName, profiles } = options;
+  const subject = `New matches for you on Aroosi – ${profiles.length} recommended profiles`;
+
+  // Generate profile cards HTML
+  const profileCards = profiles
+    .map(
+      (profile) => `
+    <div style="border:1px solid #eee; border-radius:8px; overflow:hidden; margin-bottom:16px; background:#fff;">
+      <div style="display:flex; padding:16px;">
+        <div style="flex:0 0 80px; margin-right:16px;">
+          <img src="${profile.profileImageUrl}" alt="${profile.fullName}" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" />
+        </div>
+        <div style="flex:1;">
+          <h3 style="margin:0 0 8px 0; font-size:18px; color:#222;">${profile.fullName}</h3>
+          <p style="margin:0 0 8px 0; color:#666; font-size:14px;">${profile.city}, ${profile.country}</p>
+          <p style="margin:0 0 8px 0; color:#888; font-size:14px;">Compatibility: ${profile.compatibilityScore}%</p>
+          <p style="margin:0; color:#444; font-size:14px; line-height:1.4;">${profile.aboutMe.substring(0, 120)}${profile.aboutMe.length > 120 ? "..." : ""}</p>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px;">
+        <a href="https://aroosi.app/profile/${profile.id}" style="display:inline-block; background:#BFA67A; color:#ffffff!important; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:14px;">View Profile</a>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  const body = `
+    <h1 style="margin-top:0;">🌟 New Matches for You!</h1>
+    <p style="font-size:16px; line-height:1.6;">Hi ${fullName}, we've found some great potential matches based on your preferences. Check out these recommended profiles:</p>
+    
+    ${profileCards}
+    
+    <p style="font-size:16px; line-height:1.6; margin-top:24px;">Don't miss out on connecting with these amazing people. The best relationships start with a simple hello.</p>
+    <a href="https://aroosi.app/search" style="display:inline-block; background:#BFA67A; color:#ffffff!important; padding:12px 20px; border-radius:6px; text-decoration:none;">See More Matches</a>
+  `;
+
   return { subject, html: wrapEmailContent(subject, body) };
 }
 

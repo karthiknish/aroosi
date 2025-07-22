@@ -263,4 +263,59 @@ export function profileViewsTemplate(
   };
 }
 
+export function recommendedProfilesTemplate(
+  profile: Profile,
+  recommendations: Array<{
+    id: string;
+    fullName: string;
+    city: string;
+    country: string;
+    profileImageUrl: string;
+    compatibilityScore: number;
+    aboutMe: string;
+  }>,
+  unsubscribeToken: string
+): MarketingEmailPayload {
+  const subject = `New matches for you on Aroosi – ${recommendations.length} recommended profiles`;
+
+  // Generate profile cards HTML
+  const profileCards = recommendations
+    .map(
+      (profile) => `
+    <div style="border:1px solid #eee; border-radius:8px; overflow:hidden; margin-bottom:16px; background:#fff;">
+      <div style="display:flex; padding:16px;">
+        <div style="flex:0 0 80px; margin-right:16px;">
+          <img src="${profile.profileImageUrl}" alt="${profile.fullName}" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" />
+        </div>
+        <div style="flex:1;">
+          <h3 style="margin:0 0 8px 0; font-size:18px; color:#222;">${profile.fullName}</h3>
+          <p style="margin:0 0 8px 0; color:#666; font-size:14px;">${profile.city}, ${profile.country}</p>
+          <p style="margin:0 0 8px 0; color:#888; font-size:14px;">Compatibility: ${profile.compatibilityScore}%</p>
+          <p style="margin:0; color:#444; font-size:14px; line-height:1.4;">${profile.aboutMe.substring(0, 120)}${profile.aboutMe.length > 120 ? "..." : ""}</p>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px;">
+        <a href="https://aroosi.app/profile/${profile.id}" style="display:inline-block; background:#BFA67A; color:#ffffff!important; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:14px;">View Profile</a>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  const body = `
+    <h1 style="margin-top:0;">🌟 New Matches for You!</h1>
+    <p style="font-size:16px; line-height:1.6;">Hi ${profile.fullName}, we've found some great potential matches based on your preferences. Check out these recommended profiles:</p>
+    
+    ${profileCards}
+    
+    <p style="font-size:16px; line-height:1.6; margin-top:24px;">Don't miss out on connecting with these amazing people. The best relationships start with a simple hello.</p>
+    <a href="https://aroosi.app/search" style="display:inline-block; background:#BFA67A; color:#ffffff!important; padding:12px 20px; border-radius:6px; text-decoration:none;">See More Matches</a>
+  `;
+
+  return {
+    subject,
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+  };
+}
+
 export type MarketingEmailTemplateFn = (...args: unknown[]) => MarketingEmailPayload;
