@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
+import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
@@ -40,9 +41,12 @@ export async function GET(request: NextRequest) {
     convexClient.setAuth(token);
 
     // Get user's profile to understand their preferences
-    const userProfile = await convexClient.query(api.users.getProfile, {
-      id: userId as string,
-    });
+    const userProfile = await convexClient.query(
+      api.profiles.getProfileByUserId,
+      {
+        userId: userId as Id<"users">,
+      }
+    );
 
     if (!userProfile) {
       return errorResponse("User profile not found", 404);
