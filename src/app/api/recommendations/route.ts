@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's profile to understand their preferences
     const userProfile = await convexClient.query(api.users.getProfile, {
-      userId: userId as string,
+      id: userId as string,
     });
 
     if (!userProfile) {
