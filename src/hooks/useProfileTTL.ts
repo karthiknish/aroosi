@@ -5,7 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
-import { profileTTLManagerInstance } from "@/lib/storage/profile-ttl-manager";
+import { profileTTLManagerInstance, PROFILE_TTL_CONFIG } from "@/lib/storage/profile-ttl-manager";
 import { Profile, ProfileFormValues } from "@/types/profile";
 
 // Hook for fetching and caching profile data
