@@ -2,12 +2,20 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
+import type { QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+
+type FeatureAccessArgs = {
+  userId: Id<"users">;
+  feature: string;
+};
+
 export const checkFeatureAccess = query({
   args: {
     userId: v.id("users"),
     feature: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args: FeatureAccessArgs): Promise<boolean> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");

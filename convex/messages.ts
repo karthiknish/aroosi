@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 import type { Profile } from "./users";
-import { Id } from "convex/_generated/dataModel";
+import { Id } from "./_generated/dataModel";
 
 export const saveChatbotMessage = mutation({
   args: {

@@ -2,6 +2,12 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
 
+// Helper function to get user by email using full collection scan
+async function getUserByEmailInternal(ctx: any, email: string) {
+  const users = await ctx.db.query("users").collect();
+  return users.find((user: any) => user.email === email);
+}
+
 // Track a feature usage
 export const trackUsage = mutation({
   args: {
@@ -71,13 +77,27 @@ export const trackUsage = mutation({
 // Get usage statistics for the current user
 export const getUsageStats = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (
+    ctx
+  ): Promise<{
+    plan: string;
+    usage: Array<{
+      feature: string;
+      used: number;
+      limit: number;
+      unlimited: boolean;
+      remaining: number;
+      percentageUsed: number;
+      isDailyLimit: boolean;
+    }>;
+    monthlyUsage: Record<string, number>;
+    dailyUsage: Record<string, number>;
+    limits: Record<string, number>;
+  }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.runQuery(api.users.getUserByEmail, {
-      email: identity.email!,
-    });
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user) throw new Error("User not found");
 
     const profile = await ctx.db
@@ -212,13 +232,20 @@ export const checkActionLimit = query({
       v.literal("voice_message_sent")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    canPerform: boolean;
+    currentUsage: number;
+    limit: number;
+    remaining: number;
+    plan: string;
+  }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.runQuery(api.users.getUserByEmail, {
-      email: identity.email!,
-    });
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user) throw new Error("User not found");
 
     const profile = await ctx.db
@@ -314,7 +341,19 @@ export const getUsageHistory = query({
     limit: v.optional(v.number()),
     days: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<
+    Array<{
+      _id: any;
+      _creationTime: number;
+      userId: any;
+      feature: string;
+      timestamp: number;
+      metadata?: any;
+    }>
+  > => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 

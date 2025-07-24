@@ -151,10 +151,8 @@ export const internalUpsertUser = internalMutation(
       fullName?: string;
       googleId?: string;
     }
-  ) => {
-    const existingUser = await ctx.runQuery(api.users.getUserByEmail, {
-      email,
-    });
+  ): Promise<Id<"users">> => {
+    const existingUser = await getUserByEmailInternal(ctx, email);
 
     let userId;
 
