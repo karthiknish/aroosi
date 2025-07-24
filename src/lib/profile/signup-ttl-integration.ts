@@ -73,21 +73,21 @@ export class SignupTTLIntegration {
    * Cache with custom TTL
    */
   private cacheWithTTL<T>(key: string, data: T, ttl: number): void {
-    profileTTLManager.set(key, data, ttl);
+    profileTTLManagerInstance.set(key, data, ttl);
   }
 
   /**
    * Get cached data with TTL
    */
   private getWithTTL<T>(key: string): T | null {
-    return profileTTLManager.get<T>(key);
+    return profileTTLManagerInstance.get<T>(key);
   }
 
   /**
    * Remove cached data
    */
   private removeWithTTL(key: string): void {
-    profileTTLManager.remove(key);
+    profileTTLManagerInstance.remove(key);
   }
 }
 

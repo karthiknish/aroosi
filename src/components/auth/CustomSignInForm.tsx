@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Alert } from "@/components/ui/alert";
 import GoogleAuthButton from "./GoogleAuthButton";
+import { showErrorToast } from "@/lib/ui/toast";
 
 interface CustomSignInFormProps {
   onComplete?: () => void;
@@ -20,7 +20,6 @@ export default function CustomSignInForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const { signIn } = useAuth();
   const router = useRouter();
@@ -31,7 +30,6 @@ export default function CustomSignInForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     try {
       const result = await signIn(email, password);
@@ -43,10 +41,10 @@ export default function CustomSignInForm({
           router.push(redirectUrl);
         }
       } else {
-        setError(result.error || "Sign in failed");
+        showErrorToast(result.error || "Sign in failed");
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      showErrorToast("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -54,8 +52,6 @@ export default function CustomSignInForm({
 
   return (
     <div className="space-y-6">
-      {error && <Alert variant="destructive">{error}</Alert>}
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -118,7 +114,7 @@ export default function CustomSignInForm({
             router.push(redirectUrl);
           }
         }}
-        onError={(error: string) => setError(error)}
+        onError={(error: string) => showErrorToast(error)}
       />
 
       <div className="text-center text-sm">

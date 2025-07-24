@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Alert } from "@/components/ui/alert";
 import GoogleAuthButton from "./GoogleAuthButton";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 import { Eye, EyeOff } from "lucide-react";
 import { OtpInput } from "@/components/ui/otp-input";
+import { showErrorToast } from "@/lib/ui/toast";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -26,7 +26,6 @@ export default function CustomSignupForm({
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showOTPForm, setShowOTPForm] = useState(false);
   const [otp, setOtp] = useState("");
 
@@ -46,19 +45,19 @@ export default function CustomSignupForm({
 
   const validateForm = () => {
     if (!formData.email.trim()) {
-      setError("Email is required");
+      showErrorToast("Email is required");
       return false;
     }
     if (!formData.password) {
-      setError("Password is required");
+      showErrorToast("Password is required");
       return false;
     }
     if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters long");
+      showErrorToast("Password must be at least 8 characters long");
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      showErrorToast("Passwords do not match");
       return false;
     }
     return true;
@@ -70,7 +69,6 @@ export default function CustomSignupForm({
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setError(null);
 
     try {
       // Derive first and last name from the wizard's fullName (if available)
@@ -88,10 +86,10 @@ export default function CustomSignupForm({
       if (result.success) {
         setShowOTPForm(true);
       } else {
-        setError(result.error || "Sign up failed");
+        showErrorToast(result.error || "Sign up failed");
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      showErrorToast("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +98,6 @@ export default function CustomSignupForm({
   const handleOTPSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     try {
       const result = await verifyOTP(formData.email, otp.trim());
@@ -112,10 +109,10 @@ export default function CustomSignupForm({
           router.push("/profile/create");
         }
       } else {
-        setError(result.error || "OTP verification failed");
+        showErrorToast(result.error || "OTP verification failed");
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      showErrorToast("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -130,8 +127,6 @@ export default function CustomSignupForm({
             We've sent a verification code to {formData.email}
           </p>
         </div>
-
-        {error && <Alert variant="destructive">{error}</Alert>}
 
         <form onSubmit={handleOTPSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -172,8 +167,6 @@ export default function CustomSignupForm({
 
   return (
     <div className="space-y-6">
-      {error && <Alert variant="destructive">{error}</Alert>}
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -286,7 +279,7 @@ export default function CustomSignupForm({
             router.push("/profile/create");
           }
         }}
-        onError={(error: string) => setError(error)}
+        onError={(error: string) => showErrorToast(error)}
       />
     </div>
   );
