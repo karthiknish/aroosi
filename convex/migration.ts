@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 // Query to get all profiles (for migration purposes only)
 // WARNING: This is a temporary function for migration. Remove after use!
@@ -42,14 +43,13 @@ export const createUserForMigration = mutation({
     banned: v.optional(v.boolean()),
     role: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     // Authentication removed for one-off migration script
 
     // Check if user already exists
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
+    const existingUser = await ctx.runQuery(api.users.getUserByEmail, {
+      email: args.email,
+    });
 
     if (existingUser) {
       console.log(`User ${args.email} already exists, skipping...`);

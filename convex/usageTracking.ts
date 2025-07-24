@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 
 // Track a feature usage
 export const trackUsage = mutation({
@@ -10,24 +11,23 @@ export const trackUsage = mutation({
       v.literal("search_performed"),
       v.literal("interest_sent"),
       v.literal("profile_boost_used"),
-      v.literal("voice_message_sent"),
+      v.literal("voice_message_sent")
     ),
     metadata: v.optional(
       v.object({
         targetUserId: v.optional(v.id("users")),
         searchQuery: v.optional(v.string()),
         messageType: v.optional(v.string()),
-      }),
+      })
     ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
+    const user = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
     if (!user) throw new Error("User not found");
 
     // Record the usage
@@ -45,7 +45,7 @@ export const trackUsage = mutation({
     const existingSummary = await ctx.db
       .query("usageSummaries")
       .withIndex("by_userId_month_feature", (q) =>
-        q.eq("userId", user._id).eq("month", month).eq("feature", args.feature),
+        q.eq("userId", user._id).eq("month", month).eq("feature", args.feature)
       )
       .first();
 
@@ -75,10 +75,9 @@ export const getUsageStats = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
+    const user = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
     if (!user) throw new Error("User not found");
 
     const profile = await ctx.db
@@ -217,10 +216,9 @@ export const checkActionLimit = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
+    const user = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
     if (!user) throw new Error("User not found");
 
     const profile = await ctx.db
@@ -320,10 +318,9 @@ export const getUsageHistory = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
+    const user = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
     if (!user) throw new Error("User not found");
 
     let allUsage = await ctx.db

@@ -4,6 +4,7 @@ import { checkRateLimit } from "./utils/rateLimit";
 import { ConvexError } from "convex/values";
 import { requireAdmin, isAdmin } from "./utils/requireAdmin";
 import { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
 
 // Constants
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -90,7 +91,7 @@ export const getProfileImages = query({
 
       // Map by storageId for fast lookup
       const imageMap = new Map(
-        allImages.map((img) => [String(img.storageId), img]),
+        allImages.map((img) => [String(img.storageId), img])
       );
 
       // Return images in the order of profile.profileImageIds
@@ -179,13 +180,13 @@ export const uploadProfileImage = mutation({
       // Validate file type
       if (!ALLOWED_TYPES.includes(args.contentType.toLowerCase())) {
         throw new ConvexError(
-          `Invalid file type. Allowed types: ${ALLOWED_TYPES.join(", ")}`,
+          `Invalid file type. Allowed types: ${ALLOWED_TYPES.join(", ")}`
         );
       }
       // Validate file size
       if (args.fileSize > MAX_IMAGE_SIZE) {
         throw new ConvexError(
-          `File size exceeds maximum allowed size of ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`,
+          `File size exceeds maximum allowed size of ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`
         );
       }
       // Rate limiting
@@ -194,11 +195,11 @@ export const uploadProfileImage = mutation({
         ctx.db,
         rateKey,
         UPLOAD_RATE_LIMIT_WINDOW_MS,
-        UPLOAD_RATE_LIMIT_MAX,
+        UPLOAD_RATE_LIMIT_MAX
       );
       if (!rate.allowed) {
         throw new ConvexError(
-          `Too many uploads. Please try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`,
+          `Too many uploads. Please try again in ${Math.ceil((rate.retryAfter || 0) / 1000)} seconds.`
         );
       }
       // Check if user exists
@@ -214,7 +215,7 @@ export const uploadProfileImage = mutation({
         .collect();
       if (currentImages.length >= MAX_IMAGES_PER_USER) {
         throw new ConvexError(
-          `Maximum of ${MAX_IMAGES_PER_USER} images allowed per user`,
+          `Maximum of ${MAX_IMAGES_PER_USER} images allowed per user`
         );
       }
       // Save to images table
@@ -241,7 +242,7 @@ export const uploadProfileImage = mutation({
         "[uploadProfileImage] Profile found:",
         profile!._id,
         "Current profileImageIds:",
-        profile!.profileImageIds,
+        profile!.profileImageIds
       );
       const currentImageIds =
         (profile!.profileImageIds as Id<"_storage">[]) || [];
@@ -250,7 +251,7 @@ export const uploadProfileImage = mutation({
       if (currentImageIds.length === 0) {
         console.log(
           "[uploadProfileImage] profileImageIds is empty, initializing with storageId:",
-          args.storageId,
+          args.storageId
         );
         await ctx.db.patch(profile!._id, {
           profileImageIds: [args.storageId],
@@ -262,7 +263,7 @@ export const uploadProfileImage = mutation({
         console.log(
           "[uploadProfileImage] Adding new storageId to existing profileImageIds:",
           args.storageId,
-          "(profileImageUrls not modified)",
+          "(profileImageUrls not modified)"
         );
         const newImageIds = [...currentImageIds, args.storageId];
         const newImageUrls = [...currentImageUrls, imageUrl];
@@ -272,13 +273,13 @@ export const uploadProfileImage = mutation({
           updatedAt: Date.now(),
         });
         console.log(
-          "[uploadProfileImage] Profile patched with updated image IDs.",
+          "[uploadProfileImage] Profile patched with updated image IDs."
         );
       } else {
         console.log(
           "[uploadProfileImage] StorageId already exists in profileImageIds:",
           args.storageId,
-          "(profileImageUrls not modified)",
+          "(profileImageUrls not modified)"
         );
       }
       return {
@@ -336,7 +337,7 @@ export const deleteProfileImage = mutation({
       // Remove the image reference from the profile if it exists
       if (profile.profileImageIds && profile.profileImageIds.length > 0) {
         const updatedImageIds = profile.profileImageIds.filter(
-          (id) => id !== args.imageId,
+          (id) => id !== args.imageId
         );
 
         if (updatedImageIds.length !== profile.profileImageIds.length) {
@@ -348,7 +349,7 @@ export const deleteProfileImage = mutation({
             profile.profileImageUrls as string[] | undefined;
           if (updatedImageUrls && urlToRemove) {
             updatedImageUrls = updatedImageUrls.filter(
-              (u) => u !== urlToRemove,
+              (u) => u !== urlToRemove
             );
           }
 
@@ -389,7 +390,7 @@ export const batchGetProfileImages = query({
       // Get all images for the requested users
       // First fetch all images and then filter in memory since Convex doesn't support .in() with multiple values
       const allImages = (await ctx.db.query("images").collect()).filter((img) =>
-        args.userIds.includes(img.userId),
+        args.userIds.includes(img.userId)
       );
 
       // Group images by user ID
@@ -451,10 +452,9 @@ export const updateProfileImageOrder = mutation({
       }
 
       // Get the current user
-      const user = await ctx.db
-        .query("users")
-        .withIndex("by_email", (q) => q.eq("email", identity.email!))
-        .unique();
+      const user = await ctx.runQuery(api.users.getUserByEmail, {
+        email: identity.email!,
+      });
 
       if (!user) {
         throw new ConvexError("User not found");
@@ -496,12 +496,12 @@ export const updateProfileImageOrder = mutation({
 
       const userImageIds = new Set(userImages.map((img) => img.storageId));
       const invalidImageIds = args.imageIds.filter(
-        (id) => !userImageIds.has(id),
+        (id) => !userImageIds.has(id)
       );
 
       if (invalidImageIds.length > 0) {
         throw new ConvexError(
-          `Invalid image IDs: ${invalidImageIds.join(", ")}`,
+          `Invalid image IDs: ${invalidImageIds.join(", ")}`
         );
       }
 

@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 export const checkFeatureAccess = query({
   args: {
@@ -13,10 +14,9 @@ export const checkFeatureAccess = query({
     }
 
     // Get user profile to check subscription
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
+    const user = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
 
     if (!user) {
       throw new Error("User not found");

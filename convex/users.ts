@@ -60,10 +60,13 @@ const getUserByEmailInternal = async (
   ctx: QueryCtx | MutationCtx,
   email: string
 ) => {
-  return await ctx.db
-    .query("users")
-    .withIndex("by_email", (q) => q.eq("email", email))
-    .unique();
+  const lower = email.toLowerCase();
+  const all = await ctx.db.query("users").collect();
+  return (
+    all.find(
+      (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
+    ) || null
+  );
 };
 
 // Get user by ID
@@ -149,10 +152,9 @@ export const internalUpsertUser = internalMutation(
       googleId?: string;
     }
   ) => {
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
+    const existingUser = await ctx.runQuery(api.users.getUserByEmail, {
+      email,
+    });
 
     let userId;
 
@@ -316,10 +318,7 @@ export const updateProfile = mutation({
     }
 
     // Find user by Clerk ID
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .unique();
+    const user = await getUserByEmailInternal(ctx, identity.email!);
 
     if (!user) {
       return { success: false, message: "User not found in Convex" };
@@ -610,7 +609,9 @@ export const deleteCurrentUserProfile = mutation({
       throw new ConvexError("User not authenticated");
     }
 
-    const user = await getUserByEmailInternal(ctx, identity.email!);
+    const user = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
     if (!user) {
       throw new ConvexError("User not found in Convex DB");
     }
@@ -628,16 +629,16 @@ export const deleteCurrentUserProfile = mutation({
         try {
           await Promise.all(
             profile.profileImageIds.map((imageId) =>
-              ctx.storage.delete(imageId),
-            ),
+              ctx.storage.delete(imageId)
+            )
           );
           console.log(
-            `Deleted ${profile.profileImageIds.length} images for profile ${profile._id}`,
+            `Deleted ${profile.profileImageIds.length} images for profile ${profile._id}`
           );
         } catch (error) {
           console.error(
             `Error deleting images for profile ${profile._id}:`,
-            error,
+            error
           );
           // Non-fatal, continue with profile and user deletion
         }
@@ -645,7 +646,7 @@ export const deleteCurrentUserProfile = mutation({
       // Delete the profile document
       await ctx.db.delete(profile._id);
       console.log(
-        `Successfully deleted profile ${profile._id} for user ${user._id}`,
+        `Successfully deleted profile ${profile._id} for user ${user._id}`
       );
     } else {
       console.log(`No profile found for user ${user._id} to delete.`);
@@ -654,7 +655,7 @@ export const deleteCurrentUserProfile = mutation({
     // Delete the user document from Convex
     await ctx.db.delete(user._id);
     console.log(
-      `Successfully deleted user ${user._id} (email: ${email}) from Convex DB.`,
+      `Successfully deleted user ${user._id} (email: ${email}) from Convex DB.`
     );
 
     return {
@@ -673,7 +674,7 @@ export const adminUpdateProfile = mutation({
       fullName: v.optional(v.string()),
       city: v.optional(v.string()),
       gender: v.optional(
-        v.union(v.literal("male"), v.literal("female"), v.literal("other")),
+        v.union(v.literal("male"), v.literal("female"), v.literal("other"))
       ),
       dateOfBirth: v.optional(v.string()),
       height: v.optional(v.string()),
@@ -682,8 +683,8 @@ export const adminUpdateProfile = mutation({
           v.literal("single"),
           v.literal("divorced"),
           v.literal("widowed"),
-          v.literal("annulled"),
-        ),
+          v.literal("annulled")
+        )
       ),
       education: v.optional(v.string()),
       occupation: v.optional(v.string()),
@@ -697,33 +698,33 @@ export const adminUpdateProfile = mutation({
           v.literal("vegan"),
           v.literal("eggetarian"),
           v.literal("other"),
-          v.literal(""),
-        ),
+          v.literal("")
+        )
       ),
       smoking: v.optional(
         v.union(
           v.literal("no"),
           v.literal("occasionally"),
           v.literal("yes"),
-          v.literal(""),
-        ),
+          v.literal("")
+        )
       ),
       drinking: v.optional(
-        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
+        v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
       ),
       physicalStatus: v.optional(
         v.union(
           v.literal("normal"),
           v.literal("differently-abled"),
           v.literal("other"),
-          v.literal(""),
-        ),
+          v.literal("")
+        )
       ),
       partnerPreferenceAgeMin: v.optional(
-        v.union(v.string(), v.number(), v.literal("")),
+        v.union(v.string(), v.number(), v.literal(""))
       ),
       partnerPreferenceAgeMax: v.optional(
-        v.union(v.string(), v.number(), v.literal("")),
+        v.union(v.string(), v.number(), v.literal(""))
       ),
       partnerPreferenceCity: v.optional(v.array(v.string())),
       profileImageIds: v.optional(v.array(v.id("_storage"))),
@@ -736,8 +737,8 @@ export const adminUpdateProfile = mutation({
           v.literal("male"),
           v.literal("female"),
           v.literal("any"),
-          v.literal("other"),
-        ),
+          v.literal("other")
+        )
       ),
       updatedAt: v.optional(v.number()),
       // Subscription related fields
@@ -745,8 +746,8 @@ export const adminUpdateProfile = mutation({
         v.union(
           v.literal("free"),
           v.literal("premium"),
-          v.literal("premiumPlus"),
-        ),
+          v.literal("premiumPlus")
+        )
       ),
       subscriptionExpiresAt: v.optional(v.number()),
     }),
@@ -855,7 +856,7 @@ export const adminListProfiles = query({
         p.phoneNumber &&
         typeof p.fullName === "string" &&
         typeof p.city === "string" &&
-        typeof p.phoneNumber === "string",
+        typeof p.phoneNumber === "string"
     );
 
     // Apply search filter if provided
@@ -951,8 +952,8 @@ export const listUsersWithProfiles = query({
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any"),
-      ),
+        v.literal("any")
+      )
     ),
   },
   handler: async (ctx, args) => {
@@ -968,7 +969,7 @@ export const listUsersWithProfiles = query({
       }));
     if (args.preferredGender && args.preferredGender !== "any") {
       filtered = filtered.filter(
-        (u) => u.profile && u.profile.gender === args.preferredGender,
+        (u) => u.profile && u.profile.gender === args.preferredGender
       );
     }
     return filtered;
@@ -1004,10 +1005,7 @@ export const updateProfileImageOrder = mutation({
       return { success: false, error: "Not authenticated" };
     }
     // Only allow updating your own profile
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .unique();
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user || user._id !== userId) {
       return { success: false, error: "Unauthorized" };
     }
@@ -1150,10 +1148,7 @@ export const createProfile = mutation({
     }
 
     // Find user by Clerk ID
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .unique();
+    const user = await getUserByEmailInternal(ctx, identity.email!);
 
     if (!user) {
       return { success: false, message: "User not found in Convex" };
@@ -1310,10 +1305,7 @@ export const getMyMatches = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .unique();
+    const user = await getUserByEmailInternal(ctx, identity.email!);
     if (!user) return [];
 
     // Get matches from the matches table
@@ -1504,10 +1496,7 @@ export const searchPublicProfiles = query({
     }
 
     // Get current user
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .unique();
+    const user = await getUserByEmailInternal(ctx, identity.email!);
 
     if (!user) {
       throw new ConvexError("User not found");
@@ -1844,7 +1833,9 @@ export const recordProfileView = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return;
 
-    const viewer = await getUserByEmailInternal(ctx, identity.email!);
+    const viewer = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
     if (!viewer) return;
 
     // Prevent logging self views
@@ -1869,7 +1860,9 @@ export const getProfileViewers = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const viewerUser = await getUserByEmailInternal(ctx, identity.email!);
+    const viewerUser = await ctx.runQuery(api.users.getUserByEmail, {
+      email: identity.email!,
+    });
     if (!viewerUser) return [];
 
     const profile = await ctx.db.get(args.profileId);
@@ -1904,10 +1897,9 @@ export const internalUpdateSubscription = internalMutation(
       expiresAt?: number;
     },
   ) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .unique();
+    const user = await ctx.runQuery(api.users.getUserByEmail, {
+      email: args.email,
+    });
     if (!user) {
       console.error("internalUpdateSubscription: user not found", args.email);
       return;

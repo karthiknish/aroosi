@@ -5,10 +5,13 @@ import { Id } from "./_generated/dataModel";
 export const getUserByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .unique();
+    const lower = args.email.toLowerCase();
+    const all = await ctx.db.query("users").collect();
+    return (
+      all.find(
+        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
+      ) || null
+    );
   },
 });
 
@@ -22,10 +25,12 @@ export const createUser = mutation({
   },
   handler: async (ctx, args) => {
     // Check if user already exists
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .unique();
+    const lower = args.email.toLowerCase();
+    const all = await ctx.db.query("users").collect();
+    const existingUser =
+      all.find(
+        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
+      ) || null;
 
     if (existingUser) {
       throw new Error("User already exists");
@@ -61,10 +66,11 @@ export const authenticateUser = query({
     hashedPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .unique();
+    const lower = args.email.toLowerCase();
+    const all = await ctx.db.query("users").collect();
+    const user = all.find(
+      (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
+    ) || null;
 
     if (!user || user.hashedPassword !== args.hashedPassword) {
       return null;
@@ -92,10 +98,11 @@ export const createGoogleUser = mutation({
   },
   handler: async (ctx, args) => {
     // Check if user already exists
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .unique();
+    const lower = args.email.toLowerCase();
+    const all = await ctx.db.query("users").collect();
+    const existingUser = all.find(
+      (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
+    ) || null;
 
     if (existingUser) {
       throw new Error("User already exists");
