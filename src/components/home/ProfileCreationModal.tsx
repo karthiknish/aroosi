@@ -23,8 +23,6 @@ import {
 } from "@/components/ui/dialog";
 
 import { useAuth } from "@/components/AuthProvider";
-import * as z from "zod";
-import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import { LocalImageUpload } from "@/components/LocalImageUpload";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -34,20 +32,25 @@ import {
 } from "@/lib/constants/languages";
 import { COUNTRIES } from "@/lib/constants/countries";
 import CustomSignupForm from "@/components/auth/CustomSignupForm";
-// useAuthContext removed as it's not used
 import {
   submitProfile,
   getCurrentUserWithProfile,
 } from "@/lib/profile/userProfileApi";
 import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import {
-  clearAllOnboardingData,
-  STORAGE_KEYS,
-} from "@/lib/utils/onboardingStorage";
+import { clearAllOnboardingData } from "@/lib/utils/onboardingStorage";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
+
+// Enhanced validation imports
+import { ValidatedInput } from "@/components/ui/ValidatedInput";
+import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
+import { ValidatedTextarea } from "@/components/ui/ValidatedTextarea";
+import { ErrorSummary } from "@/components/ui/ErrorSummary";
+import { SimpleProgress } from "@/components/ui/ProgressIndicator";
+import { useStepValidation } from "@/hooks/useStepValidation";
+import { stepSchemaMapping } from "@/lib/validation/profileValidation";
 
 interface ProfileCreationData {
   profileFor: string;
@@ -84,91 +87,7 @@ interface ProfileCreationModalProps {
   initialData?: Partial<ProfileCreationData>;
 }
 
-// Zod schema for all fields - only truly required fields are mandatory
-const profileSchema = z.object({
-  // Required fields (as per API)
-  profileFor: z.string().min(1, "Profile for is required"),
-  gender: z.string().min(1, "Gender is required"),
-  fullName: z.string().min(2, "Full name is required"),
-  dateOfBirth: z.string().min(1, "Date of birth is required"),
-  phoneNumber: z.string().min(7, "Phone number is required"),
-  city: z.string().min(1, "City is required"),
-  height: z.string().min(1, "Height is required"),
-  maritalStatus: z.string().min(1, "Marital status is required"),
-  education: z.string().min(1, "Education is required"),
-  occupation: z.string().min(1, "Occupation is required"),
-  aboutMe: z.string().min(10, "About Me is required"),
-  preferredGender: z.string().min(1, "Preferred gender is required"),
-
-  // Optional fields
-  country: z.string().optional(),
-  physicalStatus: z.string().optional(),
-  motherTongue: z.string().optional(),
-  religion: z.string().optional(),
-  ethnicity: z.string().optional(),
-  diet: z.string().optional(),
-  smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
-  drinking: z.string().optional(),
-  annualIncome: z.string().optional(),
-  partnerPreferenceAgeMin: z.number().min(18, "Min age 18").optional(),
-  partnerPreferenceAgeMax: z.number().max(99, "Max age 99").optional(),
-  partnerPreferenceCity: z.array(z.string()).optional(),
-  profileImageIds: z.array(z.string()).optional(),
-});
-
-// Validation schemas aligned with visible steps
-const stepSchemas = [
-  // Step 1 – Basic (shown only when not supplied from onboarding)
-  profileSchema.pick({
-    profileFor: true,
-    gender: true,
-  }),
-  // Step 2 – Location & Physical (city, height, maritalStatus are required)
-  z.object({
-    country: z.string().optional(),
-    city: z.string().min(1, "City is required"),
-    height: z.string().min(1, "Height is required"),
-    maritalStatus: z.string().min(1, "Marital status is required"),
-    physicalStatus: z.string().optional(),
-  }),
-  // Step 3 – Cultural & Lifestyle (all optional)
-  z.object({
-    motherTongue: z.string().optional(),
-    religion: z.string().optional(),
-    ethnicity: z.string().optional(),
-    diet: z.string().optional(),
-    smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
-    drinking: z.string().optional(),
-  }),
-  // Step 4 – Education & Career (education, occupation, aboutMe are required)
-  z.object({
-    education: z.string().min(1, "Education is required"),
-    occupation: z.string().min(1, "Occupation is required"),
-    annualIncome: z.string().optional(),
-    aboutMe: z.string().min(10, "About Me must be at least 10 characters"),
-  }),
-  // Step 5 – Partner Preferences (preferredGender is required)
-  z.object({
-    preferredGender: z.string().min(1, "Preferred gender is required"),
-    partnerPreferenceAgeMin: z
-      .number()
-      .min(18, "Minimum age must be at least 18")
-      .optional(),
-    partnerPreferenceAgeMax: z
-      .number()
-      .max(99, "Maximum age cannot exceed 99")
-      .optional(),
-    partnerPreferenceCity: z.array(z.string()).optional(),
-  }),
-  // Step 6 – Photos (optional)
-  z.object({
-    profileImageIds: z.array(z.string()).optional(),
-  }),
-  // Step 7 – Account Creation (handled by CustomSignupForm)
-  z.object({
-    email: z.string().email("Valid email is required").optional(),
-  }),
-];
+// Using enhanced validation schemas from the validation utility
 
 // Build comprehensive country list from COUNTRIES constant
 const countries: string[] = COUNTRIES.map((c) => c.name).sort();
@@ -301,9 +220,18 @@ export function ProfileCreationModal({
     }
   }, [isOpen, hasBasicData, step, setStep]);
 
+  // Enhanced validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
-  // Use only the setter; the value isn't required yet
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
+
+  // Enhanced step validation hook
+  const stepValidation = useStepValidation({
+    step: displayStep,
+    data: formData,
+    onValidationChange: (isValid, validationErrors) => {
+      setErrors(validationErrors);
+    },
+  });
 
   // Auth context for token and userId
   const { token, getToken, user: authUser, refreshUser } = useAuth();
@@ -318,15 +246,7 @@ export function ProfileCreationModal({
         // Update the context so data is shared with HeroOnboarding
         updateContextData({ [field]: value });
 
-        // Debounced validation for better performance
-        const timeoutId = setTimeout(() => {
-          try {
-            validateField(field, value);
-          } catch (err) {
-            console.error(`Validation error for field ${field}:`, err);
-            // Don't block user input for validation errors
-          }
-        }, 300);
+        // Field validation is now handled by ValidatedInput components
 
         return () => clearTimeout(timeoutId);
       } catch (err) {
@@ -341,10 +261,10 @@ export function ProfileCreationModal({
     (imgs: (string | ImageType)[]) => {
       // Always accept the images and update immediately
       const ids = imgs.map((img) => (typeof img === "string" ? img : img.id));
-      
+
       // Update context immediately
       handleInputChange("profileImageIds", ids);
-      
+
       // Store in localStorage for persistence
       try {
         localStorage.setItem("pendingProfileImages", JSON.stringify(ids));
@@ -361,82 +281,21 @@ export function ProfileCreationModal({
     [handleInputChange]
   );
 
-  const validateStep = () => {
-    // Use the actual step for validation, not displayStep
-    const schemaIndex = step - 1;
-    if (schemaIndex >= 0 && schemaIndex < stepSchemas.length) {
-      const schema = stepSchemas[schemaIndex];
-      const result = schema.safeParse(formData);
+  // Enhanced validation function using the step validation hook
+  const validateStep = async () => {
+    const result = await stepValidation.validateCurrentStep();
 
-      if (!result.success) {
-        const fieldErrors: Record<string, string> = {};
-        result.error.errors.forEach((e) => {
-          if (e.path[0]) fieldErrors[String(e.path[0])] = e.message;
-        });
-
-        // Build more descriptive error message with field name
-        const firstIssue = result.error.errors[0];
-        const fieldLabel = firstIssue?.path?.[0]
-          ? String(firstIssue.path[0])
-              .replace(/([A-Z])/g, " $1") // split camelCase
-              .replace(/^\w/, (c) => c.toUpperCase())
-          : "Field";
-        const firstError = firstIssue
-          ? `${fieldLabel}: ${firstIssue.message}`
-          : "Please fill required fields";
-        showErrorToast(null, firstError);
-
-        // Only update state if error set actually changed
-        if (JSON.stringify(errors) !== JSON.stringify(fieldErrors)) {
-          setErrors(fieldErrors);
-        }
-        return false;
-      }
+    if (!result.isValid) {
+      const summary = stepValidation.getValidationSummary();
+      showErrorToast(null, summary.summary);
+      return false;
     }
 
-    // Clear errors only if previously non-empty
-    if (Object.keys(errors).length) {
-      setErrors({});
-    }
     return true;
   };
 
-  // Validate individual field
-  const validateField = (field: keyof ProfileCreationData, value: unknown) => {
-    // Find which step this field belongs to
-    let fieldSchema: z.ZodTypeAny | null = null;
-
-    for (const schema of stepSchemas) {
-      if (schema instanceof z.ZodObject) {
-        const shape = schema.shape;
-        if (field in shape) {
-          fieldSchema = shape[field as keyof typeof shape] as z.ZodTypeAny;
-          break;
-        }
-      }
-    }
-
-    if (fieldSchema) {
-      const result = fieldSchema.safeParse(value);
-      if (!result.success) {
-        const error = result.error.errors[0]?.message || "Invalid value";
-        setErrors((prev) => ({ ...prev, [field]: error }));
-        return false;
-      } else {
-        // Clear error for this field
-        setErrors((prev) => {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        });
-        return true;
-      }
-    }
-    return true;
-  };
-
-  const handleNext = () => {
-    if (!validateStep()) return;
+  const handleNext = async () => {
+    if (!(await validateStep())) return;
 
     // Additional validation before moving to sign-up step
     // This should happen when we're at the last step before account creation
@@ -876,6 +735,11 @@ export function ProfileCreationModal({
                 Join thousands of Afghan singles finding love
               </p>
             )}
+
+            {/* Enhanced progress indicator */}
+            <div className="mt-4">
+              <SimpleProgress current={displayStep} total={totalSteps} />
+            </div>
           </DialogHeader>
 
           <div className="p-6">
@@ -959,9 +823,19 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 2: Location \Step 2: Location, Contact & Physical Physical */}
+                {/* Step 2: Location & Physical */}
                 {displayStep === 2 && (
                   <div className="space-y-6">
+                    {/* Error Summary */}
+                    <ErrorSummary
+                      errors={stepValidation.errors}
+                      isValid={stepValidation.isValid}
+                      progress={stepValidation.progress}
+                      requiredFields={stepValidation.requiredFields}
+                      completedFields={stepValidation.completedFields}
+                    />
+
+                    {/* Country - Optional */}
                     <div>
                       <Label
                         htmlFor="country"
@@ -979,28 +853,26 @@ export function ProfileCreationModal({
                         placeholder="Select country"
                       />
                     </div>
-                    <div>
-                      <Label
-                        htmlFor="city"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("City")}
-                      </Label>
-                      <Input
-                        id="city"
-                        value={formData.city}
-                        onChange={(e) =>
-                          handleInputChange("city", e.target.value)
-                        }
-                        placeholder="City"
-                      />
-                    </div>
+
+                    {/* City - Required */}
+                    <ValidatedInput
+                      label="City"
+                      field="city"
+                      step={displayStep}
+                      value={formData.city}
+                      onValueChange={(v) => handleInputChange("city", v)}
+                      placeholder="Enter your city"
+                      required
+                      hint="Enter the city where you currently live"
+                    />
+
+                    {/* Height - Required */}
                     <div>
                       <Label
                         htmlFor="height"
                         className="text-gray-700 mb-2 block"
                       >
-                        {required("Height")}
+                        Height <span className="text-red-500">*</span>
                       </Label>
                       <SearchableSelect
                         options={Array.from(
@@ -1017,62 +889,51 @@ export function ProfileCreationModal({
                         onValueChange={(v) => handleInputChange("height", v)}
                         placeholder="Select height"
                       />
+                      {stepValidation.getFieldError("height") && (
+                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
+                          <span>{stepValidation.getFieldError("height")}</span>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <Label
-                        htmlFor="maritalStatus"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Marital Status")}
-                      </Label>
-                      <Select
-                        value={formData.maritalStatus}
-                        onValueChange={(v) =>
-                          handleInputChange("maritalStatus", v)
-                        }
-                      >
-                        <SelectTrigger
-                          id="maritalStatus"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="single">Single</SelectItem>
-                          <SelectItem value="divorced">Divorced</SelectItem>
-                          <SelectItem value="widowed">Widowed</SelectItem>
-                          <SelectItem value="annulled">Annulled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="physicalStatus"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Physical Status
-                      </Label>
-                      <Select
-                        value={formData.physicalStatus}
-                        onValueChange={(v) =>
-                          handleInputChange("physicalStatus", v)
-                        }
-                      >
-                        <SelectTrigger
-                          id="physicalStatus"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="differently-abled">
-                            Differently-abled
-                          </SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
+                    {/* Marital Status - Required */}
+                    <ValidatedSelect
+                      label="Marital Status"
+                      field="maritalStatus"
+                      step={displayStep}
+                      value={formData.maritalStatus}
+                      onValueChange={(v) =>
+                        handleInputChange("maritalStatus", v)
+                      }
+                      options={[
+                        { value: "single", label: "Single" },
+                        { value: "divorced", label: "Divorced" },
+                        { value: "widowed", label: "Widowed" },
+                        { value: "annulled", label: "Annulled" },
+                      ]}
+                      placeholder="Select marital status"
+                      required
+                    />
+
+                    {/* Physical Status - Optional */}
+                    <ValidatedSelect
+                      label="Physical Status"
+                      field="physicalStatus"
+                      step={displayStep}
+                      value={formData.physicalStatus}
+                      onValueChange={(v) =>
+                        handleInputChange("physicalStatus", v)
+                      }
+                      options={[
+                        { value: "normal", label: "Normal" },
+                        {
+                          value: "differently-abled",
+                          label: "Differently-abled",
+                        },
+                        { value: "other", label: "Other" },
+                      ]}
+                      placeholder="Select physical status"
+                    />
                   </div>
                 )}
                 {/* Step 3: Cultural & Lifestyle */}
@@ -1482,12 +1343,10 @@ export function ProfileCreationModal({
               {displayStep < totalSteps && (
                 <Button
                   onClick={handleNext}
-                  // Allow click; handleNext will perform validation and show errors
-                  // This prevents users from being blocked when UI appears complete
-                  disabled={false}
-                  className={`${displayStep === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white`}
+                  disabled={stepValidation.isValidating}
+                  className={`${displayStep === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50`}
                 >
-                  Next
+                  {stepValidation.isValidating ? "Validating..." : "Next"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               )}
