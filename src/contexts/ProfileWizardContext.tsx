@@ -42,16 +42,37 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
           formData?: WizardFormData;
         };
 
-        if (parsed.step && parsed.step >= 1) {
-          setStep(parsed.step);
-        }
-
         if (parsed.formData && typeof parsed.formData === "object") {
           // Filter out empty values when loading
           const cleanedData = filterNonEmpty(parsed.formData);
           if (Object.keys(cleanedData).length > 0) {
             setFormData(cleanedData);
+
+            // Check if we have basic data to determine initial step
+            const hasBasicData = Boolean(
+              cleanedData.profileFor &&
+                cleanedData.gender &&
+                cleanedData.fullName &&
+                cleanedData.dateOfBirth &&
+                cleanedData.phoneNumber
+            );
+
+            // Set step based on whether we have basic data
+            if (parsed.step && parsed.step >= 1) {
+              // If we have basic data, ensure we start at least at step 2 (location)
+              const initialStep = hasBasicData
+                ? Math.max(parsed.step, 2)
+                : parsed.step;
+              setStep(initialStep);
+            } else if (hasBasicData) {
+              // If no step saved but we have basic data, start at step 2
+              setStep(2);
+            }
+          } else if (parsed.step && parsed.step >= 1) {
+            setStep(parsed.step);
           }
+        } else if (parsed.step && parsed.step >= 1) {
+          setStep(parsed.step);
         }
       }
     } catch (error) {

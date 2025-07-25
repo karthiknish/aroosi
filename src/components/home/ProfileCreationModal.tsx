@@ -293,8 +293,11 @@ export function ProfileCreationModal({
 
   // Automatically advance to step 2 (location step) when modal opens with basic data
   useEffect(() => {
-    if (isOpen && hasBasicData && step === 1) {
-      setStep(2);
+    if (isOpen && hasBasicData) {
+      // Always ensure we start at step 2 (location) when we have basic data
+      if (step < 2) {
+        setStep(2);
+      }
     }
   }, [isOpen, hasBasicData, step, setStep]);
 
