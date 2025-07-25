@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ValidatedInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "aria-invalid"> {
   label: string;
   field: string;
   step: number;
@@ -70,7 +70,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
               showSuccess && "border-green-500 focus:border-green-500",
               className
             )}
-            aria-invalid={showError}
+            aria-invalid={showError ? true : false}
             aria-describedby={
               showError ? `${field}-error` : hint ? `${field}-hint` : undefined
             }
