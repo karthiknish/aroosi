@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user by email
-    const user = await fetchQuery(api.auth.getUserByEmail, { email });
+    const user = await fetchQuery(api.users.getUserByEmail, { email });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }

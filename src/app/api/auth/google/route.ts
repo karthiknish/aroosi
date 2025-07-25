@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists by email
-    let user = await fetchQuery(api.auth.getUserByEmail, { email });
+    let user = await fetchQuery(api.users.getUserByEmail, { email });
 
     if (user) {
       // User exists, check if they have Google ID
@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
 
       // Get the created user from database
       user = await fetchQuery(
-        api.auth.getUserByEmail,
+        api.users.getUserByEmail,
         { email },
-        { token: "" },
+        { token: "" }
       );
 
       // Send welcome email

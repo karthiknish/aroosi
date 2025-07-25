@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const { email } = forgotPasswordSchema.parse(body);
 
     // Check if user exists
-    const user = await fetchQuery(api.auth.getUserByEmail, { email });
+    const user = await fetchQuery(api.users.getUserByEmail, { email });
     if (!user) {
       // Don't reveal if user exists or not for security
       return NextResponse.json({

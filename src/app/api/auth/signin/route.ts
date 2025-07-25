@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const { email, password } = signinSchema.parse(body);
 
     // Get user by email
-    const user = await fetchQuery(api.auth.getUserByEmail, { email });
+    const user = await fetchQuery(api.users.getUserByEmail, { email });
     if (!user) {
       return NextResponse.json(
         { error: "Invalid email or password" },

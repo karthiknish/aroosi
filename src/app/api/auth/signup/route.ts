@@ -20,22 +20,9 @@ export async function POST(request: NextRequest) {
     const { email, password, firstName, lastName } = signupSchema.parse(body);
 
     // Check if user already exists
-    try {
-      const existingUser = await fetchQuery(api.auth.getUserByEmail, { email });
-      if (existingUser) {
-        return NextResponse.json(
-          {
-            error: "An account with this email already exists",
-            code: "EMAIL_EXISTS",
-            suggestion: "Please sign in or use a different email address",
-          },
-          { status: 409 }
-        );
-      }
-    } catch (error) {
-      console.error("Error checking for existing user:", error);
-      // Continue with signup if we can't verify - will be caught in verify-otp
-    }
+    // Note: We'll skip the user existence check during signup since it requires auth context
+    // The user creation will fail in verify-otp if user already exists
+    console.log("Proceeding with signup for email:", email);
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);

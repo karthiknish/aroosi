@@ -2,18 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
-export const getUserByEmail = query({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    const lower = args.email.toLowerCase();
-    const all = await ctx.db.query("users").collect();
-    return (
-      all.find(
-        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
-      ) || null
-    );
-  },
-});
+// getUserByEmail is now available in users.ts as api.users.getUserByEmail
 
 export const createUser = mutation({
   args: {

@@ -39,6 +39,9 @@ playwright-report/
 test-results/
 apps/web/playwright-report/
 apps/web/test-results/
+# Test result markdown files
+test-results/**/*.md
+playwright-report/**/*.md
 
 # misc
 .DS_Store
@@ -95,11 +98,15 @@ tasks/
 *_GUIDE.md
 *_SUMMARY.md
 *_FIXES.md
+*_SETUP.md
+*_IMPROVEMENTS.md
 CLAUDE.md
 BACKEND_*.md
 PROFILE_*.md
 TAILWIND_*.md
 IAP_*.md
+CI_CD_*.md
+DEPLOYMENT.md
 # Keep important docs
 !README.md
 !CHANGELOG.md

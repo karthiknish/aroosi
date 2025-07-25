@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const payload = await verifyJWT(token);
 
     // Get user by email (since we have email in JWT)
-    const user = await fetchQuery(api.auth.getUserByEmail, {
+    const user = await fetchQuery(api.users.getUserByEmail, {
       email: payload.email,
     });
 
