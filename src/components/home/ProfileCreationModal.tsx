@@ -291,6 +291,13 @@ export function ProfileCreationModal({
     setPreferredCitiesInput(joined);
   }, [formData.partnerPreferenceCity]);
 
+  // Automatically advance to step 2 (location step) when modal opens with basic data
+  useEffect(() => {
+    if (isOpen && hasBasicData && step === 1) {
+      setStep(2);
+    }
+  }, [isOpen, hasBasicData, step, setStep]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Use only the setter; the value isn't required yet
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
@@ -871,7 +878,7 @@ export function ProfileCreationModal({
           <div className="p-6">
             <AnimatePresence mode="wait">
               <motion.div
-                key={step}
+                key={displayStep}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -1463,19 +1470,19 @@ export function ProfileCreationModal({
             </AnimatePresence>
 
             <div className="mt-8 flex justify-between">
-              {step > 1 && step <= totalSteps && (
+              {displayStep > 1 && displayStep <= totalSteps && (
                 <Button variant="outline" onClick={handleBack} disabled={false}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
               )}
-              {step < totalSteps && (
+              {displayStep < totalSteps && (
                 <Button
                   onClick={handleNext}
                   // Allow click; handleNext will perform validation and show errors
                   // This prevents users from being blocked when UI appears complete
                   disabled={false}
-                  className={`${step === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white`}
+                  className={`${displayStep === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white`}
                 >
                   Next
                   <ArrowRight className="ml-2 h-4 w-4" />
