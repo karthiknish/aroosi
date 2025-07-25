@@ -22,13 +22,55 @@ export async function POST(request: NextRequest) {
     const { email, otp } = verifyOtpSchema.parse(body);
 
     // Verify OTP
-    console.log("Verifying OTP for email:", email);
+    console.log("=== OTP Verification Request ===");
+    console.log("Email:", email);
+    console.log("OTP provided:", otp);
+    console.log("OTP type:", typeof otp);
+    console.log("OTP length:", otp.length);
+    
     const isValidOTP = verifyOTP(email, otp);
     if (!isValidOTP) {
-      console.error("Invalid or expired OTP provided for email:", email);
+      console.error("❌ OTP verification failed for email:", email);
+
+      // Get OTP status for better error message
+      const { getOTPStatus } = await import("@/lib/auth/otp");
+      const otpStatus = getOTPStatus(email);
+
+      console.log("OTP Status after failed verification:", otpStatus);
+
+      let errorMessage = "Invalid or expired verification code";
+      let errorCode = "INVALID_OTP";
+
+      if (!otpStatus.exists) {
+        errorMessage = "No verification code found. Please request a new code.";
+        errorCode = "OTP_NOT_FOUND";
+      } else if (otpStatus.expired) {
+        errorMessage =
+          "Verification code has expired. Please request a new code.";
+        errorCode = "OTP_EXPIRED";
+      } else if (otpStatus.attempts && otpStatus.attempts >= 3) {
+        errorMessage = "Too many failed attempts. Please request a new code.";
+        errorCode = "TOO_MANY_ATTEMPTS";
+      } else {
+        errorMessage = "Invalid verification code. Please check and try again.";
+        errorCode = "CODE_MISMATCH";
+      }
+
       return NextResponse.json(
-        { error: "Invalid or expired verification code" },
-        { status: 400 },
+        {
+          error: errorMessage,
+          code: errorCode,
+          debug:
+            process.env.NODE_ENV === "development"
+              ? {
+                  ...otpStatus,
+                  providedOTP: otp,
+                  providedOTPType: typeof otp,
+                  providedOTPLength: otp.length,
+                }
+              : undefined,
+        },
+        { status: 400 }
       );
     }
     console.log("OTP verified successfully for email:", email);

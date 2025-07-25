@@ -105,6 +105,7 @@ export function ProfileCreationModal({
     updateFormData: updateContextData,
     step: contextStep,
     setStep: setContextStep,
+    reset: resetWizard,
   } = useProfileWizard();
 
   // Debug: comment out verbose logging in production
@@ -236,6 +237,24 @@ export function ProfileCreationModal({
   // Auth context for token and userId
   const { token, getToken, user: authUser, refreshUser } = useAuth();
   const userId = authUser?.id;
+
+  // Custom close handler that clears localStorage
+  const handleClose = useCallback(() => {
+    try {
+      // Clear all onboarding data from localStorage
+      clearAllOnboardingData();
+
+      // Reset the wizard context
+      resetWizard();
+
+      console.log("Profile creation modal closed - localStorage cleared");
+    } catch (error) {
+      console.error("Error clearing localStorage on modal close:", error);
+    } finally {
+      // Always call the original onClose
+      onClose();
+    }
+  }, [resetWizard, onClose]);
 
   const [hasSubmittedProfile, setHasSubmittedProfile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -431,7 +450,7 @@ export function ProfileCreationModal({
           // Clear any stale onboarding data
           clearAllOnboardingData();
           // Close the modal
-          onClose();
+          handleClose();
           return;
         }
 
@@ -629,7 +648,7 @@ export function ProfileCreationModal({
         }
 
         showSuccessToast("Profile created successfully!");
-        onClose();
+        handleClose();
 
         // Redirect to success page
         try {
@@ -707,7 +726,7 @@ export function ProfileCreationModal({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         className="max-w-md w-full p-0 overflow-hidden bg-white sm:max-h-[90vh] max-h-screen sm:rounded-lg rounded-none"
         onInteractOutside={(e) => {
