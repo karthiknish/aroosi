@@ -79,6 +79,8 @@ interface ProfileCreationData {
   partnerPreferenceAgeMax?: number;
   partnerPreferenceCity: string[];
   profileImageIds?: string[];
+  // Index signature to make it compatible with Record<string, unknown>
+  [key: string]: unknown;
 }
 
 interface ProfileCreationModalProps {
