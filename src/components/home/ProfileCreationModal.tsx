@@ -268,8 +268,6 @@ export function ProfileCreationModal({
         updateContextData({ [field]: value });
 
         // Field validation is now handled by ValidatedInput components
-
-        return () => clearTimeout(timeoutId);
       } catch (err) {
         console.error(`Error updating field ${field}:`, err);
         showErrorToast(null, `Failed to update ${field}. Please try again.`);
