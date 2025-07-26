@@ -307,11 +307,11 @@ export const validateField = (
   }
 
   const fieldSchema = schema.shape[field as keyof typeof schema.shape];
-  if (!fieldSchema) {
+  if (!fieldSchema || typeof (fieldSchema as any).safeParse !== "function") {
     return { isValid: true };
   }
 
-  const result = fieldSchema.safeParse(value);
+  const result = (fieldSchema as z.ZodTypeAny).safeParse(value);
 
   if (result.success) {
     return { isValid: true };
@@ -358,8 +358,11 @@ export const getRequiredFields = (step: number): string[] => {
 
   Object.keys(shape).forEach((key) => {
     const fieldSchema = shape[key as keyof typeof shape];
+    if (!fieldSchema || typeof (fieldSchema as any).safeParse !== "function") {
+      return;
+    }
     // Check if field is optional by trying to parse undefined
-    const testResult = fieldSchema.safeParse(undefined);
+    const testResult = (fieldSchema as z.ZodTypeAny).safeParse(undefined);
     if (!testResult.success) {
       requiredFields.push(key);
     }
