@@ -38,7 +38,10 @@ import {
 } from "@/lib/profile/userProfileApi";
 import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { clearAllOnboardingData } from "@/lib/utils/onboardingStorage";
+import {
+  clearAllOnboardingData,
+  STORAGE_KEYS,
+} from "@/lib/utils/onboardingStorage";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
@@ -284,9 +287,9 @@ export function ProfileCreationModal({
       // Update context immediately
       handleInputChange("profileImageIds", ids);
 
-      // Store in localStorage for persistence
+      // Store in localStorage for persistence using STORAGE_KEYS
       try {
-        localStorage.setItem("pendingProfileImages", JSON.stringify(ids));
+        localStorage.setItem(STORAGE_KEYS.PENDING_IMAGES, JSON.stringify(ids));
       } catch (err) {
         console.warn("Unable to store images in localStorage", err);
       }
@@ -299,6 +302,10 @@ export function ProfileCreationModal({
     },
     [handleInputChange]
   );
+  // Clear onboarding localStorage on page reload (mount)
+  useEffect(() => {
+    clearAllOnboardingData();
+  }, []);
 
   // Enhanced validation function using the step validation hook
   const validateStep = async () => {
