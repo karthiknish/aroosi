@@ -129,8 +129,8 @@ export function ProfileCreationModal({
       contextData?.phoneNumber
   );
 
-  // Total number of steps - always 7 steps including account creation
-  const totalSteps = 7;
+  // Total number of steps - always 8 steps including account creation
+  const totalSteps = 8;
 
   // Create a unified formData object from context data and initial data
   const formData: ProfileCreationData = {
@@ -192,9 +192,20 @@ export function ProfileCreationModal({
 
   console.log("ProfileCreationModal unified formData:", formData);
 
-  // Use the context step directly for display and validation
-  const step = contextStep;
-  const setStep = setContextStep;
+  // Determine the starting step based on whether we have basic data
+  const startingStep = hasBasicData ? 2 : 1;
+
+  // Initialize the step correctly when modal opens
+  // If contextStep is 1 (default) and we have basic data, start at step 2
+  // Otherwise, use the context step but ensure it's not below the starting step
+  const step =
+    contextStep === 1 && hasBasicData
+      ? startingStep
+      : Math.max(contextStep, startingStep);
+  const setStep = (newStep: number) => {
+    // Ensure we never go below the starting step
+    setContextStep(Math.max(newStep, startingStep));
+  };
 
   // Local controlled input for preferred cities to allow commas while typing
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
@@ -210,8 +221,6 @@ export function ProfileCreationModal({
       : "";
     setPreferredCitiesInput(joined);
   }, [formData.partnerPreferenceCity]);
-
-
 
   // Enhanced validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -308,7 +317,7 @@ export function ProfileCreationModal({
 
     // Additional validation before moving to sign-up step
     // This should happen when we're at the last step before account creation
-    if (step === totalSteps) {
+    if (step === totalSteps - 1) {
       // Validate only essential required fields are present before moving to sign-up
       const requiredFields = [
         "fullName",
@@ -375,9 +384,9 @@ export function ProfileCreationModal({
 
   // Advance wizard automatically when OAuth completes
   useEffect(() => {
-    if (isAuthenticated && step === 7) {
+    if (isAuthenticated && step === 8) {
       // User is signed in, profile submission will happen automatically
-      console.log("User signed in at step 7, profile will be submitted");
+      console.log("User signed in at step 8, profile will be submitted");
     }
   }, [isAuthenticated, step]);
 
@@ -389,7 +398,7 @@ export function ProfileCreationModal({
       if (isSubmitting) return; // prevent double submission
 
       // Only submit if we're on the final step
-      if (step !== 7) {
+      if (step !== 8) {
         console.log(
           "Not on final step, skipping submission. Current step:",
           step
@@ -753,7 +762,7 @@ export function ProfileCreationModal({
             <DialogTitle className="text-2xl font-bold text-gray-900">
               Find Your Perfect Match
             </DialogTitle>
-            {step < 4 && (
+            {step < 5 && (
               <p className="text-gray-600 mt-2">
                 Join thousands of Afghan singles finding love
               </p>
@@ -846,9 +855,18 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 2: Location & Physical */}
+                {/* Step 2: Location */}
                 {step === 2 && (
                   <div className="space-y-6">
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Location Information
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Tell us where you're located
+                      </p>
+                    </div>
+
                     {/* Error Summary */}
                     <ErrorSummary
                       errors={stepValidation.errors}
@@ -888,6 +906,20 @@ export function ProfileCreationModal({
                       required
                       hint="Enter the city where you currently live"
                     />
+                  </div>
+                )}
+
+                {/* Step 3: Physical Information */}
+                {step === 3 && (
+                  <div className="space-y-6">
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Physical Information
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Tell us about your physical attributes
+                      </p>
+                    </div>
 
                     {/* Height - Required */}
                     <div>
@@ -959,8 +991,9 @@ export function ProfileCreationModal({
                     />
                   </div>
                 )}
-                {/* Step 3: Cultural & Lifestyle */}
-                {step === 3 && (
+
+                {/* Step 4: Cultural & Lifestyle */}
+                {step === 4 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1091,8 +1124,8 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 4: Education & Career */}
-                {step === 4 && (
+                {/* Step 5: Education & Career */}
+                {step === 5 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1163,8 +1196,8 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 5: Partner Preferences */}
-                {step === 5 && (
+                {/* Step 6: Partner Preferences */}
+                {step === 6 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1261,8 +1294,8 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 6: Photos (Optional) */}
-                {step === 6 && (
+                {/* Step 7: Photos (Optional) */}
+                {step === 7 && (
                   <div className="space-y-6">
                     <div>
                       <Label className="text-gray-700 mb-2 block">
@@ -1281,8 +1314,8 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 7: Account Creation */}
-                {step === 7 && (
+                {/* Step 8: Account Creation */}
+                {step === 8 && (
                   <div className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-center">
@@ -1356,21 +1389,32 @@ export function ProfileCreationModal({
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-8 flex justify-between">
-              {step > 1 && step <= totalSteps && (
-                <Button variant="outline" onClick={handleBack} disabled={false}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+            <div className="mt-8 flex justify-between items-center">
+              {/* Back Button - Show for all steps except first step */}
+              {step > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={false}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
                   Back
                 </Button>
               )}
+
+              {/* Spacer when no back button */}
+              {step === 1 && <div />}
+
+              {/* Next Button - Show for all steps except final step */}
               {step < totalSteps && (
                 <Button
                   onClick={handleNext}
                   disabled={stepValidation.isValidating}
-                  className={`${step === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50`}
+                  className="bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50 flex items-center gap-2"
                 >
                   {stepValidation.isValidating ? "Validating..." : "Next"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               )}
             </div>

@@ -59,10 +59,9 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
 
             // Set step based on whether we have basic data
             if (parsed.step && parsed.step >= 1) {
-              // If we have basic data, ensure we start at least at step 2 (location)
-              const initialStep = hasBasicData
-                ? Math.max(parsed.step, 2)
-                : parsed.step;
+              // If we have basic data, always start at step 2 (location) for ProfileCreationModal
+              // This ensures the modal starts at the correct step regardless of saved state
+              const initialStep = hasBasicData ? 2 : parsed.step;
               setStep(initialStep);
             } else if (hasBasicData) {
               // If no step saved but we have basic data, start at step 2
