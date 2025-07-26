@@ -22,6 +22,6 @@ jobs:
       - name: Run opencode
         uses: sst/opencode/github@latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.HUB_TOKEN }}
         with:
           model: github-copilot/gpt-4.1
