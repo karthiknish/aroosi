@@ -302,12 +302,23 @@ export const validateField = (
 ): { isValid: boolean; error?: string } => {
   const schema = stepSchemaMapping[step as keyof typeof stepSchemaMapping];
 
+  // If no schema, treat as valid
   if (!schema || !(schema instanceof z.ZodObject)) {
+    // If value is empty, return required error if field is known
+    if (value === undefined || value === null || value === "") {
+      const displayName = fieldDisplayNames[field] || field;
+      return { isValid: false, error: errorMessages.required(displayName) };
+    }
     return { isValid: true };
   }
 
   const fieldSchema = schema.shape[field as keyof typeof schema.shape];
+  // If no field schema, check for required error
   if (!fieldSchema || typeof (fieldSchema as any).safeParse !== "function") {
+    if (value === undefined || value === null || value === "") {
+      const displayName = fieldDisplayNames[field] || field;
+      return { isValid: false, error: errorMessages.required(displayName) };
+    }
     return { isValid: true };
   }
 
@@ -316,7 +327,16 @@ export const validateField = (
   if (result.success) {
     return { isValid: true };
   } else {
-    const error = result.error.errors[0]?.message || "Invalid value";
+    // Try to get a specific error message from Zod, else use field-specific or fallback
+    let error = result.error.errors[0]?.message;
+    if (!error || error === "Invalid value" || error === "") {
+      // Use field-specific error if available
+      if (fieldDisplayNames[field]) {
+        error = errorMessages.format(fieldDisplayNames[field], "valid");
+      } else {
+        error = "Please enter a valid value.";
+      }
+    }
     return { isValid: false, error };
   }
 };
