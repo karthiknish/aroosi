@@ -29,7 +29,7 @@ export const useFieldValidation = (
     hasBeenValidated: false,
   });
 
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const { debounceMs = 500, validateOnMount = false, step } = options;
 
   const performValidation = useCallback(() => {
