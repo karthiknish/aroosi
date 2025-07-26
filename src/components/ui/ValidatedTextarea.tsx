@@ -78,7 +78,7 @@ export const ValidatedTextarea = forwardRef<
               showSuccess && "border-green-500 focus:border-green-500",
               className
             )}
-            aria-invalid={showError}
+            aria-invalid={showError ? true : false}
             aria-describedby={
               showError ? `${field}-error` : hint ? `${field}-hint` : undefined
             }
