@@ -192,14 +192,9 @@ export function ProfileCreationModal({
 
   console.log("ProfileCreationModal unified formData:", formData);
 
-  // Use the context step directly, but adjust for modal display
+  // Use the context step directly for display and validation
   const step = contextStep;
   const setStep = setContextStep;
-
-  // Calculate the actual step to display based on whether we have basic data
-  // If we have basic data from HeroOnboarding, we start from step 2 (Location & Physical)
-  // Otherwise, we start from step 1 (Basic Info)
-  const displayStep = hasBasicData ? Math.max(step, 2) : step;
 
   // Local controlled input for preferred cities to allow commas while typing
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
@@ -216,15 +211,7 @@ export function ProfileCreationModal({
     setPreferredCitiesInput(joined);
   }, [formData.partnerPreferenceCity]);
 
-  // Automatically advance to step 2 (location step) when modal opens with basic data
-  useEffect(() => {
-    if (isOpen && hasBasicData) {
-      // Always ensure we start at step 2 (location) when we have basic data
-      if (step < 2) {
-        setStep(2);
-      }
-    }
-  }, [isOpen, hasBasicData, step, setStep]);
+
 
   // Enhanced validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -232,7 +219,7 @@ export function ProfileCreationModal({
 
   // Enhanced step validation hook
   const stepValidation = useStepValidation({
-    step: displayStep,
+    step,
     data: formData,
     onValidationChange: (isValid, validationErrors) => {
       setErrors(validationErrors);
@@ -321,7 +308,7 @@ export function ProfileCreationModal({
 
     // Additional validation before moving to sign-up step
     // This should happen when we're at the last step before account creation
-    if (displayStep === totalSteps) {
+    if (step === totalSteps) {
       // Validate only essential required fields are present before moving to sign-up
       const requiredFields = [
         "fullName",
@@ -388,11 +375,11 @@ export function ProfileCreationModal({
 
   // Advance wizard automatically when OAuth completes
   useEffect(() => {
-    if (isAuthenticated && displayStep === 7) {
+    if (isAuthenticated && step === 7) {
       // User is signed in, profile submission will happen automatically
       console.log("User signed in at step 7, profile will be submitted");
     }
-  }, [isAuthenticated, displayStep]);
+  }, [isAuthenticated, step]);
 
   // -------- Auto submit profile & images when user is signed in --------
   useEffect(() => {
@@ -402,10 +389,10 @@ export function ProfileCreationModal({
       if (isSubmitting) return; // prevent double submission
 
       // Only submit if we're on the final step
-      if (displayStep !== 7) {
+      if (step !== 7) {
         console.log(
           "Not on final step, skipping submission. Current step:",
-          displayStep
+          step
         );
         return;
       }
@@ -712,7 +699,7 @@ export function ProfileCreationModal({
     formData,
     pendingImages,
     userId,
-    displayStep,
+    step,
     hasSubmittedProfile,
     isSubmitting,
     refreshUser,
@@ -758,7 +745,7 @@ export function ProfileCreationModal({
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
             <div
               className="h-full bg-pink-600 transition-all duration-300"
-              style={{ width: `${(displayStep / totalSteps) * 100}%` }}
+              style={{ width: `${(step / totalSteps) * 100}%` }}
             />
           </div>
 
@@ -774,21 +761,21 @@ export function ProfileCreationModal({
 
             {/* Enhanced progress indicator */}
             <div className="mt-4">
-              <SimpleProgress current={displayStep} total={totalSteps} />
+              <SimpleProgress current={step} total={totalSteps} />
             </div>
           </DialogHeader>
 
           <div className="p-6">
             <AnimatePresence mode="wait">
               <motion.div
-                key={displayStep}
+                key={step}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
                 {/* Step 1: Basic Info (only shown when data not yet provided) */}
-                {displayStep === 1 && !hasBasicData && (
+                {step === 1 && !hasBasicData && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -860,7 +847,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 2: Location & Physical */}
-                {displayStep === 2 && (
+                {step === 2 && (
                   <div className="space-y-6">
                     {/* Error Summary */}
                     <ErrorSummary
@@ -894,7 +881,7 @@ export function ProfileCreationModal({
                     <ValidatedInput
                       label="City"
                       field="city"
-                      step={displayStep}
+                      step={step}
                       value={formData.city}
                       onValueChange={(v) => handleInputChange("city", v)}
                       placeholder="Enter your city"
@@ -936,7 +923,7 @@ export function ProfileCreationModal({
                     <ValidatedSelect
                       label="Marital Status"
                       field="maritalStatus"
-                      step={displayStep}
+                      step={step}
                       value={formData.maritalStatus}
                       onValueChange={(v) =>
                         handleInputChange("maritalStatus", v)
@@ -955,7 +942,7 @@ export function ProfileCreationModal({
                     <ValidatedSelect
                       label="Physical Status"
                       field="physicalStatus"
-                      step={displayStep}
+                      step={step}
                       value={formData.physicalStatus}
                       onValueChange={(v) =>
                         handleInputChange("physicalStatus", v)
@@ -973,7 +960,7 @@ export function ProfileCreationModal({
                   </div>
                 )}
                 {/* Step 3: Cultural & Lifestyle */}
-                {displayStep === 3 && (
+                {step === 3 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1105,7 +1092,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 4: Education & Career */}
-                {displayStep === 4 && (
+                {step === 4 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1177,7 +1164,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 5: Partner Preferences */}
-                {displayStep === 5 && (
+                {step === 5 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1275,7 +1262,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 6: Photos (Optional) */}
-                {displayStep === 6 && (
+                {step === 6 && (
                   <div className="space-y-6">
                     <div>
                       <Label className="text-gray-700 mb-2 block">
@@ -1295,7 +1282,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 7: Account Creation */}
-                {displayStep === 7 && (
+                {step === 7 && (
                   <div className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-center">
@@ -1370,17 +1357,17 @@ export function ProfileCreationModal({
             </AnimatePresence>
 
             <div className="mt-8 flex justify-between">
-              {displayStep > 1 && displayStep <= totalSteps && (
+              {step > 1 && step <= totalSteps && (
                 <Button variant="outline" onClick={handleBack} disabled={false}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
               )}
-              {displayStep < totalSteps && (
+              {step < totalSteps && (
                 <Button
                   onClick={handleNext}
                   disabled={stepValidation.isValidating}
-                  className={`${displayStep === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50`}
+                  className={`${step === 1 ? "w-full" : "ml-auto"} bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50`}
                 >
                   {stepValidation.isValidating ? "Validating..." : "Next"}
                   <ArrowRight className="ml-2 h-4 w-4" />
