@@ -725,6 +725,20 @@ export function ProfileCreationModal({
     </span>
   );
 
+  // Clear onboarding data if the modal is open and the user reloads or navigates away
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleUnload = () => {
+      clearAllOnboardingData();
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
+    };
+  }, [isOpen]);
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
