@@ -302,10 +302,6 @@ export function ProfileCreationModal({
     },
     [handleInputChange]
   );
-  // Clear onboarding localStorage on page reload (mount)
-  useEffect(() => {
-    clearAllOnboardingData();
-  }, []);
 
   // Enhanced validation function using the step validation hook
   const validateStep = async () => {
