@@ -327,10 +327,14 @@ export const validateField = (
   if (result.success) {
     return { isValid: true };
   } else {
-    // Try to get a specific error message from Zod, else use field-specific or fallback
+    // If the value is empty, show required error
+    if (value === undefined || value === null || value === "") {
+      const displayName = fieldDisplayNames[field] || field;
+      return { isValid: false, error: errorMessages.required(displayName) };
+    }
+    // Otherwise, show the specific Zod error message or a fallback
     let error = result.error.errors[0]?.message;
     if (!error || error === "Invalid value" || error === "") {
-      // Use field-specific error if available
       if (fieldDisplayNames[field]) {
         error = errorMessages.format(fieldDisplayNames[field], "valid");
       } else {
