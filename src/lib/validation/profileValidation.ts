@@ -179,7 +179,27 @@ export const enhancedValidationSchemas = {
       .max(500, errorMessages.maxLength(fieldDisplayNames.aboutMe, 500)),
   }),
 
-  // Step 5: Partner Preferences
+  // Step 5: Partner Preferences (base schema)
+  preferencesBase: z.object({
+    preferredGender: z.enum(["male", "female", "any", "other"], {
+      errorMap: () => ({
+        message: errorMessages.required(fieldDisplayNames.preferredGender),
+      }),
+    }),
+    partnerPreferenceAgeMin: z
+      .number()
+      .min(18, "Minimum age must be at least 18")
+      .max(99, "Minimum age cannot exceed 99")
+      .optional(),
+    partnerPreferenceAgeMax: z
+      .number()
+      .min(18, "Maximum age must be at least 18")
+      .max(99, "Maximum age cannot exceed 99")
+      .optional(),
+    partnerPreferenceCity: z.array(z.string()).optional(),
+  }),
+
+  // Step 5: Partner Preferences (with validation)
   preferences: z
     .object({
       preferredGender: z.enum(["male", "female", "any", "other"], {
@@ -241,7 +261,8 @@ export const completeProfileSchema = z.object({
   education: enhancedValidationSchemas.education.shape.education,
   occupation: enhancedValidationSchemas.education.shape.occupation,
   aboutMe: enhancedValidationSchemas.education.shape.aboutMe,
-  preferredGender: enhancedValidationSchemas.preferences.shape.preferredGender,
+  preferredGender:
+    enhancedValidationSchemas.preferencesBase.shape.preferredGender,
 
   // Optional fields
   country: enhancedValidationSchemas.location.shape.country,
@@ -254,11 +275,11 @@ export const completeProfileSchema = z.object({
   drinking: enhancedValidationSchemas.cultural.shape.drinking,
   annualIncome: enhancedValidationSchemas.education.shape.annualIncome,
   partnerPreferenceAgeMin:
-    enhancedValidationSchemas.preferences.shape.partnerPreferenceAgeMin,
+    enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceAgeMin,
   partnerPreferenceAgeMax:
-    enhancedValidationSchemas.preferences.shape.partnerPreferenceAgeMax,
+    enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceAgeMax,
   partnerPreferenceCity:
-    enhancedValidationSchemas.preferences.shape.partnerPreferenceCity,
+    enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceCity,
   profileImageIds: enhancedValidationSchemas.photos.shape.profileImageIds,
 });
 
