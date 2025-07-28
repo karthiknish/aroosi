@@ -192,19 +192,35 @@ export function ProfileCreationModal({
 
   console.log("ProfileCreationModal unified formData:", formData);
 
+  // Check if location data is complete
+  const hasLocationData = Boolean(
+    contextData?.city && contextData?.height && contextData?.maritalStatus
+  );
+
   // Determine the starting step based on whether we have basic data
   const startingStep = hasBasicData ? 2 : 1;
 
   // Initialize the step correctly when modal opens
   // If contextStep is 1 (default) and we have basic data, start at step 2
   // Otherwise, use the context step but ensure it's not below the starting step
-  const step =
-    contextStep === 1 && hasBasicData
-      ? startingStep
-      : Math.max(contextStep, startingStep);
+  // However, if we have basic data but no location data, ensure we start at step 2
+  let step = contextStep;
+  if (hasBasicData && !hasLocationData) {
+    // If we have basic data but no location data, ensure we start at step 2
+    step = 2;
+  } else if (contextStep === 1 && hasBasicData) {
+    step = startingStep;
+  } else {
+    step = Math.max(contextStep, startingStep);
+  }
   const setStep = (newStep: number) => {
-    // Ensure we never go below the starting step
-    setContextStep(Math.max(newStep, startingStep));
+    // If we have basic data but no location data, don't allow skipping step 2
+    if (hasBasicData && !hasLocationData && newStep > 2) {
+      setContextStep(2);
+    } else {
+      // Ensure we never go below the starting step
+      setContextStep(Math.max(newStep, startingStep));
+    }
   };
 
   // Local controlled input for preferred cities to allow commas while typing
