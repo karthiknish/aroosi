@@ -876,13 +876,13 @@ export function ProfileCreationModal({
                   <div className="space-y-6">
                     <div className="text-center mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        Location Information
+                        Location & Physical Information
                       </h3>
                       <p className="text-sm text-gray-600">
-                        Tell us where you're located
+                        Tell us where you're located and some physical details
                       </p>
                     </div>
-
+                    
                     {/* Error Summary */}
                     <ErrorSummary
                       errors={stepValidation.errors}
@@ -891,7 +891,7 @@ export function ProfileCreationModal({
                       requiredFields={stepValidation.requiredFields}
                       completedFields={stepValidation.completedFields}
                     />
-
+                    
                     {/* Country - Optional */}
                     <div>
                       <Label
@@ -910,7 +910,7 @@ export function ProfileCreationModal({
                         placeholder="Select country"
                       />
                     </div>
-
+                    
                     {/* City - Required */}
                     <ValidatedInput
                       label="City"
@@ -921,6 +921,52 @@ export function ProfileCreationModal({
                       placeholder="Enter your city"
                       required
                       hint="Enter the city where you currently live"
+                    />
+                    
+                    {/* Height - Required */}
+                    <ValidatedInput
+                      label="Height"
+                      field="height"
+                      step={step}
+                      value={formData.height}
+                      onValueChange={(v) => handleInputChange("height", v)}
+                      placeholder="Enter your height"
+                      required
+                      hint={`Enter height in format like "170 cm" or "5'8"`}
+                    />
+                    
+                    {/* Marital Status - Required */}
+                    <ValidatedSelect
+                      label="Marital Status"
+                      field="maritalStatus"
+                      step={step}
+                      value={formData.maritalStatus}
+                      onValueChange={(v) => handleInputChange("maritalStatus", v)}
+                      placeholder="Select marital status"
+                      required
+                      hint="Select your current marital status"
+                      options={[
+                        { value: "single", label: "Single" },
+                        { value: "divorced", label: "Divorced" },
+                        { value: "widowed", label: "Widowed" },
+                        { value: "annulled", label: "Annulled" },
+                      ]}
+                    />
+                    
+                    {/* Physical Status - Optional */}
+                    <ValidatedSelect
+                      label="Physical Status"
+                      field="physicalStatus"
+                      step={step}
+                      value={formData.physicalStatus}
+                      onValueChange={(v) => handleInputChange("physicalStatus", v)}
+                      placeholder="Select physical status"
+                      hint="Optional: Describe your physical status"
+                      options={[
+                        { value: "normal", label: "Normal" },
+                        { value: "physically_challenged", label: "Physically Challenged" },
+                        { value: "other", label: "Other" },
+                      ]}
                     />
                   </div>
                 )}
