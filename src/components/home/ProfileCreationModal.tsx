@@ -876,13 +876,13 @@ export function ProfileCreationModal({
                   <div className="space-y-6">
                     <div className="text-center mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        Location & Physical Information
+                        Location Information
                       </h3>
                       <p className="text-sm text-gray-600">
-                        Tell us where you're located and some physical details
+                        Tell us where you're located
                       </p>
                     </div>
-                    
+
                     {/* Error Summary */}
                     <ErrorSummary
                       errors={stepValidation.errors}
@@ -891,7 +891,7 @@ export function ProfileCreationModal({
                       requiredFields={stepValidation.requiredFields}
                       completedFields={stepValidation.completedFields}
                     />
-                    
+
                     {/* Country - Optional */}
                     <div>
                       <Label
@@ -910,7 +910,7 @@ export function ProfileCreationModal({
                         placeholder="Select country"
                       />
                     </div>
-                    
+
                     {/* City - Required */}
                     <ValidatedInput
                       label="City"
@@ -922,51 +922,88 @@ export function ProfileCreationModal({
                       required
                       hint="Enter the city where you currently live"
                     />
-                    
+                  </div>
+                )}
+
+                {/* Step 3: Physical Information */}
+                {step === 3 && (
+                  <div className="space-y-6">
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Physical Information
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Tell us about your physical attributes
+                      </p>
+                    </div>
+
                     {/* Height - Required */}
-                    <ValidatedInput
-                      label="Height"
-                      field="height"
-                      step={step}
-                      value={formData.height}
-                      onValueChange={(v) => handleInputChange("height", v)}
-                      placeholder="Enter your height"
-                      required
-                      hint={`Enter height in format like "170 cm" or "5'8"`}
-                    />
-                    
+                    <div>
+                      <Label
+                        htmlFor="height"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        Height <span className="text-red-500">*</span>
+                      </Label>
+                      <SearchableSelect
+                        options={Array.from(
+                          { length: 198 - 137 + 1 },
+                          (_, i) => {
+                            const cm = 137 + i;
+                            return {
+                              value: String(cm),
+                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
+                            };
+                          }
+                        )}
+                        value={formData.height}
+                        onValueChange={(v) => handleInputChange("height", v)}
+                        placeholder="Select height"
+                      />
+                      {stepValidation.getFieldError("height") && (
+                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
+                          <span>{stepValidation.getFieldError("height")}</span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Marital Status - Required */}
                     <ValidatedSelect
                       label="Marital Status"
                       field="maritalStatus"
                       step={step}
                       value={formData.maritalStatus}
-                      onValueChange={(v) => handleInputChange("maritalStatus", v)}
-                      placeholder="Select marital status"
-                      required
-                      hint="Select your current marital status"
+                      onValueChange={(v) =>
+                        handleInputChange("maritalStatus", v)
+                      }
                       options={[
                         { value: "single", label: "Single" },
                         { value: "divorced", label: "Divorced" },
                         { value: "widowed", label: "Widowed" },
                         { value: "annulled", label: "Annulled" },
                       ]}
+                      placeholder="Select marital status"
+                      required
                     />
-                    
+
                     {/* Physical Status - Optional */}
                     <ValidatedSelect
                       label="Physical Status"
                       field="physicalStatus"
                       step={step}
                       value={formData.physicalStatus}
-                      onValueChange={(v) => handleInputChange("physicalStatus", v)}
-                      placeholder="Select physical status"
-                      hint="Optional: Describe your physical status"
+                      onValueChange={(v) =>
+                        handleInputChange("physicalStatus", v)
+                      }
                       options={[
                         { value: "normal", label: "Normal" },
-                        { value: "physically_challenged", label: "Physically Challenged" },
+                        {
+                          value: "differently-abled",
+                          label: "Differently-abled",
+                        },
                         { value: "other", label: "Other" },
                       ]}
+                      placeholder="Select physical status"
                     />
                   </div>
                 )}
