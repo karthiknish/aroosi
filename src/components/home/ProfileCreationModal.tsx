@@ -331,6 +331,37 @@ export function ProfileCreationModal({
   const handleNext = async () => {
     if (!(await validateStep())) return;
 
+    // Step 1: HeroOnboarding required fields
+    if (step === 1) {
+      const heroRequiredFields = [
+        "profileFor",
+        "gender",
+        "fullName",
+        "dateOfBirth",
+        "phoneNumber",
+      ];
+      const missingHeroFields = heroRequiredFields.filter((field) => {
+        const value = formData[field as keyof ProfileCreationData];
+        return !value || (typeof value === "string" && value.trim() === "");
+      });
+      if (missingHeroFields.length > 0) {
+        const missingList = missingHeroFields.map((field) => {
+          return field
+            .replace(/([A-Z])/g, " $1")
+            .replace(/^./, (str) => str.toUpperCase());
+        });
+        showErrorToast(
+          null,
+          `Please complete all required fields in Basic Information.\nMissing: ${missingList.join(", ")}`
+        );
+        console.error(
+          "Cannot proceed - missing HeroOnboarding fields:",
+          missingHeroFields
+        );
+        return;
+      }
+    }
+
     // Additional validation before moving to sign-up step
     // This should happen when we're at the last step before account creation
     if (step === totalSteps - 1) {
@@ -356,7 +387,6 @@ export function ProfileCreationModal({
 
       if (missingFields.length > 0) {
         const missingList = missingFields.map((field) => {
-          // Convert camelCase to Title Case for display
           return field
             .replace(/([A-Z])/g, " $1")
             .replace(/^./, (str) => str.toUpperCase());
