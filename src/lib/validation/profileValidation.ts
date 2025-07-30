@@ -23,15 +23,21 @@ export const validateAge = (dateString: string): boolean => {
 export const validateHeight = (heightString: string): boolean => {
   if (!heightString) return false;
 
-  // Support both cm and feet/inches formats
+  // Auto-append " cm" if user selects just a number
+  if (/^\d{2,3}$/.test(heightString)) {
+    heightString = `${heightString} cm`;
+  }
+
   const cmPattern = /^\d{2,3}\s*cm$/i;
   const feetPattern = /^[4-7]'([0-9]|1[01])"?$/;
   const feetInchesPattern = /^[4-7]\s*ft\s*([0-9]|1[01])\s*in$/i;
+  const fullFormat = /^[4-7]'([0-9]|1[01])"?\s*\(\d{2,3}\s*cm\)$/i;
 
   return (
     cmPattern.test(heightString) ||
     feetPattern.test(heightString) ||
-    feetInchesPattern.test(heightString)
+    feetInchesPattern.test(heightString) ||
+    fullFormat.test(heightString)
   );
 };
 
@@ -139,16 +145,16 @@ export const enhancedValidationSchemas = {
       .string()
       .min(1, errorMessages.required(fieldDisplayNames.city))
       .max(50, errorMessages.maxLength(fieldDisplayNames.city, 50)),
-    // height: z
-    //   .string()
-    //   .min(1, errorMessages.required(fieldDisplayNames.height))
-    //   .refine(validateHeight, errorMessages.height()),
-    // maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"], {
-    //   errorMap: () => ({
-    //     message: errorMessages.required(fieldDisplayNames.maritalStatus),
-    //   }),
-    // }),
-    // physicalStatus: z.string().optional(),
+    height: z
+      .string()
+      .min(1, errorMessages.required(fieldDisplayNames.height))
+      .refine(validateHeight, errorMessages.height()),
+    maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"], {
+      errorMap: () => ({
+        message: errorMessages.required(fieldDisplayNames.maritalStatus),
+      }),
+    }),
+    physicalStatus: z.string().optional(),
   }),
 
   // Step 3: Cultural & Lifestyle
@@ -256,8 +262,8 @@ export const completeProfileSchema = z.object({
   dateOfBirth: enhancedValidationSchemas.basicInfo.shape.dateOfBirth,
   phoneNumber: enhancedValidationSchemas.basicInfo.shape.phoneNumber,
   city: enhancedValidationSchemas.location.shape.city,
-  // height: enhancedValidationSchemas.location.shape.height,
-  // maritalStatus: enhancedValidationSchemas.location.shape.maritalStatus,
+  height: enhancedValidationSchemas.location.shape.height,
+  maritalStatus: enhancedValidationSchemas.location.shape.maritalStatus,
   education: enhancedValidationSchemas.education.shape.education,
   occupation: enhancedValidationSchemas.education.shape.occupation,
   aboutMe: enhancedValidationSchemas.education.shape.aboutMe,
@@ -266,7 +272,7 @@ export const completeProfileSchema = z.object({
 
   // Optional fields
   country: enhancedValidationSchemas.location.shape.country,
-  // physicalStatus: enhancedValidationSchemas.location.shape.physicalStatus,
+  physicalStatus: enhancedValidationSchemas.location.shape.physicalStatus,
   motherTongue: enhancedValidationSchemas.cultural.shape.motherTongue,
   religion: enhancedValidationSchemas.cultural.shape.religion,
   ethnicity: enhancedValidationSchemas.cultural.shape.ethnicity,
@@ -288,11 +294,10 @@ export const stepSchemaMapping = {
   1: enhancedValidationSchemas.basicInfo,
   2: enhancedValidationSchemas.location,
   3: enhancedValidationSchemas.cultural,
-  4: enhancedValidationSchemas.cultural,
-  5: enhancedValidationSchemas.education,
-  6: enhancedValidationSchemas.preferences,
-  7: enhancedValidationSchemas.photos,
-  8: enhancedValidationSchemas.account,
+  4: enhancedValidationSchemas.education,
+  5: enhancedValidationSchemas.preferences,
+  6: enhancedValidationSchemas.photos,
+  7: enhancedValidationSchemas.account,
 };
 
 // Validation utility functions

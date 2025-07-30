@@ -746,7 +746,7 @@ export function ProfileCreationModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
-        className="max-w-md w-full p-0 overflow-hidden bg-white sm:max-h-[90vh] max-h-screen sm:rounded-lg rounded-none"
+        className="max-w-md w-full p-0 overflow-y-scroll bg-white sm:max-h-[90vh] max-h-screen sm:rounded-lg rounded-none "
         onInteractOutside={(e) => {
           e.preventDefault(); // keep modal open even when external portals register outside clicks
         }}
@@ -774,12 +774,12 @@ export function ProfileCreationModal({
             )}
 
             {/* Enhanced progress indicator */}
-            <div className="mt-4">
+            {/* <div className="mt-4">
               <SimpleProgress current={step} total={totalSteps} />
-            </div>
+            </div> */}
           </DialogHeader>
 
-          <div className="p-6">
+          <div className="p-6 ">
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
@@ -863,23 +863,23 @@ export function ProfileCreationModal({
                 {/* Step 2: Location */}
                 {step === 2 && (
                   <div className="space-y-6">
-                    <div className="text-center mb-4">
+                    {/* <div className="text-center mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">
                         Location Information
                       </h3>
                       <p className="text-sm text-gray-600">
                         Tell us where you're located
                       </p>
-                    </div>
+                    </div> */}
 
                     {/* Error Summary */}
-                    <ErrorSummary
+                    {/* <ErrorSummary
                       errors={stepValidation.errors}
                       isValid={stepValidation.isValid}
                       progress={stepValidation.progress}
                       requiredFields={stepValidation.requiredFields}
                       completedFields={stepValidation.completedFields}
-                    />
+                    /> */}
 
                     {/* Country - Optional */}
                     <div>
@@ -915,16 +915,16 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 3: Physical Information */}
-                {step === 3 && (
-                  <div className="space-y-6">
-                    <div className="text-center mb-4">
+                {step === 2 && (
+                  <div className="space-y-6 mt-4">
+                    {/* <div className="text-center mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">
                         Physical Information
                       </h3>
                       <p className="text-sm text-gray-600">
                         Tell us about your physical attributes
                       </p>
-                    </div>
+                    </div> */}
 
                     {/* Height - Required */}
                     <div>
@@ -999,7 +999,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 4: Cultural & Lifestyle */}
-                {step === 4 && (
+                {step === 3 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1131,7 +1131,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 5: Education & Career */}
-                {step === 5 && (
+                {step === 4 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1203,7 +1203,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 6: Partner Preferences */}
-                {step === 6 && (
+                {step === 5 && (
                   <div className="space-y-6">
                     <div>
                       <Label
@@ -1301,7 +1301,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 7: Photos (Optional) */}
-                {step === 7 && (
+                {step === 6 && (
                   <div className="space-y-6">
                     <div>
                       <Label className="text-gray-700 mb-2 block">
@@ -1321,7 +1321,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 8: Account Creation */}
-                {step === 8 && (
+                {step === 7 && (
                   <div className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-center">
