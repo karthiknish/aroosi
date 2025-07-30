@@ -134,60 +134,34 @@ export function ProfileCreationModal({
 
   // Create a unified formData object from context data and initial data
   const formData: ProfileCreationData = {
-    profileFor:
-      (contextData?.profileFor as string) || initialData?.profileFor || "",
-    gender: (contextData?.gender as string) || initialData?.gender || "",
-    fullName: (contextData?.fullName as string) || initialData?.fullName || "",
-    dateOfBirth:
-      (contextData?.dateOfBirth as string) || initialData?.dateOfBirth || "",
-    email: (contextData?.email as string) || initialData?.email || "",
-    phoneNumber:
-      (contextData?.phoneNumber as string) || initialData?.phoneNumber || "",
-    country: (contextData?.country as string) || initialData?.country || "",
-    city: (contextData?.city as string) || initialData?.city || "",
-    height: (contextData?.height as string) || initialData?.height || "",
-    maritalStatus:
-      (contextData?.maritalStatus as string) ||
-      initialData?.maritalStatus ||
-      "",
-    physicalStatus:
-      (contextData?.physicalStatus as string) ||
-      initialData?.physicalStatus ||
-      "",
-    motherTongue:
-      (contextData?.motherTongue as string) || initialData?.motherTongue || "",
-    religion: (contextData?.religion as string) || initialData?.religion || "",
-    ethnicity:
-      (contextData?.ethnicity as string) || initialData?.ethnicity || "",
-    diet: (contextData?.diet as string) || initialData?.diet || "",
-    smoking: (contextData?.smoking as string) || initialData?.smoking || "",
-    drinking: (contextData?.drinking as string) || initialData?.drinking || "",
-    education:
-      (contextData?.education as string) || initialData?.education || "",
-    occupation:
-      (contextData?.occupation as string) || initialData?.occupation || "",
-    annualIncome:
-      (contextData?.annualIncome as string) || initialData?.annualIncome || "",
-    aboutMe: (contextData?.aboutMe as string) || initialData?.aboutMe || "",
-    preferredGender:
-      (contextData?.preferredGender as string) ||
-      initialData?.preferredGender ||
-      "",
+    profileFor: (contextData?.profileFor as string) || "",
+    gender: (contextData?.gender as string) || "",
+    fullName: (contextData?.fullName as string) || "",
+    dateOfBirth: (contextData?.dateOfBirth as string) || "",
+    email: (contextData?.email as string) || "",
+    phoneNumber: (contextData?.phoneNumber as string) || "",
+    country: (contextData?.country as string) || "",
+    city: (contextData?.city as string) || "",
+    height: (contextData?.height as string) || "",
+    maritalStatus: (contextData?.maritalStatus as string) || "",
+    physicalStatus: (contextData?.physicalStatus as string) || "",
+    motherTongue: (contextData?.motherTongue as string) || "",
+    religion: (contextData?.religion as string) || "",
+    ethnicity: (contextData?.ethnicity as string) || "",
+    diet: (contextData?.diet as string) || "",
+    smoking: (contextData?.smoking as string) || "",
+    drinking: (contextData?.drinking as string) || "",
+    education: (contextData?.education as string) || "",
+    occupation: (contextData?.occupation as string) || "",
+    annualIncome: (contextData?.annualIncome as string) || "",
+    aboutMe: (contextData?.aboutMe as string) || "",
+    preferredGender: (contextData?.preferredGender as string) || "",
     partnerPreferenceAgeMin:
-      (contextData?.partnerPreferenceAgeMin as number) ||
-      initialData?.partnerPreferenceAgeMin ||
-      18,
-    partnerPreferenceAgeMax:
-      (contextData?.partnerPreferenceAgeMax as number) ||
-      initialData?.partnerPreferenceAgeMax,
+      (contextData?.partnerPreferenceAgeMin as number) || 18,
+    partnerPreferenceAgeMax: contextData?.partnerPreferenceAgeMax as number,
     partnerPreferenceCity:
-      (contextData?.partnerPreferenceCity as string[]) ||
-      initialData?.partnerPreferenceCity ||
-      [],
-    profileImageIds:
-      (contextData?.profileImageIds as string[]) ||
-      initialData?.profileImageIds ||
-      [],
+      (contextData?.partnerPreferenceCity as string[]) || [],
+    profileImageIds: (contextData?.profileImageIds as string[]) || [],
   };
 
   console.log("ProfileCreationModal unified formData:", formData);
