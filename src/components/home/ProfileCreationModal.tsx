@@ -904,13 +904,13 @@ export function ProfileCreationModal({
                       </p>
                     </div>
 
-                    {/* Country - Optional */}
+                    {/* Country - Required */}
                     <div className="mb-6">
                       <Label
                         htmlFor="country"
                         className="text-gray-700 mb-2 block"
                       >
-                        Country
+                        {required("Country")}
                       </Label>
                       <SearchableSelect
                         options={countries.map((c) => ({
@@ -946,6 +946,64 @@ export function ProfileCreationModal({
                         aria-invalid={!!errors.city}
                         aria-describedby={
                           errors.city ? "city-error" : undefined
+                        }
+                      />
+                    </div>
+
+                    {/* Height - Required */}
+                    <div className="mb-6">
+                      <Label
+                        htmlFor="height"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Height")}
+                      </Label>
+                      <SearchableSelect
+                        options={Array.from(
+                          { length: 198 - 137 + 1 },
+                          (_, i) => {
+                            const cm = 137 + i;
+                            return {
+                              value: String(cm),
+                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
+                            };
+                          }
+                        )}
+                        value={formData.height}
+                        onValueChange={(v) => handleInputChange("height", v)}
+                        placeholder="Select height"
+                        aria-invalid={!!errors.height}
+                        aria-describedby={
+                          errors.height ? "height-error" : undefined
+                        }
+                      />
+                    </div>
+
+                    {/* Marital Status - Required */}
+                    <div className="mb-6">
+                      <Label
+                        htmlFor="maritalStatus"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Marital Status")}
+                      </Label>
+                      <SearchableSelect
+                        options={[
+                          { value: "single", label: "Single" },
+                          { value: "divorced", label: "Divorced" },
+                          { value: "widowed", label: "Widowed" },
+                          { value: "annulled", label: "Annulled" },
+                        ]}
+                        value={formData.maritalStatus}
+                        onValueChange={(v) =>
+                          handleInputChange("maritalStatus", v)
+                        }
+                        placeholder="Select marital status"
+                        aria-invalid={!!errors.maritalStatus}
+                        aria-describedby={
+                          errors.maritalStatus
+                            ? "maritalStatus-error"
+                            : undefined
                         }
                       />
                     </div>
