@@ -361,6 +361,7 @@ export function ProfileCreationModal({
 
   // -------- Auto submit profile & images when user is signed in --------
   useEffect(() => {
+
     const submitProfileAndImages = async () => {
       if (!isAuthenticated) return;
       if (hasSubmittedProfile) return; // guard
@@ -425,12 +426,10 @@ export function ProfileCreationModal({
         // Mark as submitted after passing duplicate check
         setHasSubmittedProfile(true);
 
-        // Simply use the current formData which already contains all the data
-        // The formData state was initialized with initialData and has been updated throughout the wizard
-        const merged: Record<string, unknown> = formData as unknown as Record<
-          string,
-          unknown
-        >;
+        // Always use the latest context data for submission
+        const merged: Record<string, unknown> = {
+          ...contextData,
+        };
 
         // Filter out empty values
         const cleanedData: Record<string, unknown> = {};
