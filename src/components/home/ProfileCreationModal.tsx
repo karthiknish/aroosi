@@ -192,37 +192,10 @@ export function ProfileCreationModal({
 
   console.log("ProfileCreationModal unified formData:", formData);
 
-  // Check if location data is complete
-  const hasLocationData = Boolean(
-    contextData?.city
-    // && contextData?.height
-    //  && contextData?.maritalStatus
-  );
-
-  // Determine the starting step based on whether we have basic data
-  const startingStep = hasBasicData ? 2 : 1;
-
-  // Initialize the step correctly when modal opens
-  // If contextStep is 1 (default) and we have basic data, start at step 2
-  // Otherwise, use the context step but ensure it's not below the starting step
-  // However, if we have basic data but no location data, ensure we start at step 2
-  let step = contextStep;
-  if (hasBasicData && !hasLocationData) {
-    // If we have basic data but no location data, ensure we start at step 2
-    step = 2;
-  } else if (contextStep === 1 && hasBasicData) {
-    step = startingStep;
-  } else {
-    step = Math.max(contextStep, startingStep);
-  }
+  // Step state is now only controlled by contextStep and navigation handlers
+  const step = contextStep;
   const setStep = (newStep: number) => {
-    // If we have basic data but no location data, don't allow skipping step 2
-    if (hasBasicData && !hasLocationData && newStep > 2) {
-      setContextStep(2);
-    } else {
-      // Ensure we never go below the starting step
-      setContextStep(Math.max(newStep, startingStep));
-    }
+    setContextStep(newStep);
   };
 
   // Local controlled input for preferred cities to allow commas while typing
@@ -333,8 +306,6 @@ export function ProfileCreationModal({
 
   const handleNext = async () => {
     console.log("handleNext called. Current step:", step);
-    console.log("hasBasicData:", hasBasicData);
-    console.log("hasLocationData (before validation):", hasLocationData); // Check here
 
     if (!(await validateStep())) {
       console.log("Step validation failed. Not proceeding.");
@@ -343,10 +314,6 @@ export function ProfileCreationModal({
     }
 
     console.log("Step validation passed.");
-    console.log(
-      "hasLocationData (after validation, before setStep):",
-      hasLocationData
-    ); // Crucial check here!
 
     // Additional validation block (unlikely to be the issue for step 3)
     if (step === totalSteps - 1) {
