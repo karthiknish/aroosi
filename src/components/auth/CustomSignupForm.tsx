@@ -95,19 +95,23 @@ export default function CustomSignupForm({
     }
   };
 
+  // Unified onboarding completion handler
+  const handleOnboardingComplete = () => {
+    if (onComplete) {
+      onComplete();
+    } else {
+      router.push("/profile/create");
+    }
+  };
+
   const handleOTPSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       const result = await verifyOTP(formData.email, otp.trim());
-
       if (result.success) {
-        if (onComplete) {
-          onComplete();
-        } else {
-          router.push("/profile/create");
-        }
+        handleOnboardingComplete();
       } else {
         showErrorToast(result.error || "OTP verification failed");
       }

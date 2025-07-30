@@ -355,9 +355,15 @@ export function ProfileCreationModal({
       });
 
       if (missingFields.length > 0) {
+        const missingList = missingFields.map((field) => {
+          // Convert camelCase to Title Case for display
+          return field
+            .replace(/([A-Z])/g, " $1")
+            .replace(/^./, (str) => str.toUpperCase());
+        });
         showErrorToast(
           null,
-          `Please complete all required fields before creating account. Missing: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}`
+          `Please complete all required fields before creating account.\nMissing: ${missingList.join(", ")}`
         );
         console.error(
           "Cannot proceed to sign-up - missing fields:",
@@ -764,6 +770,10 @@ export function ProfileCreationModal({
         onPointerDownOutside={(e) => {
           e.preventDefault();
         }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-modal-title"
+        aria-describedby="profile-modal-desc"
       >
         <div className="relative">
           {/* Progress indicator */}
@@ -775,11 +785,14 @@ export function ProfileCreationModal({
           </div>
 
           <DialogHeader className="p-6 pb-0">
-            <DialogTitle className="text-2xl font-bold text-gray-900">
+            <DialogTitle
+              id="profile-modal-title"
+              className="text-2xl font-bold text-gray-900"
+            >
               Find Your Perfect Match
             </DialogTitle>
             {step < 5 && (
-              <p className="text-gray-600 mt-2">
+              <p id="profile-modal-desc" className="text-gray-600 mt-2">
                 Join thousands of Afghan singles finding love
               </p>
             )}
@@ -802,7 +815,15 @@ export function ProfileCreationModal({
                 {/* Step 1: Basic Info (only shown when data not yet provided) */}
                 {step === 1 && !hasBasicData && (
                   <div className="space-y-6">
-                    <div>
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Basic Information
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Tell us about yourself
+                      </p>
+                    </div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="profileFor"
                         className="text-gray-700 mb-2 block"
@@ -833,7 +854,7 @@ export function ProfileCreationModal({
                       </Select>
                     </div>
 
-                    <div>
+                    <div className="mb-6">
                       <Label className="text-gray-700 mb-2 block">
                         {required("Gender")}
                       </Label>
@@ -883,17 +904,8 @@ export function ProfileCreationModal({
                       </p>
                     </div>
 
-                    {/* Error Summary */}
-                    <ErrorSummary
-                      errors={stepValidation.errors}
-                      isValid={stepValidation.isValid}
-                      progress={stepValidation.progress}
-                      requiredFields={stepValidation.requiredFields}
-                      completedFields={stepValidation.completedFields}
-                    />
-
                     {/* Country - Optional */}
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="country"
                         className="text-gray-700 mb-2 block"
@@ -908,20 +920,35 @@ export function ProfileCreationModal({
                         value={formData.country}
                         onValueChange={(v) => handleInputChange("country", v)}
                         placeholder="Select country"
+                        aria-invalid={!!errors.country}
+                        aria-describedby={
+                          errors.country ? "country-error" : undefined
+                        }
                       />
                     </div>
 
                     {/* City - Required */}
-                    <ValidatedInput
-                      label="City"
-                      field="city"
-                      step={step}
-                      value={formData.city}
-                      onValueChange={(v) => handleInputChange("city", v)}
-                      placeholder="Enter your city"
-                      required
-                      hint="Enter the city where you currently live"
-                    />
+                    <div className="mb-6">
+                      <Label
+                        htmlFor="city"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("City")}
+                      </Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) =>
+                          handleInputChange("city", e.target.value)
+                        }
+                        placeholder="Enter your city"
+                        required
+                        aria-invalid={!!errors.city}
+                        aria-describedby={
+                          errors.city ? "city-error" : undefined
+                        }
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -938,12 +965,12 @@ export function ProfileCreationModal({
                     </div>
 
                     {/* Height - Required */}
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="height"
                         className="text-gray-700 mb-2 block"
                       >
-                        Height <span className="text-red-500">*</span>
+                        {required("Height")}
                       </Label>
                       <SearchableSelect
                         options={Array.from(
@@ -959,32 +986,41 @@ export function ProfileCreationModal({
                         value={formData.height}
                         onValueChange={(v) => handleInputChange("height", v)}
                         placeholder="Select height"
+                        aria-invalid={!!errors.height}
+                        aria-describedby={
+                          errors.height ? "height-error" : undefined
+                        }
                       />
-                      {stepValidation.getFieldError("height") && (
-                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
-                          <span>{stepValidation.getFieldError("height")}</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Marital Status - Required */}
-                    <ValidatedSelect
-                      label="Marital Status"
-                      field="maritalStatus"
-                      step={step}
-                      value={formData.maritalStatus}
-                      onValueChange={(v) =>
-                        handleInputChange("maritalStatus", v)
-                      }
-                      options={[
-                        { value: "single", label: "Single" },
-                        { value: "divorced", label: "Divorced" },
-                        { value: "widowed", label: "Widowed" },
-                        { value: "annulled", label: "Annulled" },
-                      ]}
-                      placeholder="Select marital status"
-                      required
-                    />
+                    <div className="mb-6">
+                      <Label
+                        htmlFor="maritalStatus"
+                        className="text-gray-700 mb-2 block"
+                      >
+                        {required("Marital Status")}
+                      </Label>
+                      <SearchableSelect
+                        options={[
+                          { value: "single", label: "Single" },
+                          { value: "divorced", label: "Divorced" },
+                          { value: "widowed", label: "Widowed" },
+                          { value: "annulled", label: "Annulled" },
+                        ]}
+                        value={formData.maritalStatus}
+                        onValueChange={(v) =>
+                          handleInputChange("maritalStatus", v)
+                        }
+                        placeholder="Select marital status"
+                        aria-invalid={!!errors.maritalStatus}
+                        aria-describedby={
+                          errors.maritalStatus
+                            ? "maritalStatus-error"
+                            : undefined
+                        }
+                      />
+                    </div>
 
                     {/* Physical Status - Optional */}
                     <ValidatedSelect
@@ -1021,7 +1057,7 @@ export function ProfileCreationModal({
                     </div>
 
                     {/* Height - Required */}
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="height"
                         className="text-gray-700 mb-2 block"
@@ -1094,7 +1130,15 @@ export function ProfileCreationModal({
                 {/* Step 4: Cultural & Lifestyle */}
                 {step === 4 && (
                   <div className="space-y-6">
-                    <div>
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Cultural & Lifestyle
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Share your background and lifestyle preferences
+                      </p>
+                    </div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="motherTongue"
                         className="text-gray-700 mb-2 block"
@@ -1113,7 +1157,7 @@ export function ProfileCreationModal({
                         placeholder="Select language"
                       />
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="religion"
                         className="text-gray-700 mb-2 block"
@@ -1130,7 +1174,7 @@ export function ProfileCreationModal({
                         placeholder="Select religion"
                       />
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="ethnicity"
                         className="text-gray-700 mb-2 block"
@@ -1147,7 +1191,7 @@ export function ProfileCreationModal({
                         placeholder="Select ethnicity"
                       />
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="diet"
                         className="text-gray-700 mb-2 block"
@@ -1171,7 +1215,7 @@ export function ProfileCreationModal({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="smoking"
                         className="text-gray-700 mb-2 block"
@@ -1226,7 +1270,15 @@ export function ProfileCreationModal({
                 {/* Step 5: Education & Career */}
                 {step === 5 && (
                   <div className="space-y-6">
-                    <div>
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Education & Career
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Tell us about your education and career
+                      </p>
+                    </div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="education"
                         className="text-gray-700 mb-2 block"
@@ -1242,7 +1294,7 @@ export function ProfileCreationModal({
                         placeholder="e.g. Bachelor's, Master's"
                       />
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="occupation"
                         className="text-gray-700 mb-2 block"
@@ -1258,7 +1310,7 @@ export function ProfileCreationModal({
                         placeholder="Occupation"
                       />
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="annualIncome"
                         className="text-gray-700 mb-2 block"
@@ -1274,7 +1326,7 @@ export function ProfileCreationModal({
                         placeholder="e.g. £30,000"
                       />
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="aboutMe"
                         className="text-gray-700 mb-2 block"
@@ -1298,7 +1350,15 @@ export function ProfileCreationModal({
                 {/* Step 6: Partner Preferences */}
                 {step === 6 && (
                   <div className="space-y-6">
-                    <div>
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Partner Preferences
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Describe your ideal partner
+                      </p>
+                    </div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="preferredGender"
                         className="text-gray-700 mb-2 block"
@@ -1324,7 +1384,7 @@ export function ProfileCreationModal({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label className="text-gray-700 mb-2 block">
                         Age Range
                       </Label>
@@ -1368,7 +1428,7 @@ export function ProfileCreationModal({
                         />
                       </div>
                     </div>
-                    <div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="partnerPreferenceCity"
                         className="text-gray-700 mb-2 block"
@@ -1396,7 +1456,15 @@ export function ProfileCreationModal({
                 {/* Step 7: Photos (Optional) */}
                 {step === 7 && (
                   <div className="space-y-6">
-                    <div>
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Profile Photos
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Add photos to your profile (optional)
+                      </p>
+                    </div>
+                    <div className="mb-6">
                       <Label className="text-gray-700 mb-2 block">
                         Profile Photos
                       </Label>
@@ -1404,11 +1472,6 @@ export function ProfileCreationModal({
                         onImagesChanged={handleProfileImagesChange}
                         className="w-full h-48"
                       />
-                      {errors.profileImageIds && (
-                        <div className="text-red-500 text-xs mt-1">
-                          {errors.profileImageIds}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -1416,6 +1479,14 @@ export function ProfileCreationModal({
                 {/* Step 8: Account Creation */}
                 {step === 8 && (
                   <div className="space-y-6">
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Create Account
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Finish and create your account
+                      </p>
+                    </div>
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-center">
                         Create your account
@@ -1488,7 +1559,7 @@ export function ProfileCreationModal({
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-8 flex justify-between items-center">
+            <div className="mt-8 flex justify-between items-center sticky bottom-0 bg-white p-4 z-10 border-t border-gray-100 shadow-sm">
               {/* Back Button - Show for all steps except first step */}
               {step > 1 && (
                 <Button
