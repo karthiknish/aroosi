@@ -21,7 +21,7 @@ interface ProfileWizardState {
 }
 
 const ProfileWizardContext = createContext<ProfileWizardState | undefined>(
-  undefined,
+  undefined
 );
 
 export function ProfileWizardProvider({ children }: { children: ReactNode }) {
@@ -141,7 +141,7 @@ export function useProfileWizard(): ProfileWizardState {
   const ctx = useContext(ProfileWizardContext);
   if (!ctx) {
     throw new Error(
-      "useProfileWizard must be used within ProfileWizardProvider",
+      "useProfileWizard must be used within ProfileWizardProvider"
     );
   }
   return ctx;

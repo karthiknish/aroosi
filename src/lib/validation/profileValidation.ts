@@ -139,16 +139,16 @@ export const enhancedValidationSchemas = {
       .string()
       .min(1, errorMessages.required(fieldDisplayNames.city))
       .max(50, errorMessages.maxLength(fieldDisplayNames.city, 50)),
-    height: z
-      .string()
-      .min(1, errorMessages.required(fieldDisplayNames.height))
-      .refine(validateHeight, errorMessages.height()),
-    maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"], {
-      errorMap: () => ({
-        message: errorMessages.required(fieldDisplayNames.maritalStatus),
-      }),
-    }),
-    physicalStatus: z.string().optional(),
+    // height: z
+    //   .string()
+    //   .min(1, errorMessages.required(fieldDisplayNames.height))
+    //   .refine(validateHeight, errorMessages.height()),
+    // maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"], {
+    //   errorMap: () => ({
+    //     message: errorMessages.required(fieldDisplayNames.maritalStatus),
+    //   }),
+    // }),
+    // physicalStatus: z.string().optional(),
   }),
 
   // Step 3: Cultural & Lifestyle
@@ -256,8 +256,8 @@ export const completeProfileSchema = z.object({
   dateOfBirth: enhancedValidationSchemas.basicInfo.shape.dateOfBirth,
   phoneNumber: enhancedValidationSchemas.basicInfo.shape.phoneNumber,
   city: enhancedValidationSchemas.location.shape.city,
-  height: enhancedValidationSchemas.location.shape.height,
-  maritalStatus: enhancedValidationSchemas.location.shape.maritalStatus,
+  // height: enhancedValidationSchemas.location.shape.height,
+  // maritalStatus: enhancedValidationSchemas.location.shape.maritalStatus,
   education: enhancedValidationSchemas.education.shape.education,
   occupation: enhancedValidationSchemas.education.shape.occupation,
   aboutMe: enhancedValidationSchemas.education.shape.aboutMe,
@@ -266,7 +266,7 @@ export const completeProfileSchema = z.object({
 
   // Optional fields
   country: enhancedValidationSchemas.location.shape.country,
-  physicalStatus: enhancedValidationSchemas.location.shape.physicalStatus,
+  // physicalStatus: enhancedValidationSchemas.location.shape.physicalStatus,
   motherTongue: enhancedValidationSchemas.cultural.shape.motherTongue,
   religion: enhancedValidationSchemas.cultural.shape.religion,
   ethnicity: enhancedValidationSchemas.cultural.shape.ethnicity,
@@ -288,10 +288,11 @@ export const stepSchemaMapping = {
   1: enhancedValidationSchemas.basicInfo,
   2: enhancedValidationSchemas.location,
   3: enhancedValidationSchemas.cultural,
-  4: enhancedValidationSchemas.education,
-  5: enhancedValidationSchemas.preferences,
-  6: enhancedValidationSchemas.photos,
-  7: enhancedValidationSchemas.account,
+  4: enhancedValidationSchemas.cultural,
+  5: enhancedValidationSchemas.education,
+  6: enhancedValidationSchemas.preferences,
+  7: enhancedValidationSchemas.photos,
+  8: enhancedValidationSchemas.account,
 };
 
 // Validation utility functions

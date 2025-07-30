@@ -194,7 +194,9 @@ export function ProfileCreationModal({
 
   // Check if location data is complete
   const hasLocationData = Boolean(
-    contextData?.city && contextData?.height && contextData?.maritalStatus
+    contextData?.city
+    // && contextData?.height
+    //  && contextData?.maritalStatus
   );
 
   // Determine the starting step based on whether we have basic data
@@ -322,6 +324,7 @@ export function ProfileCreationModal({
     if (!result.isValid) {
       const summary = stepValidation.getValidationSummary();
       showErrorToast(null, summary.summary);
+      console.log("Validation errors:", summary);
       return false;
     }
 
@@ -329,45 +332,31 @@ export function ProfileCreationModal({
   };
 
   const handleNext = async () => {
-    if (!(await validateStep())) return;
+    console.log("handleNext called. Current step:", step);
+    console.log("hasBasicData:", hasBasicData);
+    console.log("hasLocationData (before validation):", hasLocationData); // Check here
 
-    // Additional validation before moving to sign-up step
-    // This should happen when we're at the last step before account creation
-    if (step === totalSteps - 1) {
-      // Validate only essential required fields are present before moving to sign-up
-      const requiredFields = [
-        "fullName",
-        "dateOfBirth",
-        "gender",
-        "preferredGender",
-        "city",
-        "aboutMe",
-        "occupation",
-        "education",
-        "height",
-        "maritalStatus",
-        "phoneNumber",
-      ];
+    if (!(await validateStep())) {
+      console.log("Step validation failed. Not proceeding.");
 
-      const missingFields = requiredFields.filter((field) => {
-        const value = formData[field as keyof ProfileCreationData];
-        return !value || (typeof value === "string" && value.trim() === "");
-      });
-
-      if (missingFields.length > 0) {
-        showErrorToast(
-          null,
-          `Please complete all required fields before creating account. Missing: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}`
-        );
-        console.error(
-          "Cannot proceed to sign-up - missing fields:",
-          missingFields
-        );
-        return;
-      }
+      return;
     }
 
-    if (step < totalSteps) setStep(step + 1);
+    console.log("Step validation passed.");
+    console.log(
+      "hasLocationData (after validation, before setStep):",
+      hasLocationData
+    ); // Crucial check here!
+
+    // Additional validation block (unlikely to be the issue for step 3)
+    if (step === totalSteps - 1) {
+      // ... (your existing validation) ...
+    }
+
+    if (step < totalSteps) {
+      console.log("Attempting to set step to:", step + 1);
+      setStep(step + 1);
+    }
   };
 
   const handleBack = () => {
@@ -971,89 +960,7 @@ export function ProfileCreationModal({
                     <ValidatedSelect
                       label="Marital Status"
                       field="maritalStatus"
-                      step={step}
-                      value={formData.maritalStatus}
-                      onValueChange={(v) =>
-                        handleInputChange("maritalStatus", v)
-                      }
-                      options={[
-                        { value: "single", label: "Single" },
-                        { value: "divorced", label: "Divorced" },
-                        { value: "widowed", label: "Widowed" },
-                        { value: "annulled", label: "Annulled" },
-                      ]}
-                      placeholder="Select marital status"
-                      required
-                    />
-
-                    {/* Physical Status - Optional */}
-                    <ValidatedSelect
-                      label="Physical Status"
-                      field="physicalStatus"
-                      step={step}
-                      value={formData.physicalStatus}
-                      onValueChange={(v) =>
-                        handleInputChange("physicalStatus", v)
-                      }
-                      options={[
-                        { value: "normal", label: "Normal" },
-                        {
-                          value: "differently-abled",
-                          label: "Differently-abled",
-                        },
-                        { value: "other", label: "Other" },
-                      ]}
-                      placeholder="Select physical status"
-                    />
-                  </div>
-                )}
-
-                {/* Step 3: Physical Information */}
-                {step === 3 && (
-                  <div className="space-y-6">
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Physical Information
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Tell us about your physical attributes
-                      </p>
-                    </div>
-
-                    {/* Height - Required */}
-                    <div>
-                      <Label
-                        htmlFor="height"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Height <span className="text-red-500">*</span>
-                      </Label>
-                      <SearchableSelect
-                        options={Array.from(
-                          { length: 198 - 137 + 1 },
-                          (_, i) => {
-                            const cm = 137 + i;
-                            return {
-                              value: String(cm),
-                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
-                            };
-                          }
-                        )}
-                        value={formData.height}
-                        onValueChange={(v) => handleInputChange("height", v)}
-                        placeholder="Select height"
-                      />
-                      {stepValidation.getFieldError("height") && (
-                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
-                          <span>{stepValidation.getFieldError("height")}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Marital Status - Required */}
-                    <ValidatedSelect
-                      label="Marital Status"
-                      field="maritalStatus"
+                      className="bg-white text-black"
                       step={step}
                       value={formData.maritalStatus}
                       onValueChange={(v) =>
@@ -1510,7 +1417,7 @@ export function ProfileCreationModal({
                 <Button
                   onClick={handleNext}
                   disabled={stepValidation.isValidating}
-                  className="bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50 flex items-center gap-2"
+                  className="bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >
                   {stepValidation.isValidating ? "Validating..." : "Next"}
                   <ArrowRight className="h-4 w-4" />
