@@ -100,6 +100,7 @@ export default function CustomSignupForm({
         if (onComplete) {
           try {
             onComplete();
+            router.push("/success");
           } catch (err) {
             console.error("onComplete failed", err);
           }
