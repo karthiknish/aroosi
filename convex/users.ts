@@ -135,6 +135,609 @@ export const getCurrentUserWithProfile = query({
  * Internal mutation to create or update a user.
  * Used by auth system to ensure user exists in Convex.
  */
+export const createUserViaSignup = action({
+  args: {
+    email: v.string(),
+    hashedPassword: v.string(),
+    fullName: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    {
+      email,
+      hashedPassword,
+      fullName,
+    }: { email: string; hashedPassword: string; fullName?: string }
+  ): Promise<{ userId: Id<"users"> }> => {
+    const normalizedEmail = email.toLowerCase().trim();
+    const userId: Id<"users"> = await ctx.runMutation(
+      internal.users.internalUpsertUser,
+      {
+        email: normalizedEmail,
+        hashedPassword,
+        fullName,
+      }
+    );
+    return { userId };
+  },
+});
+
+/**
+ * Public query used to fetch profile by userId (for internal actions to call via runQuery)
+ */
+export const getProfileByUserIdPublic = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    return profile ?? null;
+  },
+});
+
+/**
+ * Internal query: get profile by userId (usable from actions)
+ */
+/* removed duplicate _getProfileByUserId; use the typed version below or call getProfileByUserIdPublic directly */
+
+/**
+ * Combined action for native signup that can also create a full profile
+ * when profile fields are provided from the signup form.
+ *
+ * It preserves existing profiles (won't overwrite), and if no profile exists,
+ * it calls the existing createProfile mutation with the provided fields.
+ */
+/**
+ * Internal mutation to create a profile directly by userId (bypasses auth identity).
+ * Mirrors createProfile normalization, but requires explicit userId.
+ */
+export const internalCreateProfile = internalMutation(
+  async (
+    ctx,
+    args: {
+      userId: Id<"users">;
+      fullName: string;
+      dateOfBirth: string;
+      gender: "male" | "female" | "other";
+      city: string;
+      aboutMe: string;
+      occupation: string;
+      education: string;
+      height: string;
+      maritalStatus: "single" | "divorced" | "widowed" | "annulled";
+      phoneNumber: string;
+
+      profileFor?:
+        | "self"
+        | "son"
+        | "daughter"
+        | "brother"
+        | "sister"
+        | "friend"
+        | "relative"
+        | "";
+      country?: string;
+      annualIncome?: string | number;
+      email?: string;
+      profileImageIds?: Id<"_storage">[];
+      isProfileComplete?: boolean;
+      preferredGender?: "male" | "female" | "other" | "any";
+      motherTongue?:
+        | "farsi-dari"
+        | "pashto"
+        | "uzbeki"
+        | "hazaragi"
+        | "turkmeni"
+        | "balochi"
+        | "nuristani"
+        | "punjabi"
+        | "";
+      religion?: "muslim" | "hindu" | "sikh" | "";
+      ethnicity?:
+        | "tajik"
+        | "pashtun"
+        | "uzbek"
+        | "hazara"
+        | "turkmen"
+        | "baloch"
+        | "nuristani"
+        | "aimaq"
+        | "pashai"
+        | "qizilbash"
+        | "punjabi"
+        | "";
+      diet?:
+        | "vegetarian"
+        | "non-vegetarian"
+        | "halal"
+        | "vegan"
+        | "eggetarian"
+        | "other"
+        | "";
+      physicalStatus?: "normal" | "physically-challenged" | "";
+      smoking?: "no" | "occasionally" | "yes" | "";
+      drinking?: "no" | "occasionally" | "yes";
+      partnerPreferenceAgeMin?: number;
+      partnerPreferenceAgeMax?: number;
+      partnerPreferenceCity?: string[];
+      subscriptionPlan?: "free" | "premium" | "premiumPlus";
+    }
+  ): Promise<Id<"profiles">> => {
+    // Prevent duplicate
+    const existing = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+    if (existing) return existing._id;
+
+    const coalesce = <T>(v: T | undefined | null, def: T): T =>
+      v === undefined || v === null ? def : v;
+
+    const normalizedHeight =
+      typeof args.height === "string" && args.height.trim().length > 0
+        ? args.height.trim()
+        : args.height !== undefined && args.height !== null
+          ? String(args.height)
+          : "";
+
+    const annualIncomeNum =
+      typeof args.annualIncome === "number"
+        ? args.annualIncome
+        : typeof args.annualIncome === "string" &&
+            args.annualIncome.trim().length > 0
+          ? Number(args.annualIncome.replace(/[^\d]/g, ""))
+          : undefined;
+
+    const record: any = {
+      userId: args.userId,
+      email: args.email,
+      isProfileComplete: args.isProfileComplete ?? false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+
+      profileFor: coalesce(args.profileFor, "self"),
+      fullName: coalesce(args.fullName, ""),
+      dateOfBirth: coalesce(args.dateOfBirth, ""),
+      gender: coalesce(args.gender, ""),
+      preferredGender: coalesce(args.preferredGender, ""),
+
+      city: coalesce(args.city, ""),
+      country: coalesce(args.country, ""),
+
+      height: normalizedHeight,
+      maritalStatus: coalesce(args.maritalStatus, "single"),
+      physicalStatus: coalesce(args.physicalStatus, "normal"),
+      diet: coalesce(args.diet, ""),
+      smoking: coalesce(args.smoking, "no"),
+      drinking: coalesce(args.drinking, "no"),
+
+      motherTongue: coalesce(args.motherTongue, ""),
+      religion: coalesce(args.religion, ""),
+      ethnicity: coalesce(args.ethnicity, ""),
+
+      education: coalesce(args.education, ""),
+      occupation: coalesce(args.occupation, ""),
+      annualIncome: annualIncomeNum,
+
+      phoneNumber: coalesce(args.phoneNumber, ""),
+      aboutMe: coalesce(args.aboutMe, ""),
+
+      partnerPreferenceAgeMin: args.partnerPreferenceAgeMin,
+      partnerPreferenceAgeMax: args.partnerPreferenceAgeMax,
+      partnerPreferenceCity: Array.isArray(args.partnerPreferenceCity)
+        ? args.partnerPreferenceCity
+        : [],
+
+      profileImageIds: Array.isArray(args.profileImageIds)
+        ? args.profileImageIds
+        : [],
+
+      subscriptionPlan: coalesce(args.subscriptionPlan, "free"),
+      subscriptionExpiresAt:
+        args.subscriptionPlan && args.subscriptionPlan !== "free"
+          ? Date.now() + 30 * 24 * 60 * 60 * 1000
+          : undefined,
+    };
+
+    const images = record.profileImageUrls || record.profileImageIds;
+    const hasImage = Array.isArray(images) && images.length > 0;
+
+    const essentials = ["fullName", "dateOfBirth", "gender", "city", "aboutMe"];
+    const allEssentials = essentials.every((k) => {
+      const v = record[k];
+      return !(
+        v === undefined ||
+        v === null ||
+        (typeof v === "string" && v.trim() === "")
+      );
+    });
+
+    // Mark complete when essential fields are filled.
+    // Profile image is OPTIONAL and not required for completion.
+    if (allEssentials) {
+      record.isProfileComplete = true;
+      record.isOnboardingComplete = true;
+    } else {
+      record.isProfileComplete = record.isProfileComplete ?? false;
+      record.isOnboardingComplete = record.isProfileComplete === true;
+    }
+
+    const profileId = await ctx.db.insert("profiles", record);
+    return profileId;
+  }
+);
+
+export const createUserAndProfileViaSignup = action({
+  args: {
+    email: v.string(),
+    hashedPassword: v.string(),
+    fullName: v.optional(v.string()),
+    profile: v.optional(
+      v.object({
+        // Mirror the args in createProfile. All optional here; createProfile enforces its own requirements.
+        fullName: v.optional(v.string()),
+        dateOfBirth: v.optional(v.string()),
+        gender: v.optional(
+          v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+        ),
+        city: v.optional(v.string()),
+        aboutMe: v.optional(v.string()),
+        occupation: v.optional(v.string()),
+        education: v.optional(v.string()),
+        height: v.optional(v.string()),
+        maritalStatus: v.optional(
+          v.union(
+            v.literal("single"),
+            v.literal("divorced"),
+            v.literal("widowed"),
+            v.literal("annulled")
+          )
+        ),
+        phoneNumber: v.optional(v.string()),
+        profileFor: v.optional(
+          v.union(
+            v.literal("self"),
+            v.literal("son"),
+            v.literal("daughter"),
+            v.literal("brother"),
+            v.literal("sister"),
+            v.literal("friend"),
+            v.literal("relative"),
+            v.literal("")
+          )
+        ),
+        country: v.optional(v.string()),
+        annualIncome: v.optional(v.union(v.string(), v.number())),
+        email: v.optional(v.string()),
+        profileImageIds: v.optional(v.array(v.id("_storage"))),
+        isProfileComplete: v.optional(v.boolean()),
+        preferredGender: v.optional(
+          v.union(
+            v.literal("male"),
+            v.literal("female"),
+            v.literal("other"),
+            v.literal("any")
+          )
+        ),
+        motherTongue: v.optional(
+          v.union(
+            v.literal("farsi-dari"),
+            v.literal("pashto"),
+            v.literal("uzbeki"),
+            v.literal("hazaragi"),
+            v.literal("turkmeni"),
+            v.literal("balochi"),
+            v.literal("nuristani"),
+            v.literal("punjabi"),
+            v.literal("")
+          )
+        ),
+        religion: v.optional(
+          v.union(
+            v.literal("muslim"),
+            v.literal("hindu"),
+            v.literal("sikh"),
+            v.literal("")
+          )
+        ),
+        ethnicity: v.optional(
+          v.union(
+            v.literal("tajik"),
+            v.literal("pashtun"),
+            v.literal("uzbek"),
+            v.literal("hazara"),
+            v.literal("turkmen"),
+            v.literal("baloch"),
+            v.literal("nuristani"),
+            v.literal("aimaq"),
+            v.literal("pashai"),
+            v.literal("qizilbash"),
+            v.literal("punjabi"),
+            v.literal("")
+          )
+        ),
+        diet: v.optional(
+          v.union(
+            v.literal("vegetarian"),
+            v.literal("non-vegetarian"),
+            v.literal("halal"),
+            v.literal("vegan"),
+            v.literal("eggetarian"),
+            v.literal("other"),
+            v.literal("")
+          )
+        ),
+        physicalStatus: v.optional(
+          v.union(
+            v.literal("normal"),
+            v.literal("physically-challenged"),
+            v.literal("")
+          )
+        ),
+        smoking: v.optional(
+          v.union(
+            v.literal("no"),
+            v.literal("occasionally"),
+            v.literal("yes"),
+            v.literal("")
+          )
+        ),
+        drinking: v.optional(
+          v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
+        ),
+        partnerPreferenceAgeMin: v.optional(v.number()),
+        partnerPreferenceAgeMax: v.optional(v.number()),
+        partnerPreferenceCity: v.optional(v.array(v.string())),
+        subscriptionPlan: v.optional(
+          v.union(
+            v.literal("free"),
+            v.literal("premium"),
+            v.literal("premiumPlus")
+          )
+        ),
+      })
+    ),
+  },
+  handler: async (
+    ctx,
+    {
+      email,
+      hashedPassword,
+      fullName,
+      profile,
+    }: {
+      email: string;
+      hashedPassword: string;
+      fullName?: string;
+      profile?: Record<string, unknown>;
+    }
+  ): Promise<{ userId: Id<"users">; profileId?: Id<"profiles"> }> => {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 1) Ensure user exists
+    const userId: Id<"users"> = await ctx.runMutation(
+      internal.users.internalUpsertUser,
+      {
+        email: normalizedEmail,
+        hashedPassword,
+        fullName,
+      }
+    );
+
+    // 2) If no profile payload, we're done
+    if (!profile || Object.keys(profile).length === 0) {
+      return { userId };
+    }
+
+    // 3) Check for existing profile using public query (callable from actions)
+    const existing = await ctx.runQuery(api.users.getProfileByUserIdPublic, {
+      userId,
+    });
+
+    // Helper to build normalized payload from provided profile
+    const payload = {
+      // Required for createProfile (use provided or minimal sensible defaults)
+      fullName: (profile.fullName as string) ?? fullName ?? "",
+      dateOfBirth: (profile.dateOfBirth as string) ?? "",
+      gender: (profile.gender as "male" | "female" | "other") ?? "other",
+      city: (profile.city as string) ?? "",
+      aboutMe: (profile.aboutMe as string) ?? "",
+      occupation: (profile.occupation as string) ?? "",
+      education: (profile.education as string) ?? "",
+      height: (profile.height as string) ?? "",
+      maritalStatus:
+        (profile.maritalStatus as
+          | "single"
+          | "divorced"
+          | "widowed"
+          | "annulled") ?? "single",
+      phoneNumber: (profile.phoneNumber as string) ?? "",
+
+      // Optional passthroughs
+      profileFor: profile.profileFor as
+        | "self"
+        | "son"
+        | "daughter"
+        | "brother"
+        | "sister"
+        | "friend"
+        | "relative"
+        | "",
+      country: profile.country as string | undefined,
+      // createProfile used to expect string; internalCreateProfile accepts string|number; keep string here
+      annualIncome:
+        typeof profile.annualIncome === "number"
+          ? String(profile.annualIncome)
+          : (profile.annualIncome as string | undefined),
+      email: (profile.email as string) ?? normalizedEmail,
+      profileImageIds: profile.profileImageIds as Id<"_storage">[] | undefined,
+      isProfileComplete: profile.isProfileComplete as boolean | undefined,
+      preferredGender: profile.preferredGender as
+        | "male"
+        | "female"
+        | "other"
+        | "any"
+        | undefined,
+      motherTongue: profile.motherTongue as
+        | "farsi-dari"
+        | "pashto"
+        | "uzbeki"
+        | "hazaragi"
+        | "turkmeni"
+        | "balochi"
+        | "nuristani"
+        | "punjabi"
+        | "",
+      religion: profile.religion as "muslim" | "hindu" | "sikh" | "",
+      ethnicity: profile.ethnicity as
+        | "tajik"
+        | "pashtun"
+        | "uzbek"
+        | "hazara"
+        | "turkmen"
+        | "baloch"
+        | "nuristani"
+        | "aimaq"
+        | "pashai"
+        | "qizilbash"
+        | "punjabi"
+        | "",
+      diet: profile.diet as
+        | "vegetarian"
+        | "non-vegetarian"
+        | "halal"
+        | "vegan"
+        | "eggetarian"
+        | "other"
+        | "",
+      physicalStatus: profile.physicalStatus as
+        | "normal"
+        | "physically-challenged"
+        | "",
+      smoking: profile.smoking as "no" | "occasionally" | "yes" | "",
+      drinking: profile.drinking as "no" | "occasionally" | "yes" | undefined,
+      partnerPreferenceAgeMin: profile.partnerPreferenceAgeMin as
+        | number
+        | undefined,
+      partnerPreferenceAgeMax: profile.partnerPreferenceAgeMax as
+        | number
+        | undefined,
+      partnerPreferenceCity: profile.partnerPreferenceCity as
+        | string[]
+        | undefined,
+      subscriptionPlan: profile.subscriptionPlan as
+        | "free"
+        | "premium"
+        | "premiumPlus"
+        | undefined,
+    };
+
+    // If a profile already exists, detect "stub" and patch it instead of returning early
+    if (existing) {
+      // Determine if existing is a stub (essentials empty and no images)
+      const essentials = [
+        "fullName",
+        "dateOfBirth",
+        "gender",
+        "city",
+        "aboutMe",
+      ] as const;
+      const allEssentialsEmpty = essentials.every((k) => {
+        const v = (existing as any)[k];
+        return (
+          v === undefined ||
+          v === null ||
+          (typeof v === "string" && v.trim() === "")
+        );
+      });
+      const images =
+        (existing as any).profileImageUrls || (existing as any).profileImageIds;
+      const hasImage = Array.isArray(images) && images.length > 0;
+
+      // Always patch the existing stub profile with provided values during signup.
+      // This ensures fields from the signup payload are persisted instead of leaving the stub empty.
+      {
+        // Build patch updates, converting annualIncome to number if string
+        const updates: Record<string, any> = { ...payload };
+
+        if (
+          typeof updates.annualIncome === "string" &&
+          updates.annualIncome.trim().length > 0
+        ) {
+          const num = Number(updates.annualIncome.replace(/[^\d]/g, ""));
+          updates.annualIncome = isNaN(num) ? undefined : num;
+        }
+
+        // Recompute completion flags
+        const essentialsFilled = essentials.every((k) => {
+          const v = updates[k];
+          return !(
+            v === undefined ||
+            v === null ||
+            (typeof v === "string" && v.trim() === "")
+          );
+        });
+        // Profile image is OPTIONAL and not required for completion.
+        updates.isProfileComplete = essentialsFilled ? true : false;
+        updates.isOnboardingComplete = updates.isProfileComplete === true;
+        updates.updatedAt = Date.now();
+
+        // Prefer internal patch that bypasses admin guard during controlled signup flow
+        await ctx.runMutation(internal.users.internalPatchProfile, {
+          profileId: (existing as any)._id,
+          updates,
+        } as any);
+        return { userId, profileId: (existing as any)._id };
+      }
+
+      // If we reached here, we already patched above. Return userId only.
+      return { userId };
+    }
+
+    // 4) No existing profile → create full profile via internal mutation
+    try {
+      const profileId = await ctx.runMutation(
+        internal.users.internalCreateProfile,
+        {
+          userId,
+          ...payload,
+        } as any
+      );
+      return { userId, profileId };
+    } catch (e) {
+      console.warn(
+        "createUserAndProfileViaSignup: internalCreateProfile failed, proceeding with user only",
+        e
+      );
+      return { userId };
+    }
+  },
+});
+
+// Internal patch used by actions where admin identity isn't present (e.g., signup flow)
+export const internalPatchProfile = internalMutation(
+  async (
+    ctx,
+    args: { profileId: Id<"profiles">; updates: Record<string, unknown> }
+  ) => {
+    const { profileId, updates } = args;
+    // Normalize annualIncome if provided as string
+    const mutable: any = { ...updates };
+    if (typeof mutable.annualIncome === "string") {
+      const parsed = parseInt(mutable.annualIncome, 10);
+      if (!Number.isNaN(parsed)) {
+        mutable.annualIncome = parsed;
+      } else {
+        delete mutable.annualIncome;
+      }
+    }
+    // Always bump updatedAt
+    mutable.updatedAt = Date.now();
+    await ctx.db.patch(profileId, mutable);
+  }
+);
+
 export const internalUpsertUser = internalMutation(
   async (
     ctx,
@@ -168,7 +771,8 @@ export const internalUpsertUser = internalMutation(
       userId = await ctx.db.insert("users", {
         email,
         hashedPassword: hashedPassword || "",
-        role,
+        role: role ?? "user",
+        banned: false,
         googleId,
         emailVerified: !!googleId, // Google users are pre-verified
         createdAt: Date.now(),
@@ -374,8 +978,8 @@ export const updateProfile = mutation({
         }
       }
       const images2 = updatedProfile.profileImageIds;
-      const hasImage2 = Array.isArray(images2) && images2.length > 0;
-      if (allEssentialFilled2 && hasImage2) {
+      // Profile image is OPTIONAL and not required for completion.
+      if (allEssentialFilled2) {
         processedUpdates.isProfileComplete = true;
         (
           processedUpdates as Partial<Omit<Profile, "_id">> & {
@@ -439,10 +1043,6 @@ export const getUserPublicProfile = query({
 
     // Explicitly list fields to return for public view to ensure privacy
     return {
-      // User-related info (be cautious)
-      // email: user.email, // Usually not public
-      // email: user.email, // Usually not public
-
       // Profile-related info
       profile: {
         fullName: profile.fullName,
@@ -538,7 +1138,7 @@ export const batchGetPublicProfiles = action({
       // users is an array of user objects with .profile attached
       return users
         .filter(
-          (user) =>
+          (user: any) =>
             user.role !== "admin" &&
             user.banned !== true &&
             user.profile &&
@@ -546,7 +1146,7 @@ export const batchGetPublicProfiles = action({
             user.profile.isProfileComplete === true &&
             user.profile.banned !== true
         )
-        .map((user) => ({
+        .map((user: any) => ({
           userId: user._id,
           profile: user.profile! as PublicProfile,
         }));
@@ -967,7 +1567,7 @@ export const listUsersWithProfiles = query({
       }));
     if (args.preferredGender && args.preferredGender !== "any") {
       filtered = filtered.filter(
-        (u) => u.profile && u.profile.gender === args.preferredGender
+        (u: any) => u.profile && u.profile.gender === args.preferredGender
       );
     }
     return filtered;
@@ -1161,59 +1761,80 @@ export const createProfile = mutation({
       return { success: false, message: "Profile already exists" };
     }
 
-    // Create new profile
+    // Create new profile - preserve provided values; only default when undefined/null
+    const coalesce = <T>(v: T | undefined | null, def: T): T =>
+      v === undefined || v === null ? def : v;
+
+    // Normalize height to string consistently
+    const normalizedHeight =
+      typeof args.height === "string" && args.height.trim().length > 0
+        ? args.height.trim()
+        : args.height !== undefined && args.height !== null
+          ? String(args.height)
+          : "";
+
     const profileData: Omit<Profile, "_id"> = {
       userId: user._id,
-      email: args.email || user.email,
+      email: coalesce(args.email, user.email),
       isProfileComplete: args.isProfileComplete ?? false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
 
       // Basic info
-      profileFor: args.profileFor || "self",
-      fullName: args.fullName || "",
-      dateOfBirth: args.dateOfBirth || "",
-      gender: args.gender || "",
-      preferredGender: args.preferredGender || "",
+      profileFor: coalesce(args.profileFor, "self"),
+      fullName: coalesce(args.fullName, ""),
+      dateOfBirth: coalesce(args.dateOfBirth, ""),
+      gender: coalesce(args.gender, ""),
+      preferredGender: coalesce(args.preferredGender, ""),
 
       // Location
-      city: args.city || "",
-      country: args.country || "",
+      city: coalesce(args.city, ""),
+      country: coalesce(args.country, ""),
 
       // Physical & lifestyle
-      height: args.height || "",
-      maritalStatus: args.maritalStatus || "single",
-      physicalStatus: args.physicalStatus || "normal",
-      diet: args.diet || "",
-      smoking: args.smoking || "no",
-      drinking: args.drinking || "no",
+      height: normalizedHeight,
+      maritalStatus: coalesce(args.maritalStatus, "single"),
+      physicalStatus: coalesce(args.physicalStatus, "normal"),
+      diet: coalesce(args.diet, ""),
+      smoking: coalesce(args.smoking, "no"),
+      drinking: coalesce(args.drinking, "no"),
 
       // Cultural
-      motherTongue: args.motherTongue || "",
-      religion: args.religion || "",
-      ethnicity: args.ethnicity || "",
+      motherTongue: coalesce(args.motherTongue, ""),
+      religion: coalesce(args.religion, ""),
+      ethnicity: coalesce(args.ethnicity, ""),
 
       // Education & career
-      education: args.education || "",
-      occupation: args.occupation || "",
-      annualIncome: args.annualIncome ? Number(args.annualIncome) : undefined,
+      education: coalesce(args.education, ""),
+      occupation: coalesce(args.occupation, ""),
+      annualIncome:
+        typeof args.annualIncome === "number"
+          ? args.annualIncome
+          : typeof args.annualIncome === "string" &&
+              args.annualIncome.trim().length > 0
+            ? Number(args.annualIncome.replace(/[^\d]/g, ""))
+            : undefined,
 
       // Contact
-      phoneNumber: args.phoneNumber || "",
+      phoneNumber: coalesce(args.phoneNumber, ""),
 
       // About
-      aboutMe: args.aboutMe || "",
+      aboutMe: coalesce(args.aboutMe, ""),
 
       // Partner preferences
       partnerPreferenceAgeMin: args.partnerPreferenceAgeMin,
       partnerPreferenceAgeMax: args.partnerPreferenceAgeMax,
-      partnerPreferenceCity: args.partnerPreferenceCity || [],
+      partnerPreferenceCity: Array.isArray(args.partnerPreferenceCity)
+        ? args.partnerPreferenceCity
+        : [],
 
       // Images
-      profileImageIds: args.profileImageIds || [],
+      profileImageIds: Array.isArray(args.profileImageIds)
+        ? args.profileImageIds
+        : [],
 
       // Subscription
-      subscriptionPlan: args.subscriptionPlan || "free",
+      subscriptionPlan: coalesce(args.subscriptionPlan, "free"),
       subscriptionExpiresAt:
         args.subscriptionPlan && args.subscriptionPlan !== "free"
           ? Date.now() + 30 * 24 * 60 * 60 * 1000 // 30 days in milliseconds
@@ -1242,27 +1863,22 @@ export const createProfile = mutation({
         break;
       }
     }
-    // Check for at least one image
     const images =
       profileDataForCheck.profileImageUrls ||
       profileDataForCheck.profileImageIds;
     const hasImage = Array.isArray(images) && images.length > 0;
+
     if (allEssentialFilled && hasImage) {
       profileData.isProfileComplete = true;
-      (
-        profileData as Partial<Omit<Profile, "_id">> & {
-          isOnboardingComplete?: boolean;
-        }
-      ).isOnboardingComplete = true;
+      (profileData as any).isOnboardingComplete = true;
     } else {
-      if (!args.isProfileComplete) {
+      if (args.isProfileComplete === true) {
+        profileData.isProfileComplete = true;
+        (profileData as any).isOnboardingComplete = true;
+      } else {
         profileData.isProfileComplete = false;
+        (profileData as any).isOnboardingComplete = false;
       }
-      (
-        profileData as Partial<Omit<Profile, "_id">> & {
-          isOnboardingComplete?: boolean;
-        }
-      ).isOnboardingComplete = false;
     }
 
     // Insert the profile with runtime-correct fields; suppress TS strictness
@@ -1337,7 +1953,7 @@ export const getMyMatches = query({
               lastActivity: match.lastActivity,
             }
           : null;
-      }),
+      })
     );
 
     return matchProfiles.filter(Boolean);
@@ -1393,7 +2009,7 @@ export const getProfileDetailPageData = action({
     // Get current user
     const currentUser: User | null = await ctx.runQuery(
       api.users.getCurrentUserWithProfile,
-      {},
+      {}
     );
     const currentUserId = currentUser?._id as Id<"users"> | undefined;
 
@@ -1452,7 +2068,7 @@ export const getProfileDetailPageData = action({
         api.images.getProfileImages,
         {
           userId: currentUserId,
-        },
+        }
       );
     }
 
@@ -1476,8 +2092,8 @@ export const searchPublicProfiles = query({
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any"),
-      ),
+        v.literal("any")
+      )
     ),
     city: v.optional(v.string()),
     country: v.optional(v.string()),
@@ -1582,7 +2198,7 @@ export const searchPublicProfiles = query({
     const paginatedUsers = filteredUsers.slice(start, end);
 
     // Map to public profile format
-    const searchResults = paginatedUsers.map((u) => {
+    const searchResults = paginatedUsers.map((u: any) => {
       const profile = u.profile!; // We know it's not null because of the filter
       return {
         userId: u._id,

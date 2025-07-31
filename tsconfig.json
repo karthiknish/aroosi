@@ -24,6 +24,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/lib/*": ["./src/lib/*"],
+      "@lib/*": ["./src/lib/*"],
       "@convex/*": ["./convex/*"]
     },
     "typeRoots": ["./types", "./node_modules/@types"]

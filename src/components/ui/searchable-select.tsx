@@ -39,9 +39,17 @@ export function SearchableSelect<T extends string>(
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn(
+            // Ensure the chevron stays inside and text clips properly
+            "w-full justify-between overflow-hidden rounded-md border border-input bg-white px-3 py-2",
+            // Constrain height to align with inputs and prevent icon overflow
+            "h-10",
+            // Make sure inner content doesn't bleed outside
+            "[&>*]:pointer-events-none",
+            className
+          )}
         >
-          {selectedLabel ?? placeholder ?? "Select..."}
+          <span className="truncate">{selectedLabel ?? placeholder ?? "Select..."}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -67,8 +75,8 @@ export function SearchableSelect<T extends string>(
                   opt.value === value && "bg-gray-100 font-medium"
                 )}
               >
-                {opt.label}
-                {opt.value === value && <Check className="h-4 w-4" />}
+                <span className="truncate pr-2">{opt.label}</span>
+                {opt.value === value && <Check className="h-4 w-4 flex-shrink-0" />}
               </button>
             ))}
             {filtered.length === 0 && (

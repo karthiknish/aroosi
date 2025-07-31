@@ -177,7 +177,20 @@ export const enhancedValidationSchemas = {
       .string()
       .min(1, errorMessages.required(fieldDisplayNames.occupation))
       .max(100, errorMessages.maxLength(fieldDisplayNames.occupation, 100)),
-    annualIncome: z.string().optional(),
+    // Expect a currency symbol and numeric amount with optional grouping and decimals.
+    // Examples: "$30,000", "£45,500.00", "€120000", "₹2,50,000.50", "₹ 2,50,000"
+    annualIncome: z
+      .string()
+      .regex(
+        // Pattern notes:
+        // - Optional single non-digit currency symbol at start (₹ $ € £ etc.), optionally with a space
+        // - Amount can be grouped either as 1,234,567 or Indian style 12,34,567
+        // - Allows plain digits without separators too
+        // - Optional decimal part with 1-2 digits
+        /^(?:[^\d\s])?\s*(?:\d{1,3}(?:,\d{2,3})+|\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?$/i,
+        "Enter an amount with a currency symbol, e.g. $45,500.00 or ₹2,50,000"
+      )
+      .optional(),
     aboutMe: z
       .string()
       .min(1, errorMessages.required(fieldDisplayNames.aboutMe))
