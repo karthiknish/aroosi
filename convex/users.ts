@@ -1021,6 +1021,24 @@ export const updateProfileImageOrder = mutation({
 
 export const createProfile = mutation({
   args: {
+    // Align required fields with frontend onboarding requirements
+    fullName: v.string(),
+    dateOfBirth: v.string(),
+    gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
+    city: v.string(),
+    aboutMe: v.string(),
+    occupation: v.string(),
+    education: v.string(),
+    height: v.string(),
+    maritalStatus: v.union(
+      v.literal("single"),
+      v.literal("divorced"),
+      v.literal("widowed"),
+      v.literal("annulled")
+    ),
+    phoneNumber: v.string(),
+
+    // Optional fields (kept as before)
     profileFor: v.optional(
       v.union(
         v.literal("self"),
@@ -1030,26 +1048,11 @@ export const createProfile = mutation({
         v.literal("sister"),
         v.literal("friend"),
         v.literal("relative"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
-    fullName: v.string(),
-    dateOfBirth: v.string(),
-    gender: v.union(v.literal("male"), v.literal("female"), v.literal("other")),
-    city: v.string(),
     country: v.optional(v.string()),
-    aboutMe: v.string(),
-    height: v.string(),
-    maritalStatus: v.union(
-      v.literal("single"),
-      v.literal("divorced"),
-      v.literal("widowed"),
-      v.literal("annulled"),
-    ),
-    education: v.string(),
-    occupation: v.string(),
     annualIncome: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
     email: v.optional(v.string()),
     profileImageIds: v.optional(v.array(v.id("_storage"))),
     isProfileComplete: v.optional(v.boolean()),
@@ -1058,8 +1061,8 @@ export const createProfile = mutation({
         v.literal("male"),
         v.literal("female"),
         v.literal("other"),
-        v.literal("any"),
-      ),
+        v.literal("any")
+      )
     ),
     motherTongue: v.optional(
       v.union(
@@ -1071,16 +1074,16 @@ export const createProfile = mutation({
         v.literal("balochi"),
         v.literal("nuristani"),
         v.literal("punjabi"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     religion: v.optional(
       v.union(
         v.literal("muslim"),
         v.literal("hindu"),
         v.literal("sikh"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     ethnicity: v.optional(
       v.union(
@@ -1095,8 +1098,8 @@ export const createProfile = mutation({
         v.literal("pashai"),
         v.literal("qizilbash"),
         v.literal("punjabi"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     diet: v.optional(
       v.union(
@@ -1106,37 +1109,33 @@ export const createProfile = mutation({
         v.literal("vegan"),
         v.literal("eggetarian"),
         v.literal("other"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     physicalStatus: v.optional(
       v.union(
         v.literal("normal"),
         v.literal("physically-challenged"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     smoking: v.optional(
       v.union(
         v.literal("no"),
         v.literal("occasionally"),
         v.literal("yes"),
-        v.literal(""),
-      ),
+        v.literal("")
+      )
     ),
     drinking: v.optional(
-      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes")),
+      v.union(v.literal("no"), v.literal("occasionally"), v.literal("yes"))
     ),
     partnerPreferenceAgeMin: v.optional(v.number()),
     partnerPreferenceAgeMax: v.optional(v.number()),
     partnerPreferenceCity: v.optional(v.array(v.string())),
     // Subscription related fields
     subscriptionPlan: v.optional(
-      v.union(
-        v.literal("free"),
-        v.literal("premium"),
-        v.literal("premiumPlus"),
-      ),
+      v.union(v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))
     ),
   },
   handler: async (ctx, args) => {
