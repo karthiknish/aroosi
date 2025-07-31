@@ -165,49 +165,99 @@ export default function CustomSignupForm({
       const data = await res.json().catch(() => ({} as unknown));
 
       if (res.status === 409) {
-        showErrorToast(
-          typeof data?.message === "string"
-            ? data.message
-            : "An account with this email already exists"
-        );
+        // Conflict: user already exists
+        const msg =
+          (data as any)?.error ||
+          (data as any)?.message ||
+          "An account with this email already exists";
+        showErrorToast(msg);
         setIsLoading(false);
         return;
       }
 
       if (res.status === 400) {
-        // Developer log for diagnostics, but present a friendly message to users
-        try {
-          console.error("Signup validation failed", data);
-        } catch {}
-        // Provide targeted hints for common enum/required issues
-        const details = Array.isArray((data as any)?.details)
-          ? (data as any).details.map((d: any) => d?.path?.join(".")).filter(Boolean)
-          : [];
-        const hint =
-          details.length > 0
-            ? `Invalid fields: ${details.slice(0, 5).join(", ")}${
-                details.length > 5 ? " and more" : ""
-              }`
-            : "Ensure gender is male/female/other and marital status is single/divorced/widowed/annulled. Also complete fullName, dateOfBirth, city, aboutMe, occupation, education, height, phoneNumber.";
-        showErrorToast(
-          `We couldn’t create your account. ${hint}`
-        );
+        // Bad Request: show precise, user-friendly errors
+        let userMsg = "We couldn’t create your account.";
+        const raw = data as any;
+
+        // 1) Explicit "Profile incomplete" from server gate
+        if (raw?.error && String(raw.error).toLowerCase().includes("profile incomplete")) {
+          const fields: string[] = Array.isArray(raw.details) ? raw.details : [];
+          if (fields.length > 0) {
+            userMsg = `Please complete: ${fields.slice(0, 6).join(", ")}${fields.length > 6 ? " and more" : ""}.`;
+          } else {
+            userMsg = "Your profile is missing required information. Please complete all fields and try again.";
+          }
+          showErrorToast(userMsg);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2) Zod validation errors shape { details: [{ path, message } ...] }
+        if (Array.isArray(raw?.details) && raw.details.length > 0) {
+          const fields = raw.details
+            .map((d: any) => d?.path?.join("."))
+            .filter(Boolean);
+          const messages = raw.details
+            .map((d: any) => (typeof d?.message === "string" ? d.message : null))
+            .filter(Boolean);
+
+          if (fields.length > 0) {
+            userMsg = `Invalid or missing: ${fields.slice(0, 6).join(", ")}${fields.length > 6 ? " and more" : ""}.`;
+          } else if (messages.length > 0) {
+            userMsg = messages.slice(0, 2).join(" • ");
+          } else {
+            userMsg = "Invalid input data. Please review your details and try again.";
+          }
+          showErrorToast(userMsg);
+          setIsLoading(false);
+          return;
+        }
+
+        // 3) Generic 400 with message
+        if (typeof raw?.message === "string") {
+          showErrorToast(raw.message);
+          setIsLoading(false);
+          return;
+        }
+
+        showErrorToast("We couldn’t create your account. Please review your details and try again.");
         setIsLoading(false);
         return;
       }
 
       if (!res.ok) {
-        showErrorToast(
-          typeof data?.message === "string"
-            ? data.message
-            : "Failed to create account"
-        );
+        const raw = data as any;
+        const msg =
+          raw?.error ||
+          raw?.message ||
+          (typeof raw === "string" ? raw : null) ||
+          "Failed to create account";
+        showErrorToast(msg);
         setIsLoading(false);
         return;
       }
 
       // Success: log-in established via server cookie; follow server-provided redirect when available
       try {
+        // Clean up any onboarding/local wizard storage to avoid stale state post-signup
+        try {
+          const mod = await import("@/lib/utils/onboardingStorage");
+          if (mod && typeof mod.clearAllOnboardingData === "function") {
+            mod.clearAllOnboardingData();
+          } else if (typeof window !== "undefined") {
+            // Fallback: remove known keys if util not available
+            const { STORAGE_KEYS } = await import("@/lib/utils/onboardingStorage");
+            if (STORAGE_KEYS) {
+              try { localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION); } catch {}
+              try { localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING); } catch {}
+              try { localStorage.removeItem(STORAGE_KEYS.PENDING_IMAGES); } catch {}
+            }
+          }
+        } catch (e) {
+          console.warn("Onboarding storage cleanup failed (non-fatal):", e);
+        }
+
         if (onComplete) onComplete();
       } catch (err) {
         console.warn("onComplete callback threw, continuing navigation", err);

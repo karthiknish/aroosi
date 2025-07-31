@@ -1,27 +1,53 @@
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
-
-
 import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
-  const { isProfileComplete, isOnboardingComplete } = useAuthContext();
+  const {
+    isProfileComplete,
+    isOnboardingComplete,
+    isAuthenticated,
+    isLoaded,
+    refreshUser,
+  } = useAuthContext();
+
+  const router = useRouter();
+
+  // Compute redirect only after auth state is loaded
   const needsWizard = !isProfileComplete || !isOnboardingComplete;
   const finalRedirect = needsWizard ? "/" : "/search";
 
-  const router = useRouter();
-  // Temporarily disabled for native auth migration
-  // const { isSignedIn } = useUser();
-  const isSignedIn = false; // Placeholder
-
-  // redirect after sign-in
-  if (isSignedIn) {
-    router.push(finalRedirect);
-    return null;
-  }
+  // If already authenticated, ensure we have fresh user data then redirect correctly
+  React.useEffect(() => {
+    let cancelled = false;
+    const go = async () => {
+      if (!isLoaded || !isAuthenticated) return;
+      try {
+        await refreshUser();
+      } catch {
+        // ignore
+      }
+      if (!cancelled) {
+        router.push(finalRedirect);
+      }
+    };
+    void go();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoaded,
+    isAuthenticated,
+    isProfileComplete,
+    isOnboardingComplete,
+    finalRedirect,
+    refreshUser,
+    router,
+  ]);
 
   return (
     <div className="min-h-screen w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">

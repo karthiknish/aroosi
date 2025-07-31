@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       role: user.role || "user",
     });
 
-    return NextResponse.json({
+    // Issue HttpOnly cookie so middleware can authenticate protected routes
+    const response = NextResponse.json({
       message: "Signed in successfully",
       token,
       user: {
@@ -60,7 +61,23 @@ export async function POST(request: NextRequest) {
         email: user.email,
         role: user.role,
       },
+      redirectTo: "/search",
     });
+
+    // Set both an HttpOnly cookie (server-readable) and a non-HttpOnly cookie (if needed)
+    // Primary: HttpOnly cookie for middleware
+    response.headers.append(
+      "Set-Cookie",
+      `auth-token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`,
+    );
+
+    // Optional compatibility cookie (non-HttpOnly) if any legacy code reads it from document.cookie
+    response.headers.append(
+      "Set-Cookie",
+      `authTokenPublic=${token}; Path=/; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`,
+    );
+
+    return response;
   } catch (error) {
     console.error("Signin error:", error);
     if (error instanceof z.ZodError) {

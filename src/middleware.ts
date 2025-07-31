@@ -64,13 +64,32 @@ export async function middleware(request: NextRequest) {
 
   // For protected routes, check authentication
   const authHeader = request.headers.get("authorization");
-  const cookieToken = request.cookies.get("auth-token")?.value;
+  const jwtCookie = request.cookies.get("auth-token")?.value;
+  const sessionCookie = request.cookies.get("aroosi_session")?.value;
 
   // Try to get token from Authorization header or cookie
-  const token = extractTokenFromHeader(authHeader) || cookieToken;
+  // NOTE: localStorage tokens are NOT accessible to the middleware.
+  // Ensure the auth-token is also set as an HttpOnly cookie by the server at sign-in.
+  const token = extractTokenFromHeader(authHeader) || jwtCookie;
+
+  // If no JWT token, allow cookie session created during signup
+  if (!token && sessionCookie) {
+    // Best-effort decode of light session cookie to gate navigation
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(sessionCookie, "base64url").toString("utf8")
+      ) as { email?: string; userId?: string };
+      if (decoded?.email || decoded?.userId) {
+        // Consider authenticated for navigation purposes; /api/auth/me will hydrate full user
+        return NextResponse.next();
+      }
+    } catch {
+      // fall through to redirect
+    }
+  }
 
   if (!token) {
-    // No token found, redirect to sign-in
+    // No token or valid session cookie; redirect to sign-in
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", pathname);
     return NextResponse.redirect(signInUrl);
@@ -88,7 +107,21 @@ export async function middleware(request: NextRequest) {
 
     return response;
   } catch (error) {
-    // Invalid token, redirect to sign-in
+    // Invalid token, but if we have a valid-looking session cookie, allow and let client hydrate
+    if (sessionCookie) {
+      try {
+        const decoded = JSON.parse(
+          Buffer.from(sessionCookie, "base64url").toString("utf8")
+        ) as { email?: string; userId?: string };
+        if (decoded?.email || decoded?.userId) {
+          return NextResponse.next();
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Otherwise redirect to sign-in
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", pathname);
     const response = NextResponse.redirect(signInUrl);
