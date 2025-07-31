@@ -29,9 +29,61 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
   const [formData, setFormData] = useState<WizardFormData>({});
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage once - use a unified storage key
+  const hasAuthSession = () => {
+    if (typeof document === "undefined") return false;
+    const cookies = document.cookie.split(";").map((c) => c.trim());
+    return (
+      cookies.some((c) => c.startsWith("auth-token=")) ||
+      cookies.some((c) => c.startsWith("authTokenPublic="))
+    );
+  };
+
+  // If there is an auth-token session, there should be no ProfileCreation wizard state.
+  // On first mount, detect auth-token cookie and clear any persisted wizard data.
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    const hasAuthToken =
+      document.cookie
+        .split(";")
+        .map((c) => c.trim())
+        .some((c) => c.startsWith("auth-token=")) ||
+      document.cookie
+        .split(";")
+        .map((c) => c.trim())
+        .some((c) => c.startsWith("authTokenPublic="));
+
+    if (hasAuthToken) {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
+      } catch {}
+      setFormData({});
+      setStep(1);
+      setIsLoaded(true);
+      return;
+    }
+
+    // If there is an auth session, nuke wizard state immediately (including legacy keys)
+    try {
+      if (hasAuthSession()) {
+        try {
+          localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
+        } catch {}
+        try {
+          localStorage.removeItem("onboarding-form-data");
+        } catch {}
+        try {
+          localStorage.removeItem("onboarding-step");
+        } catch {}
+        try {
+          localStorage.removeItem("pending-images");
+        } catch {}
+        setFormData({});
+        setStep(1);
+        setIsLoaded(true);
+        return;
+      }
+    } catch {}
 
     try {
       // Try to load from the unified profile creation storage
@@ -84,6 +136,35 @@ export function ProfileWizardProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Don't persist until we've loaded initial data
     if (!isLoaded || typeof window === "undefined") return;
+
+    // If authenticated, ensure storage is cleared and skip persisting
+    try {
+      const hasAuthToken =
+        document.cookie
+          .split(";")
+          .map((c) => c.trim())
+          .some((c) => c.startsWith("auth-token=")) ||
+        document.cookie
+          .split(";")
+          .map((c) => c.trim())
+          .some((c) => c.startsWith("authTokenPublic="));
+
+      if (hasAuthToken) {
+        try {
+          localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
+        } catch {}
+        try {
+          localStorage.removeItem("onboarding-form-data");
+        } catch {}
+        try {
+          localStorage.removeItem("onboarding-step");
+        } catch {}
+        try {
+          localStorage.removeItem("pending-images");
+        } catch {}
+        return;
+      }
+    } catch {}
 
     try {
       const dataToStore = {

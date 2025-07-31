@@ -129,14 +129,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error("Failed to fetch user");
         }
 
+        // If server rotated cookies, ensure our client state reflects an authenticated session
+        // We don't need to read Set-Cookie; presence of 200 OK is enough to mark cookie-session
         const data = await response.json();
+
+        // If we authenticated via cookies (no bearer used), set sentinel token early
+        if (!authToken) {
+          setToken((prev) => (prev ? prev : "cookie"));
+        }
+
         return data.user;
       } catch (error) {
         console.error("Error fetching user:", error);
         return null;
       }
     },
-    [],
+    []
   );
 
   // Refresh user data
@@ -169,34 +177,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       return token || getStoredToken();
     },
-    [token, getStoredToken, refreshUser],
+    [token, getStoredToken, refreshUser]
   );
 
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = getStoredToken();
+
+      // Helper to finalize authenticated state quickly
+      const finalizeAuth = (u: User) => {
+        setUser(u);
+        // If no real token is stored, mark cookie session
+        setToken((prev) => (prev && prev !== "" ? prev : "cookie"));
+      };
+
       // Try local token first, else fall back to cookie-only session
       if (storedToken) {
         setToken(storedToken);
         const userData = await fetchUser(storedToken);
         if (userData) {
-          setUser(userData);
+          finalizeAuth(userData);
         } else {
           // Invalid token, remove it and try cookie-based session
           removeToken();
           const cookieUser = await fetchUser(undefined);
           if (cookieUser) {
-            setUser(cookieUser);
-            setToken("cookie"); // sentinel
+            finalizeAuth(cookieUser);
           }
         }
       } else {
         // No local token: try cookie-based session
         const cookieUser = await fetchUser(undefined);
         if (cookieUser) {
-          setUser(cookieUser);
-          setToken("cookie"); // sentinel
+          finalizeAuth(cookieUser);
         }
       }
       setIsLoading(false);
@@ -226,7 +240,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          const errorMessage = (data && (data.error as string)) || "Sign in failed";
+          const errorMessage =
+            (data && (data.error as string)) || "Sign in failed";
           setError(errorMessage);
           // Ensure no residual token/user remains on failure
           removeToken();
@@ -252,7 +267,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [storeToken, removeToken],
+    [storeToken, removeToken]
   );
 
   // Sign up with email/password
@@ -261,7 +276,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       email: string,
       password: string,
       firstName: string,
-      lastName: string,
+      lastName: string
     ) => {
       try {
         setError(null);
@@ -289,7 +304,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [],
+    []
   );
 
   // Verify OTP
@@ -326,7 +341,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [storeToken],
+    [storeToken]
   );
 
   // Sign in with Google
@@ -363,7 +378,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [storeToken],
+    [storeToken]
   );
 
   // Sign out
@@ -373,6 +388,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
     router.push("/sign-in");
   }, [removeToken, router]);
+
+  // Optional: if cookies exist but token is null (first paint race), trigger a one-time refresh
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (isLoading) return;
+    if (token && token !== "") return;
+
+    const cookies = document.cookie.split(";").map((c) => c.trim());
+    const hasAuthCookie =
+      cookies.some((c) => c.startsWith("auth-token=")) ||
+      cookies.some((c) => c.startsWith("authTokenPublic="));
+
+    if (hasAuthCookie) {
+      // Kick a background refresh to flip state to authenticated
+      void refreshUser();
+    }
+    // run once post-load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
 
   // Computed values for legacy compatibility
   // Treat cookie-established sessions as authenticated too, since server sets HttpOnly JWT.
