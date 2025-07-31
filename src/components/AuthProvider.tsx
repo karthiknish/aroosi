@@ -210,6 +210,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async (email: string, password: string) => {
       try {
         setError(null);
+
+        // Always clear any existing local token BEFORE attempting sign-in to avoid stale redirects
+        removeToken();
+        setUser(null);
+
         const response = await fetch("/api/auth/signin", {
           method: "POST",
           headers: {
@@ -218,25 +223,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
           body: JSON.stringify({ email, password }),
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          const errorMessage = data.error || "Sign in failed";
+          const errorMessage = (data && (data.error as string)) || "Sign in failed";
           setError(errorMessage);
+          // Ensure no residual token/user remains on failure
+          removeToken();
+          setUser(null);
           return { success: false, error: errorMessage };
         }
 
-        storeToken(data.token);
-        setUser(data.user);
+        // Success: store token and user
+        if (data && data.token) {
+          storeToken(data.token);
+        }
+        if (data && data.user) {
+          setUser(data.user);
+        }
         return { success: true };
       } catch (error) {
         console.error("Sign in error:", error);
         const errorMessage = "Network error";
+        // Ensure no residual token/user remains on error
+        removeToken();
+        setUser(null);
         setError(errorMessage);
         return { success: false, error: errorMessage };
       }
     },
-    [storeToken],
+    [storeToken, removeToken],
   );
 
   // Sign up with email/password
@@ -355,11 +371,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     removeToken();
     setUser(null);
     setError(null);
-    router.push("/");
+    router.push("/sign-in");
   }, [removeToken, router]);
 
   // Computed values for legacy compatibility
-  const isAuthenticated = !!user && !!token; // token may be "cookie" sentinel when authenticated via HttpOnly cookie
+  // Treat cookie-established sessions as authenticated too, since server sets HttpOnly JWT.
+  // This avoids redirecting to "/" or sign-in when the access token is only in cookies.
+  const hasRealToken = !!token && token !== "";
+  const isCookieSession = token === "cookie";
+  const isAuthenticated = !!user && (hasRealToken || isCookieSession);
   const isSignedIn = isAuthenticated;
   const isLoaded = !isLoading;
   const isProfileComplete = user?.profile?.isProfileComplete || false;

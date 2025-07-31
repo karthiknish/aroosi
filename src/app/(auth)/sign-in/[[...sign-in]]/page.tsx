@@ -17,20 +17,27 @@ export default function SignInPage() {
 
   const router = useRouter();
 
-  // Compute redirect only after auth state is loaded
-  const needsWizard = !isProfileComplete || !isOnboardingComplete;
-  const finalRedirect = needsWizard ? "/" : "/search";
+  // Compute redirect only after auth state is loaded and authenticated
+  // Redirect to /search after sign-in; do NOT send to "/" (home) anymore
+  const isTrulyAuthenticated = isAuthenticated;
+  const finalRedirect = "/search";
 
-  // If already authenticated, ensure we have fresh user data then redirect correctly
+  // Only redirect when actually authenticated and state has loaded
   React.useEffect(() => {
     let cancelled = false;
     const go = async () => {
-      if (!isLoaded || !isAuthenticated) return;
+      // Do nothing until auth state is loaded
+      if (!isLoaded) return;
+
+      // Only proceed when authenticated
+      if (!isTrulyAuthenticated) return;
+
       try {
         await refreshUser();
       } catch {
         // ignore
       }
+
       if (!cancelled) {
         router.push(finalRedirect);
       }
@@ -90,7 +97,9 @@ export default function SignInPage() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <CustomSignInForm onComplete={() => router.push(finalRedirect)} />
+          {/* Always show sign-in form for maximum safety.
+             If a valid session exists, the effect above will redirect quickly. */}
+          <CustomSignInForm onComplete={() => router.push("/search")} />
           <p className="text-center text-sm mt-4">
             <a
               href="/forgot-password"

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { signJWT } from "@/lib/auth/jwt";
+import { signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 
@@ -15,8 +15,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = signinSchema.parse(body);
 
-    // Get user by email
-    const user = await fetchQuery(api.users.getUserByEmail, { email });
+    // Get user by email (normalize to lower-case)
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await fetchQuery(api.users.getUserByEmail, { email: normalizedEmail });
     if (!user) {
       return NextResponse.json(
         { error: "Invalid email or password" },
@@ -45,17 +46,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate JWT token
-    const token = await signJWT({
+    // Generate access & refresh tokens
+    const accessToken = await signAccessJWT({
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role || "user",
+    });
+    const refreshToken = await signRefreshJWT({
       userId: user._id.toString(),
       email: user.email,
       role: user.role || "user",
     });
 
-    // Issue HttpOnly cookie so middleware can authenticate protected routes
+    // Issue HttpOnly cookies so middleware can authenticate protected routes
     const response = NextResponse.json({
       message: "Signed in successfully",
-      token,
+      token: accessToken,
       user: {
         id: user._id,
         email: user.email,
@@ -64,17 +70,26 @@ export async function POST(request: NextRequest) {
       redirectTo: "/search",
     });
 
-    // Set both an HttpOnly cookie (server-readable) and a non-HttpOnly cookie (if needed)
-    // Primary: HttpOnly cookie for middleware
+    // Compute secure cookie attributes based on environment
+    const isProd = process.env.NODE_ENV === "production";
+    const baseCookieAttrs = `Path=/; HttpOnly; SameSite=Lax; Max-Age=`;
+    const secureAttr = isProd ? "; Secure" : "";
+
+    // Set access token cookie (short-lived) - 15 minutes
+    response.headers.set(
+      "Set-Cookie",
+      `auth-token=${accessToken}; ${baseCookieAttrs}${60 * 15}${secureAttr}`
+    );
+    // Append refresh token cookie (7 days)
     response.headers.append(
       "Set-Cookie",
-      `auth-token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`,
+      `refresh-token=${refreshToken}; ${baseCookieAttrs}${60 * 60 * 24 * 7}${secureAttr}`
     );
 
-    // Optional compatibility cookie (non-HttpOnly) if any legacy code reads it from document.cookie
+    // Optional compatibility cookie (non-HttpOnly) for legacy code (access token only)
     response.headers.append(
       "Set-Cookie",
-      `authTokenPublic=${token}; Path=/; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`,
+      `authTokenPublic=${accessToken}; Path=/; SameSite=Lax; Max-Age=${60 * 15}${secureAttr}`
     );
 
     return response;

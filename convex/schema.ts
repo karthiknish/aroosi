@@ -16,6 +16,8 @@ export default defineSchema({
     googleId: v.optional(v.string()), // For Google OAuth users
     emailVerified: v.optional(v.boolean()),
     createdAt: v.optional(v.number()),
+    // Session management: single-use refresh token rotation counter
+    refreshVersion: v.optional(v.number()),
   })
     .index("by_email", ["email"])
     .index("by_googleId", ["googleId"]),

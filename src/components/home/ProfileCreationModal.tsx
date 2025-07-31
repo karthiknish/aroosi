@@ -518,6 +518,13 @@ export function ProfileCreationModal({
         // Mark as submitted after passing duplicate check
         setHasSubmittedProfile(true);
 
+        // Also preemptively clear any previous error toasts/state about missing profile
+        try {
+          updateContextData({
+            lastProfileSubmissionAt: Date.now(),
+          });
+        } catch {}
+
         // Always use the latest context data for submission
         const merged: Record<string, unknown> = {
           ...contextData,
@@ -705,6 +712,14 @@ export function ProfileCreationModal({
           console.warn("Failed to clear onboarding data:", err);
           // Don't block the success flow for this
         }
+
+        // Mark completion flags locally to eliminate stale 'profile not created' toasts
+        try {
+          updateContextData({
+            isProfileComplete: true,
+            isOnboardingComplete: true,
+          });
+        } catch {}
 
         showSuccessToast("Profile created successfully!");
         handleClose();

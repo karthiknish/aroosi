@@ -37,22 +37,43 @@ export default function ProfileCompletionGuard({
   } = useAuthContext();
   const router = useRouter();
 
+  // Add robust diagnostics to trace guard-driven redirects
+  React.useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.info("[Guard] effect enter", {
+      isLoaded,
+      isAuthenticated,
+      isProfileComplete,
+      isOnboardingComplete,
+      requireComplete,
+      redirectTo,
+      path: typeof window !== "undefined" ? window.location.pathname : "(ssr)",
+    });
+  }, [isLoaded, isAuthenticated, isProfileComplete, isOnboardingComplete, requireComplete, redirectTo]);
+
   React.useEffect(() => {
     let cancelled = false;
     const run = async () => {
       // Wait until auth state is loaded
-      if (!isLoaded) return;
+      if (!isLoaded) {
+        // eslint-disable-next-line no-console
+        console.info("[Guard] waiting for auth to load");
+        return;
+      }
 
-      // Ensure freshness
+      // Ensure freshness (do not loop if refreshUser triggers state changes)
       try {
         await refreshUser();
-      } catch {
-        // ignore
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("[Guard] refreshUser failed", e);
       }
       if (cancelled) return;
 
       // Not authenticated → send to sign-in with return path
       if (!isAuthenticated) {
+        // eslint-disable-next-line no-console
+        console.warn("[Guard] redirecting: not authenticated");
         try {
           const dest = new URL("/sign-in", window.location.origin);
           dest.searchParams.set("redirect_url", window.location.pathname);
@@ -67,10 +88,19 @@ export default function ProfileCompletionGuard({
       if (requireComplete) {
         const needsWizard = !isProfileComplete || !isOnboardingComplete;
         if (needsWizard) {
+          // eslint-disable-next-line no-console
+          console.warn("[Guard] redirecting: profile incomplete", {
+            isProfileComplete,
+            isOnboardingComplete,
+            to: redirectTo || "/",
+          });
           router.replace(redirectTo || "/");
           return;
         }
       }
+
+      // eslint-disable-next-line no-console
+      console.info("[Guard] allow render");
     };
     void run();
     return () => {

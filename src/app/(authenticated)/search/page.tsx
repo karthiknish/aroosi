@@ -124,10 +124,45 @@ export interface ProfileSearchResult {
 }
 
 export default function SearchProfilesPage() {
-  const { token, isSignedIn, profile: rawProfile } = useAuthContext();
+  const { token, isSignedIn, isLoaded, isAuthenticated, profile: rawProfile } = useAuthContext();
   const profile = rawProfile as { subscriptionPlan?: string } | null;
   const router = useRouter();
   const { trackUsage } = useUsageTracking(token ?? undefined);
+
+  // Debug: trace mount, auth state, and any unexpected redirects
+  React.useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.info("[Search] mount", {
+      tokenPresent: !!token,
+      isSignedIn,
+      isAuthenticated,
+      isLoaded,
+    });
+    return () => {
+      // eslint-disable-next-line no-console
+      console.info("[Search] unmount");
+    };
+  }, [token, isSignedIn, isAuthenticated, isLoaded]);
+
+  // Defensive: if client-side code tries to route away, log it explicitly
+  const originalPush = router.push.bind(router);
+  const originalReplace = router.replace.bind(router);
+  React.useEffect(() => {
+    (router as any).push = (href: string, ...args: any[]) => {
+      // eslint-disable-next-line no-console
+      console.warn("[Search] router.push called", { href });
+      return originalPush(href as any, ...args);
+    };
+    (router as any).replace = (href: string, ...args: any[]) => {
+      // eslint-disable-next-line no-console
+      console.warn("[Search] router.replace called", { href });
+      return originalReplace(href as any, ...args);
+    };
+    return () => {
+      (router as any).push = originalPush;
+      (router as any).replace = originalReplace;
+    };
+  }, [router, originalPush, originalReplace]);
   const [city, setCity] = React.useState("");
   const [country, setCountry] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
@@ -148,6 +183,15 @@ export default function SearchProfilesPage() {
   // All params are already in state
 
   // React Query for profiles
+  // Extra debug: log when query is enabled/disabled by auth signals
+  React.useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.info("[Search] query enabled?", {
+      enabled: !!token && isSignedIn,
+      tokenPresent: !!token,
+      isSignedIn,
+    });
+  }, [token, isSignedIn]);
   const {
     data: searchResults,
     isLoading: loadingProfiles,
@@ -326,7 +370,25 @@ export default function SearchProfilesPage() {
     );
   }
 
+  // Visual on-page banner to verify the page truly mounted even if console logs are filtered
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
   return (
+    <>
+      <div style={{
+        position: "fixed",
+        top: 64,
+        left: 0,
+        right: 0,
+        zIndex: 9999,
+        display: mounted ? "block" : "none",
+        background: "#111827",
+        color: "#fff",
+        padding: "6px 12px",
+        fontSize: 12
+      }}>
+        [Search] mounted • token={String(!!token)} • isSignedIn={String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} • isLoaded={String(isLoaded)}
+      </div>
     <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
       {/* Decorative color pop circles */}
       <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
@@ -449,7 +511,12 @@ export default function SearchProfilesPage() {
             )}
           </motion.div>
         </section>
-        {loadingProfiles ||
+        {(!token || !isSignedIn) ? (
+          <div className="text-center py-20">
+            <h2 className="text-xl font-semibold mb-2">Authorizing…</h2>
+            <p className="text-gray-600">Waiting for authentication to load. If this persists, cookies may be blocked.</p>
+          </div>
+        ) : loadingProfiles ||
         loadingImages ||
         profiles === undefined ||
         userImages === undefined ? (
@@ -653,5 +720,6 @@ export default function SearchProfilesPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

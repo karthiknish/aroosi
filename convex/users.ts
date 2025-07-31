@@ -38,6 +38,7 @@ export interface User {
   googleId?: string;
   emailVerified?: boolean;
   hashedPassword?: string;
+  refreshVersion?: number;
 }
 
 // Public-facing profile type (for getUserPublicProfile)
@@ -295,6 +296,7 @@ export const internalCreateProfile = internalMutation(
       isProfileComplete: args.isProfileComplete ?? false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      banned: false,
 
       profileFor: coalesce(args.profileFor, "self"),
       fullName: coalesce(args.fullName, ""),
@@ -1779,6 +1781,7 @@ export const createProfile = mutation({
       isProfileComplete: args.isProfileComplete ?? false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      banned: false,
 
       // Basic info
       profileFor: coalesce(args.profileFor, "self"),
@@ -2327,7 +2330,7 @@ export const grantSpotlightBadge = mutation({
       profile.subscriptionPlan !== "premiumPlus"
     ) {
       throw new ConvexError(
-        "Spotlight badge is only available for Premium and Premium Plus subscribers",
+        "Spotlight badge is only available for Premium and Premium Plus subscribers"
       );
     }
 
@@ -2487,7 +2490,7 @@ export const getProfileViewers = query({
     const views = await ctx.db
       .query("profileViews")
       .withIndex("by_profileId_createdAt", (q) =>
-        q.eq("profileId", args.profileId),
+        q.eq("profileId", args.profileId)
       )
       .order("desc")
       .take(100);
@@ -2508,7 +2511,7 @@ export const internalUpdateSubscription = internalMutation(
       email: string;
       plan: "free" | "premium" | "premiumPlus";
       expiresAt?: number;
-    },
+    }
   ) => {
     const user = await ctx.runQuery(api.users.getUserByEmail, {
       email: args.email,
@@ -2529,7 +2532,7 @@ export const internalUpdateSubscription = internalMutation(
       subscriptionPlan: args.plan,
       subscriptionExpiresAt: args.expiresAt ?? undefined,
     });
-  },
+  }
 );
 
 export const stripeUpdateSubscription = action({
@@ -2538,7 +2541,7 @@ export const stripeUpdateSubscription = action({
     plan: v.union(
       v.literal("free"),
       v.literal("premium"),
-      v.literal("premiumPlus"),
+      v.literal("premiumPlus")
     ),
   },
   handler: async (ctx, args) => {
@@ -2547,6 +2550,33 @@ export const stripeUpdateSubscription = action({
       plan: args.plan,
       expiresAt: Date.now() + 31 * 24 * 60 * 60 * 1000, // extend 31 days
     });
+  },
+});
+
+/**
+ * Get the current refreshVersion for a user by id.
+ */
+export const getRefreshVersion = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+    return (user as User).refreshVersion ?? 0;
+  },
+});
+
+/**
+ * Increment and return the new refreshVersion for a user (rotation).
+ */
+export const incrementRefreshVersion = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+    const current = (user as User).refreshVersion ?? 0;
+    const next = current + 1;
+    await ctx.db.patch(userId, { refreshVersion: next });
+    return next;
   },
 });
 

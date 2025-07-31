@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyJWT, extractTokenFromHeader } from "@/lib/auth/jwt";
+import { verifyAccessJWT, extractTokenFromHeader } from "@/lib/auth/jwt";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 
@@ -7,35 +7,72 @@ export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     const bearerToken = extractTokenFromHeader(authHeader);
-    // Support cookie-based session (set during signup)
     const cookieToken = request.cookies.get("auth-token")?.value;
-    const sessionCookie = request.cookies.get("aroosi_session")?.value;
 
-    let emailFromSession: string | null = null;
-    let tokenToVerify: string | null = null;
+    // Prefer Authorization header, then cookie
+    const tokenToVerify = bearerToken || cookieToken || null;
 
-    if (bearerToken) {
-      tokenToVerify = bearerToken;
-    } else if (cookieToken) {
-      tokenToVerify = cookieToken;
+    if (!tokenToVerify) {
+      return NextResponse.json({ error: "No auth session" }, { status: 401 });
     }
 
-    // If we have a verified JWT source, verify it to derive email
-    if (tokenToVerify) {
-      const payload = await verifyJWT(tokenToVerify);
+    // Verify access token; if expired/invalid, attempt transparent refresh using refresh-token
+    let emailFromSession: string | null = null;
+    try {
+      const payload = await verifyAccessJWT(tokenToVerify);
       emailFromSession = payload.email;
-    } else if (sessionCookie) {
-      // Fallback: decode lightweight session cookie created at signup
-      try {
-        const decoded = JSON.parse(Buffer.from(sessionCookie, "base64url").toString("utf8")) as {
-          email?: string;
-          userId?: string;
-        };
-        if (decoded?.email) {
-          emailFromSession = decoded.email;
+    } catch {
+      // Attempt refresh only if refresh-token exists
+      const refreshCookie = request.cookies.get("refresh-token")?.value;
+      if (!refreshCookie) {
+        return NextResponse.json(
+          { error: "Invalid or expired session" },
+          { status: 401 }
+        );
+      }
+      // Proxy a server-side refresh call
+      const refreshUrl = new URL("/api/auth/refresh", request.url);
+      const refreshResp = await fetch(refreshUrl.toString(), {
+        method: "POST",
+        // Forward cookies so refresh endpoint can read refresh-token
+        headers: {
+          cookie: request.headers.get("cookie") || "",
+        },
+      });
+
+      if (!refreshResp.ok) {
+        return NextResponse.json(
+          { error: "Invalid or expired session" },
+          { status: 401 }
+        );
+      }
+
+      // Extract new auth-token from Set-Cookie for immediate verification
+      const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
+      // Naive parse to find auth-token value in combined Set-Cookie header
+      const authMatch = setCookieHeader.match(/auth-token=([^;]+)/);
+      const newAccess = authMatch ? decodeURIComponent(authMatch[1]) : null;
+
+      if (!newAccess) {
+        return NextResponse.json(
+          { error: "Invalid or expired session" },
+          { status: 401 }
+        );
+      }
+
+      const payload = await verifyAccessJWT(newAccess);
+      emailFromSession = payload.email;
+
+      // Return response with cookies from refresh so browser stores them
+      // We still proceed to fetch and return the user JSON payload below.
+      // Compose downstream JSON and append cookies from refresh response.
+      const passthrough = NextResponse.next();
+      const refreshedCookies =
+        refreshResp.headers.getSetCookie?.() as unknown as string[] | undefined;
+      if (Array.isArray(refreshedCookies)) {
+        for (const c of refreshedCookies) {
+          passthrough.headers.append("Set-Cookie", c);
         }
-      } catch {
-        // ignore invalid cookie
       }
     }
 
@@ -57,7 +94,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Attach profile for client-side gating
-    const profileRes = await fetchQuery(api.users.getCurrentUserWithProfile, {});
+    const profileRes = await fetchQuery(
+      api.users.getCurrentUserWithProfile,
+      {}
+    );
     const profile = profileRes?.profile ?? null;
 
     return NextResponse.json({
@@ -78,6 +118,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Get user error:", error);
-    return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Invalid or expired session" },
+      { status: 401 }
+    );
   }
 }
