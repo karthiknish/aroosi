@@ -345,7 +345,7 @@ export function ProfileCreationModal({
       if (isSubmitting) return; // prevent double submission
 
       // Only submit if we're on the final step
-      if (step !== 8) {
+      if (step !== 7) {
         console.log(
           "Not on final step, skipping submission. Current step:",
           step
@@ -855,7 +855,7 @@ export function ProfileCreationModal({
                 )}
 
                 {/* Step 3: Physical Information */}
-                {step === 2 && (
+                {step === 3 && (
                   <div className="space-y-6 mt-4">
                     {/* <div className="text-center mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">
