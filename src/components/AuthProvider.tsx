@@ -111,17 +111,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setToken(null);
   }, []);
 
-  // Fetch current user data
+  // Fetch current user data (supports cookie-only sessions when no token provided)
   const fetchUser = useCallback(
-    async (authToken: string): Promise<User | null> => {
+    async (authToken?: string | null): Promise<User | null> => {
       try {
-        const response = await fetch("/api/auth/me", {
-          headers: {
+        const init: RequestInit = {};
+        if (authToken) {
+          init.headers = {
             Authorization: `Bearer ${authToken}`,
-          },
-        });
+          };
+        }
+        const response = await fetch("/api/auth/me", init);
 
         if (!response.ok) {
+          // 401 means no valid session; treat as logged out
+          if (response.status === 401) return null;
           throw new Error("Failed to fetch user");
         }
 
@@ -138,13 +142,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Refresh user data
   const refreshUser = useCallback(async () => {
     const currentToken = token || getStoredToken();
-    if (!currentToken) {
+    // Always attempt to fetch user: if no token, /api/auth/me can still authenticate via HttpOnly cookies
+    const userData = await fetchUser(currentToken ?? undefined);
+    if (userData) {
+      setUser(userData);
+      // If we authenticated via cookie only (no local token), set a sentinel token
+      if (!currentToken) {
+        setToken("cookie"); // sentinel value to mark authenticated session
+      }
+    } else {
       setUser(null);
-      return;
+      // Do not clear token here; caller may retry or re-authenticate
     }
-
-    const userData = await fetchUser(currentToken);
-    setUser(userData);
   }, [token, getStoredToken, fetchUser]);
 
   // Legacy compatibility method
@@ -167,20 +176,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = getStoredToken();
+      // Try local token first, else fall back to cookie-only session
       if (storedToken) {
         setToken(storedToken);
         const userData = await fetchUser(storedToken);
         if (userData) {
           setUser(userData);
         } else {
-          // Invalid token, remove it
+          // Invalid token, remove it and try cookie-based session
           removeToken();
+          const cookieUser = await fetchUser(undefined);
+          if (cookieUser) {
+            setUser(cookieUser);
+            setToken("cookie"); // sentinel
+          }
+        }
+      } else {
+        // No local token: try cookie-based session
+        const cookieUser = await fetchUser(undefined);
+        if (cookieUser) {
+          setUser(cookieUser);
+          setToken("cookie"); // sentinel
         }
       }
       setIsLoading(false);
     };
 
-    initAuth();
+    void initAuth();
   }, [getStoredToken, fetchUser, removeToken]);
 
   // Sign in with email/password
@@ -337,7 +359,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [removeToken, router]);
 
   // Computed values for legacy compatibility
-  const isAuthenticated = !!user && !!token;
+  const isAuthenticated = !!user && !!token; // token may be "cookie" sentinel when authenticated via HttpOnly cookie
   const isSignedIn = isAuthenticated;
   const isLoaded = !isLoading;
   const isProfileComplete = user?.profile?.isProfileComplete || false;
