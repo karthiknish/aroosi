@@ -1062,11 +1062,11 @@ export function ProfileCreationModal({
                           className="bg-white"
                         />
                       </div>
-                      {stepValidation.getFieldError("height") ? (
+                      {/* {stepValidation.getFieldError("height") ? (
                         <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
                           <span>{stepValidation.getFieldError("height")}</span>
                         </div>
-                      ) : null}
+                      ) : null} */}
                     </div>
 
                     {/* Marital Status - Required */}
@@ -1512,8 +1512,8 @@ export function ProfileCreationModal({
             </AnimatePresence>
 
             <div className="mt-8 flex justify-between items-center">
-              {/* Back Button - Show on all steps after first for better UX */}
-              {step > 1 && (
+              {/* Back Button - Show on all steps after second for better UX */}
+              {step > 2 && (
                 <Button
                   variant="outline"
                   onClick={handleBack}
