@@ -256,7 +256,7 @@ export const internalCreateProfile = internalMutation(
         | "eggetarian"
         | "other"
         | "";
-      physicalStatus?: "normal" | "physically-challenged" | "";
+      physicalStatus?: "normal" | "differently-abled" | "";
       smoking?: "no" | "occasionally" | "yes" | "";
       drinking?: "no" | "occasionally" | "yes";
       partnerPreferenceAgeMin?: number;
@@ -473,7 +473,7 @@ export const createUserAndProfileViaSignup = action({
         physicalStatus: v.optional(
           v.union(
             v.literal("normal"),
-            v.literal("physically-challenged"),
+            v.literal("differently-abled"),
             v.literal("")
           )
         ),
@@ -615,7 +615,7 @@ export const createUserAndProfileViaSignup = action({
         | "",
       physicalStatus: profile.physicalStatus as
         | "normal"
-        | "physically-challenged"
+        | "differently-abled"
         | "",
       smoking: profile.smoking as "no" | "occasionally" | "yes" | "",
       drinking: profile.drinking as "no" | "occasionally" | "yes" | undefined,
@@ -1717,7 +1717,7 @@ export const createProfile = mutation({
     physicalStatus: v.optional(
       v.union(
         v.literal("normal"),
-        v.literal("physically-challenged"),
+        v.literal("differently-abled"),
         v.literal("")
       )
     ),
@@ -2587,7 +2587,7 @@ export const getUserByEmail = query({
     const all = await ctx.db.query("users").collect();
     return (
       all.find(
-        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower,
+        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
       ) || null
     );
   },

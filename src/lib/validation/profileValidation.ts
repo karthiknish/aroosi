@@ -154,7 +154,7 @@ export const enhancedValidationSchemas = {
         message: errorMessages.required(fieldDisplayNames.maritalStatus),
       }),
     }),
-    physicalStatus: z.enum(["normal", "physically-challenged", ""]).optional(),
+    physicalStatus: z.enum(["normal", "differently-abled", ""]).optional(),
   }),
 
   // Step 3: Cultural & Lifestyle

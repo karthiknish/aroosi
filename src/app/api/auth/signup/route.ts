@@ -86,9 +86,7 @@ const profileSchema = z
         "",
       ])
       .optional(),
-    physicalStatus: z
-      .enum(["normal", "physically-challenged", ""])
-      .optional(),
+    physicalStatus: z.enum(["normal", "differently-abled", ""]).optional(),
     smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
     drinking: z.enum(["no", "occasionally", "yes"]).optional(),
     partnerPreferenceAgeMin: z.number().optional(),
@@ -196,8 +194,8 @@ export async function POST(request: NextRequest) {
         typeof profile.annualIncome === "number"
           ? profile.annualIncome
           : typeof profile.annualIncome === "string"
-          ? profile.annualIncome
-          : undefined,
+            ? profile.annualIncome
+            : undefined,
       // Ensure arrays are arrays
       partnerPreferenceCity: Array.isArray(profile.partnerPreferenceCity)
         ? profile.partnerPreferenceCity
@@ -208,12 +206,15 @@ export async function POST(request: NextRequest) {
     };
 
     // 3) Atomic user + profile creation via Convex action
-    const result = await convex.action(api.users.createUserAndProfileViaSignup, {
-      email: normalizedEmail,
-      hashedPassword,
-      fullName,
-      profile: normalizedProfile,
-    });
+    const result = await convex.action(
+      api.users.createUserAndProfileViaSignup,
+      {
+        email: normalizedEmail,
+        hashedPassword,
+        fullName,
+        profile: normalizedProfile,
+      }
+    );
 
     // Defensive: verify both user and profile creation results
     const userIdOk = !!result?.userId;
@@ -225,10 +226,12 @@ export async function POST(request: NextRequest) {
       const sessionPayload = {
         email: normalizedEmail,
         userId: result?.userId ?? null,
-        issuedAt: Date.now()
+        issuedAt: Date.now(),
       };
       // Minimal signing using a simple base64 for demo; replace with real signing/JWT in production.
-      const value = Buffer.from(JSON.stringify(sessionPayload)).toString("base64url");
+      const value = Buffer.from(JSON.stringify(sessionPayload)).toString(
+        "base64url"
+      );
       const cookie = `aroosi_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
       const response = NextResponse.json(
         {
@@ -237,7 +240,7 @@ export async function POST(request: NextRequest) {
           profileId: result?.profileId ?? null,
           createdProfile: profileIdOk,
           // Instruct client where to redirect next
-          redirectTo: "/success"
+          redirectTo: "/success",
         },
         { status: userIdOk ? 200 : 500 }
       );
@@ -251,7 +254,7 @@ export async function POST(request: NextRequest) {
           userId: result?.userId ?? null,
           profileId: result?.profileId ?? null,
           createdProfile: profileIdOk,
-          redirectTo: "/success"
+          redirectTo: "/success",
         },
         { status: userIdOk ? 200 : 500 }
       );

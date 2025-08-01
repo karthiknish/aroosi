@@ -1101,8 +1101,8 @@ export function ProfileCreationModal({
                       options={[
                         { value: "normal", label: "Normal" },
                         {
-                          value: "physically-challenged",
-                          label: "Physically Challenged",
+                          value: "differently-abled",
+                          label: "Differently Abled",
                         },
                         // { value: "other", label: "Other" },
                       ]}

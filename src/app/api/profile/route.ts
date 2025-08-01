@@ -12,7 +12,7 @@ import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { getConvexClient } from "@/lib/convexClient";
 
 function isProfileWithEmail(
-  profile: unknown,
+  profile: unknown
 ): profile is import("@/types/profile").Profile {
   return (
     typeof profile === "object" &&
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const rateLimitResult = checkApiRateLimit(
       `profile_get_${userId}`,
       50,
-      60000,
+      60000
     );
     if (!rateLimitResult.allowed)
       return errorResponse("Rate limit exceeded", 429);
@@ -57,7 +57,7 @@ export async function PUT(request: NextRequest) {
     const rateLimitResult = checkApiRateLimit(
       `profile_update_${userId}`,
       20,
-      60000,
+      60000
     );
     if (!rateLimitResult.allowed)
       return errorResponse("Rate limit exceeded", 429);
@@ -106,15 +106,15 @@ export async function PUT(request: NextRequest) {
     ] as const;
     const adminOnlyFields = ["subscriptionPlan", "subscriptionExpiresAt"];
     const hasAdminFields = adminOnlyFields.some(
-      (field) => field in sanitizedBody,
+      (field) => field in sanitizedBody
     );
     if (hasAdminFields) {
       adminOnlyFields.forEach((field) => delete sanitizedBody[field]);
     }
     const updates = Object.fromEntries(
       Object.entries(sanitizedBody).filter(([key]) =>
-        (ALLOWED_UPDATE_FIELDS as readonly string[]).includes(key),
-      ),
+        (ALLOWED_UPDATE_FIELDS as readonly string[]).includes(key)
+      )
     ) as Record<string, unknown>;
     if (Object.keys(updates).length === 0)
       return errorResponse("No valid profile fields provided.", 400);
@@ -136,7 +136,7 @@ export async function PUT(request: NextRequest) {
       try {
         await Notifications.profileCreated(
           updatedProfile.email,
-          updatedProfile,
+          updatedProfile
         );
         await Notifications.profileCreatedAdmin(updatedProfile);
       } catch (e) {
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
     const rateLimitResult = checkApiRateLimit(
       `profile_create_${userId}`,
       3,
-      60000,
+      60000
     );
     if (!rateLimitResult.allowed)
       return errorResponse("Rate limit exceeded", 429);
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
       if (!sanitizedBody[field] || typeof sanitizedBody[field] !== "string") {
         return errorResponse(
           `Missing or invalid required field: ${field}`,
-          400,
+          400
         );
       }
     }
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
     // Check if user already has a profile
     const existingProfile = await convex.query(
       api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> },
+      { userId: userId as Id<"users"> }
     );
     if (existingProfile) return errorResponse("Profile already exists", 409);
     // Format the data for createProfile mutation
@@ -230,11 +230,16 @@ export async function POST(req: NextRequest) {
           | "relative"
           | "") ?? "self",
       preferredGender:
-        (sanitizedBody.preferredGender as "male" | "female" | "other" | "any") ??
-        "any",
+        (sanitizedBody.preferredGender as
+          | "male"
+          | "female"
+          | "other"
+          | "any") ?? "any",
 
       // Location
-      country: sanitizedBody.country ? String(sanitizedBody.country) : undefined,
+      country: sanitizedBody.country
+        ? String(sanitizedBody.country)
+        : undefined,
 
       // Physical & lifestyle
       height: String(sanitizedBody.height || ""),
@@ -245,7 +250,7 @@ export async function POST(req: NextRequest) {
           | "widowed"
           | "annulled") ?? "single",
       physicalStatus:
-        (sanitizedBody.physicalStatus as "normal" | "physically-challenged" | "") ??
+        (sanitizedBody.physicalStatus as "normal" | "differently-abled" | "") ??
         "",
       diet:
         (sanitizedBody.diet as
@@ -319,8 +324,8 @@ export async function POST(req: NextRequest) {
       partnerPreferenceCity: Array.isArray(sanitizedBody.partnerPreferenceCity)
         ? (sanitizedBody.partnerPreferenceCity as string[])
         : sanitizedBody.partnerPreferenceCity
-        ? [String(sanitizedBody.partnerPreferenceCity)]
-        : undefined,
+          ? [String(sanitizedBody.partnerPreferenceCity)]
+          : undefined,
 
       // Images
       profileImageIds: Array.isArray(sanitizedBody.profileImageIds)
@@ -329,8 +334,10 @@ export async function POST(req: NextRequest) {
 
       // Subscription
       subscriptionPlan:
-        (sanitizedBody.subscriptionPlan as "free" | "premium" | "premiumPlus") ??
-        undefined,
+        (sanitizedBody.subscriptionPlan as
+          | "free"
+          | "premium"
+          | "premiumPlus") ?? undefined,
 
       // Flags
       isProfileComplete: true,
@@ -369,7 +376,7 @@ export async function DELETE(request: NextRequest) {
     const rateLimitResult = checkApiRateLimit(
       `profile_delete_${userId}`,
       1,
-      60000,
+      60000
     );
     if (!rateLimitResult.allowed)
       return errorResponse("Rate limit exceeded", 429);
