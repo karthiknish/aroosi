@@ -1101,10 +1101,10 @@ export function ProfileCreationModal({
                       options={[
                         { value: "normal", label: "Normal" },
                         {
-                          value: "differently-abled",
-                          label: "Differently-abled",
+                          value: "physically-challenged",
+                          label: "Physically Challenged",
                         },
-                        { value: "other", label: "Other" },
+                        // { value: "other", label: "Other" },
                       ]}
                       placeholder="Select physical status"
                     />
