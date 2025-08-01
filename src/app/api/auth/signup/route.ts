@@ -184,6 +184,8 @@ export async function POST(request: NextRequest) {
     const normalizedProfile = {
       ...profile,
       email: profile.email ?? normalizedEmail,
+      // Force profile to be marked complete
+      isProfileComplete: true,
       // Ensure height is a string; server handles further normalization
       height:
         typeof profile.height === "string"
