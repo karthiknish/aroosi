@@ -174,14 +174,30 @@ export function ProfileCreationModal({
   };
 
   console.log("ProfileCreationModal unified formData:", formData);
- 
+
   // Step state is now only controlled by contextStep and navigation handlers
   // Ensure step is always a sane number between 1 and 7
-  const step = Number.isFinite(contextStep) && contextStep >= 1 && contextStep <= 7 ? contextStep : 1;
+  const step =
+    Number.isFinite(contextStep) && contextStep >= 1 && contextStep <= 7
+      ? contextStep
+      : 1;
   const setStep = (newStep: number) => {
     const clamped = Math.max(1, Math.min(7, Math.floor(Number(newStep) || 1)));
     setContextStep(clamped);
   };
+
+  console.log("Starting step variables:", {
+    contextStep, // ProfileWizard context se
+    step, // Current computed step
+    hasBasicData, // Basic fields present hai ya nahi
+    formData: {
+      profileFor: formData.profileFor,
+      gender: formData.gender,
+      fullName: formData.fullName,
+      dateOfBirth: formData.dateOfBirth,
+      phoneNumber: formData.phoneNumber,
+    },
+  });
 
   // Local controlled input for preferred cities to allow commas while typing
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
@@ -316,6 +332,21 @@ export function ProfileCreationModal({
       setStep(1);
       return;
     }
+
+    // // Check if Step 2 is completed before allowing further navigation
+    // const isStep2Complete = Boolean(
+    //   formData.city && formData.height && formData.maritalStatus
+    // );
+
+    // if (step > 2 && !isStep2Complete) {
+    //   // Force user back to Step 2
+    //   setStep(2);
+    //   showErrorToast(
+    //     null,
+    //     "Please complete location and physical details first"
+    //   );
+    //   return;
+    // }
 
     // If we came from Hero (basic data present) and we're still at Step 1,
     // ensure we land on Location step (2) first.
@@ -805,8 +836,10 @@ export function ProfileCreationModal({
     };
   }, [isOpen]);
 
+  // Replace the existing normalizedOnOpenRef useEffect with this:
+
   // Normalize starting step once per open:
-  // - If coming from Hero (hasBasicData), start at 2 only when current step is 1
+  // - If coming from Hero (hasBasicData), always start at 2
   // - If no basic data, always start at 1
   const normalizedOnOpenRef = React.useRef(false);
   useEffect(() => {
@@ -815,14 +848,16 @@ export function ProfileCreationModal({
       return;
     }
     if (normalizedOnOpenRef.current) return;
- 
+
     if (hasBasicData) {
-      if (step === 1) setStep(2);
+      // Always set to step 2 when coming from Hero, regardless of current step
+      setStep(2);
     } else {
-      if (step !== 1) setStep(1);
+      // Always set to step 1 when no basic data
+      setStep(1);
     }
     normalizedOnOpenRef.current = true;
-  }, [isOpen, hasBasicData, step]);
+  }, [isOpen, hasBasicData]); // Remove 'step' from dependencies to avoid loops
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -1464,7 +1499,9 @@ export function ProfileCreationModal({
                         return (
                           <div className="space-y-4">
                             {/* Use the centralized CustomSignupForm for account creation */}
-                            <CustomSignupForm onComplete={() => router.push("/success")} />
+                            <CustomSignupForm
+                              onComplete={() => router.push("/success")}
+                            />
                           </div>
                         );
                       })()}
