@@ -695,7 +695,7 @@ export const createUserAndProfileViaSignup = action({
       }
 
       // If we reached here, we already patched above. Return userId only.
-      return { userId };
+      // return { userId };
     }
 
     // 4) No existing profile → create full profile via internal mutation

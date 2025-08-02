@@ -49,9 +49,16 @@ export async function GET(request: NextRequest) {
 
       // Extract new auth-token from Set-Cookie for immediate verification
       const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
-      // Naive parse to find auth-token value in combined Set-Cookie header
-      const authMatch = setCookieHeader.match(/auth-token=([^;]+)/);
-      const newAccess = authMatch ? decodeURIComponent(authMatch[1]) : null;
+      // Parse Set-Cookie header more robustly
+      const cookies = setCookieHeader.split(/,(?=[^;]+=[^;]+)/);
+      let newAccess = null;
+      for (const cookie of cookies) {
+        const authMatch = cookie.match(/auth-token=([^;]+)/);
+        if (authMatch) {
+          newAccess = decodeURIComponent(authMatch[1]);
+          break;
+        }
+      }
 
       if (!newAccess) {
         return NextResponse.json(

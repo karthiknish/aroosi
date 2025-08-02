@@ -32,9 +32,16 @@ export default function ProfileCreationSuccessPage() {
 
   // Debug logging
   useEffect(() => {
-    console.log("Success page mounted");
-    console.log("Auth state:", { isAuthenticated, user, isLoading, isLoaded });
-    return () => console.log("Success page unmounted");
+    if (process.env.NODE_ENV === "development") {
+      console.log("Success page mounted");
+      console.log("Auth state:", {
+        isAuthenticated,
+        user,
+        isLoading,
+        isLoaded,
+      });
+      return () => console.log("Success page unmounted");
+    }
   }, [isAuthenticated, user, isLoading, isLoaded]);
 
   useEffect(() => {
@@ -82,11 +89,13 @@ export default function ProfileCreationSuccessPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center relative overflow-hidden bg-white">
       {/* Debug info - remove in production */}
-      <div className="absolute top-4 left-4 text-xs text-gray-500 z-20">
-        Auth: {isAuthenticated ? "✓" : "✗"} | Loaded: {isLoaded ? "✓" : "✗"} |
-        User: {user?.id ? "✓" : "✗"} | Dims: {dimensions.width}x
-        {dimensions.height} | Confetti: {showConfetti ? "✓" : "✗"}
-      </div>
+      {process.env.NODE_ENV === "development" && (
+        <div className="absolute top-4 left-4 text-xs text-gray-500 z-20">
+          Auth: {isAuthenticated ? "✓" : "✗"} | Loaded: {isLoaded ? "✓" : "✗"} |
+          User: {user?.id ? "✓" : "✗"} | Dims: {dimensions.width}x
+          {dimensions.height} | Confetti: {showConfetti ? "✓" : "✗"}
+        </div>
+      )}
 
       {/* Confetti - only show when ready */}
       {showConfetti && dimensions.width > 0 && dimensions.height > 0 && (

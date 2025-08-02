@@ -17,11 +17,13 @@ export async function POST(request: NextRequest) {
 
     // Get user by email (normalize to lower-case)
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await fetchQuery(api.users.getUserByEmail, { email: normalizedEmail });
+    const user = await fetchQuery(api.users.getUserByEmail, {
+      email: normalizedEmail,
+    });
     if (!user) {
       return NextResponse.json(
         { error: "Invalid email or password" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -37,12 +39,12 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     const isValidPassword = await bcrypt.compare(password, user.hashedPassword);
     if (!isValidPassword) {
       return NextResponse.json(
         { error: "Invalid email or password" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -98,12 +100,12 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid input data", details: error.errors },
-        { status: 400 },
+        { status: 400 }
       );
     }
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

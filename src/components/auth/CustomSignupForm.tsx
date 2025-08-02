@@ -151,15 +151,17 @@ export default function CustomSignupForm({
           : [],
       };
 
-      console.log("CustomSignupForm: Signup payload preview", {
-        keys: Object.keys({
-          email: formData.email,
-          password: formData.password,
-          fullName,
-          profile: normalizedProfile,
-        }),
-        profileKeys: Object.keys(normalizedProfile || {}),
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.log("CustomSignupForm: Signup payload preview", {
+          keys: Object.keys({
+            email: formData.email,
+            password: formData.password,
+            fullName,
+            profile: normalizedProfile,
+          }),
+          profileKeys: Object.keys(normalizedProfile || {}),
+        });
+      }
 
       // POST to unified signup route which atomically creates user+profile in Convex
       const res = await fetch("/api/auth/signup", {
@@ -185,12 +187,11 @@ export default function CustomSignupForm({
         setIsLoading(false);
         return;
       }
-      
+
       if (res.status === 400) {
         // Bad Request: show precise, user-friendly errors
         let userMsg = "We couldn't create your account.";
         const raw = data as any;
-        
 
         // 1) Explicit "Profile incomplete" from server gate
         if (
