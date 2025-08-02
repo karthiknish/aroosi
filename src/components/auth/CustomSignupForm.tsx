@@ -185,11 +185,12 @@ export default function CustomSignupForm({
         setIsLoading(false);
         return;
       }
-
+      
       if (res.status === 400) {
         // Bad Request: show precise, user-friendly errors
         let userMsg = "We couldn't create your account.";
         const raw = data as any;
+        
 
         // 1) Explicit "Profile incomplete" from server gate
         if (
