@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import GoogleAuthButton from "./GoogleAuthButton";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
+import { useAuth } from "@/components/AuthProvider"; // Add this import
 import { Eye, EyeOff } from "lucide-react";
 import { showErrorToast } from "@/lib/ui/toast";
 
@@ -37,6 +38,7 @@ export default function CustomSignupForm({
 
   // Access wizard data to derive full name and profile fields
   const { formData: wizardData } = useProfileWizard();
+  const { refreshUser } = useAuth(); // Add auth context
 
   const router = useRouter();
 
@@ -79,19 +81,22 @@ export default function CustomSignupForm({
           ? fullNameRaw.trim()
           : formData.email.split("@")[0];
 
-      // Construct a minimally viable profile expected by the server schema.
-      // IMPORTANT: Normalize enums to match server zod schema exactly.
-      // If wizard data is incomplete, block later via 400 handling instead of sending invalid enums.
+      // Construct a minimally viable profile expected by the server schema
       const normalizeGender = (g?: unknown): "male" | "female" | "other" => {
         const s = String(g ?? "").toLowerCase();
         if (s === "male" || s === "female" || s === "other") return s as any;
         return "other";
       };
       const normalizeMarital = (
-        m?: unknown,
+        m?: unknown
       ): "single" | "divorced" | "widowed" | "annulled" => {
         const s = String(m ?? "").toLowerCase();
-        if (s === "single" || s === "divorced" || s === "widowed" || s === "annulled")
+        if (
+          s === "single" ||
+          s === "divorced" ||
+          s === "widowed" ||
+          s === "annulled"
+        )
           return s as any;
         return "single";
       };
@@ -107,12 +112,15 @@ export default function CustomSignupForm({
       const normalizedProfile = {
         fullName,
         email: formData.email.trim(),
-        dateOfBirth: ((wizardData as any)?.dateOfBirth as string) || "1990-01-01",
+        dateOfBirth:
+          ((wizardData as any)?.dateOfBirth as string) || "1990-01-01",
         gender: normalizeGender((wizardData as any)?.gender),
         city: city || "Kabul",
         aboutMe: ((wizardData as any)?.aboutMe as string) || "Hello!",
-        occupation: ((wizardData as any)?.occupation as string) || "Not specified",
-        education: ((wizardData as any)?.education as string) || "Not specified",
+        occupation:
+          ((wizardData as any)?.occupation as string) || "Not specified",
+        education:
+          ((wizardData as any)?.education as string) || "Not specified",
         height: normalizedHeight,
         maritalStatus: normalizeMarital((wizardData as any)?.maritalStatus),
         phoneNumber:
@@ -128,9 +136,13 @@ export default function CustomSignupForm({
         physicalStatus: (wizardData as any)?.physicalStatus ?? undefined,
         smoking: (wizardData as any)?.smoking ?? undefined,
         drinking: (wizardData as any)?.drinking ?? undefined,
-        partnerPreferenceAgeMin: (wizardData as any)?.partnerPreferenceAgeMin ?? undefined,
-        partnerPreferenceAgeMax: (wizardData as any)?.partnerPreferenceAgeMax ?? undefined,
-        partnerPreferenceCity: Array.isArray((wizardData as any)?.partnerPreferenceCity)
+        partnerPreferenceAgeMin:
+          (wizardData as any)?.partnerPreferenceAgeMin ?? undefined,
+        partnerPreferenceAgeMax:
+          (wizardData as any)?.partnerPreferenceAgeMax ?? undefined,
+        partnerPreferenceCity: Array.isArray(
+          (wizardData as any)?.partnerPreferenceCity
+        )
           ? ((wizardData as any)?.partnerPreferenceCity as string[])
           : [],
         profileFor: (wizardData as any)?.profileFor ?? "self",
@@ -139,7 +151,6 @@ export default function CustomSignupForm({
           : [],
       };
 
-      // Debug preview to help diagnose payload issues
       console.log("CustomSignupForm: Signup payload preview", {
         keys: Object.keys({
           email: formData.email,
@@ -162,7 +173,7 @@ export default function CustomSignupForm({
         }),
       });
 
-      const data = await res.json().catch(() => ({} as unknown));
+      const data = await res.json().catch(() => ({}) as unknown);
 
       if (res.status === 409) {
         // Conflict: user already exists
@@ -177,16 +188,22 @@ export default function CustomSignupForm({
 
       if (res.status === 400) {
         // Bad Request: show precise, user-friendly errors
-        let userMsg = "We couldn’t create your account.";
+        let userMsg = "We couldn't create your account.";
         const raw = data as any;
 
         // 1) Explicit "Profile incomplete" from server gate
-        if (raw?.error && String(raw.error).toLowerCase().includes("profile incomplete")) {
-          const fields: string[] = Array.isArray(raw.details) ? raw.details : [];
+        if (
+          raw?.error &&
+          String(raw.error).toLowerCase().includes("profile incomplete")
+        ) {
+          const fields: string[] = Array.isArray(raw.details)
+            ? raw.details
+            : [];
           if (fields.length > 0) {
             userMsg = `Please complete: ${fields.slice(0, 6).join(", ")}${fields.length > 6 ? " and more" : ""}.`;
           } else {
-            userMsg = "Your profile is missing required information. Please complete all fields and try again.";
+            userMsg =
+              "Your profile is missing required information. Please complete all fields and try again.";
           }
           showErrorToast(userMsg);
           setIsLoading(false);
@@ -199,7 +216,9 @@ export default function CustomSignupForm({
             .map((d: any) => d?.path?.join("."))
             .filter(Boolean);
           const messages = raw.details
-            .map((d: any) => (typeof d?.message === "string" ? d.message : null))
+            .map((d: any) =>
+              typeof d?.message === "string" ? d.message : null
+            )
             .filter(Boolean);
 
           if (fields.length > 0) {
@@ -207,7 +226,8 @@ export default function CustomSignupForm({
           } else if (messages.length > 0) {
             userMsg = messages.slice(0, 2).join(" • ");
           } else {
-            userMsg = "Invalid input data. Please review your details and try again.";
+            userMsg =
+              "Invalid input data. Please review your details and try again.";
           }
           showErrorToast(userMsg);
           setIsLoading(false);
@@ -221,7 +241,9 @@ export default function CustomSignupForm({
           return;
         }
 
-        showErrorToast("We couldn’t create your account. Please review your details and try again.");
+        showErrorToast(
+          "We couldn't create your account. Please review your details and try again."
+        );
         setIsLoading(false);
         return;
       }
@@ -238,34 +260,52 @@ export default function CustomSignupForm({
         return;
       }
 
-      // Success: log-in established via server cookie; follow server-provided redirect when available
-      try {
-        // Clean up any onboarding/local wizard storage to avoid stale state post-signup
-        try {
-          const mod = await import("@/lib/utils/onboardingStorage");
-          if (mod && typeof mod.clearAllOnboardingData === "function") {
-            mod.clearAllOnboardingData();
-          } else if (typeof window !== "undefined") {
-            // Fallback: remove known keys if util not available
-            const { STORAGE_KEYS } = await import("@/lib/utils/onboardingStorage");
-            if (STORAGE_KEYS) {
-              try { localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION); } catch {}
-              try { localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING); } catch {}
-              try { localStorage.removeItem(STORAGE_KEYS.PENDING_IMAGES); } catch {}
-            }
-          }
-        } catch (e) {
-          console.warn("Onboarding storage cleanup failed (non-fatal):", e);
-        }
+      // Success: The signup API now sets cookies, so we need to refresh auth state
+      console.log("CustomSignupForm: Signup successful, refreshing auth state");
 
+      // IMPORTANT: Refresh the auth state to pick up the new session
+      await refreshUser();
+
+      // Clean up any onboarding/local wizard storage
+      try {
+        const mod = await import("@/lib/utils/onboardingStorage");
+        if (mod && typeof mod.clearAllOnboardingData === "function") {
+          mod.clearAllOnboardingData();
+        } else if (typeof window !== "undefined") {
+          const { STORAGE_KEYS } = await import(
+            "@/lib/utils/onboardingStorage"
+          );
+          if (STORAGE_KEYS) {
+            try {
+              localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
+            } catch {}
+            try {
+              localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
+            } catch {}
+            try {
+              localStorage.removeItem(STORAGE_KEYS.PENDING_IMAGES);
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.warn("Onboarding storage cleanup failed (non-fatal):", e);
+      }
+
+      // Call onComplete callback if provided
+      try {
         if (onComplete) onComplete();
       } catch (err) {
         console.warn("onComplete callback threw, continuing navigation", err);
       }
+
+      // Navigate to success page
       const redirectTo =
-        typeof (data as any)?.redirectTo === "string" && (data as any).redirectTo
+        typeof (data as any)?.redirectTo === "string" &&
+        (data as any).redirectTo
           ? (data as any).redirectTo
           : "/success";
+
+      console.log("CustomSignupForm: Navigating to:", redirectTo);
       try {
         router.push(redirectTo);
       } catch {
@@ -307,7 +347,9 @@ export default function CustomSignupForm({
               required
               disabled={isLoading}
               className={`pr-10 ${
-                passwordsMatch ? "border-green-500 focus-visible:ring-green-500" : ""
+                passwordsMatch
+                  ? "border-green-500 focus-visible:ring-green-500"
+                  : ""
               }`}
             />
             <button
@@ -339,7 +381,9 @@ export default function CustomSignupForm({
               required
               disabled={isLoading}
               className={`pr-10 ${
-                passwordsMatch ? "border-green-500 focus-visible:ring-green-500" : ""
+                passwordsMatch
+                  ? "border-green-500 focus-visible:ring-green-500"
+                  : ""
               }`}
             />
             <button

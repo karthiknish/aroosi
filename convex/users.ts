@@ -193,6 +193,7 @@ export const getProfileByUserIdPublic = query({
  * Internal mutation to create a profile directly by userId (bypasses auth identity).
  * Mirrors createProfile normalization, but requires explicit userId.
  */
+
 export const internalCreateProfile = internalMutation(
   async (
     ctx,

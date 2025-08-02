@@ -3,15 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
-
-/**
- * Native signup (no OTP):
- * - Validates input
- * - Hashes password
- * - Upserts user in Convex via users.createUserViaSignup action (wraps internalUpsertUser)
- * - Optionally creates a full profile in the same step if profile payload is provided
- * - Returns success so the frontend can proceed with onboarding and profile creation
- */
+import { signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
 
 const profileSchema = z
   .object({
@@ -42,7 +34,7 @@ const profileSchema = z
     country: z.string().optional(),
     annualIncome: z.union([z.string(), z.number()]).optional(),
     email: z.string().email().optional(),
-    profileImageIds: z.array(z.string()).optional(), // Convex Id<_storage> as strings
+    profileImageIds: z.array(z.string()).optional(),
     isProfileComplete: z.boolean().optional(),
     preferredGender: z.enum(["male", "female", "other", "any"]).optional(),
     motherTongue: z
@@ -94,7 +86,6 @@ const profileSchema = z
     partnerPreferenceCity: z.array(z.string()).optional(),
     subscriptionPlan: z.enum(["free", "premium", "premiumPlus"]).optional(),
   })
-  // Require a minimal viable set to ensure profile is inserted on signup
   .refine(
     (p) =>
       !!p.fullName &&
@@ -113,9 +104,8 @@ const profileSchema = z
 const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  // Switch to single fullName semantics and drop first/last names
   fullName: z.string().min(1),
-  profile: profileSchema, // require profile for atomic user+profile creation
+  profile: profileSchema,
 });
 
 export async function POST(request: NextRequest) {
@@ -123,7 +113,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password, fullName, profile } = signupSchema.parse(body);
 
-    // Enforce: do NOT create the user unless ALL required profile fields are present and non-empty
+    // Enforce profile completeness check
     const requiredProfileKeys: Array<keyof typeof profile> = [
       "fullName",
       "dateOfBirth",
@@ -169,7 +159,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1) Duplicate email pre-check (Convex) → return 409 Conflict if user exists
+    // Check for existing user
     const existing = await convex.query(api.users.getUserByEmail, {
       email: normalizedEmail,
     });
@@ -180,25 +170,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2) Normalize/prepare profile payload for Convex
+    // Normalize profile payload
     const normalizedProfile = {
       ...profile,
       email: profile.email ?? normalizedEmail,
-      // Force profile to be marked complete
       isProfileComplete: true,
-      // Ensure height is a string; server handles further normalization
       height:
         typeof profile.height === "string"
           ? profile.height
           : String(profile.height ?? ""),
-      // Allow string or number income, Convex will parse to number
       annualIncome:
         typeof profile.annualIncome === "number"
           ? profile.annualIncome
           : typeof profile.annualIncome === "string"
             ? profile.annualIncome
             : undefined,
-      // Ensure arrays are arrays
       partnerPreferenceCity: Array.isArray(profile.partnerPreferenceCity)
         ? profile.partnerPreferenceCity
         : [],
@@ -207,7 +193,7 @@ export async function POST(request: NextRequest) {
         : [],
     };
 
-    // 3) Atomic user + profile creation via Convex action
+    // Create user and profile atomically
     const result = await convex.action(
       api.users.createUserAndProfileViaSignup,
       {
@@ -218,49 +204,68 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Defensive: verify both user and profile creation results
     const userIdOk = !!result?.userId;
     const profileIdOk = !!result?.profileId;
 
-    // Create a server session for the user after successful signup so the client is logged in.
-    // We issue a signed HttpOnly cookie that your AuthProvider should read to authenticate requests.
-    try {
-      const sessionPayload = {
-        email: normalizedEmail,
-        userId: result?.userId ?? null,
-        issuedAt: Date.now(),
-      };
-      // Minimal signing using a simple base64 for demo; replace with real signing/JWT in production.
-      const value = Buffer.from(JSON.stringify(sessionPayload)).toString(
-        "base64url"
-      );
-      const cookie = `aroosi_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`;
-      const response = NextResponse.json(
-        {
-          success: userIdOk && !!normalizedProfile,
-          userId: result?.userId ?? null,
-          profileId: result?.profileId ?? null,
-          createdProfile: profileIdOk,
-          // Instruct client where to redirect next
-          redirectTo: "/success",
-        },
-        { status: userIdOk ? 200 : 500 }
-      );
-      response.headers.set("Set-Cookie", cookie);
-      return response;
-    } catch (e) {
-      // If session cookie fails, still return success and let client call /api/auth/login
+    if (!userIdOk) {
       return NextResponse.json(
-        {
-          success: userIdOk && !!normalizedProfile,
-          userId: result?.userId ?? null,
-          profileId: result?.profileId ?? null,
-          createdProfile: profileIdOk,
-          redirectTo: "/success",
-        },
-        { status: userIdOk ? 200 : 500 }
+        { error: "Failed to create user" },
+        { status: 500 }
       );
     }
+
+    // Generate JWT tokens (same as sign-in)
+    const accessToken = await signAccessJWT({
+      userId: result.userId.toString(),
+      email: normalizedEmail,
+      role: "user",
+    });
+    const refreshToken = await signRefreshJWT({
+      userId: result.userId.toString(),
+      email: normalizedEmail,
+      role: "user",
+    });
+
+    // Create response with user data
+    const response = NextResponse.json({
+      success: true,
+      message: "Account created successfully",
+      token: accessToken, // Include token in response body for AuthProvider
+      user: {
+        id: result.userId,
+        email: normalizedEmail,
+        role: "user",
+      },
+      userId: result.userId,
+      profileId: result.profileId,
+      createdProfile: profileIdOk,
+      redirectTo: "/success",
+    });
+
+    // Set cookies (exactly like sign-in API)
+    const isProd = process.env.NODE_ENV === "production";
+    const baseCookieAttrs = `Path=/; HttpOnly; SameSite=Lax; Max-Age=`;
+    const secureAttr = isProd ? "; Secure" : "";
+
+    // Set access token cookie (15 minutes)
+    response.headers.set(
+      "Set-Cookie",
+      `auth-token=${accessToken}; ${baseCookieAttrs}${60 * 15}${secureAttr}`
+    );
+
+    // Append refresh token cookie (7 days)
+    response.headers.append(
+      "Set-Cookie",
+      `refresh-token=${refreshToken}; ${baseCookieAttrs}${60 * 60 * 24 * 7}${secureAttr}`
+    );
+
+    // Append public token cookie for legacy compatibility
+    response.headers.append(
+      "Set-Cookie",
+      `authTokenPublic=${accessToken}; Path=/; SameSite=Lax; Max-Age=${60 * 15}${secureAttr}`
+    );
+
+    return response;
   } catch (error) {
     console.error("Signup error:", error);
     if (error instanceof z.ZodError) {

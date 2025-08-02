@@ -41,20 +41,16 @@ export interface AuthContextType {
   // Auth methods
   signIn: (
     email: string,
-    password: string,
+    password: string
   ) => Promise<{ success: boolean; error?: string }>;
   signUp: (
     email: string,
     password: string,
     firstName: string,
-    lastName: string,
-  ) => Promise<{ success: boolean; error?: string }>;
-  verifyOTP: (
-    email: string,
-    otp: string,
+    lastName: string
   ) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: (
-    credential: string,
+    credential: string
   ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
@@ -129,8 +125,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error("Failed to fetch user");
         }
 
-        // If server rotated cookies, ensure our client state reflects an authenticated session
-        // We don't need to read Set-Cookie; presence of 200 OK is enough to mark cookie-session
         const data = await response.json();
 
         // If we authenticated via cookies (no bearer used), set sentinel token early
@@ -150,17 +144,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Refresh user data
   const refreshUser = useCallback(async () => {
     const currentToken = token || getStoredToken();
-    // Always attempt to fetch user: if no token, /api/auth/me can still authenticate via HttpOnly cookies
     const userData = await fetchUser(currentToken ?? undefined);
     if (userData) {
       setUser(userData);
-      // If we authenticated via cookie only (no local token), set a sentinel token
       if (!currentToken) {
-        setToken("cookie"); // sentinel value to mark authenticated session
+        setToken("cookie");
       }
     } else {
       setUser(null);
-      // Do not clear token here; caller may retry or re-authenticate
     }
   }, [token, getStoredToken, fetchUser]);
 
@@ -183,23 +174,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
+      console.log("AuthProvider: Initializing auth state");
       const storedToken = getStoredToken();
 
-      // Helper to finalize authenticated state quickly
       const finalizeAuth = (u: User) => {
+        console.log("AuthProvider: Finalizing auth for user:", u.id);
         setUser(u);
-        // If no real token is stored, mark cookie session
         setToken((prev) => (prev && prev !== "" ? prev : "cookie"));
       };
 
-      // Try local token first, else fall back to cookie-only session
       if (storedToken) {
+        console.log("AuthProvider: Found stored token, validating...");
         setToken(storedToken);
         const userData = await fetchUser(storedToken);
         if (userData) {
           finalizeAuth(userData);
         } else {
-          // Invalid token, remove it and try cookie-based session
+          console.log(
+            "AuthProvider: Stored token invalid, trying cookie session"
+          );
           removeToken();
           const cookieUser = await fetchUser(undefined);
           if (cookieUser) {
@@ -207,13 +200,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
       } else {
-        // No local token: try cookie-based session
+        console.log("AuthProvider: No stored token, trying cookie session");
         const cookieUser = await fetchUser(undefined);
         if (cookieUser) {
           finalizeAuth(cookieUser);
         }
       }
       setIsLoading(false);
+      console.log("AuthProvider: Initialization complete");
     };
 
     void initAuth();
@@ -223,9 +217,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
+        console.log("AuthProvider: Starting signIn");
         setError(null);
-
-        // Always clear any existing local token BEFORE attempting sign-in to avoid stale redirects
         removeToken();
         setUser(null);
 
@@ -243,13 +236,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const errorMessage =
             (data && (data.error as string)) || "Sign in failed";
           setError(errorMessage);
-          // Ensure no residual token/user remains on failure
           removeToken();
           setUser(null);
           return { success: false, error: errorMessage };
         }
 
-        // Success: store token and user
+        console.log("AuthProvider: SignIn successful, storing token and user");
         if (data && data.token) {
           storeToken(data.token);
         }
@@ -260,7 +252,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } catch (error) {
         console.error("Sign in error:", error);
         const errorMessage = "Network error";
-        // Ensure no residual token/user remains on error
         removeToken();
         setUser(null);
         setError(errorMessage);
@@ -270,7 +261,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [storeToken, removeToken]
   );
 
-  // Sign up with email/password
+  // Sign up with email/password - UPDATED TO MATCH YOUR SIGNUP API
   const signUp = useCallback(
     async (
       email: string,
@@ -279,13 +270,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
       lastName: string
     ) => {
       try {
+        console.log("AuthProvider: Starting signUp (legacy method)");
         setError(null);
+
+        // Clear any existing auth state
+        removeToken();
+        setUser(null);
+
+        // This is a legacy method - your actual signup goes through CustomSignupForm
+        // But we can still support basic signup for backward compatibility
         const response = await fetch("/api/auth/signup", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password, firstName, lastName }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+            fullName: `${firstName} ${lastName}`.trim(),
+            // Provide minimal profile data for basic signup
+            profile: {
+              fullName: `${firstName} ${lastName}`.trim(),
+              email,
+              dateOfBirth: "1990-01-01",
+              gender: "other",
+              city: "Not specified",
+              aboutMe: "Hello!",
+              occupation: "Not specified",
+              education: "Not specified",
+              height: "170 cm",
+              maritalStatus: "single",
+              phoneNumber: "+10000000000",
+              isProfileComplete: false, // Mark as incomplete for basic signup
+            },
+          }),
         });
 
         const data = await response.json();
@@ -296,6 +312,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
+        console.log("AuthProvider: SignUp successful, storing token and user");
+        if (data.token) {
+          storeToken(data.token);
+        }
+        if (data.user) {
+          setUser(data.user);
+        }
+
         return { success: true };
       } catch (error) {
         console.error("Sign up error:", error);
@@ -304,44 +328,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    []
-  );
-
-  // Verify OTP
-  const verifyOTP = useCallback(
-    async (email: string, otp: string) => {
-      try {
-        setError(null);
-        const response = await fetch("/api/auth/verify-otp", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, otp }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          const errorMessage = data.error || "OTP verification failed";
-          setError(errorMessage);
-          return {
-            success: false,
-            error: errorMessage,
-          };
-        }
-
-        storeToken(data.token);
-        setUser(data.user);
-        return { success: true };
-      } catch (error) {
-        console.error("OTP verification error:", error);
-        const errorMessage = "Network error";
-        setError(errorMessage);
-        return { success: false, error: errorMessage };
-      }
-    },
-    [storeToken]
+    [storeToken, removeToken]
   );
 
   // Sign in with Google
@@ -383,13 +370,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign out
   const signOut = useCallback(() => {
+    console.log("AuthProvider: Signing out");
     removeToken();
     setUser(null);
     setError(null);
     router.push("/sign-in");
   }, [removeToken, router]);
 
-  // Optional: if cookies exist but token is null (first paint race), trigger a one-time refresh
+  // Cookie detection and refresh
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (isLoading) return;
@@ -400,17 +388,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       cookies.some((c) => c.startsWith("auth-token=")) ||
       cookies.some((c) => c.startsWith("authTokenPublic="));
 
-    if (hasAuthCookie) {
-      // Kick a background refresh to flip state to authenticated
+    if (hasAuthCookie && !user) {
+      console.log(
+        "AuthProvider: Found auth cookies but no user, refreshing..."
+      );
       void refreshUser();
     }
-    // run once post-load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+  }, [isLoading, token, user, refreshUser]);
 
   // Computed values for legacy compatibility
-  // Treat cookie-established sessions as authenticated too, since server sets HttpOnly JWT.
-  // This avoids redirecting to "/" or sign-in when the access token is only in cookies.
   const hasRealToken = !!token && token !== "";
   const isCookieSession = token === "cookie";
   const isAuthenticated = !!user && (hasRealToken || isCookieSession);
@@ -421,6 +407,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAdmin = user?.role === "admin";
   const userId = user?.id || "";
   const profile = user?.profile || null;
+
+  // Debug logging
+  useEffect(() => {
+    console.log("AuthProvider state update:", {
+      isAuthenticated,
+      isLoaded,
+      hasUser: !!user,
+      hasToken: !!token,
+      tokenType:
+        token === "cookie" ? "cookie" : hasRealToken ? "stored" : "none",
+    });
+  }, [isAuthenticated, isLoaded, user, token, hasRealToken]);
 
   const value: AuthContextType = {
     user,
@@ -439,7 +437,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Auth methods
     signIn,
     signUp,
-    verifyOTP,
     signInWithGoogle,
     signOut,
     refreshUser,
