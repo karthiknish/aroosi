@@ -2,43 +2,114 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { errorResponse } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
-  let body: { profileId?: string; imageIds?: string[] } = {};
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
-    body = await req.json();
-  } catch {}
-  const { profileId, imageIds } = body;
-  if (!profileId || !Array.isArray(imageIds)) {
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.split(" ")[1] || null;
+    if (!token) {
+      console.warn("Profile images ORDER auth failed", {
+        scope: "profile_images.order",
+        type: "auth_failed",
+        correlationId,
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "Unauthorized", correlationId },
+        { status: 401 }
+      );
+    }
+
+    const convex = getConvexClient();
+    if (!convex) {
+      console.error("Profile images ORDER convex not configured", {
+        scope: "profile_images.order",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "Convex client not configured", correlationId },
+        { status: 500 }
+      );
+    }
+    try {
+      // @ts-ignore legacy
+      convex.setAuth?.(token);
+    } catch {}
+
+    let body: { profileId?: string; imageIds?: string[] } = {};
+    try {
+      body = await req.json();
+    } catch {}
+    const { profileId, imageIds } = body;
+
+    if (!profileId || !Array.isArray(imageIds)) {
+      return NextResponse.json(
+        { error: "Missing profileId or imageIds", correlationId },
+        { status: 400 }
+      );
+    }
+
+    const result = await convex
+      .mutation(api.images.updateProfileImageOrder, {
+        userId: profileId as Id<"users">,
+        imageIds: imageIds as Id<"_storage">[],
+      })
+      .catch((e: unknown) => {
+        console.error("Profile images ORDER mutation error", {
+          scope: "profile_images.order",
+          type: "convex_mutation_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return null;
+      });
+
+    if (!result) {
+      return NextResponse.json(
+        { error: "Failed to update order", correlationId },
+        { status: 500 }
+      );
+    }
+
+    if (result.success) {
+      const response = NextResponse.json(
+        { success: true, correlationId },
+        { status: 200 }
+      );
+      console.info("Profile images ORDER success", {
+        scope: "profile_images.order",
+        type: "success",
+        correlationId,
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
+      });
+      return response;
+    }
+
     return NextResponse.json(
-      { error: "Missing profileId or imageIds" },
-      { status: 400 }
-    );
-  }
-  // For now treat profileId as userId to maintain existing behaviour
-  try {
-    const result = await convex.mutation(api.images.updateProfileImageOrder, {
-      userId: profileId as Id<"users">,
-      imageIds: imageIds as Id<"_storage">[],
-    });
-    if (result.success) return NextResponse.json({ success: true });
-    return NextResponse.json(
-      { error: result.message || "Failed to update order" },
+      { error: result.message || "Failed to update order", correlationId },
       { status: 400 }
     );
   } catch (err) {
-    console.error("/api/profile-images/order error", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("/api/profile-images/order unhandled error", {
+      scope: "profile_images.order",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json(
-      { error: "Failed to update order" },
+      { error: "Failed to update order", correlationId },
       { status: 500 }
     );
   }

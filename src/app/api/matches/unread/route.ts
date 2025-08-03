@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { errorResponse } from "@/lib/apiResponse";
 
 function getToken(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -13,26 +12,105 @@ function getToken(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
-  const token = getToken(req);
-  if (!userId || !token)
-    return NextResponse.json(
-      { success: false, error: "Missing params" },
-      { status: 400 },
-    );
-  const convex = getConvexClient();
-  if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
+
   try {
-    const counts = await convex.query(api.messages.getUnreadCountsForUser, {
-      userId: userId as Id<"users">,
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+    const token = getToken(req);
+
+    if (!userId) {
+      console.warn("Matches unread GET missing userId", {
+        scope: "matches.unread",
+        type: "validation_error",
+        correlationId,
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { success: false, error: "Missing userId", correlationId },
+        { status: 400 }
+      );
+    }
+
+    if (!token) {
+      console.warn("Matches unread GET auth failed", {
+        scope: "matches.unread",
+        type: "auth_failed",
+        correlationId,
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized", correlationId },
+        { status: 401 }
+      );
+    }
+
+    const convex = getConvexClient();
+    if (!convex) {
+      console.error("Matches unread GET convex not configured", {
+        scope: "matches.unread",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { success: false, error: "Convex client not configured", correlationId },
+        { status: 500 }
+      );
+    }
+    try {
+      // @ts-ignore legacy
+      convex.setAuth?.(token);
+    } catch {}
+
+    const counts = await convex
+      .query(api.messages.getUnreadCountsForUser, {
+        userId: userId as Id<"users">,
+      })
+      .catch((e: unknown) => {
+        console.error("Matches unread GET query error", {
+          scope: "matches.unread",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return null;
+      });
+
+    if (!counts) {
+      return NextResponse.json(
+        { success: false, error: "Failed", correlationId },
+        { status: 500 }
+      );
+    }
+
+    console.info("Matches unread GET success", {
+      scope: "matches.unread",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
     });
-    return NextResponse.json({ success: true, counts });
-  } catch {
+    return NextResponse.json({ success: true, counts, correlationId }, { status: 200 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("Matches unread GET unhandled error", {
+      scope: "matches.unread",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json(
-      { success: false, error: "Failed" },
-      { status: 500 },
+      { success: false, error: "Failed", correlationId },
+      { status: 500 }
     );
   }
 }

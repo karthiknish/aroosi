@@ -1,8 +1,7 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
@@ -12,132 +11,48 @@ import {
   validateUserCanMessage,
 } from "@/lib/utils/messageValidation";
 
-// Initialize Convex client
+// Initialize Convex client (may be undefined in some envs; we guard below)
 const convexClient = getConvexClient();
 
 // GET: Fetch messages for a conversation
 export async function GET(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
-    // Authentication
     const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as NextResponse;
+      const status = res.status || 401;
+      let body: unknown = { error: "Unauthorized", correlationId };
+      try {
+        const txt = await res.text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      console.warn("Messages GET auth failed", {
+        scope: "messages.get",
+        type: "auth_failed",
+        correlationId,
+        statusCode: status,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(body, { status });
+    }
     const { token, userId } = authCheck;
 
-    // Subscription-based rate limiting for getting messages
     if (!userId) {
-      return errorResponse("User ID not found", 401);
-    }
-    
-    const rateLimitResult = await subscriptionRateLimiter.checkSubscriptionRateLimit(
-      request,
-      token,
-      userId,
-      "message_sent",
-      60000
-    );
-    
-    if (!rateLimitResult.allowed) {
-      return errorResponse(
-        rateLimitResult.error || "Rate limit exceeded",
-        429,
-        {
-          plan: rateLimitResult.plan,
-          limit: rateLimitResult.limit,
-          remaining: rateLimitResult.remaining,
-          resetTime: new Date(rateLimitResult.resetTime).toISOString(),
-        }
+      console.warn("Messages GET no userId", {
+        scope: "messages.get",
+        type: "auth_context_missing",
+        correlationId,
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "User ID not found", correlationId },
+        { status: 401 }
       );
     }
 
-    // Parse and validate query parameters
-    const { searchParams } = new URL(request.url);
-    const conversationId = searchParams.get("conversationId");
-    const limitParam = searchParams.get("limit");
-    const beforeParam = searchParams.get("before");
-
-    // Validate conversation ID format
-    if (!conversationId || !validateConversationId(conversationId)) {
-      return errorResponse("Invalid or missing conversationId parameter", 400);
-    }
-
-    // Validate and sanitize limit parameter
-    let limit: number | undefined;
-    if (limitParam) {
-      const parsedLimit = parseInt(limitParam, 10);
-      if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
-        return errorResponse("Invalid limit parameter (must be 1-100)", 400);
-      }
-      limit = parsedLimit;
-    }
-
-    // Validate before parameter for pagination
-    let before: number | undefined;
-    if (beforeParam) {
-      const parsedBefore = parseInt(beforeParam, 10);
-      if (isNaN(parsedBefore) || parsedBefore < 0) {
-        return errorResponse("Invalid before parameter", 400);
-      }
-      before = parsedBefore;
-    }
-
-    // Database operations
-    let client = convexClient;
-    if (!client) {
-      client = getConvexClient();
-    }
-
-    if (!client) {
-      return errorResponse("Database connection failed", 500);
-    }
-
-    client.setAuth(token);
-
-    // Verify user is part of this conversation
-    if (!userId) {
-      return errorResponse("User ID not found", 401);
-    }
-    const userIds = conversationId.split("_");
-    if (!userIds.includes(userId)) {
-      return errorResponse("Unauthorized access to conversation", 403);
-    }
-
-    const result = await client.query(api.messages.getMessages, {
-      conversationId,
-      limit,
-      before,
-    });
-
-    return successResponse(result);
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-
-    // Check for auth-specific errors
-    const isAuthError =
-      error instanceof Error &&
-      (error.message.includes("Unauthenticated") ||
-        error.message.includes("Unauthorized") ||
-        error.message.includes("token"));
-
-    return errorResponse(
-      isAuthError ? "Authentication failed" : "Failed to fetch messages",
-      isAuthError ? 401 : 500,
-    );
-  }
-}
-
-// POST: Send a message
-export async function POST(request: NextRequest) {
-  try {
-    // Authentication
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
-
-    // Subscription-based rate limiting for sending messages
-    if (!userId) {
-      return errorResponse("User ID not found", 401);
-    }
-    
     const rateLimitResult =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         request,
@@ -148,43 +63,238 @@ export async function POST(request: NextRequest) {
       );
 
     if (!rateLimitResult.allowed) {
-      return errorResponse(
-        rateLimitResult.error ||
-          "Rate limit exceeded. Please wait before sending more messages.",
-        429,
+      console.warn("Messages GET rate limited", {
+        scope: "messages.get",
+        type: "rate_limit",
+        correlationId,
+        statusCode: 429,
+        durationMs: Date.now() - startedAt,
+        plan: rateLimitResult.plan,
+        limit: rateLimitResult.limit,
+        remaining: rateLimitResult.remaining,
+      });
+      return NextResponse.json(
         {
+          error: rateLimitResult.error || "Rate limit exceeded",
+          correlationId,
           plan: rateLimitResult.plan,
           limit: rateLimitResult.limit,
           remaining: rateLimitResult.remaining,
           resetTime: new Date(rateLimitResult.resetTime).toISOString(),
-        }
+        },
+        { status: 429 }
       );
     }
 
-    // Parse and validate request body
-    let body;
+    const { searchParams } = new URL(request.url);
+    const conversationId = searchParams.get("conversationId");
+    const limitParam = searchParams.get("limit");
+    const beforeParam = searchParams.get("before");
+
+    if (!conversationId || !validateConversationId(conversationId)) {
+      return NextResponse.json(
+        { error: "Invalid or missing conversationId parameter", correlationId },
+        { status: 400 }
+      );
+    }
+
+    let limit: number | undefined;
+    if (limitParam) {
+      const parsedLimit = parseInt(limitParam, 10);
+      if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
+        return NextResponse.json(
+          { error: "Invalid limit parameter (must be 1-100)", correlationId },
+          { status: 400 }
+        );
+      }
+      limit = parsedLimit;
+    }
+
+    let before: number | undefined;
+    if (beforeParam) {
+      const parsedBefore = parseInt(beforeParam, 10);
+      if (isNaN(parsedBefore) || parsedBefore < 0) {
+        return NextResponse.json(
+          { error: "Invalid before parameter", correlationId },
+          { status: 400 }
+        );
+      }
+      before = parsedBefore;
+    }
+
+    let client = convexClient || getConvexClient();
+    if (!client) {
+      console.error("Messages GET convex not configured", {
+        scope: "messages.get",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "Database connection failed", correlationId },
+        { status: 500 }
+      );
+    }
+    try {
+      // @ts-ignore legacy
+      client.setAuth?.(token);
+    } catch {}
+
+    const userIds = conversationId.split("_");
+    if (!userIds.includes(userId)) {
+      return NextResponse.json(
+        { error: "Unauthorized access to conversation", correlationId },
+        { status: 403 }
+      );
+    }
+
+    const result = await client
+      .query(api.messages.getMessages, {
+        conversationId,
+        limit,
+        before,
+      })
+      .catch((e: unknown) => {
+        console.error("Messages GET query error", {
+          scope: "messages.get",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return null;
+      });
+
+    if (!result) {
+      return NextResponse.json(
+        { error: "Failed to fetch messages", correlationId },
+        { status: 500 }
+      );
+    }
+
+    console.info("Messages GET success", {
+      scope: "messages.get",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      count: Array.isArray(result) ? result.length : undefined,
+    });
+    return NextResponse.json(
+      { success: true, messages: result, correlationId },
+      { status: 200 }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Messages GET unhandled error", {
+      scope: "messages.get",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return NextResponse.json(
+      { error: "Failed to fetch messages", correlationId },
+      { status: 500 }
+    );
+  }
+}
+
+// POST: Send a message
+export async function POST(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
+  try {
+    const authCheck = requireUserToken(request);
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as NextResponse;
+      const status = res.status || 401;
+      let body: unknown = { error: "Unauthorized", correlationId };
+      try {
+        const txt = await res.text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      console.warn("Messages POST auth failed", {
+        scope: "messages.post",
+        type: "auth_failed",
+        correlationId,
+        statusCode: status,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(body, { status });
+    }
+    const { token, userId } = authCheck;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID not found", correlationId },
+        { status: 401 }
+      );
+    }
+
+    const rateLimitResult =
+      await subscriptionRateLimiter.checkSubscriptionRateLimit(
+        request,
+        token,
+        userId,
+        "message_sent",
+        60000
+      );
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            rateLimitResult.error ||
+            "Rate limit exceeded. Please wait before sending more messages.",
+          correlationId,
+          plan: rateLimitResult.plan,
+          limit: rateLimitResult.limit,
+          remaining: rateLimitResult.remaining,
+          resetTime: new Date(rateLimitResult.resetTime).toISOString(),
+        },
+        { status: 429 }
+      );
+    }
+
+    let body: unknown;
     try {
       body = await request.json();
     } catch {
-      return errorResponse("Invalid request body", 400);
-    }
-
-    const { conversationId, fromUserId, toUserId, text } = body || {};
-
-    // Basic required field validation
-    if (!conversationId || !fromUserId || !toUserId || !text) {
-      return errorResponse(
-        "Missing required fields: conversationId, fromUserId, toUserId, text",
-        400
+      return NextResponse.json(
+        { error: "Invalid request body", correlationId },
+        { status: 400 }
       );
     }
 
-    // Verify the fromUserId matches the authenticated user
-    if (fromUserId !== userId) {
-      return errorResponse("Cannot send messages as another user", 403);
+    const { conversationId, fromUserId, toUserId, text } =
+      (body as {
+        conversationId?: string;
+        fromUserId?: string;
+        toUserId?: string;
+        text?: string;
+      }) || {};
+
+    if (!conversationId || !fromUserId || !toUserId || !text) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required fields: conversationId, fromUserId, toUserId, text",
+          correlationId,
+        },
+        { status: 400 }
+      );
     }
 
-    // Comprehensive payload validation
+    if (fromUserId !== userId) {
+      return NextResponse.json(
+        { error: "Cannot send messages as another user", correlationId },
+        { status: 403 }
+      );
+    }
+
     const validation = validateMessagePayload({
       conversationId,
       fromUserId,
@@ -192,83 +302,125 @@ export async function POST(request: NextRequest) {
       text,
     });
     if (!validation.isValid) {
-      return errorResponse(validation.error || "Invalid message payload", 400);
-    }
-
-    // Database operations
-    let client = convexClient;
-    if (!client) {
-      client = getConvexClient();
-    }
-
-    if (!client) {
-      return errorResponse("Database connection failed", 500);
-    }
-
-    client.setAuth(token);
-
-    // Verify users are matched and can message each other
-    const canMessage = await validateUserCanMessage(fromUserId, toUserId);
-    if (!canMessage) {
-      return errorResponse(
-        "Users are not authorized to message each other",
-        403
+      return NextResponse.json(
+        {
+          error: validation.error || "Invalid message payload",
+          correlationId,
+        },
+        { status: 400 }
       );
     }
 
-    // Check if either user has blocked the other
-    const blockStatus = await client.query(api.safety.getBlockStatus, {
-      blockerUserId: fromUserId,
-      blockedUserId: toUserId,
-    });
+    let client = convexClient || getConvexClient();
+    if (!client) {
+      console.error("Messages POST convex not configured", {
+        scope: "messages.post",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "Database connection failed", correlationId },
+        { status: 500 }
+      );
+    }
+    try {
+      // @ts-ignore legacy
+      client.setAuth?.(token);
+    } catch {}
 
-    if (blockStatus) {
-      return errorResponse("Cannot send message to this user", 403);
+    const canMessage = await validateUserCanMessage(fromUserId, toUserId);
+    if (!canMessage) {
+      return NextResponse.json(
+        { error: "Users are not authorized to message each other", correlationId },
+        { status: 403 }
+      );
     }
 
-    // Use sanitized text from validation
+    const blockStatus = await client
+      .query(api.safety.getBlockStatus, {
+        blockerUserId: fromUserId as Id<"users">,
+        blockedUserId: toUserId as Id<"users">,
+      })
+      .catch((e: unknown) => {
+        console.error("Messages POST getBlockStatus error", {
+          scope: "messages.post",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return null;
+      });
+
+    if (blockStatus) {
+      return NextResponse.json(
+        { error: "Cannot send message to this user", correlationId },
+        { status: 403 }
+      );
+    }
+
     const sanitizedText = validation.sanitizedText || text;
 
-    const result = await client.mutation(api.messages.sendMessage, {
-      conversationId,
-      fromUserId: fromUserId as Id<"users">,
-      toUserId: toUserId as Id<"users">,
-      text: sanitizedText,
-    });
+    const result = await client
+      .mutation(api.messages.sendMessage, {
+        conversationId,
+        fromUserId: fromUserId as Id<"users">,
+        toUserId: toUserId as Id<"users">,
+        text: sanitizedText,
+      })
+      .catch((e: unknown) => {
+        console.error("Messages POST sendMessage error", {
+          scope: "messages.post",
+          type: "convex_mutation_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return null;
+      });
 
-    // Broadcast to real-time subscribers
+    if (!result) {
+      return NextResponse.json(
+        { error: "Failed to send message", correlationId },
+        { status: 500 }
+      );
+    }
+
     try {
       const { eventBus } = await import("@/lib/eventBus");
       eventBus.emit(conversationId, result);
     } catch (eventError) {
-      console.warn("Failed to broadcast message:", eventError);
-      // Don't fail the request if broadcasting fails
+      console.warn("Failed to broadcast message", {
+        scope: "messages.post",
+        type: "broadcast_warn",
+        message:
+          eventError instanceof Error ? eventError.message : String(eventError),
+        correlationId,
+        durationMs: Date.now() - startedAt,
+      });
     }
 
-    // Track usage for premium users
-    // try {
-    //   await client.mutation(api.subscription.trackUsage, {
-    //     userId: fromUserId,
-    //     feature: "message_sent"
-    //   });
-    // } catch (e) {
-    //   // Non-critical, continue
-    // }
-
-    return successResponse(result);
+    return NextResponse.json(
+      { success: true, message: result, correlationId },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("Error sending message:", error);
-
-    const isAuthError =
-      error instanceof Error &&
-      (error.message.includes("Unauthenticated") ||
-        error.message.includes("token") ||
-        error.message.includes("authentication") ||
-        error.message.includes("Unauthorized"));
-
-    return errorResponse(
-      isAuthError ? "Authentication failed" : "Failed to send message",
-      isAuthError ? 401 : 500,
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Messages POST unhandled error", {
+      scope: "messages.post",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return NextResponse.json(
+      { error: "Failed to send message", correlationId },
+      { status: 500 }
     );
   }
 }

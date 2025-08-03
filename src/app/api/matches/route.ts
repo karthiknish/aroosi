@@ -3,76 +3,128 @@ import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { requireUserToken } from "@/app/api/_utils/auth";
-import { errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
-
-  if (!userId) {
-    return NextResponse.json(
-      { success: false, error: "Missing userId parameter" },
-      { status: 400 },
-    );
-  }
-
-  const authCheck = requireUserToken(req);
-  if ("errorResponse" in authCheck) return authCheck.errorResponse;
-  const { token } = authCheck;
-
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    return NextResponse.json(
-      { error: "Server configuration error" },
-      { status: 500 },
-    );
-  }
-
-  const convex = getConvexClient();
-  if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
 
   try {
-    // Get all matches for this user
-    const matches = (await convex.query(api.users.getMyMatches, {})) as Array<{
-      userId: string;
-    }>;
-    // matches is an array of profile objects with userId field
-    // For each, fetch the public profile
+    const { searchParams } = new URL(req.url);
+    const userIdParam = searchParams.get("userId");
+    if (!userIdParam) {
+      console.warn("Matches GET missing userId", {
+        scope: "matches.list",
+        type: "validation_error",
+        correlationId,
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { success: false, error: "Missing userId parameter", correlationId },
+        { status: 400 }
+      );
+    }
+
+    const authCheck = requireUserToken(req);
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as NextResponse;
+      const status = res.status || 401;
+      let body: unknown = { error: "Unauthorized", correlationId };
+      try {
+        const txt = await res.text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      console.warn("Matches GET auth failed", {
+        scope: "matches.list",
+        type: "auth_failed",
+        correlationId,
+        statusCode: status,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(body, { status });
+    }
+    const { token } = authCheck;
+
+    const convex = getConvexClient();
+    if (!convex) {
+      console.error("Matches GET convex not configured", {
+        scope: "matches.list",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "Convex client not configured", correlationId },
+        { status: 500 }
+      );
+    }
+    try {
+      // @ts-ignore legacy
+      convex.setAuth?.(token);
+    } catch {}
+
+    const matches = await convex
+      .query(api.users.getMyMatches, {})
+      .catch((e: unknown) => {
+        console.error("Matches GET getMyMatches error", {
+          scope: "matches.list",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return [] as Array<{ userId: string }>;
+      });
+
     const results = await Promise.all(
-      matches.map(async (match) => {
+      (matches as Array<{ userId: string }>).map(async (match) => {
         try {
           const res = await convex.query(api.users.getUserPublicProfile, {
             userId: match.userId as Id<"users">,
           });
           if (res && res.profile) {
-            // ensure userId is included on the returned profile for convenience
             return { ...res.profile, userId: match.userId };
           }
         } catch (e) {
-          console.error(
-            "[matches API] Error fetching profile for",
-            match.userId,
-            e,
-          );
+          console.error("[matches API] Error fetching profile", {
+            scope: "matches.list",
+            type: "convex_query_error",
+            targetUserId: match.userId,
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+            statusCode: 500,
+            durationMs: Date.now() - startedAt,
+          });
         }
         return null;
-      }),
+      })
     );
-    // Filter nulls and respond with flattened profile array
-    return NextResponse.json(results.filter(Boolean), { status: 200 });
+
+    const data = results.filter(Boolean);
+    console.info("Matches GET success", {
+      scope: "matches.list",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      count: data.length,
+    });
+    return NextResponse.json({ success: true, matches: data, correlationId }, { status: 200 });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Matches GET unhandled error", {
+      scope: "matches.list",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch matches",
-        details:
-          process.env.NODE_ENV === "development"
-            ? error instanceof Error
-              ? error.message
-              : String(error)
-            : undefined,
-      },
-      { status: 500 },
+      { success: false, error: "Failed to fetch matches", correlationId },
+      { status: 500 }
     );
   }
 }

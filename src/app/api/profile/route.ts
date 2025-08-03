@@ -22,56 +22,220 @@ function isProfileWithEmail(
 }
 
 export async function GET(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
     const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as Response;
+      const status = (res as unknown as { status?: number }).status || 401;
+      let body: unknown = { error: "Unauthorized", correlationId };
+      try {
+        const txt = await (res as Response).text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      console.warn("Profile GET auth failed", {
+        scope: "profile.get",
+        type: "auth_failed",
+        correlationId,
+        statusCode: status,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const { token, userId } = authCheck;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    if (!userId) {
+      console.warn("Profile GET missing userId", {
+        scope: "profile.get",
+        type: "missing_user",
+        correlationId,
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(
+        JSON.stringify({ error: "User ID not found in token", correlationId }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const rateLimitResult = checkApiRateLimit(
       `profile_get_${userId}`,
       50,
       60000
     );
-    if (!rateLimitResult.allowed)
-      return errorResponse("Rate limit exceeded", 429);
+    if (!rateLimitResult.allowed) {
+      console.warn("Profile GET rate limit exceeded", {
+        scope: "profile.get",
+        type: "rate_limit",
+        correlationId,
+        statusCode: 429,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded", correlationId }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
-      userId: userId as Id<"users">,
+    if (!convex) {
+      console.error("Profile GET convex not configured", {
+        scope: "profile.get",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(
+        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    try {
+      // @ts-ignore legacy guard
+      convex.setAuth?.(token);
+    } catch {}
+    const profile = await convex
+      .query(api.profiles.getProfileByUserId, {
+        userId: userId as Id<"users">,
+      })
+      .catch((e: unknown) => {
+        console.error("Profile GET query error", {
+          scope: "profile.get",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return null;
+      });
+    if (!profile) {
+      console.warn("Profile GET not found", {
+        scope: "profile.get",
+        type: "profile_not_found",
+        correlationId,
+        statusCode: 404,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(
+        JSON.stringify({ error: "User profile not found", correlationId }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const response = new Response(
+      JSON.stringify({ profile, correlationId, success: true }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+    console.info("Profile GET success", {
+      scope: "profile.get",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
     });
-    if (!profile) return errorResponse("User profile not found", 404);
-    return successResponse({ profile });
+    return response;
   } catch (error) {
-    console.error("Error in GET /api/profile route:", error);
-    return errorResponse("Failed to process profile request", 500);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Profile GET unhandled error", {
+      scope: "profile.get",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return new Response(
+      JSON.stringify({ error: "Failed to process profile request", correlationId }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
 
 export async function PUT(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
     const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as Response;
+      const status = (res as unknown as { status?: number }).status || 401;
+      let body: unknown = { error: "Unauthorized", correlationId };
+      try {
+        const txt = await (res as Response).text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      console.warn("Profile PUT auth failed", {
+        scope: "profile.update",
+        type: "auth_failed",
+        correlationId,
+        statusCode: status,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const { token, userId } = authCheck;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "User ID not found in token", correlationId }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const rateLimitResult = checkApiRateLimit(
       `profile_update_${userId}`,
       20,
       60000
     );
-    if (!rateLimitResult.allowed)
-      return errorResponse("Rate limit exceeded", 429);
+    if (!rateLimitResult.allowed) {
+      console.warn("Profile PUT rate limit", {
+        scope: "profile.update",
+        type: "rate_limit",
+        correlationId,
+        statusCode: 429,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded", correlationId }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    if (!convex) {
+      console.error("Profile PUT convex not configured", {
+        scope: "profile.update",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(
+        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    try {
+      // @ts-ignore legacy
+      convex.setAuth?.(token);
+    } catch {}
+
     let body;
     try {
       body = await request.json();
     } catch {
-      return errorResponse("Invalid JSON body", 400);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body", correlationId }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
     if (!body || typeof body !== "object")
-      return errorResponse("Missing or invalid body", 400);
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid body", correlationId }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     const sanitizedBody = sanitizeProfileInput(body);
     const ALLOWED_UPDATE_FIELDS = [
       "fullName",
@@ -117,21 +281,35 @@ export async function PUT(request: NextRequest) {
       )
     ) as Record<string, unknown>;
     if (Object.keys(updates).length === 0)
-      return errorResponse("No valid profile fields provided.", 400);
+      return new Response(
+        JSON.stringify({ error: "No valid profile fields provided.", correlationId }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     const validation = validateProfileData(updates);
     if (!validation.isValid)
-      return errorResponse(validation.error || "Invalid profile data", 400);
+      return new Response(
+        JSON.stringify({ error: validation.error || "Invalid profile data", correlationId }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     const profile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
     });
-    if (!profile) return errorResponse("User profile not found", 404);
-    // Only allow updating own profile
-    if (profile.userId !== userId) return errorResponse("Unauthorized", 403);
+    if (!profile)
+      return new Response(
+        JSON.stringify({ error: "User profile not found", correlationId }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    if (profile.userId !== userId)
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", correlationId }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+
     await convex.mutation(api.users.updateProfile, { updates });
-    // Fetch updated profile
     const updatedProfile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
     });
+
     if (isProfileWithEmail(updatedProfile)) {
       try {
         await Notifications.profileCreated(
@@ -140,43 +318,113 @@ export async function PUT(request: NextRequest) {
         );
         await Notifications.profileCreatedAdmin(updatedProfile);
       } catch (e) {
-        console.error("Failed to send welcome or admin email", e);
+        console.error("Profile PUT notification error", {
+          scope: "profile.update",
+          type: "notify_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+        });
       }
     }
-    return successResponse({
-      profile: updatedProfile,
-      message: "Profile updated successfully",
+    const response = new Response(
+      JSON.stringify({
+        profile: updatedProfile,
+        message: "Profile updated successfully",
+        correlationId,
+        success: true,
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+    console.info("Profile PUT success", {
+      scope: "profile.update",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
     });
+    return response;
   } catch (error) {
-    console.error("Error in profile update API route:", error);
-    return errorResponse("Internal server error", 500);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Profile PUT unhandled error", {
+      scope: "profile.update",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return new Response(
+      JSON.stringify({ error: "Internal server error", correlationId }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
     const authCheck = requireUserToken(req);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as Response;
+      const status = (res as unknown as { status?: number }).status || 401;
+      let body: unknown = { error: "Unauthorized", correlationId };
+      try {
+        const txt = await (res as Response).text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      console.warn("Profile POST auth failed", {
+        scope: "profile.create",
+        type: "auth_failed",
+        correlationId,
+        statusCode: status,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const { token, userId } = authCheck;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    if (!userId)
+      return new Response(
+        JSON.stringify({ error: "User ID not found in token", correlationId }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
     const rateLimitResult = checkApiRateLimit(
       `profile_create_${userId}`,
       3,
       60000
     );
     if (!rateLimitResult.allowed)
-      return errorResponse("Rate limit exceeded", 429);
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded", correlationId }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
     const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    if (!convex)
+      return new Response(
+        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    try {
+      // @ts-ignore legacy
+      convex.setAuth?.(token);
+    } catch {}
     let body: Record<string, unknown>;
     try {
       body = await req.json();
     } catch {
-      return errorResponse("Invalid JSON body", 400);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body", correlationId }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
     if (!body || typeof body !== "object")
-      return errorResponse("Missing or invalid body", 400);
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid body", correlationId }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     const sanitizedBody = sanitizeProfileInput(body);
     const requiredFields = [
       "fullName",
@@ -193,24 +441,34 @@ export async function POST(req: NextRequest) {
     ];
     for (const field of requiredFields) {
       if (!sanitizedBody[field] || typeof sanitizedBody[field] !== "string") {
-        return errorResponse(
-          `Missing or invalid required field: ${field}`,
-          400
+        return new Response(
+          JSON.stringify({
+            error: `Missing or invalid required field: ${field}`,
+            correlationId,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
     }
     const validation = validateProfileData(sanitizedBody);
     if (!validation.isValid)
-      return errorResponse(validation.error || "Invalid profile data", 400);
-    // Check if user already has a profile
+      return new Response(
+        JSON.stringify({
+          error: validation.error || "Invalid profile data",
+          correlationId,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     const existingProfile = await convex.query(
       api.profiles.getProfileByUserId,
       { userId: userId as Id<"users"> }
     );
-    if (existingProfile) return errorResponse("Profile already exists", 409);
-    // Format the data for createProfile mutation
-    // Build a payload that matches Convex users.createProfile args exactly but keep typing permissive here.
-    // Ensure we don't pass any local placeholder image IDs to Convex (they fail v.id("_storage") validator)
+    if (existingProfile)
+      return new Response(
+        JSON.stringify({ error: "Profile already exists", correlationId }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
+      );
+
     const filteredImageIds =
       Array.isArray(sanitizedBody.profileImageIds)
         ? (sanitizedBody.profileImageIds as string[]).filter(
@@ -219,14 +477,11 @@ export async function POST(req: NextRequest) {
         : undefined;
 
     const profileData = {
-      // Basic info (required in Convex)
       fullName: String(sanitizedBody.fullName || ""),
       dateOfBirth: String(sanitizedBody.dateOfBirth || ""),
       gender: sanitizedBody.gender as "male" | "female" | "other",
       city: String(sanitizedBody.city || ""),
       aboutMe: String(sanitizedBody.aboutMe || ""),
-
-      // Optional / enumerations (Convex accepts specific literals)
       profileFor:
         (sanitizedBody.profileFor as
           | "self"
@@ -243,13 +498,9 @@ export async function POST(req: NextRequest) {
           | "female"
           | "other"
           | "any") ?? "any",
-
-      // Location
       country: sanitizedBody.country
         ? String(sanitizedBody.country)
         : undefined,
-
-      // Physical & lifestyle
       height: String(sanitizedBody.height || ""),
       maritalStatus:
         (sanitizedBody.maritalStatus as
@@ -273,8 +524,6 @@ export async function POST(req: NextRequest) {
         (sanitizedBody.smoking as "no" | "occasionally" | "yes" | "") ?? "no",
       drinking:
         (sanitizedBody.drinking as "no" | "occasionally" | "yes") ?? "no",
-
-      // Cultural
       motherTongue:
         (sanitizedBody.motherTongue as
           | "farsi-dari"
@@ -302,8 +551,6 @@ export async function POST(req: NextRequest) {
           | "qizilbash"
           | "punjabi"
           | "") ?? "",
-
-      // Education & career
       education: String(sanitizedBody.education || ""),
       occupation: String(sanitizedBody.occupation || ""),
       annualIncome:
@@ -311,14 +558,10 @@ export async function POST(req: NextRequest) {
         sanitizedBody.annualIncome === ""
           ? undefined
           : String(sanitizedBody.annualIncome),
-
-      // Contact
       phoneNumber: sanitizedBody.phoneNumber
         ? String(sanitizedBody.phoneNumber)
         : undefined,
       email: sanitizedBody.email ? String(sanitizedBody.email) : undefined,
-
-      // Partner preferences
       partnerPreferenceAgeMin:
         sanitizedBody.partnerPreferenceAgeMin !== undefined &&
         sanitizedBody.partnerPreferenceAgeMin !== ""
@@ -334,29 +577,17 @@ export async function POST(req: NextRequest) {
         : sanitizedBody.partnerPreferenceCity
           ? [String(sanitizedBody.partnerPreferenceCity)]
           : undefined,
-
-      // Images
-      // Only accept storage-backed IDs (Convex v.id("_storage")). Filter out any local placeholders like "local-..."
-      profileImageIds: Array.isArray(sanitizedBody.profileImageIds)
-        ? (sanitizedBody.profileImageIds as string[]).filter(
-            (id) => typeof id === "string" && !id.startsWith("local-")
-          )
-        : undefined,
-
-      // Subscription
+      profileImageIds: filteredImageIds,
       subscriptionPlan:
         (sanitizedBody.subscriptionPlan as
           | "free"
           | "premium"
           | "premiumPlus") ?? undefined,
-
-      // Flags
       isProfileComplete: true,
     };
 
     // @ts-expect-error Convex generated types can be restrictive in app router context; values match runtime schema.
     await convex.mutation(api.users.createProfile, profileData);
-    // Fetch the latest profile
     const newProfile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
     });
@@ -365,47 +596,138 @@ export async function POST(req: NextRequest) {
         await Notifications.profileCreated(newProfile.email, newProfile);
         await Notifications.profileCreatedAdmin(newProfile);
       } catch (e) {
-        console.error("Failed to send welcome or admin email", e);
+        console.error("Profile POST notification error", {
+          scope: "profile.create",
+          type: "notify_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+        });
       }
     }
-    return successResponse({
-      profile: newProfile,
-      message: "Profile created successfully",
+    const response = new Response(
+      JSON.stringify({
+        profile: newProfile,
+        message: "Profile created successfully",
+        correlationId,
+        success: true,
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+    console.info("Profile POST success", {
+      scope: "profile.create",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
     });
+    return response;
   } catch (error) {
-    console.error("Error in POST /api/profile:", error);
-    return errorResponse("Internal server error", 500);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Profile POST unhandled error", {
+      scope: "profile.create",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return new Response(
+      JSON.stringify({ error: "Internal server error", correlationId }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
     const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as Response;
+      const status = (res as unknown as { status?: number }).status || 401;
+      let body: unknown = { error: "Unauthorized", correlationId };
+      try {
+        const txt = await (res as Response).text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      console.warn("Profile DELETE auth failed", {
+        scope: "profile.delete",
+        type: "auth_failed",
+        correlationId,
+        statusCode: status,
+        durationMs: Date.now() - startedAt,
+      });
+      return new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const { token, userId } = authCheck;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    if (!userId)
+      return new Response(
+        JSON.stringify({ error: "User ID not found in token", correlationId }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
     const rateLimitResult = checkApiRateLimit(
       `profile_delete_${userId}`,
       1,
       60000
     );
     if (!rateLimitResult.allowed)
-      return errorResponse("Rate limit exceeded", 429);
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded", correlationId }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
     const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    if (!convex)
+      return new Response(
+        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    try {
+      // @ts-ignore legacy
+      convex.setAuth?.(token);
+    } catch {}
     const profile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
     });
     if (!profile || !profile._id)
-      return errorResponse("No user or profile found for deletion", 404);
-    if (profile.userId !== userId) return errorResponse("Unauthorized", 403);
+      return new Response(
+        JSON.stringify({ error: "No user or profile found for deletion", correlationId }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    if (profile.userId !== userId)
+      return new Response(
+        JSON.stringify({ error: "Unauthorized", correlationId }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
     await convex.mutation(api.users.deleteProfile, { id: profile._id });
-    return successResponse({
-      message: "User and profile deleted successfully",
+    const response = new Response(
+      JSON.stringify({ message: "User and profile deleted successfully", correlationId, success: true }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+    console.info("Profile DELETE success", {
+      scope: "profile.delete",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
     });
+    return response;
   } catch (error) {
-    console.error("Error in DELETE /api/profile:", error);
-    return errorResponse("Failed to delete user and profile", 500);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Profile DELETE unhandled error", {
+      scope: "profile.delete",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return new Response(
+      JSON.stringify({ error: "Failed to delete user and profile", correlationId }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
