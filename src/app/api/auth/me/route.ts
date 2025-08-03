@@ -3,23 +3,25 @@ import { verifyAccessJWT, extractTokenFromHeader } from "@/lib/auth/jwt";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 
+/**
+ * Returns current user's info and profile. Extensive fix:
+ * - Avoids Convex auth-context dependent query to prevent profile: null immediately post-signup.
+ * - Fetches user by email from JWT, then fetches profile by explicit userId.
+ * - Preserves refresh flow and forwards Set-Cookie headers after rotation.
+ */
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
     const bearerToken = extractTokenFromHeader(authHeader);
     const cookieToken = request.cookies.get("auth-token")?.value;
 
-    // Prefer Authorization header, then cookie
     const tokenToVerify = bearerToken || cookieToken || null;
-
     if (!tokenToVerify) {
       return NextResponse.json({ error: "No auth session" }, { status: 401 });
     }
 
-    // We may need to forward refreshed cookies back to the client
     let refreshedSetCookies: string[] = [];
 
-    // Verify access token; if expired/invalid, attempt transparent refresh using refresh-token
     let emailFromSession: string | null = null;
     let effectiveAccessToken: string | null = tokenToVerify;
 
@@ -27,7 +29,6 @@ export async function GET(request: NextRequest) {
       const payload = await verifyAccessJWT(tokenToVerify);
       emailFromSession = payload.email;
     } catch {
-      // Attempt refresh only if refresh-token exists
       const refreshCookie = request.cookies.get("refresh-token")?.value;
       if (!refreshCookie) {
         return NextResponse.json(
@@ -35,11 +36,9 @@ export async function GET(request: NextRequest) {
           { status: 401 }
         );
       }
-      // Proxy a server-side refresh call
       const refreshUrl = new URL("/api/auth/refresh", request.url);
       const refreshResp = await fetch(refreshUrl.toString(), {
         method: "POST",
-        // Forward cookies so refresh endpoint can read refresh-token
         headers: {
           cookie: request.headers.get("cookie") || "",
         },
@@ -52,9 +51,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Extract new auth-token from Set-Cookie for immediate verification
       const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
-      // Split combined Set-Cookie into individual cookie strings
       const cookies = setCookieHeader
         ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/)
         : [];
@@ -65,7 +62,6 @@ export async function GET(request: NextRequest) {
           newAccess = decodeURIComponent(authMatch[1]);
         }
       }
-
       if (!newAccess) {
         return NextResponse.json(
           { error: "Invalid or expired session" },
@@ -76,8 +72,6 @@ export async function GET(request: NextRequest) {
       const payload = await verifyAccessJWT(newAccess);
       emailFromSession = payload.email;
       effectiveAccessToken = newAccess;
-
-      // Save refreshed cookies to append to final response so browser persists them
       refreshedSetCookies = cookies;
     }
 
@@ -85,7 +79,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No auth session" }, { status: 401 });
     }
 
-    // Get user by email
+    // 1) Fetch user by email (identifier-based, no Convex auth context required)
     const user = await fetchQuery(api.users.getUserByEmail, {
       email: emailFromSession,
     });
@@ -98,14 +92,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Account is banned" }, { status: 403 });
     }
 
-    // Attach profile for client-side gating
-    const profileRes = await fetchQuery(
-      api.users.getCurrentUserWithProfile,
-      {}
-    );
-    const profile = profileRes?.profile ?? null;
+    // 2) Fetch profile by explicit userId to avoid relying on Convex ctx.auth
+    // Use public query that accepts userId
+    const profileDoc = await fetchQuery(api.users.getProfileByUserIdPublic, {
+      userId: user._id,
+    });
 
-    // Build final response
+    // Build minimal, stable profile payload for client gating
+    const profile =
+      profileDoc && typeof profileDoc === "object"
+        ? {
+            id: (profileDoc as any)._id,
+            isProfileComplete: !!(profileDoc as any).isProfileComplete,
+            isOnboardingComplete: !!(profileDoc as any).isOnboardingComplete,
+          }
+        : null;
+
     const response = NextResponse.json({
       user: {
         id: user._id,
@@ -113,19 +115,11 @@ export async function GET(request: NextRequest) {
         role: user.role,
         emailVerified: user.emailVerified,
         createdAt: user.createdAt,
-        profile: profile
-          ? {
-              id: profile._id,
-              isProfileComplete: !!profile.isProfileComplete,
-              isOnboardingComplete: !!profile.isOnboardingComplete,
-            }
-          : null,
+        profile,
       },
-      // Optionally echo whether a refresh occurred (for debugging)
       refreshed: refreshedSetCookies.length > 0,
     });
 
-    // Forward any refreshed cookies so the browser updates its session
     if (refreshedSetCookies.length > 0) {
       for (const c of refreshedSetCookies) {
         response.headers.append("Set-Cookie", c);
