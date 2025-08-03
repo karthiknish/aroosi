@@ -16,8 +16,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No auth session" }, { status: 401 });
     }
 
+    // We may need to forward refreshed cookies back to the client
+    let refreshedSetCookies: string[] = [];
+
     // Verify access token; if expired/invalid, attempt transparent refresh using refresh-token
     let emailFromSession: string | null = null;
+    let effectiveAccessToken: string | null = tokenToVerify;
+
     try {
       const payload = await verifyAccessJWT(tokenToVerify);
       emailFromSession = payload.email;
@@ -49,14 +54,15 @@ export async function GET(request: NextRequest) {
 
       // Extract new auth-token from Set-Cookie for immediate verification
       const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
-      // Parse Set-Cookie header more robustly
-      const cookies = setCookieHeader.split(/,(?=[^;]+=[^;]+)/);
-      let newAccess = null;
+      // Split combined Set-Cookie into individual cookie strings
+      const cookies = setCookieHeader
+        ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/)
+        : [];
+      let newAccess: string | null = null;
       for (const cookie of cookies) {
         const authMatch = cookie.match(/auth-token=([^;]+)/);
         if (authMatch) {
           newAccess = decodeURIComponent(authMatch[1]);
-          break;
         }
       }
 
@@ -69,18 +75,10 @@ export async function GET(request: NextRequest) {
 
       const payload = await verifyAccessJWT(newAccess);
       emailFromSession = payload.email;
+      effectiveAccessToken = newAccess;
 
-      // Return response with cookies from refresh so browser stores them
-      // We still proceed to fetch and return the user JSON payload below.
-      // Compose downstream JSON and append cookies from refresh response.
-      const passthrough = NextResponse.next();
-      const refreshedCookies =
-        refreshResp.headers.getSetCookie?.() as unknown as string[] | undefined;
-      if (Array.isArray(refreshedCookies)) {
-        for (const c of refreshedCookies) {
-          passthrough.headers.append("Set-Cookie", c);
-        }
-      }
+      // Save refreshed cookies to append to final response so browser persists them
+      refreshedSetCookies = cookies;
     }
 
     if (!emailFromSession) {
@@ -107,7 +105,8 @@ export async function GET(request: NextRequest) {
     );
     const profile = profileRes?.profile ?? null;
 
-    return NextResponse.json({
+    // Build final response
+    const response = NextResponse.json({
       user: {
         id: user._id,
         email: user.email,
@@ -122,7 +121,18 @@ export async function GET(request: NextRequest) {
             }
           : null,
       },
+      // Optionally echo whether a refresh occurred (for debugging)
+      refreshed: refreshedSetCookies.length > 0,
     });
+
+    // Forward any refreshed cookies so the browser updates its session
+    if (refreshedSetCookies.length > 0) {
+      for (const c of refreshedSetCookies) {
+        response.headers.append("Set-Cookie", c);
+      }
+    }
+
+    return response;
   } catch (error) {
     console.error("Get user error:", error);
     return NextResponse.json(

@@ -663,32 +663,69 @@ export function ProfileCreationModal({
 
           // Collect successfully created imageIds in the same order as pendingImages
           const createdImageIds: string[] = [];
+          const failedImages: { name: string; reason: string }[] = [];
 
           for (const img of pendingImages) {
             try {
               // Validate image before upload
               if (!img.url || !img.url.startsWith("blob:")) {
-                console.warn("Invalid image URL, skipping:", img);
+                const reason = "Invalid local image URL";
+                console.warn(`${reason}, skipping:`, img);
+                failedImages.push({ name: img.fileName || "photo.jpg", reason });
                 continue;
               }
 
               // Fetch the blob from the object URL
-              const blob = await fetch(img.url).then((r) => r.blob());
-
-              // Validate file size (max 5MB)
-              if (blob.size > 5 * 1024 * 1024) {
-                console.warn("Image too large, skipping:", img.fileName);
+              let blob: Blob;
+              try {
+                const resp = await fetch(img.url);
+                if (!resp.ok) {
+                  const reason = `Failed to read local image (${resp.status})`;
+                  console.error(reason);
+                  failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                  continue;
+                }
+                blob = await resp.blob();
+              } catch (e) {
+                const reason = "Failed to read local image blob";
+                console.error(reason, e);
+                failedImages.push({ name: img.fileName || "photo.jpg", reason });
                 continue;
               }
 
+              // Validate file size (max 5MB)
+              const MAX_SIZE = 5 * 1024 * 1024;
+              if (blob.size > MAX_SIZE) {
+                const reason = "Image exceeds 5MB";
+                console.warn(reason, img.fileName);
+                failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                continue;
+              }
+
+              // Derive a safe content type, default to jpeg if unknown/empty
+              const safeType =
+                (blob.type && ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(blob.type.toLowerCase()))
+                  ? blob.type
+                  : "image/jpeg";
+
               const file = new File([blob], img.fileName || "photo.jpg", {
-                type: blob.type || "image/jpeg",
+                type: safeType,
               });
 
               // 1) Generate upload URL
-              const uploadUrl = await getImageUploadUrl(authToken);
+              let uploadUrl: string | null = null;
+              try {
+                uploadUrl = await getImageUploadUrl(authToken);
+              } catch (e) {
+                const reason = e instanceof Error ? e.message : "Failed to get upload URL";
+                console.error("getImageUploadUrl error:", e);
+                failedImages.push({ name: file.name, reason });
+                continue;
+              }
               if (!uploadUrl) {
-                console.error("Failed to get upload URL");
+                const reason = "Failed to get upload URL";
+                console.error(reason);
+                failedImages.push({ name: file.name, reason });
                 continue;
               }
 
@@ -700,19 +737,24 @@ export function ProfileCreationModal({
               });
 
               if (!uploadResp.ok) {
-                const errText = await uploadResp
-                  .text()
-                  .catch(() => uploadResp.statusText);
+                let errText = uploadResp.statusText;
+                try {
+                  errText = await uploadResp.text();
+                } catch {}
+                const reason = `Upload failed (${uploadResp.status})${errText ? `: ${errText}` : ""}`;
                 console.error("Upload failed", uploadResp.status, errText);
+                failedImages.push({ name: file.name, reason });
                 continue;
               }
 
-              // Convex returns JSON containing { storageId }
+              // Convex returns JSON containing { storageId } (or string)
               let storageJson: unknown;
               try {
                 storageJson = await uploadResp.json();
               } catch (e) {
-                console.error("Failed to parse upload response JSON", e);
+                const reason = "Failed to parse upload response";
+                console.error(reason, e);
+                failedImages.push({ name: file.name, reason });
                 continue;
               }
               const storageId =
@@ -725,22 +767,37 @@ export function ProfileCreationModal({
                     : null;
 
               if (!storageId) {
-                console.error("No storage ID returned from upload");
+                const reason = "No storageId returned from upload";
+                console.error(reason);
+                failedImages.push({ name: file.name, reason });
                 continue;
               }
 
               // 3) Confirm metadata and capture imageId for ordering
-              const meta = await saveImageMeta({
-                token: authToken,
-                userId,
-                storageId,
-                fileName: file.name,
-                contentType: file.type,
-                fileSize: file.size,
-              });
+              try {
+                const meta = await saveImageMeta({
+                  token: authToken,
+                  userId,
+                  storageId,
+                  fileName: file.name,
+                  contentType: file.type,
+                  fileSize: file.size,
+                });
 
-              if (meta?.imageId) {
-                createdImageIds.push(meta.imageId);
+                if (meta?.imageId) {
+                  createdImageIds.push(meta.imageId);
+                } else {
+                  const reason = "Server did not return imageId";
+                  console.error(reason);
+                  failedImages.push({ name: file.name, reason });
+                  continue;
+                }
+              } catch (e) {
+                const message =
+                  e instanceof Error ? e.message : "Failed to save image metadata";
+                console.error("saveImageMeta error:", e);
+                failedImages.push({ name: file.name, reason: message });
+                continue;
               }
 
               uploadedCount++;
@@ -748,9 +805,25 @@ export function ProfileCreationModal({
                 `Successfully uploaded image ${uploadedCount}/${pendingImages.length}`
               );
             } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Unknown image upload error";
               console.error("Image upload error for", img.fileName, ":", err);
+              failedImages.push({ name: img.fileName || "photo.jpg", reason: message });
               // Continue with other images even if one fails
             }
+          }
+
+          // Show aggregated error toast if some images failed
+          if (failedImages.length > 0) {
+            const sample = failedImages.slice(0, 3).map((f) => `${f.name}: ${f.reason}`).join("; ");
+            const extra =
+              failedImages.length > 3
+                ? `, and ${failedImages.length - 3} more`
+                : "";
+            showErrorToast(
+              null,
+              `Some images failed to upload (${failedImages.length}). ${sample}${extra}`
+            );
           }
 
           if (uploadedCount > 0) {
@@ -766,15 +839,20 @@ export function ProfileCreationModal({
                   : Array.isArray(formData.profileImageIds)
                     ? formData.profileImageIds
                     : [];
-              if (orderIds.length > 1) {
+              // Filter out any local placeholders defensively
+              const filteredOrderIds = orderIds.filter(
+                (id) => typeof id === "string" && !id.startsWith("local-") && id.trim().length > 0
+              );
+              if (filteredOrderIds.length > 1) {
                 await updateImageOrder({
                   token: authToken,
                   userId,
-                  imageIds: orderIds,
+                  imageIds: filteredOrderIds,
                 });
               }
             } catch (e) {
               console.warn("Failed to persist image order; continuing.", e);
+              showErrorToast(null, "Unable to save image order. You can reorder later.");
             }
           }
         }
