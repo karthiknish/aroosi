@@ -10,6 +10,7 @@ import type { Id } from "@convex/_generated/dataModel";
  */
 export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
 
   try {
     const authHeader = request.headers.get("authorization");
@@ -24,6 +25,8 @@ export async function GET(request: NextRequest) {
         scope: "auth.me",
         correlationId,
         type: "no_session",
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "No auth session", correlationId },
@@ -49,6 +52,8 @@ export async function GET(request: NextRequest) {
           correlationId,
           type: "expired_no_refresh",
           message: e instanceof Error ? e.message : String(e),
+          statusCode: 401,
+          durationMs: Date.now() - startedAt,
         });
         return NextResponse.json(
           { error: "Invalid or expired session", correlationId },
@@ -76,6 +81,8 @@ export async function GET(request: NextRequest) {
             type: "refresh_failed",
             status: refreshResp.status,
             bodyPreview: text.slice(0, 200),
+            statusCode: 401,
+            durationMs: Date.now() - startedAt,
           });
           return NextResponse.json(
             { error: "Invalid or expired session", correlationId },
@@ -102,6 +109,8 @@ export async function GET(request: NextRequest) {
             scope: "auth.me",
             correlationId,
             type: "refresh_missing_token",
+            statusCode: 401,
+            durationMs: Date.now() - startedAt,
           });
           return NextResponse.json(
             { error: "Invalid or expired session", correlationId },
@@ -120,6 +129,8 @@ export async function GET(request: NextRequest) {
           correlationId,
           type: "refresh_exception",
           message: err instanceof Error ? err.message : String(err),
+          statusCode: 401,
+          durationMs: Date.now() - startedAt,
         });
         return NextResponse.json(
           { error: "Invalid or expired session", correlationId },
@@ -133,6 +144,8 @@ export async function GET(request: NextRequest) {
         scope: "auth.me",
         correlationId,
         type: "no_user_after_verify",
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "No auth session", correlationId },
@@ -151,6 +164,7 @@ export async function GET(request: NextRequest) {
         correlationId,
         type: "convex_query_error",
         message: e instanceof Error ? e.message : String(e),
+        durationMs: Date.now() - startedAt,
       });
       return null;
     });
@@ -160,6 +174,8 @@ export async function GET(request: NextRequest) {
         scope: "auth.me",
         correlationId,
         type: "user_not_found",
+        statusCode: 404,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "User not found", correlationId },
@@ -173,6 +189,8 @@ export async function GET(request: NextRequest) {
         correlationId,
         type: "banned",
         userId: String(user._id),
+        statusCode: 403,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Account is banned", correlationId },
@@ -189,6 +207,7 @@ export async function GET(request: NextRequest) {
         correlationId,
         type: "convex_query_error",
         message: e instanceof Error ? e.message : String(e),
+        durationMs: Date.now() - startedAt,
       });
       return null;
     });
@@ -220,6 +239,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    console.info("Auth/me success", {
+      scope: "auth.me",
+      correlationId,
+      type: "success",
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      refreshed: refreshedSetCookies.length > 0,
+    });
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -228,6 +255,8 @@ export async function GET(request: NextRequest) {
       correlationId,
       type: "unhandled_error",
       message,
+      statusCode: 401,
+      durationMs: Date.now() - startedAt,
     });
     return NextResponse.json(
       { error: "Invalid or expired session", correlationId },

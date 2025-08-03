@@ -83,56 +83,73 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Get token from localStorage or cookie
+  // Get token from localStorage (legacy sentinel), but prefer cookie-based sessions.
   const getStoredToken = useCallback(() => {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem("auth-token") || null;
+    // Only used for backward compatibility. We no longer persist real JWTs client-side.
+    const stored = localStorage.getItem("auth-token");
+    return stored ? stored : null;
   }, []);
 
-  // Store token in localStorage and cookie
+  // Store token in localStorage (legacy) WITHOUT setting any writable auth cookies client-side.
+  // Server is the source of truth for HttpOnly cookies.
   const storeToken = useCallback((newToken: string) => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("auth-token", newToken);
-    // Set cookie for middleware
-    document.cookie = `auth-token=${newToken}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=strict`;
-    setToken(newToken);
+    // Persist a minimal marker for legacy callers; do not set client-writable auth cookie.
+    localStorage.setItem("auth-token", newToken || "cookie");
+    setToken(newToken || "cookie");
   }, []);
 
-  // Remove token from storage
+  // Remove token from storage (client-side markers only; server cookies are HttpOnly and set by API)
   const removeToken = useCallback(() => {
     if (typeof window === "undefined") return;
     localStorage.removeItem("auth-token");
-    document.cookie =
-      "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     setToken(null);
   }, []);
 
-  // Fetch current user data (supports cookie-only sessions when no token provided)
+  // Fetch current user, with one-shot auto-refresh on 401 if refresh cookie exists.
   const fetchUser = useCallback(
     async (authToken?: string | null): Promise<User | null> => {
-      try {
+      const callMe = async (withBearer?: string | null) => {
         const init: RequestInit = {};
-        if (authToken) {
-          init.headers = {
-            Authorization: `Bearer ${authToken}`,
-          };
+        if (withBearer) {
+          init.headers = { Authorization: `Bearer ${withBearer}` };
         }
-        const response = await fetch("/api/auth/me", init);
+        const res = await fetch("/api/auth/me", init);
+        return res;
+      };
 
-        if (!response.ok) {
-          // 401 means no valid session; treat as logged out
-          if (response.status === 401) return null;
-          throw new Error("Failed to fetch user");
+      try {
+        // 1) Try /api/auth/me (bearer if provided)
+        let res = await callMe(authToken ?? null);
+
+        if (res.status === 401) {
+          // 2) If unauthorized, try to refresh using cookies, then retry /me once
+          try {
+            const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
+            // If refresh succeeded, retry /me
+            if (refreshRes.ok) {
+              res = await callMe(null);
+            }
+          } catch (e) {
+            // swallow refresh network errors; will return null below
+          }
         }
 
-        const data = await response.json();
-
-        // If we authenticated via cookies (no bearer used), set sentinel token early
-        if (!authToken) {
-          setToken((prev) => (prev ? prev : "cookie"));
+        if (!res.ok) {
+          if (res.status === 401) return null;
+          throw new Error(`Failed to fetch user: ${res.status}`);
         }
 
-        return data.user;
+        const data = await res.json().catch(() => ({} as { user?: User }));
+        if (data && data.user) {
+          // If authenticated via cookies (no bearer), mark sentinel token
+          if (!authToken) {
+            setToken((prev) => (prev ? prev : "cookie"));
+          }
+          return data.user;
+        }
+        return null;
       } catch (error) {
         console.error("Error fetching user:", error);
         return null;
@@ -241,13 +258,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
-        console.log("AuthProvider: SignIn successful, storing token and user");
+        console.log("AuthProvider: SignIn successful; hydrating from cookies");
+        // Prefer cookie-based session; if server returned token include it for legacy
         if (data && data.token) {
           storeToken(data.token);
+        } else {
+          storeToken("cookie");
         }
-        if (data && data.user) {
-          setUser(data.user);
-        }
+        // Always refresh from /api/auth/me to ensure we have latest profile
+        await refreshUser();
         return { success: true };
       } catch (error) {
         console.error("Sign in error:", error);
@@ -312,13 +331,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
-        console.log("AuthProvider: SignUp successful, storing token and user");
+        console.log("AuthProvider: SignUp successful; hydrating from cookies");
         if (data.token) {
           storeToken(data.token);
+        } else {
+          storeToken("cookie");
         }
-        if (data.user) {
-          setUser(data.user);
-        }
+        // Refresh from server to finalize session and profile state
+        await refreshUser();
 
         return { success: true };
       } catch (error) {

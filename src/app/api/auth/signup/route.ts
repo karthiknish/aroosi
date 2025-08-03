@@ -168,6 +168,7 @@ const signupSchema = z.object({
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
     // Distributed IP throttling (Convex-backed via HTTP client)
     const ip =
@@ -187,6 +188,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "config_error",
         message: "Convex client not configured",
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Convex client not configured", hint: "Set NEXT_PUBLIC_CONVEX_URL in environment.", correlationId },
@@ -217,6 +220,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "ratelimit_warning",
         message: e instanceof Error ? e.message : String(e),
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
       });
       // best-effort: do not block if rate limit store is unavailable
     }
@@ -230,6 +235,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "parse_error",
         message: e instanceof Error ? e.message : String(e),
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Invalid JSON body", correlationId },
@@ -253,6 +260,8 @@ export async function POST(request: NextRequest) {
           type: "validation_error",
           issueCount: issues.length,
           issues,
+          statusCode: 400,
+          durationMs: Date.now() - startedAt,
         });
         return NextResponse.json(
           { error: "Invalid input data", issues, correlationId },
@@ -264,6 +273,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "parse_unhandled",
         message: error instanceof Error ? error.message : String(error),
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Invalid input", correlationId },
@@ -301,6 +312,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "ratelimit_warning",
         message: e instanceof Error ? e.message : String(e),
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
       });
       // continue on failure
     }
@@ -318,6 +331,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "password_policy",
         reason: "weak_password",
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Password does not meet security requirements", correlationId },
@@ -338,6 +353,8 @@ export async function POST(request: NextRequest) {
           scope: "auth.signup",
           correlationId,
           type: "account_exists_google",
+          statusCode: 200,
+          durationMs: Date.now() - startedAt,
         });
         return NextResponse.json(
           {
@@ -353,6 +370,8 @@ export async function POST(request: NextRequest) {
         scope: "auth.signup",
         correlationId,
         type: "account_exists_native_or_unknown",
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         {
@@ -423,6 +442,8 @@ export async function POST(request: NextRequest) {
         scope: "auth.signup",
         correlationId,
         type: "create_user_failed",
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json({ error: "Failed to create user", correlationId }, { status: 500 });
     }
@@ -471,6 +492,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.info("Signup success", {
+      scope: "auth.signup",
+      correlationId,
+      type: "success",
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      userId: String(result.userId),
+    });
     return response;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -479,6 +508,8 @@ export async function POST(request: NextRequest) {
       correlationId,
       type: "unhandled_error",
       message: errMsg,
+      statusCode: 400,
+      durationMs: Date.now() - startedAt,
     });
     return NextResponse.json(
       { error: "Unable to complete signup at this time", correlationId },

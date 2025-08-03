@@ -28,6 +28,7 @@ const normalizeGmailForCompare = (e: string) => {
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
 
   try {
     // Distributed IP throttling via Convex
@@ -69,6 +70,8 @@ export async function POST(request: NextRequest) {
             type: "rate_limited_ip",
             ip,
             retryAfterSec,
+            statusCode: 429,
+            durationMs: Date.now() - startedAt,
           });
           return NextResponse.json(
             {
@@ -88,6 +91,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "ratelimit_warning",
         message: e instanceof Error ? e.message : String(e),
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
       });
       // best-effort; if Convex unavailable, continue
     }
@@ -101,6 +106,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "parse_error",
         message: e instanceof Error ? e.message : String(e),
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Invalid JSON body", correlationId },
@@ -127,6 +134,8 @@ export async function POST(request: NextRequest) {
           type: "validation_error",
           issueCount: issues.length,
           issues,
+          statusCode: 400,
+          durationMs: Date.now() - startedAt,
         });
         return NextResponse.json(
           { error: "Invalid input data", issues, correlationId },
@@ -138,6 +147,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "parse_unhandled",
         message: error instanceof Error ? error.message : String(error),
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Invalid input", correlationId },
@@ -222,6 +233,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "invalid_credentials_no_user",
         emailHash: Buffer.from(normalizedEmail).toString("base64url"),
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Invalid email or password", correlationId },
@@ -236,6 +249,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "banned",
         userId: String(user._id),
+        statusCode: 403,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Account is banned", correlationId },
@@ -251,6 +266,8 @@ export async function POST(request: NextRequest) {
         correlationId,
         type: "invalid_credentials_bad_password",
         userId: String(user._id),
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
         { error: "Invalid email or password", correlationId },
@@ -331,6 +348,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.info("Signin success", {
+      scope: "auth.signin",
+      correlationId,
+      type: "success",
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      userId: String(user._id),
+    });
     return response;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
@@ -339,6 +364,8 @@ export async function POST(request: NextRequest) {
       correlationId,
       type: "unhandled_error",
       message: errMsg,
+      statusCode: error instanceof z.ZodError ? 400 : 500,
+      durationMs: Date.now() - startedAt,
     });
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -18,13 +18,22 @@ import { getConvexClient } from "@/lib/convexClient";
  * - On success: increments version and returns new access (15m) + refresh (7d) cookies
  */
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
+  const correlationId = Math.random().toString(36).slice(2, 10);
   try {
     const cookies = req.cookies;
     const refreshToken = cookies.get("refresh-token")?.value;
 
     if (!refreshToken) {
+      console.warn("Refresh missing token", {
+        scope: "auth.refresh",
+        correlationId,
+        type: "missing_token",
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+      });
       const res = NextResponse.json(
-        { error: "Missing refresh token", code: "MISSING_REFRESH" },
+        { error: "Missing refresh token", code: "MISSING_REFRESH", correlationId },
         { status: 401 }
       );
       // Clear any stray cookies using centralized helper (expire immediately)
@@ -50,8 +59,15 @@ export async function POST(req: NextRequest) {
     // Convex client
     const convex = getConvexClient();
     if (!convex) {
+      console.error("Refresh config error", {
+        scope: "auth.refresh",
+        correlationId,
+        type: "config_error",
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
       return NextResponse.json(
-        { error: "Convex client not configured" },
+        { error: "Convex client not configured", correlationId },
         { status: 500 }
       );
     }
@@ -75,8 +91,16 @@ export async function POST(req: NextRequest) {
         0,
         Math.ceil((ipRate.resetAt - Date.now()) / 1000)
       );
+      console.warn("Refresh rate limited ip", {
+        scope: "auth.refresh",
+        correlationId,
+        type: "rate_limited_ip",
+        retryAfter,
+        statusCode: 429,
+        durationMs: Date.now() - startedAt,
+      });
       const res = NextResponse.json(
-        { error: "Too many refresh attempts", code: "RATE_LIMITED" },
+        { error: "Too many refresh attempts", code: "RATE_LIMITED", correlationId },
         { status: 429 }
       );
       res.headers.set("Retry-After", String(retryAfter));
@@ -102,8 +126,17 @@ export async function POST(req: NextRequest) {
         0,
         Math.ceil((userRate.resetAt - Date.now()) / 1000)
       );
+      console.warn("Refresh rate limited user", {
+        scope: "auth.refresh",
+        correlationId,
+        type: "rate_limited_user",
+        userId,
+        retryAfter,
+        statusCode: 429,
+        durationMs: Date.now() - startedAt,
+      });
       const res = NextResponse.json(
-        { error: "Too many refresh attempts", code: "RATE_LIMITED" },
+        { error: "Too many refresh attempts", code: "RATE_LIMITED", correlationId },
         { status: 429 }
       );
       res.headers.set("Retry-After", String(retryAfter));
@@ -118,8 +151,16 @@ export async function POST(req: NextRequest) {
 
     if (!cas.ok) {
       // Reuse detected: no extra bump; just clear cookies and signal reuse
+      console.warn("Refresh reuse detected", {
+        scope: "auth.refresh",
+        correlationId,
+        type: "refresh_reuse",
+        userId,
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+      });
       const res = NextResponse.json(
-        { error: "Refresh token reuse detected", code: "REFRESH_REUSE" },
+        { error: "Refresh token reuse detected", code: "REFRESH_REUSE", correlationId },
         { status: 401 }
       );
       // Clear cookies to force re-auth (centralized helper, expire immediately)
@@ -185,10 +226,26 @@ export async function POST(req: NextRequest) {
       res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
     }
 
+    console.info("Refresh success", {
+      scope: "auth.refresh",
+      correlationId,
+      type: "success",
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      userId,
+    });
     return res;
   } catch (err) {
+    console.error("Refresh invalid token", {
+      scope: "auth.refresh",
+      correlationId,
+      type: "invalid_refresh",
+      statusCode: 401,
+      durationMs: Date.now() - startedAt,
+      message: err instanceof Error ? err.message : String(err),
+    });
     const res = NextResponse.json(
-      { error: "Invalid refresh token", code: "INVALID_REFRESH" },
+      { error: "Invalid refresh token", code: "INVALID_REFRESH", correlationId },
       { status: 401 }
     );
     // Clear cookies on invalid token (centralized helper, expire immediately)

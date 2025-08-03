@@ -63,47 +63,22 @@ function isPublicApiRoute(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow framework/system paths through
-  if (
+  // Single system path guard
+  const isSystemPath =
     pathname === "/404" ||
     pathname === "/500" ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.includes("__next_static") ||
-    pathname.includes("__next_data")
-  ) {
+    pathname.includes("__next_data");
+  if (isSystemPath) {
     return NextResponse.next();
   }
 
-  // Always allow framework/system paths through
-  if (
-    pathname === "/404" ||
-    pathname === "/500" ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.includes("__next_static") ||
-    pathname.includes("__next_data")
-  ) {
-    return NextResponse.next();
-  }
+  // Minimal structured trace (kept lightweight)
+  console.info("MW pass-through", { scope: "auth.middleware", path: pathname });
 
-  // Let the framework/system paths pass through
-  if (
-    pathname === "/404" ||
-    pathname === "/500" ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.includes("__next_static") ||
-    pathname.includes("__next_data")
-  ) {
-    return NextResponse.next();
-  }
-
-  // Minimal debug line to confirm middleware is reached and for which path
-  // This prints on the server console running Next.js
-  console.info("[MW] path", pathname);
-
-  // Skip middleware for static files, _next, and favicon
+  // Skip middleware for static files, _next, and favicon (dot files/assets)
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -112,27 +87,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow public routes
+  // Public routes
   if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
-  // Allow public API routes
+  // Public API routes
   if (isPublicApiRoute(pathname)) {
-    return NextResponse.next();
-  }
-
-  // New: Allow Next.js default 404/500 and unknown routes to fall through to app router
-  // so they render 404 instead of being intercepted by auth redirects.
-  // Known framework paths that should never be gated:
-  if (
-    pathname === "/404" ||
-    pathname === "/500" ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.includes("__next_static") ||
-    pathname.includes("__next_data")
-  ) {
     return NextResponse.next();
   }
 
@@ -155,50 +116,45 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/premium-settings") ||
     pathname.startsWith("/plans");
   if (!token && refreshCookie && isAuthenticatedClientRoute) {
+    console.info("MW allow refresh navigation", {
+      scope: "auth.middleware",
+      decision: "allow_refresh_nav",
+      path: pathname,
+    });
     return NextResponse.next();
   }
 
   // SECURITY: Do NOT allow non-JWT "session" cookie for auth gating.
-  // Only a verified JWT may pass the middleware.
-  // Any presence of aroosi_session is ignored here to prevent spoofing.
 
   if (!token) {
-    // Try refresh flow: if refresh cookie present, allow through to let client refresh
+    // Try refresh flow: if refresh cookie present, allow through to let client refresh (API only)
     if (refreshCookie && pathname.startsWith("/api")) {
-      // For API requests, pass through and let /api/auth/me or client refresh logic handle it
+      console.info("MW allow API with refresh cookie", {
+        scope: "auth.middleware",
+        decision: "allow_api_refresh",
+        path: pathname,
+      });
       return NextResponse.next();
     }
-    // Allow first navigation to key authenticated client routes if refresh cookie exists,
-    // so client can hydrate and call /api/auth/me to refresh tokens.
-    const isAuthenticatedClientRoute =
-      pathname === "/search" ||
-      pathname.startsWith("/matches") ||
-      pathname.startsWith("/profile") ||
-      pathname.startsWith("/usage") ||
-      pathname.startsWith("/premium-settings") ||
-      pathname.startsWith("/plans");
-    if (refreshCookie && isAuthenticatedClientRoute) {
-      console.warn(
-        "[MW] Allowing navigation without access token due to refresh cookie",
-        {
-          path: pathname,
-        }
-      );
-      return NextResponse.next();
-    }
+
     // If this is NOT a known protected route, fall through so Next.js can render 404 (unknown paths)
     if (!isKnownProtectedRoute(pathname)) {
+      console.info("MW pass unknown non-protected", {
+        scope: "auth.middleware",
+        decision: "pass_unknown",
+        path: pathname,
+      });
       return NextResponse.next();
     }
+
     // Otherwise redirect to sign-in preserving destination
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", pathname);
-    console.warn(
-      "[MW] Redirecting due to missing token on protected route",
-      {
-        path: pathname,
-      }
-    );
+    console.warn("MW redirect missing token", {
+      scope: "auth.middleware",
+      decision: "redirect_missing_token",
+      path: pathname,
+    });
     return NextResponse.redirect(signInUrl);
   }
 
@@ -213,50 +169,49 @@ export async function middleware(request: NextRequest) {
     response.headers.set("x-user-role", payload.role || "user");
 
     return response;
-  } catch (error) {
+  } catch {
     // Invalid or expired access token:
-    // If we have a refresh cookie, allow API calls to continue (client will refresh),
-    // and for page requests redirect to sign-in with redirect_url.
-    const refreshCookie = request.cookies.get("refresh-token")?.value;
+    const refreshCookiePresent = request.cookies.get("refresh-token")?.value;
 
-    if (refreshCookie && pathname.startsWith("/api")) {
+    if (refreshCookiePresent && pathname.startsWith("/api")) {
+      console.info("MW allow API on invalid token with refresh", {
+        scope: "auth.middleware",
+        decision: "allow_api_invalid_with_refresh",
+        path: pathname,
+      });
       return NextResponse.next();
     }
 
     // If NOT a known protected route, fall through so Next.js can render 404 (unknown paths)
     if (!isKnownProtectedRoute(pathname)) {
+      console.info("MW pass unknown non-protected (invalid token)", {
+        scope: "auth.middleware",
+        decision: "pass_unknown_invalid",
+        path: pathname,
+      });
+      return NextResponse.next();
+    }
+
+    // If refresh cookie exists and this is an authenticated client route, allow through so the client can refresh
+    if (refreshCookiePresent && isAuthenticatedClientRoute) {
+      console.warn("MW allow nav invalid token with refresh", {
+        scope: "auth.middleware",
+        decision: "allow_nav_invalid_with_refresh",
+        path: pathname,
+      });
       return NextResponse.next();
     }
 
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", pathname);
 
-    // If refresh cookie exists and this is an authenticated client route, allow through so the client can refresh
-    const isAuthenticatedClientRoute =
-      pathname === "/search" ||
-      pathname.startsWith("/matches") ||
-      pathname.startsWith("/profile") ||
-      pathname.startsWith("/usage") ||
-      pathname.startsWith("/premium-settings") ||
-      pathname.startsWith("/plans");
-    if (refreshCookie && isAuthenticatedClientRoute) {
-      console.warn(
-        "[MW] Access token invalid but refresh present; allowing navigation",
-        {
-          path: pathname,
-        }
-      );
-      return NextResponse.next();
-    }
-
     const response = NextResponse.redirect(signInUrl);
     response.cookies.delete("auth-token");
-    console.warn(
-      "[MW] Redirecting due to invalid token on protected route",
-      {
-        path: pathname,
-      }
-    );
+    console.warn("MW redirect invalid token", {
+      scope: "auth.middleware",
+      decision: "redirect_invalid_token",
+      path: pathname,
+    });
     return response;
   }
 }
