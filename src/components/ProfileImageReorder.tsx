@@ -5,6 +5,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -167,25 +169,24 @@ export function ProfileImageReorder({
     })
   );
 
-  type DragEventLike = {
-    active: { id: string };
-    over: { id: string } | null;
-  };
-
   const handleDragEnd = useCallback(
-    async (event: DragEventLike) => {
+    async (event: DragEndEvent) => {
       if (loading || isReordering) return;
       const { active, over } = event;
 
-      if (!over || active.id === over.id) return;
+      if (!over || !over.id || active.id === over.id) return;
 
-      const oldIndex = images.findIndex((img) => img.id === active.id);
-      const newIndex = images.findIndex((img) => img.id === over.id);
+      // Normalize IDs: dnd-kit UniqueIdentifier may be string | number | symbol
+      const activeId = String(active.id as UniqueIdentifier);
+      const overId = String(over.id as UniqueIdentifier);
+
+      const oldIndex = images.findIndex((img) => String(img.id) === activeId);
+      const newIndex = images.findIndex((img) => String(img.id) === overId);
       if (oldIndex === -1 || newIndex === -1) return;
 
       const newOrdered = arrayMove(images, oldIndex, newIndex);
       const newStorageOrder = newOrdered.map((img) =>
-        img.storageId ? img.storageId : img.id
+        img.storageId ? img.storageId : String(img.id)
       );
 
       // Optimistic update: immediately update UI

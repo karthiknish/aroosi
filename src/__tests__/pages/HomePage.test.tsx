@@ -10,7 +10,7 @@ const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 // Helper function to create complete AuthContextType objects
 const createMockAuthState = (
-  overrides: Partial<AuthContextType> = {},
+  overrides: Partial<AuthContextType> = {}
 ): AuthContextType => ({
   user: null,
   isLoaded: true,
@@ -26,7 +26,7 @@ const createMockAuthState = (
   error: null,
   signIn: jest.fn(),
   signUp: jest.fn(),
-  verifyOTP: jest.fn(),
+  // verifyOTP removed from AuthContextType; do not include in mocks
   signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
   refreshUser: jest.fn(),

@@ -134,7 +134,22 @@ export default function SearchProfilesPage() {
   const profile = rawProfile as { subscriptionPlan?: string } | null;
   const router = useRouter();
   const { trackUsage } = useUsageTracking(token ?? undefined);
+
+  // All hooks must be declared before any conditional returns
   const [mounted, setMounted] = React.useState(false);
+  const [city, setCity] = React.useState("");
+  const [country, setCountry] = React.useState("any");
+  const [ageMin, setAgeMin] = React.useState("");
+  const [ageMax, setAgeMax] = React.useState("");
+  const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(12);
+  const [total, setTotal] = useState(0);
+  const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
+  // Premium filters
+  const [ethnicity, setEthnicity] = useState("any");
+  const [motherTongue, setMotherTongue] = useState("any");
+  const [language, setLanguage] = useState("any");
 
   // Debug logging only in development
   React.useEffect(() => {
@@ -159,26 +174,6 @@ export default function SearchProfilesPage() {
 
   // 🚫 Removed unsafe React.useEffect that overrides router methods
 
-  const [city, setCity] = React.useState("");
-  const [country, setCountry] = React.useState("any");
-  const [ageMin, setAgeMin] = React.useState("");
-  const [ageMax, setAgeMax] = React.useState("");
-  const [imgLoaded, setImgLoaded] = useState<{ [userId: string]: boolean }>({});
-  const [page, setPage] = useState(0);
-  const [pageSize] = useState(12);
-  const [total, setTotal] = useState(0);
-  const [hasTrackedSearch, setHasTrackedSearch] = useState(false);
-
-  // Premium filters
-  const [ethnicity, setEthnicity] = useState("any");
-  const [motherTongue, setMotherTongue] = useState("any");
-  const [language, setLanguage] = useState("any");
-
-  // Use util for search results
-  // (token, page, pageSize, city, religion, ageMin, ageMax)
-  // All params are already in state
-
-  // React Query for profiles
   // Extra debug: log when query is enabled/disabled by auth signals
   React.useEffect(() => {
     // eslint-disable-next-line no-console
@@ -313,6 +308,9 @@ export default function SearchProfilesPage() {
     email?: string;
   } | null;
 
+  // Visual on-page banner to verify the page truly mounted even if console logs are filtered
+  React.useEffect(() => setMounted(true), []);
+
   // Get blocked users to filter them out
   const { data: blockedUsers } = useBlockedUsers();
   const blockedUserIds =
@@ -350,8 +348,30 @@ export default function SearchProfilesPage() {
   const offline = useOffline();
 
   // Edge cases – offline or errors
+  const edgeContent = (content: React.ReactNode) => (
+    <>
+      <div
+        style={{
+          position: "fixed",
+          top: 64,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          display: mounted ? "block" : "none",
+          background: "#111827",
+          color: "#fff",
+          padding: "6px 12px",
+          fontSize: 12,
+        }}
+      >
+        [Search] mounted • token={String(!!token)} • isSignedIn={String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} • isLoaded={String(isLoaded)}
+      </div>
+      {content}
+    </>
+  );
+
   if (offline) {
-    return (
+    return edgeContent(
       <div className="flex items-center justify-center min-h-screen">
         <ErrorState />
       </div>
@@ -359,16 +379,13 @@ export default function SearchProfilesPage() {
   }
 
   if (profilesError) {
-    return (
+    return edgeContent(
       <div className="flex items-center justify-center min-h-screen">
         <ErrorState onRetry={() => refetchProfiles()} />
       </div>
     );
   }
 
-  // Visual on-page banner to verify the page truly mounted even if console logs are filtered
-
-  React.useEffect(() => setMounted(true), []);
   return (
     <>
       <div
