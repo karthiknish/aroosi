@@ -627,6 +627,30 @@ export function ProfileCreationModal({
           return;
         }
 
+        // Normalize phone number to E.164-like format before submission
+        const normalizeToE164 = (phone: unknown): string | null => {
+          if (typeof phone !== "string") return null;
+          const cleaned = phone.replace(/[^\d+]/g, "");
+          const digits = cleaned.replace(/\D/g, "");
+          if (digits.length >= 10 && digits.length <= 15) {
+            return `+${digits}`;
+          }
+          return null;
+        };
+
+        const normalizedPhone =
+          normalizeToE164(cleanedData.phoneNumber as string) ??
+          (typeof cleanedData.phoneNumber === "string"
+            ? cleanedData.phoneNumber
+            : "");
+
+        // Persist normalized phone back to context to keep state consistent
+        try {
+          if (normalizedPhone) {
+            updateContextData({ phoneNumber: normalizedPhone });
+          }
+        } catch {}
+
         const payload: Partial<import("@/types/profile").ProfileFormValues> = {
           ...(cleanedData as unknown as import("@/types/profile").ProfileFormValues),
           profileFor: (cleanedData.profileFor ?? "self") as
@@ -642,6 +666,7 @@ export function ProfileCreationModal({
           email:
             // user?.primaryEmailAddress?.emailAddress || // Disabled for native auth
             (cleanedData.email as string) || "",
+          phoneNumber: normalizedPhone,
         };
 
         console.log("Submitting profile with payload:", payload);

@@ -80,14 +80,18 @@ const profileSchema = z
       .transform((v) => v.trim())
       .transform((v) => v.replace(/\u00A0/g, " ")) // replace non‑breaking spaces
       .transform((v) => v.replace(/\s+/g, " ")) // collapse spaces
+      .transform((v) => {
+        // Normalize to canonical E.164-like format: "+<digits>" with 10-15 digits.
+        const cleaned = v.replace(/[^\d+]/g, "");
+        const digits = cleaned.replace(/\D/g, "");
+        if (digits.length >= 10 && digits.length <= 15) {
+          return `+${digits}`;
+        }
+        return v;
+      })
       .refine(
-        (phone) => {
-          // Accept common formats by digit-count validation after stripping punctuation
-          // Examples: "+93 7xx xxx xxx", "+1 555 123 4567", "07555 123456", "(020) 7946-0958"
-          const digits = phone.replace(/\D/g, "");
-          return digits.length >= 10 && digits.length <= 15;
-        },
-        "Please provide a valid phone number (10-15 digits)"
+        (phone) => /^\+\d{10,15}$/.test(phone),
+        "Please provide a valid phone number in international format (+ and 10-15 digits)"
       ),
 
     profileFor: z
@@ -367,10 +371,22 @@ export async function POST(request: NextRequest) {
         ? ids.filter((s) => typeof s === "string" && s.trim().length > 0 && !s.startsWith("local-"))
         : [];
 
+    // Ensure final canonical phone normalization as a last-mile guard
+    const toE164 = (phone: unknown): string | null => {
+      if (typeof phone !== "string") return null;
+      const cleaned = phone.replace(/[^\d+]/g, "");
+      const digits = cleaned.replace(/\D/g, "");
+      if (digits.length >= 10 && digits.length <= 15) {
+        return `+${digits}`;
+      }
+      return null;
+    };
+
     const normalizedProfile = {
       ...profile,
       email: profile.email ?? normalizedEmail,
       isProfileComplete: true,
+      phoneNumber: toE164(profile.phoneNumber) ?? profile.phoneNumber,
       height:
         typeof profile.height === "string"
           ? /^\d{2,3}$/.test(profile.height.trim())

@@ -48,7 +48,17 @@ const onboardingSchema = z.object({
   dateOfBirth: z.string().min(1, "Required"),
   phoneNumber: z
     .string()
-    .regex(/^\+\d{1,4}\s?\d{6,14}$/i, "Enter a valid phone number"),
+    // Normalize to E.164-like "+<digits>" if possible; otherwise keep as-is for UI but fail validation.
+    .transform((v) => {
+      // Reuse same logic as client validation: keep +, strip others, validate 10-15 digits.
+      const cleaned = v.replace(/[^\d+]/g, "");
+      const digits = cleaned.replace(/\D/g, "");
+      if (digits.length >= 10 && digits.length <= 15) {
+        return `+${digits}`;
+      }
+      return v;
+    })
+    .refine((v) => /^\+\d{10,15}$/.test(v), "Enter a valid phone number"),
 });
 
 const onboardingStepSchemas = [
@@ -409,9 +419,13 @@ function HeroOnboardingInner() {
                     </Label>
                     <PhoneInput
                       value={heroData.phoneNumber ?? ""}
-                      onChange={(value: string) =>
-                        handleInputChange("phoneNumber", value)
-                      }
+                      onChange={(value: string) => {
+                        // Strip spaces and normalize to "+<digits>" for storage in context
+                        const cleaned = value.replace(/[^\d+]/g, "");
+                        const digits = cleaned.replace(/\D/g, "");
+                        const normalized = digits.length >= 10 && digits.length <= 15 ? `+${digits}` : value;
+                        handleInputChange("phoneNumber", normalized);
+                      }}
                       placeholder="7XXX XXXXXX"
                       className="w-full"
                     />

@@ -41,15 +41,22 @@ export const validateHeight = (heightString: string): boolean => {
   );
 };
 
-// Phone number validation helper
+// Phone number normalization to E.164-like format (+ and digits only).
+// Returns normalized "+<digits>" if length between 10 and 15, else null.
+export const normalizeToE164 = (phone: string): string | null => {
+  if (!phone) return null;
+  // Keep leading +, strip all other non-digits
+  const cleaned = phone.replace(/[^\d+]/g, "");
+  const startsWithPlus = cleaned.startsWith("+");
+  const digits = cleaned.replace(/\D/g, "");
+  if (digits.length < 10 || digits.length > 15) return null;
+  return `+${digits}`;
+};
+
+// Phone number validation helper (accept varied input but validate canonical length)
 export const validatePhoneNumber = (phone: string): boolean => {
-  if (!phone) return false;
-
-  // Remove all non-digit characters for length check
-  const digitsOnly = phone.replace(/\D/g, "");
-
-  // Must have at least 10 digits, max 15 (international standard)
-  return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  const normalized = normalizeToE164(phone);
+  return normalized !== null;
 };
 
 // Name validation helper
@@ -135,7 +142,8 @@ export const enhancedValidationSchemas = {
     phoneNumber: z
       .string()
       .min(1, errorMessages.required(fieldDisplayNames.phoneNumber))
-      .refine(validatePhoneNumber, errorMessages.phone()),
+      .transform((v) => (normalizeToE164(v) ?? v))
+      .refine((v) => validatePhoneNumber(v), errorMessages.phone()),
   }),
 
   // Step 2: Location & Physical
