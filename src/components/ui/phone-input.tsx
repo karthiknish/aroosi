@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"; // retained for backward compatibility if needed
 import { SearchableSelect, Option } from "@/components/ui/searchable-select";
 import { cn } from "@/lib/utils";
 import {
@@ -81,16 +74,27 @@ export function PhoneInput({
   return (
     <div className={cn("flex gap-2", className)}>
       <div className="w-[180px] flex-shrink-0">
-        <SearchableSelect
-          options={countryOptions}
-          value={selectedCountryCode}
-          onValueChange={handleCountryCodeChange}
-          placeholder="Country code"
-          className={cn(
-            error &&
-              "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
-          )}
-        />
+        <div className="relative">
+          <SearchableSelect
+            options={countryOptions}
+            value={selectedCountryCode}
+            onValueChange={handleCountryCodeChange}
+            placeholder="Country code"
+            className={cn(
+              // Harden trigger to prevent arrow bleed and text overflow
+              "h-10 overflow-hidden truncate whitespace-nowrap pr-10 pl-3 w-full",
+              "min-w-[10rem] max-w-full",
+              "bg-white",
+              error &&
+                "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
+            )}
+          />
+          {/* Reserve chevron space and ensure it doesn't overlap text */}
+          <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+            {/* This empty container ensures reserved space for the chevrons */}
+            <span className="inline-block w-4 h-4" />
+          </div>
+        </div>
       </div>
 
       <Input

@@ -8,6 +8,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { HeroOnboarding } from "@/components/home/HeroOnboarding";
+import { useAuthContext } from "@/components/AuthProvider";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -33,6 +34,22 @@ const fadeIn = {
     },
   }),
 } as const;
+
+function OnboardingSlot() {
+  const { isLoaded, isAuthenticated } = useAuthContext();
+  if (!isLoaded) return null;
+  if (isAuthenticated) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6, delay: 0.3 }}
+      className="w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto"
+    >
+      <HeroOnboarding />
+    </motion.div>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -171,14 +188,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Right side - Onboarding form */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  className="w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto"
-                >
-                  <HeroOnboarding />
-                </motion.div>
+                <OnboardingSlot />
               </div>
             </div>
           </section>

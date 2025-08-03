@@ -21,11 +21,20 @@ export default function CustomSignInForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const redirectUrl = searchParams.get("redirect_url") || "/search";
+
+  // Unified onboarding completion handler
+  const handleOnboardingComplete = () => {
+    if (onComplete) {
+      onComplete();
+    } else {
+      router.push(redirectUrl);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,19 +42,27 @@ export default function CustomSignInForm({
 
     try {
       const result = await signIn(email, password);
-
       if (result.success) {
-        if (onComplete) {
-          onComplete();
-        } else {
-          router.push(redirectUrl);
-        }
+        // Check for profile existence
+        // user is updated after signIn
+        // Wait for user to be set
+        setTimeout(() => {
+          const hasProfile = user && user.profile && user.profile.id;
+          if (!hasProfile) {
+            showErrorToast(
+              "No profile found for this account. Please create a profile first."
+            );
+            setIsLoading(false);
+            return;
+          }
+          handleOnboardingComplete();
+        }, 100);
       } else {
         showErrorToast(result.error || "Sign in failed");
+        setIsLoading(false);
       }
     } catch (err) {
       showErrorToast("An unexpected error occurred");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -107,13 +124,7 @@ export default function CustomSignInForm({
       </div>
 
       <GoogleAuthButton
-        onSuccess={() => {
-          if (onComplete) {
-            onComplete();
-          } else {
-            router.push(redirectUrl);
-          }
-        }}
+        onSuccess={handleOnboardingComplete}
         onError={(error: string) => showErrorToast(error)}
       />
 

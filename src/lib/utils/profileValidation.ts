@@ -152,9 +152,9 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
     }
   }
 
-  // Validate diet preferences
+  // Validate diet preferences (include 'halal' to match backend/Convex)
   if (data.diet !== undefined) {
-    if (!['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other', ''].includes(data.diet as string)) {
+    if (!['vegetarian', 'non-vegetarian', 'halal', 'vegan', 'eggetarian', 'other', ''].includes(data.diet as string)) {
       return { isValid: false, error: 'Invalid diet preference' };
     }
   }

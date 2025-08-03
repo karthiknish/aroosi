@@ -124,10 +124,41 @@ export interface ProfileSearchResult {
 }
 
 export default function SearchProfilesPage() {
-  const { token, isSignedIn, profile: rawProfile } = useAuthContext();
+  const {
+    token,
+    isSignedIn,
+    isLoaded,
+    isAuthenticated,
+    profile: rawProfile,
+  } = useAuthContext();
   const profile = rawProfile as { subscriptionPlan?: string } | null;
   const router = useRouter();
   const { trackUsage } = useUsageTracking(token ?? undefined);
+  const [mounted, setMounted] = React.useState(false);
+
+  // Debug logging only in development
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.info("[Search] mount", {
+        tokenPresent: !!token,
+        isSignedIn,
+        isAuthenticated,
+        isLoaded,
+      });
+      return () => {
+        // eslint-disable-next-line no-console
+        console.info("[Search] unmount");
+      };
+    }
+  }, [token, isSignedIn, isAuthenticated, isLoaded]);
+
+  // Defensive: if client-side code tries to route away, log it explicitly
+  const originalPush = router.push.bind(router);
+  const originalReplace = router.replace.bind(router);
+
+  // 🚫 Removed unsafe React.useEffect that overrides router methods
+
   const [city, setCity] = React.useState("");
   const [country, setCountry] = React.useState("any");
   const [ageMin, setAgeMin] = React.useState("");
@@ -148,6 +179,15 @@ export default function SearchProfilesPage() {
   // All params are already in state
 
   // React Query for profiles
+  // Extra debug: log when query is enabled/disabled by auth signals
+  React.useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.info("[Search] query enabled?", {
+      enabled: !!token && isSignedIn,
+      tokenPresent: !!token,
+      isSignedIn,
+    });
+  }, [token, isSignedIn]);
   const {
     data: searchResults,
     isLoading: loadingProfiles,
@@ -261,7 +301,7 @@ export default function SearchProfilesPage() {
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: ProfileSearchResult) => u.profile && u.profile.isProfileComplete,
+      (u: ProfileSearchResult) => u.profile && u.profile.isProfileComplete
     );
   }, [profiles]);
 
@@ -326,332 +366,380 @@ export default function SearchProfilesPage() {
     );
   }
 
+  // Visual on-page banner to verify the page truly mounted even if console logs are filtered
+
+  React.useEffect(() => setMounted(true), []);
   return (
-    <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
-      {/* Decorative color pop circles */}
-      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
-      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
-      {/* Subtle SVG background pattern */}
+    <>
       <div
-        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          position: "fixed",
+          top: 64,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          display: mounted ? "block" : "none",
+          background: "#111827",
+          color: "#fff",
+          padding: "6px 12px",
+          fontSize: 12,
         }}
-      ></div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <section className="mb-10 text-center">
-          <div className="inline-block relative mb-4">
-            <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2">
-              Search Profiles
-            </h1>
-            {/* Pink wavy SVG underline */}
-            <svg
-              className="absolute -bottom-2 left-0 w-full"
-              height="6"
-              viewBox="0 0 200 6"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M0 3C50 0.5 150 0.5 200 3"
-                stroke="#FDA4AF"
-                strokeWidth="5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <p className="text-lg text-neutral-light max-w-2xl mx-auto mb-8 font-nunito">
-            Browse and filter profiles to find your ideal match on Aroosi.
-          </p>
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="flex flex-wrap gap-3 justify-center mb-10 bg-white/80 rounded-xl shadow p-4"
-          >
-            <Input
-              type="text"
-              placeholder="City"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-40 bg-white rounded-lg shadow-sm font-nunito"
-            />
-            <div className="w-44">
-              <SearchableSelect
-                options={countrySelectOptions}
-                value={country}
-                onValueChange={setCountry}
-                placeholder="Country"
-                className="bg-white"
-              />
-            </div>
-            <Input
-              type="number"
-              min={18}
-              max={99}
-              placeholder="Min Age"
-              value={ageMin || ""}
-              onChange={(e) => setAgeMin(e.target.value)}
-              className="w-24 bg-white rounded-lg shadow-sm font-nunito"
-            />
-            <Input
-              type="number"
-              min={18}
-              max={99}
-              placeholder="Max Age"
-              value={ageMax || ""}
-              onChange={(e) => setAgeMax(e.target.value)}
-              className="w-24 bg-white rounded-lg shadow-sm font-nunito"
-            />
-            {/* Premium-only filters */}
-            {(profile?.subscriptionPlan === "premium" ||
-              profile?.subscriptionPlan === "premiumPlus") && (
-              <>
-                <Select value={ethnicity} onValueChange={setEthnicity}>
-                  <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
-                    <SelectValue placeholder="Ethnicity" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto bg-white">
-                    {ethnicityOptions.map((opt) => (
-                      <SelectItem key={opt} value={opt} className="font-nunito">
-                        {opt === "any" ? "Any Ethnicity" : opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={motherTongue} onValueChange={setMotherTongue}>
-                  <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
-                    <SelectValue placeholder="Mother Tongue" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto bg-white">
-                    {motherTongueOptions.map((opt) => (
-                      <SelectItem key={opt} value={opt} className="font-nunito">
-                        {opt === "any" ? "Any Mother Tongue" : opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
-                    <SelectValue placeholder="Language" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto bg-white">
-                    {languageOptions.map((opt) => (
-                      <SelectItem key={opt} value={opt} className="font-nunito">
-                        {opt === "any" ? "Any Language" : opt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
-          </motion.div>
-        </section>
-        {loadingProfiles ||
-        loadingImages ||
-        profiles === undefined ||
-        userImages === undefined ? (
-          // Show loading skeleton when data is being fetched
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
-              >
-                <Skeleton className="w-full aspect-square rounded-xl" />
-                <Skeleton className="h-6 w-2/3 rounded" />
-                <Skeleton className="h-4 w-1/2 rounded" />
-                <Skeleton className="h-4 w-1/3 rounded" />
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          // Show 'No profiles found' message when there are no results
-          <div className="text-center py-12">
-            <div className="mx-auto w-24 h-24 text-gray-300 mb-4">
+      >
+        [Search] mounted • token={String(!!token)} • isSignedIn=
+        {String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} •
+        isLoaded={String(isLoaded)}
+      </div>
+      <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
+        {/* Decorative color pop circles */}
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+        {/* Subtle SVG background pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        ></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <section className="mb-10 text-center">
+            <div className="inline-block relative mb-4">
+              <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2">
+                Search Profiles
+              </h1>
+              {/* Pink wavy SVG underline */}
               <svg
-                xmlns="http://www.w3.org/2000/svg"
+                className="absolute -bottom-2 left-0 w-full"
+                height="6"
+                viewBox="0 0 200 6"
                 fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
               >
                 <path
+                  d="M0 3C50 0.5 150 0.5 200 3"
+                  stroke="#FDA4AF"
+                  strokeWidth="5"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-medium text-gray-700 mb-2">
-              No profiles found
-            </h3>
-            <p className="text-gray-500 max-w-md mx-auto">
-              {city !== "any" || country !== "any" || ageMin || ageMax
-                ? "Try adjusting your search criteria to see more results."
-                : "There are currently no profiles available. Please check back later."}
+            <p className="text-lg text-neutral-light max-w-2xl mx-auto mb-8 font-nunito">
+              Browse and filter profiles to find your ideal match on Aroosi.
             </p>
-            {(city !== "any" || country !== "any" || ageMin || ageMax) && (
-              <button
-                onClick={() => {
-                  setCity("");
-                  setCountry("any");
-                  setAgeMin("");
-                  setAgeMax("");
-                }}
-                className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((u: ProfileSearchResult, idx: number) => {
-                const p = u.profile!;
-                const profileUrls = p.profileImageUrls;
-                const matchImageUrl =
-                  profileUrls && profileUrls.length > 0 ? profileUrls[0] : null;
-                const loaded = imgLoaded[u.userId] || false;
-                return (
-                  <motion.div
-                    key={typeof u.userId === "string" ? u.userId : String(idx)}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, delay: idx * 0.05 }}
-                  >
-                    <Card
-                      className={`${
-                        p.boostedUntil && p.boostedUntil > Date.now()
-                          ? "ring-2 ring-pink-500 shadow-pink-200"
-                          : ""
-                      } hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col`}
-                    >
-                      {matchImageUrl ? (
-                        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                          {/* Skeleton loader */}
-                          {!loaded && (
-                            <div className="absolute inset-0 bg-gray-100 dark:bg-gray-600 animate-pulse z-0" />
-                          )}
-                          <img
-                            src={matchImageUrl}
-                            alt={
-                              typeof p.fullName === "string" ? p.fullName : ""
-                            }
-                            className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
-                            onLoad={() =>
-                              setImgLoaded((prev) => ({
-                                ...prev,
-                                [u.userId]: true,
-                              }))
-                            }
-                          />
-                          {p.boostedUntil && p.boostedUntil > Date.now() && (
-                            <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-pink-400/30">
-                              <Rocket className="h-3 w-3 fill-current" />
-                              <span className="font-semibold">Boosted</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-full h-40 flex items-center justify-center bg-gray-100">
-                          <UserCircle className="w-16 h-16 text-gray-300" />
-                        </div>
-                      )}
-                      <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
-                        <div className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-1">
-                          {typeof p.fullName === "string" ? p.fullName : ""}
-                          {(p.subscriptionPlan === "premium" ||
-                            p.subscriptionPlan === "premiumPlus") && (
-                            <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
-                          )}
-                          {(p.subscriptionPlan === "premium" ||
-                            p.subscriptionPlan === "premiumPlus") &&
-                          p.hasSpotlightBadge &&
-                          p.spotlightBadgeExpiresAt &&
-                          (p.spotlightBadgeExpiresAt as number) > Date.now() ? (
-                            <SpotlightIcon className="w-4 h-4" />
-                          ) : null}
-                        </div>
-                        <div
-                          className="text-sm text-gray-600 mb-1"
-                          style={{
-                            fontFamily: "Nunito Sans, Arial, sans-serif",
-                          }}
-                        >
-                          {typeof p.city === "string" ? p.city : "-"}
-                        </div>
-                        <div
-                          className="text-sm text-gray-600 mb-1"
-                          style={{
-                            fontFamily: "Nunito Sans, Arial, sans-serif",
-                          }}
-                        >
-                          Age:{" "}
-                          {getAge(
-                            typeof p.dateOfBirth === "string"
-                              ? p.dateOfBirth
-                              : "",
-                          )}
-                        </div>
-                        <Button
-                          className="bg-primary hover:bg-primary/90 text-white w-full mt-2"
-                          onClick={() => {
-                            // Convex user IDs are 15+ chars, JWT user IDs have different format
-                            if (
-                              typeof u.userId !== "string" ||
-                              u.userId.startsWith("user_")
-                            ) {
-                              console.warn(
-                                "Attempted to navigate with JWT user ID instead of Convex user ID:",
-                                u.userId
-                              );
-                              alert(
-                                "Internal error: Invalid user ID for navigation."
-                              );
-                              return;
-                            }
-                            router.push(`/profile/${u.userId}`);
-                          }}
-                        >
-                          {"View Profile"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </div>
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-10">
-                <button
-                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                >
-                  Previous
-                </button>
-                <span>
-                  Page {page + 1} of {totalPages}
-                </span>
-                <button
-                  className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-                  onClick={() =>
-                    setPage((p) => Math.min(totalPages - 1, p + 1))
-                  }
-                  disabled={page >= totalPages - 1}
-                >
-                  Next
-                </button>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+              className="flex flex-wrap gap-3 justify-center mb-10 bg-white/80 rounded-xl shadow p-4"
+            >
+              <Input
+                type="text"
+                placeholder="City"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-40 bg-white rounded-lg shadow-sm font-nunito"
+              />
+              <div className="w-44">
+                <SearchableSelect
+                  options={countrySelectOptions}
+                  value={country}
+                  onValueChange={setCountry}
+                  placeholder="Country"
+                  className="bg-white"
+                />
               </div>
-            )}
-          </>
-        )}
+              <Input
+                type="number"
+                min={18}
+                max={99}
+                placeholder="Min Age"
+                value={ageMin || ""}
+                onChange={(e) => setAgeMin(e.target.value)}
+                className="w-24 bg-white rounded-lg shadow-sm font-nunito"
+              />
+              <Input
+                type="number"
+                min={18}
+                max={99}
+                placeholder="Max Age"
+                value={ageMax || ""}
+                onChange={(e) => setAgeMax(e.target.value)}
+                className="w-24 bg-white rounded-lg shadow-sm font-nunito"
+              />
+              {/* Premium-only filters */}
+              {(profile?.subscriptionPlan === "premium" ||
+                profile?.subscriptionPlan === "premiumPlus") && (
+                <>
+                  <Select value={ethnicity} onValueChange={setEthnicity}>
+                    <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+                      <SelectValue placeholder="Ethnicity" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white">
+                      {ethnicityOptions.map((opt) => (
+                        <SelectItem
+                          key={opt}
+                          value={opt}
+                          className="font-nunito"
+                        >
+                          {opt === "any" ? "Any Ethnicity" : opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={motherTongue} onValueChange={setMotherTongue}>
+                    <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+                      <SelectValue placeholder="Mother Tongue" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white">
+                      {motherTongueOptions.map((opt) => (
+                        <SelectItem
+                          key={opt}
+                          value={opt}
+                          className="font-nunito"
+                        >
+                          {opt === "any" ? "Any Mother Tongue" : opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
+                      <SelectValue placeholder="Language" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white">
+                      {languageOptions.map((opt) => (
+                        <SelectItem
+                          key={opt}
+                          value={opt}
+                          className="font-nunito"
+                        >
+                          {opt === "any" ? "Any Language" : opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+            </motion.div>
+          </section>
+          {!token || !isSignedIn ? (
+            <div className="text-center py-20">
+              <h2 className="text-xl font-semibold mb-2">Authorizing…</h2>
+              <p className="text-gray-600">
+                Waiting for authentication to load. If this persists, cookies
+                may be blocked.
+              </p>
+            </div>
+          ) : loadingProfiles ||
+            loadingImages ||
+            profiles === undefined ||
+            userImages === undefined ? (
+            // Show loading skeleton when data is being fetched
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col gap-4 p-4 bg-white rounded-2xl shadow animate-pulse"
+                >
+                  <Skeleton className="w-full aspect-square rounded-xl" />
+                  <Skeleton className="h-6 w-2/3 rounded" />
+                  <Skeleton className="h-4 w-1/2 rounded" />
+                  <Skeleton className="h-4 w-1/3 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            // Show 'No profiles found' message when there are no results
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 text-gray-300 mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-medium text-gray-700 mb-2">
+                No profiles found
+              </h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                {city !== "any" || country !== "any" || ageMin || ageMax
+                  ? "Try adjusting your search criteria to see more results."
+                  : "There are currently no profiles available. Please check back later."}
+              </p>
+              {(city !== "any" || country !== "any" || ageMin || ageMax) && (
+                <button
+                  onClick={() => {
+                    setCity("");
+                    setCountry("any");
+                    setAgeMin("");
+                    setAgeMax("");
+                  }}
+                  className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((u: ProfileSearchResult, idx: number) => {
+                  const p = u.profile!;
+                  const profileUrls = p.profileImageUrls;
+                  const matchImageUrl =
+                    profileUrls && profileUrls.length > 0
+                      ? profileUrls[0]
+                      : null;
+                  const loaded = imgLoaded[u.userId] || false;
+                  return (
+                    <motion.div
+                      key={
+                        typeof u.userId === "string" ? u.userId : String(idx)
+                      }
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.7, delay: idx * 0.05 }}
+                    >
+                      <Card
+                        className={`${
+                          p.boostedUntil && p.boostedUntil > Date.now()
+                            ? "ring-2 ring-pink-500 shadow-pink-200"
+                            : ""
+                        } hover:shadow-xl transition-shadow border-0 bg-white/90 rounded-2xl overflow-hidden flex flex-col`}
+                      >
+                        {matchImageUrl ? (
+                          <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                            {/* Skeleton loader */}
+                            {!loaded && (
+                              <div className="absolute inset-0 bg-gray-100 dark:bg-gray-600 animate-pulse z-0" />
+                            )}
+                            <img
+                              src={matchImageUrl}
+                              alt={
+                                typeof p.fullName === "string" ? p.fullName : ""
+                              }
+                              className={`w-full h-full object-cover transition-all duration-700 ${loaded ? "opacity-100 blur-0" : "opacity-0 blur-md"}`}
+                              onLoad={() =>
+                                setImgLoaded((prev) => ({
+                                  ...prev,
+                                  [u.userId]: true,
+                                }))
+                              }
+                            />
+                            {p.boostedUntil && p.boostedUntil > Date.now() && (
+                              <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-pink-400/30">
+                                <Rocket className="h-3 w-3 fill-current" />
+                                <span className="font-semibold">Boosted</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-full h-40 flex items-center justify-center bg-gray-100">
+                            <UserCircle className="w-16 h-16 text-gray-300" />
+                          </div>
+                        )}
+                        <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
+                          <div className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-1">
+                            {typeof p.fullName === "string" ? p.fullName : ""}
+                            {(p.subscriptionPlan === "premium" ||
+                              p.subscriptionPlan === "premiumPlus") && (
+                              <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
+                            )}
+                            {(p.subscriptionPlan === "premium" ||
+                              p.subscriptionPlan === "premiumPlus") &&
+                            p.hasSpotlightBadge &&
+                            p.spotlightBadgeExpiresAt &&
+                            (p.spotlightBadgeExpiresAt as number) >
+                              Date.now() ? (
+                              <SpotlightIcon className="w-4 h-4" />
+                            ) : null}
+                          </div>
+                          <div
+                            className="text-sm text-gray-600 mb-1"
+                            style={{
+                              fontFamily: "Nunito Sans, Arial, sans-serif",
+                            }}
+                          >
+                            {typeof p.city === "string" ? p.city : "-"}
+                          </div>
+                          <div
+                            className="text-sm text-gray-600 mb-1"
+                            style={{
+                              fontFamily: "Nunito Sans, Arial, sans-serif",
+                            }}
+                          >
+                            Age:{" "}
+                            {getAge(
+                              typeof p.dateOfBirth === "string"
+                                ? p.dateOfBirth
+                                : ""
+                            )}
+                          </div>
+                          <Button
+                            className="bg-primary hover:bg-primary/90 text-white w-full mt-2"
+                            onClick={() => {
+                              // Convex user IDs are 15+ chars, JWT user IDs have different format
+                              if (
+                                typeof u.userId !== "string" ||
+                                u.userId.startsWith("user_")
+                              ) {
+                                console.warn(
+                                  "Attempted to navigate with JWT user ID instead of Convex user ID:",
+                                  u.userId
+                                );
+                                alert(
+                                  "Internal error: Invalid user ID for navigation."
+                                );
+                                return;
+                              }
+                              router.push(`/profile/${u.userId}`);
+                            }}
+                          >
+                            {"View Profile"}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-10">
+                  <button
+                    className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    Previous
+                  </button>
+                  <span>
+                    Page {page + 1} of {totalPages}
+                  </span>
+                  <button
+                    className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
+                    disabled={page >= totalPages - 1}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

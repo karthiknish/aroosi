@@ -32,6 +32,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     isSignedIn,
     signOut,
     profile: rawProfile,
+    isLoaded,
   } = useAuthContext();
   const profile = rawProfile as { subscriptionPlan?: string } | null;
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -41,14 +42,19 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     setMobileOpen(false);
   }, [pathname]);
 
-  // Show a skeleton header while hydrating to prevent layout shift
-  if (!hydrated) {
+  // Show a skeleton header while hydrating or while auth state not loaded to prevent layout shift / missing links
+  if (!hydrated || !isLoaded) {
     return (
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <h2 className="text-2xl text-primary-dark font-bold">Aroosi</h2>
+            </div>
+            <div className="hidden md:flex items-center space-x-2">
+              <div className="h-9 w-24 bg-gray-100 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-gray-100 rounded animate-pulse" />
+              <div className="h-9 w-24 bg-gray-100 rounded animate-pulse" />
             </div>
           </div>
         </div>
@@ -261,7 +267,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 animate="visible"
                 className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0"
               >
-                <Link href="/sign-in" onClick={onClick} className="block">
+                <Link href="/sign-in" prefetch={false} onClick={onClick} className="block">
                   <Button
                     variant="outline"
                     className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-600 hover:bg-pink-50 hover:border-pink-700"
@@ -270,7 +276,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     <span>Sign In</span>
                   </Button>
                 </Link>
-                <Link href="/" onClick={onClick} className="block">
+                <Link href="/sign-up" prefetch={false} onClick={onClick} className="block">
                   <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
                     <UserPlus className="h-4 w-4" />
                     <span>Sign Up</span>

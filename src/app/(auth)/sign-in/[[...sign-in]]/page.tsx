@@ -1,27 +1,60 @@
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
-
-
 import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
-  const { isProfileComplete, isOnboardingComplete } = useAuthContext();
-  const needsWizard = !isProfileComplete || !isOnboardingComplete;
-  const finalRedirect = needsWizard ? "/" : "/search";
+  const {
+    isProfileComplete,
+    isOnboardingComplete,
+    isAuthenticated,
+    isLoaded,
+    refreshUser,
+  } = useAuthContext();
 
   const router = useRouter();
-  // Temporarily disabled for native auth migration
-  // const { isSignedIn } = useUser();
-  const isSignedIn = false; // Placeholder
 
-  // redirect after sign-in
-  if (isSignedIn) {
-    router.push(finalRedirect);
-    return null;
-  }
+  // Compute redirect only after auth state is loaded and authenticated
+  // Redirect to /search after sign-in; do NOT send to "/" (home) anymore
+  const isTrulyAuthenticated = isAuthenticated;
+  const finalRedirect = "/search";
+
+  // Only redirect when actually authenticated and state has loaded
+  React.useEffect(() => {
+    let cancelled = false;
+    const go = async () => {
+      // Do nothing until auth state is loaded
+      if (!isLoaded) return;
+
+      // Only proceed when authenticated
+      if (!isTrulyAuthenticated) return;
+
+      try {
+        await refreshUser();
+      } catch {
+        // ignore
+      }
+
+      if (!cancelled) {
+        router.push(finalRedirect);
+      }
+    };
+    void go();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isLoaded,
+    isAuthenticated,
+    isProfileComplete,
+    isOnboardingComplete,
+    finalRedirect,
+    refreshUser,
+    router,
+  ]);
 
   return (
     <div className="min-h-screen w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
@@ -64,7 +97,9 @@ export default function SignInPage() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <CustomSignInForm onComplete={() => router.push(finalRedirect)} />
+          {/* Always show sign-in form for maximum safety.
+             If a valid session exists, the effect above will redirect quickly. */}
+          <CustomSignInForm onComplete={() => router.push("/search")} />
           <p className="text-center text-sm mt-4">
             <a
               href="/forgot-password"

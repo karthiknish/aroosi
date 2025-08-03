@@ -4,50 +4,174 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-deploy-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deploy:
+    name: Build and Deploy
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Surface verbose logs from Vercel CLI
+      FORCE_COLOR: "1"
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+          cache: "npm"
+
+      - name: Print environment info
+        run: |
+          echo "Actor: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Vercel Project ID Set: ${{ env.VERCEL_PROJECT_ID != '' }}"
+          echo "Vercel Org ID Set: ${{ env.VERCEL_ORG_ID != '' }}"
+
+      - name: Install dependencies (root)
+        run: npm ci --legacy-peer-deps
+
+      # If this is a monorepo with apps/web, optionally install there as well.
+      # Uncomment if needed.
+      # - name: Install dependencies (apps/web)
+      #   working-directory: apps/web
+      #   run: npm ci --legacy-peer-deps
 
       - name: Install Vercel CLI
-        run: npm install -g vercel
+        run: npm i -g vercel@latest
 
-      - name: Pull Vercel Environment Information
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Verify required Vercel secrets
         run: |
-          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          set -e
+          missing=0
+          if [ -z "${VERCEL_TOKEN}" ]; then echo "::error::Missing VERCEL_TOKEN secret"; missing=1; fi
+          if [ -z "${VERCEL_ORG_ID}" ]; then echo "::error::Missing VERCEL_ORG_ID secret"; missing=1; fi
+          if [ -z "${VERCEL_PROJECT_ID}" ]; then
+            echo "::warning::Missing VERCEL_PROJECT_ID secret - will attempt to resolve via \`vercel projects ls\`"
+          fi
+          if [ "$missing" -eq 1 ]; then
+            echo "Required Vercel secrets missing. Exiting."; exit 1;
+          fi
 
-      - name: Build (Optional: If you want to use Vercel's build, you can skip this)
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          NODE_ENV: production
+      - name: Resolve Project ID (if missing)
+        id: resolve_project
+        shell: bash
         run: |
-          vercel build --prod --token=$VERCEL_TOKEN
+          set -euxo pipefail
+          if [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+            # Attempt to infer the project ID using the project name from package.json or repo name
+            PROJECT_NAME="$(node -e "try{console.log(require('./package.json').name || '')}catch(e){console.log('')}")"
+            if [ -z "$PROJECT_NAME" ]; then
+              PROJECT_NAME="${GITHUB_REPOSITORY##*/}"
+            fi
+            echo "Attempting to resolve project ID for: $PROJECT_NAME"
+            vercel projects ls --token="$VERCEL_TOKEN" --confirm 2>&1 | tee vercel_projects.log
+            # Grep for the project and capture its ID column (assuming output format: name  id  ... )
+            RESOLVED_ID="$(awk '/'"$PROJECT_NAME"'/ {print $2; exit}' vercel_projects.log || true)"
+            if [ -n "$RESOLVED_ID" ]; then
+              echo "Resolved Vercel Project ID: $RESOLVED_ID"
+              echo "VERCEL_PROJECT_ID=$RESOLVED_ID" >> $GITHUB_ENV
+            else
+              echo "::error::Could not resolve Vercel Project ID automatically. Please set secrets.VERCEL_PROJECT_ID."
+              exit 1
+            fi
+          else
+            echo "VERCEL_PROJECT_ID provided via secrets."
+          fi
 
-      - name: Deploy to Vercel
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Vercel Pull (link project and fetch env)
         run: |
-          # If you used 'vercel build', deploy the prebuilt output:
-          vercel deploy --prebuilt --prod --confirm --token=$VERCEL_TOKEN
-          # If you prefer direct deploy without prebuild, comment the above and uncomment below:
-          # vercel --token=$VERCEL_TOKEN --prod --confirm --scope=${{ secrets.VERCEL_SCOPE || secrets.VERCEL_TEAM || '' }}
+          set -euxo pipefail
+          vercel pull --yes --environment=production \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --project "$VERCEL_PROJECT_ID" \
+            2>&1 | tee vercel_pull.log
+          echo "----- Vercel Pull Log (tail) -----"
+          tail -n 100 vercel_pull.log || true
+
+      - name: Build (Vercel)
+        id: vercel_build
+        run: |
+          set -euxo pipefail
+          vercel build --prod \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --project "$VERCEL_PROJECT_ID" \
+            2>&1 | tee vercel_build.log
+          echo "vercel_build_log_path=vercel_build.log" >> $GITHUB_OUTPUT
+          echo "----- Vercel Build Log (tail) -----"
+          tail -n 200 vercel_build.log || true
+
+      - name: Upload build logs (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-build-logs
+          path: |
+            vercel_pull.log
+            vercel_build.log
+            vercel_projects.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Deploy (Vercel)
+        id: vercel_deploy
+        run: |
+          set -euxo pipefail
+          URL=$(vercel deploy --prebuilt --prod \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --project "$VERCEL_PROJECT_ID" \
+            2>&1 | tee vercel_deploy.log | tail -n 1)
+          echo "deployment_url=$URL" >> $GITHUB_OUTPUT
+          echo "----- Vercel Deploy Log (tail) -----"
+          tail -n 200 vercel_deploy.log || true
+          echo "Deployed to: $URL"
+
+      - name: Upload deploy logs (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-deploy-logs
+          path: |
+            vercel_deploy.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Add deployment URL to summary
+        if: always()
+        run: |
+          {
+            echo "### Vercel Deployment"
+            echo ""
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Branch: \`${{ github.ref_name }}\`"
+            echo "- Actor: \`${{ github.actor }}\`"
+            echo "- Vercel Org ID: \`${{ env.VERCEL_ORG_ID }}\`"
+            echo "- Vercel Project ID: \`${{ env.VERCEL_PROJECT_ID }}\`"
+            echo "- Deployment URL: ${{ steps.vercel_deploy.outputs.deployment_url }}"
+            echo ""
+            echo "#### Quick Links"
+            echo "- [Vercel Dashboard](https://vercel.com/dashboard)"
+            echo "- [Actions Run Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Set check run output
+        if: always()
+        run: |
+          echo "Deployment URL: ${{ steps.vercel_deploy.outputs.deployment_url }}"
+          echo "Build logs and deploy logs are uploaded as artifacts."

@@ -36,7 +36,11 @@ import {
   submitProfile,
   getCurrentUserWithProfile,
 } from "@/lib/profile/userProfileApi";
-import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
+import {
+  getImageUploadUrl,
+  saveImageMeta,
+  updateImageOrder,
+} from "@/lib/utils/imageUtil";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import {
   clearAllOnboardingData,
@@ -129,7 +133,16 @@ export function ProfileCreationModal({
       contextData?.phoneNumber
   );
 
-  // Total number of steps - always 8 steps including account creation
+  // Total number of steps - still 8 steps including account creation
+  // Step mapping (updated):
+  // 1: Basic Info
+  // 2: Location & Physical
+  // 3: Cultural & Lifestyle   <-- moved up from previous 4
+  // 4: Education & Career     <-- was 5
+  // 5: Partner Preferences    <-- was 6
+  // 6: Photos                 <-- was 7
+  // 7: Account Creation       <-- was 8
+  // 8: RESERVED (kept to avoid large refactors; auto-submit triggers on step === 7 now)
   const totalSteps = 8;
 
   // Create a unified formData object from context data and initial data
@@ -167,11 +180,28 @@ export function ProfileCreationModal({
   console.log("ProfileCreationModal unified formData:", formData);
 
   // Step state is now only controlled by contextStep and navigation handlers
-  const step = contextStep;
+  // Ensure step is always a sane number between 1 and 7
+  const step =
+    Number.isFinite(contextStep) && contextStep >= 1 && contextStep <= 7
+      ? contextStep
+      : 1;
   const setStep = (newStep: number) => {
-    // Only allow step changes via navigation handlers
-    setContextStep(newStep);
+    const clamped = Math.max(1, Math.min(7, Math.floor(Number(newStep) || 1)));
+    setContextStep(clamped);
   };
+
+  console.log("Starting step variables:", {
+    contextStep, // ProfileWizard context se
+    step, // Current computed step
+    hasBasicData, // Basic fields present hai ya nahi
+    formData: {
+      profileFor: formData.profileFor,
+      gender: formData.gender,
+      fullName: formData.fullName,
+      dateOfBirth: formData.dateOfBirth,
+      phoneNumber: formData.phoneNumber,
+    },
+  });
 
   // Local controlled input for preferred cities to allow commas while typing
   const [preferredCitiesInput, setPreferredCitiesInput] = useState<string>(
@@ -193,9 +223,21 @@ export function ProfileCreationModal({
   const [pendingImages, setPendingImages] = useState<ImageType[]>([]);
 
   // Enhanced step validation hook
+  // Build a validation data snapshot that matches the step schema expectations.
+  // For step 2 specifically, ensure height is always normalized to "<cm> cm".
+  const validationData = React.useMemo(() => {
+    if (step !== 2) return formData;
+    const normalizedHeight =
+      typeof formData.height === "string" &&
+      /^\d{2,3}$/.test(formData.height.trim())
+        ? `${formData.height.trim()} cm`
+        : formData.height;
+    return { ...formData, height: normalizedHeight };
+  }, [formData, step]);
+
   const stepValidation = useStepValidation({
     step,
-    data: formData,
+    data: validationData,
     onValidationChange: (isValid, validationErrors) => {
       setErrors(validationErrors);
     },
@@ -271,6 +313,7 @@ export function ProfileCreationModal({
 
     if (!result.isValid) {
       const summary = stepValidation.getValidationSummary();
+      // Only show toast on explicit Next click; inline errors are visible
       showErrorToast(null, summary.summary);
       console.log("Validation errors:", summary);
       return false;
@@ -280,20 +323,122 @@ export function ProfileCreationModal({
   };
 
   const handleNext = async () => {
-    if (!(await validateStep())) {
-      console.log("Step validation failed. Not proceeding.");
 
+    console.log("[Next] clicked", {
+      step,
+      hasBasicData,
+      city: formData.city,
+      height: formData.height,
+      maritalStatus: formData.maritalStatus,
+    });
+
+    // Sanity clamp before proceeding
+    if (!Number.isFinite(step) || step < 1 || step > 7) {
+      setStep(1);
       return;
     }
 
-    // Additional validation block (unlikely to be the issue for step 3)
-    if (step === totalSteps - 1) {
-      // ... (your existing validation) ...
+    // // Check if Step 2 is completed before allowing further navigation
+    // const isStep2Complete = Boolean(
+    //   formData.city && formData.height && formData.maritalStatus
+    // );
+
+    // if (step > 2 && !isStep2Complete) {
+    //   // Force user back to Step 2
+    //   setStep(2);
+    //   showErrorToast(
+    //     null,
+    //     "Please complete location and physical details first"
+    //   );
+    //   return;
+    // }
+
+    // If we came from Hero (basic data present) and we're still at Step 1,
+    // ensure we land on Location step (2) first.
+    if (hasBasicData && step === 1) {
+      setStep(2);
+      return;
     }
 
-    if (step < totalSteps) {
-      console.log("Attempting to set step to:", step + 1);
-      setStep(step + 1);
+    // For step 2 (Location & Physical), ensure values conform before validation
+    if (step === 2) {
+      console.log("[Next][step2] pre-normalize start", {
+        heightRaw: formData.height,
+        cityRaw: formData.city,
+        maritalStatus: formData.maritalStatus,
+      });
+
+      // Normalize height (store normalized for consistency)
+      if (typeof formData.height === "string") {
+        const raw = formData.height.trim();
+        if (/^\d{2,3}$/.test(raw)) {
+          handleInputChange("height", `${raw} cm`);
+          console.log("[Next][step2] normalized height ->", `${raw} cm`);
+        }
+
+      }
+      // Trim city
+      if (typeof formData.city === "string") {
+        const trimmedCity = formData.city.trim();
+        if (trimmedCity !== formData.city) {
+          handleInputChange("city", trimmedCity);
+          console.log("[Next][step2] trimmed city ->", trimmedCity);
+        }
+      }
+
+      // Force a tick to let context flush before validation
+      await new Promise((r) => setTimeout(r, 0));
+      console.log("[Next][step2] post-flush snapshot", {
+        city: (document.getElementById("city") as HTMLInputElement | null)
+          ?.value,
+        height: formData.height,
+        maritalStatus: formData.maritalStatus,
+      });
+    }
+
+    console.log("[Next] validating step", step);
+    const result = await stepValidation.validateCurrentStep();
+    console.log("[Next] validation result", {
+      isValid: result.isValid,
+      errors: result.errors,
+      requiredFields: stepValidation.requiredFields,
+      completedFields: stepValidation.completedFields,
+      progress: stepValidation.progress,
+    });
+
+    if (!result.isValid) {
+      console.log("[Next] Step validation failed. Not proceeding.");
+      // Attempt to guide user by focusing first missing field
+      try {
+        const missingOrder = ["city", "height", "maritalStatus"];
+        for (const field of missingOrder) {
+          const err = stepValidation.getFieldError(field);
+          if (err) {
+            console.log("[Next] focusing field with error:", field, err);
+            const el = document.getElementById(field);
+            if (el) {
+              (el as HTMLElement).focus();
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.log("[Next] focus guidance failed:", e);
+      }
+      // Surface toast summary as well
+      const summary = stepValidation.getValidationSummary();
+      console.log("[Next] validation summary:", summary);
+      showErrorToast(null, summary.summary);
+      return;
+    }
+
+    console.log("[Next] Step validation passed.");
+
+    // Advance to next step; new mapping sets 3 = Cultural, 4 = Education, 5 = Preferences, 6 = Photos, 7 = Account
+    if (step < 7) {
+      const next = step + 1;
+      console.log("[Next] advancing to step:", next);
+      setStep(next);
     }
   };
 
@@ -325,23 +470,22 @@ export function ProfileCreationModal({
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  // Advance wizard automatically when OAuth completes
+  // Advance wizard note: final actionable step is now 7 (Account Creation)
   useEffect(() => {
-    if (isAuthenticated && step === 8) {
+    if (isAuthenticated && step === 7) {
       // User is signed in, profile submission will happen automatically
-      console.log("User signed in at step 8, profile will be submitted");
+      console.log("User signed in at step 7, profile will be submitted");
     }
   }, [isAuthenticated, step]);
 
   // -------- Auto submit profile & images when user is signed in --------
   useEffect(() => {
-
     const submitProfileAndImages = async () => {
       if (!isAuthenticated) return;
       if (hasSubmittedProfile) return; // guard
       if (isSubmitting) return; // prevent double submission
 
-      // Only submit if we're on the final step
+      // Only submit if we're on the final actionable step (7 - Account Creation)
       if (step !== 7) {
         console.log(
           "Not on final step, skipping submission. Current step:",
@@ -381,24 +525,42 @@ export function ProfileCreationModal({
       }
 
       try {
-        // Check for existing profile – do NOT allow update via modal
+        // Server-check guard: if a profile already exists (created during signup), skip client submission and redirect
         const existing = await getCurrentUserWithProfile(authToken);
         if (existing.success && existing.data) {
-          console.log("Profile already exists");
-          showErrorToast(
-            null,
-            "A profile already exists for this account. Please use the profile edit feature instead."
+          console.log(
+            "Profile exists after signup; skipping client submission and redirecting to success."
           );
-          setHasSubmittedProfile(false);
-          // Clear any stale onboarding data
-          clearAllOnboardingData();
-          // Close the modal
+          try {
+            await refreshUser();
+          } catch (err) {
+            console.warn("Failed to refresh user data:", err);
+          }
+          try {
+            clearAllOnboardingData();
+          } catch (err) {
+            console.warn("Failed to clear onboarding data:", err);
+          }
+          showSuccessToast("Account created. Finalizing your profile...");
           handleClose();
+          try {
+            router.push("/success");
+          } catch (err) {
+            console.error("Failed to redirect to success page:", err);
+            window.location.href = "/success";
+          }
           return;
         }
 
         // Mark as submitted after passing duplicate check
         setHasSubmittedProfile(true);
+
+        // Also preemptively clear any previous error toasts/state about missing profile
+        try {
+          updateContextData({
+            lastProfileSubmissionAt: Date.now(),
+          });
+        } catch {}
 
         // Always use the latest context data for submission
         const merged: Record<string, unknown> = {
@@ -499,33 +661,75 @@ export function ProfileCreationModal({
           console.log(`Uploading ${pendingImages.length} images...`);
           let uploadedCount = 0;
 
+          // Collect successfully created imageIds in the same order as pendingImages
+          const createdImageIds: string[] = [];
+          const failedImages: { name: string; reason: string }[] = [];
+
           for (const img of pendingImages) {
             try {
               // Validate image before upload
               if (!img.url || !img.url.startsWith("blob:")) {
-                console.warn("Invalid image URL, skipping:", img);
+                const reason = "Invalid local image URL";
+                console.warn(`${reason}, skipping:`, img);
+                failedImages.push({ name: img.fileName || "photo.jpg", reason });
                 continue;
               }
 
               // Fetch the blob from the object URL
-              const blob = await fetch(img.url).then((r) => r.blob());
+              let blob: Blob;
+              try {
+                const resp = await fetch(img.url);
+                if (!resp.ok) {
+                  const reason = `Failed to read local image (${resp.status})`;
+                  console.error(reason);
+                  failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                  continue;
+                }
+                blob = await resp.blob();
+              } catch (e) {
+                const reason = "Failed to read local image blob";
+                console.error(reason, e);
+                failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                continue;
+              }
 
               // Validate file size (max 5MB)
-              if (blob.size > 5 * 1024 * 1024) {
-                console.warn("Image too large, skipping:", img.fileName);
+              const MAX_SIZE = 5 * 1024 * 1024;
+              if (blob.size > MAX_SIZE) {
+                const reason = "Image exceeds 5MB";
+                console.warn(reason, img.fileName);
+                failedImages.push({ name: img.fileName || "photo.jpg", reason });
                 continue;
               }
+
+              // Derive a safe content type, default to jpeg if unknown/empty
+              const safeType =
+                (blob.type && ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(blob.type.toLowerCase()))
+                  ? blob.type
+                  : "image/jpeg";
 
               const file = new File([blob], img.fileName || "photo.jpg", {
-                type: blob.type || "image/jpeg",
+                type: safeType,
               });
 
-              const uploadUrl = await getImageUploadUrl(authToken);
+              // 1) Generate upload URL
+              let uploadUrl: string | null = null;
+              try {
+                uploadUrl = await getImageUploadUrl(authToken);
+              } catch (e) {
+                const reason = e instanceof Error ? e.message : "Failed to get upload URL";
+                console.error("getImageUploadUrl error:", e);
+                failedImages.push({ name: file.name, reason });
+                continue;
+              }
               if (!uploadUrl) {
-                console.error("Failed to get upload URL");
+                const reason = "Failed to get upload URL";
+                console.error(reason);
+                failedImages.push({ name: file.name, reason });
                 continue;
               }
 
+              // 2) Upload binary via POST and JSON-parse Convex response for storageId
               const uploadResp = await fetch(uploadUrl, {
                 method: "POST",
                 headers: { "Content-Type": file.type },
@@ -533,42 +737,123 @@ export function ProfileCreationModal({
               });
 
               if (!uploadResp.ok) {
-                console.error("Upload failed", uploadResp.statusText);
+                let errText = uploadResp.statusText;
+                try {
+                  errText = await uploadResp.text();
+                } catch {}
+                const reason = `Upload failed (${uploadResp.status})${errText ? `: ${errText}` : ""}`;
+                console.error("Upload failed", uploadResp.status, errText);
+                failedImages.push({ name: file.name, reason });
                 continue;
               }
 
-              const json = await uploadResp.json();
+              // Convex returns JSON containing { storageId } (or string)
+              let storageJson: unknown;
+              try {
+                storageJson = await uploadResp.json();
+              } catch (e) {
+                const reason = "Failed to parse upload response";
+                console.error(reason, e);
+                failedImages.push({ name: file.name, reason });
+                continue;
+              }
               const storageId =
-                json?.storageId || (typeof json === "string" ? json : null);
+                typeof storageJson === "object" &&
+                storageJson !== null &&
+                "storageId" in storageJson
+                  ? (storageJson as { storageId?: string }).storageId
+                  : typeof storageJson === "string"
+                    ? storageJson
+                    : null;
 
               if (!storageId) {
-                console.error("No storage ID returned from upload");
+                const reason = "No storageId returned from upload";
+                console.error(reason);
+                failedImages.push({ name: file.name, reason });
                 continue;
               }
 
-              await saveImageMeta({
-                token: authToken,
-                userId,
-                storageId,
-                fileName: file.name,
-                contentType: file.type,
-                fileSize: file.size,
-              });
+              // 3) Confirm metadata and capture imageId for ordering
+              try {
+                const meta = await saveImageMeta({
+                  token: authToken,
+                  userId,
+                  storageId,
+                  fileName: file.name,
+                  contentType: file.type,
+                  fileSize: file.size,
+                });
+
+                if (meta?.imageId) {
+                  createdImageIds.push(meta.imageId);
+                } else {
+                  const reason = "Server did not return imageId";
+                  console.error(reason);
+                  failedImages.push({ name: file.name, reason });
+                  continue;
+                }
+              } catch (e) {
+                const message =
+                  e instanceof Error ? e.message : "Failed to save image metadata";
+                console.error("saveImageMeta error:", e);
+                failedImages.push({ name: file.name, reason: message });
+                continue;
+              }
 
               uploadedCount++;
               console.log(
                 `Successfully uploaded image ${uploadedCount}/${pendingImages.length}`
               );
             } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Unknown image upload error";
               console.error("Image upload error for", img.fileName, ":", err);
+              failedImages.push({ name: img.fileName || "photo.jpg", reason: message });
               // Continue with other images even if one fails
             }
+          }
+
+          // Show aggregated error toast if some images failed
+          if (failedImages.length > 0) {
+            const sample = failedImages.slice(0, 3).map((f) => `${f.name}: ${f.reason}`).join("; ");
+            const extra =
+              failedImages.length > 3
+                ? `, and ${failedImages.length - 3} more`
+                : "";
+            showErrorToast(
+              null,
+              `Some images failed to upload (${failedImages.length}). ${sample}${extra}`
+            );
           }
 
           if (uploadedCount > 0) {
             console.log(
               `Successfully uploaded ${uploadedCount} out of ${pendingImages.length} images`
             );
+
+            // Persist final order on server when multiple images exist
+            try {
+              const orderIds =
+                createdImageIds.length > 0
+                  ? createdImageIds
+                  : Array.isArray(formData.profileImageIds)
+                    ? formData.profileImageIds
+                    : [];
+              // Filter out any local placeholders defensively
+              const filteredOrderIds = orderIds.filter(
+                (id) => typeof id === "string" && !id.startsWith("local-") && id.trim().length > 0
+              );
+              if (filteredOrderIds.length > 1) {
+                await updateImageOrder({
+                  token: authToken,
+                  userId,
+                  imageIds: filteredOrderIds,
+                });
+              }
+            } catch (e) {
+              console.warn("Failed to persist image order; continuing.", e);
+              showErrorToast(null, "Unable to save image order. You can reorder later.");
+            }
           }
         }
 
@@ -588,6 +873,14 @@ export function ProfileCreationModal({
           // Don't block the success flow for this
         }
 
+        // Mark completion flags locally to eliminate stale 'profile not created' toasts
+        try {
+          updateContextData({
+            isProfileComplete: true,
+            isOnboardingComplete: true,
+          });
+        } catch {}
+
         showSuccessToast("Profile created successfully!");
         handleClose();
 
@@ -605,31 +898,23 @@ export function ProfileCreationModal({
         // Provide specific error messages based on error type
         let errorMessage = "Profile submission failed";
         if (err instanceof Error) {
-          if (
-            err.message.includes("network") ||
-            err.message.includes("fetch")
-          ) {
+          const msg = err.message.toLowerCase();
+          if (msg.includes("network") || msg.includes("fetch")) {
             errorMessage =
               "Network error. Please check your connection and try again.";
-          } else if (err.message.includes("timeout")) {
+          } else if (msg.includes("timeout")) {
             errorMessage = "Request timed out. Please try again.";
-          } else if (
-            err.message.includes("401") ||
-            err.message.includes("unauthorized")
-          ) {
+          } else if (msg.includes("401") || msg.includes("unauthorized")) {
             errorMessage = "Authentication expired. Please sign in again.";
-          } else if (
-            err.message.includes("409") ||
-            err.message.includes("duplicate")
-          ) {
+          } else if (msg.includes("409") || msg.includes("duplicate")) {
             errorMessage =
               "Profile already exists. Please use the profile edit feature.";
-          } else if (
-            err.message.includes("400") ||
-            err.message.includes("validation")
-          ) {
+          } else if (msg.includes("400") || msg.includes("validation")) {
             errorMessage =
               "Invalid profile data. Please check your information and try again.";
+          } else if (msg.includes("500") || msg.includes("server")) {
+            errorMessage =
+              "Server error while creating profile. Please try again.";
           } else {
             errorMessage = `Profile submission failed: ${err.message}`;
           }
@@ -680,6 +965,29 @@ export function ProfileCreationModal({
     };
   }, [isOpen]);
 
+  // Replace the existing normalizedOnOpenRef useEffect with this:
+
+  // Normalize starting step once per open:
+  // - If coming from Hero (hasBasicData), always start at 2
+  // - If no basic data, always start at 1
+  const normalizedOnOpenRef = React.useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      normalizedOnOpenRef.current = false;
+      return;
+    }
+    if (normalizedOnOpenRef.current) return;
+
+    if (hasBasicData) {
+      // Always set to step 2 when coming from Hero, regardless of current step
+      setStep(2);
+    } else {
+      // Always set to step 1 when no basic data
+      setStep(1);
+    }
+    normalizedOnOpenRef.current = true;
+  }, [isOpen, hasBasicData]); // Remove 'step' from dependencies to avoid loops
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
@@ -690,6 +998,10 @@ export function ProfileCreationModal({
         onPointerDownOutside={(e) => {
           e.preventDefault();
         }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-modal-title"
+        aria-describedby="profile-modal-desc"
       >
         <div className="relative">
           {/* Progress indicator */}
@@ -701,11 +1013,14 @@ export function ProfileCreationModal({
           </div>
 
           <DialogHeader className="p-6 pb-0">
-            <DialogTitle className="text-2xl font-bold text-gray-900">
+            <DialogTitle
+              id="profile-modal-title"
+              className="text-2xl font-bold text-gray-900"
+            >
               Find Your Perfect Match
             </DialogTitle>
             {step < 5 && (
-              <p className="text-gray-600 mt-2">
+              <p id="profile-modal-desc" className="text-gray-600 mt-2">
                 Join thousands of Afghan singles finding love
               </p>
             )}
@@ -728,7 +1043,15 @@ export function ProfileCreationModal({
                 {/* Step 1: Basic Info (only shown when data not yet provided) */}
                 {step === 1 && !hasBasicData && (
                   <div className="space-y-6">
-                    <div>
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Basic Information
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Tell us about yourself
+                      </p>
+                    </div>
+                    <div className="mb-6">
                       <Label
                         htmlFor="profileFor"
                         className="text-gray-700 mb-2 block"
@@ -759,7 +1082,7 @@ export function ProfileCreationModal({
                       </Select>
                     </div>
 
-                    <div>
+                    <div className="mb-6">
                       <Label className="text-gray-700 mb-2 block">
                         {required("Gender")}
                       </Label>
@@ -797,34 +1120,18 @@ export function ProfileCreationModal({
                   </div>
                 )}
 
-                {/* Step 2: Location */}
+                {/* Step 2: Location & Physical */}
                 {step === 2 && (
                   <div className="space-y-6">
-                    {/* <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Location Information
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Tell us where you're located
-                      </p>
-                    </div> */}
-
-                    {/* Error Summary */}
-                    {/* <ErrorSummary
-                      errors={stepValidation.errors}
-                      isValid={stepValidation.isValid}
-                      progress={stepValidation.progress}
-                      requiredFields={stepValidation.requiredFields}
-                      completedFields={stepValidation.completedFields}
-                    /> */}
 
                     {/* Country - Optional */}
                     <div>
+
                       <Label
                         htmlFor="country"
                         className="text-gray-700 mb-2 block"
                       >
-                        Country
+                        {required("Country")}
                       </Label>
                       <SearchableSelect
                         options={countries.map((c) => ({
@@ -834,10 +1141,15 @@ export function ProfileCreationModal({
                         value={formData.country}
                         onValueChange={(v) => handleInputChange("country", v)}
                         placeholder="Select country"
+                        aria-invalid={!!errors.country}
+                        aria-describedby={
+                          errors.country ? "country-error" : undefined
+                        }
                       />
                     </div>
 
                     {/* City - Required */}
+
                     <ValidatedInput
                       label="City"
                       field="city"
@@ -848,49 +1160,66 @@ export function ProfileCreationModal({
                       required
                       hint="Enter the city where you currently live"
                     />
-                  </div>
-                )}
 
-                {/* Step 3: Physical Information */}
-                {step === 3 && (
-                  <div className="space-y-6 mt-4">
-                    {/* <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Physical Information
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Tell us about your physical attributes
-                      </p>
-                    </div> */}
-
-                    {/* Height - Required */}
+                    {/* Height - Required with validated highlight */}
                     <div>
+
                       <Label
                         htmlFor="height"
                         className="text-gray-700 mb-2 block"
                       >
-                        Height <span className="text-red-500">*</span>
+                        {required("Height")}
                       </Label>
-                      <SearchableSelect
-                        options={Array.from(
-                          { length: 198 - 137 + 1 },
-                          (_, i) => {
-                            const cm = 137 + i;
-                            return {
-                              value: String(cm),
-                              label: `${cmToFeetInches(cm)} (${cm} cm)`,
-                            };
+                      <div
+                        className={`rounded-md ${
+                          formData.height
+                            ? "ring-1 ring-green-500 border-green-500"
+                            : stepValidation.getFieldError("height")
+                              ? "ring-1 ring-red-500 border-red-500"
+                              : ""
+                        }`}
+                      >
+                        <SearchableSelect
+                          options={Array.from(
+                            { length: 198 - 137 + 1 },
+                            (_, i) => {
+                              const cm = 137 + i;
+                              const normalized = `${cm} cm`;
+                              return {
+                                value: normalized,
+                                label: `${cmToFeetInches(cm)} (${cm} cm)`,
+                              };
+                            }
+                          )}
+                          value={
+                            typeof formData.height === "string" &&
+                            /^\d{2,3}$/.test(formData.height.trim())
+                              ? `${formData.height.trim()} cm`
+                              : formData.height
                           }
-                        )}
-                        value={formData.height}
-                        onValueChange={(v) => handleInputChange("height", v)}
-                        placeholder="Select height"
-                      />
-                      {stepValidation.getFieldError("height") && (
+
+                          onValueChange={(v) => {
+                            // Always store normalized "<cm> cm"
+                            const normalized =
+                              typeof v === "string"
+                                ? /^\d{2,3}$/.test(v.trim())
+                                  ? `${v.trim()} cm`
+                                  : v
+                                : v;
+                            handleInputChange("height", normalized as string);
+                            // Proactively clear height error once a valid selection is made
+                            // by triggering a revalidation of current step snapshot
+                            void stepValidation.validateCurrentStep();
+                          }}
+                          placeholder="Select height"
+                          className="bg-white"
+                        />
+                      </div>
+                      {/* {stepValidation.getFieldError("height") ? (
                         <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
                           <span>{stepValidation.getFieldError("height")}</span>
                         </div>
-                      )}
+                      ) : null} */}
                     </div>
 
                     {/* Marital Status - Required */}
@@ -926,321 +1255,351 @@ export function ProfileCreationModal({
                         { value: "normal", label: "Normal" },
                         {
                           value: "differently-abled",
-                          label: "Differently-abled",
+                          label: "Differently Abled",
                         },
-                        { value: "other", label: "Other" },
+                        // { value: "other", label: "Other" },
                       ]}
                       placeholder="Select physical status"
                     />
+
                   </div>
                 )}
 
-                {/* Step 4: Cultural & Lifestyle */}
+                {/* Step 3: Cultural & Lifestyle (moved earlier from previous step 4) */}
                 {step === 3 && (
                   <div className="space-y-6">
+
+                    {/* Mother Tongue - Optional with validated highlight */}
                     <div>
+
                       <Label
                         htmlFor="motherTongue"
                         className="text-gray-700 mb-2 block"
                       >
+
                         Mother Tongue
+
                       </Label>
-                      <SearchableSelect
-                        options={MOTHER_TONGUE_OPTIONS.map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        value={formData.motherTongue}
-                        onValueChange={(v) =>
-                          handleInputChange("motherTongue", v)
-                        }
-                        placeholder="Select language"
-                      />
+                      <div
+                        className={`rounded-md ${
+                          formData.motherTongue
+                            ? "ring-1 ring-green-500 border-green-500"
+                            : stepValidation.getFieldError("motherTongue")
+                              ? "ring-1 ring-red-500 border-red-500"
+                              : ""
+                        }`}
+                      >
+                        <ValidatedSelect
+                          label=""
+                          field="motherTongue"
+                          step={step}
+                          value={formData.motherTongue}
+                          onValueChange={(v) =>
+                            handleInputChange("motherTongue", v)
+                          }
+
+                          options={MOTHER_TONGUE_OPTIONS.map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          placeholder="Select language"
+                          className="bg-white"
+                        />
+                      </div>
+                      {stepValidation.getFieldError("motherTongue") ? (
+                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
+                          <span>
+                            {stepValidation.getFieldError("motherTongue")}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
+
+                    {/* Religion - Optional with validated highlight */}
                     <div>
+
                       <Label
                         htmlFor="religion"
                         className="text-gray-700 mb-2 block"
                       >
                         Religion
                       </Label>
-                      <SearchableSelect
-                        options={RELIGION_OPTIONS.map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        value={formData.religion}
-                        onValueChange={(v) => handleInputChange("religion", v)}
-                        placeholder="Select religion"
-                      />
+                      <div
+                        className={`rounded-md ${
+                          formData.religion
+                            ? "ring-1 ring-green-500 border-green-500"
+                            : stepValidation.getFieldError("religion")
+                              ? "ring-1 ring-red-500 border-red-500"
+                              : ""
+                        }`}
+                      >
+                        <ValidatedSelect
+                          label=""
+                          field="religion"
+                          step={step}
+                          value={formData.religion}
+                          onValueChange={(v) =>
+                            handleInputChange("religion", v)
+                          }
+                          options={RELIGION_OPTIONS.map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          placeholder="Select religion"
+                          className="bg-white"
+                        />
+                      </div>
+                      {stepValidation.getFieldError("religion") ? (
+                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
+                          <span>
+                            {stepValidation.getFieldError("religion")}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
+
+                    {/* Ethnicity - Optional with validated highlight */}
                     <div>
+
                       <Label
                         htmlFor="ethnicity"
                         className="text-gray-700 mb-2 block"
                       >
                         Ethnicity
                       </Label>
-                      <SearchableSelect
-                        options={ETHNICITY_OPTIONS.map((o) => ({
-                          value: o.value,
-                          label: o.label,
-                        }))}
-                        value={formData.ethnicity}
-                        onValueChange={(v) => handleInputChange("ethnicity", v)}
-                        placeholder="Select ethnicity"
-                      />
+
+                      <div
+                        className={`rounded-md ${
+                          formData.ethnicity
+                            ? "ring-1 ring-green-500 border-green-500"
+                            : stepValidation.getFieldError("ethnicity")
+                              ? "ring-1 ring-red-500 border-red-500"
+                              : ""
+                        }`}
+
+                      >
+                        <ValidatedSelect
+                          label=""
+                          field="ethnicity"
+                          step={step}
+                          value={formData.ethnicity}
+                          onValueChange={(v) =>
+                            handleInputChange("ethnicity", v)
+                          }
+                          options={ETHNICITY_OPTIONS.map((o) => ({
+                            value: o.value,
+                            label: o.label,
+                          }))}
+                          placeholder="Select ethnicity"
+                          className="bg-white"
+                        />
+                      </div>
+                      {stepValidation.getFieldError("ethnicity") ? (
+                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
+                          <span>
+                            {stepValidation.getFieldError("ethnicity")}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
-                    <div>
-                      <Label
-                        htmlFor="diet"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Diet
-                      </Label>
-                      <Select
-                        value={formData.diet}
-                        onValueChange={(v) => handleInputChange("diet", v)}
-                      >
-                        <SelectTrigger id="diet" className="w-full bg-white">
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="vegetarian">Vegetarian</SelectItem>
-                          <SelectItem value="non-vegetarian">
-                            Non-Vegetarian
-                          </SelectItem>
-                          <SelectItem value="halal">Halal Only</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="smoking"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Smoking
-                      </Label>
-                      <Select
-                        value={formData.smoking}
-                        onValueChange={(v) => handleInputChange("smoking", v)}
-                      >
-                        <SelectTrigger id="smoking" className="w-full bg-white">
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="no">No</SelectItem>
-                          <SelectItem value="occasionally">
-                            Occasionally
-                          </SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="drinking"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Drinking
-                      </Label>
-                      <Select
-                        value={formData.drinking}
-                        onValueChange={(v) => handleInputChange("drinking", v)}
-                      >
-                        <SelectTrigger
-                          id="drinking"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="no">No</SelectItem>
-                          <SelectItem value="occasionally">
-                            Occasionally
-                          </SelectItem>
-                          <SelectItem value="yes">Yes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
+                    <ValidatedSelect
+                      label="Diet"
+                      field="diet"
+                      step={step}
+                      value={formData.diet}
+                      onValueChange={(v) => handleInputChange("diet", v)}
+                      options={[
+                        { value: "vegetarian", label: "Vegetarian" },
+                        { value: "non-vegetarian", label: "Non-Vegetarian" },
+                        { value: "halal", label: "Halal Only" },
+                        { value: "other", label: "Other" },
+                      ]}
+                      placeholder="Select diet preference"
+                    />
+
+                    <ValidatedSelect
+                      label="Smoking"
+                      field="smoking"
+                      step={step}
+                      value={formData.smoking}
+                      onValueChange={(v) => handleInputChange("smoking", v)}
+                      options={[
+                        { value: "no", label: "No" },
+                        { value: "occasionally", label: "Occasionally" },
+                        { value: "yes", label: "Yes" },
+                      ]}
+                      placeholder="Select smoking preference"
+                    />
+
+                    <ValidatedSelect
+                      label="Drinking"
+                      field="drinking"
+                      step={step}
+                      value={formData.drinking}
+                      onValueChange={(v) => handleInputChange("drinking", v)}
+                      options={[
+                        { value: "no", label: "No" },
+                        { value: "occasionally", label: "Occasionally" },
+                        { value: "yes", label: "Yes" },
+                      ]}
+                      placeholder="Select drinking preference"
+                    />
                   </div>
                 )}
 
-                {/* Step 5: Education & Career */}
+                {/* Step 4: Education & Career (was step 5) */}
                 {step === 4 && (
                   <div className="space-y-6">
-                    <div>
-                      <Label
-                        htmlFor="education"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Education")}
-                      </Label>
-                      <Input
-                        id="education"
-                        value={formData.education}
-                        onChange={(e) =>
-                          handleInputChange("education", e.target.value)
-                        }
-                        placeholder="e.g. Bachelor's, Master's"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="occupation"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Occupation")}
-                      </Label>
-                      <Input
-                        id="occupation"
-                        value={formData.occupation}
-                        onChange={(e) =>
-                          handleInputChange("occupation", e.target.value)
-                        }
-                        placeholder="Occupation"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="annualIncome"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Annual Income
-                      </Label>
-                      <Input
-                        id="annualIncome"
-                        value={formData.annualIncome}
-                        onChange={(e) =>
-                          handleInputChange("annualIncome", e.target.value)
-                        }
-                        placeholder="e.g. £30,000"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="aboutMe"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("About Me")}
-                      </Label>
-                      <Textarea
-                        id="aboutMe"
-                        value={formData.aboutMe}
-                        onChange={(e) =>
-                          handleInputChange("aboutMe", e.target.value)
-                        }
-                        placeholder="Tell us a little about yourself..."
-                        rows={4}
-                        className="w-full bg-white"
-                      />
-                    </div>
+
+                    <ValidatedInput
+                      label="Education"
+                      field="education"
+                      step={step}
+                      value={formData.education}
+                      onValueChange={(v) => handleInputChange("education", v)}
+                      placeholder="e.g. Bachelor's, Master's"
+                      required
+                    />
+
+                    <ValidatedInput
+                      label="Occupation"
+                      field="occupation"
+                      step={step}
+                      value={formData.occupation}
+                      onValueChange={(v) => handleInputChange("occupation", v)}
+                      placeholder="Occupation"
+                      required
+                    />
+
+                    <ValidatedInput
+                      label="Annual Income"
+                      field="annualIncome"
+                      step={step}
+                      value={formData.annualIncome}
+                      onValueChange={(v) =>
+                        handleInputChange("annualIncome", v)
+                      }
+                      placeholder="e.g. £30,000"
+                    />
+
+                    <ValidatedTextarea
+                      label="About Me"
+                      field="aboutMe"
+                      step={step}
+                      value={formData.aboutMe}
+                      onValueChange={(v) => handleInputChange("aboutMe", v)}
+                      placeholder="Tell us a little about yourself..."
+                      rows={4}
+                      required
+                    />
+
                   </div>
                 )}
 
-                {/* Step 6: Partner Preferences */}
+                {/* Step 5: Partner Preferences (was step 6) */}
                 {step === 5 && (
                   <div className="space-y-6">
+
+                    <ValidatedSelect
+                      label="Preferred Gender"
+                      field="preferredGender"
+                      step={step}
+                      value={formData.preferredGender}
+                      onValueChange={(v) =>
+                        handleInputChange("preferredGender", v)
+                      }
+                      options={[
+                        { value: "male", label: "Male" },
+                        { value: "female", label: "Female" },
+                        { value: "any", label: "Any" },
+                        { value: "other", label: "Other" },
+                      ]}
+                      placeholder="Select preferred gender"
+                      required
+                    />
+
                     <div>
-                      <Label
-                        htmlFor="preferredGender"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Preferred Gender")}
-                      </Label>
-                      <Select
-                        value={formData.preferredGender}
-                        onValueChange={(v) =>
-                          handleInputChange("preferredGender", v)
-                        }
-                      >
-                        <SelectTrigger
-                          id="preferredGender"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
+
                       <Label className="text-gray-700 mb-2 block">
                         Age Range
                       </Label>
                       <div className="flex gap-2 items-center">
-                        <Input
-                          type="number"
-                          min={18}
-                          max={99}
+                        <ValidatedInput
+                          label="Min"
+                          field="partnerPreferenceAgeMin"
+                          step={step}
                           value={
                             formData.partnerPreferenceAgeMin !== undefined
                               ? String(formData.partnerPreferenceAgeMin)
                               : ""
                           }
-                          onChange={(e) =>
+                          type="number"
+                          onValueChange={(v) =>
                             handleInputChange(
                               "partnerPreferenceAgeMin",
-                              Number(e.target.value)
+                              v === "" ? "" : Number(v)
                             )
                           }
-                          className="w-20"
+                          className="w-24"
+                          placeholder="18"
                         />
                         <span>to</span>
-                        <Input
-                          type="number"
-                          min={18}
-                          max={99}
+                        <ValidatedInput
+                          label="Max"
+                          field="partnerPreferenceAgeMax"
+                          step={step}
                           value={
                             formData.partnerPreferenceAgeMax !== undefined
                               ? String(formData.partnerPreferenceAgeMax)
                               : ""
                           }
-                          onChange={(e) =>
+                          type="number"
+                          onValueChange={(v) =>
                             handleInputChange(
                               "partnerPreferenceAgeMax",
-                              e.target.value === ""
-                                ? ""
-                                : Number(e.target.value)
+                              v === "" ? "" : Number(v)
                             )
                           }
-                          className="w-20"
+                          className="w-24"
+                          placeholder="99"
                         />
                       </div>
                     </div>
-                    <div>
-                      <Label
-                        htmlFor="partnerPreferenceCity"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Preferred Cities
-                      </Label>
-                      <Input
-                        id="partnerPreferenceCity"
-                        value={preferredCitiesInput}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          setPreferredCitiesInput(raw);
-                          const parsed = raw
-                            .split(",")
-                            .map((s) => s.trim())
-                            .filter(Boolean);
-                          handleInputChange("partnerPreferenceCity", parsed);
-                        }}
-                        placeholder="e.g. London, Kabul"
-                      />
-                    </div>
+
+
+                    <ValidatedInput
+                      label="Preferred Cities"
+                      field="partnerPreferenceCity"
+                      step={step}
+                      value={preferredCitiesInput}
+                      onValueChange={(raw) => {
+                        setPreferredCitiesInput(String(raw));
+                        const parsed = String(raw)
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean);
+                        handleInputChange("partnerPreferenceCity", parsed);
+                      }}
+                      placeholder="e.g. London, Kabul"
+                      hint="Comma-separated list"
+                    />
+
                   </div>
                 )}
 
-                {/* Step 7: Photos (Optional) */}
+                {/* Step 6: Photos (Optional) (was step 7) */}
                 {step === 6 && (
                   <div className="space-y-6">
-                    <div>
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Profile Photos
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Add photos to your profile (optional)
+                      </p>
+                    </div>
+                    <div className="mb-6">
                       <Label className="text-gray-700 mb-2 block">
                         Profile Photos
                       </Label>
@@ -1248,23 +1607,25 @@ export function ProfileCreationModal({
                         onImagesChanged={handleProfileImagesChange}
                         className="w-full h-48"
                       />
-                      {errors.profileImageIds && (
-                        <div className="text-red-500 text-xs mt-1">
-                          {errors.profileImageIds}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Step 8: Account Creation */}
+                {/* Step 7: Account Creation (was step 8) */}
                 {step === 7 && (
                   <div className="space-y-6">
+                    <div className="text-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Create Account
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Finish and create your account
+                      </p>
+                    </div>
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-center">
                         Create your account
                       </h3>
-                      {/* Final validation guard before showing signup form */}
                       {(() => {
                         const requiredFields = [
                           "fullName",
@@ -1279,7 +1640,6 @@ export function ProfileCreationModal({
                           "maritalStatus",
                           "phoneNumber",
                         ];
-
                         const missingFields = requiredFields.filter((field) => {
                           const value =
                             formData[field as keyof ProfileCreationData];
@@ -1317,13 +1677,12 @@ export function ProfileCreationModal({
                         }
 
                         return (
-                          <CustomSignupForm
-                            onComplete={() => {
-                              console.log(
-                                "Signup completed; profile submission will auto-run"
-                              );
-                            }}
-                          />
+                          <div className="space-y-4">
+                            {/* Use the centralized CustomSignupForm for account creation */}
+                            <CustomSignupForm
+                              onComplete={() => router.push("/success")}
+                            />
+                          </div>
                         );
                       })()}
                     </div>
@@ -1332,9 +1691,11 @@ export function ProfileCreationModal({
               </motion.div>
             </AnimatePresence>
 
+
             <div className="mt-8 flex justify-between items-center">
-              {/* Back Button - Show for all steps except first step */}
-              {step > 1 && (
+              {/* Back Button - Show on all steps after second for better UX */}
+              {step > 2 && (
+
                 <Button
                   variant="outline"
                   onClick={handleBack}
@@ -1347,12 +1708,29 @@ export function ProfileCreationModal({
               )}
 
               {/* Spacer when no back button */}
-              {step === 1 && <div />}
+              {(step === 1 || step === 2) && <div />}
 
-              {/* Next Button - Show for all steps except final step */}
-              {step < totalSteps && (
+              {/* Next Button - Show for all steps except final actionable step (7) */}
+              {step >= 1 && step < 7 && (
                 <Button
-                  onClick={handleNext}
+                  onClick={async () => {
+                    // Extra guard: for step 2, ensure required fields are non-empty before running validation
+                    if (step === 2) {
+                      const precheckMissing =
+                        !formData.city ||
+                        String(formData.city).trim() === "" ||
+                        !formData.height ||
+                        String(formData.height).trim() === "" ||
+                        !formData.maritalStatus ||
+                        String(formData.maritalStatus).trim() === "";
+                      if (precheckMissing) {
+                        // Trigger validation to surface inline errors
+                        await handleNext();
+                        return;
+                      }
+                    }
+                    await handleNext();
+                  }}
                   disabled={stepValidation.isValidating}
                   className="bg-pink-600 hover:bg-pink-700 text-white disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >

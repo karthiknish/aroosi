@@ -58,7 +58,7 @@ export const BaseProfileData = z.object({
   drinking: z
     .enum(["never", "occasionally", "socially", "regularly"])
     .optional(),
-  physicalStatus: z.enum(["normal", "physically-challenged"]).optional(),
+  physicalStatus: z.enum(["normal", "differently-abled"]).optional(),
 
   // Partner Preferences
   partnerPreferenceAgeMin: z.number().min(18).max(120).optional(),
@@ -261,7 +261,7 @@ export const SMOKING_DRINKING_OPTIONS = [
 // Physical status options
 export const PHYSICAL_STATUS_OPTIONS = [
   { value: "normal", label: "Normal" },
-  { value: "physically-challenged", label: "Physically Challenged" },
+  { value: "differently-abled", label: "Differently Abled" },
 ] as const;
 
 // Profile for options

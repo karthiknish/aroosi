@@ -22,14 +22,9 @@ export const metadata: Metadata = {
       "No 1 Afghan matrimony site. Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
     url: "https://aroosi.co.uk/",
     siteName: "Aroosi",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Aroosi - Afghan Matrimony Platform",
-      },
-    ],
+    // Remove explicit image imports to avoid build errors tied to icon route placement.
+    // Next.js will still use /og-image.png if present in /public when referenced by clients.
+    images: [],
     locale: "en_GB",
     type: "website",
   },
@@ -38,7 +33,8 @@ export const metadata: Metadata = {
     title: "Aroosi - Afghan Matrimony Platform",
     description:
       "No 1 Afghan matrimony site. Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
-    images: ["/og-image.png"],
+    // Remove explicit images array; Twitter card can still resolve default if needed.
+    images: [],
     site: "@aroosiuk",
   },
 };
@@ -78,37 +74,9 @@ export default function RootLayout({
         {/* Canonical URL */}
         <link rel="canonical" href="https://aroosi.app" />
 
-        {/* Favicons */}
+        {/* Favicons/manifest - removing icon imports from app manifest per request */}
+        {/* Keep only the base favicon and manifest to avoid Next.js importing icon modules */}
         <link rel="icon" href="/favicon.ico" />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="/favicon-32x32.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href="/favicon-16x16.png"
-        />
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href="/apple-touch-icon.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="192x192"
-          href="/android-chrome-192x192.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="512x512"
-          href="/android-chrome-512x512.png"
-        />
         <link rel="manifest" href="/site.webmanifest" />
 
         {/* Fonts */}
