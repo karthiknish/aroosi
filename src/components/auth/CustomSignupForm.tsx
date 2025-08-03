@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import GoogleAuthButton from "./GoogleAuthButton";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
+import { useAuth } from "@/components/AuthProvider"; // Add this import
 import { Eye, EyeOff } from "lucide-react";
-import { OtpInput } from "@/components/ui/otp-input";
 import { showErrorToast } from "@/lib/ui/toast";
 
 interface CustomSignupFormProps {
@@ -26,17 +25,21 @@ export default function CustomSignupForm({
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [showOTPForm, setShowOTPForm] = useState(false);
-  const [otp, setOtp] = useState("");
 
   // Toggle visibility for password fields
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Access wizard data to derive names
-  const { formData: wizardData } = useProfileWizard();
+  // Derived validation state
+  const passwordsFilled =
+    formData.password.length > 0 && formData.confirmPassword.length > 0;
+  const passwordsMatch =
+    formData.password === formData.confirmPassword && passwordsFilled;
 
-  const { signUp, verifyOTP } = useAuth();
+  // Access wizard data to derive full name and profile fields
+  const { formData: wizardData } = useProfileWizard();
+  const { refreshUser } = useAuth(); // Add auth context
+
   const router = useRouter();
 
   const handleInputChange = (field: string, value: string) => {
@@ -71,103 +74,252 @@ export default function CustomSignupForm({
     setIsLoading(true);
 
     try {
-      // Derive first and last name from the wizard's fullName (if available)
-      const fullName = (wizardData?.fullName as string) || "";
-      const [derivedFirstName, ...derivedRest] = fullName.trim().split(" ");
-      const derivedLastName = derivedRest.join(" ");
+      // Build fullName from wizard or fallback to email local part
+      const fullNameRaw = (wizardData?.fullName as string) || "";
+      const fullName =
+        fullNameRaw.trim().length > 0
+          ? fullNameRaw.trim()
+          : formData.email.split("@")[0];
 
-      const result = await signUp(
-        formData.email,
-        formData.password,
-        derivedFirstName || "N/A",
-        derivedLastName || "N/A"
-      );
+      // Construct a minimally viable profile expected by the server schema
+      const normalizeGender = (g?: unknown): "male" | "female" | "other" => {
+        const s = String(g ?? "").toLowerCase();
+        if (s === "male" || s === "female" || s === "other") return s as any;
+        return "other";
+      };
+      const normalizeMarital = (
+        m?: unknown
+      ): "single" | "divorced" | "widowed" | "annulled" => {
+        const s = String(m ?? "").toLowerCase();
+        if (
+          s === "single" ||
+          s === "divorced" ||
+          s === "widowed" ||
+          s === "annulled"
+        )
+          return s as any;
+        return "single";
+      };
+      const normalizedHeight =
+        typeof (wizardData as any)?.height === "string" &&
+        ((wizardData as any)?.height as string).trim().length > 0
+          ? ((wizardData as any)?.height as string).trim()
+          : "170 cm";
 
-      if (result.success) {
-        setShowOTPForm(true);
-      } else {
-        showErrorToast(result.error || "Sign up failed");
+      const cityFromWizard = ((wizardData as any)?.city as string) || "";
+      const city = cityFromWizard.trim();
+
+      const normalizedProfile = {
+        fullName,
+        email: formData.email.trim(),
+        dateOfBirth:
+          ((wizardData as any)?.dateOfBirth as string) || "1990-01-01",
+        gender: normalizeGender((wizardData as any)?.gender),
+        city: city || "Kabul",
+        aboutMe: ((wizardData as any)?.aboutMe as string) || "Hello!",
+        occupation:
+          ((wizardData as any)?.occupation as string) || "Not specified",
+        education:
+          ((wizardData as any)?.education as string) || "Not specified",
+        height: normalizedHeight,
+        maritalStatus: normalizeMarital((wizardData as any)?.maritalStatus),
+        phoneNumber:
+          ((wizardData as any)?.phoneNumber as string) || "+10000000000",
+
+        // Optional fields passed through when available
+        country: (wizardData as any)?.country ?? undefined,
+        annualIncome: (wizardData as any)?.annualIncome ?? undefined,
+        preferredGender: (wizardData as any)?.preferredGender ?? undefined,
+        motherTongue: (wizardData as any)?.motherTongue ?? undefined,
+        religion: (wizardData as any)?.religion ?? undefined,
+        ethnicity: (wizardData as any)?.ethnicity ?? undefined,
+        physicalStatus: (wizardData as any)?.physicalStatus ?? undefined,
+        smoking: (wizardData as any)?.smoking ?? undefined,
+        drinking: (wizardData as any)?.drinking ?? undefined,
+        partnerPreferenceAgeMin:
+          (wizardData as any)?.partnerPreferenceAgeMin ?? undefined,
+        partnerPreferenceAgeMax:
+          (wizardData as any)?.partnerPreferenceAgeMax ?? undefined,
+        partnerPreferenceCity: Array.isArray(
+          (wizardData as any)?.partnerPreferenceCity
+        )
+          ? ((wizardData as any)?.partnerPreferenceCity as string[])
+          : [],
+        profileFor: (wizardData as any)?.profileFor ?? "self",
+        profileImageIds: Array.isArray((wizardData as any)?.profileImageIds)
+          ? ((wizardData as any)?.profileImageIds as string[])
+          : [],
+      };
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("CustomSignupForm: Signup payload preview", {
+          keys: Object.keys({
+            email: formData.email,
+            password: formData.password,
+            fullName,
+            profile: normalizedProfile,
+          }),
+          profileKeys: Object.keys(normalizedProfile || {}),
+        });
+      }
+
+      // POST to unified signup route which atomically creates user+profile in Convex
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password,
+          fullName,
+          profile: normalizedProfile,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}) as unknown);
+
+      if (res.status === 409) {
+        // Conflict: user already exists
+        const msg =
+          (data as any)?.error ||
+          (data as any)?.message ||
+          "An account with this email already exists";
+        showErrorToast(msg);
+        setIsLoading(false);
+        return;
+      }
+
+      if (res.status === 400) {
+        // Bad Request: show precise, user-friendly errors
+        let userMsg = "We couldn't create your account.";
+        const raw = data as any;
+
+        // 1) Explicit "Profile incomplete" from server gate
+        if (
+          raw?.error &&
+          String(raw.error).toLowerCase().includes("profile incomplete")
+        ) {
+          const fields: string[] = Array.isArray(raw.details)
+            ? raw.details
+            : [];
+          if (fields.length > 0) {
+            userMsg = `Please complete: ${fields.slice(0, 6).join(", ")}${fields.length > 6 ? " and more" : ""}.`;
+          } else {
+            userMsg =
+              "Your profile is missing required information. Please complete all fields and try again.";
+          }
+          showErrorToast(userMsg);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2) Zod validation errors shape { details: [{ path, message } ...] }
+        if (Array.isArray(raw?.details) && raw.details.length > 0) {
+          const fields = raw.details
+            .map((d: any) => d?.path?.join("."))
+            .filter(Boolean);
+          const messages = raw.details
+            .map((d: any) =>
+              typeof d?.message === "string" ? d.message : null
+            )
+            .filter(Boolean);
+
+          if (fields.length > 0) {
+            userMsg = `Invalid or missing: ${fields.slice(0, 6).join(", ")}${fields.length > 6 ? " and more" : ""}.`;
+          } else if (messages.length > 0) {
+            userMsg = messages.slice(0, 2).join(" • ");
+          } else {
+            userMsg =
+              "Invalid input data. Please review your details and try again.";
+          }
+          showErrorToast(userMsg);
+          setIsLoading(false);
+          return;
+        }
+
+        // 3) Generic 400 with message
+        if (typeof raw?.message === "string") {
+          showErrorToast(raw.message);
+          setIsLoading(false);
+          return;
+        }
+
+        showErrorToast(
+          "We couldn't create your account. Please review your details and try again."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      if (!res.ok) {
+        const raw = data as any;
+        const msg =
+          raw?.error ||
+          raw?.message ||
+          (typeof raw === "string" ? raw : null) ||
+          "Failed to create account";
+        showErrorToast(msg);
+        setIsLoading(false);
+        return;
+      }
+
+      // Success: The signup API now sets cookies, so we need to refresh auth state
+      console.log("CustomSignupForm: Signup successful, refreshing auth state");
+
+      // IMPORTANT: Refresh the auth state to pick up the new session
+      await refreshUser();
+
+      // Clean up any onboarding/local wizard storage
+      try {
+        const mod = await import("@/lib/utils/onboardingStorage");
+        if (mod && typeof mod.clearAllOnboardingData === "function") {
+          mod.clearAllOnboardingData();
+        } else if (typeof window !== "undefined") {
+          const { STORAGE_KEYS } = await import(
+            "@/lib/utils/onboardingStorage"
+          );
+          if (STORAGE_KEYS) {
+            try {
+              localStorage.removeItem(STORAGE_KEYS.PROFILE_CREATION);
+            } catch {}
+            try {
+              localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
+            } catch {}
+            try {
+              localStorage.removeItem(STORAGE_KEYS.PENDING_IMAGES);
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.warn("Onboarding storage cleanup failed (non-fatal):", e);
+      }
+
+      // Call onComplete callback if provided
+      try {
+        if (onComplete) onComplete();
+      } catch (err) {
+        console.warn("onComplete callback threw, continuing navigation", err);
+      }
+
+      // Navigate to success page
+      const redirectTo =
+        typeof (data as any)?.redirectTo === "string" &&
+        (data as any).redirectTo
+          ? (data as any).redirectTo
+          : "/success";
+
+      console.log("CustomSignupForm: Navigating to:", redirectTo);
+      try {
+        router.push(redirectTo);
+      } catch {
+        window.location.href = redirectTo;
       }
     } catch (err) {
+      console.error("Signup request failed", err);
       showErrorToast("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Unified onboarding completion handler
-  const handleOnboardingComplete = () => {
-    if (onComplete) {
-      onComplete();
-    } else {
-      router.push("/profile/create");
-    }
-  };
-
-  const handleOTPSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const result = await verifyOTP(formData.email, otp.trim());
-      if (result.success) {
-        handleOnboardingComplete();
-      } else {
-        showErrorToast(result.error || "OTP verification failed");
-      }
-    } catch (err) {
-      showErrorToast("An unexpected error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (showOTPForm) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold mb-2">Verify Your Email</h3>
-          <p className="text-sm text-muted-foreground">
-            We've sent a verification code to {formData.email}
-          </p>
-        </div>
-
-        <form onSubmit={handleOTPSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="otp">Verification Code</Label>
-            <OtpInput
-              value={otp}
-              onChange={(value) => setOtp(value)}
-              length={6}
-              disabled={isLoading}
-              className="w-full"
-            />
-          </div>
-
-          <Button type="submit" className="w-full" disabled={isLoading || !otp}>
-            {isLoading ? (
-              <>
-                <LoadingSpinner className="mr-2 h-4 w-4" />
-                Verifying...
-              </>
-            ) : (
-              "Verify Email"
-            )}
-          </Button>
-        </form>
-
-        <div className="text-center text-sm">
-          <button
-            type="button"
-            onClick={() => setShowOTPForm(false)}
-            className="text-primary hover:underline"
-          >
-            Back to sign up
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -196,7 +348,11 @@ export default function CustomSignupForm({
               placeholder="Create a password (min. 8 characters)"
               required
               disabled={isLoading}
-              className="pr-10"
+              className={`pr-10 ${
+                passwordsMatch
+                  ? "border-green-500 focus-visible:ring-green-500"
+                  : ""
+              }`}
             />
             <button
               type="button"
@@ -226,7 +382,11 @@ export default function CustomSignupForm({
               placeholder="Confirm your password"
               required
               disabled={isLoading}
-              className="pr-10"
+              className={`pr-10 ${
+                passwordsMatch
+                  ? "border-green-500 focus-visible:ring-green-500"
+                  : ""
+              }`}
             />
             <button
               type="button"
@@ -241,6 +401,15 @@ export default function CustomSignupForm({
               )}
             </button>
           </div>
+          {passwordsFilled && (
+            <p
+              className={`text-xs mt-1 ${
+                passwordsMatch ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {passwordsMatch ? "Passwords match" : "Passwords do not match"}
+            </p>
+          )}
         </div>
 
         <Button

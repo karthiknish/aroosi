@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
-  try {
-    // Since we're using JWT tokens, logout is handled client-side
-    // by removing the token from storage. This endpoint can be used
-    // for any server-side cleanup if needed in the future.
+/**
+ * Logout: clear both access and refresh cookies server-side.
+ */
+export async function POST(_request: NextRequest) {
+  const response = NextResponse.json({ message: "Logged out successfully" });
 
-    return NextResponse.json({
-      message: "Logged out successfully",
-    });
-  } catch (error) {
-    console.error("Logout error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+  // Expire cookies immediately
+  response.headers.set(
+    "Set-Cookie",
+    `auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+  );
+  response.headers.append(
+    "Set-Cookie",
+    `refresh-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+  );
+  response.headers.append(
+    "Set-Cookie",
+    `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`,
+  );
+
+  return response;
 }

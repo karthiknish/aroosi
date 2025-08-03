@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { verifyOTP } from "@/lib/auth/otp";
-import { signJWT } from "@/lib/auth/jwt";
+import { signAccessJWT } from "@/lib/auth/jwt";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 
@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       hashedPassword,
     });
 
-    // Generate new JWT token
-    const token = await signJWT({
+    // Generate new JWT access token (consistent with available exports)
+    const token = await signAccessJWT({
       userId: user._id.toString(),
       email: user.email,
       role: user.role || "user",

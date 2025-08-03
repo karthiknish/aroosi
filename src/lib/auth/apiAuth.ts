@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { verifyJWT, extractTokenFromHeader } from "./jwt";
+import { verifyAccessJWT, extractTokenFromHeader } from "./jwt";
 
 export interface AuthenticatedUser {
   userId: string;
@@ -39,8 +39,8 @@ export async function authenticateApiRequest(
       return null;
     }
 
-    // Verify JWT token
-    const payload = await verifyJWT(token);
+    // Verify JWT token (access)
+    const payload = await verifyAccessJWT(token);
 
     return {
       userId: payload.userId,

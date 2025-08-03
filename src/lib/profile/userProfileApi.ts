@@ -332,7 +332,7 @@ export async function submitProfile(
     // Physical & lifestyle
     height: values.height,
     maritalStatus: values.maritalStatus,
-    physicalStatus: values.physicalStatus,
+    physicalStatus: values.physicalStatus || "normal",
     diet: values.diet,
     smoking: (values.smoking as "no" | "occasionally" | "yes" | "") || "no",
     drinking: values.drinking || "no",
@@ -663,7 +663,9 @@ export async function checkEmailHasProfile(
   email: string
 ): Promise<{ exists: boolean; hasProfile: boolean }> {
   try {
-    const res = await fetch(`/api/profile-exists?email=${encodeURIComponent(email)}`);
+    const res = await fetch(
+      `/api/profile-exists?email=${encodeURIComponent(email)}`
+    );
     if (!res.ok) {
       return { exists: false, hasProfile: false };
     }
