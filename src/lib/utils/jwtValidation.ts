@@ -1,4 +1,4 @@
-import { verifyJWT } from "@/lib/auth/jwt";
+import { verifyAccessJWT, verifyRefreshJWT } from "@/lib/auth/jwt";
 
 /**
  * JWT validation for native authentication
@@ -11,10 +11,12 @@ export interface JWTValidationResult {
   role?: string;
   error?: string;
   isExpired?: boolean;
+  type?: "access" | "refresh";
 }
 
 /**
  * Validates JWT token with our native auth secret
+ * Attempts access verification first; if it fails with type error, tries refresh verification.
  */
 export async function validateJWTToken(
   token: string,
@@ -24,26 +26,42 @@ export async function validateJWTToken(
       return { valid: false, error: "Invalid token format" };
     }
 
-    // Use our existing JWT verification
-    const payload = await verifyJWT(token);
+    // Try verify as access token
+    try {
+      const payload = await verifyAccessJWT(token);
+      const userId = payload.userId;
+      const email = payload.email;
+      const role = payload.role || "user";
 
-    // Extract user information
-    const userId = payload.userId;
-    const email = payload.email;
-    const role = payload.role || "user";
+      return {
+        valid: true,
+        payload: payload as unknown as Record<string, unknown>,
+        userId,
+        email,
+        role,
+        type: "access",
+      };
+    } catch (e1) {
+      // Fallback: try verify as refresh token
+      const payload = await verifyRefreshJWT(token);
+      const userId = payload.userId;
+      const email = payload.email;
+      const role = payload.role || "user";
 
-    return {
-      valid: true,
-      payload: payload as unknown as Record<string, unknown>,
-      userId,
-      email,
-      role,
-    };
+      return {
+        valid: true,
+        payload: payload as unknown as Record<string, unknown>,
+        userId,
+        email,
+        role,
+        type: "refresh",
+      };
+    }
   } catch (error) {
     console.error("JWT validation error:", error);
 
     // Check if it's an expiration error
-    if (error instanceof Error && error.message.includes("expired")) {
+    if (error instanceof Error && error.message.toLowerCase().includes("expired")) {
       return { valid: false, error: "Token expired", isExpired: true };
     }
 
