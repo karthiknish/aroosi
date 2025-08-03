@@ -1,9 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Notifications } from "@/lib/notify";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { logSecurityEvent } from "@/lib/utils/securityHeaders";
 import Stripe from "stripe";
 
@@ -12,183 +11,247 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
-    // Validate webhook signature
     const sig = req.headers.get("stripe-signature");
     if (!sig) {
-      logSecurityEvent(
-        "VALIDATION_FAILED",
-        { reason: "Missing signature" },
-        req,
-      );
-      return errorResponse("Missing signature", 400);
+      logSecurityEvent("VALIDATION_FAILED", { reason: "Missing signature", correlationId }, req);
+      console.warn("Stripe webhook missing signature", {
+        scope: "stripe.webhook",
+        type: "validation_error",
+        correlationId,
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json({ error: "Missing signature", correlationId }, { status: 400 });
     }
 
-    // Validate webhook secret configuration
     if (!process.env.STRIPE_WEBHOOK_SECRET) {
-      console.error("STRIPE_WEBHOOK_SECRET not configured");
-      return errorResponse("Webhook configuration error", 500);
+      console.error("Stripe webhook secret not configured", {
+        scope: "stripe.webhook",
+        type: "config_error",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "Webhook configuration error", correlationId },
+        { status: 500 }
+      );
     }
 
     let event: Stripe.Event;
     const rawBody = await req.text();
 
-    // Validate request body
     if (!rawBody || rawBody.length === 0) {
-      logSecurityEvent("VALIDATION_FAILED", { reason: "Empty body" }, req);
-      return errorResponse("Empty request body", 400);
+      logSecurityEvent("VALIDATION_FAILED", { reason: "Empty body", correlationId }, req);
+      console.warn("Stripe webhook empty body", {
+        scope: "stripe.webhook",
+        type: "validation_error",
+        correlationId,
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json({ error: "Empty request body", correlationId }, { status: 400 });
     }
 
-    // Verify webhook signature
     try {
       event = stripe.webhooks.constructEvent(
         rawBody,
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET,
+        process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      console.error("Stripe webhook signature verification failed:", err);
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("Stripe webhook signature verification failed", {
+        scope: "stripe.webhook",
+        type: "auth_failed",
+        message,
+        correlationId,
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
+      });
 
       logSecurityEvent(
         "UNAUTHORIZED_ACCESS",
-        {
-          reason: "Signature verification failed",
-          error: err instanceof Error ? err.message : "Unknown error",
-        },
-        req,
+        { reason: "Signature verification failed", error: message, correlationId },
+        req
       );
 
-      return errorResponse("Webhook signature verification failed", 400);
+      return NextResponse.json(
+        { error: "Webhook signature verification failed", correlationId },
+        { status: 400 }
+      );
     }
 
-    // Log webhook received for monitoring
-    console.log(`Stripe webhook received: ${event.type}, ID: ${event.id}`);
+    console.info("Stripe webhook received", {
+      scope: "stripe.webhook",
+      type: "received",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      eventType: event.type,
+      eventId: event.id,
+    });
 
-    // Validate event structure
     if (!event.type || !event.data || !event.data.object) {
       logSecurityEvent(
         "VALIDATION_FAILED",
-        {
-          reason: "Invalid event structure",
-          eventType: event.type,
-        },
-        req,
+        { reason: "Invalid event structure", eventType: event.type, correlationId },
+        req
       );
-      return errorResponse("Invalid webhook event", 400);
+      console.warn("Stripe webhook invalid event structure", {
+        scope: "stripe.webhook",
+        type: "validation_error",
+        correlationId,
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
+        eventType: event.type,
+      });
+      return NextResponse.json({ error: "Invalid webhook event", correlationId }, { status: 400 });
     }
 
-    // Process webhook events securely
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        // Validate session object
         if (!session || !session.metadata) {
-          console.error("Invalid checkout session object:", session);
+          console.error("Stripe webhook invalid checkout session object", {
+            scope: "stripe.webhook",
+            type: "validation_error",
+            correlationId,
+            statusCode: 400,
+            durationMs: Date.now() - startedAt,
+          });
           break;
         }
 
-        const planId = session.metadata.planId as
-          | "premium"
-          | "premiumPlus"
-          | undefined;
+        const planId = session.metadata.planId as "premium" | "premiumPlus" | undefined;
         const email = session.metadata.email;
 
-        // Validate required metadata
         if (!planId || !email) {
-          console.error("Missing required metadata in checkout session:", {
+          console.warn("Stripe webhook missing metadata in checkout session", {
+            scope: "stripe.webhook",
+            type: "validation_error",
+            correlationId,
+            statusCode: 400,
+            durationMs: Date.now() - startedAt,
+            sessionId: session.id,
+            hasEmail: !!email,
+          });
+          logSecurityEvent(
+            "VALIDATION_FAILED",
+            { reason: "Missing metadata", sessionId: session.id, planId, email: !!email, correlationId },
+            req
+          );
+          break;
+        }
+
+        if (!["premium", "premiumPlus"].includes(planId)) {
+          console.warn("Stripe webhook invalid plan ID", {
+            scope: "stripe.webhook",
+            type: "validation_error",
+            correlationId,
+            statusCode: 400,
+            durationMs: Date.now() - startedAt,
             planId,
-            email,
             sessionId: session.id,
           });
           logSecurityEvent(
             "VALIDATION_FAILED",
-            {
-              reason: "Missing metadata",
-              sessionId: session.id,
-              planId,
-              email: !!email,
-            },
-            req,
+            { reason: "Invalid plan ID", planId, sessionId: session.id, correlationId },
+            req
           );
           break;
         }
 
-        // Validate plan ID
-        if (!["premium", "premiumPlus"].includes(planId)) {
-          console.error("Invalid plan ID in webhook:", planId);
-          logSecurityEvent(
-            "VALIDATION_FAILED",
-            {
-              reason: "Invalid plan ID",
-              planId,
-              sessionId: session.id,
-            },
-            req,
-          );
-          break;
-        }
-
-        // Log subscription upgrade for monitoring
-        // logSecurityEvent('PAYMENT_ACTION', {
-        //   action: 'subscription_upgrade',
-        //   planId,
-        //   email,
-        //   userId,
-        //   sessionId: session.id
-        // }, req);
-
-        console.log(`Processing subscription upgrade: ${email} -> ${planId}`);
-
-        // Update Convex profile subscription plan via internal action
         try {
           if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
           const convex = getConvexClient();
-          if (!convex)
-            return errorResponse("Convex client not configured", 500);
+          if (!convex) {
+            console.error("Stripe webhook convex not configured", {
+              scope: "stripe.webhook",
+              type: "convex_not_configured",
+              correlationId,
+              statusCode: 500,
+              durationMs: Date.now() - startedAt,
+            });
+            return NextResponse.json(
+              { error: "Convex client not configured", correlationId },
+              { status: 500 }
+            );
+          }
 
-          await convex.action(api.users.stripeUpdateSubscription, {
-            email,
-            plan: planId,
+          await convex
+            .action(api.users.stripeUpdateSubscription, { email, plan: planId })
+            .catch((e: unknown) => {
+              console.error("Stripe webhook convex action error", {
+                scope: "stripe.webhook",
+                type: "convex_action_error",
+                message: e instanceof Error ? e.message : String(e),
+                correlationId,
+                statusCode: 500,
+                durationMs: Date.now() - startedAt,
+              });
+              throw e;
+            });
+
+          console.info("Stripe webhook subscription updated", {
+            scope: "stripe.webhook",
+            type: "success",
+            correlationId,
+            statusCode: 200,
+            durationMs: Date.now() - startedAt,
+            planId,
           });
 
-          console.log(
-            `Subscription updated successfully: ${email} -> ${planId}`,
-          );
-
-          // Send email notification with validation
           if (session.customer_email && isValidEmail(session.customer_email)) {
             try {
               await Notifications.subscriptionChanged(
                 session.customer_email,
                 session.customer_email.split("@")[0] || session.customer_email,
-                planId,
+                planId
               );
-              console.log(
-                `Subscription notification sent to: ${session.customer_email}`,
-              );
+              console.info("Stripe webhook notification sent", {
+                scope: "stripe.webhook",
+                type: "notify_success",
+                correlationId,
+                statusCode: 200,
+                durationMs: Date.now() - startedAt,
+              });
             } catch (emailError) {
-              console.error(
-                "Failed to send subscription notification:",
-                emailError,
-              );
+              console.error("Stripe webhook notify error", {
+                scope: "stripe.webhook",
+                type: "notify_error",
+                message: emailError instanceof Error ? emailError.message : String(emailError),
+                correlationId,
+                statusCode: 500,
+                durationMs: Date.now() - startedAt,
+              });
             }
           }
         } catch (e) {
-          console.error("Convex subscription update failed:", e);
-
+          console.error("Stripe webhook convex subscription update failed", {
+            scope: "stripe.webhook",
+            type: "convex_action_error",
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+            statusCode: 500,
+            durationMs: Date.now() - startedAt,
+          });
           logSecurityEvent(
             "VALIDATION_FAILED",
             {
               reason: "Convex update failed",
-              email,
               planId,
               error: e instanceof Error ? e.message : "Unknown error",
+              correlationId,
             },
-            req,
+            req
           );
         }
         break;
@@ -196,39 +259,35 @@ export async function POST(req: NextRequest) {
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
 
-        // Validate subscription object
         if (!sub || !sub.metadata) {
-          console.error("Invalid subscription object:", sub);
+          console.warn("Stripe webhook invalid subscription object", {
+            scope: "stripe.webhook",
+            type: "validation_error",
+            correlationId,
+            statusCode: 400,
+            durationMs: Date.now() - startedAt,
+          });
           break;
         }
 
-        const email = (sub.metadata.email || sub.metadata.user_id) as
-          | string
-          | undefined;
+        const email = (sub.metadata.email || sub.metadata.user_id) as string | undefined;
 
         if (!email) {
-          console.error("Missing email in subscription deletion:", {
+          console.warn("Stripe webhook missing email in subscription deletion", {
+            scope: "stripe.webhook",
+            type: "validation_error",
+            correlationId,
+            statusCode: 400,
+            durationMs: Date.now() - startedAt,
             subscriptionId: sub.id,
           });
           logSecurityEvent(
             "VALIDATION_FAILED",
-            {
-              reason: "Missing email in subscription deletion",
-              subscriptionId: sub.id,
-            },
-            req,
+            { reason: "Missing email in subscription deletion", subscriptionId: sub.id, correlationId },
+            req
           );
           break;
         }
-
-        // Log subscription cancellation for monitoring
-        // logSecurityEvent('PAYMENT_ACTION', {
-        //   action: 'subscription_cancelled',
-        //   email,
-        //   subscriptionId: sub.id
-        // }, req);
-
-        console.log(`Processing subscription cancellation: ${email}`);
 
         try {
           if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
@@ -236,51 +295,102 @@ export async function POST(req: NextRequest) {
           }
 
           const convex = getConvexClient();
-          if (!convex)
-            return errorResponse("Convex client not configured", 500);
+          if (!convex) {
+            console.error("Stripe webhook convex not configured", {
+              scope: "stripe.webhook",
+              type: "convex_not_configured",
+              correlationId,
+              statusCode: 500,
+              durationMs: Date.now() - startedAt,
+            });
+            return NextResponse.json(
+              { error: "Convex client not configured", correlationId },
+              { status: 500 }
+            );
+          }
 
-          await convex.action(api.users.stripeUpdateSubscription, {
-            email,
-            plan: "free",
+          await convex
+            .action(api.users.stripeUpdateSubscription, { email, plan: "free" })
+            .catch((e: unknown) => {
+              console.error("Stripe webhook convex action downgrade error", {
+                scope: "stripe.webhook",
+                type: "convex_action_error",
+                message: e instanceof Error ? e.message : String(e),
+                correlationId,
+                statusCode: 500,
+                durationMs: Date.now() - startedAt,
+              });
+              throw e;
+            });
+
+          console.info("Stripe webhook subscription downgraded", {
+            scope: "stripe.webhook",
+            type: "success",
+            correlationId,
+            statusCode: 200,
+            durationMs: Date.now() - startedAt,
           });
-
-          console.log(`Subscription downgraded successfully: ${email} -> free`);
         } catch (e) {
-          console.error("Convex subscription downgrade failed:", e);
-
+          console.error("Stripe webhook subscription downgrade failed", {
+            scope: "stripe.webhook",
+            type: "convex_action_error",
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+            statusCode: 500,
+            durationMs: Date.now() - startedAt,
+          });
           logSecurityEvent(
             "VALIDATION_FAILED",
             {
               reason: "Convex downgrade failed",
-              email,
               error: e instanceof Error ? e.message : "Unknown error",
+              correlationId,
             },
-            req,
+            req
           );
         }
         break;
       }
 
       default:
-        console.log(`Unhandled webhook event type: ${event.type}`);
+        console.info("Stripe webhook unhandled event type", {
+          scope: "stripe.webhook",
+          type: "unhandled_event",
+          correlationId,
+          statusCode: 200,
+          durationMs: Date.now() - startedAt,
+          eventType: event.type,
+        });
         break;
     }
 
-    console.log(`Stripe webhook processed successfully: ${event.type}`);
-    return successResponse({ received: true, eventType: event.type });
+    console.info("Stripe webhook processed successfully", {
+      scope: "stripe.webhook",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      eventType: event.type,
+    });
+    return NextResponse.json({ received: true, eventType: event.type, correlationId });
   } catch (error) {
-    console.error("Error processing Stripe webhook:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Stripe webhook processing error", {
+      scope: "stripe.webhook",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
 
     logSecurityEvent(
       "VALIDATION_FAILED",
-      {
-        reason: "Processing error",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      req,
+      { reason: "Processing error", error: message, correlationId },
+      req
     );
 
-    return errorResponse("Webhook processing failed", 500);
+    return NextResponse.json({ error: "Webhook processing failed", correlationId }, { status: 500 });
   }
 }
 
