@@ -63,21 +63,6 @@ Session lifecycle:
   - HttpOnly cookies for access/refresh; optional short public echo cookie gated by env
   - Centralized cookie attribute builder with runtime diagnostics to catch domain/secure/samesite misconfig
 
-## Environment & Cookies (Operational Profile)
-
-Centralized cookie flags are built in [src/lib/auth/cookies.ts](src/lib/auth/cookies.ts:1). Diagnostics warn on misconfig to prevent silent cookie loss.
-
-Recommended values:
-- Production (aroosi.app)
-  - COOKIE_SAMESITE = Lax
-  - COOKIE_SECURE = 1
-  - COOKIE_DOMAIN = .aroosi.app
-- Preview (vercel.app)
-  - COOKIE_SAMESITE = Lax
-  - COOKIE_SECURE = 1
-  - COOKIE_DOMAIN = unset (host-only) unless using a custom preview under aroosi.app
-
-These choices ensure refresh-token availability and prevent “missing_token” on refresh.
 
 ## Error Surfaces & User Feedback
 
@@ -101,24 +86,15 @@ These choices ensure refresh-token availability and prevent “missing_token” 
 - CI/CD considerations for secret provisioning and monorepo builds
 - Environment-sensitive cookie diagnostics for production vs preview domains
 
-## Selected Code Entry Points
+## Engineering Focus Areas
 
-- Auth
-  - [src/app/api/auth/signup/route.ts](src/app/api/auth/signup/route.ts:1)
-  - [src/app/api/auth/signin/route.ts](src/app/api/auth/signin/route.ts:1)
-  - [src/app/api/auth/refresh/route.ts](src/app/api/auth/refresh/route.ts:1)
-  - [src/app/api/auth/me/route.ts](src/app/api/auth/me/route.ts:1)
-  - [src/lib/auth/cookies.ts](src/lib/auth/cookies.ts:1)
-  - [src/components/AuthProvider.tsx](src/components/AuthProvider.tsx:1)
-- Onboarding
-  - [src/components/home/ProfileCreationModal.tsx](src/components/home/ProfileCreationModal.tsx:1)
-  - [src/components/auth/CustomSignupForm.tsx](src/components/auth/CustomSignupForm.tsx:1)
-  - [src/lib/validation/profileValidation.ts](src/lib/validation/profileValidation.ts:1)
-- Middleware
-  - [src/middleware.ts](src/middleware.ts:1)
-- Images
-  - [src/lib/utils/imageUtil.ts](src/lib/utils/imageUtil.ts:1)
-  - [src/app/api/images/upload-url/route.ts](src/app/api/images/upload-url/route.ts:1)
+- Authentication and Sessions: Cookie-first, short-lived access tokens with rotating refresh, hydration-aware middleware.
+- Data Access: Server-only Convex calls via actions/queries, with content-type guarded API routes.
+- Validation: Zod-based schemas with transforms and normalization (e.g., height formatting, adult age checks, E.164 phones).
+- Observability: Correlation ID–driven structured logging with timing and outcome typing.
+- Frontend Experience: Multi-step onboarding with live validation, resumable image upload pipeline, and robust error surfacing.
+- CI/CD: Monorepo-aware jobs and environment-driven runtime behavior.
+
 
 ## Roadmap & Quality
 

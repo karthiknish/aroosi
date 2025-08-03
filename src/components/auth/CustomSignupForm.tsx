@@ -30,6 +30,14 @@ export default function CustomSignupForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Inline error state for precise field-level feedback
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    form?: string;
+  }>({});
+
   // Derived validation state
   const passwordsFilled =
     formData.password.length > 0 && formData.confirmPassword.length > 0;
@@ -44,23 +52,46 @@ export default function CustomSignupForm({
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear field-specific errors on change
+    setFieldErrors((prev) => ({
+      ...prev,
+      [field]: undefined,
+      form: undefined,
+    }));
   };
 
   const validateForm = () => {
+    const nextErrors: typeof fieldErrors = {};
     if (!formData.email.trim()) {
-      showErrorToast("Email is required");
-      return false;
+      nextErrors.email = "Email is required";
     }
     if (!formData.password) {
-      showErrorToast("Password is required");
-      return false;
-    }
-    if (formData.password.length < 8) {
-      showErrorToast("Password must be at least 8 characters long");
-      return false;
+      nextErrors.password = "Password is required";
+    } else if (formData.password.length < 12) {
+      // Align with server strong policy (>=12, plus character classes)
+      nextErrors.password =
+        "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol.";
+    } else {
+      // Client-side quick check for classes to reduce round-trip
+      const hasLower = /[a-z]/.test(formData.password);
+      const hasUpper = /[A-Z]/.test(formData.password);
+      const hasDigit = /\d/.test(formData.password);
+      const hasSymbol = /[^A-Za-z0-9]/.test(formData.password);
+      if (!(hasLower && hasUpper && hasDigit && hasSymbol)) {
+        nextErrors.password =
+          "Password must include uppercase, lowercase, number, and symbol.";
+      }
     }
     if (formData.password !== formData.confirmPassword) {
-      showErrorToast("Passwords do not match");
+      nextErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      // Also show a compact toast for visibility
+      const first =
+        nextErrors.email || nextErrors.password || nextErrors.confirmPassword;
+      if (first) showErrorToast(first);
       return false;
     }
     return true;
@@ -165,6 +196,7 @@ export default function CustomSignupForm({
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           email: formData.email.trim(),
           password: formData.password,
@@ -174,6 +206,30 @@ export default function CustomSignupForm({
       });
 
       const data = await res.json().catch(() => ({}) as unknown);
+      // Handle explicit password policy error payloads eagerly
+      if (res.status === 400) {
+        const raw = data as any;
+        if (
+          typeof raw?.error === "string" &&
+          raw.error.toLowerCase().includes("password")
+        ) {
+          const cid =
+            typeof raw?.correlationId === "string"
+              ? ` [Ref: ${raw.correlationId}]`
+              : "";
+          const msg =
+            "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol." +
+            cid;
+          setFieldErrors((prev) => ({
+            ...prev,
+            password: msg,
+            form: msg,
+          }));
+          showErrorToast(msg);
+          setIsLoading(false);
+          return;
+        }
+      }
 
       if (res.status === 409) {
         // Conflict: user already exists
@@ -191,9 +247,7 @@ export default function CustomSignupForm({
         let userMsg = "We couldn't create your account.";
         const raw = data as any;
 
-        // 0) Password policy failure from server logs:
-        // Server logs example: { scope: 'auth.signup', type: 'password_policy', reason: 'weak_password' }
-        // Response body currently: { error: "Password does not meet security requirements", correlationId }
+        // 0) Password policy failure (explicit message or structured code/type)
         if (
           (typeof raw?.error === "string" &&
             raw.error.toLowerCase().includes("password")) ||
@@ -201,9 +255,17 @@ export default function CustomSignupForm({
           raw?.type === "password_policy"
         ) {
           const cid =
-            typeof raw?.correlationId === "string" ? ` [Ref: ${raw.correlationId}]` : "";
+            typeof raw?.correlationId === "string"
+              ? ` [Ref: ${raw.correlationId}]`
+              : "";
           userMsg =
-            "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol." + cid;
+            "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol." +
+            cid;
+          setFieldErrors((prev) => ({
+            ...prev,
+            password: userMsg,
+            form: userMsg,
+          }));
           showErrorToast(userMsg);
           setIsLoading(false);
           return;
@@ -264,7 +326,8 @@ export default function CustomSignupForm({
           userMsg += ` [Ref: ${raw.correlationId}]`;
         }
         showErrorToast(
-          userMsg || "We couldn't create your account. Please review your details and try again."
+          userMsg ||
+            "We couldn't create your account. Please review your details and try again."
         );
         setIsLoading(false);
         return;
@@ -354,7 +417,14 @@ export default function CustomSignupForm({
             placeholder="Enter your email"
             required
             disabled={isLoading}
+            aria-invalid={!!fieldErrors.email}
+            aria-describedby={fieldErrors.email ? "email-error" : undefined}
           />
+          {fieldErrors.email ? (
+            <p id="email-error" className="text-xs text-red-600">
+              {fieldErrors.email}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-2">
@@ -365,13 +435,19 @@ export default function CustomSignupForm({
               type={showPassword ? "text" : "password"}
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
-              placeholder="Create a password (min. 8 characters)"
+              placeholder="Create a strong password"
               required
               disabled={isLoading}
+              aria-invalid={!!fieldErrors.password}
+              aria-describedby={
+                fieldErrors.password ? "password-error" : undefined
+              }
               className={`pr-10 ${
                 passwordsMatch
                   ? "border-green-500 focus-visible:ring-green-500"
-                  : ""
+                  : fieldErrors.password
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
               }`}
             />
             <button
@@ -387,6 +463,11 @@ export default function CustomSignupForm({
               )}
             </button>
           </div>
+          {fieldErrors.password ? (
+            <p id="password-error" className="text-xs text-red-600 mt-1">
+              {fieldErrors.password}
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-2">
@@ -402,10 +483,18 @@ export default function CustomSignupForm({
               placeholder="Confirm your password"
               required
               disabled={isLoading}
+              aria-invalid={!!fieldErrors.confirmPassword}
+              aria-describedby={
+                fieldErrors.confirmPassword
+                  ? "confirmPassword-error"
+                  : undefined
+              }
               className={`pr-10 ${
                 passwordsMatch
                   ? "border-green-500 focus-visible:ring-green-500"
-                  : ""
+                  : fieldErrors.confirmPassword
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : ""
               }`}
             />
             <button
@@ -421,7 +510,7 @@ export default function CustomSignupForm({
               )}
             </button>
           </div>
-          {passwordsFilled && (
+          {passwordsFilled && !fieldErrors.confirmPassword ? (
             <p
               className={`text-xs mt-1 ${
                 passwordsMatch ? "text-green-600" : "text-red-600"
@@ -429,7 +518,12 @@ export default function CustomSignupForm({
             >
               {passwordsMatch ? "Passwords match" : "Passwords do not match"}
             </p>
-          )}
+          ) : null}
+          {fieldErrors.confirmPassword ? (
+            <p id="confirmPassword-error" className="text-xs text-red-600 mt-1">
+              {fieldErrors.confirmPassword}
+            </p>
+          ) : null}
         </div>
 
         <Button
@@ -439,7 +533,10 @@ export default function CustomSignupForm({
             isLoading ||
             !formData.email ||
             !formData.password ||
-            !formData.confirmPassword
+            !formData.confirmPassword ||
+            !!fieldErrors.email ||
+            !!fieldErrors.password ||
+            !!fieldErrors.confirmPassword
           }
         >
           {isLoading ? (

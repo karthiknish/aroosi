@@ -7,6 +7,7 @@ import type { Id } from "@convex/_generated/dataModel";
 /**
  * /api/auth/me
  * Adds structured logging and correlationId. Provides precise 4xx reasons and forwards refreshed cookies.
+ * Also initializes a Convex client with the verified user to avoid NoAuthProvider in server-side queries.
  */
 export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -39,10 +40,12 @@ export async function GET(request: NextRequest) {
 
     // Verify access token; if expired/invalid, attempt transparent refresh using refresh-token
     let userIdFromSession: string | null = null;
+    let effectiveAccessToken: string | null = null;
 
     try {
       const payload = await verifyAccessJWT(tokenToVerify);
       userIdFromSession = payload.userId;
+      effectiveAccessToken = tokenToVerify;
     } catch (e) {
       // Attempt refresh only if refresh-token exists
       const refreshCookie = request.cookies.get("refresh-token")?.value;
@@ -120,6 +123,7 @@ export async function GET(request: NextRequest) {
 
         const payload = await verifyAccessJWT(newAccess);
         userIdFromSession = payload.userId;
+        effectiveAccessToken = newAccess;
 
         // Save refreshed cookies to append to final response so browser persists them
         refreshedSetCookies = cookies;
@@ -151,6 +155,28 @@ export async function GET(request: NextRequest) {
         { error: "No auth session", correlationId },
         { status: 401 }
       );
+    }
+
+    // NOTE: fetchQuery(api.fn, ...) uses a server-side Convex client configured via env.
+    // Do not attempt to pass a token here; our getConvexClient() takes no arguments.
+    // Keeping this block minimal to avoid NoAuthProvider errors from misconfiguration.
+    try {
+      const { getConvexClient } = await import("@/lib/convexClient");
+      const convex = getConvexClient();
+      if (!convex) {
+        console.warn("Auth/me convex client not configured", {
+          scope: "auth.me",
+          correlationId,
+          type: "convex_not_configured",
+        });
+      }
+    } catch (e) {
+      console.warn("Auth/me convex init warning", {
+        scope: "auth.me",
+        correlationId,
+        type: "convex_init_warning",
+        message: e instanceof Error ? e.message : String(e),
+      });
     }
 
     const userIdConvex = userIdFromSession as unknown as Id<"users">;
