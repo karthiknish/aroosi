@@ -555,15 +555,14 @@ export default function CustomSignupForm({
           <span className="w-full border-t" />
         </div>
 
-        {/* commenting google button for now */}
-        {/* <div className="relative flex justify-center text-xs uppercase">
+        <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-white px-2 text-muted-foreground">
             Or continue with
           </span>
-        </div> */}
+        </div>
       </div>
 
-      {/* <GoogleAuthButton
+      <GoogleAuthButton
         onSuccess={() => {
           if (onComplete) {
             onComplete();
@@ -572,7 +571,7 @@ export default function CustomSignupForm({
           }
         }}
         onError={(error: string) => showErrorToast(error)}
-      /> */}
+      />
     </div>
   );
 }
