@@ -77,7 +77,18 @@ const profileSchema = z
     phoneNumber: z
       .string()
       .min(1, "phoneNumber is required")
-      .refine(isValidPhone, "Please provide a valid phone number (10-15 digits)"),
+      .transform((v) => v.trim())
+      .transform((v) => v.replace(/\u00A0/g, " ")) // replace non‑breaking spaces
+      .transform((v) => v.replace(/\s+/g, " ")) // collapse spaces
+      .refine(
+        (phone) => {
+          // Accept common formats by digit-count validation after stripping punctuation
+          // Examples: "+93 7xx xxx xxx", "+1 555 123 4567", "07555 123456", "(020) 7946-0958"
+          const digits = phone.replace(/\D/g, "");
+          return digits.length >= 10 && digits.length <= 15;
+        },
+        "Please provide a valid phone number (10-15 digits)"
+      ),
 
     profileFor: z
       .enum(["self", "son", "daughter", "brother", "sister", "friend", "relative", ""])
