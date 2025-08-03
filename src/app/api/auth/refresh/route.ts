@@ -27,10 +27,23 @@ export async function POST(req: NextRequest) {
         { error: "Missing refresh token", code: "MISSING_REFRESH" },
         { status: 401 }
       );
-      // Clear any stray cookies
-      res.headers.set("Set-Cookie", `auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
-      res.headers.append("Set-Cookie", `refresh-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
-      res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+      // Clear any stray cookies using centralized helper (expire immediately)
+      {
+        const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
+          "@/lib/auth/cookies"
+        );
+        const expiredAuth = getAuthCookieAttrs(0).replace(
+          /Max-Age=\d+/,
+          "Max-Age=0"
+        );
+        const expiredPublic = getPublicCookieAttrs(0).replace(
+          /Max-Age=\d+/,
+          "Max-Age=0"
+        );
+        res.headers.set("Set-Cookie", `auth-token=; ${expiredAuth}`);
+        res.headers.append("Set-Cookie", `refresh-token=; ${expiredAuth}`);
+        res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
+      }
       return res;
     }
 
@@ -46,7 +59,6 @@ export async function POST(req: NextRequest) {
     // Throttle by IP first (prior to any token parsing)
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      // @ts-expect-error NextRequest has ip in edge/runtime sometimes
       (req as any).ip ||
       "unknown";
     const RL_WINDOW_MS = 30_000;
@@ -59,7 +71,10 @@ export async function POST(req: NextRequest) {
       limit: RL_LIMIT,
     });
     if (ipRate.limited) {
-      const retryAfter = Math.max(0, Math.ceil((ipRate.resetAt - Date.now()) / 1000));
+      const retryAfter = Math.max(
+        0,
+        Math.ceil((ipRate.resetAt - Date.now()) / 1000)
+      );
       const res = NextResponse.json(
         { error: "Too many refresh attempts", code: "RATE_LIMITED" },
         { status: 429 }
@@ -83,7 +98,10 @@ export async function POST(req: NextRequest) {
       limit: RL_LIMIT,
     });
     if (userRate.limited) {
-      const retryAfter = Math.max(0, Math.ceil((userRate.resetAt - Date.now()) / 1000));
+      const retryAfter = Math.max(
+        0,
+        Math.ceil((userRate.resetAt - Date.now()) / 1000)
+      );
       const res = NextResponse.json(
         { error: "Too many refresh attempts", code: "RATE_LIMITED" },
         { status: 429 }
@@ -104,10 +122,23 @@ export async function POST(req: NextRequest) {
         { error: "Refresh token reuse detected", code: "REFRESH_REUSE" },
         { status: 401 }
       );
-      // Clear cookies to force re-auth
-      res.headers.set("Set-Cookie", `auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
-      res.headers.append("Set-Cookie", `refresh-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
-      res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+      // Clear cookies to force re-auth (centralized helper, expire immediately)
+      {
+        const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
+          "@/lib/auth/cookies"
+        );
+        const expiredAuth = getAuthCookieAttrs(0).replace(
+          /Max-Age=\d+/,
+          "Max-Age=0"
+        );
+        const expiredPublic = getPublicCookieAttrs(0).replace(
+          /Max-Age=\d+/,
+          "Max-Age=0"
+        );
+        res.headers.set("Set-Cookie", `auth-token=; ${expiredAuth}`);
+        res.headers.append("Set-Cookie", `refresh-token=; ${expiredAuth}`);
+        res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
+      }
       return res;
     }
 
@@ -124,27 +155,34 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ success: true, token: newAccess });
 
-    const isProd = process.env.NODE_ENV === "production";
-    const secureAttr = isProd ? "; Secure" : "";
+    // Use centralized cookie helpers for parity across routes
+    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
+      "@/lib/auth/cookies"
+    );
 
     res.headers.set(
       "Set-Cookie",
-      `auth-token=${newAccess}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 15}${secureAttr}`
+      `auth-token=${newAccess}; ${getAuthCookieAttrs(60 * 15)}`
     );
     res.headers.append(
       "Set-Cookie",
-      `refresh-token=${newRefresh}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}${secureAttr}`
+      `refresh-token=${newRefresh}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
     );
 
     // Only set public echo cookie if explicitly enabled
     if (process.env.SHORT_PUBLIC_TOKEN === "1") {
       res.headers.append(
         "Set-Cookie",
-        `authTokenPublic=${newAccess}; Path=/; SameSite=Lax; Max-Age=${60 * 15}${secureAttr}`
+        `authTokenPublic=${newAccess}; ${getPublicCookieAttrs(60)}`
       );
     } else {
       // Ensure any prior public cookie is cleared (defense-in-depth)
-      res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+      // Construct an expired cookie using helper and overriding Max-Age=0
+      const expiredPublic = getPublicCookieAttrs(0).replace(
+        /Max-Age=\d+/,
+        "Max-Age=0"
+      );
+      res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
     }
 
     return res;
@@ -153,10 +191,23 @@ export async function POST(req: NextRequest) {
       { error: "Invalid refresh token", code: "INVALID_REFRESH" },
       { status: 401 }
     );
-    // Clear cookies on invalid token
-    res.headers.set("Set-Cookie", `auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
-    res.headers.append("Set-Cookie", `refresh-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
-    res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+    // Clear cookies on invalid token (centralized helper, expire immediately)
+    {
+      const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
+        "@/lib/auth/cookies"
+      );
+      const expiredAuth = getAuthCookieAttrs(0).replace(
+        /Max-Age=\d+/,
+        "Max-Age=0"
+      );
+      const expiredPublic = getPublicCookieAttrs(0).replace(
+        /Max-Age=\d+/,
+        "Max-Age=0"
+      );
+      res.headers.set("Set-Cookie", `auth-token=; ${expiredAuth}`);
+      res.headers.append("Set-Cookie", `refresh-token=; ${expiredAuth}`);
+      res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
+    }
     return res;
   }
 }

@@ -195,27 +195,21 @@ export async function POST(request: NextRequest) {
       refreshed: false,
     });
 
-    // Cookie policy identical and robust:
-    // - HttpOnly access and refresh cookies
-    // - SameSite=Lax to allow OAuth flows while protecting CSRF on top-level
-    // - Secure in production
-    // - Optional short-lived public token gated by SHORT_PUBLIC_TOKEN to prevent long-lived exposure
-    const isProd = process.env.NODE_ENV === "production";
-    const baseCookieAttrs = `Path=/; HttpOnly; SameSite=Lax; Max-Age=`;
-    const secureAttr = isProd ? "; Secure" : "";
+    // Cookie policy via centralized helper (supports subdomains/cross-site)
+    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
 
     response.headers.set(
       "Set-Cookie",
-      `auth-token=${accessToken}; ${baseCookieAttrs}${60 * 15}${secureAttr}`
+      `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
     );
     response.headers.append(
       "Set-Cookie",
-      `refresh-token=${refreshToken}; ${baseCookieAttrs}${60 * 60 * 24 * 7}${secureAttr}`
+      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
     );
     if (process.env.SHORT_PUBLIC_TOKEN === "1") {
       response.headers.append(
         "Set-Cookie",
-        `authTokenPublic=${accessToken}; Path=/; SameSite=Lax; Max-Age=60${secureAttr}`
+        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`
       );
     }
 

@@ -200,14 +200,54 @@ export async function POST(request: NextRequest) {
       // continue on failure
     }
 
+    // 1) Password policy & optional breach checks (HIBP-style hook point)
+    // Enforce stronger password policy here (example: min 12, at least 1 upper/lower/digit/special)
+    const strongPolicy =
+      password.length >= 12 &&
+      /[a-z]/.test(password) &&
+      /[A-Z]/.test(password) &&
+      /\d/.test(password) &&
+      /[^A-Za-z0-9]/.test(password);
+    if (!strongPolicy) {
+      return NextResponse.json(
+        { error: "Password does not meet security requirements" },
+        { status: 400 }
+      );
+    }
+    // Optional: add a breach-check (e.g., HIBP k-anonymity) here if desired (best-effort, PII-safe logging)
+
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Check for existing user
-    const existing = await convex.query(api.users.getUserByEmail, {
+    // 2) Guarded linking posture vs existing Google-only accounts
+    // If an existing account with same comparison-normalized email exists and is Google-linked (no password or explicit googleId),
+    // prevent native signup and instruct to continue with Google for security and account unification.
+    const existingByEmail = await convex.query(api.users.getUserByEmail, {
       email: normalizedEmail,
-    });
-    if (existing) {
-      return NextResponse.json({ error: "An account already exists with this email." }, { status: 409 });
+    }).catch(() => null);
+
+    if (existingByEmail) {
+      // If user has googleId or lacks hashedPassword (Google-only), block native signup
+      if (existingByEmail.googleId && !existingByEmail.hashedPassword) {
+        return NextResponse.json(
+          {
+            status: "ok",
+            message: "An account exists for this email. Please continue with Google sign-in.",
+            code: "USE_GOOGLE_SIGNIN",
+          },
+          { status: 200 }
+        );
+      }
+      // Otherwise (native account exists), keep enumeration resistant generic messaging
+      console.warn("Signup attempt for existing email (suppressed to client).");
+      return NextResponse.json(
+        {
+          status: "ok",
+          message:
+            "If an account exists for this email, follow the sign-in or password recovery flow.",
+          code: "ACCOUNT_EXISTS_MAYBE",
+        },
+        { status: 200 }
+      );
     }
 
     // Scrub local placeholder image ids
@@ -276,26 +316,24 @@ export async function POST(request: NextRequest) {
       refreshed: false,
     });
 
-    // Cookie policy identical to hardened routes
-    const isProd = process.env.NODE_ENV === "production";
-    const baseCookieAttrs = `Path=/; HttpOnly; SameSite=Lax; Max-Age=`;
-    const secureAttr = isProd ? "; Secure" : "";
+    // Cookie policy via centralized helper (supports subdomains/cross-site)
+    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
 
     // Access token cookie (15 minutes)
     response.headers.set(
       "Set-Cookie",
-      `auth-token=${accessToken}; ${baseCookieAttrs}${60 * 15}${secureAttr}`
+      `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
     );
     // Refresh token cookie (7 days)
     response.headers.append(
       "Set-Cookie",
-      `refresh-token=${refreshToken}; ${baseCookieAttrs}${60 * 60 * 24 * 7}${secureAttr}`
+      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
     );
     // Optional short-lived public token gated by SHORT_PUBLIC_TOKEN=1
     if (process.env.SHORT_PUBLIC_TOKEN === "1") {
       response.headers.append(
         "Set-Cookie",
-        `authTokenPublic=${accessToken}; Path=/; SameSite=Lax; Max-Age=60${secureAttr}`
+        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`
       );
     }
 
@@ -305,11 +343,16 @@ export async function POST(request: NextRequest) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.warn("Signup failure:", { message: errMsg });
     if (error instanceof z.ZodError) {
+      // Validation errors are safe to return
       return NextResponse.json(
         { error: "Invalid input data", details: error.errors?.map(e => ({ path: e.path, message: e.message })) },
         { status: 400 }
       );
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    // Enumeration-resistant generic failure
+    return NextResponse.json(
+      { error: "Unable to complete signup at this time" },
+      { status: 400 }
+    );
   }
 }

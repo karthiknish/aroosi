@@ -478,12 +478,14 @@ export async function POST(request: NextRequest) {
           if (raceEmail) {
             // If email user already has a different googleId, do not overwrite; choose 409
             if (raceEmail.googleId && raceEmail.googleId !== googleId) {
+              // Enumeration-resistant generic response for linking conflict
               return NextResponse.json(
                 {
-                  error: "Google account already linked to another user",
-                  code: "GOOGLE_ID_CONFLICT",
+                  status: "ok",
+                  message: "Unable to complete sign-in for this account. Please use the original sign-in method.",
+                  code: "ACCOUNT_LINK_CONFLICT",
                 },
-                { status: 409 }
+                { status: 200 }
               );
             }
             // Link googleId to the email user
@@ -532,9 +534,14 @@ export async function POST(request: NextRequest) {
             }
 
             if (!user) {
+              // Enumeration-resistant generic response
               return NextResponse.json(
-                { error: "Failed to create or fetch Google user" },
-                { status: 500 }
+                {
+                  status: "error",
+                  message: "Unable to complete sign-in at this time. Please try again.",
+                  code: "GOOGLE_USER_CREATE_FAILED",
+                },
+                { status: 400 }
               );
             }
 
@@ -614,21 +621,19 @@ export async function POST(request: NextRequest) {
       refreshed: false,
     });
 
-    // Set cookies (exactly like signin/signup APIs)
-    const isProd = process.env.NODE_ENV === "production";
-    const baseCookieAttrs = `Path=/; HttpOnly; SameSite=Lax; Max-Age=`;
-    const secureAttr = isProd ? "; Secure" : "";
+    // Set cookies using centralized helper (parity with native routes)
+    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
 
     // Set access token cookie (15 minutes)
     response.headers.set(
       "Set-Cookie",
-      `auth-token=${accessToken}; ${baseCookieAttrs}${60 * 15}${secureAttr}`
+      `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
     );
 
     // Append refresh token cookie (7 days)
     response.headers.append(
       "Set-Cookie",
-      `refresh-token=${refreshToken}; ${baseCookieAttrs}${60 * 60 * 24 * 7}${secureAttr}`
+      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
     );
 
     // Remove public token cookie by default to avoid exposing access token to JS.
@@ -636,17 +641,18 @@ export async function POST(request: NextRequest) {
     if (process.env.SHORT_PUBLIC_TOKEN === "1") {
       response.headers.append(
         "Set-Cookie",
-        `authTokenPublic=${accessToken}; Path=/; SameSite=Lax; Max-Age=60${secureAttr}`
+        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`
       );
     }
 
     // Clear state cookie after successful validation to enforce one-time use
-    response.headers.append(
-      "Set-Cookie",
-      `oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${
-        process.env.NODE_ENV === "production" ? "; Secure" : ""
-      }`
-    );
+    // Use helper for consistent attributes; Max-Age=0 to expire immediately
+    {
+      const { getAuthCookieAttrs } = await import("@/lib/auth/cookies");
+      // getAuthCookieAttrs will include HttpOnly; we override Max-Age=0 by constructing string manually
+      const expiredAttrs = getAuthCookieAttrs(0).replace(/Max-Age=\d+/, "Max-Age=0");
+      response.headers.append("Set-Cookie", `oauth_state=; ${expiredAttrs}`);
+    }
 
     return response;
   } catch (error: unknown) {
