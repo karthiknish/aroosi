@@ -1639,7 +1639,6 @@ export function ProfileCreationModal({
                           "fullName",
                           "dateOfBirth",
                           "gender",
-                          "preferredGender",
                           "city",
                           "aboutMe",
                           "occupation",
