@@ -1,154 +1,129 @@
 # Aroosi: Modern Matrimonial Platform
 
-A full-stack matrimonial platform built with modern technologies and a unified monorepo architecture.
+A production-grade, privacy-first matrimonial platform. This repository highlights a multi-surface architecture (Next.js web, React Native mobile) with a typed backend (Convex) and a unified domain model.
 
-## 🏗️ Architecture
+This README is focused on exhibiting the project’s complexity and design rather than installation steps.
 
-This project uses a **monorepo structure** with shared packages for maximum code reuse between web and mobile applications.
+## System Overview
 
-### Project Structure
+- Surfaces
+  - Web: Next.js App Router
+  - Mobile: React Native (Expo)
+- Backend/Data
+  - Convex (actions, queries, rate-limiting, atomic writes)
+- Identity & Sessions
+  - Cookie-first, HttpOnly JWT (access ~15m) + refresh (~7d)
+  - OAuth (Google) and native email/password
+  - Server-side fetches to Convex without Authorization headers
+- Observability
+  - Structured logs across routes with scope, correlationId, type, statusCode, durationMs
+  - Middleware decision logging
+- Validation
+  - Zod schemas with transforms/refinements and cross-field guards
+  - E.164 phone normalization and end-to-end enforcement
+- CI/CD
+  - GitHub Actions: environment variable provisioning (e.g., STRIPE_SECRET_KEY), monorepo-aware working directories
+  - Vercel: environment-driven cookie policies with domain-aware diagnostics
 
-```
-aroosi/
-├── apps/
-│   ├── web/          # Next.js web application
-│   └── mobile/       # React Native mobile app (Expo)
-├── packages/
-│   ├── shared-types/    # Shared TypeScript types
-│   ├── shared-utils/    # Shared utility functions
-│   ├── auth/           # Shared authentication (Clerk)
-│   ├── convex-client/  # Shared Convex client utilities
-│   └── ui/             # Shared UI components
-├── convex/           # Backend functions and schema
-└── __tests__/        # Shared test files
-```
+## Architecture Topology
 
-### Technology Stack
+Monorepo highlights:
+- apps/web: Next.js app, edge middleware, cookie-first auth, SSR-friendly data flows
+- apps/mobile: Expo app consuming the same domain model
+- packages/shared-types: Cross-surface TypeScript types
+- convex: Convex schema, actions, queries, rate-limits
 
-- **Frontend**: Next.js 15 (web) + React Native/Expo (mobile)
-- **Authentication**: Clerk (shared across platforms)
-- **Database**: Convex (real-time, serverless)
-- **Styling**: Tailwind CSS 4.0
-- **Type Safety**: TypeScript with shared types
-- **State Management**: React Query + React Context
+Data access strategy:
+- Server-only Convex access via actions/queries
+- No Authorization header forwarding from clients; identity derived from server session cookies
+- Middle-tier API routes enforce content-type guards and structured error surfaces
 
-## 🚀 Getting Started
+Session lifecycle:
+1) Signup/Signin issue Set-Cookie for auth-token and refresh-token with centralized attributes.
+2) AuthProvider fetches /api/auth/me; on 401, transparently attempts /api/auth/refresh and rehydrates.
+3) Edge middleware allows hydration paths when a refresh-token exists, blocking protected routes otherwise.
 
-### Prerequisites
+## Notable Implementation Details
 
-- Node.js 18+ and npm
-- Convex CLI: `npm install -g convex`
-- Expo CLI (for mobile): `npm install -g @expo/cli`
+- Structured Logging
+  - Fields: scope, correlationId, type, statusCode, durationMs
+  - Success/early-return coverage on signin, signup, refresh, me
+  - Consistent middleware logs with decision hints
+- Robust Input Handling
+  - Content-Type guards for JSON parsing
+  - Zod-based schemas with transforms for height normalization ("170 cm") and adult age checks
+  - E.164 phone normalization via shared utilities and last-mile server guards
+- Image Pipeline
+  - Client-side local uploads -> server-issued upload URL -> Convex storageId capture -> server save metadata -> order persistence
+  - Aggregated error reporting for partial upload failures
+- Onboarding Flow
+  - ProfileWizard context spans steps with validation snapshots
+  - Auto-submit profile after auth success with duplicate-profile server guard
+- Security
+  - HttpOnly cookies for access/refresh; optional short public echo cookie gated by env
+  - Centralized cookie attribute builder with runtime diagnostics to catch domain/secure/samesite misconfig
 
-### Installation
+## Environment & Cookies (Operational Profile)
 
-1. **Clone and install dependencies:**
-```bash
-git clone <repo-url>
-cd aroosi
-npm run install:all
-```
+Centralized cookie flags are built in [src/lib/auth/cookies.ts](src/lib/auth/cookies.ts:1). Diagnostics warn on misconfig to prevent silent cookie loss.
 
-2. **Set up environment variables:**
-```bash
-cp .env.aroosi.example .env.local
-# Fill in your API keys and configuration
-```
+Recommended values:
+- Production (aroosi.app)
+  - COOKIE_SAMESITE = Lax
+  - COOKIE_SECURE = 1
+  - COOKIE_DOMAIN = .aroosi.app
+- Preview (vercel.app)
+  - COOKIE_SAMESITE = Lax
+  - COOKIE_SECURE = 1
+  - COOKIE_DOMAIN = unset (host-only) unless using a custom preview under aroosi.app
 
-3. **Start development servers:**
+These choices ensure refresh-token availability and prevent “missing_token” on refresh.
 
-**Web application:**
-```bash
-npm run dev:web
-# Opens http://localhost:3000
-```
+## Error Surfaces & User Feedback
 
-**Mobile application:**
-```bash
-npm run dev:mobile
-# Opens Expo development server
-```
+- Password policy failures (server type=password_policy) are surfaced in the onboarding signup UI with a clear rule summary and correlationId reference.
+- Validation errors provide summarized field lists; Zod issues are compacted into user-readable messages.
 
-**Convex backend:**
-```bash
-npm run convex:dev
-```
+## Operational Diagnostics
 
-### Development Commands
+- Correlation IDs accompany all auth route responses and are propagated to logs to enable cross-cut tracing.
+- Rate-limiting logs include Retry-After hints.
+- Cookie diagnostics log a single aggregated warning with the current effective SameSite/Secure/Domain and actionable suggestions.
 
-```bash
-# Development
-npm run dev          # Start web app
-npm run dev:web      # Start web app
-npm run dev:mobile   # Start mobile app
-npm run convex:dev   # Start Convex backend
+## Complexity Snapshot
 
-# Building
-npm run build        # Build web app
-npm run build:web    # Build web app
-npm run build:mobile # Build mobile app
+- Multi-surface monorepo with shared type system
+- Cookie-first session model with rotation and auto-refresh
+- Strict content-type and schema validation with transforms
+- Edge middleware gating with hydration allowance
+- Image upload orchestration with resumable error handling
+- Structured logging taxonomy for rapid incident triage
+- CI/CD considerations for secret provisioning and monorepo builds
+- Environment-sensitive cookie diagnostics for production vs preview domains
 
-# Testing & Quality
-npm run test         # Run tests
-npm run lint         # Lint both apps
-npm run type-check   # TypeScript checking
+## Selected Code Entry Points
 
-# Deployment
-npm run convex:deploy # Deploy Convex functions
-```
+- Auth
+  - [src/app/api/auth/signup/route.ts](src/app/api/auth/signup/route.ts:1)
+  - [src/app/api/auth/signin/route.ts](src/app/api/auth/signin/route.ts:1)
+  - [src/app/api/auth/refresh/route.ts](src/app/api/auth/refresh/route.ts:1)
+  - [src/app/api/auth/me/route.ts](src/app/api/auth/me/route.ts:1)
+  - [src/lib/auth/cookies.ts](src/lib/auth/cookies.ts:1)
+  - [src/components/AuthProvider.tsx](src/components/AuthProvider.tsx:1)
+- Onboarding
+  - [src/components/home/ProfileCreationModal.tsx](src/components/home/ProfileCreationModal.tsx:1)
+  - [src/components/auth/CustomSignupForm.tsx](src/components/auth/CustomSignupForm.tsx:1)
+  - [src/lib/validation/profileValidation.ts](src/lib/validation/profileValidation.ts:1)
+- Middleware
+  - [src/middleware.ts](src/middleware.ts:1)
+- Images
+  - [src/lib/utils/imageUtil.ts](src/lib/utils/imageUtil.ts:1)
+  - [src/app/api/images/upload-url/route.ts](src/app/api/images/upload-url/route.ts:1)
 
-## Convex Admin & Cleanup Scripts
+## Roadmap & Quality
 
-### Preventing Duplicate Users
-- The backend is protected against duplicate Clerk IDs (race conditions) by a defensive double-check before insert.
-- **Enable Clerk account linking** in your Clerk dashboard to prevent multiple Clerk IDs for the same email.
+- Phone E.164 end-to-end smoke tests for +1, +44, +91
+- Expand integration tests for session rotation and middleware hydration paths
+- Optional: gate verbose middleware logs by environment
 
-### Cleaning Up Duplicates
-
-#### 1. Find Duplicate Clerk IDs
-```sh
-npx convex run scripts/cleanupDuplicateClerkUsers:findDuplicateClerkUsers
-```
-
-#### 2. Clean Up Duplicates for a Clerk ID
-```sh
-npx convex run scripts/cleanupDuplicateClerkUsers:cleanupDuplicateClerkUsers --clerkId="the-clerk-id"
-```
-
-#### 3. (Optional) Find Duplicates by Email
-If you want to merge users with the same email but different Clerk IDs, ask for a script or see Convex/Clerk docs.
-
-## Clerk Account Linking (Recommended)
-- Go to your [Clerk dashboard](https://dashboard.clerk.com/).
-- Navigate to **User & Authentication > Settings > Account Linking**.
-- Enable "Automatic Account Linking" to prevent duplicate users for the same email.
-- See [Clerk Docs: Account Linking](https://clerk.com/docs/users/account-linking)
-
-## SEO & Meta Tags
-- Use the `<Head>` component in Next.js to add meta tags for SEO and social sharing.
-- Example:
-```jsx
-import Head from "next/head";
-
-<Head>
-  <title>Aroosi - Find Your Ideal Match</title>
-  <meta name="description" content="Aroosi is a modern matrimonial platform for the UK Muslim community." />
-  <meta property="og:title" content="Aroosi - Find Your Ideal Match" />
-  <meta property="og:description" content="Aroosi is a modern matrimonial platform for the UK Muslim community." />
-  <meta property="og:image" content="/og-image.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-</Head>
-```
-- Place this in your `app/layout.tsx` or individual pages for best results.
-
-## Learn More
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Convex Documentation](https://docs.convex.dev/) - learn about Convex backend/database.
-- [Clerk Documentation](https://clerk.com/docs) - learn about authentication and account linking.
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This document is intentionally operations- and architecture-forward to convey the system’s complexity and design choices without duplicating installation steps.
