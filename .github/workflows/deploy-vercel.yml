@@ -18,7 +18,8 @@ jobs:
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Prefer explicit project id when provided; fall back to secret if set
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID || secrets.VERCEL_PROJECT_ID }}
       # Surface verbose logs from Vercel CLI
       FORCE_COLOR: "1"
 
@@ -60,7 +61,9 @@ jobs:
           if [ -z "${VERCEL_TOKEN}" ]; then echo "::error::Missing VERCEL_TOKEN secret"; missing=1; fi
           if [ -z "${VERCEL_ORG_ID}" ]; then echo "::error::Missing VERCEL_ORG_ID secret"; missing=1; fi
           if [ -z "${VERCEL_PROJECT_ID}" ]; then
-            echo "::warning::Missing VERCEL_PROJECT_ID secret - will attempt to resolve via \`vercel projects ls\`"
+            echo "::warning::Missing VERCEL_PROJECT_ID (vars or secrets) - will attempt to resolve via \`vercel projects ls\`"
+          else
+            echo "Using explicit VERCEL_PROJECT_ID: ${VERCEL_PROJECT_ID}"
           fi
           if [ "$missing" -eq 1 ]; then
             echo "Required Vercel secrets missing. Exiting."; exit 1;

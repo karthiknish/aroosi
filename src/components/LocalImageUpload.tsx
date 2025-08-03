@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from "react";
+import React, { useCallback, useState, useRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { X, Upload, Image as ImageIcon } from "lucide-react";
@@ -12,16 +12,49 @@ interface LocalImageUploadProps {
   className?: string;
 }
 
+type LocalImageItem = {
+  localId: string;
+  file: File;
+  previewUrl: string;
+};
+
 export function LocalImageUpload({
   onImagesChanged,
   maxImages = 5,
   className = "",
 }: LocalImageUploadProps) {
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [items, setItems] = useState<LocalImageItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cleanup previews on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        items.forEach((it) => {
+          if (it.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(it.previewUrl);
+        });
+      } catch {}
+    };
+  }, [items]);
+
+  const emitChange = useCallback(
+    (nextItems: LocalImageItem[]) => {
+      const imageTypeObjects: ImageType[] = nextItems.map((it) => ({
+        id: it.localId,
+        _id: it.localId,
+        url: it.previewUrl,
+        fileName: it.file.name,
+        name: it.file.name,
+        size: it.file.size,
+        storageId: "",
+        uploadedAt: Date.now(),
+      }));
+      onImagesChanged(imageTypeObjects);
+    },
+    [onImagesChanged],
+  );
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -29,33 +62,23 @@ export function LocalImageUpload({
       setUploadError(null);
 
       try {
-        const remainingSlots = maxImages - selectedImages.length;
+        const remainingSlots = Math.max(0, maxImages - items.length);
         const filesToAdd = acceptedFiles.slice(0, remainingSlots);
 
         if (acceptedFiles.length > remainingSlots) {
           showErrorToast(
             null,
-            `You can only upload ${remainingSlots} more image${remainingSlots !== 1 ? "s" : ""}`
+            `You can only upload ${remainingSlots} more image${remainingSlots !== 1 ? "s" : ""}`,
           );
         }
 
-        // Validate file types and sizes
+        // Validate only size here; type normalization is handled at upload time
         const validFiles = filesToAdd.filter((file) => {
-          const isValidType = file.type.startsWith("image/");
-          const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
-
-          if (!isValidType) {
-            setUploadError(
-              "Please select valid image files (JPG, PNG, GIF, etc.)"
-            );
-            return false;
-          }
-
+          const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
           if (!isValidSize) {
             setUploadError("Image files must be 5MB or smaller");
             return false;
           }
-
           return true;
         });
 
@@ -64,27 +87,17 @@ export function LocalImageUpload({
           return;
         }
 
-        const newImages = [...selectedImages, ...validFiles];
-        setSelectedImages(newImages);
+        const newItems: LocalImageItem[] = [
+          ...items,
+          ...validFiles.map((file) => ({
+            localId: `local-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
+            file,
+            previewUrl: URL.createObjectURL(file),
+          })),
+        ];
 
-        // Create previews
-        const newPreviews = validFiles.map((file) => URL.createObjectURL(file));
-        const allPreviews = [...imagePreviews, ...newPreviews];
-        setImagePreviews(allPreviews);
-
-        // Convert File objects to ImageType objects
-        const imageTypeObjects: ImageType[] = newImages.map((file, index) => ({
-          id: `local-${Date.now()}-${index}`,
-          url: allPreviews[index] || URL.createObjectURL(file),
-          _id: `local-${Date.now()}-${index}`,
-          fileName: file.name,
-          name: file.name,
-          size: file.size,
-          storageId: "",
-          uploadedAt: Date.now(),
-        }));
-
-        onImagesChanged(imageTypeObjects);
+        setItems(newItems);
+        emitChange(newItems);
       } catch (error) {
         console.error("Error processing images:", error);
         setUploadError("Failed to process images. Please try again.");
@@ -92,45 +105,36 @@ export function LocalImageUpload({
         setIsLoading(false);
       }
     },
-    [selectedImages, maxImages, onImagesChanged, imagePreviews]
+    [items, maxImages, emitChange],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    // Accept only jpeg/png/webp to align with server validators
     accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".webp"],
+      "image/jpeg": [".jpeg", ".jpg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+      // Allow unknown/empty types to pass via manual selection; dropzone filters by extension here
     },
-    maxFiles: maxImages - selectedImages.length,
+    maxFiles: Math.max(0, maxImages - items.length),
     maxSize: 5 * 1024 * 1024, // 5MB
   });
 
-  const removeImage = (index: number) => {
+  const removeImage = (idx: number) => {
     setIsLoading(true);
     setUploadError(null);
 
     try {
-      const newImages = selectedImages.filter((_, i) => i !== index);
-      const newPreviews = imagePreviews.filter((_, i) => i !== index);
-
-      setSelectedImages(newImages);
-      setImagePreviews(newPreviews);
-
-      // Clean up preview URLs
-      URL.revokeObjectURL(imagePreviews[index]);
-
-      // Convert File objects to ImageType objects
-      const imageTypeObjects: ImageType[] = newImages.map((file, idx) => ({
-        id: `local-${Date.now()}-${idx}`,
-        url: newPreviews[idx],
-        _id: `local-${Date.now()}-${idx}`,
-        fileName: file.name,
-        name: file.name,
-        size: file.size,
-        storageId: "",
-        uploadedAt: Date.now(),
-      }));
-
-      onImagesChanged(imageTypeObjects);
+      const target = items[idx];
+      if (target?.previewUrl?.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(target.previewUrl);
+        } catch {}
+      }
+      const newItems = items.filter((_, i) => i !== idx);
+      setItems(newItems);
+      emitChange(newItems);
     } catch (error) {
       console.error("Error removing image:", error);
       setUploadError("Failed to remove image. Please try again.");
@@ -166,12 +170,12 @@ export function LocalImageUpload({
       )}
 
       {/* Image previews */}
-      {selectedImages.length > 0 && (
+      {items.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          {selectedImages.map((file, index) => (
-            <div key={index} className="relative aspect-square">
+          {items.map((it, index) => (
+            <div key={it.localId} className="relative aspect-square">
               <Image
-                src={imagePreviews[index]}
+                src={it.previewUrl}
                 alt={`Selected ${index + 1}`}
                 fill
                 className="object-cover rounded-lg"
@@ -190,7 +194,7 @@ export function LocalImageUpload({
       )}
 
       {/* Upload area */}
-      {selectedImages.length < maxImages && (
+      {items.length < maxImages && (
         <div
           {...getRootProps()}
           className={`
@@ -212,11 +216,11 @@ export function LocalImageUpload({
               : "Drag & drop images here, or click to select"}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {maxImages - selectedImages.length} image
-            {maxImages - selectedImages.length !== 1 ? "s" : ""} remaining
+            {maxImages - items.length} image
+            {maxImages - items.length !== 1 ? "s" : ""} remaining
           </p>
           <p className="text-xs text-gray-400 mt-1">
-            Max 5MB per image, JPG, PNG, GIF, WebP
+            Max 5MB per image, JPG, PNG, WebP
           </p>
         </div>
       )}
@@ -225,7 +229,7 @@ export function LocalImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept=".jpg,.jpeg,.png,.webp,image/*"
         multiple
         onChange={handleFileSelect}
         className="hidden"
