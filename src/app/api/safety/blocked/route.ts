@@ -1,47 +1,55 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import type { Id } from "@convex/_generated/dataModel";
 
-// Initialize Convex client
+// NOTE: Explicit JSON helper to avoid accidental 404/redirect behavior from wrappers.
+const json = (data: unknown, status = 200) =>
+  new NextResponse(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
+// Initialize Convex client (best-effort)
 const convexClient = getConvexClient();
 
 export async function GET(request: NextRequest) {
   try {
-    // Enhanced authentication with user ID extraction (app-layer auth)
+    // Authentication (app-layer auth)
     const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    if ("errorResponse" in authCheck) {
+      // Normalize helper response to plain JSON
+      const res = authCheck.errorResponse as NextResponse;
+      const status = res.status || 401;
+      let body: unknown = { success: false, error: "Authentication failed" };
+      try {
+        const txt = await res.text();
+        body = txt ? JSON.parse(txt) : body;
+      } catch {}
+      return json(body, status);
+    }
     const { userId } = authCheck;
 
     // Rate limiting for fetching blocked users
-    const rateLimitResult = checkApiRateLimit(
-      `safety_blocked_${userId}`,
-      50,
-      60000
-    ); // 50 requests per minute
+    const rateLimitResult = checkApiRateLimit(`safety_blocked_${userId}`, 50, 60000);
     if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded", 429);
+      return json({ success: false, error: "Rate limit exceeded" }, 429);
     }
 
-    let client = convexClient ?? getConvexClient();
+    const client = convexClient ?? getConvexClient();
     if (!client) {
-      return errorResponse("Database connection failed", 500);
+      return json({ success: false, error: "Database connection failed" }, 500);
     }
 
-    // App-layer auth approach: do NOT pass app JWT to Convex.
-    // Authorize by passing user identifiers explicitly to Convex and validating here.
-
-    // Fetch the Convex user for this app user (server-side function should map based on app-layer identity)
-    const currentUser = (await client.query(
-      api.users.getCurrentUserWithProfile,
-      {}
-    )) as { _id: Id<"users"> } | null;
+    // Resolve Convex identity via server-side function (no client-side JWT to Convex)
+    const currentUser = (await client.query(api.users.getCurrentUserWithProfile, {})) as
+      | { _id: Id<"users"> }
+      | null;
 
     if (!currentUser) {
-      return errorResponse("User record not found", 404);
+      return json({ success: false, error: "User record not found" }, 404);
     }
 
     // Get blocked users by explicit user id
@@ -49,11 +57,9 @@ export async function GET(request: NextRequest) {
       blockerUserId: currentUser._id,
     });
 
-    return successResponse({
-      blockedUsers: blockedUsers || [],
-    });
+    return json({ success: true, blockedUsers: blockedUsers || [] }, 200);
   } catch (error) {
     console.error("Error in safety blocked users API:", error);
-    return errorResponse("Failed to fetch blocked users", 500);
+    return json({ success: false, error: "Failed to fetch blocked users" }, 500);
   }
 }
