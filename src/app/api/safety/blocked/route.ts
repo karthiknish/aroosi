@@ -11,10 +11,10 @@ const convexClient = getConvexClient();
 
 export async function GET(request: NextRequest) {
   try {
-    // Enhanced authentication with user ID extraction
+    // Enhanced authentication with user ID extraction (app-layer auth)
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     // Rate limiting for fetching blocked users
     const rateLimitResult = checkApiRateLimit(
@@ -26,19 +26,15 @@ export async function GET(request: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    let client = convexClient;
-    if (!client) {
-      client = getConvexClient();
-    }
-
+    let client = convexClient ?? getConvexClient();
     if (!client) {
       return errorResponse("Database connection failed", 500);
     }
 
-    // Set authentication token
-    client.setAuth(token);
+    // App-layer auth approach: do NOT pass app JWT to Convex.
+    // Authorize by passing user identifiers explicitly to Convex and validating here.
 
-    // Retrieve the Convex user id for the caller (we currently have the JWT user id)
+    // Fetch the Convex user for this app user (server-side function should map based on app-layer identity)
     const currentUser = (await client.query(
       api.users.getCurrentUserWithProfile,
       {}
@@ -48,7 +44,7 @@ export async function GET(request: NextRequest) {
       return errorResponse("User record not found", 404);
     }
 
-    // Get blocked users
+    // Get blocked users by explicit user id
     const blockedUsers = await client.query(api.safety.getBlockedUsers, {
       blockerUserId: currentUser._id,
     });

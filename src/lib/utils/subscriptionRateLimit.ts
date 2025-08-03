@@ -34,20 +34,32 @@ export class SubscriptionRateLimiter {
     token: string
   ): Promise<{ plan: string; canUseFeature: boolean }> {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/subscription/status`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const cookieHeader = request.headers.get("cookie") || "";
+      const url = `${process.env.NEXT_PUBLIC_APP_URL || ""}/api/subscription/status`;
 
-      if (!response.ok) {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          cookie: cookieHeader,
+          Accept: "application/json",
+        },
+        // Ensure we don't follow redirects that could yield HTML without JSON
+        redirect: "manual",
+      });
+
+      const ct = response.headers.get("content-type") || "";
+      if (!response.ok || !ct.toLowerCase().includes("application/json")) {
+        const text = await response.text().catch(() => "");
+        console.warn("Subscription status non-JSON or not ok", {
+          url,
+          status: response.status,
+          contentType: ct,
+          bodyPreview: text.slice(0, 200),
+        });
         return { plan: "free", canUseFeature: true };
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { subscriptionPlan?: string };
       return {
         plan: data.subscriptionPlan || "free",
         canUseFeature: true,
@@ -67,25 +79,38 @@ export class SubscriptionRateLimiter {
     feature: string
   ): Promise<{ canUse: boolean; plan: string; error?: string }> {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/subscription/can-use/${feature}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const cookieHeader = request.headers.get("cookie") || "";
+      const url = `${process.env.NEXT_PUBLIC_APP_URL || ""}/api/subscription/can-use/${encodeURIComponent(feature)}`;
 
-      if (!response.ok) {
-        const error = await response.json();
-        return { canUse: false, plan: "free", error: error.error };
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          cookie: cookieHeader,
+          Accept: "application/json",
+        },
+        redirect: "manual",
+      });
+
+      const ct = response.headers.get("content-type") || "";
+
+      if (!response.ok || !ct.toLowerCase().includes("application/json")) {
+        const text = await response.text().catch(() => "");
+        console.warn("Feature access check non-JSON or not ok", {
+          url,
+          status: response.status,
+          contentType: ct,
+          bodyPreview: text.slice(0, 200),
+        });
+        // Avoid JSON.parse on HTML, return explicit failure to prevent throws
+        return { canUse: false, plan: "free", error: "Failed to check feature access" };
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { canUse: boolean; plan: string };
       return { canUse: data.canUse, plan: data.plan };
     } catch (error) {
       console.error("Error checking feature access:", error);
-      return { canUse: true, plan: "free" };
+      // Fail closed to avoid overuse when feature check fails
+      return { canUse: false, plan: "free", error: "Feature access check error" };
     }
   }
 
@@ -152,7 +177,7 @@ export class SubscriptionRateLimiter {
   }> {
     const now = Date.now();
 
-    // Check feature access first
+    // Check feature access first (cookie-based auth). If the feature check fails or returns non-JSON, fail closed.
     const featureCheck = await this.checkFeatureAccess(request, token, feature);
     if (!featureCheck.canUse) {
       return {

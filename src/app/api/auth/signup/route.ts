@@ -339,19 +339,51 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    // PII-safe logging
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.warn("Signup failure:", { message: errMsg });
+    // Structured server logging with safe details and correlation id
+    const correlationId = Math.random().toString(36).slice(2, 10);
+    const baseLog = {
+      scope: "auth.signup",
+      correlationId,
+    };
+
     if (error instanceof z.ZodError) {
-      // Validation errors are safe to return
+      const details = error.errors?.map((e) => ({
+        path: e.path,
+        message: e.message,
+        code: e.code,
+      })) ?? [];
+
+      // Server log with structured fields (no PII beyond schema paths)
+      console.warn("Signup validation failed", {
+        ...baseLog,
+        type: "validation_error",
+        issues: details,
+        issueCount: details.length,
+      });
+
+      // Client response includes correlationId for support traceability
       return NextResponse.json(
-        { error: "Invalid input data", details: error.errors?.map(e => ({ path: e.path, message: e.message })) },
+        {
+          error: "Invalid input data",
+          details,
+          correlationId,
+        },
         { status: 400 }
       );
     }
-    // Enumeration-resistant generic failure
+
+    const errMsg = error instanceof Error ? error.message : String(error);
+
+    // Log non-validation failures with classification and safe preview
+    console.error("Signup failure", {
+      ...baseLog,
+      type: "unhandled_error",
+      message: errMsg,
+    });
+
+    // Enumeration-resistant generic failure, with correlationId for tracing
     return NextResponse.json(
-      { error: "Unable to complete signup at this time" },
+      { error: "Unable to complete signup at this time", correlationId },
       { status: 400 }
     );
   }
