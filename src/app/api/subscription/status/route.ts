@@ -10,7 +10,10 @@ export async function GET(request: NextRequest) {
     const profileId = searchParams.get("profileId");
     const userIdParam = searchParams.get("userId");
 
-    const client = await convexClientFromRequest(request);
+    // App-layer auth: do NOT forward app JWT to Convex.
+    // Create a plain Convex client without setAuth.
+    const { getConvexClient } = await import("@/lib/convexClient");
+    const client = getConvexClient();
     if (!client) return errorResponse("Convex backend not configured", 500);
 
     let profile;
@@ -24,36 +27,43 @@ export async function GET(request: NextRequest) {
         userId: userIdParam as Id<"users">,
       });
     } else {
-      // Fallback: derive profile from authenticated user
+      // Fallback: derive profile from server-side context
       const current = await client.query(
         api.users.getCurrentUserWithProfile,
         {}
       );
-      profile = current?.profile ?? null;
+      profile = (current as { profile?: unknown } | null)?.profile ?? null;
     }
 
     if (!profile) return errorResponse("User profile not found", 404);
 
+    // Narrow profile shape safely for type-checking without relying on Convex types
+    const p = profile as {
+      subscriptionExpiresAt?: number | null;
+      subscriptionPlan?: string | null;
+      boostsRemaining?: number | null;
+      hasSpotlightBadge?: boolean | null;
+      spotlightBadgeExpiresAt?: number | null;
+    };
+
     const now = Date.now();
-    const isActive = profile.subscriptionExpiresAt
-      ? profile.subscriptionExpiresAt > now
-      : false;
-    const plan = profile.subscriptionPlan || "free";
+    const expiresAt = typeof p.subscriptionExpiresAt === "number" ? p.subscriptionExpiresAt : null;
+    const isActive = expiresAt ? expiresAt > now : false;
+    const plan = (p.subscriptionPlan ?? "free") || "free";
     let daysRemaining = 0;
-    if (profile.subscriptionExpiresAt && isActive) {
-      daysRemaining = Math.ceil(
-        (profile.subscriptionExpiresAt - now) / (24 * 60 * 60 * 1000)
-      );
+    if (expiresAt && isActive) {
+      daysRemaining = Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000));
     }
 
     return successResponse({
       plan,
       isActive,
-      expiresAt: profile.subscriptionExpiresAt,
+      expiresAt,
       daysRemaining,
-      boostsRemaining: profile.boostsRemaining || 0,
-      hasSpotlightBadge: profile.hasSpotlightBadge || false,
-      spotlightBadgeExpiresAt: profile.spotlightBadgeExpiresAt || null,
+      boostsRemaining: typeof p.boostsRemaining === "number" ? p.boostsRemaining : 0,
+      hasSpotlightBadge: !!p.hasSpotlightBadge,
+      spotlightBadgeExpiresAt:
+        typeof p.spotlightBadgeExpiresAt === "number" ? p.spotlightBadgeExpiresAt : null,
     });
   } catch (error) {
     console.error("Error fetching subscription status:", error);

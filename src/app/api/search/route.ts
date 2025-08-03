@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
     if (!convexClient)
       return errorResponse("Convex client not configured", 500);
 
-    console.log("Setting auth token for Convex");
-    convexClient.setAuth(token);
+    // App-layer auth: do NOT pass app JWT to Convex (no convexClient.setAuth)
+    // Convex queries below must rely on server-side functions that resolve identity without JWT
 
     const { searchParams } = new URL(request.url);
 
