@@ -5,7 +5,9 @@ import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
 
-// Normalize Gmail for comparison-only throttling
+/**
+ * Utility: normalize Gmail for comparison-only throttling
+ */
 const normalizeGmailForCompare = (e: string) => {
   const [local, domain] = e.split("@");
   if (!local || !domain) return e.toLowerCase().trim();
@@ -18,31 +20,67 @@ const normalizeGmailForCompare = (e: string) => {
   return `${local}@${d}`;
 };
 
+/**
+ * Server-side validation helpers (mirrors client intent without importing client code)
+ */
+const isAdult18 = (dateString: string): boolean => {
+  if (!dateString) return false;
+  const birthDate = new Date(dateString);
+  if (Number.isNaN(birthDate.getTime())) return false;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+  return age >= 18 && age <= 100;
+};
+
+const isValidHeight = (heightString: string): boolean => {
+  if (!heightString) return false;
+  // Accept "170 cm" or just digits that we will normalize later to "<cm> cm"
+  const cmPattern = /^\d{2,3}\s*cm$/i;
+  const digitsOnly = /^\d{2,3}$/;
+  return cmPattern.test(heightString) || digitsOnly.test(heightString);
+};
+
+const isValidPhone = (phone: string): boolean => {
+  if (!phone) return false;
+  const digitsOnly = phone.replace(/\D/g, "");
+  return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+};
+
+/**
+ * Profile schema with stronger server-side validation, to log precise errors for 400s
+ */
 const profileSchema = z
   .object({
-    // Align with Convex createUserAndProfileViaSignup profile shape
-    fullName: z.string().min(1),
-    dateOfBirth: z.string().min(1),
-    gender: z.enum(["male", "female", "other"]),
-    city: z.string().min(1),
-    aboutMe: z.string().min(1),
-    occupation: z.string().min(1),
-    education: z.string().min(1),
-    height: z.string().min(1),
-    maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"]),
-    phoneNumber: z.string().min(1),
+    fullName: z.string().min(1, "fullName is required"),
+    dateOfBirth: z
+      .string()
+      .min(1, "dateOfBirth is required")
+      .refine(isAdult18, "Must be at least 18 years old and a valid date"),
+    gender: z.enum(["male", "female", "other"], {
+      errorMap: () => ({ message: "gender is required" }),
+    }),
+    city: z.string().min(1, "city is required"),
+    aboutMe: z.string().min(1, "aboutMe is required"),
+    occupation: z.string().min(1, "occupation is required"),
+    education: z.string().min(1, "education is required"),
+    height: z
+      .string()
+      .min(1, "height is required")
+      .refine(isValidHeight, 'Height must be a number or in the format like "170 cm"'),
+    maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"], {
+      errorMap: () => ({ message: "maritalStatus is required" }),
+    }),
+    phoneNumber: z
+      .string()
+      .min(1, "phoneNumber is required")
+      .refine(isValidPhone, "Please provide a valid phone number (10-15 digits)"),
 
     profileFor: z
-      .enum([
-        "self",
-        "son",
-        "daughter",
-        "brother",
-        "sister",
-        "friend",
-        "relative",
-        "",
-      ])
+      .enum(["self", "son", "daughter", "brother", "sister", "friend", "relative", ""])
       .optional(),
     country: z.string().optional(),
     annualIncome: z.union([z.string(), z.number()]).optional(),
@@ -81,15 +119,7 @@ const profileSchema = z
       ])
       .optional(),
     diet: z
-      .enum([
-        "vegetarian",
-        "non-vegetarian",
-        "halal",
-        "vegan",
-        "eggetarian",
-        "other",
-        "",
-      ])
+      .enum(["vegetarian", "non-vegetarian", "halal", "vegan", "eggetarian", "other", ""])
       .optional(),
     physicalStatus: z.enum(["normal", "differently-abled", ""]).optional(),
     smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
@@ -122,13 +152,14 @@ const signupSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
   try {
     // Distributed IP throttling (Convex-backed via HTTP client)
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       // @ts-ignore Next runtime fallback
-      (request as any).ip ||
+      (request as unknown as { ip?: string }).ip ||
       "unknown";
     const ipKey = `signup_ip:${ip}`;
     const WINDOW_MS = 30 * 1000;
@@ -136,8 +167,14 @@ export async function POST(request: NextRequest) {
 
     const convex = getConvexClient();
     if (!convex) {
+      console.error("Signup failure", {
+        scope: "auth.signup",
+        correlationId,
+        type: "config_error",
+        message: "Convex client not configured",
+      });
       return NextResponse.json(
-        { error: "Convex client not configured", hint: "Set NEXT_PUBLIC_CONVEX_URL in environment." },
+        { error: "Convex client not configured", hint: "Set NEXT_PUBLIC_CONVEX_URL in environment.", correlationId },
         { status: 500 }
       );
     }
@@ -145,11 +182,7 @@ export async function POST(request: NextRequest) {
     try {
       const now = Date.now();
       const existing = await convex.query(api.users.getRateLimitByKey, { key: ipKey }).catch(() => null);
-      const toNum = (v: unknown) => {
-        if (typeof v === "number") return v;
-        if (typeof v === "bigint") return Number(v);
-        return 0;
-      };
+      const toNum = (v: unknown) => (typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0);
       if (!existing || now - (existing.windowStart as number) > WINDOW_MS) {
         await convex.mutation(api.users.setRateLimitWindow, { key: ipKey, windowStart: now, count: 1 });
       } else {
@@ -157,18 +190,73 @@ export async function POST(request: NextRequest) {
         if (next > MAX_ATTEMPTS) {
           const retryAfterSec = Math.max(1, Math.ceil(((existing.windowStart as number) + WINDOW_MS - now) / 1000));
           return NextResponse.json(
-            { error: "Too many signup attempts. Please wait and try again.", code: "RATE_LIMITED", retryAfter: retryAfterSec },
+            { error: "Too many signup attempts. Please wait and try again.", code: "RATE_LIMITED", retryAfter: retryAfterSec, correlationId },
             { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
           );
         }
         await convex.mutation(api.users.incrementRateLimit, { key: ipKey });
       }
-    } catch {
+    } catch (e) {
+      console.warn("Rate limit store unavailable (best-effort only)", {
+        scope: "auth.signup",
+        correlationId,
+        type: "ratelimit_warning",
+        message: e instanceof Error ? e.message : String(e),
+      });
       // best-effort: do not block if rate limit store is unavailable
     }
 
-    const body = await request.json();
-    const { email, password, fullName, profile } = signupSchema.parse(body);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (e) {
+      console.warn("Signup invalid JSON body", {
+        scope: "auth.signup",
+        correlationId,
+        type: "parse_error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+      return NextResponse.json(
+        { error: "Invalid JSON body", correlationId },
+        { status: 400 }
+      );
+    }
+
+    let parsed: z.infer<typeof signupSchema>;
+    try {
+      parsed = signupSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const issues = error.errors.map((e) => ({
+          path: e.path.join("."),
+          message: e.message,
+          code: e.code,
+        }));
+        console.warn("Signup validation failed", {
+          scope: "auth.signup",
+          correlationId,
+          type: "validation_error",
+          issueCount: issues.length,
+          issues,
+        });
+        return NextResponse.json(
+          { error: "Invalid input data", issues, correlationId },
+          { status: 400 }
+        );
+      }
+      console.error("Signup parsing failure", {
+        scope: "auth.signup",
+        correlationId,
+        type: "parse_unhandled",
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return NextResponse.json(
+        { error: "Invalid input", correlationId },
+        { status: 400 }
+      );
+    }
+
+    const { email, password, fullName, profile } = parsed;
 
     const normalizedEmail = email.toLowerCase().trim();
     const emailCompare = normalizeGmailForCompare(normalizedEmail);
@@ -178,11 +266,7 @@ export async function POST(request: NextRequest) {
       const now = Date.now();
       const key = `signup_email_cmp:${emailCompare}`;
       const existing = await convex.query(api.users.getRateLimitByKey, { key }).catch(() => null);
-      const toNum = (v: unknown) => {
-        if (typeof v === "number") return v;
-        if (typeof v === "bigint") return Number(v);
-        return 0;
-      };
+      const toNum = (v: unknown) => (typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0);
       if (!existing || now - (existing.windowStart as number) > WINDOW_MS) {
         await convex.mutation(api.users.setRateLimitWindow, { key, windowStart: now, count: 1 });
       } else {
@@ -190,18 +274,23 @@ export async function POST(request: NextRequest) {
         if (next > MAX_ATTEMPTS) {
           const retryAfterSec = Math.max(1, Math.ceil(((existing.windowStart as number) + WINDOW_MS - now) / 1000));
           return NextResponse.json(
-            { error: "Too many attempts for this email. Please wait and try again.", code: "RATE_LIMITED_ID", retryAfter: retryAfterSec },
+            { error: "Too many attempts for this email. Please wait and try again.", code: "RATE_LIMITED_ID", retryAfter: retryAfterSec, correlationId },
             { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
           );
         }
         await convex.mutation(api.users.incrementRateLimit, { key });
       }
-    } catch {
+    } catch (e) {
+      console.warn("Email key rate limit warning", {
+        scope: "auth.signup",
+        correlationId,
+        type: "ratelimit_warning",
+        message: e instanceof Error ? e.message : String(e),
+      });
       // continue on failure
     }
 
-    // 1) Password policy & optional breach checks (HIBP-style hook point)
-    // Enforce stronger password policy here (example: min 12, at least 1 upper/lower/digit/special)
+    // 1) Password policy & optional breach checks
     const strongPolicy =
       password.length >= 12 &&
       /[a-z]/.test(password) &&
@@ -209,71 +298,88 @@ export async function POST(request: NextRequest) {
       /\d/.test(password) &&
       /[^A-Za-z0-9]/.test(password);
     if (!strongPolicy) {
+      console.warn("Password policy failed", {
+        scope: "auth.signup",
+        correlationId,
+        type: "password_policy",
+        reason: "weak_password",
+      });
       return NextResponse.json(
-        { error: "Password does not meet security requirements" },
+        { error: "Password does not meet security requirements", correlationId },
         { status: 400 }
       );
     }
-    // Optional: add a breach-check (e.g., HIBP k-anonymity) here if desired (best-effort, PII-safe logging)
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // 2) Guarded linking posture vs existing Google-only accounts
-    // If an existing account with same comparison-normalized email exists and is Google-linked (no password or explicit googleId),
-    // prevent native signup and instruct to continue with Google for security and account unification.
-    const existingByEmail = await convex.query(api.users.getUserByEmail, {
-      email: normalizedEmail,
-    }).catch(() => null);
+    // 2) Existing account policy
+    const existingByEmail = await convex
+      .query(api.users.getUserByEmail, { email: normalizedEmail })
+      .catch(() => null);
 
     if (existingByEmail) {
-      // If user has googleId or lacks hashedPassword (Google-only), block native signup
       if (existingByEmail.googleId && !existingByEmail.hashedPassword) {
+        console.info("Existing Google-linked account for email", {
+          scope: "auth.signup",
+          correlationId,
+          type: "account_exists_google",
+        });
         return NextResponse.json(
           {
             status: "ok",
             message: "An account exists for this email. Please continue with Google sign-in.",
             code: "USE_GOOGLE_SIGNIN",
+            correlationId,
           },
           { status: 200 }
         );
       }
-      // Otherwise (native account exists), keep enumeration resistant generic messaging
-      console.warn("Signup attempt for existing email (suppressed to client).");
+      console.warn("Signup attempt for existing email (generic client response)", {
+        scope: "auth.signup",
+        correlationId,
+        type: "account_exists_native_or_unknown",
+      });
       return NextResponse.json(
         {
           status: "ok",
-          message:
-            "If an account exists for this email, follow the sign-in or password recovery flow.",
+          message: "If an account exists for this email, follow the sign-in or password recovery flow.",
           code: "ACCOUNT_EXISTS_MAYBE",
+          correlationId,
         },
         { status: 200 }
       );
     }
 
-    // Scrub local placeholder image ids
-    const scrubLocalStorageIds = (ids: unknown): string[] => {
-      if (!Array.isArray(ids)) return [];
-      return ids.filter(
-        (s) => typeof s === "string" && s.trim().length > 0 && !s.startsWith("local-")
-      );
-    };
-
     // Normalize profile payload
+    const scrubLocalStorageIds = (ids: unknown): string[] =>
+      Array.isArray(ids)
+        ? ids.filter((s) => typeof s === "string" && s.trim().length > 0 && !s.startsWith("local-"))
+        : [];
+
     const normalizedProfile = {
       ...profile,
       email: profile.email ?? normalizedEmail,
       isProfileComplete: true,
-      height: typeof profile.height === "string" ? profile.height : String(profile.height ?? ""),
+      height:
+        typeof profile.height === "string"
+          ? /^\d{2,3}$/.test(profile.height.trim())
+            ? `${profile.height.trim()} cm`
+            : profile.height
+          : String(profile.height ?? ""),
       annualIncome:
-        typeof (profile as any).annualIncome === "number"
-          ? (profile as any).annualIncome
-          : typeof (profile as any).annualIncome === "string"
-          ? (profile as any).annualIncome
+        typeof (profile as Record<string, unknown>).annualIncome === "number"
+          ? (profile as Record<string, unknown>).annualIncome
+          : typeof (profile as Record<string, unknown>).annualIncome === "string"
+          ? (profile as Record<string, unknown>).annualIncome
           : undefined,
-      partnerPreferenceCity: Array.isArray((profile as any).partnerPreferenceCity)
-        ? (profile as any).partnerPreferenceCity
+      partnerPreferenceCity: Array.isArray(
+        (profile as Record<string, unknown>).partnerPreferenceCity
+      )
+        ? ((profile as Record<string, unknown>).partnerPreferenceCity as string[])
         : [],
-      profileImageIds: scrubLocalStorageIds((profile as any).profileImageIds),
+      profileImageIds: scrubLocalStorageIds(
+        (profile as Record<string, unknown>).profileImageIds
+      ),
     };
 
     // Create user and profile atomically
@@ -286,7 +392,12 @@ export async function POST(request: NextRequest) {
 
     const userIdOk = !!result?.userId;
     if (!userIdOk) {
-      return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+      console.error("Signup failure", {
+        scope: "auth.signup",
+        correlationId,
+        type: "create_user_failed",
+      });
+      return NextResponse.json({ error: "Failed to create user", correlationId }, { status: 500 });
     }
 
     // Issue tokens
@@ -301,7 +412,6 @@ export async function POST(request: NextRequest) {
       role: "user",
     });
 
-    // Unified response shape (parity with Google/signin). No profile fetch here; client can call /me.
     const response = NextResponse.json({
       status: "success",
       message: "Account created successfully",
@@ -314,22 +424,19 @@ export async function POST(request: NextRequest) {
       isNewUser: true,
       redirectTo: "/success",
       refreshed: false,
+      correlationId,
     });
 
-    // Cookie policy via centralized helper (supports subdomains/cross-site)
     const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
 
-    // Access token cookie (15 minutes)
     response.headers.set(
       "Set-Cookie",
       `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
     );
-    // Refresh token cookie (7 days)
     response.headers.append(
       "Set-Cookie",
       `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
     );
-    // Optional short-lived public token gated by SHORT_PUBLIC_TOKEN=1
     if (process.env.SHORT_PUBLIC_TOKEN === "1") {
       response.headers.append(
         "Set-Cookie",
@@ -339,49 +446,13 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    // Structured server logging with safe details and correlation id
-    const correlationId = Math.random().toString(36).slice(2, 10);
-    const baseLog = {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("Signup failure", {
       scope: "auth.signup",
       correlationId,
-    };
-
-    if (error instanceof z.ZodError) {
-      const details = error.errors?.map((e) => ({
-        path: e.path,
-        message: e.message,
-        code: e.code,
-      })) ?? [];
-
-      // Server log with structured fields (no PII beyond schema paths)
-      console.warn("Signup validation failed", {
-        ...baseLog,
-        type: "validation_error",
-        issues: details,
-        issueCount: details.length,
-      });
-
-      // Client response includes correlationId for support traceability
-      return NextResponse.json(
-        {
-          error: "Invalid input data",
-          details,
-          correlationId,
-        },
-        { status: 400 }
-      );
-    }
-
-    const errMsg = error instanceof Error ? error.message : String(error);
-
-    // Log non-validation failures with classification and safe preview
-    console.error("Signup failure", {
-      ...baseLog,
       type: "unhandled_error",
       message: errMsg,
     });
-
-    // Enumeration-resistant generic failure, with correlationId for tracing
     return NextResponse.json(
       { error: "Unable to complete signup at this time", correlationId },
       { status: 400 }

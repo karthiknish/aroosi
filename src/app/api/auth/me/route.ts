@@ -4,7 +4,13 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 
+/**
+ * /api/auth/me
+ * Adds structured logging and correlationId. Provides precise 4xx reasons and forwards refreshed cookies.
+ */
 export async function GET(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+
   try {
     const authHeader = request.headers.get("authorization");
     const bearerToken = extractTokenFromHeader(authHeader);
@@ -14,7 +20,15 @@ export async function GET(request: NextRequest) {
     const tokenToVerify = bearerToken || cookieToken || null;
 
     if (!tokenToVerify) {
-      return NextResponse.json({ error: "No auth session" }, { status: 401 });
+      console.warn("Auth/me missing token", {
+        scope: "auth.me",
+        correlationId,
+        type: "no_session",
+      });
+      return NextResponse.json(
+        { error: "No auth session", correlationId },
+        { status: 401 }
+      );
     }
 
     // We may need to forward refreshed cookies back to the client
@@ -22,71 +36,108 @@ export async function GET(request: NextRequest) {
 
     // Verify access token; if expired/invalid, attempt transparent refresh using refresh-token
     let userIdFromSession: string | null = null;
-    let emailFromSession: string | null = null;
-    let effectiveAccessToken: string | null = tokenToVerify;
 
     try {
       const payload = await verifyAccessJWT(tokenToVerify);
       userIdFromSession = payload.userId;
-      emailFromSession = payload.email;
-    } catch {
+    } catch (e) {
       // Attempt refresh only if refresh-token exists
       const refreshCookie = request.cookies.get("refresh-token")?.value;
       if (!refreshCookie) {
+        console.warn("Auth/me invalid token and no refresh cookie", {
+          scope: "auth.me",
+          correlationId,
+          type: "expired_no_refresh",
+          message: e instanceof Error ? e.message : String(e),
+        });
         return NextResponse.json(
-          { error: "Invalid or expired session" },
-          { status: 401 }
-        );
-      }
-      // Proxy a server-side refresh call
-      const refreshUrl = new URL("/api/auth/refresh", request.url);
-      const refreshResp = await fetch(refreshUrl.toString(), {
-        method: "POST",
-        // Forward cookies so refresh endpoint can read refresh-token
-        headers: {
-          cookie: request.headers.get("cookie") || "",
-        },
-      });
-
-      if (!refreshResp.ok) {
-        return NextResponse.json(
-          { error: "Invalid or expired session" },
+          { error: "Invalid or expired session", correlationId },
           { status: 401 }
         );
       }
 
-      // Extract new auth-token from Set-Cookie for immediate verification
-      const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
-      // Split combined Set-Cookie into individual cookie strings
-      const cookies = setCookieHeader
-        ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/)
-        : [];
-      let newAccess: string | null = null;
-      for (const cookie of cookies) {
-        const authMatch = cookie.match(/auth-token=([^;]+)/);
-        if (authMatch) {
-          newAccess = decodeURIComponent(authMatch[1]);
+      try {
+        // Proxy a server-side refresh call using cookie-based auth
+        const refreshUrl = new URL("/api/auth/refresh", request.url);
+        const refreshResp = await fetch(refreshUrl.toString(), {
+          method: "POST",
+          headers: {
+            cookie: request.headers.get("cookie") || "",
+            accept: "application/json",
+          },
+          redirect: "manual",
+        });
+
+        if (!refreshResp.ok) {
+          const text = await refreshResp.text().catch(() => "");
+          console.warn("Auth/me refresh failed", {
+            scope: "auth.me",
+            correlationId,
+            type: "refresh_failed",
+            status: refreshResp.status,
+            bodyPreview: text.slice(0, 200),
+          });
+          return NextResponse.json(
+            { error: "Invalid or expired session", correlationId },
+            { status: 401 }
+          );
         }
-      }
 
-      if (!newAccess) {
+        // Extract new auth-token from Set-Cookie for immediate verification
+        const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
+        // Split combined Set-Cookie into individual cookie strings
+        const cookies = setCookieHeader
+          ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/)
+          : [];
+        let newAccess: string | null = null;
+        for (const cookie of cookies) {
+          const authMatch = cookie.match(/auth-token=([^;]+)/);
+          if (authMatch) {
+            newAccess = decodeURIComponent(authMatch[1]);
+          }
+        }
+
+        if (!newAccess) {
+          console.warn("Auth/me missing auth-token after refresh", {
+            scope: "auth.me",
+            correlationId,
+            type: "refresh_missing_token",
+          });
+          return NextResponse.json(
+            { error: "Invalid or expired session", correlationId },
+            { status: 401 }
+          );
+        }
+
+        const payload = await verifyAccessJWT(newAccess);
+        userIdFromSession = payload.userId;
+
+        // Save refreshed cookies to append to final response so browser persists them
+        refreshedSetCookies = cookies;
+      } catch (err) {
+        console.error("Auth/me refresh error", {
+          scope: "auth.me",
+          correlationId,
+          type: "refresh_exception",
+          message: err instanceof Error ? err.message : String(err),
+        });
         return NextResponse.json(
-          { error: "Invalid or expired session" },
+          { error: "Invalid or expired session", correlationId },
           { status: 401 }
         );
       }
-
-      const payload = await verifyAccessJWT(newAccess);
-      userIdFromSession = payload.userId;
-      emailFromSession = payload.email;
-      effectiveAccessToken = newAccess;
-
-      // Save refreshed cookies to append to final response so browser persists them
-      refreshedSetCookies = cookies;
     }
 
     if (!userIdFromSession) {
-      return NextResponse.json({ error: "No auth session" }, { status: 401 });
+      console.warn("Auth/me missing userId after verification", {
+        scope: "auth.me",
+        correlationId,
+        type: "no_user_after_verify",
+      });
+      return NextResponse.json(
+        { error: "No auth session", correlationId },
+        { status: 401 }
+      );
     }
 
     const userIdConvex = userIdFromSession as unknown as Id<"users">;
@@ -94,19 +145,52 @@ export async function GET(request: NextRequest) {
     // Fetch user by ID directly (avoid email-based lookup)
     const user = await fetchQuery(api.users.getUserById, {
       userId: userIdConvex,
+    }).catch((e: unknown) => {
+      console.error("Auth/me fetch user error", {
+        scope: "auth.me",
+        correlationId,
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+      return null;
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      console.warn("Auth/me user not found", {
+        scope: "auth.me",
+        correlationId,
+        type: "user_not_found",
+      });
+      return NextResponse.json(
+        { error: "User not found", correlationId },
+        { status: 404 }
+      );
     }
 
     if (user.banned) {
-      return NextResponse.json({ error: "Account is banned" }, { status: 403 });
+      console.warn("Auth/me banned user access", {
+        scope: "auth.me",
+        correlationId,
+        type: "banned",
+        userId: String(user._id),
+      });
+      return NextResponse.json(
+        { error: "Account is banned", correlationId },
+        { status: 403 }
+      );
     }
 
     // Attach profile for client-side gating WITHOUT relying on Convex ctx.auth
     const profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
       userId: user._id,
+    }).catch((e: unknown) => {
+      console.error("Auth/me fetch profile error", {
+        scope: "auth.me",
+        correlationId,
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+      return null;
     });
 
     // Build final response
@@ -125,8 +209,8 @@ export async function GET(request: NextRequest) {
             }
           : null,
       },
-      // Optionally echo whether a refresh occurred (for debugging)
       refreshed: refreshedSetCookies.length > 0,
+      correlationId,
     });
 
     // Forward any refreshed cookies so the browser updates its session
@@ -138,9 +222,15 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Get user error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Auth/me unhandled error", {
+      scope: "auth.me",
+      correlationId,
+      type: "unhandled_error",
+      message,
+    });
     return NextResponse.json(
-      { error: "Invalid or expired session" },
+      { error: "Invalid or expired session", correlationId },
       { status: 401 }
     );
   }
