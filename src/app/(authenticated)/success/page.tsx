@@ -32,16 +32,14 @@ export default function ProfileCreationSuccessPage() {
 
   // Debug logging
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("Success page mounted");
-      console.log("Auth state:", {
-        isAuthenticated,
-        user,
-        isLoading,
-        isLoaded,
-      });
-      return () => console.log("Success page unmounted");
-    }
+    console.log("Success page mounted");
+    console.log("Auth state:", {
+      isAuthenticated,
+      user,
+      isLoading,
+      isLoaded,
+    });
+    return () => console.log("Success page unmounted");
   }, [isAuthenticated, user, isLoading, isLoaded]);
 
   useEffect(() => {

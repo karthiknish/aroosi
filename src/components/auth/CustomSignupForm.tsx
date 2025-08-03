@@ -151,17 +151,15 @@ export default function CustomSignupForm({
           : [],
       };
 
-      if (process.env.NODE_ENV === "development") {
-        console.log("CustomSignupForm: Signup payload preview", {
-          keys: Object.keys({
-            email: formData.email,
-            password: formData.password,
-            fullName,
-            profile: normalizedProfile,
-          }),
-          profileKeys: Object.keys(normalizedProfile || {}),
-        });
-      }
+      console.log("CustomSignupForm: Signup payload preview", {
+        keys: Object.keys({
+          email: formData.email,
+          password: formData.password,
+          fullName,
+          profile: normalizedProfile,
+        }),
+        profileKeys: Object.keys(normalizedProfile || {}),
+      });
 
       // POST to unified signup route which atomically creates user+profile in Convex
       const res = await fetch("/api/auth/signup", {
