@@ -323,7 +323,6 @@ export function ProfileCreationModal({
   };
 
   const handleNext = async () => {
-
     console.log("[Next] clicked", {
       step,
       hasBasicData,
@@ -375,7 +374,6 @@ export function ProfileCreationModal({
           handleInputChange("height", `${raw} cm`);
           console.log("[Next][step2] normalized height ->", `${raw} cm`);
         }
-
       }
       // Trim city
       if (typeof formData.city === "string") {
@@ -671,7 +669,10 @@ export function ProfileCreationModal({
               if (!img.url || !img.url.startsWith("blob:")) {
                 const reason = "Invalid local image URL";
                 console.warn(`${reason}, skipping:`, img);
-                failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                failedImages.push({
+                  name: img.fileName || "photo.jpg",
+                  reason,
+                });
                 continue;
               }
 
@@ -682,14 +683,20 @@ export function ProfileCreationModal({
                 if (!resp.ok) {
                   const reason = `Failed to read local image (${resp.status})`;
                   console.error(reason);
-                  failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                  failedImages.push({
+                    name: img.fileName || "photo.jpg",
+                    reason,
+                  });
                   continue;
                 }
                 blob = await resp.blob();
               } catch (e) {
                 const reason = "Failed to read local image blob";
                 console.error(reason, e);
-                failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                failedImages.push({
+                  name: img.fileName || "photo.jpg",
+                  reason,
+                });
                 continue;
               }
 
@@ -698,13 +705,19 @@ export function ProfileCreationModal({
               if (blob.size > MAX_SIZE) {
                 const reason = "Image exceeds 5MB";
                 console.warn(reason, img.fileName);
-                failedImages.push({ name: img.fileName || "photo.jpg", reason });
+                failedImages.push({
+                  name: img.fileName || "photo.jpg",
+                  reason,
+                });
                 continue;
               }
 
               // Derive a safe content type, default to jpeg if unknown/empty
               const safeType =
-                (blob.type && ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(blob.type.toLowerCase()))
+                blob.type &&
+                ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
+                  blob.type.toLowerCase()
+                )
                   ? blob.type
                   : "image/jpeg";
 
@@ -717,7 +730,8 @@ export function ProfileCreationModal({
               try {
                 uploadUrl = await getImageUploadUrl(authToken);
               } catch (e) {
-                const reason = e instanceof Error ? e.message : "Failed to get upload URL";
+                const reason =
+                  e instanceof Error ? e.message : "Failed to get upload URL";
                 console.error("getImageUploadUrl error:", e);
                 failedImages.push({ name: file.name, reason });
                 continue;
@@ -794,7 +808,9 @@ export function ProfileCreationModal({
                 }
               } catch (e) {
                 const message =
-                  e instanceof Error ? e.message : "Failed to save image metadata";
+                  e instanceof Error
+                    ? e.message
+                    : "Failed to save image metadata";
                 console.error("saveImageMeta error:", e);
                 failedImages.push({ name: file.name, reason: message });
                 continue;
@@ -806,16 +822,24 @@ export function ProfileCreationModal({
               );
             } catch (err) {
               const message =
-                err instanceof Error ? err.message : "Unknown image upload error";
+                err instanceof Error
+                  ? err.message
+                  : "Unknown image upload error";
               console.error("Image upload error for", img.fileName, ":", err);
-              failedImages.push({ name: img.fileName || "photo.jpg", reason: message });
+              failedImages.push({
+                name: img.fileName || "photo.jpg",
+                reason: message,
+              });
               // Continue with other images even if one fails
             }
           }
 
           // Show aggregated error toast if some images failed
           if (failedImages.length > 0) {
-            const sample = failedImages.slice(0, 3).map((f) => `${f.name}: ${f.reason}`).join("; ");
+            const sample = failedImages
+              .slice(0, 3)
+              .map((f) => `${f.name}: ${f.reason}`)
+              .join("; ");
             const extra =
               failedImages.length > 3
                 ? `, and ${failedImages.length - 3} more`
@@ -841,7 +865,10 @@ export function ProfileCreationModal({
                     : [];
               // Filter out any local placeholders defensively
               const filteredOrderIds = orderIds.filter(
-                (id) => typeof id === "string" && !id.startsWith("local-") && id.trim().length > 0
+                (id) =>
+                  typeof id === "string" &&
+                  !id.startsWith("local-") &&
+                  id.trim().length > 0
               );
               if (filteredOrderIds.length > 1) {
                 await updateImageOrder({
@@ -852,7 +879,10 @@ export function ProfileCreationModal({
               }
             } catch (e) {
               console.warn("Failed to persist image order; continuing.", e);
-              showErrorToast(null, "Unable to save image order. You can reorder later.");
+              showErrorToast(
+                null,
+                "Unable to save image order. You can reorder later."
+              );
             }
           }
         }
@@ -1123,10 +1153,8 @@ export function ProfileCreationModal({
                 {/* Step 2: Location & Physical */}
                 {step === 2 && (
                   <div className="space-y-6">
-
                     {/* Country - Optional */}
                     <div>
-
                       <Label
                         htmlFor="country"
                         className="text-gray-700 mb-2 block"
@@ -1163,7 +1191,6 @@ export function ProfileCreationModal({
 
                     {/* Height - Required with validated highlight */}
                     <div>
-
                       <Label
                         htmlFor="height"
                         className="text-gray-700 mb-2 block"
@@ -1197,7 +1224,6 @@ export function ProfileCreationModal({
                               ? `${formData.height.trim()} cm`
                               : formData.height
                           }
-
                           onValueChange={(v) => {
                             // Always store normalized "<cm> cm"
                             const normalized =
@@ -1261,24 +1287,19 @@ export function ProfileCreationModal({
                       ]}
                       placeholder="Select physical status"
                     />
-
                   </div>
                 )}
 
                 {/* Step 3: Cultural & Lifestyle (moved earlier from previous step 4) */}
                 {step === 3 && (
                   <div className="space-y-6">
-
                     {/* Mother Tongue - Optional with validated highlight */}
                     <div>
-
                       <Label
                         htmlFor="motherTongue"
                         className="text-gray-700 mb-2 block"
                       >
-
                         Mother Tongue
-
                       </Label>
                       <div
                         className={`rounded-md ${
@@ -1297,7 +1318,6 @@ export function ProfileCreationModal({
                           onValueChange={(v) =>
                             handleInputChange("motherTongue", v)
                           }
-
                           options={MOTHER_TONGUE_OPTIONS.map((o) => ({
                             value: o.value,
                             label: o.label,
@@ -1317,7 +1337,6 @@ export function ProfileCreationModal({
 
                     {/* Religion - Optional with validated highlight */}
                     <div>
-
                       <Label
                         htmlFor="religion"
                         className="text-gray-700 mb-2 block"
@@ -1360,7 +1379,6 @@ export function ProfileCreationModal({
 
                     {/* Ethnicity - Optional with validated highlight */}
                     <div>
-
                       <Label
                         htmlFor="ethnicity"
                         className="text-gray-700 mb-2 block"
@@ -1376,7 +1394,6 @@ export function ProfileCreationModal({
                               ? "ring-1 ring-red-500 border-red-500"
                               : ""
                         }`}
-
                       >
                         <ValidatedSelect
                           label=""
@@ -1451,7 +1468,6 @@ export function ProfileCreationModal({
                 {/* Step 4: Education & Career (was step 5) */}
                 {step === 4 && (
                   <div className="space-y-6">
-
                     <ValidatedInput
                       label="Education"
                       field="education"
@@ -1493,14 +1509,12 @@ export function ProfileCreationModal({
                       rows={4}
                       required
                     />
-
                   </div>
                 )}
 
                 {/* Step 5: Partner Preferences (was step 6) */}
                 {step === 5 && (
                   <div className="space-y-6">
-
                     <ValidatedSelect
                       label="Preferred Gender"
                       field="preferredGender"
@@ -1520,7 +1534,6 @@ export function ProfileCreationModal({
                     />
 
                     <div>
-
                       <Label className="text-gray-700 mb-2 block">
                         Age Range
                       </Label>
@@ -1567,7 +1580,6 @@ export function ProfileCreationModal({
                       </div>
                     </div>
 
-
                     <ValidatedInput
                       label="Preferred Cities"
                       field="partnerPreferenceCity"
@@ -1584,7 +1596,6 @@ export function ProfileCreationModal({
                       placeholder="e.g. London, Kabul"
                       hint="Comma-separated list"
                     />
-
                   </div>
                 )}
 
@@ -1623,9 +1634,6 @@ export function ProfileCreationModal({
                       </p>
                     </div>
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-center">
-                        Create your account
-                      </h3>
                       {(() => {
                         const requiredFields = [
                           "fullName",
@@ -1691,11 +1699,9 @@ export function ProfileCreationModal({
               </motion.div>
             </AnimatePresence>
 
-
             <div className="mt-8 flex justify-between items-center">
               {/* Back Button - Show on all steps after second for better UX */}
               {step > 2 && (
-
                 <Button
                   variant="outline"
                   onClick={handleBack}
