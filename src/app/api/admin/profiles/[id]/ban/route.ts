@@ -4,56 +4,182 @@ import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@/types/profile";
-import { errorResponse } from "@/lib/apiResponse";
 
 export async function PUT(req: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
+
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || null;
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    console.warn("Admin profile.ban PUT auth missing", {
+      scope: "admin.profile_ban",
+      type: "auth_failed",
+      correlationId,
+      statusCode: 401,
+      durationMs: Date.now() - startedAt,
+    });
+    return NextResponse.json({ error: "Unauthorized", correlationId }, { status: 401 });
   }
+
   const convex = getConvexClient();
-  if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
+  if (!convex) {
+    console.error("Admin profile.ban PUT convex not configured", {
+      scope: "admin.profile_ban",
+      type: "convex_not_configured",
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return NextResponse.json(
+      { error: "Convex client not configured", correlationId },
+      { status: 500 }
+    );
+  }
+  try {
+    // @ts-ignore optional legacy
+    convex.setAuth?.(token);
+  } catch {}
+
   const url = new URL(req.url);
-  const id = url.pathname.split("/").slice(-2, -1)[0]!; // get the [id] param from /profiles/[id]/ban
+  const id = url.pathname.split("/").slice(-2, -1)[0]!; // /profiles/[id]/ban
   let body: { banned?: boolean } = {};
   try {
     body = await req.json();
   } catch {}
   if (typeof body.banned !== "boolean") {
+    console.warn("Admin profile.ban PUT invalid banned status", {
+      scope: "admin.profile_ban",
+      type: "validation_error",
+      correlationId,
+      statusCode: 400,
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json(
-      { error: "Missing or invalid banned status" },
-      { status: 400 },
+      { error: "Missing or invalid banned status", correlationId },
+      { status: 400 }
     );
   }
-  const profile = await convex.query(api.users.getProfileById, {
-    id: id as unknown as Id<"profiles">,
-  });
-  if (!profile || !profile.userId) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
-  }
-  let result;
-  if (body.banned) {
-    result = await convex.mutation(api.users.banUser, {
-      userId: profile.userId,
-    });
-    if (profile.email) {
-      await Notifications.profileBanStatus(profile.email, {
-        profile: profile as Profile,
-        banned: true,
+
+  try {
+    const profile = await convex
+      .query(api.users.getProfileById, {
+        id: id as unknown as Id<"profiles">,
+      })
+      .catch((e: unknown) => {
+        console.error("Admin profile.ban PUT getProfileById error", {
+          scope: "admin.profile_ban",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+        return null;
       });
+
+    if (!profile || !(profile as { userId?: unknown })?.userId) {
+      return NextResponse.json(
+        { error: "Profile not found", correlationId },
+        { status: 404 }
+      );
     }
-  } else {
-    result = await convex.mutation(api.users.unbanUser, {
-      userId: profile.userId,
+
+    let result: unknown;
+    if (body.banned) {
+      result = await convex
+        .mutation(api.users.banUser, {
+          userId: (profile as { userId: Id<"users"> }).userId,
+        })
+        .catch((e: unknown) => {
+          console.error("Admin profile.ban PUT banUser error", {
+            scope: "admin.profile_ban",
+            type: "convex_mutation_error",
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+            statusCode: 500,
+            durationMs: Date.now() - startedAt,
+          });
+          return null;
+        });
+      if ((profile as { email?: string }).email) {
+        try {
+          await Notifications.profileBanStatus((profile as { email: string }).email, {
+            profile: profile as Profile,
+            banned: true,
+          });
+        } catch (e) {
+          console.error("Admin profile.ban PUT notify ban error", {
+            scope: "admin.profile_ban",
+            type: "unhandled_error",
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+          });
+        }
+      }
+    } else {
+      result = await convex
+        .mutation(api.users.unbanUser, {
+          userId: (profile as { userId: Id<"users"> }).userId,
+        })
+        .catch((e: unknown) => {
+          console.error("Admin profile.ban PUT unbanUser error", {
+            scope: "admin.profile_ban",
+            type: "convex_mutation_error",
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+            statusCode: 500,
+            durationMs: Date.now() - startedAt,
+          });
+          return null;
+        });
+      if ((profile as { email?: string }).email) {
+        try {
+          await Notifications.profileBanStatus((profile as { email: string }).email, {
+            profile: profile as Profile,
+            banned: false,
+          });
+        } catch (e) {
+          console.error("Admin profile.ban PUT notify unban error", {
+            scope: "admin.profile_ban",
+            type: "unhandled_error",
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+          });
+        }
+      }
+    }
+
+    if (!result) {
+      return NextResponse.json(
+        { error: "Failed to update ban status", correlationId },
+        { status: 500 }
+      );
+    }
+
+    console.info("Admin profile.ban PUT success", {
+      scope: "admin.profile_ban",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      banned: body.banned,
+      profileId: id,
     });
-    if (profile.email) {
-      await Notifications.profileBanStatus(profile.email, {
-        profile: profile as Profile,
-        banned: false,
-      });
-    }
+    return NextResponse.json({ success: true, correlationId }, { status: 200 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("Admin profile.ban PUT unhandled error", {
+      scope: "admin.profile_ban",
+      type: "unhandled_error",
+      message,
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
+    return NextResponse.json(
+      { error: "Failed to update ban status", correlationId },
+      { status: 500 }
+    );
   }
-  return NextResponse.json(result);
 }
