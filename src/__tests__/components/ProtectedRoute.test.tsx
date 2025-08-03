@@ -58,13 +58,12 @@ describe("ProtectedRoute Component", () => {
       isAdmin: false,
       signIn: jest.fn(),
       signUp: jest.fn(),
-      verifyOTP: jest.fn(),
       signInWithGoogle: jest.fn(),
       refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
-    });
+    } as unknown as ReturnType<typeof useAuthContext>);
 
     render(
       <ProtectedRoute>
@@ -92,13 +91,12 @@ describe("ProtectedRoute Component", () => {
       isAdmin: false,
       signIn: jest.fn(),
       signUp: jest.fn(),
-      verifyOTP: jest.fn(),
       signInWithGoogle: jest.fn(),
       refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
-    });
+    } as unknown as ReturnType<typeof useAuthContext>);
 
     render(
       <ProtectedRoute>
@@ -129,13 +127,12 @@ describe("ProtectedRoute Component", () => {
       isAdmin: false,
       signIn: jest.fn(),
       signUp: jest.fn(),
-      verifyOTP: jest.fn(),
       signInWithGoogle: jest.fn(),
       refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
-    });
+    } as unknown as ReturnType<typeof useAuthContext>);
 
     render(
       <ProtectedRoute requireProfileComplete={true}>
@@ -166,13 +163,12 @@ describe("ProtectedRoute Component", () => {
       isAdmin: false,
       signIn: jest.fn(),
       signUp: jest.fn(),
-      verifyOTP: jest.fn(),
       signInWithGoogle: jest.fn(),
       refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
-    });
+    } as unknown as ReturnType<typeof useAuthContext>);
 
     render(
       <ProtectedRoute requireProfileComplete={true}>
@@ -199,13 +195,12 @@ describe("ProtectedRoute Component", () => {
       isAdmin: false,
       signIn: jest.fn(),
       signUp: jest.fn(),
-      verifyOTP: jest.fn(),
       signInWithGoogle: jest.fn(),
       refreshUser: jest.fn(),
       refreshProfile: jest.fn(),
       signOut: jest.fn(),
       getToken: jest.fn(),
-    });
+    } as unknown as ReturnType<typeof useAuthContext>);
 
     render(
       <ProtectedRoute requireProfileComplete={false}>
