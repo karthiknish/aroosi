@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
@@ -6,6 +5,47 @@ import { signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
 import { sendWelcomeEmail } from "@/lib/auth/email";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+
+type RateLimitRecord = { count: number; windowStart: number };
+
+// Minimal shape for Google token payload fields we actually use
+type GoogleIdTokenPayload = {
+  iss?: string;
+  aud?: string;
+  azp?: string;
+  sub?: string;
+  id?: string;
+  email?: string;
+  name?: string;
+  given_name?: string;
+  family_name?: string;
+  email_verified?: boolean;
+};
+
+// User model subset used by this handler
+type UserLite = {
+  _id: Id<"users">;
+  email: string;
+  role?: string;
+  googleId?: string;
+  banned?: boolean;
+};
+
+// Profile subset used in response
+type ProfileLite = {
+  _id: string;
+  isProfileComplete?: boolean;
+  isOnboardingComplete?: boolean;
+};
+
+// Narrow global for in-memory throttle map
+declare global {
+  // eslint-disable-next-line no-var
+  var __google_oauth_ip_rate__:
+    | Map<string, RateLimitRecord>
+    | undefined;
+}
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -40,7 +80,7 @@ export async function POST(request: NextRequest) {
       const now = Date.now();
       const existing = (await fetchQuery(api.users.getRateLimitByKey, {
         key: endpointKey,
-      }).catch(() => null)) as any;
+      }).catch(() => null)) as RateLimitRecord | null;
 
       if (!existing || now - existing.windowStart > WINDOW_MS) {
         // Reset window
@@ -66,16 +106,13 @@ export async function POST(request: NextRequest) {
     } catch {
       // Fallback to best-effort in-memory throttle if Convex is unreachable
       const now = Date.now();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const globalAny = global as any;
-      if (!globalAny.__google_oauth_ip_rate__) {
-        globalAny.__google_oauth_ip_rate__ = new Map<
-          string,
-          { count: number; windowStart: number }
-        >();
+      const g = global as unknown as typeof global & {
+        __google_oauth_ip_rate__?: Map<string, RateLimitRecord>;
+      };
+      if (!g.__google_oauth_ip_rate__) {
+        g.__google_oauth_ip_rate__ = new Map<string, RateLimitRecord>();
       }
-      const rateMap: Map<string, { count: number; windowStart: number }> =
-        globalAny.__google_oauth_ip_rate__;
+      const rateMap: Map<string, RateLimitRecord> = g.__google_oauth_ip_rate__;
       const rec = rateMap.get(ip);
       if (!rec || now - rec.windowStart > WINDOW_MS) {
         rateMap.set(ip, { count: 1, windowStart: now });
@@ -156,7 +193,7 @@ export async function POST(request: NextRequest) {
     const replayKey = `google_replay:${credHash}`;
 
     try {
-      const existingReplay = await fetchQuery(api.users.getRateLimitByKey, { key: replayKey }).catch(() => null) as any;
+      const existingReplay = (await fetchQuery(api.users.getRateLimitByKey, { key: replayKey }).catch(() => null)) as RateLimitRecord | null;
       const now = Date.now();
       if (existingReplay && now - existingReplay.windowStart <= REPLAY_TTL_MS) {
         // Already seen recently -> block as replay
@@ -193,7 +230,7 @@ export async function POST(request: NextRequest) {
       // IP rate limiting above and Google's own protections still apply.
     }
 
-    let payload: any;
+    let payload: GoogleIdTokenPayload | null;
     let googleId: string;
     let email: string;
     let name: string;
@@ -203,20 +240,36 @@ export async function POST(request: NextRequest) {
 
     try {
       // Try to parse as user info JSON first (new popup method)
-      const userInfo = JSON.parse(credential);
+      const userInfo = JSON.parse(credential) as {
+        sub?: string;
+        id?: string;
+        email?: string;
+        name?: string;
+        given_name?: string;
+        family_name?: string;
+        verified_email?: boolean;
+      };
       if (userInfo.email && userInfo.verified_email !== undefined) {
-        payload = userInfo;
+        payload = {
+          sub: userInfo.sub,
+          id: userInfo.id,
+          email: userInfo.email,
+          name: userInfo.name,
+          given_name: userInfo.given_name,
+          family_name: userInfo.family_name,
+          email_verified: userInfo.verified_email,
+        };
         // Prefer the stable 'sub' or 'id' claim; fall back to email only if present
-        googleId = userInfo.sub || userInfo.id || userInfo.email;
+        googleId = userInfo.sub || userInfo.id || userInfo.email || "";
 
         if (!googleId) {
           throw new Error("Missing Google ID");
         }
 
         email = userInfo.email;
-        name = userInfo.name;
-        given_name = userInfo.given_name;
-        family_name = userInfo.family_name;
+        name = userInfo.name ?? "";
+        given_name = userInfo.given_name ?? "";
+        family_name = userInfo.family_name ?? "";
         email_verified = userInfo.verified_email === true;
       } else {
         throw new Error("Not user info format");
@@ -229,7 +282,7 @@ export async function POST(request: NextRequest) {
         audience: process.env.GOOGLE_CLIENT_ID,
       });
 
-      payload = ticket.getPayload();
+      payload = ticket.getPayload() as GoogleIdTokenPayload | null;
       if (!payload) {
         return NextResponse.json(
           { error: "Invalid Google token" },
@@ -238,9 +291,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Additional issuer/audience enforcement
-      const iss = (payload as any).iss as string | undefined;
-      const aud = (payload as any).aud as string | undefined;
-      const azp = (payload as any).azp as string | undefined;
+      const iss = payload.iss;
+      const aud = payload.aud;
+      const azp = payload.azp;
 
       const validIssuers = new Set<string>([
         "https://accounts.google.com",
@@ -278,13 +331,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      googleId =
-        (payload as any).sub || (payload as any).id || (payload as any).email;
-      email = payload.email as string;
-      name = (payload as any).name as string;
-      given_name = (payload as any).given_name as string;
-      family_name = (payload as any).family_name as string;
-      email_verified = (payload as any).email_verified === true;
+      googleId = (payload.sub || payload.id || payload.email || "").toString();
+      email = (payload.email || "").toString();
+      name = (payload.name || "").toString();
+      given_name = (payload.given_name || "").toString();
+      family_name = (payload.family_name || "").toString();
+      email_verified = payload.email_verified === true;
     }
 
     // Harden inputs
@@ -318,7 +370,7 @@ export async function POST(request: NextRequest) {
     };
     const normalizedForCompare = normalizeGmailForCompare(normalizedEmail);
 
-    let user: any;
+    let user: UserLite | null;
     let isNewUser = false;
 
     // Per-identifier throttling keys (in addition to IP throttling)
@@ -331,7 +383,7 @@ export async function POST(request: NextRequest) {
       // Throttle by googleId
       if (googleId) {
         const keyG = `google_oauth_gid:${googleId}`;
-        const existingG = (await fetchQuery(api.users.getRateLimitByKey, { key: keyG }).catch(() => null)) as any;
+        const existingG = (await fetchQuery(api.users.getRateLimitByKey, { key: keyG }).catch(() => null)) as RateLimitRecord | null;
         if (!existingG || now - existingG.windowStart > WINDOW_MS_ID) {
           await fetchMutation(api.users.setRateLimitWindow, { key: keyG, windowStart: now, count: 1 });
         } else {
@@ -355,7 +407,7 @@ export async function POST(request: NextRequest) {
       // Throttle by normalized comparison email
       if (normalizedForCompare) {
         const keyE = `google_oauth_email:${normalizedForCompare}`;
-        const existingE = (await fetchQuery(api.users.getRateLimitByKey, { key: keyE }).catch(() => null)) as any;
+        const existingE = (await fetchQuery(api.users.getRateLimitByKey, { key: keyE }).catch(() => null)) as RateLimitRecord | null;
         if (!existingE || now - existingE.windowStart > WINDOW_MS_ID) {
           await fetchMutation(api.users.setRateLimitWindow, { key: keyE, windowStart: now, count: 1 });
         } else {
@@ -422,11 +474,10 @@ export async function POST(request: NextRequest) {
                 googleId,
               });
               user = { ...user, googleId };
-            } catch (e: any) {
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : String(e);
               if (
-                e &&
-                (e.message?.includes("GOOGLE_ID_ALREADY_LINKED") ||
-                  e.toString().includes("GOOGLE_ID_ALREADY_LINKED"))
+                msg.includes("GOOGLE_ID_ALREADY_LINKED")
               ) {
                 // Another account claimed this googleId; prefer that canonical account
                 const existingByGoogle = await fetchQuery(
@@ -583,16 +634,16 @@ export async function POST(request: NextRequest) {
     });
 
     // After issuing tokens, fetch profile explicitly by userId (avoid Convex ctx.auth timing)
-    const profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
+    const profile = (await fetchQuery(api.users.getProfileByUserIdPublic, {
       userId: user._id,
-    });
+    })) as ProfileLite | null;
 
     // Derive safe gating flags
     const profilePayload = profile
       ? {
           id: profile._id,
-          isProfileComplete: !!(profile as any).isProfileComplete,
-          isOnboardingComplete: !!(profile as any).isOnboardingComplete,
+          isProfileComplete: !!profile.isProfileComplete,
+          isOnboardingComplete: !!profile.isOnboardingComplete,
         }
       : null;
 
@@ -718,7 +769,11 @@ export async function POST(request: NextRequest) {
       lower.includes("token expired")
     ) {
       // If an upstream Retry-After header was provided (rare in OAuth), surface a hint
-      const retryAfter = (error as any)?.retryAfter ?? undefined;
+      const retryAfter =
+        (typeof error === "object" && error !== null && "retryAfter" in (error as object)
+          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            (error as { retryAfter?: number }).retryAfter
+          : undefined) ?? undefined;
       return NextResponse.json(
         {
           error: "Time synchronization issue detected",
