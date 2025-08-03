@@ -98,10 +98,17 @@ jobs:
       - name: Vercel Pull (link project and fetch env)
         run: |
           set -euxo pipefail
+          # Note: Vercel CLI v44+ uses --project for 'build' and 'deploy' but not for 'pull'.
+          # 'vercel pull' infers the project from .vercel/project.json or interactive linking.
+          # We create .vercel/project.json if missing to ensure the project context.
+          mkdir -p .vercel
+          if [ ! -f ".vercel/project.json" ]; then
+            echo "{\"projectId\":\"${VERCEL_PROJECT_ID}\",\"orgId\":\"${VERCEL_ORG_ID}\"}" > .vercel/project.json
+            echo "Wrote .vercel/project.json with org and project IDs"
+          fi
           vercel pull --yes --environment=production \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID" \
-            --project "$VERCEL_PROJECT_ID" \
             2>&1 | tee vercel_pull.log
           echo "----- Vercel Pull Log (tail) -----"
           tail -n 100 vercel_pull.log || true
@@ -110,6 +117,7 @@ jobs:
         id: vercel_build
         run: |
           set -euxo pipefail
+          # 'vercel build' supports --project; keep it for explicitness.
           vercel build --prod \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID" \
@@ -135,6 +143,7 @@ jobs:
         id: vercel_deploy
         run: |
           set -euxo pipefail
+          # 'vercel deploy' supports --project; keep explicit project set.
           URL=$(vercel deploy --prebuilt --prod \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID" \
