@@ -778,6 +778,7 @@ export const internalUpsertUser = internalMutation(
         banned: false,
         googleId,
         emailVerified: !!googleId, // Google users are pre-verified
+        refreshVersion: 0, // initialize rotation counter for refresh tokens
         createdAt: Date.now(),
       });
     }
@@ -828,6 +829,34 @@ export const internalUpsertUser = internalMutation(
     return userId;
   }
 );
+
+/**
+ * Enforce uniqueness when linking a Google account.
+ * Fails if the googleId is already associated with a different user.
+ */
+export const linkGoogleAccountGuarded = mutation({
+  args: { userId: v.id("users"), googleId: v.string() },
+  handler: async (ctx, { userId, googleId }) => {
+    const existingByGoogle = await ctx.db
+      .query("users")
+      .collect()
+      .then((all) => all.find((u) => (u as any).googleId === googleId) || null);
+
+    if (existingByGoogle && existingByGoogle._id !== userId) {
+      throw new ConvexError("GOOGLE_ID_ALREADY_LINKED");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new ConvexError("User not found");
+
+    if ((user as any).googleId === googleId) {
+      return { success: true }; // already linked
+    }
+
+    await ctx.db.patch(userId, { googleId });
+    return { success: true };
+  },
+});
 
 /**
  * Updates the profile for the currently authenticated user.
@@ -2555,6 +2584,70 @@ export const stripeUpdateSubscription = action({
 });
 
 /**
+ * Distributed rate limit helpers for API routes (persisted in Convex).
+ */
+export const getRateLimitByKey = query({
+  args: { key: v.string() },
+  handler: async (ctx, { key }) => {
+    const rec = await ctx.db
+      .query("rateLimits")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    return rec ?? null;
+  },
+});
+
+export const setRateLimitWindow = mutation({
+  args: {
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  },
+  handler: async (ctx, { key, windowStart, count }) => {
+    const existing = await ctx.db
+      .query("rateLimits")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (existing) {
+      // Convex int64 fields expect bigint; ensure correct typing
+      await ctx.db.patch(existing._id, {
+        windowStart,
+        count: BigInt(count),
+      } as any);
+      return existing._id;
+    }
+    const id = await ctx.db.insert("rateLimits", {
+      key,
+      windowStart,
+      count: BigInt(count),
+    } as any);
+    return id;
+  },
+});
+
+export const incrementRateLimit = mutation({
+  args: { key: v.string() },
+  handler: async (ctx, { key }) => {
+    const existing = await ctx.db
+      .query("rateLimits")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (!existing) {
+      const id = await ctx.db.insert("rateLimits", {
+        key,
+        windowStart: Date.now(),
+        count: BigInt(1),
+      } as any);
+      return { _id: id, count: 1 };
+    }
+    const current = typeof (existing as any).count === "bigint" ? (existing as any).count as bigint : BigInt(Number((existing as any).count ?? 0));
+    const nextBig = current + BigInt(1);
+    await ctx.db.patch(existing._id, { count: nextBig } as any);
+    return { _id: existing._id, count: Number(nextBig) };
+  },
+});
+
+/**
  * Get the current refreshVersion for a user by id.
  */
 export const getRefreshVersion = query({
@@ -2581,6 +2674,106 @@ export const incrementRefreshVersion = mutation({
   },
 });
 
+/**
+ * Compare-and-swap increment for refreshVersion.
+ * Increments to expected+1 only if current === expected. Returns outcome and next/current.
+ */
+export const casIncrementRefreshVersion = mutation({
+  args: { userId: v.id("users"), expected: v.number() },
+  handler: async (ctx, { userId, expected }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+    const current = (user as User).refreshVersion ?? 0;
+    if (current !== expected) {
+      return { ok: false, current };
+    }
+    const next = current + 1;
+    await ctx.db.patch(userId, { refreshVersion: next });
+    return { ok: true, next };
+  },
+});
+
+/**
+ * Refresh-specific distributed throttling helpers based on rateLimits collection.
+ * Uses a fixed sliding window per key; count is stored as bigint for Convex int64.
+ */
+export const getOrResetRateLimitWindow = mutation({
+  args: { key: v.string(), windowStart: v.number() },
+  handler: async (ctx, { key, windowStart }) => {
+    const existing = await ctx.db
+      .query("rateLimits")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (!existing) {
+      const id = await ctx.db.insert("rateLimits", {
+        key,
+        windowStart,
+        count: BigInt(0),
+      } as any);
+      return { _id: id, windowStart, count: 0 };
+    }
+    // Reset window and zero count
+    await ctx.db.patch(existing._id, {
+      windowStart,
+      count: BigInt(0),
+    } as any);
+    return { _id: existing._id, windowStart, count: 0 };
+  },
+});
+
+export const incrementRateWithWindow = mutation({
+  args: { key: v.string(), windowMs: v.number(), limit: v.number() },
+  handler: async (ctx, { key, windowMs, limit }) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("rateLimits")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+
+    const startNewWindow = async () => {
+      const id = existing?._id;
+      if (id) {
+        await ctx.db.patch(id, {
+          windowStart: now,
+          count: BigInt(1),
+        } as any);
+        return { _id: id, count: 1, resetAt: now + windowMs, limited: false };
+      } else {
+        const newId = await ctx.db.insert("rateLimits", {
+          key,
+          windowStart: now,
+          count: BigInt(1),
+        } as any);
+        return { _id: newId, count: 1, resetAt: now + windowMs, limited: false };
+      }
+    };
+
+    if (!existing) {
+      return await startNewWindow();
+    }
+
+    const windowStart = (existing as any).windowStart as number;
+    const countBig =
+      typeof (existing as any).count === "bigint"
+        ? ((existing as any).count as bigint)
+        : BigInt(Number((existing as any).count ?? 0));
+
+    if (now - windowStart >= windowMs) {
+      // Window expired -> reset
+      return await startNewWindow();
+    }
+
+    const nextBig = countBig + BigInt(1);
+    await ctx.db.patch(existing._id, { count: nextBig } as any);
+    const count = Number(nextBig);
+    const limited = count > limit;
+    const resetAt = windowStart + windowMs;
+    return { _id: existing._id, count, resetAt, limited };
+  },
+});
+
 export const getUserByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) => {
@@ -2591,5 +2784,47 @@ export const getUserByEmail = query({
         (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
       ) || null
     );
+  },
+});
+
+/**
+ * Get user by googleId. Uses a collection scan unless an index exists.
+ */
+export const getUserByGoogleId = query({
+  args: { googleId: v.string() },
+  handler: async (ctx, { googleId }) => {
+    const all = await ctx.db.query("users").collect();
+    return (
+      all.find(
+        (u) => typeof (u as any).googleId === "string" && (u as any).googleId === googleId
+      ) || null
+    );
+  },
+});
+
+/**
+ * Update a user's email and keep their profile.email in sync.
+ * This is intended for auth flows where a Google account's email has changed.
+ */
+export const updateUserAndProfileEmail = mutation({
+  args: { userId: v.id("users"), email: v.string() },
+  handler: async (ctx, { userId, email }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+    const normalized = email.toLowerCase().trim();
+    if ((user as any).email !== normalized) {
+      await ctx.db.patch(userId, { email: normalized });
+    }
+    // Sync profile.email if exists
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    if (profile && (profile as any).email !== normalized) {
+      await ctx.db.patch(profile._id, { email: normalized });
+    }
+    return { success: true };
   },
 });

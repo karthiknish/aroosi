@@ -12,8 +12,10 @@ import { getConvexClient } from "@/lib/convexClient";
  * POST /api/auth/refresh
  * - Reads refresh-token cookie
  * - Verifies refresh JWT
- * - Checks Convex users.refreshVersion for rotation enforcement
- * - Increments version and returns new access (15m) + refresh (7d) cookies
+ * - Throttles by IP and by userId (30s window, limit 10)
+ * - Enforces refresh rotation using CAS on users.refreshVersion
+ * - Detects reuse (CAS failure) without extra bump and clears cookies
+ * - On success: increments version and returns new access (15m) + refresh (7d) cookies
  */
 export async function POST(req: NextRequest) {
   try {
@@ -21,15 +23,16 @@ export async function POST(req: NextRequest) {
     const refreshToken = cookies.get("refresh-token")?.value;
 
     if (!refreshToken) {
-      return NextResponse.json(
-        { error: "Missing refresh token" },
+      const res = NextResponse.json(
+        { error: "Missing refresh token", code: "MISSING_REFRESH" },
         { status: 401 }
       );
+      // Clear any stray cookies
+      res.headers.set("Set-Cookie", `auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+      res.headers.append("Set-Cookie", `refresh-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+      res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+      return res;
     }
-
-    // Verify refresh JWT
-    const payload = await verifyRefreshJWT(refreshToken);
-    const { userId, email, role, ver } = payload;
 
     // Convex client
     const convex = getConvexClient();
@@ -40,35 +43,83 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Ensure userId has the correct type from JWT verification
-    const userIdConvex = userId as Id<"users">;
-    const userDoc = await convex.query(api.users.getUserById, {
-      userId: userIdConvex,
+    // Throttle by IP first (prior to any token parsing)
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      // @ts-expect-error NextRequest has ip in edge/runtime sometimes
+      (req as any).ip ||
+      "unknown";
+    const RL_WINDOW_MS = 30_000;
+    const RL_LIMIT = 10;
+
+    const ipKey = `refresh_ip:${ip}`;
+    const ipRate = await convex.mutation(api.users.incrementRateWithWindow, {
+      key: ipKey,
+      windowMs: RL_WINDOW_MS,
+      limit: RL_LIMIT,
     });
-    const currentVersion = (userDoc as any)?.refreshVersion ?? 0;
-  
-    // Enforce rotation: token version must match current
-    if ((ver ?? 0) !== currentVersion) {
-      return NextResponse.json(
-        { error: "Stale refresh token" },
-        { status: 401 }
+    if (ipRate.limited) {
+      const retryAfter = Math.max(0, Math.ceil((ipRate.resetAt - Date.now()) / 1000));
+      const res = NextResponse.json(
+        { error: "Too many refresh attempts", code: "RATE_LIMITED" },
+        { status: 429 }
       );
+      res.headers.set("Retry-After", String(retryAfter));
+      return res;
     }
 
-    // Rotate version
-    await convex.mutation(api.users.incrementRefreshVersion, {
-      userId: userIdConvex,
-    });
-  
-    const newVersion = currentVersion + 1;
+    // Verify refresh JWT
+    const payload = await verifyRefreshJWT(refreshToken);
+    const { userId, email, role, ver } = payload;
 
-    // Issue new tokens
+    // Ensure userId has the correct type from JWT verification
+    const userIdConvex = userId as Id<"users">;
+
+    // Throttle by user as well (after verifying JWT)
+    const userKey = `refresh_user:${userId}`;
+    const userRate = await convex.mutation(api.users.incrementRateWithWindow, {
+      key: userKey,
+      windowMs: RL_WINDOW_MS,
+      limit: RL_LIMIT,
+    });
+    if (userRate.limited) {
+      const retryAfter = Math.max(0, Math.ceil((userRate.resetAt - Date.now()) / 1000));
+      const res = NextResponse.json(
+        { error: "Too many refresh attempts", code: "RATE_LIMITED" },
+        { status: 429 }
+      );
+      res.headers.set("Retry-After", String(retryAfter));
+      return res;
+    }
+
+    // Use CAS to safely rotate only if the presented token is current
+    const cas = await convex.mutation(api.users.casIncrementRefreshVersion, {
+      userId: userIdConvex,
+      expected: ver ?? 0,
+    });
+
+    if (!cas.ok) {
+      // Reuse detected: no extra bump; just clear cookies and signal reuse
+      const res = NextResponse.json(
+        { error: "Refresh token reuse detected", code: "REFRESH_REUSE" },
+        { status: 401 }
+      );
+      // Clear cookies to force re-auth
+      res.headers.set("Set-Cookie", `auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+      res.headers.append("Set-Cookie", `refresh-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+      res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+      return res;
+    }
+
+    const nextVersion = cas.next as number;
+
+    // Issue new tokens bound to the nextVersion
     const newAccess = await signAccessJWT({ userId, email, role });
     const newRefresh = await signRefreshJWT({
       userId,
       email,
       role,
-      ver: newVersion,
+      ver: nextVersion,
     });
 
     const res = NextResponse.json({ success: true, token: newAccess });
@@ -84,16 +135,28 @@ export async function POST(req: NextRequest) {
       "Set-Cookie",
       `refresh-token=${newRefresh}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}${secureAttr}`
     );
-    res.headers.append(
-      "Set-Cookie",
-      `authTokenPublic=${newAccess}; Path=/; SameSite=Lax; Max-Age=${60 * 15}${secureAttr}`
-    );
+
+    // Only set public echo cookie if explicitly enabled
+    if (process.env.SHORT_PUBLIC_TOKEN === "1") {
+      res.headers.append(
+        "Set-Cookie",
+        `authTokenPublic=${newAccess}; Path=/; SameSite=Lax; Max-Age=${60 * 15}${secureAttr}`
+      );
+    } else {
+      // Ensure any prior public cookie is cleared (defense-in-depth)
+      res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+    }
 
     return res;
   } catch (err) {
-    return NextResponse.json(
-      { error: "Invalid refresh token" },
+    const res = NextResponse.json(
+      { error: "Invalid refresh token", code: "INVALID_REFRESH" },
       { status: 401 }
     );
+    // Clear cookies on invalid token
+    res.headers.set("Set-Cookie", `auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+    res.headers.append("Set-Cookie", `refresh-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+    res.headers.append("Set-Cookie", `authTokenPublic=; Path=/; SameSite=Lax; Max-Age=0`);
+    return res;
   }
 }

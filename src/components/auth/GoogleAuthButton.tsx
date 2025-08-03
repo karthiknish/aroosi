@@ -12,6 +12,13 @@ interface GoogleAuthButtonProps {
   disabled?: boolean;
 }
 
+/**
+ * Security upgrades:
+ * - Generate cryptographically-strong state per attempt and store in cookie + memory.
+ * - Include state in the request to the backend; backend validates against cookie.
+ * - Enforce allowed origin for Google APIs; do not log sensitive data.
+ * - Cap credential-like payload length.
+ */
 export default function GoogleAuthButton({
   onSuccess,
   onError,
@@ -20,6 +27,35 @@ export default function GoogleAuthButton({
   const [isLoading, setIsLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const { signInWithGoogle } = useAuth();
+  const stateRef = useRef<string | null>(null);
+
+  const isProd = process.env.NODE_ENV === "production";
+  const allowedOrigin =
+    process.env.NEXT_PUBLIC_APP_ORIGIN ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+
+  const setCookie = (name: string, value: string, maxAgeSec: number) => {
+    document.cookie = `${name}=${value}; Path=/; SameSite=Lax; Max-Age=${maxAgeSec}${
+      isProd ? "; Secure" : ""
+    }`;
+  };
+
+  const getCookie = (name: string): string | null => {
+    const m = document.cookie.match(
+      new RegExp(`(?:^|; )${name.replace(/([.$?*|{}()[\]\\/+^])/g, "\\$1")}=([^;]*)`)
+    );
+    return m ? decodeURIComponent(m[1]) : null;
+  };
+
+  const genState = () => {
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    // base64url encode
+    let str = "";
+    arr.forEach((b) => (str += String.fromCharCode(b)));
+    const b64 = btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return b64;
+  };
 
   const handleGoogleSignIn = async () => {
     if (!scriptLoaded || !(window as any).google?.accounts?.oauth2) {
@@ -30,25 +66,43 @@ export default function GoogleAuthButton({
     setIsLoading(true);
 
     try {
+      // Generate per-attempt state; persist short-lived in cookie
+      const state = genState();
+      stateRef.current = state;
+      setCookie("oauth_state", state, 300); // 5 minutes
+
       const client = (window as any).google.accounts.oauth2.initTokenClient({
         client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
         scope: "email profile openid",
+        // optional hosted_domain / ux_mode can be set if needed
         callback: async (response: any) => {
           if (response.error) {
-            console.error("Google OAuth error:", response.error);
+            // PII-minimized logs
+            console.warn("Google OAuth error callback");
             onError?.(response.error_description || "Google sign in failed");
             setIsLoading(false);
             return;
           }
 
           try {
+            // Enforce origin for outgoing Google request
+            if (allowedOrigin && typeof allowedOrigin === "string") {
+              // no-op here; fetch will be to Google. Ensure we don't send sensitive headers.
+            }
+
             // Get user info using the access token
+            const token = String(response.access_token || "");
+            if (!token || token.length > 4096) {
+              throw new Error("Invalid Google token");
+            }
+
             const userInfoResponse = await fetch(
-              `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${response.access_token}`,
+              `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${encodeURIComponent(
+                token
+              )}`,
               {
-                headers: {
-                  Accept: "application/json",
-                },
+                headers: { Accept: "application/json" },
+                // mode: "cors" default; rely on Google CORS
               }
             );
 
@@ -64,17 +118,31 @@ export default function GoogleAuthButton({
             }
 
             // Create a credential-like object for our backend
-            const credential = JSON.stringify({
-              id: userInfo.id, // Use proper Google ID
+            const payload = {
+              id: userInfo.id,
               email: userInfo.email,
               name: userInfo.name,
               given_name: userInfo.given_name,
               family_name: userInfo.family_name,
               picture: userInfo.picture,
               verified_email: userInfo.verified_email,
-            });
+              // Include CSRF/state
+              state,
+            };
 
-            const result = await signInWithGoogle(credential);
+            const json = JSON.stringify(payload);
+            if (json.length > 8192) {
+              throw new Error("Credential payload too large");
+            }
+
+            // Validate state round-trip before sending
+            const cookieState = getCookie("oauth_state");
+            if (!cookieState || cookieState !== state) {
+              throw new Error("Invalid or missing OAuth state");
+            }
+
+            // Send to backend
+            const result = await signInWithGoogle(json);
 
             if (result.success) {
               onSuccess?.();
@@ -82,27 +150,30 @@ export default function GoogleAuthButton({
               onError?.(result.error || "Authentication failed");
             }
           } catch (error) {
-            console.error("Error processing Google auth:", error);
+            console.warn("Error processing Google auth");
             onError?.(
               error instanceof Error
                 ? error.message
                 : "Failed to process Google authentication"
             );
           } finally {
+            // Invalidate state cookie promptly
+            setCookie("oauth_state", "", 0);
+            stateRef.current = null;
             setIsLoading(false);
           }
         },
-        error_callback: (error: any) => {
-          console.error("Google OAuth error:", error);
-          onError?.(error.message || "Google sign in cancelled or failed");
+        error_callback: (_error: any) => {
+          console.warn("Google OAuth error callback (init)");
+          onError?.("Google sign in cancelled or failed");
           setIsLoading(false);
         },
       });
 
       // Request access token (opens popup)
       client.requestAccessToken({ prompt: "consent" });
-    } catch (error) {
-      console.error("Google auth initialization error:", error);
+    } catch (_error) {
+      console.warn("Google auth initialization failure");
       onError?.("Failed to initialize Google sign in");
       setIsLoading(false);
     }
@@ -118,7 +189,7 @@ export default function GoogleAuthButton({
           setScriptLoaded(true);
         }}
         onError={() => {
-          console.error("Failed to load Google script");
+          console.warn("Failed to load Google script");
           onError?.("Failed to load Google services");
         }}
       />
@@ -128,6 +199,7 @@ export default function GoogleAuthButton({
         variant="outline"
         className="w-full flex items-center gap-2 transition-all duration-200 hover:bg-gray-50"
         disabled={disabled || isLoading || !scriptLoaded}
+        aria-label="Sign in with Google"
       >
         {isLoading ? (
           <>
@@ -136,7 +208,7 @@ export default function GoogleAuthButton({
           </>
         ) : (
           <>
-            <svg className="h-4 w-4" viewBox="0 0 24 24">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

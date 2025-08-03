@@ -105,6 +105,7 @@ export const createGoogleUser = mutation({
       role: "user",
       banned: false,
       emailVerified: true,
+      refreshVersion: 0, // initialize rotation counter for refresh tokens
       createdAt: Date.now(),
     });
 
