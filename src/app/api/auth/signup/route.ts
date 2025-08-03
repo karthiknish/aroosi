@@ -113,6 +113,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password, fullName, profile } = signupSchema.parse(body);
 
+    // Ensure we never pass local placeholder image ids to Convex validators
+    const scrubLocalStorageIds = (ids: unknown): string[] => {
+      if (!Array.isArray(ids)) return [];
+      return ids.filter(
+        (s) =>
+          typeof s === "string" &&
+          s.trim().length > 0 &&
+          !s.startsWith("local-")
+      );
+    };
+
     // Enforce profile completeness check
     const requiredProfileKeys: Array<keyof typeof profile> = [
       "fullName",
@@ -188,9 +199,7 @@ export async function POST(request: NextRequest) {
       partnerPreferenceCity: Array.isArray(profile.partnerPreferenceCity)
         ? profile.partnerPreferenceCity
         : [],
-      profileImageIds: Array.isArray(profile.profileImageIds)
-        ? profile.profileImageIds
-        : [],
+      profileImageIds: scrubLocalStorageIds(profile.profileImageIds),
     };
 
     // Create user and profile atomically
