@@ -210,6 +210,14 @@ export async function POST(req: NextRequest) {
     if (existingProfile) return errorResponse("Profile already exists", 409);
     // Format the data for createProfile mutation
     // Build a payload that matches Convex users.createProfile args exactly but keep typing permissive here.
+    // Ensure we don't pass any local placeholder image IDs to Convex (they fail v.id("_storage") validator)
+    const filteredImageIds =
+      Array.isArray(sanitizedBody.profileImageIds)
+        ? (sanitizedBody.profileImageIds as string[]).filter(
+            (id) => typeof id === "string" && !id.startsWith("local-")
+          )
+        : undefined;
+
     const profileData = {
       // Basic info (required in Convex)
       fullName: String(sanitizedBody.fullName || ""),
@@ -328,8 +336,11 @@ export async function POST(req: NextRequest) {
           : undefined,
 
       // Images
+      // Only accept storage-backed IDs (Convex v.id("_storage")). Filter out any local placeholders like "local-..."
       profileImageIds: Array.isArray(sanitizedBody.profileImageIds)
-        ? (sanitizedBody.profileImageIds as string[])
+        ? (sanitizedBody.profileImageIds as string[]).filter(
+            (id) => typeof id === "string" && !id.startsWith("local-")
+          )
         : undefined,
 
       // Subscription
