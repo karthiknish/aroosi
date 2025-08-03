@@ -5,6 +5,7 @@ import {
   signRefreshJWT,
 } from "@/lib/auth/jwt";
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
 
 /**
@@ -40,9 +41,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Ensure userId has the correct type from JWT verification
-    const userDoc = await convex.query(api.users.getUserById, { userId });
+    const userIdConvex = userId as Id<"users">;
+    const userDoc = await convex.query(api.users.getUserById, {
+      userId: userIdConvex,
+    });
     const currentVersion = (userDoc as any)?.refreshVersion ?? 0;
-
+  
     // Enforce rotation: token version must match current
     if ((ver ?? 0) !== currentVersion) {
       return NextResponse.json(
@@ -52,8 +56,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Rotate version
-    await convex.mutation(api.users.incrementRefreshVersion, { userId });
-
+    await convex.mutation(api.users.incrementRefreshVersion, {
+      userId: userIdConvex,
+    });
+  
     const newVersion = currentVersion + 1;
 
     // Issue new tokens
