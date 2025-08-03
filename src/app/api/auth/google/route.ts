@@ -770,10 +770,11 @@ export async function POST(request: NextRequest) {
     ) {
       // If an upstream Retry-After header was provided (rare in OAuth), surface a hint
       const retryAfter =
-        (typeof error === "object" && error !== null && "retryAfter" in (error as object)
-          ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            (error as { retryAfter?: number }).retryAfter
-          : undefined) ?? undefined;
+        typeof error === "object" &&
+        error !== null &&
+        Object.prototype.hasOwnProperty.call(error, "retryAfter")
+          ? (error as Record<string, unknown>).retryAfter as number | undefined
+          : undefined;
       return NextResponse.json(
         {
           error: "Time synchronization issue detected",
