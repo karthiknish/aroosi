@@ -267,7 +267,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 animate="visible"
                 className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0"
               >
-                <Link href="/sign-in" prefetch={false} onClick={onClick} className="block">
+                <Link
+                  href="/sign-in"
+                  prefetch={false}
+                  onClick={onClick}
+                  className="block"
+                >
                   <Button
                     variant="outline"
                     className="w-full flex items-center justify-center gap-1.5 text-pink-600 border-pink-600 hover:bg-pink-50 hover:border-pink-700"
@@ -276,7 +281,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     <span>Sign In</span>
                   </Button>
                 </Link>
-                <Link href="/sign-up" prefetch={false} onClick={onClick} className="block">
+                <Link
+                  href="/"
+                  prefetch={false}
+                  onClick={onClick}
+                  className="block"
+                >
                   <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
                     <UserPlus className="h-4 w-4" />
                     <span>Sign Up</span>

@@ -28,8 +28,17 @@ function ProtectedRouteInner({
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
 
+  console.log("🔧 DEBUG: ProtectedRoute render started", {
+    pathname,
+    requireAuth,
+    requireProfileComplete,
+    requireOnboardingComplete,
+    redirectTo,
+  });
+
   // Set isClient to true after component mounts (client-side only)
   useEffect(() => {
+    console.log("🔧 DEBUG: Setting isClient to true");
     setIsClient(true);
   }, []);
 
@@ -39,10 +48,19 @@ function ProtectedRouteInner({
     isProfileComplete,
     isOnboardingComplete,
     isLoading: isAuthLoading,
-
     profile: rawProfile,
     error: authError,
   } = useAuthContext();
+
+  console.log("🔧 DEBUG: Auth context values", {
+    isLoaded,
+    isSignedIn,
+    isProfileComplete,
+    isOnboardingComplete,
+    isAuthLoading,
+    profile: rawProfile ? "exists" : "null",
+    authError: authError ? "exists" : "null",
+  });
 
   // Directly use context values; undefined indicates still loading
   const profile = rawProfile as { subscriptionPlan?: string } | null;
@@ -50,14 +68,20 @@ function ProtectedRouteInner({
   const onboardingComplete = isOnboardingComplete;
   const userPlan = profile?.subscriptionPlan || "free";
 
-  // Memoize route checks to prevent unnecessary recalculations
+  console.log("🔧 DEBUG: Processed auth values", {
+    profileComplete,
+    onboardingComplete,
+    userPlan,
+  });
+
+  // Memoized route checks to prevent unnecessary recalculations
   const {
     isPublicRoute,
     isOnboardingRoute,
     isProfileEditRoute,
     isCreateProfileRoute,
-  } = useMemo(
-    () => ({
+  } = useMemo(() => {
+    const routeChecks = {
       isPublicRoute: [
         "/",
         "/sign-in",
@@ -71,14 +95,16 @@ function ProtectedRouteInner({
         "/contact",
       ].some((route) => pathname === route || pathname.startsWith(`${route}/`)),
       isOnboardingRoute: ["/profile/onboarding"].some((route) =>
-        pathname.startsWith(route),
+        pathname.startsWith(route)
       ),
       isProfileEditRoute:
         pathname === "/profile/edit" || pathname.startsWith("/profile/edit/"),
       isCreateProfileRoute: false,
-    }),
-    [pathname],
-  );
+    };
+
+    console.log("🔧 DEBUG: Route checks", routeChecks);
+    return routeChecks;
+  }, [pathname]);
 
   // Define premium page paths and feature restrictions
   const premiumAnyPlanRoutes = ["/premium-settings"];
@@ -89,44 +115,86 @@ function ProtectedRouteInner({
   const chatRestrictedRoutes = ["/chat"];
   // const advancedSearchRoutes = ["/search"] // Will check for premium plus filters in search
 
+  console.log("🔧 DEBUG: Route restrictions", {
+    premiumAnyPlanRoutes,
+    premiumPlusRoutes,
+    chatRestrictedRoutes,
+    planManagementRoute,
+  });
+
   // Quick bypass for E2E tests or demo environments (constant after build)
   if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
+    console.log("🔧 DEBUG: Auth disabled, rendering children");
     return <>{children}</>;
   }
 
   // Enhanced navigation handler with better error handling
   const handleNavigation = useCallback(
     (path: string, message?: string) => {
+      console.log("🔧 DEBUG: Navigating to", { path, message });
       try {
         if (message) {
           showInfoToast(message);
         }
         router.replace(path);
       } catch (error) {
-        console.error("ProtectedRoute: Navigation error:", error);
+        console.error("🔧 DEBUG: Navigation error:", error);
         showErrorToast("Navigation failed. Please refresh and try again.");
       }
     },
-    [router],
+    [router]
   );
 
   // Handle all redirections with improved error handling
   useEffect(() => {
+    console.log("🔥 PRODUCTION DEBUG:", {
+      pathname,
+      isSignedIn,
+      profileComplete,
+      onboardingComplete,
+      isLoaded,
+      isAuthLoading,
+      profile: profile ? "exists" : "null",
+      userPlan,
+      isPublicRoute,
+      requireAuth,
+      requireProfileComplete,
+      requireOnboardingComplete,
+    });
+
+    console.log("🔧 DEBUG: useEffect triggered", {
+      isClient,
+      windowDefined: typeof window !== "undefined",
+    });
+
     // Don't do anything until we're on the client
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      console.log("🔧 DEBUG: Server side, skipping logic");
+      return;
+    }
 
     // Don't do anything until we've loaded the auth state
-    if (!isLoaded || isAuthLoading) return;
+    if (!isLoaded || isAuthLoading) {
+      console.log("🔧 DEBUG: Auth still loading, waiting...", {
+        isLoaded,
+        isAuthLoading,
+      });
+      return;
+    }
 
     // Handle auth errors
     if (authError && !isPublicRoute) {
-      console.error("ProtectedRoute: Auth error detected:", authError);
+      console.error("🔧 DEBUG: Auth error detected:", authError);
       handleNavigation("/sign-in", "Session expired. Please sign in again.");
       return;
     }
 
     // Handle unauthenticated users
     if (isSignedIn === false) {
+      console.log("🔧 DEBUG: User not signed in", {
+        requireAuth,
+        isPublicRoute,
+      });
       if (requireAuth && !isPublicRoute) {
         // Only show toast if we're not already on the sign-in page
         if (!pathname.startsWith("/sign-in")) {
@@ -135,9 +203,10 @@ function ProtectedRouteInner({
             params.set("redirect_url", pathname);
             return `/sign-in?${params.toString()}`;
           };
+          console.log("🔧 DEBUG: Redirecting to sign-in");
           handleNavigation(
             redirectTo || getSignInUrl(),
-            "Please sign in to continue",
+            "Please sign in to continue"
           );
         }
       }
@@ -145,26 +214,42 @@ function ProtectedRouteInner({
     }
 
     // If we're still checking auth state, don't proceed
-    if (isSignedIn === undefined) return;
+    if (isSignedIn === undefined) {
+      console.log("🔧 DEBUG: Auth state undefined, waiting...");
+      return;
+    }
 
     // Handle authenticated users
     if (isSignedIn === true) {
+      console.log("🔧 DEBUG: User is signed in, checking restrictions");
+
       // If we're still loading profile data, wait
-      if (profileComplete === undefined) return;
+      if (profileComplete === undefined) {
+        console.log("🔧 DEBUG: Profile complete status undefined, waiting...");
+        return;
+      }
 
       // Restrict premium-only routes based on subscription
       if (premiumAnyPlanRoutes.some((p) => pathname.startsWith(p))) {
+        console.log("🔧 DEBUG: Checking premium any plan route", { userPlan });
         if (userPlan === "free") {
+          console.log(
+            "🔧 DEBUG: Free user accessing premium route, redirecting"
+          );
           handleNavigation(
             planManagementRoute,
-            "Upgrade to Premium to access this feature.",
+            "Upgrade to Premium to access this feature."
           );
           return;
         }
       }
 
       if (premiumPlusRoutes.some((p) => pathname.startsWith(p))) {
+        console.log("🔧 DEBUG: Checking premium plus route", { userPlan });
         if (userPlan !== "premiumPlus") {
+          console.log(
+            "🔧 DEBUG: Non-premium plus user accessing premium plus route"
+          );
           handleNavigation(planManagementRoute, "Requires Premium Plus plan.");
           return;
         }
@@ -172,18 +257,24 @@ function ProtectedRouteInner({
 
       // Handle chat/messaging restrictions for free users
       if (chatRestrictedRoutes.some((p) => pathname.startsWith(p))) {
+        console.log("🔧 DEBUG: Checking chat route restriction", { userPlan });
         if (userPlan === "free") {
+          console.log("🔧 DEBUG: Free user accessing chat, redirecting");
           handleNavigation(
             planManagementRoute,
-            "Upgrade to Premium to chat with your matches.",
+            "Upgrade to Premium to chat with your matches."
           );
           return;
         }
       }
 
+      // COMMENTED OUT: Profile/Onboarding completion checks
+      /*
       // 1. If either flag is false, redirect to home page for onboarding
       if (!profileComplete || !onboardingComplete) {
+        console.log("🔧 DEBUG: Profile or onboarding incomplete", { profileComplete, onboardingComplete });
         if (!isCreateProfileRoute && !isPublicRoute) {
+          console.log("🔧 DEBUG: Redirecting to home for onboarding");
           handleNavigation("/");
           return;
         }
@@ -191,14 +282,21 @@ function ProtectedRouteInner({
 
       // 2. Both flags true → if currently on any public route, send to /search
       if (profileComplete && onboardingComplete) {
+        console.log("🔧 DEBUG: Profile and onboarding complete");
         if (
           (isPublicRoute || isOnboardingRoute || isCreateProfileRoute) &&
           !isProfileEditRoute
         ) {
+          console.log("🔧 DEBUG: Redirecting completed user to search");
           handleNavigation("/search");
           return;
         }
       }
+      */
+
+      console.log(
+        "🔧 DEBUG: Profile/onboarding checks COMMENTED OUT - allowing access"
+      );
     }
   }, [
     isLoaded,
@@ -232,34 +330,57 @@ function ProtectedRouteInner({
       (isSignedIn === undefined ||
         (isSignedIn && profileComplete === undefined)));
 
+  console.log("🔧 DEBUG: Loading states", {
+    baseLoading,
+    isLoaded,
+    isAuthLoading,
+    isClient,
+    isSignedIn,
+    profileComplete,
+  });
+
   // Allow the create-profile wizard to render even while profile flags load.
   const isLoading = isCreateProfileRoute ? false : baseLoading;
 
+  console.log("🔧 DEBUG: Final isLoading state", {
+    isLoading,
+    isCreateProfileRoute,
+  });
+
   // On server render or initial client render, return null to prevent hydration mismatch
   if (!isClient) {
+    console.log("🔧 DEBUG: Not client side, returning null");
     return null;
   }
 
   // Show loading state while checking auth status or redirecting
+  // COMMENTED OUT: Profile/onboarding completion loading checks
   const shouldShowLoader =
     isLoading ||
-    // If profile is incomplete, *show* loader only when we are NOT allowed to be on the
-    // create-profile wizard or edit-profile screen. Otherwise let the wizard render.
+    // COMMENTED OUT: Profile incomplete check
+    /*
     (isSignedIn &&
       requireProfileComplete &&
       !profileComplete &&
       !isProfileEditRoute &&
       !isCreateProfileRoute) ||
-    // Same idea for onboarding: don't block the create-profile wizard itself.
+    */
+    // COMMENTED OUT: Onboarding incomplete check
+    /*
     (isSignedIn &&
       requireOnboardingComplete &&
       !onboardingComplete &&
       !isOnboardingRoute &&
       !isCreateProfileRoute &&
       !isProfileEditRoute);
+    */
+    false; // Always false since profile/onboarding checks are commented out
+
+  console.log("🔧 DEBUG: shouldShowLoader", { shouldShowLoader });
 
   // Show loading state or nothing (for server render)
   if (shouldShowLoader) {
+    console.log("🔧 DEBUG: Showing loader");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size={32} />
@@ -269,21 +390,25 @@ function ProtectedRouteInner({
 
   // If not signed in and route requires auth, show nothing (will redirect)
   if (!isSignedIn && requireAuth) {
+    console.log("🔧 DEBUG: Not signed in and requires auth, returning null");
     return null;
   }
 
-  // If profile is incomplete and we're *not* on a route explicitly meant to complete it,
-  // do not render children (user will be redirected). Allow edit screens.
+  // COMMENTED OUT: Profile incomplete check
+  /*
   if (
     requireProfileComplete &&
     !profileComplete &&
     !isProfileEditRoute &&
     !isCreateProfileRoute
   ) {
+    console.log("🔧 DEBUG: Profile incomplete, returning null");
     return null;
   }
+  */
 
-  // Same for onboarding: allow wizard routes to render.
+  // COMMENTED OUT: Onboarding incomplete check
+  /*
   if (
     requireOnboardingComplete &&
     !onboardingComplete &&
@@ -291,14 +416,20 @@ function ProtectedRouteInner({
     !isCreateProfileRoute &&
     !isProfileEditRoute
   ) {
+    console.log("🔧 DEBUG: Onboarding incomplete, returning null");
     return null;
   }
+  */
+
+  console.log("🔧 DEBUG: All checks passed, rendering children");
 
   // Return children wrapped in a fragment to maintain consistent structure
   return <>{children}</>;
 }
 
 export default function ProtectedRoute(props: ProtectedRouteProps) {
+  console.log("🔧 DEBUG: ProtectedRoute wrapper called", props);
+
   return (
     <Suspense
       fallback={
