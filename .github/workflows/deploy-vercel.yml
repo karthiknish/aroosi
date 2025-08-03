@@ -117,11 +117,10 @@ jobs:
         id: vercel_build
         run: |
           set -euxo pipefail
-          # 'vercel build' supports --project; keep it for explicitness.
+          # Vercel CLI v44 does not accept --project for 'build' (uses .vercel/project.json instead).
           vercel build --prod \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID" \
-            --project "$VERCEL_PROJECT_ID" \
             2>&1 | tee vercel_build.log
           echo "vercel_build_log_path=vercel_build.log" >> $GITHUB_OUTPUT
           echo "----- Vercel Build Log (tail) -----"
@@ -143,11 +142,10 @@ jobs:
         id: vercel_deploy
         run: |
           set -euxo pipefail
-          # 'vercel deploy' supports --project; keep explicit project set.
+          # Vercel CLI v44 does not accept --project for 'deploy' (uses .vercel/project.json instead).
           URL=$(vercel deploy --prebuilt --prod \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID" \
-            --project "$VERCEL_PROJECT_ID" \
             2>&1 | tee vercel_deploy.log | tail -n 1)
           echo "deployment_url=$URL" >> $GITHUB_OUTPUT
           echo "----- Vercel Deploy Log (tail) -----"
