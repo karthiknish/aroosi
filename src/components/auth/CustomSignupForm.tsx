@@ -191,6 +191,24 @@ export default function CustomSignupForm({
         let userMsg = "We couldn't create your account.";
         const raw = data as any;
 
+        // 0) Password policy failure from server logs:
+        // Server logs example: { scope: 'auth.signup', type: 'password_policy', reason: 'weak_password' }
+        // Response body currently: { error: "Password does not meet security requirements", correlationId }
+        if (
+          (typeof raw?.error === "string" &&
+            raw.error.toLowerCase().includes("password")) ||
+          raw?.code === "password_policy" ||
+          raw?.type === "password_policy"
+        ) {
+          const cid =
+            typeof raw?.correlationId === "string" ? ` [Ref: ${raw.correlationId}]` : "";
+          userMsg =
+            "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol." + cid;
+          showErrorToast(userMsg);
+          setIsLoading(false);
+          return;
+        }
+
         // 1) Explicit "Profile incomplete" from server gate
         if (
           raw?.error &&
@@ -241,8 +259,12 @@ export default function CustomSignupForm({
           return;
         }
 
+        // 4) Fallback: include correlationId if present for support/debug
+        if (typeof raw?.correlationId === "string") {
+          userMsg += ` [Ref: ${raw.correlationId}]`;
+        }
         showErrorToast(
-          "We couldn't create your account. Please review your details and try again."
+          userMsg || "We couldn't create your account. Please review your details and try again."
         );
         setIsLoading(false);
         return;
