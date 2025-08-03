@@ -36,7 +36,11 @@ import {
   submitProfile,
   getCurrentUserWithProfile,
 } from "@/lib/profile/userProfileApi";
-import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
+import {
+  getImageUploadUrl,
+  saveImageMeta,
+  updateImageOrder,
+} from "@/lib/utils/imageUtil";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import {
   clearAllOnboardingData,
@@ -657,6 +661,9 @@ export function ProfileCreationModal({
           console.log(`Uploading ${pendingImages.length} images...`);
           let uploadedCount = 0;
 
+          // Collect successfully created imageIds in the same order as pendingImages
+          const createdImageIds: string[] = [];
+
           for (const img of pendingImages) {
             try {
               // Validate image before upload
@@ -678,12 +685,14 @@ export function ProfileCreationModal({
                 type: blob.type || "image/jpeg",
               });
 
+              // 1) Generate upload URL
               const uploadUrl = await getImageUploadUrl(authToken);
               if (!uploadUrl) {
                 console.error("Failed to get upload URL");
                 continue;
               }
 
+              // 2) Upload binary via POST and JSON-parse Convex response for storageId
               const uploadResp = await fetch(uploadUrl, {
                 method: "POST",
                 headers: { "Content-Type": file.type },
@@ -691,20 +700,37 @@ export function ProfileCreationModal({
               });
 
               if (!uploadResp.ok) {
-                console.error("Upload failed", uploadResp.statusText);
+                const errText = await uploadResp
+                  .text()
+                  .catch(() => uploadResp.statusText);
+                console.error("Upload failed", uploadResp.status, errText);
                 continue;
               }
 
-              const json = await uploadResp.json();
+              // Convex returns JSON containing { storageId }
+              let storageJson: unknown;
+              try {
+                storageJson = await uploadResp.json();
+              } catch (e) {
+                console.error("Failed to parse upload response JSON", e);
+                continue;
+              }
               const storageId =
-                json?.storageId || (typeof json === "string" ? json : null);
+                typeof storageJson === "object" &&
+                storageJson !== null &&
+                "storageId" in storageJson
+                  ? (storageJson as { storageId?: string }).storageId
+                  : typeof storageJson === "string"
+                    ? storageJson
+                    : null;
 
               if (!storageId) {
                 console.error("No storage ID returned from upload");
                 continue;
               }
 
-              await saveImageMeta({
+              // 3) Confirm metadata and capture imageId for ordering
+              const meta = await saveImageMeta({
                 token: authToken,
                 userId,
                 storageId,
@@ -712,6 +738,10 @@ export function ProfileCreationModal({
                 contentType: file.type,
                 fileSize: file.size,
               });
+
+              if (meta?.imageId) {
+                createdImageIds.push(meta.imageId);
+              }
 
               uploadedCount++;
               console.log(
@@ -727,6 +757,25 @@ export function ProfileCreationModal({
             console.log(
               `Successfully uploaded ${uploadedCount} out of ${pendingImages.length} images`
             );
+
+            // Persist final order on server when multiple images exist
+            try {
+              const orderIds =
+                createdImageIds.length > 0
+                  ? createdImageIds
+                  : Array.isArray(formData.profileImageIds)
+                    ? formData.profileImageIds
+                    : [];
+              if (orderIds.length > 1) {
+                await updateImageOrder({
+                  token: authToken,
+                  userId,
+                  imageIds: orderIds,
+                });
+              }
+            } catch (e) {
+              console.warn("Failed to persist image order; continuing.", e);
+            }
           }
         }
 
