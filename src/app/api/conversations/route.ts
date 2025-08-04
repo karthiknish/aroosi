@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
 // Initialize Convex client (best-effort)
@@ -14,10 +14,10 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Authentication
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    // Authentication via cookie-only session
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(
@@ -71,12 +71,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Avoid passing app JWT to Convex; use server identity instead if available.
-    // Keeping legacy call guarded; prefer server-side auth via convex functions.
-    try {
-      // @ts-ignore legacy
-      client.setAuth?.(token);
-    } catch {}
+    // Do not forward bearer tokens; server identity is used in Convex
+    // No client.setAuth call in cookie-only model.
 
     if (!userId) {
       console.warn("Conversations missing userId", {
@@ -137,7 +133,7 @@ export async function GET(request: NextRequest) {
             createdAt?: number | null;
           };
 
-          const conversationId = [userId, match.userId].sort().join("_");
+          const conversationId = [String(userId), match.userId].sort().join("_");
 
           // Get last message for this conversation
           const messages = await client
@@ -155,7 +151,7 @@ export async function GET(request: NextRequest) {
             conversationId,
             participants: [
               {
-                userId: userId,
+                userId: String(userId),
                 firstName: "You",
               },
               {
