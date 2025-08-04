@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -28,19 +28,13 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID not found in token", correlationId },
-        { status: 401 }
-      );
-    }
+    const { userId } = session;
 
     // Rate limit read operations with subscription-aware limiter
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      token,
-      userId,
+      null as any, // no bearer token in cookie-only model
+      String(userId),
       "message_read",
       60000
     );
@@ -82,10 +76,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
-    } catch {}
 
     const url = new URL(request.url);
     const conversationId = url.pathname.split("/").slice(-2, -1)[0];
@@ -104,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Ensure the user is part of the conversation (legacy format check)
     const parts = conversationId.split("_");
-    if (!parts.includes(userId)) {
+    if (!parts.includes(String(userId))) {
       return NextResponse.json(
         { error: "Unauthorized access to conversation", correlationId },
         { status: 403 }
@@ -142,14 +132,15 @@ export async function POST(request: NextRequest) {
       eventBus.emit(conversationId, {
         type: "message_read",
         conversationId,
-        userId,
+        userId: String(userId),
         readAt,
       });
     } catch (eventError) {
       console.warn("Conversation mark-read broadcast warn", {
         scope: "conversations.mark_read",
         type: "broadcast_warn",
-        message: eventError instanceof Error ? eventError.message : String(eventError),
+        message:
+          eventError instanceof Error ? eventError.message : String(eventError),
         correlationId,
       });
     }
