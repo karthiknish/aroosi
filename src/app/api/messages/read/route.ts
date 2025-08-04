@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) {
       const res = authCheck.errorResponse as NextResponse;
       const status = res.status || 401;
@@ -33,12 +33,12 @@ export async function POST(request: NextRequest) {
       });
       return errorResponse(message, status, { correlationId });
     }
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     // Use subscription-aware rate limiter for consistency
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      token,
+      "" as unknown as string, // cookie-only: no token string
       userId || "unknown",
       "message_read",
       60000
@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
       return errorResponse("Database connection failed", 500, { correlationId });
     }
     try {
-      // @ts-ignore legacy
-      client.setAuth?.(token);
+      // cookie-only: do not set auth token on client
+      // client.setAuth?.(undefined as unknown as string);
     } catch {}
 
     const userIds = conversationId.split("_");
