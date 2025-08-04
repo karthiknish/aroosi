@@ -8,10 +8,10 @@ import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders
 
 export async function GET(req: NextRequest) {
   try {
-    // Enhanced authentication
-    const authCheck = requireUserToken(req);
+    // Enhanced authentication (cookie-only)
+    const authCheck = await requireUserToken(req);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId: authenticatedUserId } = authCheck;
+    const { userId: authenticatedUserId } = authCheck;
 
     // Rate limiting for interest status queries
     const rateLimitResult = checkApiRateLimit(`interest_status_${authenticatedUserId}`, 200, 60000); // 200 requests per minute
@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
       return errorResponse("Interest service temporarily unavailable", 503);
     }
     
-    convex.setAuth(token);
+    // Cookie-only model: do not set auth token on convex client
+    // convex.setAuth?.(undefined as unknown as string);
 
     // Log interest status query for monitoring
     console.log(`User ${authenticatedUserId} checking interest status: ${fromUserId} -> ${toUserId}`);
