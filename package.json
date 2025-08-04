@@ -129,8 +129,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "build:with-lint": "npm run lint && next build",
+    "build": "npm run type-check && next build",
+    "build:with-lint": "npm run lint && npm run type-check && next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
