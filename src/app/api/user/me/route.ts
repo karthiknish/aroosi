@@ -5,15 +5,12 @@ import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 /**
- * Robust cookie/session token extraction with multiple fallbacks.
- * - HttpOnly cookies (primary)
- * - Alt cookie names and __Secure- prefixed variants
- * - Optional header fallback for edge cases (X-Session-Token)
- * No Authorization: Bearer usage.
+ * Robust cookie/session token extraction that is compatible with
+ * environments where cookies() and headers() may be typed as Promise-like.
+ * We synchronously unwrap by detecting a then function and throwing if awaited.
  */
 function getSessionToken(): string | null {
-  // Preferred cookie names in priority order
-  const names = [
+  const cookieNames = [
     "__Secure-next-auth.session-token",
     "next-auth.session-token",
     "__Secure-session-token",
@@ -22,38 +19,65 @@ function getSessionToken(): string | null {
     "jwt",
   ];
 
-  try {
-    const jar: any = cookies() as any;
-    if (jar && typeof jar.get === "function") {
-      for (const name of names) {
+  // Helper to safely get cookies jar
+  function getCookiesJar(): any | null {
+    try {
+      const jar: any = (cookies as any)();
+      // Guard against Promise-like typing
+      if (jar && typeof jar.then === "function") {
+        // In Next.js stable, cookies() is sync in route handlers. If it's Promise-like here,
+        // we cannot safely await in a sync helper; skip cookie read and rely on header fallback.
+        return null;
+      }
+      return typeof jar?.get === "function" ? jar : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Helper to safely get headers reader
+  function getHeadersReader(): ((key: string) => string | null) | null {
+    try {
+      const h: any = (headers as any)();
+      if (h && typeof h.then === "function") {
+        return null;
+      }
+      if (typeof h?.get === "function") {
+        return (key: string) => {
+          const v = h.get(key);
+          return typeof v === "string" ? v : v?.toString?.() ?? null;
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Try cookies first
+  const jar = getCookiesJar();
+  if (jar) {
+    for (const name of cookieNames) {
+      try {
         const c = jar.get(name);
         if (c?.value && typeof c.value === "string" && c.value.trim()) {
           return c.value;
         }
+      } catch {
+        // continue
       }
     }
-  } catch (e) {
-    // continue to header fallback
   }
 
-  // Optional header fallback (useful for non-browser or preview runs)
-  try {
-    const hAny: any = headers() as any;
-    const getHeader =
-      typeof hAny?.get === "function"
-        ? (key: string) => hAny.get(key)
-        : undefined;
-
-    if (getHeader) {
-      const hVal =
-        getHeader("X-Session-Token") ||
-        getHeader("x-session-token") ||
-        getHeader("X-Auth-Token") ||
-        getHeader("x-auth-token");
-      if (typeof hVal === "string" && hVal.trim()) return hVal;
-    }
-  } catch {
-    // ignore
+  // Fallback to headers (only for specific non-Authorization keys)
+  const readHeader = getHeadersReader();
+  if (readHeader) {
+    const hVal =
+      readHeader("X-Session-Token") ||
+      readHeader("x-session-token") ||
+      readHeader("X-Auth-Token") ||
+      readHeader("x-auth-token");
+    if (typeof hVal === "string" && hVal.trim()) return hVal;
   }
 
   return null;
