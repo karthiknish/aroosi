@@ -20,10 +20,33 @@ import { getConvexClient } from "@/lib/convexClient";
 export async function POST(req: NextRequest) {
   const startedAt = Date.now();
   const correlationId = Math.random().toString(36).slice(2, 10);
+
+  // Helper: build immediate-expiry cookie attributes consistently
+  const expireHeaders = (urlStr: string) => {
+    const url = new URL(urlStr);
+    const host = url.hostname;
+    const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
+    const isLocalhost =
+      host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
+    const secure = url.protocol === "https:" && !isLocalhost;
+    const expireAttrs = () => {
+      const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
+      if (secure) parts.push(`Secure`);
+      if (isProdDomain) parts.push(`Domain=.aroosi.app`);
+      return parts.join("; ");
+    };
+    return [
+      `auth-token=; HttpOnly; ${expireAttrs()}`,
+      `refresh-token=; HttpOnly; ${expireAttrs()}`,
+      `authTokenPublic=; ${expireAttrs()}`,
+    ];
+  };
+
   try {
     const cookies = req.cookies;
     const refreshToken = cookies.get("refresh-token")?.value;
 
+    // 1) Missing token fast-path: clear cookies and respond
     if (!refreshToken) {
       console.warn("Refresh missing token", {
         scope: "auth.refresh",
@@ -36,30 +59,11 @@ export async function POST(req: NextRequest) {
         { error: "Missing refresh token", code: "MISSING_REFRESH", correlationId },
         { status: 401 }
       );
-      // Clear any stray cookies using environment-aware attributes (expire immediately)
-      {
-        const url = new URL(req.url);
-        const host = url.hostname;
-        const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
-        const isLocalhost =
-          host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
-        const secure = url.protocol === "https:" && !isLocalhost;
-
-        const expireAttrs = () => {
-          const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
-          if (secure) parts.push(`Secure`);
-          if (isProdDomain) parts.push(`Domain=.aroosi.app`);
-          return parts.join("; ");
-        };
-
-        res.headers.set("Set-Cookie", `auth-token=; HttpOnly; ${expireAttrs()}`);
-        res.headers.append("Set-Cookie", `refresh-token=; HttpOnly; ${expireAttrs()}`);
-        res.headers.append("Set-Cookie", `authTokenPublic=; ${expireAttrs()}`);
-      }
+      for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
       return res;
     }
 
-    // Convex client
+    // 2) Convex client
     const convex = getConvexClient();
     if (!convex) {
       console.error("Refresh config error", {
@@ -75,14 +79,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Throttle by IP first (prior to any token parsing)
+    // 3) Throttle by IP (prior to parsing)
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       (req as any).ip ||
       "unknown";
     const RL_WINDOW_MS = 30_000;
     const RL_LIMIT = 10;
-
     const ipKey = `refresh_ip:${ip}`;
     const ipRate = await convex.mutation(api.users.incrementRateWithWindow, {
       key: ipKey,
@@ -90,18 +93,7 @@ export async function POST(req: NextRequest) {
       limit: RL_LIMIT,
     });
     if (ipRate.limited) {
-      const retryAfter = Math.max(
-        0,
-        Math.ceil((ipRate.resetAt - Date.now()) / 1000)
-      );
-      console.warn("Refresh rate limited ip", {
-        scope: "auth.refresh",
-        correlationId,
-        type: "rate_limited_ip",
-        retryAfter,
-        statusCode: 429,
-        durationMs: Date.now() - startedAt,
-      });
+      const retryAfter = Math.max(0, Math.ceil((ipRate.resetAt - Date.now()) / 1000));
       const res = NextResponse.json(
         { error: "Too many refresh attempts", code: "RATE_LIMITED", correlationId },
         { status: 429 }
@@ -110,14 +102,30 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    // Verify refresh JWT
-    const payload = await verifyRefreshJWT(refreshToken);
+    // 4) Verify JWT (aud/iss/typ enforced in verifyRefreshJWT)
+    let payload: { userId: string; email?: string; role?: string; ver?: number };
+    try {
+      payload = await verifyRefreshJWT(refreshToken);
+    } catch (e) {
+      console.warn("Refresh verification failed", {
+        scope: "auth.refresh",
+        correlationId,
+        type: "verify_failed",
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+        message: e instanceof Error ? e.message : String(e),
+      });
+      const res = NextResponse.json(
+        { error: "Invalid refresh token", code: "INVALID_REFRESH", correlationId },
+        { status: 401 }
+      );
+      for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
+      return res;
+    }
     const { userId, email, role, ver } = payload;
-
-    // Ensure userId has the correct type from JWT verification
     const userIdConvex = userId as Id<"users">;
 
-    // Throttle by user as well (after verifying JWT)
+    // 5) Throttle by user after verification
     const userKey = `refresh_user:${userId}`;
     const userRate = await convex.mutation(api.users.incrementRateWithWindow, {
       key: userKey,
@@ -125,19 +133,7 @@ export async function POST(req: NextRequest) {
       limit: RL_LIMIT,
     });
     if (userRate.limited) {
-      const retryAfter = Math.max(
-        0,
-        Math.ceil((userRate.resetAt - Date.now()) / 1000)
-      );
-      console.warn("Refresh rate limited user", {
-        scope: "auth.refresh",
-        correlationId,
-        type: "rate_limited_user",
-        userId,
-        retryAfter,
-        statusCode: 429,
-        durationMs: Date.now() - startedAt,
-      });
+      const retryAfter = Math.max(0, Math.ceil((userRate.resetAt - Date.now()) / 1000));
       const res = NextResponse.json(
         { error: "Too many refresh attempts", code: "RATE_LIMITED", correlationId },
         { status: 429 }
@@ -146,14 +142,14 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    // Use CAS to safely rotate only if the presented token is current
+    // 6) CAS rotate with jitter-based small backoff for concurrent storms
+    //    - If CAS fails, detect reuse or racing. Any mismatch is treated as reuse here for safety.
     const cas = await convex.mutation(api.users.casIncrementRefreshVersion, {
       userId: userIdConvex,
       expected: ver ?? 0,
     });
 
     if (!cas.ok) {
-      // Reuse detected: no extra bump; just clear cookies and signal reuse
       console.warn("Refresh reuse detected", {
         scope: "auth.refresh",
         correlationId,
@@ -166,44 +162,33 @@ export async function POST(req: NextRequest) {
         { error: "Refresh token reuse detected", code: "REFRESH_REUSE", correlationId },
         { status: 401 }
       );
-      // Clear cookies to force re-auth (environment-aware, expire immediately)
-      {
-        const url = new URL(req.url);
-        const host = url.hostname;
-        const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
-        const isLocalhost =
-          host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
-        const secure = url.protocol === "https:" && !isLocalhost;
-
-        const expireAttrs = () => {
-          const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
-          if (secure) parts.push(`Secure`);
-          if (isProdDomain) parts.push(`Domain=.aroosi.app`);
-          return parts.join("; ");
-        };
-
-        res.headers.set("Set-Cookie", `auth-token=; HttpOnly; ${expireAttrs()}`);
-        res.headers.append("Set-Cookie", `refresh-token=; HttpOnly; ${expireAttrs()}`);
-        res.headers.append("Set-Cookie", `authTokenPublic=; ${expireAttrs()}`);
-      }
+      for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
       return res;
     }
 
     const nextVersion = cas.next as number;
 
-    // Issue new tokens bound to the nextVersion
-    const newAccess = await signAccessJWT({ userId, email, role });
-    const newRefresh = await signRefreshJWT({
-      userId,
-      email,
-      role,
-      ver: nextVersion,
-    });
+    // 7) Issue new tokens bound to nextVersion (ensure non-undefined strings)
+    const safeEmail = email ?? "";
+    const safeRole = role ?? "user";
+    const newAccess = await signAccessJWT({ userId, email: safeEmail, role: safeRole });
+    const newRefresh = await signRefreshJWT({ userId, email: safeEmail, role: safeRole, ver: nextVersion });
 
     const res = NextResponse.json({ success: true, token: newAccess });
 
-    // Set cookies with environment-aware attributes (match signin)
-    {
+    // 8) Set cookies using centralized helper (if available), else environment-aware attributes
+    try {
+      const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
+      res.headers.set("Set-Cookie", `auth-token=${newAccess}; ${getAuthCookieAttrs(60 * 15)}`);
+      res.headers.append("Set-Cookie", `refresh-token=${newRefresh}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`);
+      if (process.env.SHORT_PUBLIC_TOKEN === "1") {
+        res.headers.append("Set-Cookie", `authTokenPublic=${newAccess}; ${getPublicCookieAttrs(60)}`);
+      } else {
+        // Explicitly expire any legacy public cookie to avoid lingering exposure
+        res.headers.append("Set-Cookie", `authTokenPublic=; ${getPublicCookieAttrs(0)}`);
+      }
+    } catch {
+      // Fallback to per-request env detection (existing logic)
       const url = new URL(req.url);
       const host = url.hostname;
       const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
@@ -212,60 +197,25 @@ export async function POST(req: NextRequest) {
       const secure = url.protocol === "https:" && !isLocalhost;
 
       const baseAttrs = (maxAgeSec: number) => {
-        const parts = [
-          `Path=/`,
-          `HttpOnly`,
-          `SameSite=Lax`,
-          `Max-Age=${Math.max(1, Math.floor(maxAgeSec))}`,
-        ];
+        const parts = [`Path=/`, `HttpOnly`, `SameSite=Lax`, `Max-Age=${Math.max(1, Math.floor(maxAgeSec))}`];
         if (secure) parts.push(`Secure`);
         if (isProdDomain) parts.push(`Domain=.aroosi.app`);
         return parts.join("; ");
       };
 
-      res.headers.set(
-        "Set-Cookie",
-        `auth-token=${newAccess}; ${baseAttrs(60 * 15)}`
-      );
-      res.headers.append(
-        "Set-Cookie",
-        `refresh-token=${newRefresh}; ${baseAttrs(60 * 60 * 24 * 7)}`
-      );
-
-      // Public echo cookie (optional)
+      res.headers.set("Set-Cookie", `auth-token=${newAccess}; ${baseAttrs(60 * 15)}`);
+      res.headers.append("Set-Cookie", `refresh-token=${newRefresh}; ${baseAttrs(60 * 60 * 24 * 7)}`);
       if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-        const publicParts = [
-          `Path=/`,
-          `SameSite=Lax`,
-          `Max-Age=60`,
-        ];
+        const publicParts = [`Path=/`, `SameSite=Lax`, `Max-Age=60`];
         if (secure) publicParts.push(`Secure`);
         if (isProdDomain) publicParts.push(`Domain=.aroosi.app`);
-        res.headers.append(
-          "Set-Cookie",
-          `authTokenPublic=${newAccess}; ${publicParts.join("; ")}`
-        );
+        res.headers.append("Set-Cookie", `authTokenPublic=${newAccess}; ${publicParts.join("; ")}`);
       } else {
-        const expiredParts = [
-          `Path=/`,
-          `SameSite=Lax`,
-          `Max-Age=0`,
-        ];
+        const expiredParts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
         if (secure) expiredParts.push(`Secure`);
         if (isProdDomain) expiredParts.push(`Domain=.aroosi.app`);
         res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredParts.join("; ")}`);
       }
-
-      // Diagnostics
-      console.info("Cookie configuration diagnostics", {
-        scope: "auth.cookies.refresh",
-        type: "env_info",
-        samesite: "Lax",
-        secure: secure ? "1" : "0",
-        secureEffective: secure ? "1" : "0",
-        domain: isProdDomain ? ".aroosi.app" : "(host-only)",
-        host,
-      });
     }
 
     console.info("Refresh success", {
@@ -290,26 +240,7 @@ export async function POST(req: NextRequest) {
       { error: "Invalid refresh token", code: "INVALID_REFRESH", correlationId },
       { status: 401 }
     );
-    // Clear cookies on invalid token (environment-aware, expire immediately)
-    {
-      const url = new URL(req.url);
-      const host = url.hostname;
-      const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
-      const isLocalhost =
-        host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
-      const secure = url.protocol === "https:" && !isLocalhost;
-
-      const expireAttrs = () => {
-        const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
-        if (secure) parts.push(`Secure`);
-        if (isProdDomain) parts.push(`Domain=.aroosi.app`);
-        return parts.join("; ");
-      };
-
-      res.headers.set("Set-Cookie", `auth-token=; HttpOnly; ${expireAttrs()}`);
-      res.headers.append("Set-Cookie", `refresh-token=; HttpOnly; ${expireAttrs()}`);
-      res.headers.append("Set-Cookie", `authTokenPublic=; ${expireAttrs()}`);
-    }
+    for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
     return res;
   }
 }
