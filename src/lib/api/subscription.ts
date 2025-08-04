@@ -202,6 +202,70 @@ class SubscriptionAPI {
       },
     };
   }
+
+  /**
+   * Cancel current user's subscription
+   * POST /api/subscription/cancel
+   */
+  async cancel(token?: string): Promise<{ message: string }> {
+    const data = (await this.makeRequest(
+      "/api/subscription/cancel",
+      { method: "POST" },
+      token
+    )) as { message?: string };
+    return { message: data?.message ?? "Subscription cancellation requested" };
+  }
+
+  /**
+   * Upgrade to a plan (creates Stripe Checkout session or server flow)
+   * POST /api/stripe/checkout with { planId }
+   */
+  async upgrade(
+    tier: "premium" | "premiumPlus",
+    token?: string
+  ): Promise<{ message: string; url?: string }> {
+    const body = JSON.stringify({ planId: tier });
+    const data = (await this.makeRequest(
+      "/api/stripe/checkout",
+      { method: "POST", body },
+      token
+    )) as { url?: string; message?: string; error?: string };
+    if (data?.url) {
+      return { message: "Redirecting to checkout", url: data.url };
+    }
+    return { message: data?.message ?? "Checkout session created" };
+  }
+
+  /**
+   * Restore purchases (server-side reconciliation)
+   * POST /api/subscription/restore
+   */
+  async restorePurchases(token?: string): Promise<{ message: string }> {
+    const data = (await this.makeRequest(
+      "/api/subscription/restore",
+      { method: "POST" },
+      token
+    )) as { message?: string };
+    return { message: data?.message ?? "Subscription restored if eligible" };
+  }
+
+  /**
+   * Track feature usage (optional helper if endpoint exists)
+   * POST /api/subscription/track with { feature }
+   */
+  async trackUsage(feature: string, token?: string): Promise<{ success: boolean }> {
+    try {
+      const res = (await this.makeRequest(
+        "/api/subscription/track",
+        { method: "POST", body: JSON.stringify({ feature }) },
+        token
+      )) as { success?: boolean };
+      return { success: Boolean(res?.success) };
+    } catch {
+      // Silently ignore if endpoint not present
+      return { success: false };
+    }
+  }
 }
 
 export const subscriptionAPI = new SubscriptionAPI();
