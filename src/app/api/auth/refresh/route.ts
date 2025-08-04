@@ -36,22 +36,25 @@ export async function POST(req: NextRequest) {
         { error: "Missing refresh token", code: "MISSING_REFRESH", correlationId },
         { status: 401 }
       );
-      // Clear any stray cookies using centralized helper (expire immediately)
+      // Clear any stray cookies using environment-aware attributes (expire immediately)
       {
-        const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
-          "@/lib/auth/cookies"
-        );
-        const expiredAuth = getAuthCookieAttrs(0).replace(
-          /Max-Age=\d+/,
-          "Max-Age=0"
-        );
-        const expiredPublic = getPublicCookieAttrs(0).replace(
-          /Max-Age=\d+/,
-          "Max-Age=0"
-        );
-        res.headers.set("Set-Cookie", `auth-token=; ${expiredAuth}`);
-        res.headers.append("Set-Cookie", `refresh-token=; ${expiredAuth}`);
-        res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
+        const url = new URL(req.url);
+        const host = url.hostname;
+        const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
+        const isLocalhost =
+          host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
+        const secure = url.protocol === "https:" && !isLocalhost;
+
+        const expireAttrs = () => {
+          const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
+          if (secure) parts.push(`Secure`);
+          if (isProdDomain) parts.push(`Domain=.aroosi.app`);
+          return parts.join("; ");
+        };
+
+        res.headers.set("Set-Cookie", `auth-token=; HttpOnly; ${expireAttrs()}`);
+        res.headers.append("Set-Cookie", `refresh-token=; HttpOnly; ${expireAttrs()}`);
+        res.headers.append("Set-Cookie", `authTokenPublic=; ${expireAttrs()}`);
       }
       return res;
     }
@@ -163,22 +166,25 @@ export async function POST(req: NextRequest) {
         { error: "Refresh token reuse detected", code: "REFRESH_REUSE", correlationId },
         { status: 401 }
       );
-      // Clear cookies to force re-auth (centralized helper, expire immediately)
+      // Clear cookies to force re-auth (environment-aware, expire immediately)
       {
-        const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
-          "@/lib/auth/cookies"
-        );
-        const expiredAuth = getAuthCookieAttrs(0).replace(
-          /Max-Age=\d+/,
-          "Max-Age=0"
-        );
-        const expiredPublic = getPublicCookieAttrs(0).replace(
-          /Max-Age=\d+/,
-          "Max-Age=0"
-        );
-        res.headers.set("Set-Cookie", `auth-token=; ${expiredAuth}`);
-        res.headers.append("Set-Cookie", `refresh-token=; ${expiredAuth}`);
-        res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
+        const url = new URL(req.url);
+        const host = url.hostname;
+        const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
+        const isLocalhost =
+          host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
+        const secure = url.protocol === "https:" && !isLocalhost;
+
+        const expireAttrs = () => {
+          const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
+          if (secure) parts.push(`Secure`);
+          if (isProdDomain) parts.push(`Domain=.aroosi.app`);
+          return parts.join("; ");
+        };
+
+        res.headers.set("Set-Cookie", `auth-token=; HttpOnly; ${expireAttrs()}`);
+        res.headers.append("Set-Cookie", `refresh-token=; HttpOnly; ${expireAttrs()}`);
+        res.headers.append("Set-Cookie", `authTokenPublic=; ${expireAttrs()}`);
       }
       return res;
     }
@@ -196,34 +202,70 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ success: true, token: newAccess });
 
-    // Use centralized cookie helpers for parity across routes
-    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
-      "@/lib/auth/cookies"
-    );
+    // Set cookies with environment-aware attributes (match signin)
+    {
+      const url = new URL(req.url);
+      const host = url.hostname;
+      const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
+      const isLocalhost =
+        host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
+      const secure = url.protocol === "https:" && !isLocalhost;
 
-    res.headers.set(
-      "Set-Cookie",
-      `auth-token=${newAccess}; ${getAuthCookieAttrs(60 * 15)}`
-    );
-    res.headers.append(
-      "Set-Cookie",
-      `refresh-token=${newRefresh}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
-    );
+      const baseAttrs = (maxAgeSec: number) => {
+        const parts = [
+          `Path=/`,
+          `HttpOnly`,
+          `SameSite=Lax`,
+          `Max-Age=${Math.max(1, Math.floor(maxAgeSec))}`,
+        ];
+        if (secure) parts.push(`Secure`);
+        if (isProdDomain) parts.push(`Domain=.aroosi.app`);
+        return parts.join("; ");
+      };
 
-    // Only set public echo cookie if explicitly enabled
-    if (process.env.SHORT_PUBLIC_TOKEN === "1") {
+      res.headers.set(
+        "Set-Cookie",
+        `auth-token=${newAccess}; ${baseAttrs(60 * 15)}`
+      );
       res.headers.append(
         "Set-Cookie",
-        `authTokenPublic=${newAccess}; ${getPublicCookieAttrs(60)}`
+        `refresh-token=${newRefresh}; ${baseAttrs(60 * 60 * 24 * 7)}`
       );
-    } else {
-      // Ensure any prior public cookie is cleared (defense-in-depth)
-      // Construct an expired cookie using helper and overriding Max-Age=0
-      const expiredPublic = getPublicCookieAttrs(0).replace(
-        /Max-Age=\d+/,
-        "Max-Age=0"
-      );
-      res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
+
+      // Public echo cookie (optional)
+      if (process.env.SHORT_PUBLIC_TOKEN === "1") {
+        const publicParts = [
+          `Path=/`,
+          `SameSite=Lax`,
+          `Max-Age=60`,
+        ];
+        if (secure) publicParts.push(`Secure`);
+        if (isProdDomain) publicParts.push(`Domain=.aroosi.app`);
+        res.headers.append(
+          "Set-Cookie",
+          `authTokenPublic=${newAccess}; ${publicParts.join("; ")}`
+        );
+      } else {
+        const expiredParts = [
+          `Path=/`,
+          `SameSite=Lax`,
+          `Max-Age=0`,
+        ];
+        if (secure) expiredParts.push(`Secure`);
+        if (isProdDomain) expiredParts.push(`Domain=.aroosi.app`);
+        res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredParts.join("; ")}`);
+      }
+
+      // Diagnostics
+      console.info("Cookie configuration diagnostics", {
+        scope: "auth.cookies.refresh",
+        type: "env_info",
+        samesite: "Lax",
+        secure: secure ? "1" : "0",
+        secureEffective: secure ? "1" : "0",
+        domain: isProdDomain ? ".aroosi.app" : "(host-only)",
+        host,
+      });
     }
 
     console.info("Refresh success", {
@@ -248,22 +290,25 @@ export async function POST(req: NextRequest) {
       { error: "Invalid refresh token", code: "INVALID_REFRESH", correlationId },
       { status: 401 }
     );
-    // Clear cookies on invalid token (centralized helper, expire immediately)
+    // Clear cookies on invalid token (environment-aware, expire immediately)
     {
-      const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
-        "@/lib/auth/cookies"
-      );
-      const expiredAuth = getAuthCookieAttrs(0).replace(
-        /Max-Age=\d+/,
-        "Max-Age=0"
-      );
-      const expiredPublic = getPublicCookieAttrs(0).replace(
-        /Max-Age=\d+/,
-        "Max-Age=0"
-      );
-      res.headers.set("Set-Cookie", `auth-token=; ${expiredAuth}`);
-      res.headers.append("Set-Cookie", `refresh-token=; ${expiredAuth}`);
-      res.headers.append("Set-Cookie", `authTokenPublic=; ${expiredPublic}`);
+      const url = new URL(req.url);
+      const host = url.hostname;
+      const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
+      const isLocalhost =
+        host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
+      const secure = url.protocol === "https:" && !isLocalhost;
+
+      const expireAttrs = () => {
+        const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
+        if (secure) parts.push(`Secure`);
+        if (isProdDomain) parts.push(`Domain=.aroosi.app`);
+        return parts.join("; ");
+      };
+
+      res.headers.set("Set-Cookie", `auth-token=; HttpOnly; ${expireAttrs()}`);
+      res.headers.append("Set-Cookie", `refresh-token=; HttpOnly; ${expireAttrs()}`);
+      res.headers.append("Set-Cookie", `authTokenPublic=; ${expireAttrs()}`);
     }
     return res;
   }
