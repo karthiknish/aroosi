@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { Notifications } from "@/lib/notify";
 import {
   validateProfileData,
@@ -25,9 +25,10 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as Response;
+    // Strict cookie-auth: use server-side session resolution
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as Response;
       const status = (res as unknown as { status?: number }).status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
     if (!userId) {
       console.warn("Profile GET missing userId", {
         scope: "profile.get",
@@ -88,14 +89,14 @@ export async function GET(request: NextRequest) {
         durationMs: Date.now() - startedAt,
       });
       return new Response(
-        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        JSON.stringify({
+          error: "Convex client not configured",
+          correlationId,
+        }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
-    try {
-      // @ts-ignore legacy guard
-      convex.setAuth?.(token);
-    } catch {}
+    // Cookie-auth only: never set a bearer on Convex client
     const profile = await convex
       .query(api.profiles.getProfileByUserId, {
         userId: userId as Id<"users">,
@@ -147,7 +148,10 @@ export async function GET(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     return new Response(
-      JSON.stringify({ error: "Failed to process profile request", correlationId }),
+      JSON.stringify({
+        error: "Failed to process profile request",
+        correlationId,
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -157,9 +161,10 @@ export async function PUT(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as Response;
+    // Strict cookie-auth
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as Response;
       const status = (res as unknown as { status?: number }).status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -178,7 +183,7 @@ export async function PUT(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
     if (!userId) {
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -213,14 +218,14 @@ export async function PUT(request: NextRequest) {
         durationMs: Date.now() - startedAt,
       });
       return new Response(
-        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        JSON.stringify({
+          error: "Convex client not configured",
+          correlationId,
+        }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
-    try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
-    } catch {}
+    // Cookie-auth only: never set a bearer on Convex client
 
     let body;
     try {
@@ -282,13 +287,19 @@ export async function PUT(request: NextRequest) {
     ) as Record<string, unknown>;
     if (Object.keys(updates).length === 0)
       return new Response(
-        JSON.stringify({ error: "No valid profile fields provided.", correlationId }),
+        JSON.stringify({
+          error: "No valid profile fields provided.",
+          correlationId,
+        }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     const validation = validateProfileData(updates);
     if (!validation.isValid)
       return new Response(
-        JSON.stringify({ error: validation.error || "Invalid profile data", correlationId }),
+        JSON.stringify({
+          error: validation.error || "Invalid profile data",
+          correlationId,
+        }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     const profile = await convex.query(api.profiles.getProfileByUserId, {
@@ -364,9 +375,10 @@ export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(req);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as Response;
+    // Strict cookie-auth
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as Response;
       const status = (res as unknown as { status?: number }).status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -385,7 +397,7 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
     if (!userId)
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -404,12 +416,15 @@ export async function POST(req: NextRequest) {
     const convex = getConvexClient();
     if (!convex)
       return new Response(
-        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        JSON.stringify({
+          error: "Convex client not configured",
+          correlationId,
+        }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
+      // cookie-only model: do not set Convex auth token here
+      // convex.setAuth?.(undefined as unknown as string);
     } catch {}
     let body: Record<string, unknown>;
     try {
@@ -469,12 +484,11 @@ export async function POST(req: NextRequest) {
         { status: 409, headers: { "Content-Type": "application/json" } }
       );
 
-    const filteredImageIds =
-      Array.isArray(sanitizedBody.profileImageIds)
-        ? (sanitizedBody.profileImageIds as string[]).filter(
-            (id) => typeof id === "string" && !id.startsWith("local-")
-          )
-        : undefined;
+    const filteredImageIds = Array.isArray(sanitizedBody.profileImageIds)
+      ? (sanitizedBody.profileImageIds as string[]).filter(
+          (id) => typeof id === "string" && !id.startsWith("local-")
+        )
+      : undefined;
 
     const profileData = {
       fullName: String(sanitizedBody.fullName || ""),
@@ -642,9 +656,10 @@ export async function DELETE(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as Response;
+    // Strict cookie-auth
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as Response;
       const status = (res as unknown as { status?: number }).status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -663,7 +678,7 @@ export async function DELETE(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
     if (!userId)
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -682,19 +697,25 @@ export async function DELETE(request: NextRequest) {
     const convex = getConvexClient();
     if (!convex)
       return new Response(
-        JSON.stringify({ error: "Convex client not configured", correlationId }),
+        JSON.stringify({
+          error: "Convex client not configured",
+          correlationId,
+        }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
+      // cookie-only model: do not set Convex auth token here
+      // convex.setAuth?.(undefined as unknown as string);
     } catch {}
     const profile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
     });
     if (!profile || !profile._id)
       return new Response(
-        JSON.stringify({ error: "No user or profile found for deletion", correlationId }),
+        JSON.stringify({
+          error: "No user or profile found for deletion",
+          correlationId,
+        }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     if (profile.userId !== userId)
@@ -704,7 +725,11 @@ export async function DELETE(request: NextRequest) {
       );
     await convex.mutation(api.users.deleteProfile, { id: profile._id });
     const response = new Response(
-      JSON.stringify({ message: "User and profile deleted successfully", correlationId, success: true }),
+      JSON.stringify({
+        message: "User and profile deleted successfully",
+        correlationId,
+        success: true,
+      }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
     console.info("Profile DELETE success", {
@@ -726,7 +751,10 @@ export async function DELETE(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     return new Response(
-      JSON.stringify({ error: "Failed to delete user and profile", correlationId }),
+      JSON.stringify({
+        error: "Failed to delete user and profile",
+        correlationId,
+      }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
