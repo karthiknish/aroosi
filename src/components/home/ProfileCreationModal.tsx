@@ -272,8 +272,8 @@ export function ProfileCreationModal({
     },
   });
 
-  // Auth context for token and userId
-  const { token, getToken, user: authUser, refreshUser } = useAuth();
+  // Auth context for userId only (cookie-auth; no tokens stored client-side)
+  const { user: authUser, refreshUser } = useAuth();
   const userId = authUser?.id;
 
   // Custom close handler that clears localStorage
@@ -998,7 +998,8 @@ export function ProfileCreationModal({
               // 1) Generate upload URL
               let uploadUrl: string | null = null;
               try {
-                uploadUrl = await requestImageUploadUrl(authToken);
+                // Helper expects a string token; pass empty to indicate cookie-auth
+                uploadUrl = await requestImageUploadUrl("");
               } catch (e) {
                 const reason =
                   e instanceof Error ? e.message : "Failed to get upload URL";
@@ -1301,8 +1302,6 @@ export function ProfileCreationModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isAuthenticated,
-    token,
-    getToken,
     formData,
     pendingImages,
     userId,

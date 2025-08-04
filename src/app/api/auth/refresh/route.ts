@@ -21,24 +21,14 @@ export async function POST(req: NextRequest) {
   const startedAt = Date.now();
   const correlationId = Math.random().toString(36).slice(2, 10);
 
-  // Helper: build immediate-expiry cookie attributes consistently
-  const expireHeaders = (urlStr: string) => {
-    const url = new URL(urlStr);
-    const host = url.hostname;
-    const isProdDomain = host === "aroosi.app" || host.endsWith(".aroosi.app");
-    const isLocalhost =
-      host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
-    const secure = url.protocol === "https:" && !isLocalhost;
-    const expireAttrs = () => {
-      const parts = [`Path=/`, `SameSite=Lax`, `Max-Age=0`];
-      if (secure) parts.push(`Secure`);
-      if (isProdDomain) parts.push(`Domain=.aroosi.app`);
-      return parts.join("; ");
-    };
+  // Centralized immediate-expiry cookie attributes
+  const getExpireList = async () => {
+    const { getExpireCookieAttrs } = await import("@/lib/auth/cookies");
+    const attrs = getExpireCookieAttrs();
     return [
-      `auth-token=; HttpOnly; ${expireAttrs()}`,
-      `refresh-token=; HttpOnly; ${expireAttrs()}`,
-      `authTokenPublic=; ${expireAttrs()}`,
+      `auth-token=; HttpOnly; ${attrs}`,
+      `refresh-token=; HttpOnly; ${attrs}`,
+      `authTokenPublic=; ${attrs}`,
     ];
   };
 
@@ -59,7 +49,7 @@ export async function POST(req: NextRequest) {
         { error: "Missing refresh token", code: "MISSING_REFRESH", correlationId },
         { status: 401 }
       );
-      for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
+      for (const c of await getExpireList()) res.headers.append("Set-Cookie", c);
       return res;
     }
 
@@ -119,7 +109,7 @@ export async function POST(req: NextRequest) {
         { error: "Invalid refresh token", code: "INVALID_REFRESH", correlationId },
         { status: 401 }
       );
-      for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
+      for (const c of await getExpireList()) res.headers.append("Set-Cookie", c);
       return res;
     }
     const { userId, email, role, ver } = payload;
@@ -162,7 +152,7 @@ export async function POST(req: NextRequest) {
         { error: "Refresh token reuse detected", code: "REFRESH_REUSE", correlationId },
         { status: 401 }
       );
-      for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
+      for (const c of await getExpireList()) res.headers.append("Set-Cookie", c);
       return res;
     }
 
@@ -240,7 +230,7 @@ export async function POST(req: NextRequest) {
       { error: "Invalid refresh token", code: "INVALID_REFRESH", correlationId },
       { status: 401 }
     );
-    for (const c of expireHeaders(req.url)) res.headers.append("Set-Cookie", c);
+    for (const c of await getExpireList()) res.headers.append("Set-Cookie", c);
     return res;
   }
 }

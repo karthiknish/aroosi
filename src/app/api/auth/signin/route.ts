@@ -313,22 +313,25 @@ export async function POST(request: NextRequest) {
         ? "/search"
         : "/profile/create";
 
-    // Unified response shape
-    const response = NextResponse.json({
-      status: "ok",
-      message: "Signed in successfully",
-      token: accessToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role || "user",
-        profile: profilePayload,
+    // Unified response shape with no-store to avoid caching
+    const response = NextResponse.json(
+      {
+        status: "ok",
+        message: "Signed in successfully",
+        token: accessToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role || "user",
+          profile: profilePayload,
+        },
+        isNewUser: false,
+        redirectTo,
+        refreshed: false,
+        correlationId,
       },
-      isNewUser: false,
-      redirectTo,
-      refreshed: false,
-      correlationId,
-    });
+      { headers: { "Cache-Control": "no-store" } }
+    );
 
     // Cookie policy via centralized helper (env-driven)
     const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
@@ -336,6 +339,12 @@ export async function POST(request: NextRequest) {
     response.headers.set(
       "Set-Cookie",
       `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
+    );
+    // Defensive: expire any existing refresh-token first to avoid stale family issues
+    const { getExpireCookieAttrs } = await import("@/lib/auth/cookies");
+    response.headers.append(
+      "Set-Cookie",
+      `refresh-token=; HttpOnly; ${getExpireCookieAttrs()}`
     );
     // Refresh token - 7 days
     response.headers.append(
