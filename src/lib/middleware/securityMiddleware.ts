@@ -23,8 +23,14 @@ const RATE_LIMITS = {
   "/api/search": { requests: 200, window: 60 * 60 * 1000 }, // 200 searches per hour
   "/api/search-images": { requests: 50, window: 60 * 60 * 1000 }, // 50 image searches per hour
 
+  // Matches & Interests (cookie-auth)
+  "/api/matches": { requests: 60, window: 60 * 60 * 1000 }, // up to 60 list fetches per hour
+  "/api/matches/unread": { requests: 300, window: 60 * 60 * 1000 }, // lightweight polling
   // Interest operations
   "/api/interests": { requests: 50, window: 60 * 60 * 1000 }, // 50 interests per hour
+  "/api/interests/respond": { requests: 100, window: 60 * 60 * 1000 }, // accept/reject actions
+  "/api/interests/status": { requests: 600, window: 60 * 60 * 1000 }, // small GETs, allow more
+  "/api/interests/sent": { requests: 200, window: 60 * 60 * 1000 }, // listing user sent interests
 
   // Image operations
   "/api/profile-images": { requests: 20, window: 60 * 60 * 1000 }, // 20 image operations per hour
@@ -83,6 +89,8 @@ export async function securityMiddleware(request: NextRequest): Promise<NextResp
       }, request);
       
       const response = createSecureErrorResponse('Rate limit exceeded', 429);
+      // Attach a machine-readable error code for client mapping
+      response.headers.set('X-Error-Code', 'RATE_LIMITED');
       response.headers.set('X-RateLimit-Limit', rateLimitResult.limit.toString());
       response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString());
       response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString());

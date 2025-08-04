@@ -33,7 +33,7 @@ import { Id } from "@convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAuthContext } from "@/components/AuthProvider";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchUserProfileImages,
   fetchUserProfile,
@@ -76,6 +76,10 @@ export default function ProfileDetailPage() {
   } | null;
   const offline = useOffline();
   const { trackUsage } = useUsageTracking(token ?? undefined);
+  // Ensure a single declaration of queryClient
+  const queryClient = useQueryClient();
+  // Ensure a single declaration of queryClient
+  const queryClient = useQueryClient();
 
   const id = params?.id as string;
   const userId = id as Id<"users">;
@@ -213,14 +217,25 @@ export default function ProfileDetailPage() {
   // Compute alreadySentInterest, but allow local override for instant UI
   const alreadySentInterest = useMemo(() => {
     if (localInterest !== null) return localInterest;
+
+    // Prefer lightweight status
+    if (
+      interestStatus &&
+      typeof interestStatus === "object" &&
+      "status" in interestStatus
+    ) {
+      const s = (interestStatus as { status?: string }).status;
+      if (s === "pending" || s === "accepted") return true;
+      if (s === "rejected") return false;
+    }
+
     if (!sentInterests || !Array.isArray(sentInterests)) return false;
     return sentInterests.some((interest) => {
       if (interest.toUserId !== toUserId || interest.fromUserId !== fromUserId)
         return false;
-      // Treat both pending and accepted as an active interest
       return interest.status !== "rejected";
     });
-  }, [sentInterests, toUserId, fromUserId, localInterest]);
+  }, [interestStatus, sentInterests, toUserId, fromUserId, localInterest]);
   // --- END: Add local state for interest status ---
 
   // Check if user is blocked
@@ -289,7 +304,20 @@ export default function ProfileDetailPage() {
         setLocalInterest(false);
         const responseData = await removeInterestCookie(toUserId);
         showSuccessToast("Interest withdrawn successfully!");
-        await refetchSentInterests();
+
+        // Invalidate and refetch related queries
+        void queryClient.invalidateQueries({
+          queryKey: ["interestStatus", fromUserId, toUserId],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["sentInterests", fromUserId, toUserId],
+        });
+        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["unreadCounts", "self"],
+        });
+        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
+
         setLocalInterest(null); // Let server state take over
         setShowHeartPop(false);
         return responseData;
@@ -303,12 +331,22 @@ export default function ProfileDetailPage() {
         // Track interest sent usage
         trackUsage({
           feature: "interest_sent",
-          metadata: {
-            targetUserId: toUserId,
-          },
+          metadata: { targetUserId: toUserId },
         });
 
-        await refetchSentInterests();
+        // Invalidate and refetch related queries
+        void queryClient.invalidateQueries({
+          queryKey: ["interestStatus", fromUserId, toUserId],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["sentInterests", fromUserId, toUserId],
+        });
+        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["unreadCounts", "self"],
+        });
+        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
+
         setLocalInterest(null); // Let server state take over
         setTimeout(() => setShowHeartPop(false), 600);
         return responseData;
