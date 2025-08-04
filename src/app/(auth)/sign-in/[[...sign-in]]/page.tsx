@@ -22,24 +22,39 @@ export default function SignInPage() {
   const isTrulyAuthenticated = isAuthenticated;
   const finalRedirect = "/search";
 
-  // Only redirect when actually authenticated and state has loaded
+  // Only redirect when actually authenticated and state has loaded.
+  // Additionally: On mount, if an old authTokenPublic or legacy token exists in JS context,
+  // let the server drive auth via cookies by always calling /api/auth/me before redirecting.
   React.useEffect(() => {
     let cancelled = false;
     const go = async () => {
-      // Do nothing until auth state is loaded
       if (!isLoaded) return;
-
-      // Only proceed when authenticated
       if (!isTrulyAuthenticated) return;
 
+      // Force a server truth check that also forwards Set-Cookie if refresh was needed.
+      // This ensures cookie auth is the source of truth and avoids relying on any legacy public token.
       try {
-        await refreshUser();
-      } catch {
-        // ignore
-      }
+        const resp = await fetch("/api/auth/me", {
+          method: "GET",
+          headers: {
+            "cache-control": "no-store",
+            accept: "application/json",
+          },
+          credentials: "include",
+        });
 
-      if (!cancelled) {
-        router.push(finalRedirect);
+        if (!resp.ok) {
+          // If session is invalid or refresh was reused, route to sign-in (we are already here) and reset state
+          // The AuthProvider should observe cookie changes; we just avoid redirecting forward.
+          return;
+        }
+
+        // Proceed to final redirect once server confirms valid session
+        if (!cancelled) {
+          router.push(finalRedirect);
+        }
+      } catch {
+        // Ignore network errors; stay on sign-in page
       }
     };
     void go();
@@ -52,7 +67,6 @@ export default function SignInPage() {
     isProfileComplete,
     isOnboardingComplete,
     finalRedirect,
-    refreshUser,
     router,
   ]);
 
@@ -99,7 +113,25 @@ export default function SignInPage() {
         >
           {/* Always show sign-in form for maximum safety.
              If a valid session exists, the effect above will redirect quickly. */}
-          <CustomSignInForm onComplete={() => router.push("/search")} />
+          <CustomSignInForm
+            onComplete={async () => {
+              // After successful sign-in, rely on cookies. Call /api/auth/me to ensure
+              // any Set-Cookie from refresh or issuance is fully applied, then redirect.
+              try {
+                await fetch("/api/auth/me", {
+                  method: "GET",
+                  headers: {
+                    accept: "application/json",
+                    "cache-control": "no-store",
+                  },
+                  credentials: "include",
+                });
+              } catch {
+                // ignore
+              }
+              router.push("/search");
+            }}
+          />
           <p className="text-center text-sm mt-4">
             <a
               href="/forgot-password"
