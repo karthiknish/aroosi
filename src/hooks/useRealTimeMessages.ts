@@ -276,7 +276,7 @@ export function useRealTimeMessages({
 
     // Broadcast typing stop
     // const event = createMessageEvent('typing_stop', conversationId, userId);
-  }, [userId, conversationId]);
+  }, [userId]);
 
   const sendTypingStart = useCallback(() => {
     if (!userId || !eventSourceRef.current) return;
@@ -293,7 +293,7 @@ export function useRealTimeMessages({
     typingTimeoutRef.current = setTimeout(() => {
       sendTypingStop();
     }, 3000);
-  }, [userId, conversationId, sendTypingStop]);
+  }, [userId, sendTypingStop]);
 
   // Mark messages as read
   const markAsRead = useCallback(

@@ -54,6 +54,59 @@ export interface SubscriptionError {
   userAction?: string;
 }
 
+/**
+ * Backward-compatible "handle" helper expected by tests and some callers.
+ * Accepts unknown errors (Error, Response, plain objects) and optional context,
+ * and returns a normalized SubscriptionError for UI consumption.
+ */
+export function handle(
+  error: unknown,
+  context?: string
+): SubscriptionError {
+  // If already normalized, just return
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "type" in error &&
+    "message" in error
+  ) {
+    const e = error as SubscriptionError;
+    return context
+      ? { ...e, details: { ...(e.details || {}), context } }
+      : e;
+  }
+
+  // If it's a Fetch Response that failed, map via the parser
+  if (typeof Response !== "undefined" && error instanceof Response) {
+    // This path is sync in signature but needs async parsing;
+    // Fall back to a best-effort mapping using status and generic message.
+    // Callers that have a Response should prefer parseApiError/fromFetchResponse.
+    const mapped = SubscriptionErrorHandler.fromHttpResponse(error.status);
+    return context
+      ? { ...mapped, details: { ...(mapped.details || {}), context } }
+      : mapped;
+  }
+
+  // Generic Error
+  if (error instanceof Error) {
+    const message = error.message || "An unexpected error occurred.";
+    return {
+      type: SubscriptionErrorType.UNKNOWN_ERROR,
+      message,
+      details: context ? { context } : undefined,
+      retryable: true,
+    };
+  }
+
+  // Fallback unknown
+  return {
+    type: SubscriptionErrorType.UNKNOWN_ERROR,
+    message: "An unexpected error occurred.",
+    details: context ? { context } : undefined,
+    retryable: true,
+  };
+}
+
 export class SubscriptionErrorHandler {
   private static readonly ERROR_MESSAGES: Record<
     SubscriptionErrorType,
@@ -259,6 +312,13 @@ export class SubscriptionErrorHandler {
       mapped.details = { ...(mapped.details || {}), context };
     }
     return mapped;
+  }
+  /**
+   * Static convenience method to match legacy usage:
+   * SubscriptionErrorHandler.handle(error, context?)
+   */
+  static handle(error: unknown, context?: string): SubscriptionError {
+    return handle(error, context);
   }
 }
 
