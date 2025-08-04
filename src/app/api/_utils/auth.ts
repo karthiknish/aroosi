@@ -1,170 +1,123 @@
-export function getAuthToken(req: import("next/server").NextRequest): {
-  token: string | null;
-  error?: string;
-} {
-  const authHeader =
-    req.headers.get("authorization") || req.headers.get("Authorization");
-  if (!authHeader) {
-    // Fallback for EventSource which can't send headers: look in query param
-    // WARNING: This is less secure and should be used only for SSE
-    const tokenFromQuery = req.nextUrl?.searchParams.get("token");
-    if (tokenFromQuery) {
-      // Log token usage from query for security monitoring
-      console.warn('Token accessed from query parameter - less secure method', {
-        url: req.url,
-        ip: req.headers.get('x-forwarded-for') || 'unknown'
-      });
-      return { token: tokenFromQuery };
-    }
-    return { token: null, error: "No authorization header" };
-  }
-  const [type, token] = authHeader.split(" ");
-  if (type !== "Bearer" || !token)
-    return { token: null, error: "Invalid authorization header" };
-  return { token };
+/**
+ * Cookie-only auth utilities for App Router API routes.
+ * No Authorization header parsing; identity is derived from HttpOnly session cookies.
+ */
+import type { NextRequest } from "next/server";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
+
+function json(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
 }
 
-// Decode a JWT and extract the role from JWT public metadata
-export function extractRoleFromToken(token: string): string | undefined {
+function readCookie(req: NextRequest, name: string): string | null {
   try {
-    const [, payloadPart] = token.split(".");
-    if (!payloadPart) return undefined;
-    // base64url decode
-    const padded = payloadPart
-      .padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), "=")
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-    const json = Buffer.from(padded, "base64").toString("utf-8");
-    interface JwtPayload {
-      publicMetadata?: { role?: string };
-      public_metadata?: { role?: string };
-      [key: string]: unknown;
-    }
-    const payload = JSON.parse(json) as JwtPayload;
-    // JWT puts role in publicMetadata or public_metadata
-    if (
-      payload.publicMetadata &&
-      typeof payload.publicMetadata.role === "string"
-    ) {
-      return payload.publicMetadata.role;
-    }
-    if (
-      payload.public_metadata &&
-      typeof payload.public_metadata.role === "string"
-    ) {
-      return payload.public_metadata.role;
-    }
-    return undefined;
+    const v = req.cookies.get(name)?.value;
+    return v && v.trim() ? v : null;
   } catch {
-    return undefined;
-  }
-}
-
-export function extractUserIdFromToken(token: string): string | null {
-  try {
-    const [, payloadPart] = token.split(".");
-    if (!payloadPart) return null;
-
-    // Base64url decode
-    const padded = payloadPart
-      .padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), "=")
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-
-    const json = Buffer.from(padded, "base64").toString("utf-8");
-    const payload = JSON.parse(json);
-
-    // JWT typically puts user ID in 'sub' field
-    return payload.sub || payload.userId || null;
-  } catch (error) {
-    console.error('Error extracting user ID from token:', error);
     return null;
   }
 }
 
-export function isAdminToken(token: string): boolean {
-  return extractRoleFromToken(token) === "admin";
-}
+/**
+ * Resolve current user strictly via cookies-backed session on the server.
+ * Returns { userId, user, profile } or an errorResponse.
+ */
+export async function requireSession(
+  req: NextRequest
+): Promise<
+  | { userId: Id<"users">; user: any; profile: any | null }
+  | { errorResponse: Response }
+> {
+  // Look for any of our accepted session cookies
+  const sessionToken =
+    readCookie(req, "__Secure-next-auth.session-token") ||
+    readCookie(req, "next-auth.session-token") ||
+    readCookie(req, "__Secure-session-token") ||
+    readCookie(req, "session-token") ||
+    readCookie(req, "auth-token") ||
+    readCookie(req, "jwt");
 
-export function requireAdminToken(
-  req: import("next/server").NextRequest
-): { token: string; userId?: string } | { errorResponse: Response } {
-  const { token, error } = getAuthToken(req);
-  if (!token) {
+  if (!sessionToken) {
     return {
-      errorResponse: new Response(
-        JSON.stringify({
-          success: false,
-          error: error || "Authentication failed",
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      ),
+      errorResponse: json(401, { success: false, error: "No auth session" }),
     };
   }
-  
-  // Validate user ID first
-  const userId = extractUserIdFromToken(token);
-  if (!userId) {
-    return {
-      errorResponse: new Response(
-        JSON.stringify({
-          success: false,
-          error: "Invalid token payload",
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      ),
-    };
+
+  // Use Convex server-side identity to fetch user
+  const current = await fetchQuery(api.users.getCurrentUserWithProfile, {}).catch(
+    () => null as any
+  );
+
+  const user = (current as any)?.user ?? current ?? null;
+  if (!user) {
+    return { errorResponse: json(404, { success: false, error: "User not found" }) };
   }
-  
-  if (!isAdminToken(token)) {
-    // Log unauthorized admin access attempt
-    console.warn('Unauthorized admin access attempt', {
-      userId,
-      ip: req.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: req.headers.get('user-agent') || 'unknown',
-      url: req.url
+  if (user.banned) {
+    return { errorResponse: json(403, { success: false, error: "Account is banned" }) };
+  }
+
+  // Optionally also load a public profile for convenience
+  let profile: any | null = null;
+  try {
+    profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
+      userId: user._id as Id<"users">,
     });
-    
-    return {
-      errorResponse: new Response(
-        JSON.stringify({ success: false, error: "Admin privileges required" }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      ),
-    };
+  } catch {
+    profile = null;
   }
-  
-  return { token, userId };
+
+  return { userId: user._id as Id<"users">, user, profile };
 }
 
-export function requireUserToken(
+/**
+ * For admin-only routes. Relies on server-verified role on user object.
+ */
+export async function requireAdminSession(
+  req: NextRequest
+): Promise<
+  | { userId: Id<"users">; user: any; profile: any | null }
+  | { errorResponse: Response }
+> {
+  const res = await requireSession(req);
+  if ("errorResponse" in res) return res;
+  const { userId, user, profile } = res;
+  const role = (user.role as string) || "user";
+  if (role !== "admin") {
+    return { errorResponse: json(403, { success: false, error: "Admin privileges required" }) };
+  }
+  return { userId, user, profile };
+}
+
+// Legacy JWT helpers removed in cookie-only model
+export function extractRoleFromToken(): undefined {
+  return undefined;
+}
+
+export function extractUserIdFromToken(): null {
+  return null;
+}
+
+export function isAdminToken(): boolean {
+  return false;
+}
+
+export async function requireAdminToken(
   req: import("next/server").NextRequest
-): { token: string; userId?: string } | { errorResponse: Response } {
-  const { token, error } = getAuthToken(req);
-  if (!token) {
-    return {
-      errorResponse: new Response(
-        JSON.stringify({
-          success: false,
-          error: error || "Authentication failed",
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      ),
-    };
-  }
-  
-  // Extract and validate user ID
-  const userId = extractUserIdFromToken(token);
-  if (!userId) {
-    return {
-      errorResponse: new Response(
-        JSON.stringify({
-          success: false,
-          error: "Invalid token payload",
-        }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      ),
-    };
-  }
-  
-  return { token, userId };
+): Promise<{ userId?: string } | { errorResponse: Response }> {
+  const res = await requireAdminSession(req as unknown as NextRequest);
+  if ("errorResponse" in res) return res;
+  return { userId: String(res.userId) };
+}
+
+export async function requireUserToken(
+  req: import("next/server").NextRequest
+): Promise<{ userId?: string } | { errorResponse: Response }> {
+  const res = await requireSession(req as unknown as NextRequest);
+  if ("errorResponse" in res) return res;
+  return { userId: String(res.userId) };
 }

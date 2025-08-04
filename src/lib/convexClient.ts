@@ -21,8 +21,8 @@ export function getConvexClient(): ConvexHttpClient | null {
 }
 
 /**
- * Helper to create a Convex client authenticated with the incoming request's
- * Bearer token. Returns `null` if Convex URL is not configured.
+ * Helper to create a Convex client authenticated from server session cookies.
+ * Returns `null` if Convex URL is not configured. Does not read Authorization headers.
  */
 export async function convexClientFromRequest(
   req: Request | NextRequest
@@ -30,14 +30,9 @@ export async function convexClientFromRequest(
   const client = getConvexClient();
   if (!client) return null;
 
-  const tokenHeader = req.headers.get("Authorization");
-  const token = tokenHeader?.startsWith("Bearer ")
-    ? tokenHeader.split(" ")[1]
-    : undefined;
-
-  if (token) {
-    client.setAuth(token);
-  }
-
+  // In cookie-only model, Convex auth is typically derived server-side in Convex itself
+  // via the framework adapter. We do not forward bearer tokens from clients anymore.
+  // If you mint application-specific tokens via cookies, you could set them here.
+  // For now, leave unauthenticated; Convex queries using fetchQuery will run with server identity.
   return client;
 }

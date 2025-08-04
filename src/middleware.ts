@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAccessJWT, extractTokenFromHeader } from "@/lib/auth/jwt";
+// Cookie-only model: remove JWT header parsing entirely
 
 // Define public routes that don't require authentication
 const publicRoutes = [
@@ -97,17 +97,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For protected routes, check authentication
-  const authHeader = request.headers.get("authorization");
-  const accessCookie = request.cookies.get("auth-token")?.value;
+  // Cookie-only model: do not gate with JWT tokens in middleware.
+  // Let route handlers enforce auth using cookies and Convex identity.
+  // We only optionally redirect known protected app pages if no session cookies are present.
+
   const refreshCookie = request.cookies.get("refresh-token")?.value;
+  const hasSessionCookie =
+    request.cookies.get("__Secure-next-auth.session-token")?.value ||
+    request.cookies.get("next-auth.session-token")?.value ||
+    request.cookies.get("__Secure-session-token")?.value ||
+    request.cookies.get("session-token")?.value;
 
-  // Try to get token from Authorization header or cookie
-  // NOTE: localStorage tokens are NOT accessible to the middleware.
-  const token = extractTokenFromHeader(authHeader) || accessCookie;
-
-  // SPECIAL CASE: If we have a refresh cookie but no access token,
-  // allow first navigation to authenticated client routes so the app can refresh via /api/auth/me.
   const isAuthenticatedClientRoute =
     pathname === "/search" ||
     pathname.startsWith("/matches") ||
@@ -115,105 +115,25 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/usage") ||
     pathname.startsWith("/premium-settings") ||
     pathname.startsWith("/plans");
-  if (!token && refreshCookie && isAuthenticatedClientRoute) {
-    console.info("MW allow refresh navigation", {
-      scope: "auth.middleware",
-      decision: "allow_refresh_nav",
-      path: pathname,
-    });
-    return NextResponse.next();
-  }
 
-  // SECURITY: Do NOT allow non-JWT "session" cookie for auth gating.
-
-  if (!token) {
-    // Try refresh flow: if refresh cookie present, allow through to let client refresh (API only)
-    if (refreshCookie && pathname.startsWith("/api")) {
-      console.info("MW allow API with refresh cookie", {
-        scope: "auth.middleware",
-        decision: "allow_api_refresh",
-        path: pathname,
-      });
+  // Allow navigation to app; client/pages will call /api/auth/me to resolve session.
+  if (isAuthenticatedClientRoute) {
+    if (hasSessionCookie || refreshCookie) {
       return NextResponse.next();
     }
-
-    // If this is NOT a known protected route, fall through so Next.js can render 404 (unknown paths)
-    if (!isKnownProtectedRoute(pathname)) {
-      console.info("MW pass unknown non-protected", {
-        scope: "auth.middleware",
-        decision: "pass_unknown",
-        path: pathname,
-      });
-      return NextResponse.next();
-    }
-
-    // Otherwise redirect to sign-in preserving destination
+    // No session at all -> redirect to sign-in for app pages
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect_url", pathname);
-    console.warn("MW redirect missing token", {
+    console.warn("MW redirect missing session", {
       scope: "auth.middleware",
-      decision: "redirect_missing_token",
+      decision: "redirect_missing_session",
       path: pathname,
     });
     return NextResponse.redirect(signInUrl);
   }
 
-  try {
-    // Verify access JWT token
-    const payload = await verifyAccessJWT(token);
-
-    // Token is valid, add user info to headers for API routes
-    const response = NextResponse.next();
-    response.headers.set("x-user-id", payload.userId);
-    response.headers.set("x-user-email", payload.email);
-    response.headers.set("x-user-role", payload.role || "user");
-
-    return response;
-  } catch {
-    // Invalid or expired access token:
-    const refreshCookiePresent = request.cookies.get("refresh-token")?.value;
-
-    if (refreshCookiePresent && pathname.startsWith("/api")) {
-      console.info("MW allow API on invalid token with refresh", {
-        scope: "auth.middleware",
-        decision: "allow_api_invalid_with_refresh",
-        path: pathname,
-      });
-      return NextResponse.next();
-    }
-
-    // If NOT a known protected route, fall through so Next.js can render 404 (unknown paths)
-    if (!isKnownProtectedRoute(pathname)) {
-      console.info("MW pass unknown non-protected (invalid token)", {
-        scope: "auth.middleware",
-        decision: "pass_unknown_invalid",
-        path: pathname,
-      });
-      return NextResponse.next();
-    }
-
-    // If refresh cookie exists and this is an authenticated client route, allow through so the client can refresh
-    if (refreshCookiePresent && isAuthenticatedClientRoute) {
-      console.warn("MW allow nav invalid token with refresh", {
-        scope: "auth.middleware",
-        decision: "allow_nav_invalid_with_refresh",
-        path: pathname,
-      });
-      return NextResponse.next();
-    }
-
-    const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set("redirect_url", pathname);
-
-    const response = NextResponse.redirect(signInUrl);
-    response.cookies.delete("auth-token");
-    console.warn("MW redirect invalid token", {
-      scope: "auth.middleware",
-      decision: "redirect_invalid_token",
-      path: pathname,
-    });
-    return response;
-  }
+  // For API and other routes, pass through. Auth is enforced in the handlers.
+  return NextResponse.next();
 }
 
 export const config = {
