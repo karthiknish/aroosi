@@ -14,6 +14,8 @@ import { cmToFeetInches } from "@/lib/utils/height";
 import { MOTHER_TONGUE_OPTIONS, RELIGION_OPTIONS, ETHNICITY_OPTIONS } from "@/lib/constants/languages";
 // Image guards for Step 6
 import { loadImageMeta, validateImageMeta } from "@/lib/utils/imageMeta";
+// Local uploader for Step 6
+import { LocalImageUpload } from "@/components/LocalImageUpload";
 
 export type ProfileCreationData = Record<string, any>;
 
@@ -589,6 +591,21 @@ export function Step6Photos(props: {
       </div>
       <div className="mb-6">
         <Label className="text-gray-700 mb-2 block">Profile Photos</Label>
+
+        {/* Local uploader to add images */}
+        <div className="mb-4">
+          <LocalImageUpload
+            maxImages={5}
+            onImagesChanged={(imgs) => {
+              try {
+                onImagesChanged(imgs);
+              } catch {}
+            }}
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            Max 5 images. JPG, PNG, WebP up to 5MB, minimum 512x512.
+          </p>
+        </div>
 
         {pendingImages.length > 0 && (
           <div className="mt-4">

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useStepValidation } from "@/hooks/useStepValidation";
+import CustomSignupForm from "@/components/auth/CustomSignupForm";
 // Step components (extracted)
 import {
   Step1Basic,
@@ -1476,11 +1477,19 @@ export function ProfileCreationModal({
 
                 {/* Step 7: Account Creation */}
                 {step === 7 && (
-                  <Step7AccountCreation
-                    formData={formData as any}
-                    setStep={setStep as any}
-                    router={router as any}
-                  />
+                  <div className="space-y-6">
+                    {/* Keep legacy Step7 wrapper for future props if needed */}
+                    {/* Replace inner content with CustomSignupForm to ensure all fields appear */}
+                    <CustomSignupForm
+                      onComplete={() => {
+                        // After signup completes, we rely on the existing auto-submit effect
+                        // to create the profile and navigate. Keep a lightweight guard here.
+                        try {
+                          showSuccessToast("Account created. Finalizing your profile...");
+                        } catch {}
+                      }}
+                    />
+                  </div>
                 )}
               </motion.div>
             </AnimatePresence>

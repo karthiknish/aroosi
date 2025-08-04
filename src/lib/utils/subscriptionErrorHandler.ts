@@ -1,6 +1,10 @@
 /**
  * Unified Subscription Error Handler for Aroosi Web and Mobile
- * Provides consistent error handling across both platforms
+ * Provides consistent error handling across both platforms.
+ * Clean, consolidated version with:
+ *  - Existing enum/messages API retained
+ *  - Single fromFetchResponse(res, context?) method
+ *  - Single parseApiError(res, context?) helper
  */
 
 export enum SubscriptionErrorType {
@@ -34,6 +38,11 @@ export enum SubscriptionErrorType {
 
   // Generic errors
   UNKNOWN_ERROR = "UNKNOWN_ERROR",
+
+  // Generic API codes commonly returned by endpoints
+  RATE_LIMITED = "RATE_LIMITED",
+  FORBIDDEN = "FORBIDDEN",
+  NOT_FOUND = "NOT_FOUND",
 }
 
 export interface SubscriptionError {
@@ -142,160 +151,126 @@ export class SubscriptionErrorHandler {
       userMessage: "An unexpected error occurred. Please try again.",
       retryable: true,
     },
+    [SubscriptionErrorType.RATE_LIMITED]: {
+      userMessage: "You’re refreshing too quickly. Try again in a bit.",
+      retryable: true,
+    },
+    [SubscriptionErrorType.FORBIDDEN]: {
+      userMessage: "Action not allowed for your account.",
+      retryable: false,
+    },
+    [SubscriptionErrorType.NOT_FOUND]: {
+      userMessage: "The requested resource was not found.",
+      retryable: false,
+    },
   };
 
-  static handle(error: any, context?: string): SubscriptionError {
-    // Handle different error formats
-    let errorType: SubscriptionErrorType;
-    let message: string;
-    let code: string | undefined;
-    let details: any = {};
+  static toUserMessage(error: SubscriptionError): string {
+    const config =
+      SubscriptionErrorHandler.ERROR_MESSAGES[error.type] ||
+      SubscriptionErrorHandler.ERROR_MESSAGES[SubscriptionErrorType.UNKNOWN_ERROR];
+    return config.userMessage;
+  }
 
-    if (typeof error === "string") {
-      message = error;
-      errorType = this.inferErrorType(error);
-    } else if (error && typeof error === "object") {
-      message = error.message || error.error || "Unknown error";
-      code = error.code || error.errorCode;
-
-      // Try to infer error type from error object
-      errorType = this.inferErrorTypeFromObject(error);
-      details = { ...error };
-    } else {
-      message = "Unknown error occurred";
-      errorType = SubscriptionErrorType.UNKNOWN_ERROR;
+  static parseErrorCode(code?: string): SubscriptionErrorType {
+    if (!code) return SubscriptionErrorType.UNKNOWN_ERROR;
+    const normalized = code.toUpperCase();
+    switch (normalized) {
+      case "RATE_LIMITED":
+      case "TOO_MANY_REQUESTS":
+        return SubscriptionErrorType.RATE_LIMITED;
+      case "UNAUTHORIZED":
+      case "AUTH_REQUIRED":
+        return SubscriptionErrorType.USER_NOT_AUTHENTICATED;
+      case "VALIDATION_ERROR":
+      case "BAD_REQUEST":
+        return SubscriptionErrorType.INVALID_PLAN;
+      case "NOT_FOUND":
+        return SubscriptionErrorType.NOT_FOUND;
+      case "FORBIDDEN":
+      case "BLOCKED":
+        return SubscriptionErrorType.FORBIDDEN;
+      default:
+        return SubscriptionErrorType.UNKNOWN_ERROR;
     }
+  }
 
-    // Add context information
-    if (context) {
-      details.context = context;
-    }
+  static fromHttpResponse(
+    status: number,
+    body?: { code?: string; error?: string; message?: string }
+  ): SubscriptionError {
+    const type =
+      SubscriptionErrorHandler.parseErrorCode(body?.code) ||
+      (status === 401
+        ? SubscriptionErrorType.USER_NOT_AUTHENTICATED
+        : status === 403
+        ? SubscriptionErrorType.INSUFFICIENT_PERMISSIONS
+        : status === 404
+        ? SubscriptionErrorType.SUBSCRIPTION_NOT_FOUND
+        : status === 429
+        ? SubscriptionErrorType.SERVER_ERROR
+        : status >= 500
+        ? SubscriptionErrorType.SERVER_ERROR
+        : SubscriptionErrorType.UNKNOWN_ERROR);
 
-    const errorConfig = this.ERROR_MESSAGES[errorType];
+    const message =
+      body?.error ||
+      body?.message ||
+      SubscriptionErrorHandler.toUserMessage({ type, message: "" });
+
     return {
-      type: errorType,
+      type,
       message,
-      code,
-      details,
-      retryable: errorConfig?.retryable ?? false,
-      userAction: errorConfig?.userAction,
+      code: body?.code,
+      retryable: type === SubscriptionErrorType.SERVER_ERROR,
     };
   }
 
-  private static inferErrorType(error: string): SubscriptionErrorType {
-    const lowerError = error.toLowerCase();
-
-    if (lowerError.includes("network") || lowerError.includes("connection")) {
-      return SubscriptionErrorType.NETWORK_ERROR;
-    }
-    if (lowerError.includes("timeout")) {
-      return SubscriptionErrorType.TIMEOUT_ERROR;
-    }
-    if (lowerError.includes("payment") || lowerError.includes("billing")) {
-      return SubscriptionErrorType.PAYMENT_FAILED;
-    }
-    if (lowerError.includes("cancel")) {
-      return SubscriptionErrorType.PURCHASE_CANCELLED;
-    }
-    if (
-      lowerError.includes("already own") ||
-      lowerError.includes("already purchased")
-    ) {
-      return SubscriptionErrorType.PURCHASE_ALREADY_OWNED;
-    }
-    if (
-      lowerError.includes("not authenticated") ||
-      lowerError.includes("unauthorized")
-    ) {
-      return SubscriptionErrorType.USER_NOT_AUTHENTICATED;
-    }
-    if (lowerError.includes("expired")) {
-      return SubscriptionErrorType.SUBSCRIPTION_EXPIRED;
-    }
-    if (lowerError.includes("not found")) {
-      return SubscriptionErrorType.SUBSCRIPTION_NOT_FOUND;
-    }
-
-    return SubscriptionErrorType.UNKNOWN_ERROR;
-  }
-
-  private static inferErrorTypeFromObject(error: any): SubscriptionErrorType {
-    // Check for specific error codes
-    if (error.code) {
-      switch (error.code) {
-        case "E_USER_CANCELLED":
-        case "USER_CANCELLED":
-          return SubscriptionErrorType.PURCHASE_CANCELLED;
-        case "E_ALREADY_OWNED":
-        case "ALREADY_OWNED":
-          return SubscriptionErrorType.PURCHASE_ALREADY_OWNED;
-        case "E_NETWORK_ERROR":
-        case "NETWORK_ERROR":
-          return SubscriptionErrorType.NETWORK_ERROR;
-        case "E_SERVICE_ERROR":
-        case "STORE_ERROR":
-          return SubscriptionErrorType.STORE_UNAVAILABLE;
-        case "E_ITEM_UNAVAILABLE":
-          return SubscriptionErrorType.INVALID_PLAN;
-        case "E_USER_ERROR":
-          return SubscriptionErrorType.PURCHASE_NOT_ALLOWED;
-        default:
-          return this.inferErrorType(error.message || "");
+  /**
+   * Parse a non-ok fetch Response into a SubscriptionError
+   */
+  static async fromFetchResponse(
+    res: Response,
+    context?: string
+  ): Promise<SubscriptionError> {
+    let body: any = undefined;
+    try {
+      const text = await res.text();
+      if (text) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = { message: text };
+        }
       }
+    } catch {
+      // ignore
     }
 
-    return this.inferErrorType(error.message || "");
-  }
+    const headerCode = res.headers.get("X-Error-Code") || undefined;
 
-  static getUserFriendlyMessage(error: SubscriptionError): string {
-    return this.ERROR_MESSAGES[error.type]?.userMessage || error.message;
-  }
-
-  static isRetryable(error: SubscriptionError): boolean {
-    return error.retryable ?? false;
-  }
-
-  static shouldShowToUser(error: SubscriptionError): boolean {
-    // Don't show user cancellation errors to user
-    return error.type !== SubscriptionErrorType.PURCHASE_CANCELLED;
-  }
-
-  static getErrorAction(error: SubscriptionError): string | undefined {
-    return error.userAction;
-  }
-
-  static logError(error: SubscriptionError, context?: string): void {
-    console.error(`[SubscriptionError${context ? `:${context}` : ""}]`, {
-      type: error.type,
-      message: error.message,
-      code: error.code,
-      details: error.details,
+    const mapped = SubscriptionErrorHandler.fromHttpResponse(res.status, {
+      code: (body?.code || headerCode) as string | undefined,
+      error: body?.error as string | undefined,
+      message: body?.message as string | undefined,
     });
+
+    if (context) {
+      mapped.details = { ...(mapped.details || {}), context };
+    }
+    return mapped;
   }
 }
 
-// Helper function for consistent error handling across platforms
-export function handleSubscriptionError(
-  error: any,
-  context?: string,
-  showToUser: boolean = true
-): SubscriptionError {
-  const subscriptionError = SubscriptionErrorHandler.handle(error, context);
-
-  if (
-    showToUser &&
-    SubscriptionErrorHandler.shouldShowToUser(subscriptionError)
-  ) {
-    // Platform-specific display logic should be handled by the caller
-    SubscriptionErrorHandler.logError(subscriptionError, context);
-  }
-
-  return subscriptionError;
-}
-
-// Type guard for subscription errors
-export function isSubscriptionError(error: any): error is SubscriptionError {
-  return (
-    error && typeof error === "object" && "type" in error && "message" in error
-  );
+/**
+ * Convenience helper for client fetch calls:
+ * - If res.ok -> returns undefined (no error)
+ * - If !ok -> parses response and returns a SubscriptionError ready for UX mapping
+ */
+export async function parseApiError(
+  res: Response,
+  context?: string
+): Promise<SubscriptionError | undefined> {
+  if (res.ok) return undefined;
+  return SubscriptionErrorHandler.fromFetchResponse(res, context);
 }
