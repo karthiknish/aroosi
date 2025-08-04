@@ -250,6 +250,43 @@ class SubscriptionAPI {
   }
 
   /**
+   * Step 2: Minimal, well-formed feature access check.
+   * Tries GET /api/subscription/features
+   * - If { hasAccess: boolean } present, returns it
+   * - Else if { features: [{ name, available }] } present, return match.available
+   * - Else returns { hasAccess: false }
+   */
+  async checkFeatureAccess(
+    feature: string,
+    token?: string
+  ): Promise<{ hasAccess: boolean; feature?: string }> {
+    try {
+      const res = (await this.makeRequest(
+        "/api/subscription/features",
+        { method: "GET" },
+        token
+      )) as
+        | { hasAccess?: boolean; feature?: string }
+        | { features?: Array<{ name: string; available: boolean }> };
+
+      if (res && typeof (res as any).hasAccess === "boolean") {
+        return { hasAccess: Boolean((res as any).hasAccess), feature };
+      }
+      if (res && Array.isArray((res as any).features)) {
+        const match = (res as any).features.find(
+          (f: any) => f && typeof f.name === "string" && f.name === feature
+        );
+        if (match && typeof match.available === "boolean") {
+          return { hasAccess: Boolean(match.available), feature };
+        }
+      }
+      return { hasAccess: false, feature };
+    } catch {
+      return { hasAccess: false, feature };
+    }
+  }
+
+  /**
    * Track feature usage (optional helper if endpoint exists)
    * POST /api/subscription/track with { feature }
    */
@@ -267,7 +304,7 @@ class SubscriptionAPI {
     }
   }
 }
-
+ 
 export const subscriptionAPI = new SubscriptionAPI();
 
 /**
