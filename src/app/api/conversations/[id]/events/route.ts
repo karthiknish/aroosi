@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireUserToken, extractUserIdFromToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { eventBus } from "@/lib/eventBus";
 import { validateUserCanAccessConversation } from "@/lib/utils/matchValidation";
 import { isValidConversationIdFormat } from "@/lib/utils/secureConversation";
@@ -7,57 +7,36 @@ import { isValidConversationIdFormat } from "@/lib/utils/secureConversation";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  // Verify auth
-  const authCheck = requireUserToken(req);
-  if ("errorResponse" in authCheck) return authCheck.errorResponse;
-  const { token } = authCheck;
+  // Verify session via cookies
+  const session = await requireSession(req);
+  if ("errorResponse" in session) return session.errorResponse;
+  const { userId } = session;
 
   const conversationId = req.nextUrl.pathname.split("/").slice(-2)[0];
-  
+
   // Validate conversation ID format
   if (!conversationId || !isValidConversationIdFormat(conversationId)) {
-    return new Response(
-      JSON.stringify({ success: false, error: "Invalid conversationId format" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ success: false, error: "Invalid conversationId format" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  // Extract user ID from token
-  const userId = extractUserIdFromToken(token);
-  if (!userId) {
-    return new Response(
-      JSON.stringify({ success: false, error: "Invalid authentication token" }),
-      {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
-
-  // Validate user can access this conversation
+  // Validate user can access this conversation (no bearer token; server-side check)
   try {
-    const canAccess = await validateUserCanAccessConversation(userId, conversationId, token);
+    const canAccess = await validateUserCanAccessConversation(String(userId), conversationId, null as any);
     if (!canAccess) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized access to conversation" }),
-        {
-          status: 403,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized access to conversation" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   } catch (error) {
-    console.error('Error validating conversation access:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: "Access validation failed" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    console.error("Error validating conversation access:", error);
+    return new Response(JSON.stringify({ success: false, error: "Access validation failed" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   let heartbeat: NodeJS.Timeout;
