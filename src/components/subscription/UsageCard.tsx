@@ -112,9 +112,10 @@ export const UsageCard: React.FC<UsageCardProps> = ({ className, token }) => {
           isUnlimited={usage.messaging.limit === -1}
         />
 
+        {/* The usage payload does not include a separate 'received' count; mirror 'sent' or remove */}
         <UsageItem
           label="Messages Received"
-          current={usage.messaging.received}
+          current={usage.messaging.sent}
           limit={usage.messaging.limit}
           isUnlimited={usage.messaging.limit === -1}
         />
@@ -140,9 +141,10 @@ export const UsageCard: React.FC<UsageCardProps> = ({ className, token }) => {
               current={usage.boosts.used}
               limit={usage.boosts.monthlyLimit}
             />
+            {/* 'remaining' is not included in SubscriptionUsageResponse; derive it safely */}
             <UsageItem
               label="Profile Boosts Remaining"
-              current={usage.boosts.remaining}
+              current={Math.max(0, (usage.boosts.monthlyLimit ?? 0) - (usage.boosts.used ?? 0))}
               limit={usage.boosts.monthlyLimit}
             />
           </>
