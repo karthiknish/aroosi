@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Auth: prefer cookie session; fallback to Authorization bearer from header
-    const authCheck = requireUserToken(request);
+    // Auth: cookie-only session
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) {
       // Attempt to extract body from errorResponse (if present)
       const res = authCheck.errorResponse as NextResponse;
@@ -39,12 +39,12 @@ export async function POST(request: NextRequest) {
       }
       return json({ success: false, error: `${err}` }, status);
     }
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     // Rate limit: messages send
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      token,
+      "" as unknown as string, // cookie-only: no token string (pending limiter signature cleanup)
       userId || "unknown",
       "message_send",
       60_000
@@ -165,7 +165,8 @@ export async function POST(request: NextRequest) {
     // Optional pre-check: ensure users are matched to fail fast (Convex also enforces)
     try {
       const { validateUserCanMessage } = await import("@/lib/utils/messageValidation");
-      const canMessage = await validateUserCanMessage(fromUserId, toUserId, token);
+      // Cookie-only path: do not pass token
+      const canMessage = await validateUserCanMessage(fromUserId, toUserId, undefined as unknown as string);
       if (!canMessage) {
         return json({ success: false, error: "You can only message users you are matched with." }, 403);
       }
@@ -184,8 +185,8 @@ export async function POST(request: NextRequest) {
       return json({ success: false, error: "Database connection failed" }, 500);
     }
     try {
-      // @ts-ignore legacy setAuth
-      client.setAuth?.(token);
+      // cookie-only: do not set token on Convex client
+      // client.setAuth?.(undefined as unknown as string);
     } catch {
       // ignore
     }
