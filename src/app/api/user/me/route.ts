@@ -1,32 +1,77 @@
 import { NextRequest } from "next/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 /**
- * Read auth token from secure cookies only. No Authorization header.
+ * Robust cookie/session token extraction with multiple fallbacks.
+ * - HttpOnly cookies (primary)
+ * - Alt cookie names and __Secure- prefixed variants
+ * - Optional header fallback for edge cases (X-Session-Token)
+ * No Authorization: Bearer usage.
  */
-function getTokenFromCookies(): string | null {
+function getSessionToken(): string | null {
+  // Preferred cookie names in priority order
+  const names = [
+    "__Secure-next-auth.session-token",
+    "next-auth.session-token",
+    "__Secure-session-token",
+    "session-token",
+    "auth-token",
+    "jwt",
+  ];
+
   try {
-    const jar = cookies();
-    // Prefer HttpOnly session cookie names used by the app
-    // Try common names; adjust if your auth sets a different key
-    const names = [
-      "session-token",
-      "next-auth.session-token",
-      "__Secure-next-auth.session-token",
-      "auth-token",
-      "jwt",
-    ];
-    for (const name of names) {
-      const c = jar.get(name);
-      if (c?.value) return c.value;
+    const jar: any = cookies() as any;
+    if (jar && typeof jar.get === "function") {
+      for (const name of names) {
+        const c = jar.get(name);
+        if (c?.value && typeof c.value === "string" && c.value.trim()) {
+          return c.value;
+        }
+      }
     }
-    return null;
-  } catch {
-    return null;
+  } catch (e) {
+    // continue to header fallback
   }
+
+  // Optional header fallback (useful for non-browser or preview runs)
+  try {
+    const hAny: any = headers() as any;
+    const getHeader =
+      typeof hAny?.get === "function"
+        ? (key: string) => hAny.get(key)
+        : undefined;
+
+    if (getHeader) {
+      const hVal =
+        getHeader("X-Session-Token") ||
+        getHeader("x-session-token") ||
+        getHeader("X-Auth-Token") ||
+        getHeader("x-auth-token");
+      if (typeof hVal === "string" && hVal.trim()) return hVal;
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+}
+
+/**
+ * Build a normalized error payload from unknown errors
+ */
+function toErrorDetails(err: unknown): { message: string; code?: string } {
+  if (typeof err === "object" && err !== null) {
+    const code = (err as any)?.code as string | undefined;
+    const message =
+      (err as any)?.message ||
+      (err as any)?.error ||
+      "Unexpected server error";
+    return { message: String(message), ...(code ? { code } : {}) };
+  }
+  return { message: String(err) };
 }
 
 export async function GET(_request: NextRequest) {
@@ -34,26 +79,28 @@ export async function GET(_request: NextRequest) {
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
 
-    const token = getTokenFromCookies();
+    const token = getSessionToken();
 
-    let userWithProfile;
+    let userWithProfile: any;
     try {
-      // Use cookie-based auth if present
+      // Use cookie-based auth if present, else anonymous
       convex.setAuth(token || "");
       userWithProfile = await convex.query(api.users.getCurrentUserWithProfile, {});
     } catch (convexError: unknown) {
+      const details = toErrorDetails(convexError);
       // Fallback for NoAuthProvider – return public data if available
-      if (
-        typeof convexError === "object" &&
-        convexError !== null &&
-        "code" in convexError &&
-        (convexError as { code?: string }).code === "NoAuthProvider"
-      ) {
+      if (details.code === "NoAuthProvider") {
         console.warn("[API /api/user/me] NoAuthProvider – retrying without auth");
         convex.setAuth("");
         userWithProfile = await convex.query(api.users.getCurrentUserWithProfile, {});
       } else {
-        throw convexError;
+        // For robustness, still attempt anonymous fetch if token path failed
+        try {
+          convex.setAuth("");
+          userWithProfile = await convex.query(api.users.getCurrentUserWithProfile, {});
+        } catch {
+          return errorResponse("Failed to fetch user profile", 500, { details });
+        }
       }
     }
 
@@ -63,10 +110,9 @@ export async function GET(_request: NextRequest) {
 
     return successResponse({ profile: userWithProfile.profile });
   } catch (error) {
-    console.error("Error fetching user profile:", error);
-    return errorResponse("Failed to fetch user profile", 500, {
-      details: error instanceof Error ? error.message : String(error),
-    });
+    const details = toErrorDetails(error);
+    console.error("Error fetching user profile:", details);
+    return errorResponse("Failed to fetch user profile", 500, { details });
   }
 }
 
@@ -75,9 +121,10 @@ export async function PUT(request: NextRequest) {
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
 
-    const token = getTokenFromCookies();
+    const token = getSessionToken();
     if (!token) {
-      return errorResponse("Unauthorized - session not found", 401);
+      // Be explicit about cookie/session requirement
+      return errorResponse("Unauthorized - session cookie not found", 401);
     }
 
     let body: unknown;
@@ -98,16 +145,17 @@ export async function PUT(request: NextRequest) {
 
       return successResponse(updatedUser);
     } catch (convexError) {
-      console.error("[API /api/user/me] PUT Convex mutation error:", convexError);
-      return errorResponse("Failed to update user profile in Convex", 500, {
-        details:
-          convexError instanceof Error ? convexError.message : String(convexError),
-      });
+      const details = toErrorDetails(convexError);
+      console.error("[API /api/user/me] PUT Convex mutation error:", details);
+      // Handle NoAuthProvider explicitly
+      if (details.code === "NoAuthProvider") {
+        return errorResponse("Unauthorized - invalid session for Convex", 401, { details });
+      }
+      return errorResponse("Failed to update user profile in Convex", 500, { details });
     }
   } catch (error) {
-    console.error("[API /api/user/me] PUT Unexpected error:", error);
-    return errorResponse("An unexpected error occurred", 500, {
-      details: error instanceof Error ? error.message : String(error),
-    });
+    const details = toErrorDetails(error);
+    console.error("[API /api/user/me] PUT Unexpected error:", details);
+    return errorResponse("An unexpected error occurred", 500, { details });
   }
 }
