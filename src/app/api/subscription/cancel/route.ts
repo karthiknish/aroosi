@@ -9,16 +9,16 @@ import { stripe } from "@/lib/stripe";
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    // Cookie-only: do not set bearer on client
 
     if (!userId) {
-      return errorResponse("User ID not found in token", 401);
+      return errorResponse("User ID not found in session", 401);
     }
     const profile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,

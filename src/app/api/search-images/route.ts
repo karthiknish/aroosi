@@ -8,10 +8,10 @@ const PEXELS_API_URL = "https://api.pexels.com/v1/search";
 
 export async function GET(request: NextRequest) {
   try {
-    // Enhanced authentication
-    const authCheck = requireUserToken(request);
+    // Enhanced authentication (cookie-based)
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
+    const userId = authCheck.userId;
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(`search_images_${userId}`, 50, 60000); // 50 searches per minute

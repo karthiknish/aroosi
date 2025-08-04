@@ -15,10 +15,10 @@ import { requireUserToken } from "@/app/api/_utils/auth";
 export async function POST(req: NextRequest) {
   try {
     // Require cookie/JWT auth (same pattern as checkout)
-    const auth = requireUserToken(req);
+    const auth = await requireUserToken(req);
     if ("errorResponse" in auth) return auth.errorResponse;
-    const { token, userId } = auth;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    const { userId } = auth;
+    if (!userId) return errorResponse("User ID not found in session", 401);
 
     if (!stripe) {
       console.error("Stripe not configured in portal route");
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     // Fetch Stripe customer id for this user from Convex (server-side source of truth)
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    // Cookie-only: do not set bearer on Convex client
 
     // Use an existing profile query and read a Stripe customer field if present.
     // Adjust field name if your schema differs (e.g., stripeCustomerId, billing.customerId, etc.)

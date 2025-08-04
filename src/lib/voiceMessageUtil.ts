@@ -19,7 +19,8 @@ export interface VoiceMessage {
 /**
  * Upload a recorded voice blob and create the corresponding message record.
  *
- * Returns the saved `messages` row so the caller can append it to chat state.
+ * Returns the saved `messages` rows so the caller can append them to chat state.
+ * Note: This util currently fetches multiple voice messages by conversation.
  */
 export async function uploadVoiceMessage({
   conversationId,
@@ -35,12 +36,13 @@ export async function uploadVoiceMessage({
   blob: Blob;
   mimeType?: string;
   duration: number; // seconds
-}): Promise<VoiceMessage> {
+}): Promise<VoiceMessage[]> {
   // Step 1: initialise Convex client
   const client = getConvexClient();
   if (!client) throw new Error("Failed to initialise Convex client");
 
-
+  // TODO: Implement upload and send flow here if needed. For now, fetch existing
+  // voice messages in this conversation to return a list.
   const msgs = (await client.query(api.messages.getVoiceMessages, {
     conversationId,
   })) as VoiceMessage[];

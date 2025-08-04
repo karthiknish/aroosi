@@ -14,11 +14,11 @@ export async function GET(
   { params }: { params: Promise<{ messageId: string }> }
 ) {
   try {
-    // Authentication
-    const authCheck = requireUserToken(request);
+    // Authentication (cookie-only)
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
-    
+    const { userId } = authCheck;
+
     // Await params
     const { messageId } = await params;
 
@@ -45,7 +45,7 @@ export async function GET(
       return errorResponse("Database connection failed", 500);
     }
 
-    client.setAuth(token);
+    // Cookie-only: do not set auth bearer on client
 
     if (!userId) {
       return errorResponse("User ID not found in token", 401);

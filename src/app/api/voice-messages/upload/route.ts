@@ -15,15 +15,15 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Authentication
-    const authCheck = requireUserToken(request);
+    // Authentication (cookie-only)
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     // Subscription-aware rate limiting for voice uploads
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      token,
+      "" as unknown as string, // cookie-only: no token provided
       userId || "unknown",
       "voice_upload",
       60000
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("Database connection failed", 500);
     }
 
-    client.setAuth(token);
+    // Cookie-only: do not set auth bearer on client
 
     // Verify user is part of this conversation
     if (!userId) {

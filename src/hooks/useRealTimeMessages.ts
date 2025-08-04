@@ -222,13 +222,22 @@ export function useRealTimeMessages({
       if (!userId) return;
 
       try {
-        const saved = await uploadVoiceMessage({
+        const savedList = await uploadVoiceMessage({
           conversationId,
           fromUserId: userId,
           toUserId,
           blob,
           duration,
         });
+
+        // Determine the newest voice message from the returned list
+        const saved = Array.isArray(savedList) && savedList.length > 0
+          ? savedList[savedList.length - 1]
+          : undefined;
+
+        if (!saved) {
+          throw new Error("Voice message not returned from server");
+        }
 
         // Optimistically add to state
         setMessages((prev) => [

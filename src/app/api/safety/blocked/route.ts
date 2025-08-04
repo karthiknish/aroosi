@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Authentication (app-layer auth)
-    const authCheck = requireUserToken(request);
+    // Authentication (cookie-only, app-layer auth)
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) {
       // Normalize helper response to plain JSON
       const res = authCheck.errorResponse as NextResponse;

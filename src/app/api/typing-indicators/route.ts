@@ -10,14 +10,14 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     // Rate limit typing updates (cheap but potentially noisy)
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      token,
+      "" as unknown as string, // cookie-only: no token provided
       userId || "unknown",
       "typing_update",
       60000
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     let client = getConvexClient();
     if (!client) client = getConvexClient();
     if (!client) return errorResponse("Service temporarily unavailable", 503);
-    client.setAuth(token);
+    // Cookie-only: do not set bearer on client
 
     const { conversationId, action } = await request.json();
     if (!conversationId || !action || !["start", "stop"].includes(action)) {
@@ -81,14 +81,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token } = authCheck;
 
     let client = getConvexClient();
     if (!client) client = getConvexClient();
     if (!client) return errorResponse("Service temporarily unavailable", 503);
-    client.setAuth(token);
+    // Cookie-only: do not set bearer on client
 
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get("conversationId");

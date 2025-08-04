@@ -6,13 +6,12 @@ import { requireUserToken } from "@/app/api/_utils/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token } = authCheck;
     
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    // Cookie-only: do not set bearer on client
     
     // Get usage statistics from Convex
     const stats = await convex.query(api.usageTracking.getUsageStats, {});

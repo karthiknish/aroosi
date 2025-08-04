@@ -43,10 +43,10 @@ export async function GET(request: NextRequest) {
         }
       })();
 
-    // Authentication
-    const authCheck = requireUserToken(request);
+    // Authentication (cookie-only)
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     if (!userId) {
       return errorResponse("User ID is required", 400);
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         request,
-        token,
+        "" as unknown as string, // cookie-only: no token
         userId,
         "search_performed"
       );
@@ -78,13 +78,7 @@ export async function GET(request: NextRequest) {
     if (!convexClient)
       return errorResponse("Convex client not configured", 500);
 
-    // Ensure Convex sees the authenticated user if supported
-    try {
-      // @ts-ignore - setAuth may exist on this client
-      convexClient.setAuth?.(token);
-    } catch {
-      // ignore
-    }
+    // Cookie-only: do not set bearer on Convex client
 
     // Parse and validate with Zod
     const { searchParams } = new URL(request.url);

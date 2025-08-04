@@ -41,10 +41,11 @@ describe("/api/profile API Routes", () => {
 
   describe("GET /api/profile", () => {
     test("returns user profile when authenticated", async () => {
-      mockRequireUserToken.mockReturnValue({
-        token: "valid-token",
-        userId: "user_123",
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          userId: "user_123",
+        })
+      );
 
       const mockProfile = {
         _id: "profile_123",
@@ -73,9 +74,11 @@ describe("/api/profile API Routes", () => {
     });
 
     test("returns 401 when not authenticated", async () => {
-      mockRequireUserToken.mockReturnValue({
-        errorResponse: new Response("Unauthorized", { status: 401 }),
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          errorResponse: new Response("Unauthorized", { status: 401 }),
+        })
+      );
 
       const { req } = createMocks({ method: "GET" });
       const response = await GET(req);
@@ -84,10 +87,11 @@ describe("/api/profile API Routes", () => {
     });
 
     test("handles profile not found", async () => {
-      mockRequireUserToken.mockReturnValue({
-        token: "valid-token",
-        userId: "user_123",
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          userId: "user_123",
+        })
+      );
 
       const mockClient = {
         query: jest.fn().mockResolvedValue(null),
@@ -107,10 +111,11 @@ describe("/api/profile API Routes", () => {
     });
 
     test("handles database errors gracefully", async () => {
-      mockRequireUserToken.mockReturnValue({
-        token: "valid-token",
-        userId: "user_123",
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          userId: "user_123",
+        })
+      );
 
       const mockClient = {
         query: jest.fn().mockRejectedValue(new Error("Database error")),
@@ -132,10 +137,11 @@ describe("/api/profile API Routes", () => {
 
   describe("POST /api/profile", () => {
     test("creates new profile when authenticated", async () => {
-      mockRequireUserToken.mockReturnValue({
-        token: "valid-token",
-        userId: "user_123",
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          userId: "user_123",
+        })
+      );
 
       const profileData = {
         fullName: "New User",
@@ -172,9 +178,11 @@ describe("/api/profile API Routes", () => {
     });
 
     test("returns 401 when not authenticated", async () => {
-      mockRequireUserToken.mockReturnValue({
-        errorResponse: new Response("Unauthorized", { status: 401 }),
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          errorResponse: new Response("Unauthorized", { status: 401 }),
+        })
+      );
 
       const { req } = createMocks({
         method: "POST",
@@ -189,10 +197,11 @@ describe("/api/profile API Routes", () => {
 
   describe("PUT /api/profile", () => {
     test("updates existing profile when authenticated", async () => {
-      mockRequireUserToken.mockReturnValue({
-        token: "valid-token",
-        userId: "user_123",
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          userId: "user_123",
+        })
+      );
 
       const updateData = {
         fullName: "Updated User",
@@ -218,8 +227,7 @@ describe("/api/profile API Routes", () => {
         method: "PUT",
         body: updateData,
         headers: {
-          "content-type": "application/json",
-          authorization: "Bearer valid-token",
+          "content-type": "application/json"
         },
       });
 
@@ -230,10 +238,11 @@ describe("/api/profile API Routes", () => {
 
   describe("DELETE /api/profile", () => {
     test("deletes profile when authenticated", async () => {
-      mockRequireUserToken.mockReturnValue({
-        token: "valid-token",
-        userId: "user_123",
-      });
+      mockRequireUserToken.mockReturnValue(
+        Promise.resolve({
+          userId: "user_123",
+        })
+      );
 
       const mockProfile = {
         _id: "profile_123",
@@ -250,8 +259,7 @@ describe("/api/profile API Routes", () => {
       );
 
       const { req } = createMocks({
-        method: "DELETE",
-        headers: { authorization: "Bearer valid-token" },
+        method: "DELETE"
       });
 
       const response = await DELETE(req);

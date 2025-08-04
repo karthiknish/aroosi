@@ -36,10 +36,10 @@ function isValidPlanId(planId: unknown): planId is PublicPlanId {
 
 export async function POST(req: NextRequest) {
   try {
-    // Enhanced authentication
-    const auth = requireUserToken(req);
+    // Enhanced authentication (cookie-based)
+    const auth = await requireUserToken(req);
     if ("errorResponse" in auth) return auth.errorResponse;
-    const { token, userId } = auth;
+    const userId = auth.userId;
     if (!userId) return errorResponse("User ID not found in token", 401);
 
     // Strict rate limiting for payment operations
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     // Fetch user profile from Convex to pre-fill email and pass userId as metadata.
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    // Cookie-only flow for Convex in this endpoint; do not set bearer
     const profile = await convex.query(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
     });

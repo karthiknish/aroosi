@@ -111,17 +111,17 @@ async function validateGooglePurchase(
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     if (!userId) {
-      return errorResponse("User ID not found in token", 401);
+      return errorResponse("User ID not found in session", 401);
     }
 
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
+    // Cookie-only: do not set auth bearer on client
 
     // Query the profile by user ID (optional, for audit/logging)
     // const profile = await convex.query(api.profiles.getProfileByUserId, { userId });
