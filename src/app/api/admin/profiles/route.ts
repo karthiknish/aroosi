@@ -27,20 +27,51 @@ export async function GET(req: NextRequest) {
     convex.setAuth(token);
     
     const { searchParams } = new URL(req.url);
-    
+
     // Input validation and sanitization
-    const search = searchParams.get("search")?.trim().replace(/[<>'\"&]/g, '') || undefined;
-    const pageParam = searchParams.get("page") || "0";
+    const rawSearch = searchParams.get("search") ?? undefined;
+    const search = rawSearch ? rawSearch.trim().replace(/[<>'\"&]/g, "") : undefined;
+
+    // Pagination
+    const pageParam = searchParams.get("page") || "1"; // 1-based for API
     const pageSizeParam = searchParams.get("pageSize") || "10";
-    
-    // Validate pagination parameters
-    const page = Math.max(0, Math.min(1000, parseInt(pageParam, 10) || 0)); // Limit to 1000 pages
+    const page = Math.max(1, Math.min(1000, parseInt(pageParam, 10) || 1)); // Limit to 1000 pages
     const pageSize = Math.max(1, Math.min(100, parseInt(pageSizeParam, 10) || 10)); // Limit page size to 100
-    
+
+    // Sort and filters (approved contract)
+    const sortByParam = (searchParams.get("sortBy") || "createdAt") as
+      | "createdAt"
+      | "banned"
+      | "subscriptionPlan";
+    const sortDirParam = (searchParams.get("sortDir") || "desc") as "asc" | "desc";
+    const bannedParam = (searchParams.get("banned") || "all") as "true" | "false" | "all";
+    const planParam = (searchParams.get("plan") || "all") as
+      | "all"
+      | "free"
+      | "premium"
+      | "premiumPlus";
+    const isProfileCompleteParam = (searchParams.get("isProfileComplete") || "all") as
+      | "all"
+      | "true"
+      | "false";
+
     // Validate search term
     if (search && (search.length < 2 || search.length > 100)) {
       return errorResponse("Invalid search parameter", 400);
     }
+
+    // Validate enums (fallback to defaults if invalid)
+    const sortBy: "createdAt" | "banned" | "subscriptionPlan" =
+      ["createdAt", "banned", "subscriptionPlan"].includes(sortByParam)
+        ? sortByParam
+        : "createdAt";
+    const sortDir: "asc" | "desc" = ["asc", "desc"].includes(sortDirParam) ? sortDirParam : "desc";
+    const banned: "true" | "false" | "all" =
+      ["true", "false", "all"].includes(bannedParam) ? bannedParam : "all";
+    const plan: "all" | "free" | "premium" | "premiumPlus" =
+      ["all", "free", "premium", "premiumPlus"].includes(planParam) ? planParam : "all";
+    const isProfileComplete: "all" | "true" | "false" =
+      ["all", "true", "false"].includes(isProfileCompleteParam) ? isProfileCompleteParam : "all";
 
     // Log admin action for security monitoring
     // logSecurityEvent('UNAUTHORIZED_ACCESS', {
@@ -53,6 +84,11 @@ export async function GET(req: NextRequest) {
       search,
       page,
       pageSize,
+      sortBy,
+      sortDir,
+      banned,
+      plan,
+      isProfileComplete,
     });
 
     // Validate result structure
@@ -65,6 +101,11 @@ export async function GET(req: NextRequest) {
       ...result,
       page,
       pageSize,
+      sortBy,
+      sortDir,
+      banned,
+      plan,
+      isProfileComplete,
     });
 
   } catch (error) {
@@ -201,27 +242,68 @@ export async function PUT(req: NextRequest) {
       return errorResponse("Missing or invalid updates", 400);
     }
 
-    // Sanitize updates object
-    const sanitizedUpdates = Object.fromEntries(
-      Object.entries(body.updates)
-        .filter(([key, value]) => {
-          // Only allow specific admin-updatable fields
-          const allowedFields = [
-            'hideFromFreeUsers',
-            'subscriptionPlan', 'subscriptionExpiresAt', 'fullName',
-            'aboutMe', 'isProfileComplete', 'motherTongue', 'religion', 'ethnicity'
-          ];
-          return allowedFields.includes(key) && value !== null && value !== undefined;
-        })
-        .map(([key, value]) => [
-          key,
-          typeof value === 'string' ? value.trim().replace(/[<>'\"&]/g, '') : value
-        ])
+    // Centralized allowlist + zod validation for admin profile updates
+    const ADMIN_PROFILE_UPDATE_ALLOWED_FIELDS = [
+      "fullName",
+      "aboutMe",
+      "isProfileComplete",
+      "motherTongue",
+      "religion",
+      "ethnicity",
+      "hideFromFreeUsers",
+      // Subscription fields allowed only via admin context
+      "subscriptionPlan",
+      "subscriptionExpiresAt",
+    ] as const;
+
+    // Lazy import zod to avoid route cold-start cost unless needed
+    const { z } = await import("zod");
+
+    const UpdateSchema = z.object({
+      fullName: z.string().trim().max(200).optional(),
+      aboutMe: z.string().trim().max(5000).optional(),
+      isProfileComplete: z.boolean().optional(),
+      motherTongue: z.string().trim().max(100).optional(),
+      religion: z.string().trim().max(100).optional(),
+      ethnicity: z.string().trim().max(100).optional(),
+      hideFromFreeUsers: z.boolean().optional(),
+      subscriptionPlan: z.enum(["free", "premium", "premiumPlus"]).optional(),
+      subscriptionExpiresAt: z.number().int().positive().optional(),
+    })
+    // Disallow unknown keys early
+    .strict();
+
+    // Remove unknown keys before validation; then validate with zod
+    const filteredEntries = Object.entries(body.updates).filter(
+      ([key, value]) =>
+        (ADMIN_PROFILE_UPDATE_ALLOWED_FIELDS as readonly string[]).includes(key) &&
+        value !== null && value !== undefined
     );
 
-    if (Object.keys(sanitizedUpdates).length === 0) {
+    if (filteredEntries.length === 0) {
       return errorResponse("No valid update fields provided", 400);
     }
+
+    // Basic string sanitization on string fields prior to validation
+    const preSanitized = Object.fromEntries(
+      filteredEntries.map(([key, value]) => [
+        key,
+        typeof value === "string" ? value.trim().replace(/[<>'\"&]/g, "") : value,
+      ])
+    );
+
+    const parseResult = UpdateSchema.safeParse(preSanitized);
+    if (!parseResult.success) {
+      return errorResponse("Invalid update fields", 400, {
+        issues: parseResult.error.issues?.map((i) => ({
+          path: i.path?.join("."),
+          message: i.message,
+          code: i.code,
+        })),
+      });
+    }
+
+    const sanitizedUpdates = parseResult.data;
 
     // Log admin action
     // //logSecurityEvent('ADMIN_ACTION', {

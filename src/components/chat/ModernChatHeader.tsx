@@ -5,6 +5,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Crown, Shield, Dot, Circle } from "lucide-react";
 import { ConnectionStatus } from "@/components/ui/MessageFeedback";
 
+import { planDisplayName } from "@/lib/utils/plan";
+import { isPremium } from "@/lib/utils/subscriptionPlan";
+
 type ModernChatHeaderProps = {
   matchUserName?: string;
   matchUserAvatarUrl?: string;
@@ -50,10 +53,10 @@ export default function ModernChatHeader({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {subscriptionPlan && (
+          {isPremium(subscriptionPlan) && (
             <div className="text-xs bg-white/15 backdrop-blur px-2 py-1 rounded-full flex items-center gap-1">
               <Crown className="w-3 h-3" />
-              <span className="capitalize truncate max-w-[90px]">{subscriptionPlan}</span>
+              <span className="truncate max-w-[90px]">{planDisplayName(subscriptionPlan)}</span>
             </div>
           )}
           <Button

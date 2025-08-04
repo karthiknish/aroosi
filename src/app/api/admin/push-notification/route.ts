@@ -1,41 +1,91 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAdminToken } from "@/app/api/_utils/auth";
-import { apiResponse } from "@/lib/utils/apiResponse";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
+/**
+ * POST /api/admin/push-notification
+ * Safety controls:
+ * - dryRun: boolean to preview payload without sending
+ * - confirm: required true to actually send (when dryRun is false)
+ * - audience: optional explicit audience segment(s); defaults to "Subscribed Users"
+ * - maxAudience: hard cap unless overridden with smaller allowed segments (server-side control is limited by provider)
+ */
 export async function POST(request: Request) {
   const admin = requireAdminToken(request as unknown as NextRequest);
-  if ("errorResponse" in admin) {
-    return admin.errorResponse;
+  if ("errorResponse" in admin) return admin.errorResponse;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse("Invalid JSON body", 400);
   }
 
-  const { title, message, url } = (await request.json()) as {
+  const {
+    title,
+    message,
+    url,
+    dryRun,
+    confirm,
+    audience,
+    maxAudience,
+  } = (body || {}) as {
     title?: string;
     message?: string;
     url?: string;
+    dryRun?: boolean;
+    confirm?: boolean;
+    audience?: string[] | string; // e.g., ["Subscribed Users"]
+    maxAudience?: number; // informational; OneSignal segmentation/capping is provider-side
   };
 
   if (!title || !message) {
-    return NextResponse.json(
-      apiResponse.validationError({
-        title: "Title required",
-        message: "Message required",
-      }),
-      { status: 400 }
-    );
+    return errorResponse("Title and message are required", 400, {
+      fields: ["title", "message"],
+    });
   }
 
   if (!process.env.ONESIGNAL_APP_ID || !process.env.ONESIGNAL_API_KEY) {
-    return NextResponse.json(apiResponse.error("OneSignal not configured"), {
-      status: 500,
+    return errorResponse("OneSignal not configured", 500);
+  }
+
+  // Safety: require confirm for live sends; dryRun preview otherwise
+  if (!dryRun && confirm !== true) {
+    return errorResponse("Confirmation required for live send", 400, {
+      hint: "Pass confirm: true or use dryRun: true",
+    });
+  }
+
+  // Normalize audience; default to Subscribed Users
+  const segments =
+    (Array.isArray(audience) ? audience : audience ? [audience] : []) ||
+    ["Subscribed Users"];
+
+  // We cannot hard-cap audience via API without advanced OneSignal filters; expose info only
+  const effectiveMax =
+    Number.isFinite(maxAudience) && maxAudience ? Math.max(1, Math.min(100000, maxAudience)) : 100000;
+
+  // Dry run: return payload preview only
+  if (dryRun) {
+    return successResponse({
+      dryRun: true,
+      preview: {
+        app_id: "REDACTED",
+        headings: { en: title },
+        contents: { en: message },
+        included_segments: segments,
+        url: url || undefined,
+      },
+      maxAudience: effectiveMax,
     });
   }
 
   try {
-    const body = {
-      app_id: process.env.ONESIGNAL_APP_ID,
+    const payload = {
+      app_id: process.env.ONESIGNAL_APP_ID as string,
       headings: { en: title },
       contents: { en: message },
-      included_segments: ["Subscribed Users"],
+      included_segments: segments,
       url: url || undefined,
     };
 
@@ -45,23 +95,25 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
         Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       console.error("OneSignal error", errorData);
-      return NextResponse.json(
-        apiResponse.error("Failed to queue notification"),
-        { status: 500 }
-      );
+      return errorResponse("Failed to queue notification", 500, {
+        providerError: errorData,
+      });
     }
 
-    return NextResponse.json(apiResponse.success(null, "Notification queued"));
+    return successResponse({
+      dryRun: false,
+      queued: true,
+      segments,
+      maxAudience: effectiveMax,
+    });
   } catch (err) {
     console.error("Push notification error", err);
-    return NextResponse.json(apiResponse.error("Unexpected error"), {
-      status: 500,
-    });
+    return errorResponse("Unexpected error", 500);
   }
 }

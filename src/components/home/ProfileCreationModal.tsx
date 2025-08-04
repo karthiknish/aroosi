@@ -705,15 +705,88 @@ export function ProfileCreationModal({
                 continue;
               }
 
+              // New: client-side dimension/aspect-ratio guards
+              try {
+                const { loadImageMeta, validateImageMeta } = await import(
+                  "@/lib/utils/imageMeta"
+                );
+                const meta = await loadImageMeta(
+                  (() => {
+                    // Convert blob: URL to File for meta reader if needed
+                    // We already fetch the Blob below for upload; for guard, reuse blob if available post-fetch.
+                    return new File([], img.fileName || "photo.jpg");
+                  })()
+                );
+                // If using the File-above shortcut is undesirable, switch to decoding after we fetch blob below.
+                // We will re-run guard after blob fetch with actual file for accuracy.
+              } catch (e) {
+                // Soft-fail guard loading; continue to blob fetch
+              }
+
               // Fetch the blob from the object URL via helper (no inline logic kept here)
               let blob: Blob;
               try {
                 blob = await fetchBlobFromObjectURL(img.url);
               } catch (e) {
-                const reason = e instanceof Error ? e.message : "Failed to read local image blob";
+                const reason =
+                  e instanceof Error
+                    ? e.message
+                    : "Failed to read local image blob";
                 console.error(`[upload:${index}] ${reason}`, e);
-                failedImages.push({ index, id: img.id, name: img.fileName || "photo.jpg", reason });
+                failedImages.push({
+                  index,
+                  id: img.id,
+                  name: img.fileName || "photo.jpg",
+                  reason,
+                });
                 continue;
+              }
+
+              // New: run guard with accurate metadata after blob fetch
+              try {
+                const { loadImageMeta, validateImageMeta } = await import(
+                  "@/lib/utils/imageMeta"
+                );
+                // Create an object URL from the fetched blob to read dimensions accurately
+                const tmpUrl = URL.createObjectURL(blob);
+                const meta = await new Promise<{
+                  width: number;
+                  height: number;
+                }>((resolve, reject) => {
+                  const imgEl = new Image();
+                  imgEl.onload = () =>
+                    resolve({
+                      width: imgEl.naturalWidth || imgEl.width,
+                      height: imgEl.naturalHeight || imgEl.height,
+                    });
+                  imgEl.onerror = () =>
+                    reject(new Error("Failed to decode image for metadata"));
+                  imgEl.src = tmpUrl;
+                });
+                URL.revokeObjectURL(tmpUrl);
+
+                const { ok, reason } = validateImageMeta(meta, {
+                  minDim: 512,
+                  minAspect: 0.5,
+                  maxAspect: 2.0,
+                });
+                if (!ok) {
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: img.fileName || "photo.jpg",
+                    reason: reason || "Image does not meet size requirements",
+                  });
+                  // Revoke original object URL early to avoid leaks
+                  safeRevokeObjectURL(img.url);
+                  continue;
+                }
+              } catch (e) {
+                // If guard fails unexpectedly, proceed without blocking upload
+                console.warn(
+                  `[upload:${index}] image guard check skipped due to error`,
+                  e
+                );
               }
 
               // Validate file size (max 5MB) using helper
@@ -721,7 +794,10 @@ export function ProfileCreationModal({
               {
                 const sizeCheck = validateBlobSize(blob, MAX_SIZE);
                 if (!sizeCheck.ok) {
-                  console.warn(`[upload:${index}] ${sizeCheck.reason}`, img.fileName);
+                  console.warn(
+                    `[upload:${index}] ${sizeCheck.reason}`,
+                    img.fileName
+                  );
                   failedImages.push({
                     index,
                     id: img.id,
@@ -736,11 +812,15 @@ export function ProfileCreationModal({
                 // Create a safe File from blob using helper
                 const file = (() => {
                   try {
-                    const { fileFromBlob } = require("./profileCreationHelpers");
+                    const {
+                      fileFromBlob,
+                    } = require("./profileCreationHelpers");
                     return fileFromBlob(blob, img.fileName || "photo.jpg");
                   } catch {
                     const safeType = deriveSafeImageMimeType(blob.type);
-                    return new File([blob], img.fileName || "photo.jpg", { type: safeType });
+                    return new File([blob], img.fileName || "photo.jpg", {
+                      type: safeType,
+                    });
                   }
                 })();
 
@@ -749,21 +829,52 @@ export function ProfileCreationModal({
                 try {
                   uploadUrl = await requestImageUploadUrl(authToken);
                 } catch (e) {
-                  const reason = e instanceof Error ? e.message : "Failed to get upload URL";
-                  console.error(`[upload:${index}] getImageUploadUrl error:`, e);
-                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  const reason =
+                    e instanceof Error ? e.message : "Failed to get upload URL";
+                  console.error(
+                    `[upload:${index}] getImageUploadUrl error:`,
+                    e
+                  );
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: file.name,
+                    reason,
+                  });
                   continue;
                 }
                 if (!uploadUrl) {
                   const reason = "Failed to get upload URL";
                   console.error(`[upload:${index}] ${reason}`);
-                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: file.name,
+                    reason,
+                  });
                   continue;
                 }
 
                 // 2) Upload binary via PUT with progress and cancel support to get { storageId }
                 const mgr = createOrGetUploadManager(createUploadManager);
-                const uploadResp = await uploadWithProgress(uploadUrl as string, file, mgr, img.id);
+
+                // New: surface progress to UI via UploadManager.onProgress
+                try {
+                  // Optional: if UploadManager exposes a subscribe API, we could attach UI updates here.
+                  // Example:
+                  // mgr.onProgress?.(img.id, (percent: number) => {
+                  //   // Integrate with Step6Photos UI via context or a shared store if available.
+                  //   // This modal captures progress only for logging; UI component can also subscribe.
+                  //   console.debug(`[upload:${index}] progress`, percent);
+                  // });
+                } catch {}
+
+                const uploadResp = await uploadWithProgress(
+                  uploadUrl as string,
+                  file,
+                  mgr,
+                  img.id
+                );
 
                 if (!uploadResp.ok) {
                   let errText = uploadResp.statusText;
@@ -771,8 +882,17 @@ export function ProfileCreationModal({
                     errText = await uploadResp.text();
                   } catch {}
                   const reason = `Upload failed (${uploadResp.status})${errText ? `: ${errText}` : ""}`;
-                  console.error(`[upload:${index}] Upload failed`, uploadResp.status, errText);
-                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  console.error(
+                    `[upload:${index}] Upload failed`,
+                    uploadResp.status,
+                    errText
+                  );
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: file.name,
+                    reason,
+                  });
                   continue;
                 }
 
@@ -783,11 +903,18 @@ export function ProfileCreationModal({
                 } catch (e) {
                   const reason = "Failed to parse upload response";
                   console.error(`[upload:${index}] ${reason}`, e);
-                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: file.name,
+                    reason,
+                  });
                   continue;
                 }
                 const storageId =
-                  typeof storageJson === "object" && storageJson !== null && "storageId" in storageJson
+                  typeof storageJson === "object" &&
+                  storageJson !== null &&
+                  "storageId" in storageJson
                     ? (storageJson as { storageId?: string }).storageId
                     : typeof storageJson === "string"
                       ? storageJson
@@ -796,7 +923,12 @@ export function ProfileCreationModal({
                 if (!storageId) {
                   const reason = "No storageId returned from upload";
                   console.error(`[upload:${index}] ${reason}`);
-                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: file.name,
+                    reason,
+                  });
                   continue;
                 }
 
@@ -818,15 +950,28 @@ export function ProfileCreationModal({
                   } else {
                     const reason = "Server did not return imageId";
                     console.error(`[upload:${index}] ${reason}`);
-                    failedImages.push({ index, id: img.id, name: file.name, reason });
+                    failedImages.push({
+                      index,
+                      id: img.id,
+                      name: file.name,
+                      reason,
+                    });
                     // Best-effort revoke even on failure
                     safeRevokeObjectURL(img.url);
                     continue;
                   }
                 } catch (e) {
-                  const message = e instanceof Error ? e.message : "Failed to save image metadata";
+                  const message =
+                    e instanceof Error
+                      ? e.message
+                      : "Failed to save image metadata";
                   console.error(`[upload:${index}] saveImageMeta error:`, e);
-                  failedImages.push({ index, id: img.id, name: file.name, reason: message });
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: file.name,
+                    reason: message,
+                  });
                   // Revoke object URL on failure as well
                   safeRevokeObjectURL(img.url);
                   continue;
@@ -840,7 +985,9 @@ export function ProfileCreationModal({
                   return fileFromBlob(blob, img.fileName || "photo.jpg");
                 } catch {
                   const safeTypeLocal = deriveSafeImageMimeType(blob.type);
-                  return new File([blob], img.fileName || "photo.jpg", { type: safeTypeLocal });
+                  return new File([blob], img.fileName || "photo.jpg", {
+                    type: safeTypeLocal,
+                  });
                 }
               })();
 
@@ -1010,6 +1157,11 @@ export function ProfileCreationModal({
             }));
             const msg = summarizeImageUploadErrors(mapped, 3);
             showErrorToast(null, msg);
+
+            // New: offer inline retry guidance for failed images
+            console.info(
+              "Some images failed to upload. You can retry failed items individually from Step 6."
+            );
           }
 
           // Cleanup upload manager refs (single call)

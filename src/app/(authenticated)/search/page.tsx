@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { UserCircle, Rocket, BadgeCheck } from "lucide-react";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -483,8 +484,7 @@ export default function SearchProfilesPage() {
                 className="w-24 bg-white rounded-lg shadow-sm font-nunito"
               />
               {/* Premium-only filters */}
-              {(profile?.subscriptionPlan === "premium" ||
-                profile?.subscriptionPlan === "premiumPlus") && (
+              {isPremium(profile?.subscriptionPlan) && (
                 <>
                   <Select value={ethnicity} onValueChange={setEthnicity}>
                     <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
@@ -667,16 +667,13 @@ export default function SearchProfilesPage() {
                         <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
                           <div className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-1">
                             {typeof p.fullName === "string" ? p.fullName : ""}
-                            {(p.subscriptionPlan === "premium" ||
-                              p.subscriptionPlan === "premiumPlus") && (
+                            {isPremium(p.subscriptionPlan) && (
                               <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
                             )}
-                            {(p.subscriptionPlan === "premium" ||
-                              p.subscriptionPlan === "premiumPlus") &&
-                            p.hasSpotlightBadge &&
-                            p.spotlightBadgeExpiresAt &&
-                            (p.spotlightBadgeExpiresAt as number) >
-                              Date.now() ? (
+                            {isPremium(p.subscriptionPlan) &&
+                              p.hasSpotlightBadge &&
+                              p.spotlightBadgeExpiresAt &&
+                              (p.spotlightBadgeExpiresAt as number) > Date.now() ? (
                               <SpotlightIcon className="w-4 h-4" />
                             ) : null}
                           </div>

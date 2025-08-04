@@ -204,7 +204,16 @@ export default defineSchema({
         })
       )
     ),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    // New search indexes for scalability; query code can be refactored later to leverage them
+    .index("by_city", ["city"])
+    .index("by_country", ["country"])
+    .index("by_gender", ["gender"])
+    .index("by_createdAt", ["createdAt"])
+    // Optional filters if used commonly
+    .index("by_ethnicity", ["ethnicity"])
+    .index("by_motherTongue", ["motherTongue"]),
 
   // The sessions table is no longer needed with Clerk
   // sessions: defineTable({

@@ -5,21 +5,61 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
+import { z } from "zod";
 
 type Gender = "any" | "male" | "female" | "other";
 
+// Sanitized bounded string: trims, strips risky chars, 2..50
+const SanStr = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/[<>'"&]/g, ""))
+  .pipe(z.string().min(2).max(50));
+
+const QuerySchema = z.object({
+  city: SanStr.optional(),
+  country: SanStr.optional(),
+  ethnicity: SanStr.optional(),
+  motherTongue: SanStr.optional(),
+  language: SanStr.optional(),
+  preferredGender: z.enum(["any", "male", "female", "other"]).optional(),
+  ageMin: z.coerce.number().int().min(18).max(120).optional(),
+  ageMax: z.coerce.number().int().min(18).max(120).optional(),
+  page: z.coerce.number().int().min(0).max(100).default(0),
+  pageSize: z.coerce.number().int().min(1).max(50).default(12),
+});
+
 export async function GET(request: NextRequest) {
   try {
-    // Enhanced authentication
+    // Correlation ID for cross-tier tracing
+    const cid =
+      request.headers.get("x-correlation-id") ??
+      (() => {
+        try {
+          return crypto.randomUUID();
+        } catch {
+          // Fallback unique-ish
+          return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        }
+      })();
+
+    // Authentication
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    // Subscription-based rate limiting
     if (!userId) {
       return errorResponse("User ID is required", 400);
     }
 
+    // 1) Coarse per-user burst limiter (e.g. 60/min) to protect infra
+    const burstKey = `search:${userId}`;
+    const burstLimit = checkApiRateLimit(burstKey, 60, 60_000);
+    if (!burstLimit.allowed) {
+      return errorResponse("Rate limit exceeded. Please slow down.", 429);
+    }
+
+    // 2) Subscription-aware limiter for plan entitlements
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         request,
@@ -27,7 +67,6 @@ export async function GET(request: NextRequest) {
         userId,
         "search_performed"
       );
-
     if (!subscriptionRateLimit.allowed) {
       return errorResponse(
         subscriptionRateLimit.error || "Subscription limit exceeded",
@@ -39,88 +78,62 @@ export async function GET(request: NextRequest) {
     if (!convexClient)
       return errorResponse("Convex client not configured", 500);
 
-    // App-layer auth: do NOT pass app JWT to Convex (no convexClient.setAuth)
-    // Convex queries below must rely on server-side functions that resolve identity without JWT
+    // Ensure Convex sees the authenticated user if supported
+    try {
+      // @ts-ignore - setAuth may exist on this client
+      convexClient.setAuth?.(token);
+    } catch {
+      // ignore
+    }
 
+    // Parse and validate with Zod
     const { searchParams } = new URL(request.url);
-
-    // Input validation and sanitization
-    const city =
-      searchParams
-        .get("city")
-        ?.trim()
-        .replace(/[<>'\"&]/g, "") || undefined;
-    const country =
-      searchParams
-        .get("country")
-        ?.trim()
-        .replace(/[<>'\"&]/g, "") || undefined;
-
-    const ageMinParam = searchParams.get("ageMin");
-    const ageMaxParam = searchParams.get("ageMax");
-    const pageParam = searchParams.get("page") || "0";
-    const pageSizeParam = searchParams.get("pageSize") || "12";
-    const preferredGenderParam = searchParams.get("preferredGender");
-
-    // Validate and sanitize age parameters
-    let ageMin: number | undefined = undefined;
-    let ageMax: number | undefined = undefined;
-
-    if (ageMinParam) {
-      const parsed = parseInt(ageMinParam);
-      if (isNaN(parsed) || parsed < 18 || parsed > 120) {
-        return errorResponse("Invalid minimum age", 400);
+    const paramsObj = Object.fromEntries(searchParams.entries());
+    const parsed = QuerySchema.safeParse(paramsObj);
+    if (!parsed.success) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("search.api validation failed", {
+          correlationId: cid,
+          issues: parsed.error.issues,
+        });
       }
-      ageMin = parsed;
+      return errorResponse("Invalid parameters", 400);
     }
-
-    if (ageMaxParam) {
-      const parsed = parseInt(ageMaxParam);
-      if (isNaN(parsed) || parsed < 18 || parsed > 120) {
-        return errorResponse("Invalid maximum age", 400);
-      }
-      ageMax = parsed;
-    }
-
-    // Validate age range
-    if (ageMin && ageMax && ageMin > ageMax) {
-      return errorResponse(
-        "Minimum age cannot be greater than maximum age",
-        400
-      );
-    }
-
-    // Validate preferred gender
-    const validGenders: Gender[] = ["any", "male", "female", "other"];
-    const preferredGender =
-      preferredGenderParam &&
-      validGenders.includes(preferredGenderParam as Gender)
-        ? (preferredGenderParam as Gender)
-        : undefined;
-
-    // Validate pagination parameters
-    const page = Math.max(0, Math.min(100, parseInt(pageParam) || 0)); // Limit to 100 pages
-    const pageSize = Math.max(1, Math.min(50, parseInt(pageSizeParam) || 12)); // Limit page size to 50
-
-    // Validate city if provided
-    if (city && (city.length < 2 || city.length > 50)) {
-      return errorResponse("Invalid city parameter", 400);
-    }
-
-    // Validate country if provided
-    if (country && (country.length < 2 || country.length > 50)) {
-      return errorResponse("Invalid country parameter", 400);
-    }
-
-    console.log("Searching profiles with params:", {
+    const {
       city,
       country,
+      ethnicity,
+      motherTongue,
+      language,
+      preferredGender,
       ageMin,
       ageMax,
-      preferredGender,
       page,
       pageSize,
+    } = parsed.data;
+
+    // Cross-field validation: ageMin <= ageMax
+    if (typeof ageMin === "number" && typeof ageMax === "number" && ageMin > ageMax) {
+      return errorResponse("Minimum age cannot be greater than maximum age", 400);
+    }
+
+    const t0 = Date.now();
+    console.info("search.api query", {
+      scope: "search",
+      correlationId: cid,
       userId,
+      page,
+      pageSize,
+      filters: {
+        hasCity: !!city,
+        hasCountry: !!country,
+        preferredGender: preferredGender ?? "any",
+        ageMin,
+        ageMax,
+        hasEthnicity: !!ethnicity,
+        hasMotherTongue: !!motherTongue,
+        hasLanguage: !!language,
+      },
     });
 
     const result = await convexClient.query(api.users.searchPublicProfiles, {
@@ -131,41 +144,52 @@ export async function GET(request: NextRequest) {
       preferredGender,
       page,
       pageSize,
+      // extended filters
+      ethnicity,
+      motherTongue,
+      language,
+      // correlation
+      correlationId: cid,
     });
 
-    // Validate and sanitize search results
     if (!result || typeof result !== "object") {
-      console.error("Invalid search results from Convex:", result);
+      console.error("Invalid search results from Convex:", result, {
+        scope: "search",
+        correlationId: cid,
+      });
       return errorResponse("Search service error", 500);
     }
 
-    // Log search for analytics (without sensitive data)
-    console.log(
-      `Profile search by user ${userId}: page=${page}, filters=${JSON.stringify({ city: !!city, ageMin, ageMax, preferredGender })}`
-    );
+    const latencyMs = Date.now() - t0;
+    console.info("search.api result", {
+      scope: "search",
+      correlationId: cid,
+      userId,
+      total: (result as any)?.total ?? 0,
+      page,
+      pageSize,
+      latencyMs,
+    });
 
     return successResponse({
       ...result,
       page,
       pageSize,
+      correlationId: cid,
       searchParams: {
         city,
         country,
         ageMin,
         ageMax,
         preferredGender,
+        ethnicity,
+        motherTongue,
+        language,
       },
     });
   } catch (error) {
     console.error("Error in search API route:", error);
 
-    // Log security event for monitoring
-    // logSecurityEvent('VALIDATION_FAILED', {
-    //   endpoint: 'search',
-    //   error: error instanceof Error ? error.message : 'Unknown error'
-    // }, request);
-
-    // Handle Convex authentication errors
     if (
       error instanceof Error &&
       (error.message.includes("AUTHENTICATION_ERROR") ||
@@ -174,7 +198,6 @@ export async function GET(request: NextRequest) {
       return errorResponse("Authentication failed. Please log in again.", 401);
     }
 
-    // Don't expose internal error details in production
     const errorMessage =
       process.env.NODE_ENV === "development"
         ? error instanceof Error

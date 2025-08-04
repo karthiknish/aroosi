@@ -12,38 +12,48 @@ import {
  */
 const RATE_LIMITS = {
   // Authentication endpoints
-  '/api/auth/login': { requests: 5, window: 15 * 60 * 1000 }, // 5 requests per 15 minutes
-  '/api/auth/register': { requests: 3, window: 15 * 60 * 1000 }, // 3 requests per 15 minutes
-  
+  "/api/auth/login": { requests: 5, window: 15 * 60 * 1000 }, // 5 requests per 15 minutes
+  "/api/auth/register": { requests: 3, window: 15 * 60 * 1000 }, // 3 requests per 15 minutes
+
   // Profile operations
-  '/api/profile': { requests: 100, window: 60 * 60 * 1000 }, // 100 requests per hour
-  '/api/profile/boost': { requests: 10, window: 60 * 60 * 1000 }, // 10 boosts per hour
-  
+  "/api/profile": { requests: 100, window: 60 * 60 * 1000 }, // 100 requests per hour
+  "/api/profile/boost": { requests: 10, window: 60 * 60 * 1000 }, // 10 boosts per hour
+
   // Search operations
-  '/api/search': { requests: 200, window: 60 * 60 * 1000 }, // 200 searches per hour
-  '/api/search-images': { requests: 50, window: 60 * 60 * 1000 }, // 50 image searches per hour
-  
+  "/api/search": { requests: 200, window: 60 * 60 * 1000 }, // 200 searches per hour
+  "/api/search-images": { requests: 50, window: 60 * 60 * 1000 }, // 50 image searches per hour
+
   // Interest operations
-  '/api/interests': { requests: 50, window: 60 * 60 * 1000 }, // 50 interests per hour
-  
+  "/api/interests": { requests: 50, window: 60 * 60 * 1000 }, // 50 interests per hour
+
   // Image operations
-  '/api/profile-images': { requests: 20, window: 60 * 60 * 1000 }, // 20 image operations per hour
-  '/api/profile-images/upload-url': { requests: 10, window: 60 * 60 * 1000 }, // 10 uploads per hour
-  
+  "/api/profile-images": { requests: 20, window: 60 * 60 * 1000 }, // 20 image operations per hour
+  "/api/profile-images/upload-url": { requests: 10, window: 60 * 60 * 1000 }, // 10 uploads per hour
+
   // Admin operations (stricter limits)
-  '/api/admin': { requests: 1000, window: 60 * 60 * 1000 }, // 1000 admin operations per hour
-  
+  "/api/admin": { requests: 1000, window: 60 * 60 * 1000 }, // 1000 admin operations per hour
+  // Admin per-route sensitive operations
+  "/api/admin/profiles": { requests: 300, window: 60 * 60 * 1000 }, // list 300/hr
+  "/api/admin/profiles/": { requests: 300, window: 60 * 60 * 1000 }, // prefix safety
+  "/api/admin/profiles/[id]/ban": { requests: 60, window: 60 * 60 * 1000 }, // 60/hr
+  "/api/admin/marketing-email": { requests: 20, window: 60 * 60 * 1000 }, // 20/hr
+  "/api/admin/push-notification": { requests: 20, window: 60 * 60 * 1000 }, // 20/hr
+  "/api/admin/matches": { requests: 200, window: 60 * 60 * 1000 }, // 200/hr
+  "/api/admin/matches/create": { requests: 60, window: 60 * 60 * 1000 }, // 60/hr
+  "/api/admin/profiles/[id]/images/order": { requests: 100, window: 60 * 60 * 1000 }, // 100/hr
+
   // Contact form
-  '/api/contact': { requests: 5, window: 10 * 60 * 1000 }, // 5 contacts per 10 minutes
-  
+  "/api/contact": { requests: 5, window: 10 * 60 * 1000 }, // 5 contacts per 10 minutes
+
   // AI/Chat operations
-  '/api/gemini-chat': { requests: 20, window: 60 * 60 * 1000 }, // 20 AI chats per hour
+  "/api/gemini-chat": { requests: 20, window: 60 * 60 * 1000 }, // 20 AI chats per hour
   // Payment operations
-  '/api/stripe/checkout': { requests: 10, window: 60 * 60 * 1000 }, // 10 checkouts per hour
-  '/api/stripe/portal': { requests: 20, window: 60 * 60 * 1000 },   // 20 portal entries per hour
-  
+  "/api/stripe/checkout": { requests: 10, window: 60 * 60 * 1000 }, // 10 checkouts per hour
+  // Add rate limit for Billing Portal opens
+  "/api/stripe/portal": { requests: 20, window: 60 * 60 * 1000 }, // 20 portal opens per hour
+
   // Default rate limit
-  'default': { requests: 100, window: 60 * 60 * 1000 }, // 100 requests per hour
+  default: { requests: 100, window: 60 * 60 * 1000 }, // 100 requests per hour
 } as const;
 
 /**

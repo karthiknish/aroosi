@@ -24,11 +24,27 @@ import { saveImageMeta, updateImageOrder, getImageUploadUrl } from "@/lib/utils/
  /**
   * Minimal UploadManager type used by uploadWithProgress. Concrete manager may
   * implement progress dispatching, cancellation per image, and cleanup().
+  *
+  * onProgress signature
+  * --------------------
+  * We codify the progress callback as a three-argument function:
+  *   (localId: string, loaded: number, total: number) => void
+  *
+  * - localId: A stable identifier for the file within the current session/UI.
+  * - loaded:  Bytes uploaded so far, sourced from ProgressEvent.loaded.
+  * - total:   Total bytes to upload, sourced from ProgressEvent.total.
+  *
+  * This mirrors the typical XMLHttpRequestUpload "progress" shape and avoids
+  * ad-hoc per-component typings. If a concrete UploadManager needs a different
+  * shape internally (e.g., a single object argument), it should adapt to this
+  * exported type at the boundary for consistency across components.
   */
+ export type UploadProgressHandler = (localId: string, loaded: number, total: number) => void;
+
  export interface UploadManager {
    abortController?: AbortController;
-   // progress callbacks keyed by localId
-   onProgress?: (localId: string, loaded: number, total: number) => void;
+   // Progress callback following UploadProgressHandler signature above
+   onProgress?: UploadProgressHandler;
    // Optional cleanup to clear any observers
    cleanup?: () => void;
  }
@@ -73,6 +89,7 @@ import { saveImageMeta, updateImageOrder, getImageUploadUrl } from "@/lib/utils/
  
          xhr.upload.onprogress = (evt) => {
            if (evt.lengthComputable && typeof manager.onProgress === "function" && localId) {
+             // Strictly adhere to documented signature (localId, loaded, total)
              manager.onProgress(localId, evt.loaded, evt.total);
            }
          };

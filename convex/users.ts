@@ -1467,63 +1467,103 @@ export const getMatchesForProfile = query({
 export const adminListProfiles = query({
   args: {
     search: v.optional(v.string()),
-    page: v.number(),
-    pageSize: v.number(),
+    page: v.number(),            // 1-based page index from API layer
+    pageSize: v.number(),        // 1..100
+    sortBy: v.optional(v.union(v.literal("createdAt"), v.literal("banned"), v.literal("subscriptionPlan"))),
+    sortDir: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    banned: v.optional(v.union(v.literal("true"), v.literal("false"), v.literal("all"))),
+    plan: v.optional(v.union(v.literal("all"), v.literal("free"), v.literal("premium"), v.literal("premiumPlus"))),
+    isProfileComplete: v.optional(v.union(v.literal("all"), v.literal("true"), v.literal("false"))),
   },
-  handler: async (ctx, { search, page, pageSize }) => {
+  handler: async (
+    ctx,
+    {
+      search,
+      page,
+      pageSize,
+      sortBy = "createdAt",
+      sortDir = "desc",
+      banned = "all",
+      plan = "all",
+      isProfileComplete = "all",
+    }
+  ) => {
     const identity = await ctx.auth.getUserIdentity();
     requireAdmin(identity);
 
-    // Fetch all profiles and users
+    // Fetch all profiles and users (note: collection scan; add indexes later for scale)
     let allProfiles = await ctx.db.query("profiles").collect();
     const users = await ctx.db.query("users").collect();
 
-    // Only include complete profiles (example: must have fullName, city, religion, phoneNumber)
-    allProfiles = allProfiles.filter(
-      (p) =>
-        p.fullName &&
-        p.city &&
-        p.phoneNumber &&
-        typeof p.fullName === "string" &&
-        typeof p.city === "string" &&
-        typeof p.phoneNumber === "string"
-    );
-
-    // Apply search filter if provided
+    // Optional: remove hard filter requiring phone/religion (retain general completeness filter instead)
+    // Apply search across fullName, city, phoneNumber, user.email
     if (search && search.trim() !== "") {
       const s = search.trim().toLowerCase();
       allProfiles = allProfiles.filter((p) => {
         const user = users.find((u) => u._id === p.userId);
         return (
-          (p.fullName && p.fullName.toLowerCase().includes(s)) ||
-          (p.city && p.city.toLowerCase().includes(s)) ||
-          (p.phoneNumber && p.phoneNumber.toLowerCase().includes(s)) ||
-          (user && user.email && user.email.toLowerCase().includes(s))
+          (typeof p.fullName === "string" && p.fullName.toLowerCase().includes(s)) ||
+          (typeof p.city === "string" && p.city.toLowerCase().includes(s)) ||
+          (typeof p.phoneNumber === "string" && p.phoneNumber.toLowerCase().includes(s)) ||
+          (user && typeof user.email === "string" && user.email.toLowerCase().includes(s))
         );
       });
     }
 
-    // Sort: boosted profiles first (boostedUntil in future), then by creation date desc
-    const now = Date.now();
-    allProfiles.sort((a, b) => {
-      const aBoost = a.boostedUntil && a.boostedUntil > now;
-      const bBoost = b.boostedUntil && b.boostedUntil > now;
+    // Filters
+    if (banned !== "all") {
+      const want = banned === "true";
+      allProfiles = allProfiles.filter((p) => !!p.banned === want);
+    }
+    if (plan !== "all") {
+      allProfiles = allProfiles.filter((p) => (p as any).subscriptionPlan === plan);
+    }
+    if (isProfileComplete !== "all") {
+      const want = isProfileComplete === "true";
+      allProfiles = allProfiles.filter((p) => !!p.isProfileComplete === want);
+    }
 
-      if (aBoost && !bBoost) return -1;
-      if (!aBoost && bBoost) return 1;
+    // Sorting
+    const dirMul = sortDir === "asc" ? 1 : -1;
+    if (sortBy === "createdAt") {
+      allProfiles.sort((a, b) => {
+        const at = (a as any).createdAt ?? 0;
+        const bt = (b as any).createdAt ?? 0;
+        return (at - bt) * dirMul;
+      });
+    } else if (sortBy === "banned") {
+      allProfiles.sort((a, b) => {
+        const av = !!(a as any).banned ? 1 : 0;
+        const bv = !!(b as any).banned ? 1 : 0;
+        return (av - bv) * dirMul || (((a as any).createdAt ?? 0) - ((b as any).createdAt ?? 0)) * -1; // tie-break by recency
+      });
+    } else if (sortBy === "subscriptionPlan") {
+      const order = { free: 0, premium: 1, premiumPlus: 2 } as Record<string, number>;
+      allProfiles.sort((a, b) => {
+        const av = order[(a as any).subscriptionPlan] ?? -1;
+        const bv = order[(b as any).subscriptionPlan] ?? -1;
+        return (av - bv) * dirMul || (((a as any).createdAt ?? 0) - ((b as any).createdAt ?? 0)) * -1;
+      });
+    }
 
-      const aTime = a.createdAt || 0;
-      const bTime = b.createdAt || 0;
-      return bTime - aTime;
-    });
-    console.log("allProfiles:", allProfiles);
     const total = allProfiles.length;
     const safePage = Math.max(1, page);
-    const start = (safePage - 1) * pageSize;
-    const end = start + pageSize;
+    const safePageSize = Math.max(1, Math.min(100, pageSize));
+    const start = (safePage - 1) * safePageSize;
+    const end = start + safePageSize;
     const profiles = allProfiles.slice(start, end);
 
-    return { profiles, total, page, pageSize };
+    return {
+      profiles,
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      sortBy,
+      sortDir,
+      banned,
+      plan,
+      isProfileComplete,
+    };
   },
 });
 
@@ -2134,6 +2174,12 @@ export const searchPublicProfiles = query({
     ageMax: v.optional(v.number()),
     page: v.optional(v.number()),
     pageSize: v.optional(v.number()),
+    // Reserved for future: extend API before enabling these
+    ethnicity: v.optional(v.string()),
+    motherTongue: v.optional(v.string()),
+    language: v.optional(v.string()),
+    // Correlation for cross-tier tracing
+    correlationId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -2141,14 +2187,30 @@ export const searchPublicProfiles = query({
       throw new ConvexError("Not authenticated");
     }
 
-    // Get current user
-    const user = await getUserByEmailInternal(ctx, identity.email!);
-
-    if (!user) {
+    // Resolve viewer
+    const viewer = await getUserByEmailInternal(ctx, identity.email!);
+    if (!viewer) {
       throw new ConvexError("User not found");
     }
 
-    // Get all users and profiles
+    // Determine viewer plan (active subscription only)
+    const viewerProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", viewer._id))
+      .unique();
+
+    const nowMs = Date.now();
+    const isActive =
+      viewerProfile?.subscriptionExpiresAt &&
+      typeof viewerProfile.subscriptionExpiresAt === "number" &&
+      viewerProfile.subscriptionExpiresAt > nowMs;
+
+    const viewerPlan: "free" | "premium" | "premiumPlus" =
+      isActive && viewerProfile?.subscriptionPlan
+        ? (viewerProfile.subscriptionPlan as any)
+        : "free";
+
+    // Fetch all users and profiles
     const users = await ctx.db.query("users").collect();
     const allProfiles = await ctx.db.query("profiles").collect();
 
@@ -2175,6 +2237,11 @@ export const searchPublicProfiles = query({
       // Skip banned profiles
       if (u.profile.banned) return false;
 
+      // Enforce premium privacy: hide from free viewers when set
+      if ((u.profile as any).hideFromFreeUsers === true && viewerPlan === "free") {
+        return false;
+      }
+
       // Filter by preferred gender
       if (args.preferredGender && args.preferredGender !== "any") {
         if (u.profile.gender !== args.preferredGender) return false;
@@ -2188,6 +2255,18 @@ export const searchPublicProfiles = query({
       // Filter by country
       if (args.country && args.country !== "any") {
         if (u.profile.country !== args.country) return false;
+      }
+
+      // Reserved filters: only enforce if later enabled in API and UI together
+      if (args.ethnicity && args.ethnicity !== "any") {
+        if ((u.profile as any).ethnicity !== args.ethnicity) return false;
+      }
+      if (args.motherTongue && args.motherTongue !== "any") {
+        if ((u.profile as any).motherTongue !== args.motherTongue) return false;
+      }
+      if (args.language && args.language !== "any") {
+        // If you later store a languages array on profile, adapt comparison
+        if ((u.profile as any).language !== args.language) return false;
       }
 
       // Filter by age
@@ -2224,8 +2303,8 @@ export const searchPublicProfiles = query({
     });
 
     // Apply pagination
-    const page = args.page || 0;
-    const pageSize = args.pageSize || 10;
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 10;
     const start = page * pageSize;
     const end = start + pageSize;
     const paginatedUsers = filteredUsers.slice(start, end);
@@ -2249,6 +2328,29 @@ export const searchPublicProfiles = query({
         },
       };
     });
+
+    // Optional: structured log with correlation ID
+    if (args.correlationId) {
+      console.log("searchPublicProfiles", {
+        correlationId: args.correlationId,
+        viewerId: viewer._id,
+        viewerPlan,
+        filters: {
+          hasCity: !!args.city,
+          hasCountry: !!args.country,
+          preferredGender: args.preferredGender ?? "any",
+          ageMin: args.ageMin,
+          ageMax: args.ageMax,
+          hasEthnicity: !!args.ethnicity,
+          hasMotherTongue: !!args.motherTongue,
+          hasLanguage: !!args.language,
+        },
+        page,
+        pageSize,
+        total: filteredUsers.length,
+        returned: searchResults.length,
+      });
+    }
 
     return {
       profiles: searchResults,

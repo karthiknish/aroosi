@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/card";
 import { Profile } from "@/types/profile";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
+import { planDisplayName } from "@/lib/utils/plan";
+import { isPremium, isPremiumPlus } from "@/lib/utils/subscriptionPlan";
 import type { FC } from "react";
 import {
   Dialog,
@@ -42,8 +44,6 @@ import {
 } from "@/components/ui/dialog";
 import { deleteProfile } from "@/lib/utils/profileApi";
 import { useAuthContext } from "@/components/AuthProvider";
-import ProfileBoostButton from "@/components/profile/ProfileBoostButton";
-
 // Re-export types for backward compatibility
 type ApiImage = unknown;
 type MappedImage = unknown;
@@ -153,28 +153,14 @@ const ProfileView: FC<ProfileViewProps> = ({
   const router = useRouter();
   const { token } = useAuthContext();
 
-  // Small mapping utility for plan labels
-  const planLabel = (id?: string | null) => {
-    if (!id) return "Free";
-    switch (id) {
-      case "free":
-        return "Free";
-      case "premium":
-        return "Premium";
-      case "premiumPlus":
-        return "Premium Plus";
-      default:
-        return String(id).charAt(0).toUpperCase() + String(id).slice(1);
-    }
-  };
+  // Small mapping utility for plan labels using centralized helper
+  const planLabel = (id?: string | null) => planDisplayName(id);
 
   // Format annual income (GBP by default)
   const formatCurrency = (v?: string | number) => {
     if (v === undefined || v === null || v === "") return "-";
     const n =
-      typeof v === "number"
-        ? v
-        : Number(String(v).replace(/[^\d.-]/g, ""));
+      typeof v === "number" ? v : Number(String(v).replace(/[^\d.-]/g, ""));
     if (!Number.isFinite(n)) return String(v);
     try {
       return new Intl.NumberFormat("en-GB", {
@@ -202,7 +188,7 @@ const ProfileView: FC<ProfileViewProps> = ({
       const formattedImages = images.map(
         (
           img: string | { _id: string; url?: string; storageId?: string },
-          index: number,
+          index: number
         ) => {
           const imageId =
             typeof img === "string" ? img : img._id || `img-${index}`;
@@ -228,7 +214,7 @@ const ProfileView: FC<ProfileViewProps> = ({
             storageId:
               typeof img === "string" ? img : img.storageId || img._id || "",
           };
-        },
+        }
       );
       return formattedImages;
     }
@@ -309,7 +295,17 @@ const ProfileView: FC<ProfileViewProps> = ({
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <ProfileBoostButton />
+              {isPremiumPlus(profileData.subscriptionPlan) ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-amber-700 border-amber-400"
+                  onClick={() => router.push("/premium-settings")}
+                  title="Profile Boost is available on Premium Plus. Manage in Premium Settings."
+                >
+                  Boost Profile
+                </Button>
+              ) : null}
               <Button
                 onClick={() => {
                   refreshProfileLocalStorage();
@@ -392,7 +388,9 @@ const ProfileView: FC<ProfileViewProps> = ({
                             </p>
                             <div className="flex gap-2 mt-2">
                               <Button
-                                onClick={() => router.push("/profile/edit/images")}
+                                onClick={() =>
+                                  router.push("/profile/edit/images")
+                                }
                                 className="bg-pink-600 hover:bg-pink-700 text-white"
                                 size="sm"
                               >
@@ -429,12 +427,10 @@ const ProfileView: FC<ProfileViewProps> = ({
                     </dt>
                     <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800 flex items-center gap-1">
                       {profileData.fullName}
-                      {(profileData.subscriptionPlan === "premium" ||
-                        profileData.subscriptionPlan === "premiumPlus") && (
+                      {isPremium(profileData.subscriptionPlan) && (
                         <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
                       )}
-                      {(profileData.subscriptionPlan === "premium" ||
-                        profileData.subscriptionPlan === "premiumPlus") &&
+                      {isPremium(profileData.subscriptionPlan) &&
                         profileData.hasSpotlightBadge &&
                         profileData.spotlightBadgeExpiresAt &&
                         profileData.spotlightBadgeExpiresAt > Date.now() && (
@@ -447,7 +443,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                     value={
                       profileData.dateOfBirth
                         ? new Date(profileData.dateOfBirth).toLocaleDateString(
-                            "en-GB",
+                            "en-GB"
                           )
                         : "-"
                     }
@@ -486,7 +482,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                     value={
                       userConvexData?._creationTime
                         ? new Date(
-                            userConvexData._creationTime,
+                            userConvexData._creationTime
                           ).toLocaleDateString()
                         : "-"
                     }
@@ -531,9 +527,18 @@ const ProfileView: FC<ProfileViewProps> = ({
                     </span>
                   }
                 >
-                  <ProfileDetailView label="Mother Tongue" value={profileData.motherTongue} />
-                  <ProfileDetailView label="Religion" value={profileData.religion} />
-                  <ProfileDetailView label="Ethnicity" value={profileData.ethnicity} />
+                  <ProfileDetailView
+                    label="Mother Tongue"
+                    value={profileData.motherTongue}
+                  />
+                  <ProfileDetailView
+                    label="Religion"
+                    value={profileData.religion}
+                  />
+                  <ProfileDetailView
+                    label="Ethnicity"
+                    value={profileData.ethnicity}
+                  />
                 </DisplaySection>
 
                 <DisplaySection
@@ -611,12 +616,11 @@ const ProfileView: FC<ProfileViewProps> = ({
                 >
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-md font-semibold">
-                      {planLabel(profileData.subscriptionPlan)}
+                      {planDisplayName(profileData.subscriptionPlan)}
                     </span>
 
                     {/* Action buttons based on plan */}
-                    {(!profileData.subscriptionPlan ||
-                      profileData.subscriptionPlan === "free") && (
+                    {!isPremium(profileData.subscriptionPlan) && (
                       <Button
                         size="sm"
                         className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg"
@@ -626,7 +630,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </Button>
                     )}
 
-                    {profileData.subscriptionPlan === "premium" && (
+                    {isPremium(profileData.subscriptionPlan) && !isPremiumPlus(profileData.subscriptionPlan) && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -647,7 +651,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </div>
                     )}
 
-                    {profileData.subscriptionPlan === "premiumPlus" && (
+                    {isPremiumPlus(profileData.subscriptionPlan) && (
                       <Button
                         size="sm"
                         variant="outline"

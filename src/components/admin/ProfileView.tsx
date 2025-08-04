@@ -202,10 +202,24 @@ export default function ProfileView({
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-1">
             {profiledata.fullName || "No Name"}
-            {(profiledata.subscriptionPlan === "premium" ||
-              profiledata.subscriptionPlan === "premiumPlus") && (
-              <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
-            )}
+            {/* Premium badge via centralized helper */}
+            {(() => {
+              try {
+                // Lazy import to avoid admin bundle coupling; safe in client.
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                const { isPremium } = require("@/lib/utils/subscriptionPlan");
+                return isPremium(profiledata.subscriptionPlan) ? (
+                  <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
+                ) : null;
+              } catch {
+                // Fallback to prior behavior if helper unavailable
+                return (profiledata.subscriptionPlan === "premium" ||
+                  profiledata.subscriptionPlan === "premiumPlus") ? (
+                  <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
+                ) : null;
+              }
+            })()}
           </h2>
           {profiledata.aboutMe && (
             <p className="mt-1 text-gray-600">{profiledata.aboutMe}</p>

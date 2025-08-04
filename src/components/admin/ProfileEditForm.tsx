@@ -7,6 +7,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { ProfileFormValues } from "@/types/profile";
+import { planDisplayName } from "@/lib/utils/plan";
 import type { ImageType } from "@/types/image";
 import type { Profile } from "@/types/profile";
 import {
@@ -48,7 +49,24 @@ const profileSchema = z.object({
   partnerPreferenceCity: z.union([z.string(), z.array(z.string())]),
   preferredGender: z.string(),
   profileFor: z.string(),
-  subscriptionPlan: z.string(),
+
+  // Hardened subscription fields
+  subscriptionPlan: z.enum(["free", "premium", "premiumPlus"], {
+    required_error: "Subscription plan is required",
+    invalid_type_error: "Invalid subscription plan",
+  }),
+  subscriptionExpiresAt: z
+    .union([z.string(), z.number()])
+    .transform((v) => (typeof v === "string" ? Number(v) : v))
+    .refine(
+      (v) => v === undefined || v === null || (Number.isInteger(v) && v > 0),
+      "subscriptionExpiresAt must be a positive integer timestamp",
+    )
+    .optional(),
+  hideFromFreeUsers: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => (typeof v === "string" ? v === "true" : !!v))
+    .optional(),
 
   motherTongue: z.string().optional(),
   religion: z.string().optional(),
@@ -559,12 +577,13 @@ export default function ProfileEditForm({
             <p className="text-red-600 text-sm">{errors.profileFor.message}</p>
           )}
         </div>
-        <div>
+        <div className="md:col-span-1">
           <label className="block font-medium">Subscription Plan</label>
           <select
             {...register("subscriptionPlan")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
+            {/* Ensure labels stay consistent with server constants */}
             <option value="free">Free</option>
             <option value="premium">Premium</option>
             <option value="premiumPlus">Premium Plus</option>
@@ -574,6 +593,38 @@ export default function ProfileEditForm({
               {errors.subscriptionPlan.message}
             </p>
           )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Labels mirror server SUBSCRIPTION_PLANS; changing plan here does not create Stripe billing.
+          </p>
+        </div>
+
+        {/* Subscription admin fields */}
+        <div className="md:col-span-1">
+          <label className="block font-medium">Subscription Expires At</label>
+          <input
+            type="number"
+            {...register("subscriptionExpiresAt")}
+            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
+            placeholder="Unix ms timestamp"
+          />
+          {errors.subscriptionExpiresAt && (
+            <p className="text-red-600 text-sm">
+              {errors.subscriptionExpiresAt.message as string}
+            </p>
+          )}
+          {/* Read-only preview */}
+          <SubscriptionExpiryPreview control={control as any} />
+        </div>
+
+        <div className="md:col-span-1">
+          <label className="inline-flex items-center gap-2 font-medium">
+            <input
+              type="checkbox"
+              {...register("hideFromFreeUsers")}
+              className="rounded border-gray-300"
+            />
+            Hide from Free Users
+          </label>
         </div>
 
         {/* Cultural Information */}
@@ -734,4 +785,60 @@ export default function ProfileEditForm({
       </div>
     </form>
   );
+}
+
+/**
+* Read-only preview for subscription expiry:
+* - Shows formatted date
+* - Days remaining (if in future)
+* - Placeholder for spotlight badge expiry preview (if applicable)
+*/
+function SubscriptionExpiryPreview({
+ control,
+}: {
+ control: ReturnType<typeof useForm>["control"];
+}) {
+ const [value, setValue] = React.useState<number | null>(null);
+
+ React.useEffect(() => {
+   const sub = (control as any)._subjects.values.subscribe(({ values }: any) => {
+     const raw = values?.subscriptionExpiresAt;
+     const num =
+       raw === undefined || raw === null
+         ? null
+         : typeof raw === "string"
+         ? Number(raw)
+         : raw;
+     setValue(Number.isFinite(num as number) ? (num as number) : null);
+   });
+   return () => sub?.unsubscribe?.();
+ }, [control]);
+
+ if (!value) {
+   return (
+     <p className="text-xs text-muted-foreground mt-1">
+       No expiry set. Users on paid plans should have a future timestamp in ms.
+     </p>
+   );
+ }
+
+ const date = new Date(value);
+ const now = Date.now();
+ const diffDays = Math.ceil((value - now) / (1000 * 60 * 60 * 24));
+ const isFuture = value > now;
+
+ return (
+   <div className="text-xs text-muted-foreground mt-1 space-y-1">
+     <div>Formatted: {date.toLocaleString()}</div>
+     <div>
+       {isFuture
+         ? `Days remaining: ${diffDays}`
+         : `Expired ${Math.abs(diffDays)} day(s) ago`}
+     </div>
+     {/* Spotlight badge expiry preview (placeholder if applicable) */}
+     <div className="italic opacity-80">
+       Spotlight badge expiry: not available for this profile
+     </div>
+   </div>
+ );
 }

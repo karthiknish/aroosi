@@ -33,11 +33,24 @@ import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 
+// Minimal local types for TS safety
+type AdminProfile = {
+  _id: string;
+  userId?: string;
+  fullName?: string;
+  city?: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  banned?: boolean;
+};
+
+type ImageType = { _id: string; url: string | null };
+
 const statusOptions = [
   { label: "All", value: "all" },
   { label: "Active", value: "active" },
   { label: "Banned", value: "banned" },
-];
+] as const;
 
 function getAge(dateOfBirth?: string) {
   if (!dateOfBirth) return "-";
@@ -53,11 +66,20 @@ function getAge(dateOfBirth?: string) {
 export default function AdminProfilePage() {
   const { token } = useAuthContext();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState<"all" | "active" | "banned">("all");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const router = useRouter();
+
+  // Server-driven params (internal only; no UI controls yet)
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(12);
+  const [sortBy] = useState<"createdAt" | "banned" | "subscriptionPlan">("createdAt");
+  const [sortDir] = useState<"asc" | "desc">("desc");
+  const [bannedFilter] = useState<"all" | "true" | "false">("all");
+  const [planFilter] = useState<"all" | "free" | "premium" | "premiumPlus">("all");
+  const [isProfileComplete] = useState<"all" | "true" | "false">("all");
 
   const {
     data,
@@ -65,58 +87,86 @@ export default function AdminProfilePage() {
     error,
     refetch: loadProfiles,
   } = useQuery({
-    queryKey: ["adminProfilesWithImages"],
+    queryKey: [
+      "adminProfilesWithImages",
+      token,
+      page,
+      pageSize,
+      sortBy,
+      sortDir,
+      bannedFilter,
+      planFilter,
+      isProfileComplete,
+      // Note: search/status remain client-side for now
+    ],
     queryFn: async () => {
-      if (!token) {
-        throw new Error("No authentication token available");
-      }
-      const { profiles } = await fetchAdminProfiles({
+      if (!token) throw new Error("No authentication token available");
+
+      // Fetch paginated/filtered/sorted list from server
+      const { profiles, total } = await fetchAdminProfiles({
         token,
-        search: "",
-        page: 1,
-      });
-      const profilesForImages = profiles.map((p) => ({
+        search: "", // server-side search not used yet
+        page,
+        pageSize,
+        sortBy,
+        sortDir,
+        banned: bannedFilter,
+        plan: planFilter,
+        isProfileComplete,
+      } as any);
+
+      const profilesForImages = profiles.map((p: AdminProfile) => ({
         _id: p._id,
         userId: p.userId || p._id,
       }));
+
       const profileImages = await fetchAllAdminProfileImages({
         token,
         profiles: profilesForImages,
       });
-      return { profiles, profileImages };
+
+      return { profiles, profileImages, total, page, pageSize };
     },
     enabled: !!token,
     retry: 2,
-    staleTime: 30000, // 30 seconds
+    staleTime: 20000,
   });
 
-  const profiles = data?.profiles || [];
-  const profileImages = data?.profileImages || {};
+  const profiles: AdminProfile[] = (data?.profiles as AdminProfile[]) || [];
+  const profileImages: Record<string, ImageType[]> =
+    (data?.profileImages as Record<string, ImageType[]>) || {};
+
+  const total: number = (data?.total as number) || 0;
+  const serverPage: number = (data?.page as number) || page;
+  const serverPageSize: number = (data?.pageSize as number) || pageSize;
+  const totalPages = Math.max(1, Math.ceil((total || 0) / (serverPageSize || 1)));
 
   // Debug logging
   console.log("Admin Profile Page State:", {
     token: !!token,
     loading,
-    error: error?.message,
+    error: (error as Error | undefined)?.message,
     profileCount: profiles.length,
     hasData: !!data,
+    pagination: { page: serverPage, pageSize: serverPageSize, total, totalPages },
   });
 
-  // Filtered profiles
-  const filteredProfiles = useMemo(() => {
-    if (!profiles) return [];
+  // Client-side filtering: search + status only (minimal)
+  const filteredProfiles: AdminProfile[] = useMemo((): AdminProfile[] => {
     let filtered = profiles;
+
     if (search.trim()) {
       const s = search.trim().toLowerCase();
       filtered = filtered.filter(
-        (p) =>
-          p.fullName?.toLowerCase().includes(s) ||
-          p.city?.toLowerCase().includes(s) ||
-          p.phoneNumber?.toLowerCase().includes(s),
+        (p: AdminProfile) =>
+          (p.fullName || "").toLowerCase().includes(s) ||
+          (p.city || "").toLowerCase().includes(s) ||
+          (p.phoneNumber || "").toLowerCase().includes(s)
       );
     }
-    if (status === "active") filtered = filtered.filter((p) => !p.banned);
-    if (status === "banned") filtered = filtered.filter((p) => p.banned);
+    if (status === "active") filtered = filtered.filter((p: AdminProfile) => !p.banned);
+    if (status === "banned") filtered = filtered.filter((p: AdminProfile) => !!p.banned);
+
     return filtered;
   }, [profiles, search, status]);
 
@@ -128,12 +178,13 @@ export default function AdminProfilePage() {
     void loadProfiles();
     showSuccessToast("Profile deleted");
   };
-  const onToggleBan = async (id: string, banned: boolean) => {
+
+  const onToggleBan = async (id: string, isBanned: boolean) => {
     if (!token) return;
-    await setProfileBannedStatus(token, id, !banned);
+    await setProfileBannedStatus(token, id, !isBanned);
     setConfirmBanId(null);
     void loadProfiles();
-    showSuccessToast(banned ? "Profile unbanned" : "Profile banned");
+    showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
   };
 
   // Loading state
@@ -171,7 +222,7 @@ export default function AdminProfilePage() {
   if (error)
     return (
       <ErrorState
-        message={error instanceof Error ? error.message : "An error occurred."}
+        message={(error as Error)?.message || "An error occurred."}
         onRetry={() => loadProfiles()}
         className="min-h-[60vh]"
       />
@@ -195,7 +246,8 @@ export default function AdminProfilePage() {
           </Button>
         </Link>
       </div>
-      {/* Search & Filter Bar */}
+
+      {/* Search & Status (minimal) */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex-1 flex items-center gap-2 bg-white rounded-lg border px-3 py-2 shadow-sm">
           <Search className="w-4 h-4 text-muted-foreground" />
@@ -207,31 +259,53 @@ export default function AdminProfilePage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Status:</span>
           <select
             className="border rounded px-2 py-1 text-base text-foreground bg-white"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => setStatus(e.target.value as "all" | "active" | "banned")}
           >
             {statusOptions.map((opt) => (
-              <option
-                key={opt.value}
-                value={opt.value}
-                className="text-foreground"
-              >
+              <option key={opt.value} value={opt.value} className="text-foreground">
                 {opt.label}
               </option>
             ))}
           </select>
         </div>
       </div>
-      {/* Profile Grid */}
+
+      {/* Pagination header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm text-muted-foreground">
+          Page {serverPage} of {totalPages} • Page size {serverPageSize} • Total {total}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={loading || serverPage <= 1}
+          >
+            Prev
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={loading || serverPage >= totalPages}
+            title="Next page"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      {/* Empty-state or Grid */}
       {filteredProfiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center gap-4 py-8">
-          <div className="text-gray-500">
-            No profiles match your search/filter.
-          </div>
+          <div className="text-gray-500">No profiles match your search/filter.</div>
           {!loading && (
             <Button variant="outline" onClick={() => loadProfiles()}>
               Refresh
@@ -240,7 +314,7 @@ export default function AdminProfilePage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProfiles.map((profile) => (
+          {filteredProfiles.map((profile: AdminProfile) => (
             <div
               key={profile._id}
               className="bg-white rounded-xl shadow-md border p-4 flex flex-col gap-3 hover:shadow-lg transition group relative"
@@ -248,10 +322,12 @@ export default function AdminProfilePage() {
               {/* Profile image */}
               <div className="w-20 h-20 rounded-lg overflow-hidden border mx-auto mb-2 bg-gray-50 flex items-center justify-center">
                 {profileImages[profile._id] &&
-                profileImages[profile._id].length > 0 &&
-                profileImages[profile._id][0].url ? (
+                profileImages[profile._id].length > 0 ? (
                   <Image
-                    src={profileImages[profile._id][0].url}
+                    src={
+                      profileImages[profile._id][0].url ||
+                      "/images/placeholder.png"
+                    }
                     alt={profile.fullName || "Profile image"}
                     width={80}
                     height={80}
@@ -261,6 +337,7 @@ export default function AdminProfilePage() {
                   <UserX className="w-10 h-10 text-gray-300" />
                 )}
               </div>
+
               {/* Name, city, age */}
               <div className="text-center">
                 <div className="font-semibold text-lg truncate">
@@ -273,6 +350,7 @@ export default function AdminProfilePage() {
                   Age: {getAge(profile.dateOfBirth)}
                 </div>
               </div>
+
               {/* Status badge */}
               <div className="flex flex-col items-center gap-1 mb-1">
                 <div className="flex justify-center gap-2">
@@ -287,6 +365,7 @@ export default function AdminProfilePage() {
                   )}
                 </div>
               </div>
+
               {/* Actions */}
               <div className="flex justify-center gap-2 mt-2">
                 <Button
@@ -297,6 +376,7 @@ export default function AdminProfilePage() {
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
+
                 <Button
                   size="icon"
                   variant="ghost"
@@ -305,6 +385,7 @@ export default function AdminProfilePage() {
                 >
                   <Ban className="w-4 h-4" />
                 </Button>
+
                 <Button
                   size="icon"
                   variant="ghost"
@@ -314,13 +395,12 @@ export default function AdminProfilePage() {
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
+
               <button
                 type="button"
                 className="absolute top-2 right-2 bg-white rounded-full p-2 shadow hover:bg-gray-100 transition"
                 title="Edit Profile"
-                onClick={() =>
-                  router.push(`/admin/profile/edit?id=${profile._id}`)
-                }
+                onClick={() => router.push(`/admin/profile/edit?id=${profile._id}`)}
               >
                 <Pencil className="w-5 h-5 text-gray-600" />
               </button>
@@ -328,15 +408,17 @@ export default function AdminProfilePage() {
           ))}
         </div>
       )}
+
       {/* View Modal */}
       {viewId && (
         <Dialog open={!!viewId} onOpenChange={() => setViewId(null)}>
           <DialogContent className="max-w-2xl">
             <DialogTitle>Profile Details</DialogTitle>
-            {/* ProfileCard component content */}
+            {/* TODO: Add Profile details content or component here */}
           </DialogContent>
         </Dialog>
       )}
+
       {/* Confirm Delete Dialog */}
       {confirmDeleteId && (
         <Dialog
@@ -350,10 +432,7 @@ export default function AdminProfilePage() {
               be undone.
             </DialogDescription>
             <div className="flex justify-end gap-2 mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setConfirmDeleteId(null)}
-              >
+              <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
                 Cancel
               </Button>
               <Button
@@ -366,12 +445,10 @@ export default function AdminProfilePage() {
           </DialogContent>
         </Dialog>
       )}
+
       {/* Confirm Ban Dialog */}
       {confirmBanId && (
-        <Dialog
-          open={!!confirmBanId}
-          onOpenChange={() => setConfirmBanId(null)}
-        >
+        <Dialog open={!!confirmBanId} onOpenChange={() => setConfirmBanId(null)}>
           <DialogContent>
             <DialogTitle>
               {filteredProfiles.find((p) => p._id === confirmBanId)?.banned
@@ -395,8 +472,7 @@ export default function AdminProfilePage() {
                 onClick={() =>
                   onToggleBan(
                     confirmBanId,
-                    !!filteredProfiles.find((p) => p._id === confirmBanId)
-                      ?.banned,
+                    !!filteredProfiles.find((p) => p._id === confirmBanId)?.banned
                   )
                 }
               >

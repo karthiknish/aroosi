@@ -13,8 +13,10 @@ import {
   Check,
 } from "lucide-react";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/lib/ui/toast";
+// Source of truth: fetch normalized plans from server
 import { createCheckoutSession, getPlans, type NormalizedPlan } from "@/lib/utils/stripeUtil";
 import React, { useEffect, useMemo, useState } from "react";
+import { isPremium } from "@/lib/utils/subscriptionPlan";
 
 type PlanId = "free" | "premium" | "premiumPlus" | string;
 
@@ -25,7 +27,10 @@ export default function ManagePlansPage() {
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const currentPlan = ((profile as { subscriptionPlan?: string })
-    ?.subscriptionPlan || "free") as PlanId;
+      ?.subscriptionPlan || "free") as PlanId;
+  
+  // Derived flags
+  const hasAnyPaidPlan = useMemo(() => isPremium(currentPlan), [currentPlan]);
 
   useEffect(() => {
     let mounted = true;
@@ -33,16 +38,19 @@ export default function ManagePlansPage() {
       try {
         setIsFetching(true);
         setFetchError(null);
+        // Fetch from server endpoint via util; normalize on server ensures minor units + currency
         const data = await getPlans();
         if (mounted) {
-          setPlans(data);
+          // Ensure at least Free exists as a fallback
+          const safe = Array.isArray(data) && data.length > 0 ? data : [{ id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false }];
+          setPlans(safe);
           if (!data || data.length === 0) {
             setFetchError("No plans available at the moment.");
           }
         }
       } catch (e) {
         if (mounted) {
-          setPlans([]);
+          setPlans([{ id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false }]);
           setFetchError(e instanceof Error ? e.message : "Failed to load plans");
         }
       } finally {
@@ -241,7 +249,7 @@ export default function ManagePlansPage() {
                             : new Intl.NumberFormat(undefined, {
                                 style: "currency",
                                 currency: (plan as any).currency || "GBP",
-                              }).format((plan as any).price / 100)}
+                              }).format(Number((plan as any).price || 0) / 100)}
                         </span>
                         <span className="text-gray-500 ml-1">/ month</span>
                       </div>
@@ -316,6 +324,32 @@ export default function ManagePlansPage() {
               );
             })}
           </div>
+
+          {/* Manage billing for paid users - single, deduped button below grid */}
+          {hasAnyPaidPlan ? (
+            <div className="max-w-6xl mx-auto pt-4">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    // Use Subscription API helper which returns a typed { url }
+                    const mod = await import("@/lib/api/subscription");
+                    const { subscriptionAPI } = mod;
+                    const { url } = await subscriptionAPI.openBillingPortal();
+                    if (url) {
+                      window.location.assign(url);
+                    } else {
+                      showErrorToast("Unable to open billing portal");
+                    }
+                  } catch (e: any) {
+                    showErrorToast(e?.message || "Unable to open billing portal");
+                  }
+                }}
+              >
+                Manage billing
+              </Button>
+            </div>
+          ) : null}
 
           {/* Footer info */}
           <div className="text-center mt-16 space-y-4">

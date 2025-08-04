@@ -4,7 +4,7 @@ import Head from "next/head";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { SUBSCRIPTION_PLANS } from "@/types/profile";
+import { getPlans, type NormalizedPlan } from "@/lib/utils/stripeUtil";
 import {
   Heart,
   Zap,
@@ -20,6 +20,7 @@ import {
   Shield,
 } from "lucide-react";
 import Link from "next/link";
+import React from "react";
 
 const comparison = [
   {
@@ -122,6 +123,38 @@ const faqs = [
 ];
 
 export default function PricingPage() {
+  const [plans, setPlans] = React.useState<NormalizedPlan[] | null>(null);
+  const [isFetching, setIsFetching] = React.useState<boolean>(true);
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setIsFetching(true);
+        setFetchError(null);
+        const data = await getPlans();
+        if (!mounted) return;
+        if (Array.isArray(data) && data.length) {
+          setPlans(data);
+        } else {
+          // Fallback to a Free-only card when server has no data
+          setPlans([]);
+          setFetchError("Plans are temporarily unavailable.");
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setPlans([]);
+        setFetchError(e instanceof Error ? e.message : "Failed to load plans");
+      } finally {
+        if (mounted) setIsFetching(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const getPlanIcon = (planId: string) => {
     switch (planId) {
       case "free":
@@ -263,7 +296,31 @@ export default function PricingPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="grid gap-8 lg:grid-cols-3 max-w-6xl mx-auto pt-6 mb-20"
           >
-            {SUBSCRIPTION_PLANS.map((plan) => {
+            {isFetching && (
+              <>
+                {[0,1,2].map((i) => (
+                  <Card key={i} className="mx-4 p-6 animate-pulse">
+                    <div className="h-6 w-28 bg-gray-200 rounded mb-4" />
+                    <div className="h-8 w-40 bg-gray-200 rounded mb-6" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-full bg-gray-100 rounded" />
+                      <div className="h-4 w-5/6 bg-gray-100 rounded" />
+                      <div className="h-4 w-2/3 bg-gray-100 rounded" />
+                    </div>
+                    <div className="h-10 w-full bg-gray-200 rounded mt-6" />
+                  </Card>
+                ))}
+              </>
+            )}
+            {!isFetching && fetchError && (
+              <div className="lg:col-span-3 text-center text-sm text-red-600">{fetchError}</div>
+            )}
+            {(!isFetching && (!plans || plans.length === 0)) && (
+              <div className="lg:col-span-3 text-center text-sm text-gray-600">No plans to display.</div>
+            )}
+            {(plans && plans.length ? plans : [
+              { id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false },
+            ]).map((plan) => {
               const isPopular = plan.popular || plan.id === "premium";
 
               return (
@@ -273,7 +330,7 @@ export default function PricingPage() {
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20">
                       <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1 whitespace-nowrap">
                         <Sparkles className="w-3 h-3" />
-                        {plan.badge || "Most Popular"}
+                        Most Popular
                       </div>
                     </div>
                   )}
@@ -330,11 +387,14 @@ export default function PricingPage() {
                                 : "text-amber-600"
                           }`}
                         >
-                          {plan.displayPrice}
+                          {plan.id === "free"
+                            ? "Free"
+                            : new Intl.NumberFormat(undefined, {
+                                style: "currency",
+                                currency: (plan as any).currency || "GBP",
+                              }).format(Number((plan as any).price || 0) / 100)}
                         </span>
-                        <span className="text-gray-500 ml-1">
-                          / {plan.duration}
-                        </span>
+                        <span className="text-gray-500 ml-1">/ month</span>
                       </div>
 
                       {plan.id !== "free" && (
@@ -386,6 +446,13 @@ export default function PricingPage() {
               );
             })}
           </motion.div>
+
+          {/* Indicative pricing note for SEO and expectations */}
+          <div className="max-w-6xl mx-auto px-4 -mt-12 mb-8">
+            <p className="text-xs text-gray-500 text-center">
+              Prices shown are indicative and may change. The Plans page reflects the latest live prices.
+            </p>
+          </div>
 
           {/* Feature Comparison Table */}
           <motion.div

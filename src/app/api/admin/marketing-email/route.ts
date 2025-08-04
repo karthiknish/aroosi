@@ -1,6 +1,6 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAdminToken } from "@/app/api/_utils/auth";
-import { ApiError, apiResponse } from "@/lib/utils/apiResponse";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 import {
   MarketingEmailTemplateFn,
   profileCompletionReminderTemplate,
@@ -10,121 +10,142 @@ import {
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { sendUserNotification } from "@/lib/email";
-import { Profile } from "@/types/profile";
+import type { Profile } from "@/types/profile";
 
-/**
- * Map of template keys to template functions.
- * Extend this map when new templates are added.
- */
 const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
-  profileCompletionReminder:
-    profileCompletionReminderTemplate as unknown as MarketingEmailTemplateFn,
+  profileCompletionReminder: profileCompletionReminderTemplate as unknown as MarketingEmailTemplateFn,
   premiumPromo: premiumPromoTemplate as unknown as MarketingEmailTemplateFn,
-  recommendedProfiles:
-    recommendedProfilesTemplate as unknown as MarketingEmailTemplateFn,
+  recommendedProfiles: recommendedProfilesTemplate as unknown as MarketingEmailTemplateFn,
 };
 
 export async function POST(request: Request) {
   try {
     const adminCheck = requireAdminToken(request as unknown as NextRequest);
-    if ("errorResponse" in adminCheck) {
-      return adminCheck.errorResponse;
+    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
+
+    const { token, userId } = adminCheck;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return errorResponse("Invalid JSON body", 400);
     }
 
-    const body = await request.json();
-    const { templateKey, params } = body as {
-      templateKey: string;
+    const { templateKey, params, dryRun, confirm, maxAudience } = (body || {}) as {
+      templateKey?: string;
       params?: Record<string, unknown>;
+      dryRun?: boolean;
+      confirm?: boolean;
+      maxAudience?: number;
     };
 
     if (!templateKey || !(templateKey in TEMPLATE_MAP)) {
-      return NextResponse.json(
-        apiResponse.validationError({ templateKey: "Invalid template" }),
-        { status: 400 }
-      );
+      return errorResponse("Invalid template", 400, { field: "templateKey" });
+    }
+
+    // Safety switches: require confirm for live send; enforce audience cap
+    const effectiveMax = Number.isFinite(maxAudience) ? Math.max(1, Math.min(10000, Number(maxAudience))) : 1000;
+    if (!dryRun && confirm !== true) {
+      return errorResponse("Confirmation required for live send", 400, { hint: "Pass confirm: true or use dryRun: true" });
     }
 
     const convex = getConvexClient();
-    if (!convex) {
-      return NextResponse.json(apiResponse.error("Convex not configured"), {
-        status: 500,
-      });
-    }
-
-    const { token } = adminCheck;
+    if (!convex) return errorResponse("Convex not configured", 500);
     convex.setAuth(token);
 
-    // Fetch first 1000 profiles (adjust as needed)
+    // Fetch candidate audience
     const result = await convex.query(api.users.adminListProfiles, {
       search: undefined,
       page: 0,
-      pageSize: 1000,
+      pageSize: effectiveMax, // cap audience
     });
 
-    const profiles: Array<{
-      email?: string;
-      fullName?: string;
-      aboutMe?: string;
-      profileImageUrls?: string[];
-      images?: string[];
-      interests?: string[] | string;
-      isProfileComplete?: boolean;
-    }> = result?.profiles || [];
+    // Be tolerant to backend shape; only pick what we need and keep optionals
+    const profiles = (Array.isArray(result?.profiles) ? result.profiles : []) as Array<
+      Partial<Pick<Profile, "email" | "fullName" | "aboutMe" | "profileImageUrls" | "images" | "interests" | "isProfileComplete">> & {
+        email?: string;
+      }
+    >;
 
     const templateFn = TEMPLATE_MAP[templateKey];
 
-    // Iterate profiles and send emails via Resend
+    // If dryRun, return preview count and first few preview payloads
+    if (dryRun) {
+      const previews: Array<{ email?: string; subject: string }> = [];
+      const sample = profiles.slice(0, Math.min(5, profiles.length));
+      for (const p of sample) {
+        // Guard missing fields for type safety
+        const baseProfile = {
+          ...(p as Profile),
+          email: p.email || "",
+          fullName: (p as Profile).fullName || "",
+        } as Profile;
+
+        const payload =
+          templateKey === "profileCompletionReminder"
+            ? templateFn(baseProfile, p.isProfileComplete ? 100 : 70, "")
+            : templateKey === "premiumPromo"
+            ? templateFn(baseProfile, 30, "")
+            : templateKey === "recommendedProfiles"
+            ? templateFn(baseProfile, [], "")
+            : templateFn(baseProfile, ...((params?.args || []) as unknown[]), "");
+
+        previews.push({ email: p.email, subject: payload.subject });
+      }
+      return successResponse({
+        dryRun: true,
+        totalCandidates: profiles.length,
+        previewCount: previews.length,
+        previews,
+        maxAudience: effectiveMax,
+        actorId: userId,
+      });
+    }
+
+    // Live send with batching (simple sequential loop retained, can optimize later)
+    let sent = 0;
     for (const p of profiles) {
       try {
+        const baseProfile = {
+          ...(p as Profile),
+          email: p.email || "",
+          fullName: (p as Profile).fullName || "",
+        } as Profile;
+
         let emailPayload;
         if (templateKey === "profileCompletionReminder") {
-          const completion = p.isProfileComplete ? 100 : 70;
-          emailPayload = templateFn(p as Profile, completion, "");
+          emailPayload = templateFn(baseProfile, p.isProfileComplete ? 100 : 70, "");
         } else if (templateKey === "premiumPromo") {
-          emailPayload = templateFn(p as Profile, 30, "");
+          emailPayload = templateFn(baseProfile, 30, "");
         } else if (templateKey === "recommendedProfiles") {
-          // Fetch recommended profiles for this user
-          const recommendationsResponse = await fetch("/api/recommendations", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (recommendationsResponse.ok) {
-            const recommendationsData = await recommendationsResponse.json();
-            emailPayload = templateFn(
-              p as Profile,
-              recommendationsData.recommendations,
-              ""
-            );
-          } else {
-            console.error("Failed to fetch recommendations for user:", p.email);
-            continue;
-          }
+          // Optional: enrichment omitted in live send for safety; can be added behind a smaller cap
+          emailPayload = templateFn(baseProfile, [], "");
         } else {
           emailPayload = templateFn(
-            p as Profile,
+            baseProfile,
             ...((params?.args || []) as unknown[]),
             ""
           );
         }
         if (p.email) {
-          await sendUserNotification(
-            p.email,
-            emailPayload.subject,
-            emailPayload.html
-          );
+          await sendUserNotification(p.email, emailPayload.subject, emailPayload.html);
+          sent += 1;
         }
       } catch (err) {
-        console.error("Failed to send marketing email to", p.email, err);
+        console.error("Marketing email send error", { email: p.email, err });
       }
     }
 
-    return NextResponse.json(apiResponse.success(null, "Emails queued"));
+    return successResponse({
+      dryRun: false,
+      attempted: profiles.length,
+      sent,
+      maxAudience: effectiveMax,
+      actorId: userId,
+    });
   } catch (error) {
-    const message =
-      error instanceof ApiError ? error.message : "Unexpected error";
-    return NextResponse.json(apiResponse.error(message), { status: 500 });
+    console.error("Admin marketing-email error", error);
+    return errorResponse("Unexpected error", 500);
   }
 }

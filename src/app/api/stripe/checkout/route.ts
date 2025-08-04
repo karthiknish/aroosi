@@ -12,21 +12,26 @@ import {
 
 import { SUBSCRIPTION_PLANS } from "../../../../constants";
 
+/**
+ * Server-side canonical mapping of allowed public planIds to server constants.
+ * This derives from SUBSCRIPTION_PLANS so the server remains the single source of truth.
+ */
+const ALLOWED_PLAN_IDS = {
+  premium: Boolean(SUBSCRIPTION_PLANS?.PREMIUM),
+  premiumPlus: Boolean(SUBSCRIPTION_PLANS?.PREMIUM_PLUS),
+} as const;
+
+type PublicPlanId = keyof typeof ALLOWED_PLAN_IDS;
+
 interface RequestBody {
-  planId: "premium" | "premiumPlus";
+  planId: PublicPlanId;
 }
 
-function isValidPlanId(planId: string): boolean {
-  // Validate against server-side source of truth
-  const allowed = new Set<string>([
-    "premium",
-    "premiumPlus",
-  ]);
-  // Additionally ensure the plan exists in SUBSCRIPTION_PLANS
-  const existsInConstants =
-    (planId === "premium" && SUBSCRIPTION_PLANS.PREMIUM) ||
-    (planId === "premiumPlus" && SUBSCRIPTION_PLANS.PREMIUM_PLUS);
-  return allowed.has(planId) && Boolean(existsInConstants);
+/**
+ * Validates public-facing planId strictly against server constants.
+ */
+function isValidPlanId(planId: unknown): planId is PublicPlanId {
+  return typeof planId === "string" && planId in ALLOWED_PLAN_IDS && ALLOWED_PLAN_IDS[planId as PublicPlanId] === true;
 }
 
 export async function POST(req: NextRequest) {
@@ -62,13 +67,11 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid or missing planId", 400);
     }
 
-    // Validate Stripe configuration
+    // Validate Stripe configuration (price IDs sourced from env for each allowed plan)
     const priceId =
       planId === "premium"
-        ? process.env.NEXT_PUBLIC_PREMIUM_PRICE_ID ||
-          process.env.STRIPE_PRICE_ID_PREMIUM
-        : process.env.NEXT_PUBLIC_PREMIUM_PLUS_PRICE_ID ||
-          process.env.STRIPE_PRICE_ID_PREMIUM_PLUS;
+        ? process.env.NEXT_PUBLIC_PREMIUM_PRICE_ID || process.env.STRIPE_PRICE_ID_PREMIUM
+        : process.env.NEXT_PUBLIC_PREMIUM_PLUS_PRICE_ID || process.env.STRIPE_PRICE_ID_PREMIUM_PLUS;
     if (!priceId) {
       console.error("Missing Stripe price ID env var for plan", planId);
       return errorResponse("Payment service configuration error", 503);

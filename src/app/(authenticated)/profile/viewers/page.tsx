@@ -7,6 +7,7 @@ import { fetchProfileViewers } from "@/lib/utils/profileApi";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { isPremiumPlus } from "@/lib/utils/subscriptionPlan";
 
 export default function ProfileViewersPage() {
   const { token, profile: rawProfile } = useAuthContext();
@@ -37,8 +38,10 @@ export default function ProfileViewersPage() {
     enabled,
   });
 
-  // Redirect non-premiumPlus users back to profile
-  if (profile && profile.subscriptionPlan !== "premiumPlus") {
+  // Redirect non-premiumPlus users back to profile (centralized helper)
+  // Prefer helper to avoid string drift and keep semantics consistent.
+  // Upsell: show a small inline link to /plans if desired in future.
+  if (profile && !isPremiumPlus(profile.subscriptionPlan)) {
     if (typeof window !== "undefined") router.replace("/profile");
     return null;
   }

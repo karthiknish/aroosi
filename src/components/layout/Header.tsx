@@ -18,7 +18,7 @@ import {
   BarChart,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { isPremium } from "@/lib/utils/subscriptionRateLimit";
+import { isPremium } from "@/lib/utils/subscriptionPlan";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);

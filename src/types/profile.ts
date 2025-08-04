@@ -183,58 +183,18 @@ export interface SubscriptionPlanFeature {
 export interface SubscriptionPlanDetails {
   id: SubscriptionPlan;
   name: string;
-  price: number;
-  displayPrice: string;
-  duration: string;
-  features: string[];
+  // price/display fields are served by the backend via /api/stripe/plans to avoid drift
+  price?: number;
+  displayPrice?: string;
+  duration?: string;
+  features?: string[];
   popular?: boolean;
   badge?: string;
 }
 
-export const SUBSCRIPTION_PLANS: SubscriptionPlanDetails[] = [
-  {
-    id: "free",
-    name: "Free Plan",
-    price: 0,
-    displayPrice: "£0",
-    duration: "Lifetime",
-    features: [
-      "Create profile",
-      "Search & view limited profiles",
-      "Limited daily likes",
-      "Receive messages but can't reply",
-      "Basic matchmaking",
-    ],
-  },
-  {
-    id: "premium",
-    name: "Premium Plan",
-    price: 14.99,
-    displayPrice: "£14.99",
-    duration: "per month",
-    popular: true,
-    badge: "Most Popular",
-    features: [
-      "Unlimited likes & profile views",
-      "Initiate chats with other users",
-      "Access full profile details (education, family info, etc.)",
-      "Daily match suggestions",
-      "Hide your profile from non-premium users",
-      "Priority customer support",
-    ],
-  },
-  {
-    id: "premiumPlus",
-    name: "Premium Plus",
-    price: 39.99,
-    displayPrice: "£39.99",
-    duration: "per month",
-    features: [
-      "All Premium features",
-      "Profile Boost (5x per month)",
-      "See who viewed your profile",
-      "Access to premium-only filters (income, career, education)",
-      "Spotlight badge on profile",
-    ],
-  },
-];
+/**
+ * Deprecated: Client-side SUBSCRIPTION_PLANS duplicated server truth and could drift.
+ * Use GET /api/stripe/plans via stripeUtil.getPlans() for live pricing/features.
+ * This constant is retained only for backward compatibility in legacy code paths.
+ */
+export const SUBSCRIPTION_PLANS: SubscriptionPlanDetails[] = [];

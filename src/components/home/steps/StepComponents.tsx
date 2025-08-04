@@ -12,6 +12,8 @@ import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
 import { MOTHER_TONGUE_OPTIONS, RELIGION_OPTIONS, ETHNICITY_OPTIONS } from "@/lib/constants/languages";
+// Image guards for Step 6
+import { loadImageMeta, validateImageMeta } from "@/lib/utils/imageMeta";
 
 export type ProfileCreationData = Record<string, any>;
 
@@ -449,6 +451,136 @@ export function Step6Photos(props: {
   onImagesChanged: (imgs: (string | ImageType)[]) => void;
 }) {
   const { userId, pendingImages, setPendingImages, onImagesChanged } = props;
+
+  // Per-item UI state for progress, status, and error
+  const [itemState, setItemState] = React.useState<
+    Record<
+      string,
+      { status: "idle" | "uploading" | "success" | "error"; progress: number; error?: string }
+    >
+  >({});
+
+  // Initialize per-item state when images change (non-destructive)
+  React.useEffect(() => {
+    if (!Array.isArray(pendingImages)) return;
+    setItemState((prev) => {
+      const next = { ...prev };
+      for (const img of pendingImages) {
+        if (!next[img.id]) {
+          next[img.id] = { status: "idle", progress: 0 };
+        }
+      }
+      // Remove entries for images that no longer exist
+      for (const id of Object.keys(next)) {
+        if (!pendingImages.find((p) => p.id === id)) {
+          delete next[id];
+        }
+      }
+      return next;
+    });
+  }, [pendingImages]);
+
+  // Progress subscription helper using centralized upload manager
+  const subscribeProgress = React.useCallback(async () => {
+    try {
+      const { createOrGetUploadManager, createUploadManager } = await import("../profileCreationHelpers");
+      const mgr = createOrGetUploadManager(createUploadManager);
+      // Harden to a known 3-arg signature: (fileId, loaded, total)
+      if (mgr && typeof mgr.onProgress === "function") {
+        const handler3 = (fileId: string, loaded: number, total: number) => {
+          const percent = total > 0 ? Math.round((loaded / total) * 100) : 0;
+          setItemState((prev) => {
+            if (!prev[fileId]) return prev;
+            const nextProgress = Math.max(0, Math.min(100, percent));
+            const nextStatus =
+              nextProgress > 0 && nextProgress < 100 ? "uploading" : nextProgress === 100 ? "success" : prev[fileId].status;
+            return {
+              ...prev,
+              [fileId]: {
+                ...prev[fileId],
+                status: nextStatus as "idle" | "uploading" | "success" | "error",
+                progress: nextProgress,
+              },
+            };
+          });
+        };
+        // Provide all three args to satisfy TS typing
+        try {
+          // @ts-expect-error Allow unknown manager typing; we pass 3-arg handler matching typical signature
+          mgr.onProgress((fileId: string, loaded: number, total: number) => handler3(fileId, loaded, total));
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // If progress subscription is unavailable, skip silently
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void subscribeProgress();
+  }, [subscribeProgress]);
+
+  // Retry handler for a single image (delegates to parent change handler to re-trigger upload path)
+  const handleRetry = React.useCallback(
+    async (img: ImageType) => {
+      setItemState((prev) => ({
+        ...prev,
+        [img.id]: { status: "idle", progress: 0, error: undefined },
+      }));
+      // Re-emit images changed to ensure upstream logic can reprocess this item
+      const nextImages = [...pendingImages];
+      onImagesChanged(nextImages);
+    },
+    [onImagesChanged, pendingImages]
+  );
+
+  // Local client-side guards prior to upload request (optional early feedback)
+  const preflightValidate = React.useCallback(async (img: ImageType) => {
+    try {
+      if (!img?.url || !img.url.startsWith("blob:")) {
+        return { ok: false, reason: "Invalid local image URL" };
+      }
+      // Load meta using the existing blob URL
+      const meta = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const imgEl = new Image();
+        imgEl.onload = () => resolve({ width: imgEl.naturalWidth || imgEl.width, height: imgEl.naturalHeight || imgEl.height });
+        imgEl.onerror = () => reject(new Error("Failed to decode image for metadata"));
+        imgEl.src = img.url;
+      });
+      const { ok, reason } = validateImageMeta(meta, { minDim: 512, minAspect: 0.5, maxAspect: 2.0 });
+      return { ok, reason };
+    } catch (e) {
+      return { ok: true }; // do not block on unexpected meta errors
+    }
+  }, []);
+
+  // Guard feedback rendering for tiles
+  const renderTileOverlay = (s: { status: "idle" | "uploading" | "success" | "error"; progress: number; error?: string }, onRetry: () => void) => {
+    return (
+      <div className="absolute inset-0 flex flex-col justify-end">
+        {s.status === "uploading" && (
+          <div className="w-full h-1 bg-black/10">
+            <div
+              className="h-1 bg-pink-600 transition-all"
+              style={{ width: `${Math.max(0, Math.min(100, s.progress))}%` }}
+            />
+          </div>
+        )}
+        {s.status === "error" && (
+          <div className="bg-red-50/90 p-2">
+            <p className="text-xs text-red-600 truncate">{s.error || "Upload failed"}</p>
+            <div className="mt-2">
+              <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={onRetry}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-4">
@@ -457,24 +589,45 @@ export function Step6Photos(props: {
       </div>
       <div className="mb-6">
         <Label className="text-gray-700 mb-2 block">Profile Photos</Label>
-        {/* Consumers should import LocalImageUpload directly in parent if needed */}
-        {/* We keep the reorder preview here */}
+
         {pendingImages.length > 0 && (
           <div className="mt-4">
-            <ProfileImageReorder
-              preUpload
-              images={pendingImages as ImageType[]}
-              userId={userId || ""}
-              loading={false}
-              onReorder={async (ordered: ImageType[]) => {
-                setPendingImages(ordered);
-                try {
-                  const ids = ordered.map((img) => img.id);
-                  const { persistPendingImageOrderToLocal } = await import("../profileCreationHelpers");
-                  persistPendingImageOrderToLocal(ids);
-                } catch {}
-              }}
-            />
+            {/* Inline gallery with progress/error overlays */}
+            <div className="grid grid-cols-3 gap-3">
+              {pendingImages.map((img) => {
+                const s = itemState[img.id] || { status: "idle", progress: 0 as number };
+                return (
+                  <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                    {/* Preview */}
+                    {img.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={img.url} alt={img.fileName || "photo"} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No preview</div>
+                    )}
+                    {renderTileOverlay(s, () => handleRetry(img))}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Reorder block remains below the grid for consistency */}
+            <div className="mt-4">
+              <ProfileImageReorder
+                preUpload
+                images={pendingImages as ImageType[]}
+                userId={userId || ""}
+                loading={false}
+                onReorder={async (ordered: ImageType[]) => {
+                  setPendingImages(ordered);
+                  try {
+                    const ids = ordered.map((img) => img.id);
+                    const { persistPendingImageOrderToLocal } = await import("../profileCreationHelpers");
+                    persistPendingImageOrderToLocal(ids);
+                  } catch {}
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

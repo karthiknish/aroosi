@@ -255,14 +255,34 @@ export class SubscriptionRateLimiter {
 }
 
 /**
- * Entitlement helpers to centralize plan checks.
+ * Entitlement helpers to centralize plan checks and display mapping.
  */
+export type PlanId = "free" | "premium" | "premiumPlus" | (string & {});
+
 export function isPremium(plan?: string | null): boolean {
   return plan === "premium" || plan === "premiumPlus";
 }
 
 export function isPremiumPlus(plan?: string | null): boolean {
   return plan === "premiumPlus";
+}
+
+/**
+ * Map planId to a human-friendly display name.
+ */
+export function planDisplayName(plan?: string | null): string {
+  switch (plan) {
+    case "premium":
+      return "Premium";
+    case "premiumPlus":
+      return "Premium Plus";
+    case "free":
+    case undefined:
+    case null:
+      return "Free";
+    default:
+      return String(plan).charAt(0).toUpperCase() + String(plan).slice(1);
+  }
 }
 
 export const subscriptionRateLimiter = new SubscriptionRateLimiter();
