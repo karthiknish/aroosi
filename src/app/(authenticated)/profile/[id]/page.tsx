@@ -78,8 +78,6 @@ export default function ProfileDetailPage() {
   const { trackUsage } = useUsageTracking(token ?? undefined);
   // Ensure a single declaration of queryClient
   const queryClient = useQueryClient();
-  // Ensure a single declaration of queryClient
-  const queryClient = useQueryClient();
 
   const id = params?.id as string;
   const userId = id as Id<"users">;
@@ -218,24 +216,14 @@ export default function ProfileDetailPage() {
   const alreadySentInterest = useMemo(() => {
     if (localInterest !== null) return localInterest;
 
-    // Prefer lightweight status
-    if (
-      interestStatus &&
-      typeof interestStatus === "object" &&
-      "status" in interestStatus
-    ) {
-      const s = (interestStatus as { status?: string }).status;
-      if (s === "pending" || s === "accepted") return true;
-      if (s === "rejected") return false;
-    }
-
+    // Lightweight status (if wired elsewhere, use it here); currently fallback to sentInterests
     if (!sentInterests || !Array.isArray(sentInterests)) return false;
     return sentInterests.some((interest) => {
       if (interest.toUserId !== toUserId || interest.fromUserId !== fromUserId)
         return false;
       return interest.status !== "rejected";
     });
-  }, [interestStatus, sentInterests, toUserId, fromUserId, localInterest]);
+  }, [sentInterests, toUserId, fromUserId, localInterest]);
   // --- END: Add local state for interest status ---
 
   // Check if user is blocked
@@ -316,7 +304,7 @@ export default function ProfileDetailPage() {
         void queryClient.invalidateQueries({
           queryKey: ["unreadCounts", "self"],
         });
-        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
+        await refetchSentInterests();
 
         setLocalInterest(null); // Let server state take over
         setShowHeartPop(false);
@@ -345,7 +333,7 @@ export default function ProfileDetailPage() {
         void queryClient.invalidateQueries({
           queryKey: ["unreadCounts", "self"],
         });
-        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
+        await refetchSentInterests();
 
         setLocalInterest(null); // Let server state take over
         setTimeout(() => setShowHeartPop(false), 600);
