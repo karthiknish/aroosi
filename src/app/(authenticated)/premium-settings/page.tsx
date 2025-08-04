@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import { updateProfile, boostProfile } from "@/lib/utils/profileApi";
+import { updateProfile, boostProfileCookieAuth } from "@/lib/utils/profileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import {
   Eye,
@@ -118,8 +118,8 @@ export default function PremiumSettingsPage() {
   async function handleBoost() {
     try {
       setBoostLoading(true);
-      if (!token) throw new Error("No token");
-      const result = await boostProfile(token);
+      // Use cookie-auth; server reads session cookies
+      const result = await boostProfileCookieAuth();
       showSuccessToast(
         `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`,
       );

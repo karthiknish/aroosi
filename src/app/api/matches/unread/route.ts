@@ -4,51 +4,27 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
-// Extract bearer token from header
-function getToken(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (!auth) return null;
-  const [t, token] = auth.split(" ");
-  if (t !== "Bearer") return null;
-  return token;
-}
+// Cookie-auth alignment: infer user from session; no bearer header parsing
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-    const token = getToken(req);
-
-    if (!userId) {
-      console.warn("Matches unread GET missing userId", {
-        scope: "matches.unread",
-        type: "validation_error",
-        correlationId,
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { success: false, error: "Missing userId", correlationId },
-        { status: 400 }
-      );
+    // Derive current user from session cookie using the same helper as other APIs
+    const { requireUserToken } = await import("@/app/api/_utils/auth");
+    const authCheck = requireUserToken(req);
+    if ("errorResponse" in authCheck) {
+      const res = authCheck.errorResponse as NextResponse;
+      const status = res.status || 401;
+      let body: unknown = { success: false, error: "Unauthorized", correlationId };
+      try {
+        const txt = await res.text();
+        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+      } catch {}
+      return NextResponse.json(body, { status });
     }
-
-    if (!token) {
-      console.warn("Matches unread GET auth failed", {
-        scope: "matches.unread",
-        type: "auth_failed",
-        correlationId,
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { success: false, error: "Unauthorized", correlationId },
-        { status: 401 }
-      );
-    }
+    const { token, userId } = authCheck as { token: string; userId: string };
 
     // Subscription-aware rate limiting for unread counts polling
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(

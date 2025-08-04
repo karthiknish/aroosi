@@ -18,19 +18,22 @@ export async function updateProfile({
     throw new Error(msg || "Failed to update profile");
   }
 }
-
-export async function boostProfile(
-  token: string
-): Promise<{ boostsRemaining: number }> {
+ 
+/**
+ * Boost profile using cookie-based auth (no Authorization header).
+ * The server reads HttpOnly session cookies and performs the action.
+ */
+export async function boostProfileCookieAuth(): Promise<{ boostsRemaining: number }> {
   const res = await fetch("/api/profile/boost", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
   });
-  const json = await res.json();
-  if (!res.ok || json.success === false) {
-    throw new Error(json.error || "Failed to boost profile");
+  const json = await res.json().catch(() => ({} as any));
+  if (!res.ok || (json && json.success === false)) {
+    const msg = (json && json.error) || `Failed to boost profile`;
+    throw new Error(msg);
   }
-  return { boostsRemaining: json.boostsRemaining ?? 0 };
+  return { boostsRemaining: (json && json.boostsRemaining) ?? 0 };
 }
 
 export async function deleteProfile(token: string): Promise<void> {

@@ -5,17 +5,20 @@ export function useUnreadCounts(
   token: string | undefined
 ) {
   return useQuery<Record<string, number>>({
-    queryKey: ["unreadCounts", userId, token],
+    // Cookie-auth; user inferred server-side. Include 'self' key to avoid churn.
+    queryKey: ["unreadCounts", "self"],
     queryFn: async () => {
-      if (!userId || !token) return {};
-      const res = await fetch(`/api/matches/unread?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`/api/matches/unread`, {
+        credentials: "include",
       });
       if (!res.ok) return {};
-      const data = await res.json();
-      return data.counts || {};
+      const data = await res.json().catch(() => ({} as any));
+      if (data && typeof data === "object" && data.counts && typeof data.counts === "object") {
+        return data.counts as Record<string, number>;
+      }
+      return {};
     },
-    enabled: Boolean(userId && token),
+    enabled: true,
     refetchInterval: 10000, // poll every 10s
   });
 }

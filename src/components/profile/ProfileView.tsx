@@ -300,8 +300,41 @@ const ProfileView: FC<ProfileViewProps> = ({
                   size="sm"
                   variant="outline"
                   className="text-amber-700 border-amber-400"
-                  onClick={() => router.push("/premium-settings")}
-                  title="Profile Boost is available on Premium Plus. Manage in Premium Settings."
+                  onClick={async () => {
+                    try {
+                      const boosted =
+                        !!profileData.boostedUntil &&
+                        (profileData.boostedUntil as number) > Date.now();
+                      if (boosted) {
+                        router.push("/premium-settings");
+                        return;
+                      }
+                      // Lazy import cookie-auth variant to avoid adding to initial bundle
+                      const { boostProfileCookieAuth } = await import("@/lib/utils/profileApi");
+                      const result = await boostProfileCookieAuth();
+                      // Use established toast utility if available; otherwise log
+                      try {
+                        const { showSuccessToast } = await import("@/lib/ui/toast");
+                        showSuccessToast(
+                          `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
+                        );
+                      } catch {
+                        console.info("Profile boosted for 24 hours.", { remaining: result.boostsRemaining });
+                      }
+                      // Refresh to reflect boosted state ribbon/badges
+                      router.refresh?.();
+                    } catch (e) {
+                      try {
+                        const { showErrorToast } = await import("@/lib/ui/toast");
+                        showErrorToast(e as Error, "Boost failed");
+                      } catch {
+                        console.warn("Boost failed", e);
+                      }
+                      // Quota/rate-limits or any error -> send user to settings for context
+                      router.push("/premium-settings");
+                    }
+                  }}
+                  title="Profile Boost is available on Premium Plus."
                 >
                   Boost Profile
                 </Button>

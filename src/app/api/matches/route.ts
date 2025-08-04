@@ -9,21 +9,7 @@ export async function GET(req: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    const { searchParams } = new URL(req.url);
-    const userIdParam = searchParams.get("userId");
-    if (!userIdParam) {
-      console.warn("Matches GET missing userId", {
-        scope: "matches.list",
-        type: "validation_error",
-        correlationId,
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { success: false, error: "Missing userId parameter", correlationId },
-        { status: 400 }
-      );
-    }
+    // Cookie-auth alignment: infer current user from session, do not require userId in query
 
     const authCheck = requireUserToken(req);
     if ("errorResponse" in authCheck) {
@@ -111,7 +97,11 @@ export async function GET(req: NextRequest) {
       durationMs: Date.now() - startedAt,
       count: data.length,
     });
-    return NextResponse.json({ success: true, matches: data, correlationId }, { status: 200 });
+    // Return normalized shape
+    return NextResponse.json(
+      { success: true, matches: data, correlationId },
+      { status: 200 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("Matches GET unhandled error", {

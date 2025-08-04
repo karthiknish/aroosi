@@ -7,18 +7,25 @@ export function useMatches(
   token: string | undefined,
   search: string
 ) {
-  // fetch matches list
+  // fetch matches list via cookie-auth; server infers user from session
   const { data: matches = [], isLoading: loading } = useQuery<Profile[]>({
-    queryKey: ["matches", userId, token],
+    queryKey: ["matches", /* user inferred by cookie */ "self"],
     queryFn: async () => {
-      if (!userId || !token) return [];
-      const res = await fetch(`/api/matches?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`/api/matches`, {
+        credentials: "include",
       });
       if (!res.ok) return [];
-      return await res.json();
+      const data = await res.json().catch(() => ({} as any));
+      // New API shape returns { success, matches }
+      if (data && typeof data === "object" && Array.isArray(data.matches)) {
+        return data.matches as Profile[];
+      }
+      // Back-compat if endpoint returns array directly
+      if (Array.isArray(data)) return data as Profile[];
+      return [];
     },
-    enabled: Boolean(userId && token),
+    // Enable regardless of token; rely on cookie session. Only require app-level userId presence if desired.
+    enabled: true,
   });
 
   const { data: counts = {} } = useUnreadCounts(userId, token);
