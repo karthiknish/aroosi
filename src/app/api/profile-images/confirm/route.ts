@@ -3,18 +3,19 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    // Cookie-only auth
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId } = session;
 
     let client = getConvexClient();
     if (!client) client = getConvexClient();
     if (!client) return errorResponse("Service temporarily unavailable", 503);
-    client.setAuth(token);
+    // No client.setAuth with bearer tokens in cookie-only model
 
     // Query the profile by user ID
     if (!userId) {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     // 4. Update profile image URLs
 
     console.log(
-      `Confirming image upload for user ${userId}: ${fileName} (${uploadId})`,
+      `Confirming image upload for user ${userId}: ${fileName} (${uploadId})`
     );
 
     return successResponse({
