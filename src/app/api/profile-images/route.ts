@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 
 // GET /api/profile-images -> get user's profile images
 // POST /api/profile-images -> upload profile image metadata
@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     const convex = getConvexClient();
     if (!convex) {
@@ -46,9 +46,10 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+    // Cookie-only model: do not set bearer tokens
     try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
+      // @ts-ignore permissive no-op
+      convex.setAuth?.(undefined);
     } catch {}
 
     if (!userId) {
@@ -107,9 +108,9 @@ export async function DELETE(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(req);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -125,7 +126,7 @@ export async function DELETE(req: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     const convex = getConvexClient();
     if (!convex) {
@@ -134,9 +135,10 @@ export async function DELETE(req: NextRequest) {
         { status: 500 }
       );
     }
+    // Cookie-only: no tokens
     try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
+      // @ts-ignore
+      convex.setAuth?.(undefined);
     } catch {}
 
     let body: { imageId?: string } = {};
@@ -214,9 +216,9 @@ export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(req);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -232,7 +234,7 @@ export async function POST(req: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     const convex = getConvexClient();
     if (!convex) {
@@ -241,9 +243,10 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+    // Cookie-only: no token set on client
     try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
+      // @ts-ignore
+      convex.setAuth?.(undefined);
     } catch {}
 
     let body: {
