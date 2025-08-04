@@ -39,9 +39,9 @@ import {
   fetchUserProfile,
 } from "@/lib/profile/userProfileApi";
 import {
-  sendInterest,
-  removeInterest,
-  getSentInterests,
+  sendInterestCookie,
+  removeInterestCookie,
+  getSentInterestsCookie,
 } from "@/lib/interestUtils";
 import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
@@ -188,10 +188,10 @@ export default function ProfileDetailPage() {
     isLoading: loadingInterests,
     refetch: refetchSentInterests,
   } = useQuery<Interest[]>({
-    queryKey: ["sentInterests", fromUserId, toUserId, token],
+    queryKey: ["sentInterests", fromUserId, toUserId],
     queryFn: async () => {
-      if (!token || !fromUserId) return [];
-      const res = await getSentInterests(token);
+      if (!fromUserId) return [];
+      const res = await getSentInterestsCookie();
       let payload: unknown = res;
       if (
         payload &&
@@ -203,7 +203,7 @@ export default function ProfileDetailPage() {
       }
       return Array.isArray(payload) ? payload : [];
     },
-    enabled: !!token && !!fromUserId,
+    enabled: !!fromUserId,
     retry: false,
   });
 
@@ -287,7 +287,7 @@ export default function ProfileDetailPage() {
       if (alreadySentInterest) {
         // Optimistically update UI: switch heart back immediately
         setLocalInterest(false);
-        const responseData = await removeInterest(token, toUserId);
+        const responseData = await removeInterestCookie(toUserId);
         showSuccessToast("Interest withdrawn successfully!");
         await refetchSentInterests();
         setLocalInterest(null); // Let server state take over
@@ -297,7 +297,7 @@ export default function ProfileDetailPage() {
         // Optimistically update UI: switch heart immediately
         setLocalInterest(true);
         setShowHeartPop(true); // trigger pop animation
-        const responseData = await sendInterest(token, toUserId);
+        const responseData = await sendInterestCookie(toUserId);
         showSuccessToast("Interest sent successfully!");
 
         // Track interest sent usage

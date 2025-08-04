@@ -1,13 +1,13 @@
 "use client";
 import { useState, Suspense } from "react";
-import { sendInterest, removeInterest } from "@/lib/interestUtils";
+import { sendInterestCookie, removeInterestCookie } from "@/lib/interestUtils";
 import { Heart, HeartOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 function InterestE2ETestPageInner() {
   const params = useSearchParams();
   const toUserId = params.get("other") ?? "user2";
-  const token = params.get("token") ?? "test-token";
+  // token is no longer required; cookie-based auth is used
 
   const [sent, setSent] = useState(false);
   const [status, setStatus] = useState("idle");
@@ -16,10 +16,10 @@ function InterestE2ETestPageInner() {
     setStatus("loading");
     try {
       if (sent) {
-        await removeInterest(token, toUserId);
+        await removeInterestCookie(toUserId);
         setSent(false);
       } else {
-        await sendInterest(token, toUserId);
+        await sendInterestCookie(toUserId);
         setSent(true);
       }
       setStatus("success");
