@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import {
   validateMessagePayload,
@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     if (!userId) {
       return NextResponse.json(
@@ -46,9 +46,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Use subscription-aware rate limiter (read/list window)
+    // Cookie-only auth: no token string is available; pass an empty string to satisfy types
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      token,
+      "",
       userId,
       "message_list",
       60000
@@ -117,10 +118,6 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-    try {
-      // @ts-ignore legacy
-      client.setAuth?.(token);
-    } catch {}
 
     const userIds = conversationId.split("_");
     if (!userIds.includes(userId)) {
@@ -189,9 +186,9 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -207,7 +204,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     if (!userId) {
       return NextResponse.json(
@@ -217,9 +214,10 @@ export async function POST(request: NextRequest) {
     }
 
     // subscription-aware limiter for message send
+    // Cookie-only auth: no token string is available; pass an empty string to satisfy types
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      token,
+      "",
       userId,
       "message_sent",
       60000
@@ -306,10 +304,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    try {
-      // @ts-ignore legacy
-      client.setAuth?.(token);
-    } catch {}
 
     const canMessage = await validateUserCanMessage(fromUserId, toUserId);
     if (!canMessage) {
