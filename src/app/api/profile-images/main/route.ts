@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 
 export async function PUT(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -26,7 +26,7 @@ export async function PUT(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
     if (!userId) {
       console.warn("Profile images MAIN PUT no userId", {
         scope: "profile_images.main",
@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest) {
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
-        { error: "User ID not found in token", correlationId },
+        { error: "User ID not found in session", correlationId },
         { status: 401 }
       );
     }
@@ -55,9 +55,11 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       );
     }
+    // Cookie-only: do not set bearer tokens on client
     try {
-      // @ts-ignore optional legacy
-      convex.setAuth?.(token);
+      // Ensure no legacy calls remain; safe no-op
+      // @ts-ignore
+      convex.setAuth?.(undefined);
     } catch {}
 
     const profile = await convex
