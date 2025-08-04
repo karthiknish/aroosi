@@ -1,19 +1,39 @@
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import CustomSignupForm from "@/components/auth/CustomSignupForm";
 import { useRouter } from "next/navigation";
 
 export default function SignUpPage() {
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated, isLoaded } = useAuthContext();
   const router = useRouter();
 
-  // Redirect if already signed in
-  if (isAuthenticated) {
-    router.push("/search");
-    return null;
-  }
+  // If already authenticated, confirm server cookie session then redirect
+  React.useEffect(() => {
+    let cancelled = false;
+    const go = async () => {
+      if (!isLoaded) return;
+      if (!isAuthenticated) return;
+      try {
+        const resp = await fetch("/api/auth/me", {
+          method: "GET",
+          credentials: "include",
+          headers: { accept: "application/json", "cache-control": "no-store" },
+        });
+        if (resp.ok && !cancelled) {
+          router.push("/search");
+        }
+      } catch {
+        // stay on sign-up if session not valid
+      }
+    };
+    void go();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isLoaded, router]);
 
   return (
     <div className="min-h-screen w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
