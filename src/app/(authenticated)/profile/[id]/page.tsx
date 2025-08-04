@@ -184,7 +184,29 @@ export default function ProfileDetailPage() {
   const fromUserId = currentUserProfile?.userId;
   const toUserId = userId;
 
-  // --- BEGIN: Add local state for interest status ---
+  // --- BEGIN: Interest status (lightweight) and sent list ---
+  // Lightweight interest status for the viewed user (cookie-auth)
+  const {
+    data: interestStatusData,
+    isLoading: loadingInterestStatus,
+    refetch: refetchInterestStatus,
+  } = useQuery<{ status?: "none" | "pending" | "accepted" | "rejected" } | null>({
+    queryKey: ["interestStatus", fromUserId, toUserId],
+    queryFn: async () => {
+      if (!fromUserId || !toUserId) return null;
+      const res = await fetch(
+        `/api/interests/status?targetUserId=${encodeURIComponent(String(toUserId))}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => ({}));
+      return data && typeof data === "object" ? (data as any) : null;
+    },
+    enabled: !!fromUserId && !!toUserId,
+    staleTime: 30000,
+  });
+
+  // Full sent list (cookie-auth) for reconciliation/fallback
   const {
     data: sentInterests,
     isLoading: loadingInterests,
@@ -212,18 +234,24 @@ export default function ProfileDetailPage() {
   // Local state to control the heart/interest button for instant UI feedback
   const [localInterest, setLocalInterest] = useState<null | boolean>(null);
 
-  // Compute alreadySentInterest, but allow local override for instant UI
+  // Compute alreadySentInterest, allow local override for instant UI
   const alreadySentInterest = useMemo(() => {
     if (localInterest !== null) return localInterest;
 
-    // Lightweight status (if wired elsewhere, use it here); currently fallback to sentInterests
+    // Prefer lightweight status
+    if (interestStatusData && typeof interestStatusData === "object" && "status" in interestStatusData) {
+      const s = (interestStatusData as { status?: string }).status;
+      if (s === "pending" || s === "accepted") return true;
+      if (s === "rejected") return false;
+    }
+
     if (!sentInterests || !Array.isArray(sentInterests)) return false;
     return sentInterests.some((interest) => {
       if (interest.toUserId !== toUserId || interest.fromUserId !== fromUserId)
         return false;
       return interest.status !== "rejected";
     });
-  }, [sentInterests, toUserId, fromUserId, localInterest]);
+  }, [interestStatusData, sentInterests, toUserId, fromUserId, localInterest]);
   // --- END: Add local state for interest status ---
 
   // Check if user is blocked
@@ -304,7 +332,12 @@ export default function ProfileDetailPage() {
         void queryClient.invalidateQueries({
           queryKey: ["unreadCounts", "self"],
         });
-        await refetchSentInterests();
+        // Invalidate and refetch related queries
+        void queryClient.invalidateQueries({ queryKey: ["interestStatus", fromUserId, toUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["sentInterests", fromUserId, toUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
+        void queryClient.invalidateQueries({ queryKey: ["unreadCounts", "self"] });
+        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
 
         setLocalInterest(null); // Let server state take over
         setShowHeartPop(false);
@@ -333,7 +366,12 @@ export default function ProfileDetailPage() {
         void queryClient.invalidateQueries({
           queryKey: ["unreadCounts", "self"],
         });
-        await refetchSentInterests();
+        // Invalidate and refetch related queries
+        void queryClient.invalidateQueries({ queryKey: ["interestStatus", fromUserId, toUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["sentInterests", fromUserId, toUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
+        void queryClient.invalidateQueries({ queryKey: ["unreadCounts", "self"] });
+        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
 
         setLocalInterest(null); // Let server state take over
         setTimeout(() => setShowHeartPop(false), 600);
