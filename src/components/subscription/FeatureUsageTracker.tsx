@@ -20,8 +20,22 @@ export const FeatureUsageTracker: React.FC<FeatureUsageTrackerProps> = ({
     try {
       const result = await trackUsage(feature);
 
-      // Check if user has reached their limit
-      if (result.remainingQuota <= 0 && !result.isUnlimited) {
+      // Align with trackUsage return shape ({ success: boolean }) and cached usage shape
+      // Attempt to read cached usage details if present; otherwise fall back to success flag
+      const typed = (result as unknown) as {
+        success?: boolean;
+        remainingQuota?: number;
+        isUnlimited?: boolean;
+      };
+
+      // If we have detailed quota data, use it; else treat success=false as blocked
+      const reachedLimit =
+        (typeof typed.remainingQuota === "number" &&
+          typed.remainingQuota <= 0 &&
+          !typed.isUnlimited) ||
+        typed.success === false;
+
+      if (reachedLimit) {
         onLimitReached?.();
       }
     } catch (error) {
