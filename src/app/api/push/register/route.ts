@@ -7,19 +7,17 @@ import { requireUserToken } from "@/app/api/_utils/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     let client = getConvexClient();
     if (!client) client = getConvexClient();
     if (!client) return errorResponse("Service temporarily unavailable", 503);
-    client.setAuth(token);
+    // Cookie-only: do not set auth bearer on client
 
     const { playerId, deviceType, deviceToken } = await request.json();
     if (!playerId) return errorResponse("Missing playerId", 400);
-
-
 
     // Store registration in Convex
     const registrationId = await client.mutation(api.pushNotifications.registerDevice, {
@@ -49,14 +47,14 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const authCheck = requireUserToken(request);
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     let client = getConvexClient();
     if (!client) client = getConvexClient();
     if (!client) return errorResponse("Service temporarily unavailable", 503);
-    client.setAuth(token);
+    // Cookie-only: do not set auth bearer on client
 
     const { playerId } = await request.json();
     if (!playerId) return errorResponse("Missing playerId", 400);
