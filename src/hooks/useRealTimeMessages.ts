@@ -40,6 +40,49 @@ export function useRealTimeMessages({
   const eventSourceRef = useRef<EventSource | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Handle real-time events (moved above to satisfy dependency order for effects)
+  const handleRealTimeEvent = useCallback(
+    (event: MessageEvent) => {
+      switch (event.type) {
+        case "message_sent":
+          if (event.data && event.conversationId === conversationId) {
+            setMessages((prev) => {
+              const exists = prev.some(
+                (msg) => msg._id === (event.data as MessageData)._id,
+              );
+              if (exists) return prev;
+              return [...prev, event.data as MessageData];
+            });
+          }
+          break;
+        case "message_read":
+          if (event.data && event.conversationId === conversationId) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                (event.data as { messageIds: string[] }).messageIds.includes(
+                  msg._id,
+                )
+                  ? { ...msg, isRead: true, readAt: event.timestamp }
+                  : msg,
+              ),
+            );
+          }
+          break;
+        case "typing_start":
+          if (event.userId !== userId && event.conversationId === conversationId) {
+            setIsTyping((prev) => ({ ...prev, [event.userId]: true }));
+          }
+          break;
+        case "typing_stop":
+          if (event.userId !== userId && event.conversationId === conversationId) {
+            setIsTyping((prev) => ({ ...prev, [event.userId]: false }));
+          }
+          break;
+      }
+    },
+    [conversationId, userId],
+  );
+
   // Initialize EventSource connection for real-time updates
   const initializeConnection = useCallback(async () => {
     if (!userId || !conversationId) return;
@@ -98,60 +141,9 @@ export function useRealTimeMessages({
       console.error("Error initializing real-time connection:", err);
       setError("Failed to establish real-time connection");
     }
-  }, [userId, conversationId, contextToken]);
+  }, [userId, conversationId, contextToken, handleRealTimeEvent]);
 
-  // Handle real-time events
-  const handleRealTimeEvent = useCallback(
-    (event: MessageEvent) => {
-      switch (event.type) {
-        case "message_sent":
-          if (event.data && event.conversationId === conversationId) {
-            setMessages((prev) => {
-              // Avoid duplicates
-              const exists = prev.some(
-                (msg) => msg._id === (event.data as MessageData)._id,
-              );
-              if (exists) return prev;
-              return [...prev, event.data as MessageData];
-            });
-          }
-          break;
-
-        case "message_read":
-          if (event.data && event.conversationId === conversationId) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                (event.data as { messageIds: string[] }).messageIds.includes(
-                  msg._id,
-                )
-                  ? { ...msg, isRead: true, readAt: event.timestamp }
-                  : msg,
-              ),
-            );
-          }
-          break;
-
-        case "typing_start":
-          if (
-            event.userId !== userId &&
-            event.conversationId === conversationId
-          ) {
-            setIsTyping((prev) => ({ ...prev, [event.userId]: true }));
-          }
-          break;
-
-        case "typing_stop":
-          if (
-            event.userId !== userId &&
-            event.conversationId === conversationId
-          ) {
-            setIsTyping((prev) => ({ ...prev, [event.userId]: false }));
-          }
-          break;
-      }
-    },
-    [conversationId, userId],
-  );
+  // (moved above to satisfy dependency order)
 
   // Send a text message
   const sendMessage = useCallback(
@@ -277,6 +269,18 @@ export function useRealTimeMessages({
   );
 
   // Send typing indicators
+  const sendTypingStop = useCallback(() => {
+    if (!userId || !eventSourceRef.current) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    // Broadcast typing stop
+    // const event = createMessageEvent('typing_stop', conversationId, userId);
+  }, [userId, conversationId]);
+
   const sendTypingStart = useCallback(() => {
     if (!userId || !eventSourceRef.current) return;
 
@@ -292,19 +296,7 @@ export function useRealTimeMessages({
     typingTimeoutRef.current = setTimeout(() => {
       sendTypingStop();
     }, 3000);
-  }, [userId, conversationId]);
-
-  const sendTypingStop = useCallback(() => {
-    if (!userId || !eventSourceRef.current) return;
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-
-    // Broadcast typing stop
-    // const event = createMessageEvent('typing_stop', conversationId, userId);
-  }, [userId, conversationId]);
+  }, [userId, conversationId, sendTypingStop]);
 
   // Mark messages as read
   const markAsRead = useCallback(

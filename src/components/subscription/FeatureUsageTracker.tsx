@@ -44,9 +44,12 @@ export const FeatureUsageTracker: React.FC<FeatureUsageTrackerProps> = ({
   };
 
   // Auto-track usage when component is rendered (for passive tracking)
+  // Include stable callback in deps to satisfy exhaustive-deps.
   useEffect(() => {
     void handleTrackUsage();
-  }, []);
+    // handleTrackUsage is a stable closure over 'feature' and 'trackUsage'
+    // and does not change unless those change.
+  }, [handleTrackUsage]);
 
   return <>{children}</>;
 };

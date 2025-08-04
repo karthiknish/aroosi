@@ -150,36 +150,38 @@ export function ProfileCreationModal({
   const totalSteps = 8;
 
   // Create a unified formData object from context data and initial data
-  const formData: ProfileCreationData = {
-    profileFor: (contextData?.profileFor as string) || "",
-    gender: (contextData?.gender as string) || "",
-    fullName: (contextData?.fullName as string) || "",
-    dateOfBirth: (contextData?.dateOfBirth as string) || "",
-    email: (contextData?.email as string) || "",
-    phoneNumber: (contextData?.phoneNumber as string) || "",
-    country: (contextData?.country as string) || "",
-    city: (contextData?.city as string) || "",
-    height: (contextData?.height as string) || "",
-    maritalStatus: (contextData?.maritalStatus as string) || "",
-    physicalStatus: (contextData?.physicalStatus as string) || "",
-    motherTongue: (contextData?.motherTongue as string) || "",
-    religion: (contextData?.religion as string) || "",
-    ethnicity: (contextData?.ethnicity as string) || "",
-    diet: (contextData?.diet as string) || "",
-    smoking: (contextData?.smoking as string) || "",
-    drinking: (contextData?.drinking as string) || "",
-    education: (contextData?.education as string) || "",
-    occupation: (contextData?.occupation as string) || "",
-    annualIncome: (contextData?.annualIncome as string) || "",
-    aboutMe: (contextData?.aboutMe as string) || "",
-    preferredGender: (contextData?.preferredGender as string) || "",
-    partnerPreferenceAgeMin:
-      (contextData?.partnerPreferenceAgeMin as number) || 18,
-    partnerPreferenceAgeMax: contextData?.partnerPreferenceAgeMax as number,
-    partnerPreferenceCity:
-      (contextData?.partnerPreferenceCity as string[]) || [],
-    profileImageIds: (contextData?.profileImageIds as string[]) || [],
-  };
+  const formData: ProfileCreationData = React.useMemo(() => {
+    return {
+      profileFor: (contextData?.profileFor as string) || "",
+      gender: (contextData?.gender as string) || "",
+      fullName: (contextData?.fullName as string) || "",
+      dateOfBirth: (contextData?.dateOfBirth as string) || "",
+      email: (contextData?.email as string) || "",
+      phoneNumber: (contextData?.phoneNumber as string) || "",
+      country: (contextData?.country as string) || "",
+      city: (contextData?.city as string) || "",
+      height: (contextData?.height as string) || "",
+      maritalStatus: (contextData?.maritalStatus as string) || "",
+      physicalStatus: (contextData?.physicalStatus as string) || "",
+      motherTongue: (contextData?.motherTongue as string) || "",
+      religion: (contextData?.religion as string) || "",
+      ethnicity: (contextData?.ethnicity as string) || "",
+      diet: (contextData?.diet as string) || "",
+      smoking: (contextData?.smoking as string) || "",
+      drinking: (contextData?.drinking as string) || "",
+      education: (contextData?.education as string) || "",
+      occupation: (contextData?.occupation as string) || "",
+      annualIncome: (contextData?.annualIncome as string) || "",
+      aboutMe: (contextData?.aboutMe as string) || "",
+      preferredGender: (contextData?.preferredGender as string) || "",
+      partnerPreferenceAgeMin:
+        (contextData?.partnerPreferenceAgeMin as number) || 18,
+      partnerPreferenceAgeMax: contextData?.partnerPreferenceAgeMax as number,
+      partnerPreferenceCity:
+        (contextData?.partnerPreferenceCity as string[]) || [],
+      profileImageIds: (contextData?.profileImageIds as string[]) || [],
+    };
+  }, [contextData]);
 
   console.log("ProfileCreationModal unified formData:", formData);
 
@@ -277,6 +279,7 @@ export function ProfileCreationModal({
   const handleClose = useCallback(() => {
     try {
       // Clear via dynamic import to avoid SSR/window coupling on build
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { clearAllOnboardingData } = require("./profileCreationHelpers");
       clearAllOnboardingData();
       resetWizard();
@@ -1349,7 +1352,8 @@ export function ProfileCreationModal({
       setStep(normalizeStartStep(!!hasBasicData));
       normalizedOnOpenRef.current = true;
     })();
-  }, [isOpen, hasBasicData]); // Remove 'step' from dependencies to avoid loops
+    // setStep and normalizeStartStep are stable; include setStep to satisfy exhaustive-deps
+  }, [isOpen, hasBasicData, setStep]); // Remove 'step' from dependencies to avoid loops
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
