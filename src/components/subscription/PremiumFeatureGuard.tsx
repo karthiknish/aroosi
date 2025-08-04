@@ -77,8 +77,8 @@ export const PremiumFeatureGuard: React.FC<PremiumFeatureGuardProps> = ({
           Current plan: <span className="capitalize font-medium">{status?.plan || 'Free'}</span>
         </div>
         
-        <Button 
-          onClick={onUpgrade}
+        <Button
+          onClick={onUpgrade ?? (() => (window.location.href = '/plans'))}
           className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
         >
           Upgrade to {tierName} - {price}/month
@@ -124,8 +124,8 @@ export const FeatureLocked: React.FC<FeatureLockedProps> = ({
         </p>
       </div>
 
-      <Button 
-        onClick={onUpgrade}
+      <Button
+        onClick={onUpgrade ?? (() => (window.location.href = '/plans'))}
         variant="outline"
         className="border-blue-500 text-blue-600 hover:bg-blue-50"
       >

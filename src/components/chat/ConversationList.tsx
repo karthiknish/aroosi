@@ -347,6 +347,7 @@ export default function ConversationList({
             <Button
               size="sm"
               className="w-full bg-primary hover:bg-primary-dark"
+              onClick={() => (window.location.href = '/plans')}
             >
               Upgrade to Premium
             </Button>

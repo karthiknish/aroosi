@@ -290,9 +290,9 @@ export default function Composer(props: ComposerProps) {
             <Smile className="w-4 h-4" />
           </Button>
         </div>
-
+      
         {/* Action buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Button
             type="button"
             variant="ghost"
@@ -304,7 +304,7 @@ export default function Composer(props: ComposerProps) {
           >
             <Mic className="w-4 h-4" />
           </Button>
-
+      
           <Button
             type="button"
             variant="ghost"
@@ -315,6 +315,20 @@ export default function Composer(props: ComposerProps) {
           >
             <ImageIcon className="w-4 h-4" />
           </Button>
+
+          {/* Inline upgrade hint when voice is unavailable */}
+          {(!canUseVoice) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => (window.location.href = '/plans')}
+              title="Upgrade to send voice messages"
+            >
+              Upgrade to send voice
+            </Button>
+          )}
         </div>
 
         {/* Send */}
