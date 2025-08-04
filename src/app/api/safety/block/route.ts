@@ -11,13 +11,13 @@ const convexClient = getConvexClient();
 
 export async function POST(request: NextRequest) {
   try {
-    // Enhanced authentication with user ID extraction
-    const authCheck = requireUserToken(request);
+    // Cookie-only authentication with user ID extraction
+    const authCheck = await requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
 
     if (!userId) {
-      return errorResponse("User ID not found in token", 401);
+      return errorResponse("User ID not found in session", 401);
     }
 
     // Rate limiting for blocking actions
@@ -38,17 +38,12 @@ export async function POST(request: NextRequest) {
       return errorResponse("Cannot block yourself", 400);
     }
 
-    let client = convexClient;
-    if (!client) {
-      client = getConvexClient();
-    }
-
+    let client = convexClient || getConvexClient();
     if (!client) {
       return errorResponse("Database connection failed", 500);
     }
 
-    // Set authentication token
-    client.setAuth(token);
+    // Cookie-only: do not set auth bearer on Convex client
 
     // Block the user
     await client.mutation(api.users.blockUser, {
