@@ -6,7 +6,6 @@ import { subscriptionAPI } from "@/lib/api/subscription";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import {
-  handleSubscriptionError,
   SubscriptionErrorHandler,
 } from "@/lib/utils/subscriptionErrorHandler";
 
@@ -43,12 +42,20 @@ export const useSubscriptionActions = (token?: string) => {
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
-      const subscriptionError = handleSubscriptionError(
-        error,
-        "cancelSubscription"
-      );
+      // Normalize arbitrary thrown error into a SubscriptionError
+      const normalized =
+        error && typeof (error as any).type === "string"
+          ? (error as any)
+          : {
+              type: SubscriptionErrorHandler.parseErrorCode(
+                (error as any)?.code || undefined
+              ),
+              message:
+                (error as any)?.message ||
+                "Subscription action failed. Please try again.",
+            };
       showErrorToast(
-        SubscriptionErrorHandler.getUserFriendlyMessage(subscriptionError)
+        SubscriptionErrorHandler.toUserMessage(normalized)
       );
     },
   });
@@ -61,12 +68,19 @@ export const useSubscriptionActions = (token?: string) => {
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
-      const subscriptionError = handleSubscriptionError(
-        error,
-        "upgradeSubscription"
-      );
+      const normalized =
+        error && typeof (error as any).type === "string"
+          ? (error as any)
+          : {
+              type: SubscriptionErrorHandler.parseErrorCode(
+                (error as any)?.code || undefined
+              ),
+              message:
+                (error as any)?.message ||
+                "Subscription upgrade failed. Please try again.",
+            };
       showErrorToast(
-        SubscriptionErrorHandler.getUserFriendlyMessage(subscriptionError)
+        SubscriptionErrorHandler.toUserMessage(normalized)
       );
     },
   });
@@ -78,12 +92,19 @@ export const useSubscriptionActions = (token?: string) => {
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {
-      const subscriptionError = handleSubscriptionError(
-        error,
-        "restorePurchases"
-      );
+      const normalized =
+        error && typeof (error as any).type === "string"
+          ? (error as any)
+          : {
+              type: SubscriptionErrorHandler.parseErrorCode(
+                (error as any)?.code || undefined
+              ),
+              message:
+                (error as any)?.message ||
+                "Restore purchases failed. Please try again.",
+            };
       showErrorToast(
-        SubscriptionErrorHandler.getUserFriendlyMessage(subscriptionError)
+        SubscriptionErrorHandler.toUserMessage(normalized)
       );
     },
   });

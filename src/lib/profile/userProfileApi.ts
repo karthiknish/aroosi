@@ -656,6 +656,71 @@ export async function deleteUserProfile(
 }
 
 // -----------------------------------------------------------
+// Profile Boost
+// -----------------------------------------------------------
+
+/**
+ * Trigger a 24h profile boost for the authenticated user.
+ * Expects server route POST /api/profile/boost to:
+ *  - authenticate via Bearer token
+ *  - enforce monthly quota
+ *  - return JSON: { success: boolean, boostsRemaining?: number, boostedUntil?: number, message?: string }
+ */
+export async function boostProfile(
+  token: string,
+  retries = 1
+): Promise<{ success: boolean; boostsRemaining?: number; boostedUntil?: number; message?: string }> {
+  const error = validateToken(token);
+  if (error) {
+    return { success: false, message: error };
+  }
+
+  const url = "/api/profile/boost";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  try {
+    const response = await fetchWithTimeout(url, { method: "POST", headers });
+    const text = await response.text();
+    let data: any = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      // Non-JSON response, synthesize minimal message
+      data = null;
+    }
+
+    if (!response.ok) {
+      const message =
+        (data && (data.message || data.error)) ||
+        `Failed to boost profile: ${response.status} ${response.statusText}`;
+      throw new Error(message);
+    }
+
+    return {
+      success: true,
+      boostsRemaining: data?.boostsRemaining,
+      boostedUntil: data?.boostedUntil,
+      message: data?.message,
+    };
+  } catch (err) {
+    if (
+      retries > 0 &&
+      (err instanceof TypeError ||
+        (err instanceof Error &&
+          (err.message.includes("Failed to fetch") ||
+            err.message.includes("timed out"))))
+    ) {
+      return boostProfile(token, retries - 1);
+    }
+    const handled = handleApiError(err, "boostProfile");
+    return { success: false, message: handled.error };
+  }
+}
+
+// -----------------------------------------------------------
 // Public helper: check if an email already has a completed profile
 // -----------------------------------------------------------
 
