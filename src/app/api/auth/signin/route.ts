@@ -330,70 +330,25 @@ export async function POST(request: NextRequest) {
       correlationId,
     });
 
-    // Cookie policy with conditional Domain based on request host
-    const url = new URL(request.url);
-    const host = url.hostname; // e.g. aroosi.app, preview.vercel.app, localhost
-    const isProdDomain =
-      host === "aroosi.app" || host.endsWith(".aroosi.app");
-    const isLocalhost =
-      host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
-    const secure = url.protocol === "https:" && !isLocalhost;
-
-    // Build base attributes
-    const baseAttrs = (maxAgeSec: number) => {
-      const parts = [
-        `Path=/`,
-        `HttpOnly`,
-        `SameSite=Lax`,
-        `Max-Age=${Math.max(1, Math.floor(maxAgeSec))}`,
-      ];
-      if (secure) parts.push(`Secure`);
-      // Only attach Domain on production custom domain
-      if (isProdDomain) parts.push(`Domain=.aroosi.app`);
-      return parts.join("; ");
-    };
-
+    // Cookie policy via centralized helper (env-driven)
+    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
     // Access token - short lived (15 minutes)
     response.headers.set(
       "Set-Cookie",
-      `auth-token=${accessToken}; ${baseAttrs(60 * 15)}`
+      `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
     );
     // Refresh token - 7 days
     response.headers.append(
       "Set-Cookie",
-      `refresh-token=${refreshToken}; ${baseAttrs(60 * 60 * 24 * 7)}`
+      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
     );
-
-    // Optional non-HttpOnly short-lived public mirror for client hints (kept host-only on previews)
+    // Optional non-HttpOnly short-lived public mirror
     if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-      const publicParts = [
-        `Path=/`,
-        `SameSite=Lax`,
-        `Max-Age=${60}`,
-      ];
-      if (secure) publicParts.push(`Secure`);
-      if (isProdDomain) publicParts.push(`Domain=.aroosi.app`);
       response.headers.append(
         "Set-Cookie",
-        `authTokenPublic=${accessToken}; ${publicParts.join("; ")}`
+        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`
       );
     }
-
-    // Log cookie env diagnostics to help verify behavior per environment
-    console.info("Cookie configuration diagnostics", {
-      scope: "auth.cookies",
-      type: "env_info",
-      samesite: "Lax",
-      secure: secure ? "1" : "0",
-      secureEffective: secure ? "1" : "0",
-      domain: isProdDomain ? ".aroosi.app" : "(host-only)",
-      host,
-      warnings: !isProdDomain
-        ? [
-            `Preview/local host "${host}" -> using host-only cookies (no Domain)`,
-          ]
-        : [],
-    });
 
     console.info("Signin success", {
       scope: "auth.signin",

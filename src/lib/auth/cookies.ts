@@ -11,6 +11,7 @@
  * - When SameSite=None, Secure must be set; this helper enforces it.
  * - Use getAuthCookieAttrs for HttpOnly auth cookies.
  * - Use getPublicCookieAttrs for non-HttpOnly short-lived public cookie.
+ * - Use getExpireCookieAttrs for immediate-expiry headers (Max-Age=0).
  */
 const getBaseFlags = () => {
   const DOMAIN = process.env.COOKIE_DOMAIN?.trim();
@@ -34,7 +35,7 @@ const getBaseFlags = () => {
     }
 
     // If SameSite=None, Secure must be on (browser requirement)
-    const secureRequired = sLower === "none" ? "1" : SECURE_ENV;
+    const secureRequiredDiag = sLower === "none" ? "1" : SECURE_ENV;
 
     // Domain sanity checks
     if (DOMAIN) {
@@ -57,7 +58,7 @@ const getBaseFlags = () => {
     // Localhost + Secure diagnostic
     if (
       process.env.NODE_ENV !== "production" &&
-      secureRequired === "1" &&
+      secureRequiredDiag === "1" &&
       process.env.VERCEL !== "1"
     ) {
       warnings.push(
@@ -72,7 +73,7 @@ const getBaseFlags = () => {
         type: "env_warning",
         samesite: SAMESITE,
         secure: SECURE_ENV,
-        secureEffective: sLower === "none" ? "1" : SECURE_ENV,
+        secureEffective: secureRequiredDiag,
         domain: DOMAIN || "(host-only)",
         warnings,
       });
@@ -81,8 +82,9 @@ const getBaseFlags = () => {
     // best-effort; never throw from diagnostics
   }
 
-  // Enforce Secure when SameSite=None (browser requirement)
-  const secureRequired = SAMESITE.toLowerCase() === "none" ? "1" : SECURE_ENV;
+  // Compute final flags
+  const sLowerFinal = SAMESITE.toLowerCase();
+  const secureRequired = sLowerFinal === "none" ? "1" : SECURE_ENV;
 
   const parts: string[] = ["Path=/", `SameSite=${SAMESITE}`];
   if (DOMAIN) parts.push(`Domain=${DOMAIN}`);
@@ -99,5 +101,11 @@ export function getAuthCookieAttrs(maxAgeSec: number): string {
 export function getPublicCookieAttrs(maxAgeSec: number): string {
   const parts = getBaseFlags();
   parts.push(`Max-Age=${Math.max(0, Math.floor(maxAgeSec))}`);
+  return parts.join("; ");
+}
+
+export function getExpireCookieAttrs(): string {
+  const parts = getBaseFlags();
+  parts.push("Max-Age=0");
   return parts.join("; ");
 }
