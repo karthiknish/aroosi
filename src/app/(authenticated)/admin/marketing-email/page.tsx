@@ -25,17 +25,21 @@ const TEMPLATE_OPTIONS = [
 ];
 
 export default function MarketingEmailAdminPage() {
-  const { token } = useAuthContext();
+  // Cookie-auth; remove token from context and API
+  useAuthContext(); // keep hook for gating if needed
   const [templateKey, setTemplateKey] = useState<string>(
     TEMPLATE_OPTIONS[0].key
   );
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
-    if (!token) return;
     setSending(true);
-    await sendMarketingEmail(token, { templateKey });
-    setSending(false);
+    try {
+      // Server reads HttpOnly cookies
+      await sendMarketingEmail("", { templateKey });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

@@ -134,36 +134,36 @@ export default function ProfileEditForm({
   // Debounced fetch suggestions
   useEffect(() => {
     const term = manualMatchName.trim();
-    if (!token || term.length < 2) {
+    if (term.length < 2) {
       setSuggestions([]);
       return;
     }
     const timeout = setTimeout(async () => {
       try {
         const { profiles } = await fetchAdminProfiles({
-          token,
+          // Cookie-auth; shim token param removed
           search: term,
           page: 1,
-        });
+        } as any);
         setSuggestions(profiles.slice(0, 5));
       } catch {
         setSuggestions([]);
       }
     }, 300);
     return () => clearTimeout(timeout);
-  }, [manualMatchName, token]);
+  }, [manualMatchName]);
 
   // Upload image handler
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!profileId || !token || !e.target.files?.[0]) return;
+    if (!profileId || !e.target.files?.[0]) return;
     setUploading(true);
     setImageError(null);
     try {
       const img = await adminUploadProfileImage({
-        token,
+        // Cookie-auth
         profileId,
         file: e.target.files[0],
-      });
+      } as any);
       setImages((prev) => [...prev, img]);
     } catch (err: unknown) {
       setImageError(
@@ -176,10 +176,10 @@ export default function ProfileEditForm({
 
   // Delete image handler
   const handleDeleteImage = async (imageId: string) => {
-    if (!profileId || !token) return;
+    if (!profileId) return;
     setImageError(null);
     try {
-      await deleteAdminProfileImageById({ token, profileId, imageId });
+      await deleteAdminProfileImageById({ profileId, imageId } as any);
       setImages((prev) =>
         prev.filter((img) => (img.id ?? img.storageId) !== imageId),
       );
@@ -191,7 +191,7 @@ export default function ProfileEditForm({
   };
 
   const handleCreateMatch = async () => {
-    if (!profileId || !token || (!manualMatchName.trim() && !selectedProfile))
+    if (!profileId || (!manualMatchName.trim() && !selectedProfile))
       return;
     setCreatingMatch(true);
     setMatchError(null);
@@ -199,10 +199,9 @@ export default function ProfileEditForm({
       let target: Profile | undefined = selectedProfile ?? undefined;
       if (!target) {
         const { profiles } = await fetchAdminProfiles({
-          token,
           search: manualMatchName.trim(),
           page: 1,
-        });
+        } as any);
         target = profiles.find((p) =>
           p.fullName
             .toLowerCase()
@@ -214,10 +213,9 @@ export default function ProfileEditForm({
         throw new Error("Cannot match a profile with itself");
 
       const res = await createManualMatch({
-        token,
         fromProfileId: profileId,
         toProfileId: target._id,
-      });
+      } as any);
       if (!res.success) throw new Error(res.error || "Failed to match");
       showSuccessToast(`Matched with ${target.fullName}`);
       setManualMatchName("");
@@ -240,7 +238,7 @@ export default function ProfileEditForm({
     >
       <h2 className="text-2xl font-bold mb-4">Edit Profile (Admin)</h2>
       {/* Profile Images Section */}
-      {profileId && token && (
+      {profileId && (
         <div className="mb-8">
           <h3 className="text-lg font-semibold mb-2">Profile Images</h3>
           {imagesLoading ? (
@@ -253,14 +251,13 @@ export default function ProfileEditForm({
               userId={profileId}
               onReorder={async (newOrder) => {
                 setImages(newOrder);
-                if (profileId && token) {
+                if (profileId) {
                   await updateAdminProfileImageOrder({
-                    token,
                     profileId,
                     imageIds: newOrder
                       .map((img) => img.id ?? img.storageId ?? "")
                       .filter(Boolean),
-                  });
+                  } as any);
                 }
               }}
               onDeleteImage={handleDeleteImage}
@@ -698,7 +695,7 @@ export default function ProfileEditForm({
         </div>
       </div>
       {/* Manual Match Section */}
-      {profileId && token && (
+      {profileId && (
         <div className="border-t pt-6">
           <h3 className="text-lg font-semibold mb-2">Manual Match</h3>
           <p className="text-sm text-muted-foreground mb-3">

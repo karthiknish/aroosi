@@ -208,7 +208,8 @@ export function ProfileImageReorder({
   loading = false,
   preUpload = false,
 }: Props) {
-  const { token } = useAuthContext();
+  // Cookie-auth: AuthContext no longer exposes token
+  useAuthContext();
   const [isReordering, setIsReordering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -357,10 +358,6 @@ export function ProfileImageReorder({
         setIsReordering(true);
         setError(null);
 
-        if (!token) {
-          throw new Error("Authentication required. Please sign in again.");
-        }
-
         // Enforce storageId-only ordering for server persistence. If any are missing, skip and rollback.
         const storageIds = newOrdered
           .map((img) => img.storageId)
@@ -378,7 +375,8 @@ export function ProfileImageReorder({
           return;
         }
 
-        await updateImageOrder({ token, userId, imageIds: storageIds });
+        // Cookie-auth: pass empty token to satisfy current types until util migrates
+        await updateImageOrder({ token: "", userId, imageIds: storageIds });
 
         showSuccessToast("Image order updated successfully");
       } catch (err) {
@@ -398,7 +396,7 @@ export function ProfileImageReorder({
         setIsReordering(false);
       }
     },
-    [loading, isReordering, currentImages, onReorder, token, userId, preUpload, dndIds]
+    [loading, isReordering, currentImages, onReorder, userId, preUpload, dndIds]
   );
 
   // ARIA live region for announcing reorder
@@ -491,11 +489,11 @@ export function ProfileImageReorder({
                         if (!preUpload) {
                           (async () => {
                             try {
-                              if (!token) throw new Error("Authentication required. Please sign in again.");
                               const newOrderIds = reordered.map((im) =>
                                 im.storageId ? im.storageId : String(im.id)
                               );
-                              await updateImageOrder({ token, userId, imageIds: newOrderIds });
+                              // Cookie-auth: pass empty token to satisfy current types until util migrates
+                              await updateImageOrder({ token: "", userId, imageIds: newOrderIds });
                               showSuccessToast("Set as main");
                             } catch (e) {
                               const msg = e instanceof Error ? e.message : "Failed to set main";

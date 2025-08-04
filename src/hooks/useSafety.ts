@@ -11,10 +11,9 @@ import { useAuthContext } from "@/components/AuthProvider";
 
 // Hook for reporting users
 export const useReportUser = () => {
-  const { token } = useAuthContext();
-
+  useAuthContext(); // cookie-based auth
   return useMutation({
-    mutationFn: (data: ReportData) => safetyAPI.reportUser(token, data),
+    mutationFn: (data: ReportData) => safetyAPI.reportUser(null, data),
     onSuccess: () => {
       showSuccessToast(
         "User reported successfully. Our team will review this report.",
@@ -28,20 +27,19 @@ export const useReportUser = () => {
 
 // Hook for blocking users
 export const useBlockUser = () => {
-  const { token } = useAuthContext();
+  useAuthContext();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (blockedUserId: string) =>
-      safetyAPI.blockUser(token, blockedUserId),
+      safetyAPI.blockUser(null, blockedUserId),
     onSuccess: (_, blockedUserId) => {
       showSuccessToast("User blocked successfully");
-      // Invalidate relevant queries
       void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
       void queryClient.invalidateQueries({
         queryKey: ["blockStatus", blockedUserId],
       });
-      void queryClient.invalidateQueries({ queryKey: ["profiles"] }); // Refresh search results
+      void queryClient.invalidateQueries({ queryKey: ["profiles"] });
     },
     onError: (error: Error) => {
       showErrorToast(error, "Failed to block user");
@@ -51,15 +49,14 @@ export const useBlockUser = () => {
 
 // Hook for unblocking users
 export const useUnblockUser = () => {
-  const { token } = useAuthContext();
+  useAuthContext();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (blockedUserId: string) =>
-      safetyAPI.unblockUser(token, blockedUserId),
+      safetyAPI.unblockUser(null, blockedUserId),
     onSuccess: (_, blockedUserId) => {
       showSuccessToast("User unblocked successfully");
-      // Invalidate relevant queries
       void queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
       void queryClient.invalidateQueries({
         queryKey: ["blockStatus", blockedUserId],
@@ -73,12 +70,12 @@ export const useUnblockUser = () => {
 
 // Hook for fetching blocked users
 export const useBlockedUsers = () => {
-  const { token } = useAuthContext();
+  useAuthContext();
 
   return useQuery({
     queryKey: ["blockedUsers"],
     queryFn: async () => {
-      const result = await safetyAPI.getBlockedUsers(token);
+      const result = await safetyAPI.getBlockedUsers(null);
       return result.blockedUsers;
     },
   });
@@ -88,7 +85,7 @@ export const useBlockedUsers = () => {
 export const useBlockStatus = (
   input: string | { profileId?: string; userId?: string },
 ) => {
-  const { token } = useAuthContext();
+  useAuthContext();
 
   const params: { profileId?: string; userId?: string } =
     typeof input === "string" ? { userId: input } : input;
@@ -96,16 +93,16 @@ export const useBlockStatus = (
   const key = params.profileId ?? params.userId ?? "unknown";
   return useQuery({
     queryKey: ["blockStatus", key],
-    queryFn: () => safetyAPI.checkBlockStatus(token, params),
+    queryFn: () => safetyAPI.checkBlockStatus(null, params),
     enabled: !!params.profileId || !!params.userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 };
 
 // Combined hook for safety actions (matching mobile app structure)
 export const useSafety = () => {
-  const { token } = useAuthContext();
+  useAuthContext();
   const reportUser = useReportUser();
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
@@ -116,7 +113,7 @@ export const useSafety = () => {
 
   const checkIfBlocked = async (userId: string): Promise<boolean> => {
     try {
-      const result = await safetyAPI.checkBlockStatus(token, userId);
+      const result = await safetyAPI.checkBlockStatus(null, userId);
       return result.isBlocked;
     } catch {
       return false;
@@ -124,8 +121,7 @@ export const useSafety = () => {
   };
 
   const loadBlockedUsers = async (): Promise<void> => {
-    // Force refetch of blocked users
-    await safetyAPI.getBlockedUsers(token);
+    await safetyAPI.getBlockedUsers(null);
   };
 
   return {

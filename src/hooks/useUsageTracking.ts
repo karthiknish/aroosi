@@ -35,26 +35,23 @@ interface UsageResponse {
   resetDate: number;
 }
 
-export function useUsageTracking(providedToken?: string): {
+export function useUsageTracking(_providedToken?: string): {
   trackUsage: (params: TrackUsageParams) => void;
   isTracking: boolean;
 } {
-  const { token: contextToken } = useAuthContext();
+  // Cookie-based auth; no token required client-side
+  useAuthContext();
   const queryClient = useQueryClient();
-  const { data: subscription } = useSubscriptionStatus(
-    (providedToken ?? undefined) || (contextToken ?? undefined),
-  );
+  const { data: subscription } = useSubscriptionStatus();
 
   const trackUsage = useMutation({
     mutationFn: async ({ feature, metadata }: TrackUsageParams) => {
-      const token = providedToken || contextToken;
-      if (!token) throw new Error("No auth token available");
       const response = await fetch("/api/subscription/track-usage", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ feature, metadata }),
       });
 
@@ -137,16 +134,13 @@ export function useUsageTracking(providedToken?: string): {
 export function useCanUseFeature(
   feature: Feature,
 ): ReturnType<typeof useQuery> {
-  const { token: contextToken } = useAuthContext();
+  useAuthContext();
 
   return useQuery({
     queryKey: ["can-use-feature", feature],
     queryFn: async (): Promise<{ canUse: boolean; reason?: string }> => {
-      const token = contextToken;
       const response = await fetch(`/api/subscription/can-use/${feature}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (!response.ok) {

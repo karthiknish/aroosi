@@ -66,24 +66,20 @@ const pricingPlans = [
 ];
 
 export default function SubscriptionPage() {
-  const { token } = useAuthContext();
-  const { cancel, restore, isLoading } = useSubscriptionActions(
-    token || undefined,
-  );
-  const { status, isPremium, isPremiumPlus } = useSubscriptionGuard(
-    token || undefined,
-  );
+  useAuthContext(); // maintain hook order; no token usage under cookie-auth
+  const { cancel, restore, isLoading } = useSubscriptionActions();
+  const { status, isPremium, isPremiumPlus } = useSubscriptionGuard();
   const router = useRouter();
 
   const handleUpgrade = async (tier: "premium" | "premiumPlus") => {
     // Only allow direct upgrade if on free plan (for trial/admin/testing)
     if (status?.plan === "free") {
-      // Use Stripe checkout for paid plans
-      const result = await createCheckoutSession(token!, {
+      // Use Stripe checkout for paid plans; cookie-auth on server side
+      const result = await createCheckoutSession("", {
         planType: tier,
         successUrl: window.location.origin + "/plans?checkout=success",
         cancelUrl: window.location.origin + "/plans?checkout=cancel",
-      });
+      } as any);
       if (result.success && result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
       }
@@ -146,7 +142,6 @@ export default function SubscriptionPage() {
                 <SubscriptionCard
                   onUpgrade={handleUpgrade}
                   onCancel={handleCancel}
-                  token={token || undefined}
                 />
               </CardContent>
             </Card>
@@ -160,7 +155,7 @@ export default function SubscriptionPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <UsageCard token={token || undefined} />
+                <UsageCard />
               </CardContent>
             </Card>
 

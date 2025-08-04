@@ -18,7 +18,7 @@ declare global {
  * Assumes the OneSignal SDK has already been loaded globally via layout.tsx.
  */
 export function useOneSignal(): void {
-  const { isSignedIn, userId, getToken } = useAuthContext();
+  const { isSignedIn, userId } = useAuthContext();
 
   useEffect(() => {
     if (!isSignedIn || !userId) return;
@@ -34,13 +34,12 @@ export function useOneSignal(): void {
           const playerId = await OneSignal.getUserId();
           if (playerId) {
             try {
-              const token = await getToken();
               await fetch("/api/push/register", {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: token ? `Bearer ${token}` : "",
                 },
+                credentials: "include",
                 body: JSON.stringify({ playerId }),
               });
             } catch (err: unknown) {
@@ -57,5 +56,5 @@ export function useOneSignal(): void {
 
     // defer to next tick to ensure OneSignal script executed
     setTimeout(onReady, 0);
-  }, [isSignedIn, userId, getToken]);
+  }, [isSignedIn, userId]);
 }

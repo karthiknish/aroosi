@@ -9,34 +9,31 @@ import {
   SubscriptionErrorHandler,
 } from "@/lib/utils/subscriptionErrorHandler";
 
-export const useSubscriptionStatus = (providedToken?: string) => {
-  // Prefer explicit token, fall back to AuthProvider context
-  const { token: contextToken } = useAuthContext();
-  const token: string | undefined =
-    providedToken ?? (contextToken || undefined);
-
+export const useSubscriptionStatus = (_providedToken?: string) => {
+  // Cookie-based auth; no token needed
+  useAuthContext();
   return useQuery({
-    queryKey: ["subscription", "status", token],
-    queryFn: () => subscriptionAPI.getStatus(token),
-    // Only run the query when we actually have an auth token.
-    enabled: Boolean(token),
+    queryKey: ["subscription", "status"],
+    // Pass undefined to satisfy types while ignoring token on server
+    queryFn: () => subscriptionAPI.getStatus(undefined),
+    enabled: true,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
-export const useUsageStats = (token?: string) => {
+export const useUsageStats = () => {
   return useQuery({
-    queryKey: ["subscription", "usage", token],
-    queryFn: () => subscriptionAPI.getUsage(token),
+    queryKey: ["subscription", "usage"],
+    queryFn: () => subscriptionAPI.getUsage(undefined),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
 
-export const useSubscriptionActions = (token?: string) => {
+export const useSubscriptionActions = () => {
   const queryClient = useQueryClient();
 
   const cancelMutation = useMutation({
-    mutationFn: () => subscriptionAPI.cancel(token),
+    mutationFn: () => subscriptionAPI.cancel(undefined),
     onSuccess: (data) => {
       showSuccessToast(data.message);
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
@@ -62,7 +59,7 @@ export const useSubscriptionActions = (token?: string) => {
 
   const upgradeMutation = useMutation({
     mutationFn: (tier: "premium" | "premiumPlus") =>
-      subscriptionAPI.upgrade(tier, token),
+      subscriptionAPI.upgrade(tier, undefined),
     onSuccess: (data) => {
       showSuccessToast(data.message);
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
@@ -86,7 +83,7 @@ export const useSubscriptionActions = (token?: string) => {
   });
 
   const restoreMutation = useMutation({
-    mutationFn: () => subscriptionAPI.restorePurchases(token),
+    mutationFn: () => subscriptionAPI.restorePurchases(undefined),
     onSuccess: (data) => {
       showSuccessToast(data.message);
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
@@ -161,8 +158,8 @@ export const useFeatureUsage = () => {
   };
 };
 
-export const useSubscriptionGuard = (token?: string) => {
-  const { data: status } = useSubscriptionStatus(token);
+export const useSubscriptionGuard = () => {
+  const { data: status } = useSubscriptionStatus();
 
   const isPremium =
     status?.plan === "premium" || status?.plan === "premiumPlus";

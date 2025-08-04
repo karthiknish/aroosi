@@ -17,7 +17,7 @@ const createMockAuthState = (
   isSignedIn: false,
   isLoading: false,
   isAuthenticated: false,
-  token: null,
+  // token removed in cookie-auth model
   isProfileComplete: false,
   isOnboardingComplete: false,
   isAdmin: false,
@@ -30,7 +30,7 @@ const createMockAuthState = (
   signInWithGoogle: jest.fn(),
   signOut: jest.fn(),
   refreshUser: jest.fn(),
-  getToken: jest.fn(),
+  // getToken removed from AuthContextType; do not include in mocks
   refreshProfile: jest.fn(),
   ...overrides,
 });

@@ -62,10 +62,10 @@ export default function ConversationList({
   selectedConversationId,
   className = "",
 }: ConversationListProps) {
-  const { token: contextToken, userId } = useAuthContext();
+  const { userId } = useAuthContext();
   const subscriptionStatus = useSubscriptionStatus();
   const [conversations, setConversations] = useState<ConversationWithUser[]>(
-    [],
+    []
   );
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,10 +77,9 @@ export default function ConversationList({
 
     try {
       setLoading(true);
-      const token = contextToken;
-      if (!token) throw new Error("Authentication required");
 
-      const result = await getConversations({ token });
+      // Cookie-auth direction: pass empty token to satisfy current signature
+      const result = await getConversations({ token: "" });
       const conversationsData =
         (result.conversations as ApiConversation[]) || [];
 
@@ -88,7 +87,7 @@ export default function ConversationList({
       const transformedConversations: ConversationWithUser[] =
         conversationsData.map((conv: ApiConversation) => {
           const otherParticipant = conv.participants.find(
-            (p) => p.userId !== userId,
+            (p) => p.userId !== userId
           );
           const otherUserId = otherParticipant?.userId || "";
 
@@ -128,12 +127,12 @@ export default function ConversationList({
     } catch (err) {
       console.error("Error fetching conversations:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to load conversations",
+        err instanceof Error ? err.message : "Failed to load conversations"
       );
     } finally {
       setLoading(false);
     }
-  }, [userId, contextToken]);
+  }, [userId]);
 
   // Filter conversations based on search query
   const filteredConversations = conversations.filter(

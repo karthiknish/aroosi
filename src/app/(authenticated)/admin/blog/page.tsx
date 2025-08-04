@@ -25,7 +25,8 @@ import {
 import { Search, Plus, Edit, Trash2, Eye, Grid, List } from "lucide-react";
 
 export default function AdminBlogPage() {
-  const { token, isAdmin, isLoaded } = useAuthContext();
+  // Cookie-auth only; remove token from context
+  const { isAdmin, isLoaded } = useAuthContext();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
@@ -39,9 +40,11 @@ export default function AdminBlogPage() {
     error,
     refetch,
   } = useQuery<BlogPost[]>({
-    queryKey: ["adminBlogs", token],
-    queryFn: () => (token ? fetchAdminBlogPosts({ token }) : []),
-    enabled: isLoaded && isAdmin && !!token,
+    // query is keyed without token now
+    queryKey: ["adminBlogs"],
+    // Server will read HttpOnly cookies and authorize
+    queryFn: () => fetchAdminBlogPosts({ token: "" }),
+    enabled: isLoaded && isAdmin,
   });
 
   // Filter blogs based on search term
@@ -77,18 +80,19 @@ export default function AdminBlogPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (typeof deleteBlogPost === "function" && typeof token === "string") {
-      await deleteBlogPost(token, id);
+    // Cookie-auth: server reads HttpOnly cookies; token no longer required
+    if (typeof deleteBlogPost === "function") {
+      await deleteBlogPost("", id);
       void refetch();
       setSelectedPosts((prev) => prev.filter((postId) => postId !== id));
     }
   };
 
   const handleBulkDelete = async () => {
-    if (selectedPosts.length === 0 || !token) return;
-
+    if (selectedPosts.length === 0) return;
+ 
     for (const id of selectedPosts) {
-      await deleteBlogPost(token, id);
+      await deleteBlogPost("", id);
     }
     void refetch();
     setSelectedPosts([]);

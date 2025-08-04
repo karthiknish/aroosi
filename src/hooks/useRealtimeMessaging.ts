@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useAuthContext as useAuth } from "@/components/AuthProvider";
 import { useSubscriptionStatus } from "./useSubscription";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { matchMessages } from "@/lib/api/matchMessages";
@@ -49,7 +49,6 @@ class WebSocketService {
 
   constructor(
     private url: string,
-    private token: string,
     private onMessage: (data: any) => void,
     private onConnectionChange: (status: ConnectionStatus) => void
   ) {}
@@ -66,7 +65,8 @@ class WebSocketService {
     });
 
     try {
-      this.ws = new WebSocket(`${this.url}?token=${this.token}`);
+      // Switch to cookie-authenticated WebSocket; token no longer appended.
+      this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
         console.log("WebSocket connected");
@@ -158,7 +158,7 @@ class WebSocketService {
 }
 
 export function useRealtimeMessaging() {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const { data: subscriptionStatus } = useSubscriptionStatus();
   const [state, setState] = useState<RealtimeMessagingState>({
     messages: [],
@@ -174,13 +174,12 @@ export function useRealtimeMessaging() {
 
   // Initialize WebSocket connection
   const initializeConnection = useCallback(() => {
-    if (!token || !user?.id) return;
+    if (!user?.id) return;
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
 
     wsService.current = new WebSocketService(
       wsUrl,
-      token,
       (data) => {
         // Handle incoming messages
         switch (data.type) {
@@ -241,11 +240,11 @@ export function useRealtimeMessaging() {
     );
 
     wsService.current.connect();
-  }, [token, user?.id]);
+  }, [user?.id]);
 
   // Connect/disconnect based on auth state
   useEffect(() => {
-    if (token && user?.id) {
+    if (user?.id) {
       initializeConnection();
     }
 
@@ -254,7 +253,7 @@ export function useRealtimeMessaging() {
         wsService.current.disconnect();
       }
     };
-  }, [token, user?.id, initializeConnection]);
+  }, [user?.id, initializeConnection]);
 
   // Join conversation
   const joinConversation = useCallback((conversationId: string) => {

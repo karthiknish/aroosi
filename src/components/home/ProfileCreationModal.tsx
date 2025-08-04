@@ -455,7 +455,7 @@ export function ProfileCreationModal({
     }
   };
 
-  // Native authentication
+  // Native authentication (cookie-based; no token/getToken usage)
   const { isAuthenticated, signOut } = useAuth();
 
   // Listen for authentication success (native auth doesn't use popups)
@@ -498,37 +498,11 @@ export function ProfileCreationModal({
 
       setIsSubmitting(true);
 
-      // Ensure we have a token
-      let authToken = token;
-      if (!authToken) {
-        try {
-          authToken = await getToken();
-        } catch (err) {
-          console.error("Failed to get authentication token:", err);
-          showErrorToast(
-            null,
-            "Failed to get authentication token. Please try signing in again."
-          );
-          setHasSubmittedProfile(false);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      if (!authToken) {
-        console.error("No authentication token available");
-        showErrorToast(
-          null,
-          "Authentication failed. Please try signing in again."
-        );
-        setHasSubmittedProfile(false);
-        setIsSubmitting(false);
-        return;
-      }
-
       try {
         // Server-check guard: if a profile already exists (created during signup), skip client submission and redirect
-        const existing = await getCurrentUserWithProfile(authToken);
+        const existing = await getCurrentUserWithProfile(
+          undefined as unknown as string
+        );
         if (existing.success && existing.data) {
           console.log(
             "Profile exists after signup; skipping client submission and redirecting to success."
@@ -665,7 +639,12 @@ export function ProfileCreationModal({
         );
 
         console.log("Submitting profile with payload:", payload);
-        const profileRes = await submitProfile(authToken, payload, "create");
+        // cookie-auth: pass undefined for token, server reads HttpOnly cookies
+        const profileRes = await submitProfile(
+          undefined as unknown as string,
+          payload,
+          "create"
+        );
         if (!profileRes.success) {
           console.error("Profile submission failed:", profileRes.error);
           showErrorToast(profileRes.error, "Failed to create profile");
@@ -831,7 +810,8 @@ export function ProfileCreationModal({
                 // 1) Generate upload URL
                 let uploadUrl: string | null = null;
                 try {
-                  uploadUrl = await requestImageUploadUrl(authToken);
+                  // cookie-auth: helper will use credentials: 'include'
+                  uploadUrl = await requestImageUploadUrl("");
                 } catch (e) {
                   const reason =
                     e instanceof Error ? e.message : "Failed to get upload URL";
@@ -938,8 +918,9 @@ export function ProfileCreationModal({
 
                 // 3) Confirm metadata and capture imageId for ordering
                 try {
+                  // token moved to cookie-based auth; pass empty string to satisfy type (server ignores)
                   const meta = await confirmImageMetadata({
-                    token: authToken,
+                    token: "",
                     userId,
                     storageId,
                     fileName: file.name,
@@ -1091,8 +1072,9 @@ export function ProfileCreationModal({
 
               // 3) Confirm metadata and capture imageId for ordering
               try {
+                // token moved to cookie-based auth; pass empty string to satisfy type (server ignores)
                 const meta = await confirmImageMetadata({
-                  token: authToken,
+                  token: "",
                   userId,
                   storageId,
                   fileName: file.name,
@@ -1197,8 +1179,9 @@ export function ProfileCreationModal({
                   id.trim().length > 0
               );
               if (filteredOrderIds.length > 1) {
+                // token moved to cookie-based auth; pass empty string to satisfy type (server ignores)
                 await persistServerImageOrder({
-                  token: authToken,
+                  token: "",
                   userId,
                   imageIds: filteredOrderIds,
                 });
@@ -1311,7 +1294,7 @@ export function ProfileCreationModal({
     refreshUser,
     onClose,
     router,
-    signOut,
+    signOut
   ]);
 
   // Helper to add * to required labels

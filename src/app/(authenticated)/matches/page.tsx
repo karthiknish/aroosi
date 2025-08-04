@@ -27,14 +27,13 @@ import { motion } from "framer-motion";
 
 function MatchCard({
   match,
-  token,
   index,
 }: {
   match: Partial<Profile> & { userId: string; unread: number };
-  token: string;
   index: number;
 }) {
-  const { imageUrl: avatar } = useProfileImage(match.userId, token);
+  // Cookie-auth: server reads cookies; hook signature may still accept token, pass empty shim if required.
+  const { imageUrl: avatar } = useProfileImage(match.userId, "" as string);
 
   return (
     <motion.div
@@ -146,13 +145,14 @@ function MatchesLoadingSkeleton() {
 }
 
 export default function MatchesPage() {
-  const { token, userId } = useAuthContext();
+  const { userId } = useAuthContext();
   const offline = useOffline();
   const [search, setSearch] = useState("");
 
-  const { matches, loading } = useMatches(userId ?? "", token ?? "", search);
+  // Cookie-auth: server authenticates via cookies; pass empty token shim if hook signature still expects it
+  const { matches, loading } = useMatches(userId ?? "", "" as string, search);
 
-  if (!token || !userId)
+  if (!userId)
     return (
       <div className="flex items-center justify-center min-h-screen">
         <ErrorState message="You must be signed in to view matches." />
@@ -272,7 +272,6 @@ export default function MatchesPage() {
                   <MatchCard
                     key={match.userId}
                     match={match}
-                    token={token}
                     index={index}
                   />
                 ))}

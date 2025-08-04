@@ -63,7 +63,8 @@ function Modal({
 }
 
 export default function AdminContactPage() {
-  const { token } = useAuthContext();
+  // Cookie-auth; no token in context
+  useAuthContext();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -74,9 +75,10 @@ export default function AdminContactPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["admin-contacts", token],
-    queryFn: () => fetchAllContactsAdmin(token ?? ""),
-    enabled: !!token,
+    // Remove token from query key and rely on server HttpOnly cookies
+    queryKey: ["admin-contacts"],
+    queryFn: () => fetchAllContactsAdmin(""),
+    enabled: true,
   });
 
   const handleRowClick = (contact: Contact) => {

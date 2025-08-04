@@ -162,7 +162,7 @@ function fromProfileFormComponentValues(
 export default function EditProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { token, profile: rawAuthProfile, isSignedIn } = useAuthContext();
+  const { profile: rawAuthProfile, isSignedIn } = useAuthContext();
   const authProfile = rawAuthProfile as { _id?: string } | null;
   const userId = authProfile?._id;
   const [serverError, setServerError] = useState<string | null>(null);
@@ -184,11 +184,10 @@ export default function EditProfilePage() {
   } = useQuery<Profile | null>({
     queryKey: profileQueryKey,
     queryFn: async () => {
-      if (!token) return null;
-      const result = await getCurrentUserWithProfile(token);
+      const result = await getCurrentUserWithProfile("" as unknown as string);
       return result.success ? (result.data as Profile) : null;
     },
-    enabled: !!token,
+    enabled: true,
     refetchOnMount: true,
     refetchOnReconnect: true,
     refetchOnWindowFocus: false,
@@ -270,15 +269,13 @@ export default function EditProfilePage() {
   // Profile update mutation using react-query
   const updateProfileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
-      if (!token)
-        throw new Error("Authentication required. Please sign in again.");
       // Remove userId and _id before sending to API
       const {
         userId: _omitUserId, // eslint-disable-line no-unused-vars
         _id: _omitId, // eslint-disable-line no-unused-vars
         ...safeValues
       } = values;
-      const apiResult = await submitProfile(token, safeValues, "edit");
+      const apiResult = await submitProfile("" as unknown as string, safeValues, "edit");
       if (!apiResult.success) {
         // Bubble up specific errors for better UX
         throw new Error(apiResult.error || "Profile update was not successful");

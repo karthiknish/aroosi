@@ -25,21 +25,20 @@ interface UsageHistoryItem {
 }
 
 export default function UsagePage() {
-  const { token } = useAuthContext();
+  useAuthContext(); // ensure auth order; no token usage
 
   // Detailed usage history (last 100 events)
   const { data: history } = useQuery({
-    queryKey: ["usage-history", token],
+    queryKey: ["usage-history"],
     queryFn: async () => {
-      if (!token) return null;
       const response = await fetch("/api/subscription/usage-history", {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch usage history");
       const json: { data: UsageHistoryItem[] } = await response.json();
       return json.data;
     },
-    enabled: Boolean(token),
+    enabled: true,
   });
 
   const chartColors = [

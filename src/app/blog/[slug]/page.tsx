@@ -11,6 +11,7 @@ import { showSuccessToast } from "@/lib/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
 import type { BlogPost } from "@/types/blog";
+// Auth context retained for hook order but no token usage in this module
 import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { fetchBlogPostBySlug } from "@/lib/blogUtil";
@@ -43,9 +44,9 @@ const BlogDetailSkeleton = () => (
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { token } = useAuthContext();
+  useAuthContext(); // ensure auth hook order; no token usage
 
-  const queryKey = ["blogPost", slug, token];
+  const queryKey = ["blogPost", slug];
 
   const {
     data: post,
@@ -55,7 +56,7 @@ export default function BlogDetailPage() {
     refetch,
   } = useQuery<BlogPost | null, Error, BlogPost | null, (string | null)[]>({
     queryKey: queryKey,
-    queryFn: () => fetchBlogPostBySlug(slug, token ?? undefined),
+    queryFn: () => fetchBlogPostBySlug(slug, undefined),
     enabled: !!slug,
   });
 

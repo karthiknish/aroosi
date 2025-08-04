@@ -10,46 +10,43 @@ import { markConversationRead } from "@/lib/api/messages";
 
 export default function MatchChatPage() {
   const { id: otherUserId } = useParams<{ id: string }>();
-  const { token, userId } = useAuthContext();
+  // Cookie-auth: remove token from context; server reads HttpOnly cookies
+  const { userId } = useAuthContext();
   const router = useRouter();
 
   const conversationId = getConversationId(userId ?? "", otherUserId);
 
   // fetch match profile (name and other public fields)
   const { data: matchProfile } = useQuery({
-    queryKey: ["matchProfile", otherUserId, token],
+    queryKey: ["matchProfile", otherUserId],
     queryFn: async () => {
-      if (!token) return null;
-      const res = await fetchUserProfile(token, otherUserId);
+      const res = await fetchUserProfile("", otherUserId);
       if (res.success && res.data) {
         return res.data as { fullName?: string };
       }
       return null;
     },
-    enabled: !!token,
+    enabled: !!otherUserId,
   });
 
-  // fetch avatar image
-  const { imageUrl: matchAvatar } = useProfileImage(
-    otherUserId,
-    token ?? undefined
-  );
+  // fetch avatar image (hook should tolerate undefined token)
+  const { imageUrl: matchAvatar } = useProfileImage(otherUserId, undefined);
 
   // mark conversation as read (runs once via react-query, no useEffect)
   useQuery({
     queryKey: ["markRead", conversationId, userId],
     queryFn: async () => {
-      if (!token || !userId) return true;
-      await markConversationRead(conversationId, token);
+      if (!userId) return true;
+      await markConversationRead(conversationId, "");
       return true;
     },
-    enabled: !!token && !!userId && !!conversationId,
+    enabled: !!userId && !!conversationId,
     refetchOnWindowFocus: false,
     staleTime: Infinity,
   });
 
   // Show loader until auth context ready
-  if (!token || !userId) {
+  if (!userId) {
     return null;
   }
 
@@ -67,7 +64,7 @@ export default function MatchChatPage() {
         conversationId={conversationId}
         currentUserId={userId}
         matchUserId={otherUserId}
-        token={token}
+        token={""}
         matchUserName={matchProfile?.fullName || ""}
         matchUserAvatarUrl={matchAvatar || ""}
       />

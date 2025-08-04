@@ -79,7 +79,7 @@ export function ProfileImageUpload({
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const { token, refreshProfile, isAdmin: authIsAdmin } = useAuthContext();
+  const { refreshProfile, isAdmin: authIsAdmin } = useAuthContext();
 
   // State management (moved to top)
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -94,20 +94,19 @@ export function ProfileImageUpload({
   const MAX_IMAGES_PER_USER = 5;
 
   const { data: orderedImages = [], refetch: _refetchImages } = useQuery({
-    queryKey: ["profileImages", userId, token, authIsAdmin, profileId],
+    queryKey: ["profileImages", userId, authIsAdmin, profileId],
     queryFn: async () => {
       try {
-        if (!token || !userId || userId === "user-id-placeholder") {
-          console.warn(
-            "Missing or placeholder token/userId when fetching images"
-          );
+        if (!userId || userId === "user-id-placeholder") {
+          console.warn("Missing or placeholder userId when fetching images");
           return [];
         }
 
         if (authIsAdmin && profileId) {
-          // Use admin util for fetching images
+          // Use admin util for fetching images (cookie-auth)
           try {
-            return await fetchAdminProfileImagesById({ token, profileId });
+            // TODO: migrate admin API to cookie-auth; until then pass empty token
+            return await fetchAdminProfileImagesById({ token: "", profileId });
           } catch (error) {
             console.error("Error fetching admin profile images:", error);
             showErrorToast(null, "Failed to load profile images");
@@ -115,8 +114,9 @@ export function ProfileImageUpload({
           }
         }
 
-        // Use existing utility function
-        const result = await fetchUserProfileImages(token, userId);
+        // Use existing utility function (cookie-auth)
+        // TODO: migrate user profile API to cookie-auth; until then pass empty token
+        const result = await fetchUserProfileImages("", userId);
         if (!result.success) {
           console.error("Error fetching user profile images:", result.error);
           if (result.error?.includes("Authentication")) {
@@ -145,11 +145,7 @@ export function ProfileImageUpload({
         return [];
       }
     },
-    enabled:
-      mode === "edit" &&
-      !!token &&
-      !!userId &&
-      userId !== "user-id-placeholder",
+    enabled: mode === "edit" && !!userId && userId !== "user-id-placeholder",
     staleTime: 60 * 1000, // Consider data fresh for 1 minute
     retry: (failureCount, error) => {
       // Don't retry on authentication errors
@@ -190,12 +186,11 @@ export function ProfileImageUpload({
   const { data: currentUserProfile } = useQuery({
     queryKey: ["currentUserWithProfile"],
     queryFn: async () => {
-      if (!token) return null;
-      const result = await getCurrentUserWithProfile(token);
+      // TODO: migrate getCurrentUserWithProfile to cookie-auth; until then pass empty token
+      const result = await getCurrentUserWithProfile("");
       if (!result.success) return null;
       return result.data;
     },
-    enabled: !!token,
   });
 
   // Memoize the ordered images with proper typing first
@@ -204,7 +199,7 @@ export function ProfileImageUpload({
       return [...localImages, ...optimisticImages];
     }
     const validImages = (orderedImages || []).filter((img): img is ImageType =>
-      Boolean(img?.url && img.id),
+      Boolean(img?.url && img.id)
     );
     // Combine server images with optimistic updates
     return [...validImages, ...optimisticImages];
@@ -266,8 +261,8 @@ export function ProfileImageUpload({
       setOptimisticImages((prev) =>
         prev.filter(
           (optimistic) =>
-            !orderedImages.some((server) => server.id === optimistic.id),
-        ),
+            !orderedImages.some((server) => server.id === optimistic.id)
+        )
       );
     }
   }, [mode, orderedImages]);
@@ -285,9 +280,9 @@ export function ProfileImageUpload({
       // In create mode, return a dummy URL since we'll handle locally
       return "dummy-url-for-create-mode";
     }
-    if (!token) throw new Error("No token");
-    return await getImageUploadUrl(token);
-  }, [token, mode]);
+    // TODO: migrate getImageUploadUrl to cookie-auth; until then pass empty token
+    return await getImageUploadUrl("");
+  }, [mode]);
 
   // Move uploadImage definition above uploadImageToUse
   const uploadImage = useCallback(
@@ -317,12 +312,9 @@ export function ProfileImageUpload({
         };
       }
 
-      if (!token) {
-        throw new Error("Authentication token not available.");
-      }
-
-      // Save image metadata to ensure it persists
-      const result = await saveImageMeta({ token, ...args });
+      // Save image metadata to ensure it persists (cookie-auth)
+      // TODO: migrate saveImageMeta to cookie-auth; until then pass empty token
+      const result = await saveImageMeta({ token: "", ...args });
 
       return {
         success: true,
@@ -330,15 +322,15 @@ export function ProfileImageUpload({
         message: "Image uploaded",
       };
     },
-    [token, mode],
+    [mode]
   );
 
   // For admin, override uploadImageFile in ImageUploader to use adminUploadProfileImage
   const uploadImageFileAdmin = async (file: File) => {
-    if (!token) throw new Error("Authentication token not available.");
     if (!profileId)
       throw new Error("Profile ID not available for admin upload.");
-    await adminUploadProfileImage({ token, profileId, file });
+    // TODO: migrate adminUploadProfileImage to cookie-auth; until then pass empty token
+    await adminUploadProfileImage({ token: "", profileId, file });
     showSuccessToast("Image uploaded successfully");
     await refetchImages();
   };
@@ -357,14 +349,16 @@ export function ProfileImageUpload({
         return imageId;
       }
 
-      if (!userId || !token) throw new Error("Missing userId or token");
+      if (!userId) throw new Error("Missing userId");
       if (authIsAdmin && profileId) {
-        // Use admin util for deleting images
-        await deleteAdminProfileImageById({ token, profileId, imageId });
+        // Use admin util for deleting images (cookie-auth)
+        // TODO: migrate deleteAdminProfileImageById to cookie-auth; until then pass empty token
+        await deleteAdminProfileImageById({ token: "", profileId, imageId });
         return imageId;
       }
-      // Default user delete
-      await deleteImageById({ token, userId, imageId });
+      // Default user delete (cookie-auth)
+      // TODO: migrate deleteImageById to cookie-auth; until then pass empty token
+      await deleteImageById({ token: "", userId, imageId });
       return imageId;
     },
     onSuccess: async () => {

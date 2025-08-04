@@ -57,11 +57,10 @@ const UsageItem: React.FC<UsageItemProps> = ({
 
 interface UsageCardProps {
   className?: string;
-  token?: string;
 }
 
-export const UsageCard: React.FC<UsageCardProps> = ({ className, token }) => {
-  const { data: usage, isLoading, error } = useUsageStats(token);
+export const UsageCard: React.FC<UsageCardProps> = ({ className }) => {
+  const { data: usage, isLoading, error } = useUsageStats();
 
   if (isLoading) {
     return (

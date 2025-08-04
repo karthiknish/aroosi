@@ -23,12 +23,7 @@ function AdminEditProfilePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
-  const {
-    token,
-    isLoaded: authIsLoaded,
-    isSignedIn,
-    isAdmin,
-  } = useAuthContext();
+  const { isLoaded: authIsLoaded, isSignedIn, isAdmin } = useAuthContext();
   const [profile, setProfile] = useState<Profile | null>(null);
 
   // Image state for admin profile images
@@ -37,22 +32,22 @@ function AdminEditProfilePageInner() {
 
   // Fetch the profile by id
   const { data: profileData, isLoading } = useQuery<Profile | null>({
-    queryKey: ["adminProfile", id, token],
+    queryKey: ["adminProfile", id],
     queryFn: async () => {
-      if (!id || !token) return null;
-      return await fetchAdminProfileById({ token, id });
+      if (!id) return null;
+      return await fetchAdminProfileById({ token: "", id });
     },
-    enabled: !!id && !!token,
+    enabled: !!id,
   });
 
   // Fetch matches for profile
   const { data: matches } = useQuery<Profile[]>({
-    queryKey: ["profileMatches", id, token],
+    queryKey: ["profileMatches", id],
     queryFn: async () => {
-      if (!id || !token) return [];
-      return await fetchAdminProfileMatches({ token, profileId: id });
+      if (!id) return [];
+      return await fetchAdminProfileMatches({ token: "", profileId: id });
     },
-    enabled: !!id && !!token,
+    enabled: !!id,
   });
 
   // Initialize form state from profile
@@ -64,22 +59,21 @@ function AdminEditProfilePageInner() {
 
   // Fetch images when profile and token are available
   useEffect(() => {
-    if (!token) return;
     const profileId: string = profile?._id || id || "";
     if (!profileId) return;
     setImagesLoading(true);
-    fetchAdminProfileImagesById({ token, profileId })
+    fetchAdminProfileImagesById({ token: "", profileId })
       .then((imgs) => setImages(imgs.filter((img) => !!img && !!img.url)))
       .catch(() => {
         // Optionally handle error here if you want to show a toast
         // showErrorToast(null, "Failed to load images");
       })
       .finally(() => setImagesLoading(false));
-  }, [profile?._id, id, token]);
+  }, [profile?._id, id]);
 
   // Admin profile update handler
   const handleAdminProfileUpdate = async (values: ProfileFormValues) => {
-    if (!token || !id) return;
+    if (!id) return;
     // Map maritalStatus to correct union type
     const allowedStatuses = [
       "single",
@@ -88,7 +82,7 @@ function AdminEditProfilePageInner() {
       "annulled",
     ] as const;
     const maritalStatus = allowedStatuses.includes(
-      values.maritalStatus as string as (typeof allowedStatuses)[number],
+      values.maritalStatus as string as (typeof allowedStatuses)[number]
     )
       ? (values.maritalStatus as (typeof allowedStatuses)[number])
       : "single";
@@ -107,7 +101,7 @@ function AdminEditProfilePageInner() {
         : values.annualIncome;
     const allowedGenders = ["male", "female", "any", ""] as const;
     const preferredGender = allowedGenders.includes(
-      values.preferredGender as string as (typeof allowedGenders)[number],
+      values.preferredGender as string as (typeof allowedGenders)[number]
     )
       ? (values.preferredGender as (typeof allowedGenders)[number])
       : "any";
@@ -115,7 +109,7 @@ function AdminEditProfilePageInner() {
     // Map gender to correct union type
     const allowedGenderTypes = ["male", "female", "other"] as const;
     const gender = allowedGenderTypes.includes(
-      values.gender as string as (typeof allowedGenderTypes)[number],
+      values.gender as string as (typeof allowedGenderTypes)[number]
     )
       ? (values.gender as (typeof allowedGenderTypes)[number])
       : "other";
@@ -130,7 +124,7 @@ function AdminEditProfilePageInner() {
       "",
     ] as const;
     const diet = allowedDiets.includes(
-      values.diet as string as (typeof allowedDiets)[number],
+      values.diet as string as (typeof allowedDiets)[number]
     )
       ? (values.diet as (typeof allowedDiets)[number])
       : "";
@@ -138,14 +132,14 @@ function AdminEditProfilePageInner() {
     // Map smoking to correct union type
     const allowedSmokingDrinking = ["no", "occasionally", "yes", ""] as const;
     const smoking = allowedSmokingDrinking.includes(
-      values.smoking as string as (typeof allowedSmokingDrinking)[number],
+      values.smoking as string as (typeof allowedSmokingDrinking)[number]
     )
       ? (values.smoking as (typeof allowedSmokingDrinking)[number])
       : "";
 
     // Map drinking to correct union type
     const drinking = allowedSmokingDrinking.includes(
-      values.drinking as string as (typeof allowedSmokingDrinking)[number],
+      values.drinking as string as (typeof allowedSmokingDrinking)[number]
     )
       ? (values.drinking as (typeof allowedSmokingDrinking)[number])
       : "";
@@ -158,7 +152,7 @@ function AdminEditProfilePageInner() {
       "",
     ] as const;
     const physicalStatus = allowedPhysicalStatus.includes(
-      values.physicalStatus as string as (typeof allowedPhysicalStatus)[number],
+      values.physicalStatus as string as (typeof allowedPhysicalStatus)[number]
     )
       ? (values.physicalStatus as (typeof allowedPhysicalStatus)[number])
       : "";
@@ -177,13 +171,13 @@ function AdminEditProfilePageInner() {
       preferredGender,
     };
     try {
-      await updateAdminProfileById({ token, id, updates });
+      await updateAdminProfileById({ token: "", id, updates });
       showSuccessToast("Profile updated successfully!");
       router.push(`/admin/profile/[id]?id=${id}`);
     } catch (error) {
       showErrorToast(
         null,
-        (error as Error).message || "Failed to update profile",
+        (error as Error).message || "Failed to update profile"
       );
     }
   };
@@ -235,7 +229,7 @@ function AdminEditProfilePageInner() {
           initialValues={profile}
           onSubmit={handleAdminProfileUpdate}
           profileId={profile?._id || id || ""}
-          token={token || ""}
+          token={""}
           images={images}
           setImages={setImages}
           imagesLoading={imagesLoading}

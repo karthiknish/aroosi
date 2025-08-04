@@ -32,18 +32,16 @@ type ImageType = {
 };
 
 const ProfilePage: React.FC = (): React.ReactElement => {
-  const { isLoading: authLoading, token } = useAuthContext();
+  const { isLoading: authLoading } = useAuthContext();
   const router = useRouter();
 
   // Fetch profile data
   const { data: profile, isLoading: profileLoading } = useQuery<
     Profile | undefined
   >({
-    queryKey: ["profile", token],
+    queryKey: ["profile"],
     queryFn: async () => {
-      if (!token) return undefined;
-      const result = await getCurrentUserWithProfile(token);
-      console.log("result", result);
+      const result = await getCurrentUserWithProfile("" as unknown as string);
       if (!result.success || !result.data) return undefined;
 
       // Unwrap potential nested envelopes { success: true, data: {...} }
@@ -67,16 +65,16 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
       return profileObj ?? undefined;
     },
-    enabled: !!token,
+    enabled: true,
   });
 
   // Fetch images
   const { data: images = [], isLoading: imagesLoading } = useQuery<ImageType[]>(
     {
-      queryKey: ["profileImages", token, profile?.userId],
+      queryKey: ["profileImages", profile?.userId],
       queryFn: async () => {
-        if (!token || !profile?.userId) return [];
-        const result = await fetchUserProfileImages(token, profile.userId);
+        if (!profile?.userId) return [];
+        const result = await fetchUserProfileImages("" as unknown as string, profile.userId);
         if (
           !result.success ||
           result.data === undefined ||
@@ -112,15 +110,15 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
         return [];
       },
-      enabled: !!token && !!profile?.userId,
+      enabled: !!profile?.userId,
     }
   );
 
   // Handler to delete profile
   const deleteProfileMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
-      if (!token || !profile?._id) return;
-      await deleteUserProfile(token);
+      if (!profile?._id) return;
+      await deleteUserProfile("" as unknown as string);
     },
     onSuccess: () => {
       router.push("/");

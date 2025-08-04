@@ -21,7 +21,7 @@ import { isPremium } from "@/lib/utils/subscriptionPlan";
 type PlanId = "free" | "premium" | "premiumPlus" | string;
 
 export default function ManagePlansPage() {
-  const { profile, getToken } = useAuthContext();
+  const { profile } = useAuthContext();
   const [loading, setLoading] = useState<string | null>(null);
   const [plans, setPlans] = useState<NormalizedPlan[] | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(true);
@@ -75,15 +75,10 @@ export default function ManagePlansPage() {
 
     setLoading(planId);
     try {
-      const t = await getToken();
-      if (!t) {
-        showErrorToast("Authentication required", "Please sign in first");
-        return;
-      }
-
+      // Cookie-auth: backend will read HttpOnly cookies; no token required
       showInfoToast("Redirecting to secure checkout...");
 
-      const result = await createCheckoutSession(t, {
+      const result = await createCheckoutSession("", {
         planType: planId as "premium" | "premiumPlus",
         successUrl: `${window.location.origin}/profile?subscription=success`,
         cancelUrl: `${window.location.origin}/plans`,

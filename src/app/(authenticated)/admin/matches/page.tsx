@@ -17,7 +17,8 @@ import Link from "next/link";
 import type { ImageType } from "@/types/image";
 
 export default function AdminMatchesPage() {
-  const { token } = useAuthContext();
+  // Cookie-auth; server will read HttpOnly cookies for admin APIs
+  useAuthContext();
   const [matches, setMatches] = useState<AdminProfileMatchesResult>([]);
   const [profileImages, setProfileImages] = useState<
     Record<string, ImageType[]>
@@ -26,12 +27,11 @@ export default function AdminMatchesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
-    if (!token) return;
     setLoading(true);
     setError(null);
 
     try {
-      const matchesData = await fetchAdminAllMatches({ token });
+      const matchesData = await fetchAdminAllMatches({ token: "" });
       setMatches(matchesData);
 
       // Collect all unique profile IDs from matches
@@ -46,11 +46,11 @@ export default function AdminMatchesPage() {
       if (allProfileIds.size > 0) {
         const profilesForImages = Array.from(allProfileIds).map((id) => ({
           _id: id,
-          userId: id, // Using profile ID as userId for image fetching
+          userId: id,
         }));
 
         const imagesData = await fetchAllAdminProfileImages({
-          token,
+          token: "",
           profiles: profilesForImages,
         });
         setProfileImages(imagesData);
@@ -64,7 +64,7 @@ export default function AdminMatchesPage() {
 
   useEffect(() => {
     void loadData();
-  }, [token]);
+  }, []);
 
   // Helper function to get age from date of birth
   const getAge = (dateOfBirth: string) => {

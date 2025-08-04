@@ -545,15 +545,12 @@ export async function adminUploadProfileImage({
  * @returns { success: boolean; message?: string }
  */
 export async function updateAdminProfileImageOrder({
-  token,
   profileId,
   imageIds,
 }: {
-  token: string;
   profileId: string;
   imageIds: string[];
 }): Promise<{ success: boolean; message?: string }> {
-  if (!token) throw new Error("Authentication required");
   if (!profileId) throw new Error("Profile ID required");
   if (!Array.isArray(imageIds)) throw new Error("Image IDs array required");
 
@@ -561,8 +558,8 @@ export async function updateAdminProfileImageOrder({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
+    credentials: "include",
     body: JSON.stringify({ profileId, imageIds }),
   });
 

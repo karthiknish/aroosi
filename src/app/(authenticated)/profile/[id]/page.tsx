@@ -69,13 +69,14 @@ type Interest = {
 
 export default function ProfileDetailPage() {
   const params = useParams();
-  const { token, profile: rawCurrentUserProfile } = useAuthContext();
+  // Cookie-auth only; remove token from context
+  const { profile: rawCurrentUserProfile } = useAuthContext();
   const currentUserProfile = rawCurrentUserProfile as {
     _id?: string;
     userId?: string;
   } | null;
   const offline = useOffline();
-  const { trackUsage } = useUsageTracking(token ?? undefined);
+  const { trackUsage } = useUsageTracking(undefined);
   // Ensure a single declaration of queryClient
   const queryClient = useQueryClient();
 
@@ -88,13 +89,14 @@ export default function ProfileDetailPage() {
     isLoading: loadingProfile,
     error: profileError,
   } = useQuery({
-    queryKey: ["profileData", userId, token],
+    queryKey: ["profileData", userId],
     queryFn: async () => {
-      if (!token || !userId) return null;
-      const result = await fetchUserProfile(token, userId);
+      if (!userId) return null;
+      // Server reads HttpOnly cookies; token not required
+      const result = await fetchUserProfile("", userId);
       return result;
     },
-    enabled: !!token && !!userId,
+    enabled: !!userId,
     retry: false,
   });
 
@@ -112,10 +114,10 @@ export default function ProfileDetailPage() {
     profile?.profileImageUrls && profile.profileImageUrls.length > 0;
 
   const { data: userProfileImagesResponse } = useQuery({
-    queryKey: ["userProfileImages", userId, token],
+    queryKey: ["userProfileImages", userId],
     queryFn: async () => {
-      if (!token || !userId) return [];
-      const result = await fetchUserProfileImages(token, userId);
+      if (!userId) return [];
+      const result = await fetchUserProfileImages("", userId);
       if (result.success && Array.isArray(result.data)) {
         return result.data.map((img: unknown) =>
           typeof img === "object" && img !== null && "url" in img
@@ -125,7 +127,7 @@ export default function ProfileDetailPage() {
       }
       return [];
     },
-    enabled: !!token && !!userId && !skipImagesQuery,
+    enabled: !!userId && !skipImagesQuery,
   });
 
   const isOwnProfile = Boolean(
@@ -190,7 +192,9 @@ export default function ProfileDetailPage() {
     data: interestStatusData,
     isLoading: loadingInterestStatus,
     refetch: refetchInterestStatus,
-  } = useQuery<{ status?: "none" | "pending" | "accepted" | "rejected" } | null>({
+  } = useQuery<{
+    status?: "none" | "pending" | "accepted" | "rejected";
+  } | null>({
     queryKey: ["interestStatus", fromUserId, toUserId],
     queryFn: async () => {
       if (!fromUserId || !toUserId) return null;
@@ -239,7 +243,11 @@ export default function ProfileDetailPage() {
     if (localInterest !== null) return localInterest;
 
     // Prefer lightweight status
-    if (interestStatusData && typeof interestStatusData === "object" && "status" in interestStatusData) {
+    if (
+      interestStatusData &&
+      typeof interestStatusData === "object" &&
+      "status" in interestStatusData
+    ) {
       const s = (interestStatusData as { status?: string }).status;
       if (s === "pending" || s === "accepted") return true;
       if (s === "rejected") return false;
@@ -281,9 +289,9 @@ export default function ProfileDetailPage() {
 
   // Record profile view when this component mounts (only if viewing someone else's profile)
   useEffect(() => {
-    if (!isOwnProfile && token && profile?._id) {
+    if (!isOwnProfile && profile?._id) {
       void recordProfileView({
-        token,
+        token: "",
         profileId: profile._id as unknown as string,
       });
       // Track profile view usage
@@ -294,7 +302,7 @@ export default function ProfileDetailPage() {
         },
       });
     }
-  }, [isOwnProfile, token, profile?._id, trackUsage, userId]);
+  }, [isOwnProfile, profile?._id, trackUsage, userId]);
 
   // Animation state for heart pop effect
   const [showHeartPop, setShowHeartPop] = useState(false);
@@ -307,10 +315,6 @@ export default function ProfileDetailPage() {
     }
     if (!toUserId || typeof toUserId !== "string") {
       showErrorToast(null, "Target user ID not available");
-      return;
-    }
-    if (!token || typeof token !== "string") {
-      showErrorToast(null, "Token not available");
       return;
     }
     setInterestError(null);
@@ -332,11 +336,6 @@ export default function ProfileDetailPage() {
         void queryClient.invalidateQueries({
           queryKey: ["unreadCounts", "self"],
         });
-        // Invalidate and refetch related queries
-        void queryClient.invalidateQueries({ queryKey: ["interestStatus", fromUserId, toUserId] });
-        void queryClient.invalidateQueries({ queryKey: ["sentInterests", fromUserId, toUserId] });
-        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
-        void queryClient.invalidateQueries({ queryKey: ["unreadCounts", "self"] });
         await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
 
         setLocalInterest(null); // Let server state take over
@@ -367,10 +366,16 @@ export default function ProfileDetailPage() {
           queryKey: ["unreadCounts", "self"],
         });
         // Invalidate and refetch related queries
-        void queryClient.invalidateQueries({ queryKey: ["interestStatus", fromUserId, toUserId] });
-        void queryClient.invalidateQueries({ queryKey: ["sentInterests", fromUserId, toUserId] });
+        void queryClient.invalidateQueries({
+          queryKey: ["interestStatus", fromUserId, toUserId],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["sentInterests", fromUserId, toUserId],
+        });
         void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
-        void queryClient.invalidateQueries({ queryKey: ["unreadCounts", "self"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["unreadCounts", "self"],
+        });
         await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
 
         setLocalInterest(null); // Let server state take over

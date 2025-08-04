@@ -126,7 +126,6 @@ export interface ProfileSearchResult {
 
 export default function SearchProfilesPage() {
   const {
-    token,
     isSignedIn,
     isLoaded,
     isAuthenticated,
@@ -134,7 +133,7 @@ export default function SearchProfilesPage() {
   } = useAuthContext();
   const profile = rawProfile as { subscriptionPlan?: string } | null;
   const router = useRouter();
-  const { trackUsage } = useUsageTracking(token ?? undefined);
+  const { trackUsage } = useUsageTracking(undefined);
 
   // All hooks must be declared before any conditional returns
   const [mounted, setMounted] = React.useState(false);
@@ -157,7 +156,6 @@ export default function SearchProfilesPage() {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console
       console.info("[Search] mount", {
-        tokenPresent: !!token,
         isSignedIn,
         isAuthenticated,
         isLoaded,
@@ -167,7 +165,7 @@ export default function SearchProfilesPage() {
         console.info("[Search] unmount");
       };
     }
-  }, [token, isSignedIn, isAuthenticated, isLoaded]);
+  }, [isSignedIn, isAuthenticated, isLoaded]);
 
   // Defensive: if client-side code tries to route away, log it explicitly
   const originalPush = router.push.bind(router);
@@ -179,11 +177,10 @@ export default function SearchProfilesPage() {
   React.useEffect(() => {
     // eslint-disable-next-line no-console
     console.info("[Search] query enabled?", {
-      enabled: !!token && isSignedIn,
-      tokenPresent: !!token,
+      enabled: isSignedIn,
       isSignedIn,
     });
-  }, [token, isSignedIn]);
+  }, [isSignedIn]);
   const {
     data: searchResults,
     isLoading: loadingProfiles,
@@ -192,7 +189,6 @@ export default function SearchProfilesPage() {
   } = useQuery({
     queryKey: [
       "profiles",
-      token,
       city,
       country,
       ageMin,
@@ -205,7 +201,7 @@ export default function SearchProfilesPage() {
     ],
     queryFn: () =>
       fetchProfileSearchResults({
-        token: token!,
+        token: "" as unknown as string,
         page,
         pageSize,
         city,
@@ -216,7 +212,7 @@ export default function SearchProfilesPage() {
         motherTongue,
         language,
       }),
-    enabled: !!token && isSignedIn,
+    enabled: isSignedIn,
   });
 
   // Extract profiles and total from search results
@@ -260,14 +256,9 @@ export default function SearchProfilesPage() {
     isLoading: loadingImages,
     // image query errors currently ignored for brevity
   } = useQuery({
-    queryKey: ["userImages", token, profiles],
+    queryKey: ["userImages", profiles],
     queryFn: async () => {
       try {
-        if (!token) {
-          console.warn("No auth token available for images batch request");
-          return {};
-        }
-
         if (!profiles || profiles.length === 0) {
           return {};
         }
@@ -288,7 +279,7 @@ export default function SearchProfilesPage() {
         return {};
       }
     },
-    enabled: !!token && profiles.length > 0,
+    enabled: profiles.length > 0,
     retry: 2, // Retry failed requests
     retryDelay: 1000, // Wait 1 second between retries
   });
@@ -365,7 +356,7 @@ export default function SearchProfilesPage() {
           fontSize: 12,
         }}
       >
-        [Search] mounted • token={String(!!token)} • isSignedIn={String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} • isLoaded={String(isLoaded)}
+        [Search] mounted • isSignedIn={String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} • isLoaded={String(isLoaded)}
       </div>
       {content}
     </>
@@ -403,7 +394,7 @@ export default function SearchProfilesPage() {
           fontSize: 12,
         }}
       >
-        [Search] mounted • token={String(!!token)} • isSignedIn=
+        [Search] mounted • isSignedIn=
         {String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} •
         isLoaded={String(isLoaded)}
       </div>
@@ -540,7 +531,7 @@ export default function SearchProfilesPage() {
               )}
             </motion.div>
           </section>
-          {!token || !isSignedIn ? (
+          {!isSignedIn ? (
             <div className="text-center py-20">
               <h2 className="text-xl font-semibold mb-2">Authorizing…</h2>
               <p className="text-gray-600">

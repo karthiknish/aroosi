@@ -151,7 +151,8 @@ const ProfileView: FC<ProfileViewProps> = ({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
-  const { token } = useAuthContext();
+  // Cookie-auth: token is no longer exposed in AuthContext
+  useAuthContext();
 
   // Small mapping utility for plan labels using centralized helper
   const planLabel = (id?: string | null) => planDisplayName(id);
@@ -241,8 +242,8 @@ const ProfileView: FC<ProfileViewProps> = ({
     setDeleteError(null);
     setDeleteLoading(true);
     try {
-      if (!token) throw new Error("No token");
-      await deleteProfile(token);
+      // Cookie-auth: server reads session from cookies
+      await deleteProfile("");
       router.push("/");
     } catch (err: unknown) {
       if (err instanceof Error) {

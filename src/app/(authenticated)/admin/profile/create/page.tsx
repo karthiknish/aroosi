@@ -13,7 +13,6 @@ import { submitProfile } from "@/lib/profile/userProfileApi";
 export default function AdminCreateProfilePage() {
   const router = useRouter();
   const {
-    token,
     isLoaded: authIsLoaded,
     isSignedIn,
     isAdmin,
@@ -57,7 +56,6 @@ export default function AdminCreateProfilePage() {
         <ProfileCreateWizard
           onSubmit={async (values) => {
             if (isSubmitting) return;
-            if (!token) return;
             setIsSubmitting(true);
             try {
               // Ensure dateOfBirth is a string
@@ -65,24 +63,16 @@ export default function AdminCreateProfilePage() {
                 import("@/types/profile").ProfileFormValues
               > = {
                 ...values,
-                // dateOfBirth should already be a string from the form values
-                // so we forward it directly to the API payload.
                 dateOfBirth: values.dateOfBirth,
-                // Only keep partnerPreferenceCity logic
-                partnerPreferenceCity: Array.isArray(
-                  values.partnerPreferenceCity
-                )
+                partnerPreferenceCity: Array.isArray(values.partnerPreferenceCity)
                   ? values.partnerPreferenceCity
                   : typeof values.partnerPreferenceCity === "string"
-                    ? values.partnerPreferenceCity
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                    : [],
+                  ? values.partnerPreferenceCity.split(",").map((s) => s.trim()).filter(Boolean)
+                  : [],
               };
-              // Remove profileImageIds if present
               const { ...restValues } = submitValues;
-              const response = await submitProfile(token, restValues, "create");
+              // Cookie-auth: server reads HttpOnly cookies
+              const response = await submitProfile("", restValues, "create");
               if (response.success) {
                 showSuccessToast("Profile created successfully");
                 router.push("/admin");

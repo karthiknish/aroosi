@@ -7,6 +7,7 @@ import type { Id } from "@convex/_generated/dataModel";
  * /api/auth/me
  * Cookie-only session. No Authorization header or token verification.
  * Structured logs and correlationId; precise 4xx reasons; forwards refreshed cookies if present.
+ * Hardened: single refresh attempt; Cache-Control: no-store on all responses.
  */
 function log(scope: string, level: "info" | "warn" | "error", message: string, extra?: Record<string, unknown>) {
   const payload = {
@@ -69,9 +70,17 @@ function envCookieDiagnostics(request: NextRequest) {
   };
 }
 
+// Ensure Cache-Control: no-store on all response paths
+function withNoStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store");
+  return res;
+}
+
 export async function GET(request: NextRequest) {
   const scope = "auth.me#GET";
-  const correlationId = request.headers.get("x-request-id") || Math.random().toString(36).slice(2, 10);
+  const correlationId =
+    request.headers.get("x-request-id") ||
+    Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
   try {
@@ -98,7 +107,6 @@ export async function GET(request: NextRequest) {
         }
       }
       if (diag.COOKIE_DOMAIN !== "(unset)") {
-        // If domain is set but request is running on a different apex, cookie won't attach
         if (
           typeof diag.COOKIE_DOMAIN === "string" &&
           diag.COOKIE_DOMAIN.startsWith(".") &&
@@ -109,8 +117,6 @@ export async function GET(request: NextRequest) {
           );
         }
       } else {
-        // Host-only cookies: OK for single-origin. If frontend/API split across subdomains, suggest setting domain.
-        // We cannot reliably detect subdomain split here, just hint if no cookies at all:
         if (
           !diag.cookiesPresent.authToken &&
           !diag.cookiesPresent.refreshToken
@@ -135,19 +141,20 @@ export async function GET(request: NextRequest) {
         diagnostics: diag,
         suggestions: likelyIssues,
       });
-      return NextResponse.json(
-        {
-          error: "No auth session",
-          correlationId,
-          diagnostics: diag,
-          suggestions: likelyIssues,
-        },
-        { status: 401 }
+      return withNoStore(
+        NextResponse.json(
+          {
+            error: "No auth session",
+            correlationId,
+            diagnostics: diag,
+            suggestions: likelyIssues,
+          },
+          { status: 401 }
+        )
       );
     }
 
-    // Optional: attempt transparent refresh if a refresh cookie exists and app provides /api/auth/refresh
-    // On detected reuse (401 REFRESH_REUSE), immediately clear session cookies and return 401
+    // Single transparent refresh attempt if a refresh cookie exists
     let refreshedSetCookies: string[] = [];
     const maybeRefresh = readCookie(request, "refresh-token");
     if (maybeRefresh) {
@@ -156,6 +163,7 @@ export async function GET(request: NextRequest) {
         const refreshResp = await fetch(refreshUrl.toString(), {
           method: "POST",
           headers: {
+            // Only cookies; no Authorization header
             cookie: request.headers.get("cookie") || "",
             accept: "application/json",
           },
@@ -175,13 +183,12 @@ export async function GET(request: NextRequest) {
           }
         } else {
           const text = await refreshResp.text().catch(() => "");
-          const bodyPreview = text.slice(0, 160);
+          const bodyPreview = text.slice(0, 200);
           log(scope, "warn", "Refresh attempt failed", {
             correlationId,
             status: refreshResp.status,
             bodyPreview,
           });
-          // If refresh reuse was detected, terminate early and clear cookies client-side
           if (
             refreshResp.status === 401 &&
             bodyPreview.includes("REFRESH_REUSE")
@@ -194,13 +201,13 @@ export async function GET(request: NextRequest) {
               },
               { status: 401 }
             );
-            // Forward any Set-Cookie headers from refresh (these already clear cookies)
-            const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
-            const cookies = setCookieHeader
-              ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/)
+            const setCookieHeader2 =
+              refreshResp.headers.get("set-cookie") || "";
+            const cookies2 = setCookieHeader2
+              ? setCookieHeader2.split(/,(?=[^;]+=[^;]+)/)
               : [];
-            for (const c of cookies) resp.headers.append("Set-Cookie", c);
-            return resp;
+            for (const c of cookies2) resp.headers.append("Set-Cookie", c);
+            return withNoStore(resp);
           }
         }
       } catch (err) {
@@ -209,9 +216,10 @@ export async function GET(request: NextRequest) {
           message: err instanceof Error ? err.message : String(err),
         });
       }
+      // Exactly one attempt per GET
     }
 
-    // Resolve the current user via existing server function
+    // Resolve current user
     const current = await fetchQuery(
       api.users.getCurrentUserWithProfile,
       {}
@@ -227,7 +235,6 @@ export async function GET(request: NextRequest) {
     const user = (current as any)?.user ?? current ?? null;
 
     if (!user) {
-      // If we just refreshed, treat missing user as invalid session (avoid 404 confusion post-reuse)
       const status = refreshedSetCookies.length > 0 ? 401 : 404;
       const code =
         refreshedSetCookies.length > 0 ? "SESSION_INVALID" : "USER_NOT_FOUND";
@@ -242,14 +249,16 @@ export async function GET(request: NextRequest) {
           durationMs: Date.now() - startedAt,
         } as any
       );
-      return NextResponse.json(
-        {
-          error:
-            status === 401 ? "Invalid or expired session" : "User not found",
-          code,
-          correlationId,
-        },
-        { status }
+      return withNoStore(
+        NextResponse.json(
+          {
+            error:
+              status === 401 ? "Invalid or expired session" : "User not found",
+            code,
+            correlationId,
+          },
+          { status }
+        )
       );
     }
 
@@ -260,16 +269,17 @@ export async function GET(request: NextRequest) {
         statusCode: 403,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(
-        { error: "Account is banned", correlationId },
-        { status: 403 }
+      return withNoStore(
+        NextResponse.json(
+          { error: "Account is banned", correlationId },
+          { status: 403 }
+        )
       );
     }
 
     const profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
       userId: user._id as Id<"users">,
     }).catch((e: unknown) => {
-      // Add lightweight cookie scope hints on profile fetch failure as well (may be unrelated, but helpful)
       const diag = envCookieDiagnostics(request);
       log(scope, "error", "Convex profile fetch failed", {
         correlationId,
@@ -305,11 +315,9 @@ export async function GET(request: NextRequest) {
       correlationId,
     });
 
-    // Forward any refreshed cookies so the browser updates its session
     if (refreshedSetCookies.length > 0) {
-      for (const c of refreshedSetCookies) {
+      for (const c of refreshedSetCookies)
         response.headers.append("Set-Cookie", c);
-      }
     }
 
     log(scope, "info", "Success", {
@@ -318,7 +326,7 @@ export async function GET(request: NextRequest) {
       durationMs: Date.now() - startedAt,
       refreshed: refreshedSetCookies.length > 0,
     });
-    return response;
+    return withNoStore(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log(scope, "error", "Unhandled error", {
@@ -327,9 +335,11 @@ export async function GET(request: NextRequest) {
       message,
       durationMs: Date.now() - startedAt,
     });
-    return NextResponse.json(
-      { error: "Invalid or expired session", correlationId },
-      { status: 401 }
+    return withNoStore(
+      NextResponse.json(
+        { error: "Invalid or expired session", correlationId },
+        { status: 401 }
+      )
     );
   }
 }

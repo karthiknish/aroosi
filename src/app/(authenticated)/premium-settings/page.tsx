@@ -56,7 +56,7 @@ interface ProfileData {
 }
 
 export default function PremiumSettingsPage() {
-  const { profile: rawProfile, token, refreshProfile } = useAuthContext();
+  const { profile: rawProfile, refreshProfile } = useAuthContext();
   const profile = rawProfile as ProfileData;
   const [hideProfile, setHideProfile] = useState<boolean>(
     !!profile?.hideFromFreeUsers,
@@ -100,9 +100,9 @@ export default function PremiumSettingsPage() {
   async function handleSave() {
     try {
       setSaving(true);
-      if (!token) throw new Error("No token");
+      // Cookie-auth: server reads session cookies
       await updateProfile({
-        token,
+        token: "",
         updates: { hideFromFreeUsers: hideProfile },
       });
       await refreshProfile();

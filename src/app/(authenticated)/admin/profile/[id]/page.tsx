@@ -40,12 +40,7 @@ interface MatchType {
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const {
-    token,
-    isLoaded: authIsLoaded,
-    isSignedIn,
-    isAdmin,
-  } = useAuthContext();
+  const { isLoaded: authIsLoaded, isSignedIn, isAdmin } = useAuthContext();
 
   // All hooks must be called unconditionally
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -86,7 +81,6 @@ export default function AdminProfileDetailPage() {
         "Content-Type": "application/json",
         "Cache-Control": "max-age=300, stale-while-revalidate=60",
       };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
       const profileRes = await fetch(`/api/admin/profiles/${id}?nocache=true`, {
         headers,
         next: { revalidate: 300 },
@@ -99,7 +93,7 @@ export default function AdminProfileDetailPage() {
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
     },
-    enabled: !!id && !!token && isSignedIn && isAdmin,
+    enabled: !!id && isSignedIn && isAdmin,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,
@@ -125,13 +119,12 @@ export default function AdminProfileDetailPage() {
         "Content-Type": "application/json",
         "Cache-Control": "max-age=300, stale-while-revalidate=60",
       };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
       const imagesRes = await fetch(
         `/api/profile-detail/${userId}/images?nocache=true`,
         {
           headers,
           next: { revalidate: 300 },
-        },
+        }
       );
       if (!imagesRes.ok) {
         throw new Error("Failed to fetch profile images");
@@ -141,7 +134,7 @@ export default function AdminProfileDetailPage() {
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
     },
-    enabled: !!userId && !!token && isSignedIn && isAdmin,
+    enabled: !!userId && isSignedIn && isAdmin,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,
@@ -165,13 +158,12 @@ export default function AdminProfileDetailPage() {
         "Content-Type": "application/json",
         "Cache-Control": "max-age=300, stale-while-revalidate=60",
       };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
       const matchesRes = await fetch(
         `/api/admin/profiles/${id}/matches?nocache=true`,
         {
           headers,
           next: { revalidate: 300 },
-        },
+        }
       );
       if (!matchesRes.ok) {
         throw new Error("Failed to fetch profile matches");
@@ -181,7 +173,7 @@ export default function AdminProfileDetailPage() {
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
     },
-    enabled: !!id && !!token && isSignedIn && isAdmin,
+    enabled: !!id && isSignedIn && isAdmin,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,
@@ -253,7 +245,6 @@ export default function AdminProfileDetailPage() {
     try {
       setIsDeleting(true);
       const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
       const deleteRes = await fetch(`/api/profile-images`, {
         method: "DELETE",
         headers: {
@@ -324,7 +315,7 @@ export default function AdminProfileDetailPage() {
           hasSpotlightBadge: !profile.hasSpotlightBadge,
           durationDays: 30,
         },
-        token ?? undefined,
+        undefined,
       );
 
       showSuccessToast(

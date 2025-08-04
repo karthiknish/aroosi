@@ -9,7 +9,8 @@ describe('useAuth Hook', () => {
     expect(result.current.isSignedIn).toBe(false);
     expect(result.current.user).toBe(null);
     expect(result.current.isLoaded).toBe(false);
-    expect(result.current.token).toBe(null);
+    // token removed in cookie-auth; ensure absence
+    expect("token" in result.current).toBe(false);
     expect(result.current.isProfileComplete).toBe(false);
     expect(result.current.isOnboardingComplete).toBe(false);
   });
@@ -29,7 +30,8 @@ describe('useAuth Hook', () => {
     expect(result.current.isLoaded).toBe(true);
     expect(result.current.isSignedIn).toBe(false);
     expect(result.current.user).toBe(null);
-    expect(result.current.token).toBe(null);
+    // token removed in cookie-auth; ensure absence
+    expect("token" in result.current).toBe(false);
     expect(result.current.isProfileComplete).toBe(false);
     expect(result.current.isOnboardingComplete).toBe(false);
   });
@@ -38,13 +40,14 @@ describe('useAuth Hook', () => {
     const { result } = renderHook(() => useAuth());
 
     const authState = result.current;
-    
-    expect(authState).toHaveProperty('user');
-    expect(authState).toHaveProperty('isLoaded');
-    expect(authState).toHaveProperty('isSignedIn');
-    expect(authState).toHaveProperty('isLoading');
-    expect(authState).toHaveProperty('token');
-    expect(authState).toHaveProperty('isProfileComplete');
-    expect(authState).toHaveProperty('isOnboardingComplete');
+
+    expect(authState).toHaveProperty("user");
+    expect(authState).toHaveProperty("isLoaded");
+    expect(authState).toHaveProperty("isSignedIn");
+    expect(authState).toHaveProperty("isLoading");
+    // token property no longer exists
+    expect(authState).not.toHaveProperty("token");
+    expect(authState).toHaveProperty("isProfileComplete");
+    expect(authState).toHaveProperty("isOnboardingComplete");
   });
 });

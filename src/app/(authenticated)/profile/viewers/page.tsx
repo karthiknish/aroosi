@@ -10,14 +10,14 @@ import Link from "next/link";
 import { isPremiumPlus } from "@/lib/utils/subscriptionPlan";
 
 export default function ProfileViewersPage() {
-  const { token, profile: rawProfile } = useAuthContext();
+  const { profile: rawProfile } = useAuthContext();
   const profile = rawProfile as {
     _id?: string;
     subscriptionPlan?: string;
   } | null;
   const router = useRouter();
 
-  const enabled = Boolean(token && profile?._id);
+  const enabled = Boolean(profile?._id);
 
   const {
     data: viewers = [],
@@ -26,9 +26,9 @@ export default function ProfileViewersPage() {
   } = useQuery<{ _id: string; email?: string }[]>({
     queryKey: ["profileViewers", profile?._id],
     queryFn: async () => {
-      if (!token || !profile?._id) return [];
+      if (!profile?._id) return [];
       return (await fetchProfileViewers({
-        token,
+        token: "" as unknown as string,
         profileId: profile._id as unknown as string,
       })) as {
         _id: string;

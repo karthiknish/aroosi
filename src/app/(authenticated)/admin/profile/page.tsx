@@ -64,7 +64,8 @@ function getAge(dateOfBirth?: string) {
 }
 
 export default function AdminProfilePage() {
-  const { token } = useAuthContext();
+  // Cookie-auth; ensure auth context is initialized (no token usage)
+  useAuthContext();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "banned">("all");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -89,7 +90,6 @@ export default function AdminProfilePage() {
   } = useQuery({
     queryKey: [
       "adminProfilesWithImages",
-      token,
       page,
       pageSize,
       sortBy,
@@ -100,11 +100,9 @@ export default function AdminProfilePage() {
       // Note: search/status remain client-side for now
     ],
     queryFn: async () => {
-      if (!token) throw new Error("No authentication token available");
-
-      // Fetch paginated/filtered/sorted list from server
+      // Server reads HttpOnly cookies for admin auth
       const { profiles, total } = await fetchAdminProfiles({
-        token,
+        token: "",
         search: "", // server-side search not used yet
         page,
         pageSize,
@@ -121,13 +119,13 @@ export default function AdminProfilePage() {
       }));
 
       const profileImages = await fetchAllAdminProfileImages({
-        token,
+        token: "",
         profiles: profilesForImages,
       });
 
       return { profiles, profileImages, total, page, pageSize };
     },
-    enabled: !!token,
+    enabled: true,
     retry: 2,
     staleTime: 20000,
   });
@@ -143,7 +141,6 @@ export default function AdminProfilePage() {
 
   // Debug logging
   console.log("Admin Profile Page State:", {
-    token: !!token,
     loading,
     error: (error as Error | undefined)?.message,
     profileCount: profiles.length,
@@ -172,16 +169,14 @@ export default function AdminProfilePage() {
 
   // Handlers
   const onDelete = async (id: string) => {
-    if (!token) return;
-    await deleteAdminProfile({ token, id });
+    await deleteAdminProfile({ token: "", id });
     setConfirmDeleteId(null);
     void loadProfiles();
     showSuccessToast("Profile deleted");
   };
 
   const onToggleBan = async (id: string, isBanned: boolean) => {
-    if (!token) return;
-    await setProfileBannedStatus(token, id, !isBanned);
+    await setProfileBannedStatus("", id, !isBanned);
     setConfirmBanId(null);
     void loadProfiles();
     showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");

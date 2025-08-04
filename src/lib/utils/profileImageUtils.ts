@@ -22,17 +22,14 @@ export type MappedImage = {
  * Fetches profile images for a given profile ID
  */
 export const useProfileImages = (profileId: string) => {
-  const { token } = useAuthContext();
+  useAuthContext(); // keep hook linkage if needed for auth state; no direct token usage
 
   const queryOptions = {
     queryKey: ["profile-images", profileId] as const,
     queryFn: async (): Promise<ApiImage[]> => {
-      if (!token) throw new Error("No authentication token");
       if (!profileId) return [];
       const response = await fetch(`/api/profile-detail/${profileId}/images`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -46,7 +43,6 @@ export const useProfileImages = (profileId: string) => {
           ? data.images
           : [];
     },
-    enabled: !!token,
     retry: 1,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -69,25 +65,23 @@ export const useProfileImages = (profileId: string) => {
  * Handles reordering of profile images
  */
 export const useImageReorder = (profileId: string) => {
-  const { token } = useAuthContext();
+  useAuthContext(); // no direct token usage
   const queryClient = useQueryClient();
 
   return async (newOrder: (string | { _id: string | undefined })[]) => {
-    if (!profileId || !token) return;
+    if (!profileId) return;
 
-    // Extract string IDs from the order array which can contain strings or objects with _id
     const imageIds = newOrder
       .map((item) => (typeof item === "string" ? item : item._id))
       .filter(Boolean) as string[];
 
     try {
-      // Update the order on the server
       const res = await fetch(`/api/profile-images/order`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({
           profileId,
           imageIds: imageIds,
@@ -98,7 +92,6 @@ export const useImageReorder = (profileId: string) => {
         throw new Error("Failed to update image order");
       }
 
-      // Invalidate and refetch
       await queryClient.invalidateQueries({
         queryKey: ["profile-images", profileId],
       });
@@ -117,14 +110,13 @@ export const useImageReorder = (profileId: string) => {
  * Handles deletion of a profile image
  */
 export const useDeleteImage = (profileId: string) => {
-  const { token, profile: rawProfile } = useAuthContext();
-  const profile = rawProfile as { userId?: string } | null;
+  const { profile: rawProfile } = useAuthContext();
+  const profile = (rawProfile as { userId?: string } | null) || null;
   const queryClient = useQueryClient();
 
   return async (imageId: string, skipPrompt: boolean = false) => {
-    if (!profileId || !token) return false;
+    if (!profileId) return false;
 
-    // Show confirmation prompt only if skipPrompt is false
     if (!skipPrompt) {
       const confirmed = window.confirm(
         "Are you sure you want to delete this image?",
@@ -137,8 +129,8 @@ export const useDeleteImage = (profileId: string) => {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ userId: profile?.userId || profileId, imageId }),
       });
 
@@ -147,7 +139,6 @@ export const useDeleteImage = (profileId: string) => {
         throw new Error(errorData.message || "Failed to delete image");
       }
 
-      // Invalidate and refetch
       await queryClient.invalidateQueries({
         queryKey: ["profile-images", profileId],
       });
@@ -166,18 +157,18 @@ export const useDeleteImage = (profileId: string) => {
  * Handles image upload
  */
 export const useImageUpload = (userId: string) => {
-  const { token } = useAuthContext();
+  useAuthContext(); // no direct token usage
   const queryClient = useQueryClient();
 
   return async (file: File) => {
-    if (!userId || !token) {
+    if (!userId) {
       throw new Error("Authentication required");
     }
 
     try {
       // 1) Get an upload URL from our API (which proxies Convex generateUploadUrl)
       const uploadUrlRes = await fetch("/api/profile-images/upload-url", {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
 
       if (!uploadUrlRes.ok) {
@@ -215,8 +206,8 @@ export const useImageUpload = (userId: string) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({
           userId,
           storageId,
@@ -287,26 +278,23 @@ export const getOrderedImages = (
  * Handles reordering of admin profile images
  */
 export const useAdminImageReorder = (profileId: string) => {
-  const { token } = useAuthContext();
+  useAuthContext(); // admin auth handled via cookies server-side
   const queryClient = useQueryClient();
 
   return async (newOrder: (string | { _id: string | undefined })[]) => {
-    if (!profileId || !token) return;
+    if (!profileId) return;
 
-    // Extract string IDs from the order array which can contain strings or objects with _id
     const imageIds = newOrder
       .map((item) => (typeof item === "string" ? item : item._id))
       .filter(Boolean) as string[];
 
     try {
-      // Update the order on the server (admin endpoint)
+      // Update the order on the server (admin endpoint) - update function should use credentials internally or cookie auth
       await updateAdminProfileImageOrder({
-        token,
         profileId,
         imageIds,
-      });
+      } as unknown as { profileId: string; imageIds: string[] });
 
-      // Invalidate and refetch
       await queryClient.invalidateQueries({
         queryKey: ["admin-profile-images", profileId],
       });

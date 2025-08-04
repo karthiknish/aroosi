@@ -14,20 +14,25 @@ import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 
+/**
+ * Note: All admin blog routes now rely on cookie-based auth.
+ * Token parameters to util functions are passed as empty string shims where required by types,
+ * while the server reads HttpOnly cookies.
+ */
 function AdminEditBlogPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const slugParam = searchParams.get("slug");
-  const { token, isAdmin, isLoaded, isSignedIn } = useAuthContext();
+  const { isAdmin, isLoaded, isSignedIn } = useAuthContext();
 
   // Fetch blog post
   const { data: blogPost, isLoading } = useQuery<BlogPost | null>({
-    queryKey: ["blogPost", slugParam, token],
+    queryKey: ["blogPost", slugParam],
     queryFn: async () => {
-      if (!slugParam || !token) return null;
-      return fetchBlogPostBySlug(slugParam, token);
+      if (!slugParam) return null;
+      return fetchBlogPostBySlug(slugParam, undefined);
     },
-    enabled: !!slugParam && !!token,
+    enabled: !!slugParam,
   });
 
   // Form state
@@ -71,13 +76,13 @@ function AdminEditBlogPageInner() {
       setAiLoading((prev) => ({ ...prev, [field]: false }));
       return text;
     },
-    [],
+    []
   );
 
   // Mutation for saving
   const { mutate: saveEdit, isPending: saving } = useMutation({
     mutationFn: async () => {
-      if (!blogPost?._id || !token) throw new Error("Missing id or token");
+      if (!blogPost?._id) throw new Error("Missing id");
       const updates = {
         title,
         slug,
@@ -86,7 +91,7 @@ function AdminEditBlogPageInner() {
         imageUrl,
         content,
       };
-      const result = await editBlogPost(token, blogPost._id, updates);
+      const result = await editBlogPost("", blogPost._id, updates as any);
       if (!result.success)
         throw new Error(result.error || "Failed to update post");
       return result.data;

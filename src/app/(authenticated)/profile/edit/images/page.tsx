@@ -22,7 +22,7 @@ import {
 } from "@/lib/utils/imageUtil";
 
 export default function EditProfileImagesPage() {
-  const { token } = useAuthContext();
+  const { /* token removed */ } = useAuthContext();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -33,28 +33,26 @@ export default function EditProfileImagesPage() {
 
   const { data: profile, isLoading: profileLoading } = useQuery<Profile | null>(
     {
-      queryKey: ["profile", token],
+      queryKey: ["profile"],
       queryFn: async () => {
-        if (!token) return null;
-        const res = await getCurrentUserWithProfile(token);
-        if (!res.success || !res.data) return null;
-        // unwrap
+        const res = await getCurrentUserWithProfile(undefined as unknown as string);
+        if (!res?.success || !res.data) return null;
 
         const envelope = (res.data as { profile?: unknown })?.profile
           ? (res.data as { profile?: unknown }).profile
           : res.data;
         return envelope as Profile;
       },
-      enabled: !!token,
+      enabled: true,
     }
   );
 
   const { data: images = [], isLoading: imagesLoading } = useQuery<ImageType[]>(
     {
-      queryKey: ["profileImages", token, profile?._id],
+      queryKey: ["profileImages", profile?._id],
       queryFn: async () => {
-        if (!token || !profile?._id) return [];
-        const result = await fetchUserProfileImages(token, profile._id);
+        if (!profile?._id) return [];
+        const result = await fetchUserProfileImages("" as unknown as string, profile._id);
         if (!result.success || !result.data) return [];
         /* unwrap */
 
@@ -92,7 +90,7 @@ export default function EditProfileImagesPage() {
         })) as ImageType[];
         return mapped;
       },
-      enabled: !!token && !!profile?.userId,
+      enabled: !!profile?.userId,
     }
   );
 
@@ -124,7 +122,7 @@ export default function EditProfileImagesPage() {
 
   // Persist all changes
   const handleSaveChanges = useCallback(async () => {
-    if (!token || !profile) return;
+    if (!profile) return;
     setIsUpdating(true);
 
     const initialIds = initialImages.map((img) => img.id);
@@ -138,32 +136,39 @@ export default function EditProfileImagesPage() {
     try {
       // Delete removed images
       for (const id of deletions) {
-        await deleteImageById({ token, userId: profile.userId, imageId: id });
+        await deleteImageById({ token: "", userId: profile.userId, imageId: id } as unknown as { token: string; userId: string; imageId: string });
       }
 
       // Save new images metadata
       for (const img of additions) {
         await saveImageMeta({
-          token,
+          token: "",
           userId: profile.userId,
           storageId: img.id,
-          fileName: img.fileName || "image.jpg",
+          fileName: (img as any).fileName || "image.jpg",
           contentType: "image/jpeg",
           fileSize: img.size || 0,
+        } as unknown as {
+          token: string;
+          userId: string;
+          storageId: string;
+          fileName: string;
+          contentType: string;
+          fileSize: number;
         });
       }
 
       // Update order if changed
       if (!arraysEqual(initialIds, editedIds)) {
         await updateImageOrder({
-          token,
+          token: "",
           profileId: profile._id,
           imageIds: editedIds,
-        });
+        } as unknown as { token: string; profileId: string; imageIds: string[] });
       }
 
       await queryClient.invalidateQueries({
-        queryKey: ["profileImages", token, profile._id],
+        queryKey: ["profileImages", profile._id],
       });
       showSuccessToast("Profile photos updated");
       router.push("/profile");
@@ -175,7 +180,7 @@ export default function EditProfileImagesPage() {
     } finally {
       setIsUpdating(false);
     }
-  }, [token, profile, initialImages, editedImages, queryClient, router]);
+  }, [profile, initialImages, editedImages, queryClient, router]);
 
   if (profileLoading || imagesLoading) {
     return (

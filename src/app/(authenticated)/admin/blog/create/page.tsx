@@ -13,7 +13,7 @@ import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
 
 export default function CreateBlogPage() {
-  const { token } = useAuthContext();
+  useAuthContext(); // maintain hook order; no token usage in cookie-auth
   const [title, setTitle] = useState<string>("");
   const [slug, setSlug] = useState<string>("");
   const [excerpt, setExcerpt] = useState<string>("");
@@ -53,8 +53,8 @@ export default function CreateBlogPage() {
   ];
   async function aiText(text: string, field: "excerpt" | "category") {
     try {
-      if (!token) throw new Error("Authentication required");
-      return await convertAiTextToHtml({ token, text, type: field });
+      // cookie-auth; server reads cookies
+      return await convertAiTextToHtml({ text, type: field } as any);
     } catch (error) {
       console.error(`Error in AI ${field} generation:`, error);
       const message =
@@ -109,8 +109,8 @@ export default function CreateBlogPage() {
     prompt?: string
   ): Promise<string> => {
     try {
-      if (!token) throw new Error("Authentication required");
-      return await convertTextToMarkdown({ token, text, prompt });
+      // cookie-auth
+      return await convertTextToMarkdown({ text, prompt } as any);
     } catch (error) {
       console.error("Error converting to markdown:", error);
       showErrorToast(error, "Failed to convert to markdown");
@@ -132,14 +132,14 @@ export default function CreateBlogPage() {
     setCreating(true);
     setError(null);
     try {
-      await createBlogPost(token!, {
+      await createBlogPost("", {
         title,
         slug,
         excerpt,
         content,
         imageUrl,
         categories: [],
-      });
+      } as any);
       // Optionally reset form or redirect
     } catch (err: unknown) {
       const error = err as Error;

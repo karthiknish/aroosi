@@ -55,13 +55,14 @@ interface UsageSummary {
 }
 
 export function UsageTracker() {
-  const { token } = useAuthContext();
+  // AuthContext no longer provides token; usage stats rely on cookie-auth
+  useAuthContext();
 
   const {
     data: usageRaw,
     isLoading,
     error,
-  } = useUsageStats(token ?? undefined);
+  } = useUsageStats();
 
   const usage = usageRaw as unknown as UsageSummary | undefined;
 

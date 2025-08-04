@@ -9,21 +9,26 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function PushNotificationAdminPage() {
-  const { token } = useAuthContext();
+  // Cookie-auth; no token in context
+  useAuthContext();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [url, setUrl] = useState("");
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
-    if (!token || !title || !message) return;
+    if (!title || !message) return;
     setSending(true);
-    await sendPushNotification(token, {
-      title,
-      message,
-      url: url || undefined,
-    });
-    setSending(false);
+    try {
+      // Server reads HttpOnly cookies for admin authorization
+      await sendPushNotification("", {
+        title,
+        message,
+        url: url || undefined,
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

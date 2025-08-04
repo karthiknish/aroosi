@@ -24,7 +24,7 @@ export default function ChatPage({
   initialOtherUserName,
   className = "",
 }: ChatPageProps) {
-  const { userId, token } = useAuthContext();
+  const { userId } = useAuthContext();
   const [selectedConversation, setSelectedConversation] = useState<{
     conversationId: string;
     otherUserId: string;
@@ -33,10 +33,10 @@ export default function ChatPage({
   const [isMobile, setIsMobile] = useState(false);
   const [showConversationList, setShowConversationList] = useState(true);
 
-  // Fetch avatar for currently selected conversation's other user
+  // Fetch avatar for currently selected conversation's other user (cookie-auth)
   const { imageUrl: selectedAvatar } = useProfileImage(
     selectedConversation?.otherUserId,
-    token ?? undefined
+    undefined // keep signature satisfied; hook ignores token under cookie-auth
   );
 
   // Check if mobile viewport
@@ -193,7 +193,7 @@ export default function ChatPage({
                   matchUserId={selectedConversation.otherUserId}
                   matchUserName={selectedConversation.otherUserName}
                   matchUserAvatarUrl={selectedAvatar || ""}
-                  token={token || ""}
+                  token=""
                   className="h-full"
                 />
               </div>
