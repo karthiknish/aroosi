@@ -118,13 +118,21 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
     tickTimerRef.current = window.setInterval(() => {
       if (startTsRef.current === 0) return;
       const now = Date.now();
-      const pausedDelta = pauseAccumulatedRef.current + (pauseStartRef.current ? now - pauseStartRef.current : 0);
+      const pausedDelta =
+        pauseAccumulatedRef.current + (pauseStartRef.current ? now - pauseStartRef.current : 0);
       const effective = now - startTsRef.current - pausedDelta;
       setElapsedMs(Math.max(0, effective));
 
       if (effective / 1000 >= maxDurationSeconds) {
         // Hit max duration - auto-stop
-        void stop();
+        // Defer to next task to avoid referencing stop before its declaration
+        setTimeout(() => {
+          try {
+            if (recorderRef.current && recorderRef.current.state !== "inactive") {
+              recorderRef.current.stop();
+            }
+          } catch {}
+        }, 0);
       }
     }, 200);
   }, [maxDurationSeconds]);

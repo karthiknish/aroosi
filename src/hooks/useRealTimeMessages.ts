@@ -88,17 +88,14 @@ export function useRealTimeMessages({
     if (!userId || !conversationId) return;
 
     try {
-      const token = contextToken;
-      if (!token) return;
-
       // Close existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
 
-      // Create new EventSource connection
+      // Create new EventSource connection (cookie-based auth; server reads session cookies)
       const eventSource = new EventSource(
-        `/api/messages/events?conversationId=${conversationId}&token=${token}`,
+        `/api/messages/events?conversationId=${conversationId}`,
       );
 
       eventSource.onopen = () => {
@@ -141,7 +138,7 @@ export function useRealTimeMessages({
       console.error("Error initializing real-time connection:", err);
       setError("Failed to establish real-time connection");
     }
-  }, [userId, conversationId, contextToken, handleRealTimeEvent]);
+  }, [userId, conversationId, handleRealTimeEvent]);
 
   // (moved above to satisfy dependency order)
 

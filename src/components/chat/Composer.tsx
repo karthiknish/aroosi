@@ -187,7 +187,7 @@ export default function Composer(props: ComposerProps) {
       setUploadError(msg);
       onVoiceError?.(msg);
     }
-  }, [conversationId, onSendVoice, onVoiceError, setMessageFeedback, messageFeedback, stop, toUserId]);
+  }, [conversationId, onSendVoice, onVoiceError, setMessageFeedback, messageFeedback, peaks, stop, toUserId]);
 
   const recordingBanner = (isRecording || isPaused || isUploading) && (
     <div className="mb-3 p-3 rounded-lg border border-gray-200 bg-white shadow-sm">

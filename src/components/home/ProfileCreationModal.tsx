@@ -193,7 +193,7 @@ export function ProfileCreationModal({
     Number.isFinite(contextStep) && contextStep >= 1 && contextStep <= 7
       ? contextStep
       : 1;
-  const setStep = (newStep: number) => {
+  const setStep = React.useCallback((newStep: number) => {
     const clamped = Math.max(1, Math.min(7, Math.floor(Number(newStep) || 1)));
     setContextStep(clamped);
     // Persist PROFILE_CREATION snapshot on step transitions (SSR-guarded)
@@ -216,7 +216,7 @@ export function ProfileCreationModal({
         );
       }
     } catch {}
-  };
+  }, [setContextStep, formData]);
 
   console.log("Starting step variables:", {
     contextStep, // ProfileWizard context se
@@ -1294,6 +1294,10 @@ export function ProfileCreationModal({
     };
 
     void submitProfileAndImages();
+  // This effect purposefully runs when the core submission drivers change.
+  // Some dependencies (contextData, initialData) are not included to avoid
+  // excessive re-runs; formData is memoized and already represents them.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isAuthenticated,
     token,
