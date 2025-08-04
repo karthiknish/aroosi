@@ -43,10 +43,11 @@ export async function GET(request: NextRequest) {
         }
       })();
 
-    // Authentication (cookie-only)
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
+    // Authentication via centralized cookie session helper (auto-refresh + forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) return session.errorResponse!;
+    const userId = session.userId!;
 
     if (!userId) {
       return errorResponse("User ID is required", 400);
@@ -165,7 +166,8 @@ export async function GET(request: NextRequest) {
       latencyMs,
     });
 
-    return successResponse({
+    // Forward any cookies updated during session refresh
+    const res = successResponse({
       ...result,
       page,
       pageSize,
@@ -181,6 +183,10 @@ export async function GET(request: NextRequest) {
         language,
       },
     });
+    for (const c of session.setCookiesToForward) {
+      res.headers.append("Set-Cookie", c);
+    }
+    return res;
   } catch (error) {
     console.error("Error in search API route:", error);
 

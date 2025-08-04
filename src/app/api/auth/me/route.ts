@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Optional: attempt transparent refresh if a refresh cookie exists and app provides /api/auth/refresh
+    // On detected reuse (401 REFRESH_REUSE), immediately clear session cookies and return 401
     let refreshedSetCookies: string[] = [];
     const maybeRefresh = readCookie(request, "refresh-token");
     if (maybeRefresh) {
@@ -84,11 +85,24 @@ export async function GET(request: NextRequest) {
           }
         } else {
           const text = await refreshResp.text().catch(() => "");
+          const bodyPreview = text.slice(0, 160);
           log(scope, "warn", "Refresh attempt failed", {
             correlationId,
             status: refreshResp.status,
-            bodyPreview: text.slice(0, 160),
+            bodyPreview,
           });
+          // If refresh reuse was detected, terminate early and clear cookies client-side
+          if (refreshResp.status === 401 && bodyPreview.includes("REFRESH_REUSE")) {
+            const resp = NextResponse.json(
+              { error: "Invalid or expired session", code: "REFRESH_REUSE", correlationId },
+              { status: 401 }
+            );
+            // Forward any Set-Cookie headers from refresh (these already clear cookies)
+            const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
+            const cookies = setCookieHeader ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/) : [];
+            for (const c of cookies) resp.headers.append("Set-Cookie", c);
+            return resp;
+          }
         }
       } catch (err) {
         log(scope, "warn", "Refresh attempt error", {
@@ -111,15 +125,18 @@ export async function GET(request: NextRequest) {
     const user = (current as any)?.user ?? current ?? null;
 
     if (!user) {
-      log(scope, "warn", "User not found", {
+      // If we just refreshed, treat missing user as invalid session (avoid 404 confusion post-reuse)
+      const status = refreshedSetCookies.length > 0 ? 401 : 404;
+      const code = refreshedSetCookies.length > 0 ? "SESSION_INVALID" : "USER_NOT_FOUND";
+      log(scope, "warn", status === 401 ? "Invalid session after refresh" : "User not found", {
         correlationId,
-        type: "user_not_found",
-        statusCode: 404,
+        type: status === 401 ? "session_invalid" : "user_not_found",
+        statusCode: status,
         durationMs: Date.now() - startedAt,
-      });
+      } as any);
       return NextResponse.json(
-        { error: "User not found", correlationId },
-        { status: 404 }
+        { error: status === 401 ? "Invalid or expired session" : "User not found", code, correlationId },
+        { status }
       );
     }
 

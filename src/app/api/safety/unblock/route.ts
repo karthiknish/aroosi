@@ -10,11 +10,23 @@ import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 const convexClient = getConvexClient();
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
+  const correlationId = Math.random().toString(36).slice(2, 10);
   try {
-    // Enhanced authentication with user ID extraction (cookie-based)
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const userId = authCheck.userId;
+    // Centralized cookie session (auto-refresh + forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) {
+      console.warn("Safety blocked auth failed", {
+        scope: "safety.blocked",
+        type: "auth_failed",
+        correlationId,
+        statusCode: 401,
+        durationMs: Date.now() - startedAt,
+      });
+      return session.errorResponse!;
+    }
+    const userId = session.userId!;
 
     if (!userId) {
       return errorResponse("User ID not found in session", 401);
@@ -50,12 +62,32 @@ export async function POST(request: NextRequest) {
       blockedUserId: blockedUserId as Id<"users">,
     });
 
-    return successResponse({
+    // Build response and forward any refreshed cookies
+    const res = successResponse({
       message: "User unblocked successfully",
+      correlationId,
     });
+    for (const c of session.setCookiesToForward) {
+      res.headers.append("Set-Cookie", c);
+    }
+    console.info("Safety unblock success", {
+      scope: "safety.unblock",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+    });
+    return res;
 
   } catch (error) {
-    console.error("Error in safety unblock API:", error);
+    console.error("Error in safety unblock API:", {
+      scope: "safety.unblock",
+      type: "unhandled_error",
+      message: error instanceof Error ? error.message : String(error),
+      correlationId,
+      statusCode: 500,
+      durationMs: Date.now() - startedAt,
+    });
     return errorResponse("Failed to unblock user", 500);
   }
 }

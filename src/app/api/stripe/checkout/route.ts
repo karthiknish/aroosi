@@ -36,11 +36,11 @@ function isValidPlanId(planId: unknown): planId is PublicPlanId {
 
 export async function POST(req: NextRequest) {
   try {
-    // Enhanced authentication (cookie-based)
-    const auth = await requireUserToken(req);
-    if ("errorResponse" in auth) return auth.errorResponse;
-    const userId = auth.userId;
-    if (!userId) return errorResponse("User ID not found in token", 401);
+    // Centralized cookie-based session (with auto-refresh + cookie forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(req);
+    if (!session.ok) return session.errorResponse!;
+    const userId = session.userId!;
 
     // Strict rate limiting for payment operations
     const rateLimitResult = checkApiRateLimit(
@@ -121,7 +121,8 @@ export async function POST(req: NextRequest) {
       `Creating Stripe checkout session for user ${userId}, plan: ${planId}`
     );
     // Create Stripe checkout session with security considerations
-    const session = await stripe.checkout.sessions.create({
+    const sessionCookiesToForward = session.setCookiesToForward || [];
+    const stripeSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       customer_email: customerEmail,
@@ -147,14 +148,20 @@ export async function POST(req: NextRequest) {
         },
       },
     });
-    if (!session || !session.url) {
+    if (!stripeSession || !stripeSession.url) {
       console.error("Failed to create Stripe checkout session");
       return errorResponse("Failed to create checkout session", 500);
     }
     console.log(
-      `Stripe checkout session created: ${session.id} for user ${userId}`
+      `Stripe checkout session created: ${stripeSession.id} for user ${userId}`
     );
-    return successResponse({ url: session.url, sessionId: session.id });
+
+    // Build response and forward any refreshed cookies
+    const res = successResponse({ url: stripeSession.url, sessionId: stripeSession.id });
+    for (const c of sessionCookiesToForward) {
+      res.headers.append("Set-Cookie", c);
+    }
+    return res;
   } catch (error) {
     console.error("Error in Stripe checkout:", error);
     logSecurityEvent(

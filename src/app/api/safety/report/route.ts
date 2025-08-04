@@ -11,10 +11,11 @@ const convexClient = getConvexClient();
 
 export async function POST(request: NextRequest) {
   try {
-    // Enhanced authentication with user ID extraction (cookie-based)
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const userId = authCheck.userId;
+    // Centralized cookie session (auto-refresh + forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) return session.errorResponse!;
+    const userId = session.userId!;
 
     // Rate limiting for safety reports
     const rateLimitResult = checkApiRateLimit(
@@ -84,10 +85,15 @@ export async function POST(request: NextRequest) {
       description: description?.trim() || undefined,
     });
 
-    return successResponse({
+    // Build response and forward any refreshed cookies
+    const res = successResponse({
       message: "User reported successfully. Our team will review this report.",
       reportId: result,
     });
+    for (const c of session.setCookiesToForward) {
+      res.headers.append("Set-Cookie", c);
+    }
+    return res;
   } catch (error) {
     console.error("Error in safety report API:", error);
     return errorResponse("Failed to submit report", 500);

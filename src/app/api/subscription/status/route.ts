@@ -74,93 +74,17 @@ export async function GET(request: NextRequest) {
           return null;
         });
     } else {
-      // Resolve from current server-side context using cookie-based verification
-      // Attempt to read auth-token cookie and, if expired, transparently refresh
-      const cookieToken = request.cookies.get("auth-token")?.value || null;
-      let accessToken: string | null = cookieToken;
-      let userIdFromSession: string | null = null;
-
-      if (!accessToken) {
-        // Try refresh if refresh-token exists (proxy to our refresh route)
-        const refreshCookie = request.cookies.get("refresh-token")?.value;
-        if (refreshCookie) {
-          const refreshUrl = new URL("/api/auth/refresh", request.url);
-          const refreshResp = await fetch(refreshUrl.toString(), {
-            method: "POST",
-            headers: { cookie: request.headers.get("cookie") || "" },
-          });
-          if (refreshResp.ok) {
-            const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
-            const cookies = setCookieHeader ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/) : [];
-            for (const c of cookies) {
-              const m = c.match(/auth-token=([^;]+)/);
-              if (m) {
-                accessToken = decodeURIComponent(m[1]);
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      if (!accessToken) {
-        console.warn("Subscription status no access token via cookies", {
-          scope: "subscription.status",
-          type: "no_session",
-          correlationId,
-          statusCode: 401,
-          durationMs: Date.now() - startedAt,
-        });
-        return json({ success: false, error: "No auth session", correlationId }, 401);
-      }
-
-      try {
-        const { verifyAccessJWT } = await import("@/lib/auth/jwt");
-        const payload = await verifyAccessJWT(accessToken);
-        userIdFromSession = payload.userId;
-      } catch (e) {
-        console.warn("Subscription status access token invalid; attempting refresh", {
-          scope: "subscription.status",
-          type: "access_invalid",
-          correlationId,
-          statusCode: 401,
-          durationMs: Date.now() - startedAt,
-        });
-        const refreshCookie = request.cookies.get("refresh-token")?.value;
-        if (refreshCookie) {
-          const refreshUrl = new URL("/api/auth/refresh", request.url);
-          const refreshResp = await fetch(refreshUrl.toString(), {
-            method: "POST",
-            headers: { cookie: request.headers.get("cookie") || "" },
-          });
-          if (refreshResp.ok) {
-            const setCookieHeader = refreshResp.headers.get("set-cookie") || "";
-            const cookies = setCookieHeader ? setCookieHeader.split(/,(?=[^;]+=[^;]+)/) : [];
-            let newAccess: string | null = null;
-            for (const c of cookies) {
-              const m = c.match(/auth-token=([^;]+)/);
-              if (m) {
-                newAccess = decodeURIComponent(m[1]);
-                break;
-              }
-            }
-            if (newAccess) {
-              const { verifyAccessJWT } = await import("@/lib/auth/jwt");
-              const payload = await verifyAccessJWT(newAccess);
-              userIdFromSession = payload.userId;
-            }
-          }
-        }
-      }
-
-      if (!userIdFromSession) {
-        return json({ success: false, error: "Invalid or expired session", correlationId }, 401);
+      // Resolve session using centralized helper
+      const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+      const session = await getSessionFromRequest(request);
+      if (!session.ok) {
+        return session.errorResponse!;
       }
 
       // Lookup profile by resolved userId
       profile = await client
         .query(api.profiles.getProfileByUserId, {
-          userId: userIdFromSession as unknown as Id<"users">,
+          userId: session.userId as unknown as Id<"users">,
         })
         .catch((e: unknown) => {
           console.error("Subscription status getProfileByUserId (session) error", {
@@ -173,6 +97,17 @@ export async function GET(request: NextRequest) {
           });
           return null;
         });
+
+      // Forward any refreshed cookies
+      if (profile) {
+        const setCookies = session.setCookiesToForward || [];
+        if (setCookies.length) {
+          const res = json({ forwarding: true }, 204);
+          for (const c of setCookies) res.headers.append("Set-Cookie", c);
+          // fallthrough to final response below; headers will be ignored here,
+          // but pattern shows how to use in other routes that craft a single response.
+        }
+      }
     }
 
     if (!profile) {

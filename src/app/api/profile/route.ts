@@ -25,16 +25,12 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Strict cookie-auth: use server-side session resolution
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as Response;
+    // Centralized cookie session (auto-refresh + forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) {
+      const res = session.errorResponse!;
       const status = (res as unknown as { status?: number }).status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await (res as Response).text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
       console.warn("Profile GET auth failed", {
         scope: "profile.get",
         type: "auth_failed",
@@ -42,12 +38,9 @@ export async function GET(request: NextRequest) {
         statusCode: status,
         durationMs: Date.now() - startedAt,
       });
-      return new Response(JSON.stringify(body), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res;
     }
-    const { userId } = session;
+    const userId = session.userId!;
     if (!userId) {
       console.warn("Profile GET missing userId", {
         scope: "profile.get",
@@ -129,6 +122,9 @@ export async function GET(request: NextRequest) {
       JSON.stringify({ profile, correlationId, success: true }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
+    for (const c of session.setCookiesToForward) {
+      response.headers.append("Set-Cookie", c);
+    }
     console.info("Profile GET success", {
       scope: "profile.get",
       type: "success",
@@ -161,16 +157,12 @@ export async function PUT(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Strict cookie-auth
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as Response;
+    // Centralized cookie session (auto-refresh + forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) {
+      const res = session.errorResponse!;
       const status = (res as unknown as { status?: number }).status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await (res as Response).text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
       console.warn("Profile PUT auth failed", {
         scope: "profile.update",
         type: "auth_failed",
@@ -178,12 +170,9 @@ export async function PUT(request: NextRequest) {
         statusCode: status,
         durationMs: Date.now() - startedAt,
       });
-      return new Response(JSON.stringify(body), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res;
     }
-    const { userId } = session;
+    const userId = session.userId!;
     if (!userId) {
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -346,6 +335,9 @@ export async function PUT(request: NextRequest) {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
+    for (const c of session.setCookiesToForward) {
+      response.headers.append("Set-Cookie", c);
+    }
     console.info("Profile PUT success", {
       scope: "profile.update",
       type: "success",
@@ -375,16 +367,12 @@ export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Strict cookie-auth
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as Response;
+    // Centralized cookie session (auto-refresh + forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(req);
+    if (!session.ok) {
+      const res = session.errorResponse!;
       const status = (res as unknown as { status?: number }).status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await (res as Response).text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
       console.warn("Profile POST auth failed", {
         scope: "profile.create",
         type: "auth_failed",
@@ -392,12 +380,9 @@ export async function POST(req: NextRequest) {
         statusCode: status,
         durationMs: Date.now() - startedAt,
       });
-      return new Response(JSON.stringify(body), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res;
     }
-    const { userId } = session;
+    const userId = session.userId!;
     if (!userId)
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -627,6 +612,9 @@ export async function POST(req: NextRequest) {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
+    for (const c of session.setCookiesToForward) {
+      response.headers.append("Set-Cookie", c);
+    }
     console.info("Profile POST success", {
       scope: "profile.create",
       type: "success",
@@ -656,16 +644,12 @@ export async function DELETE(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Strict cookie-auth
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as Response;
+    // Centralized cookie session (auto-refresh + forwarding)
+    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) {
+      const res = session.errorResponse!;
       const status = (res as unknown as { status?: number }).status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await (res as Response).text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
       console.warn("Profile DELETE auth failed", {
         scope: "profile.delete",
         type: "auth_failed",
@@ -673,12 +657,9 @@ export async function DELETE(request: NextRequest) {
         statusCode: status,
         durationMs: Date.now() - startedAt,
       });
-      return new Response(JSON.stringify(body), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res;
     }
-    const { userId } = session;
+    const userId = session.userId!;
     if (!userId)
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -732,6 +713,9 @@ export async function DELETE(request: NextRequest) {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
+    for (const c of session.setCookiesToForward) {
+      response.headers.append("Set-Cookie", c);
+    }
     console.info("Profile DELETE success", {
       scope: "profile.delete",
       type: "success",
