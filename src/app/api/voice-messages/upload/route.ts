@@ -4,30 +4,34 @@ import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
 // Initialize Convex client
 const convexClient = getConvexClient();
 
 export async function POST(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
     // Authentication
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
 
-    // Rate limiting for voice message uploads
-    const rateLimitResult = checkApiRateLimit(
-      `voice_upload_${userId}`,
-      10,
-      60000,
-    ); // 10 uploads per minute
-    if (!rateLimitResult.allowed) {
+    // Subscription-aware rate limiting for voice uploads
+    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      request,
+      token,
+      userId || "unknown",
+      "voice_upload",
+      60000
+    );
+    if (!rate.allowed) {
       return errorResponse(
-        "Rate limit exceeded. Please wait before uploading more voice messages.",
-        429,
+        rate.error || "Rate limit exceeded. Please wait before uploading more voice messages.",
+        429
       );
     }
 
@@ -43,6 +47,21 @@ export async function POST(request: NextRequest) {
     const conversationId = formData.get("conversationId") as string;
     const duration = parseFloat(formData.get("duration") as string);
     const toUserId = formData.get("toUserId") as string;
+
+    // Optional waveform peaks (JSON array of normalized numbers 0..1)
+    const peaksRaw = formData.get("peaks") as string | null;
+    let peaks: number[] | undefined = undefined;
+    if (typeof peaksRaw === "string" && peaksRaw.length) {
+      try {
+        const parsed = JSON.parse(peaksRaw);
+        if (Array.isArray(parsed) && parsed.every((n: any) => typeof n === "number" && n >= 0 && n <= 1)) {
+          // Bound payload size defensively
+          peaks = parsed.slice(0, 256);
+        }
+      } catch {
+        // ignore malformed peaks; proceed without it
+      }
+    }
 
     // Validate required fields
     if (!audioFile || !conversationId || !duration || !toUserId) {
@@ -77,11 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Database operations
-    let client = convexClient;
-    if (!client) {
-      client = getConvexClient();
-    }
-
+    let client = convexClient || getConvexClient();
     if (!client) {
       return errorResponse("Database connection failed", 500);
     }
@@ -149,10 +164,26 @@ export async function POST(request: NextRequest) {
       duration,
       fileSize: audioFile.size,
       mimeType: audioFile.type,
+      peaks, // optional normalized 0..1 array
     });
 
     if (!message) {
       return errorResponse("Failed to create voice message record", 500);
+    }
+
+    // Emit SSE message_sent for voice message
+    try {
+      const { eventBus } = await import("@/lib/eventBus");
+      eventBus.emit(conversationId, {
+        type: "message_sent",
+        message,
+      });
+    } catch (eventError) {
+      console.warn("Voice message SSE emit failed", {
+        scope: "voice.upload",
+        correlationId,
+        message: eventError instanceof Error ? eventError.message : String(eventError),
+      });
     }
 
     return successResponse({
@@ -160,7 +191,9 @@ export async function POST(request: NextRequest) {
       messageId: message._id,
       duration,
       storageId,
-    });
+      correlationId,
+      durationMs: Date.now() - startedAt,
+    }, 200);
   } catch (error) {
     console.error("Error uploading voice message:", error);
     return errorResponse("Failed to upload voice message", 500);

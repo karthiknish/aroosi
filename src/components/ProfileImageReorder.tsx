@@ -1,11 +1,15 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import {
   DndContext,
   closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
+  KeyboardSensor,
+  DragOverlay,
+  useDndMonitor,
   type DragEndEvent,
+  type DragStartEvent,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
@@ -36,26 +40,34 @@ type Props = {
   isAdmin?: boolean;
   profileId?: string;
   loading?: boolean;
+  /**
+   * When true, skip server persistence and only invoke onReorder.
+   * Use this for pre-upload/local-only ordering (e.g., inside ProfileCreationModal).
+   */
+  preUpload?: boolean;
 };
 
-const SortableImage = ({
+const SortableImageBase = ({
   img,
+  dndId,
   onDeleteImage,
   onOptimisticDelete,
   isDragging = false,
   imageIndex,
   setModalState,
+  onSetMain,
 }: {
   img: ImageType;
+  dndId: string;
   onDeleteImage?: (id: string) => void;
   onOptimisticDelete?: (id: string) => void;
   isDragging?: boolean;
-  allImages: ImageType[];
   imageIndex: number;
   setModalState: React.Dispatch<
     React.SetStateAction<{ open: boolean; index: number }>
   >;
-}) => {
+  onSetMain?: (dndId: string) => void;
+}): React.ReactElement => {
   const {
     attributes,
     listeners,
@@ -63,7 +75,7 @@ const SortableImage = ({
     transform,
     transition,
     isDragging: dndDragging,
-  } = useSortable({ id: img.id, resizeObserverConfig: undefined });
+  } = useSortable({ id: dndId, resizeObserverConfig: undefined });
 
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -76,6 +88,7 @@ const SortableImage = ({
     zIndex: isDragging || dndDragging ? 1 : "auto",
     width: "100%",
     height: "100%",
+    willChange: "transform",
   };
 
   return (
@@ -83,23 +96,60 @@ const SortableImage = ({
       ref={setNodeRef}
       style={style}
       className="relative group"
-      {...attributes}
-      {...listeners}
+      aria-grabbed={isDragging || dndDragging ? "true" : "false"}
+      // Disable drag interactions while parent is persisting reorder
+      {...(typeof (attributes as any)?.role !== "undefined" ? attributes : {})}
+      {...(isDragging ? {} : {})}
     >
       <div className="absolute -left-2 -top-2 p-2 cursor-grab active:cursor-grabbing z-10 opacity-100 group-hover:opacity-100 transition-opacity">
         <Grip className="w-4 h-4 text-gray-400" />
       </div>
+      {/* Set as main (move to index 0) */}
+      {onSetMain && imageIndex !== 0 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSetMain(dndId);
+          }}
+          className="absolute left-1 bottom-1 bg-white/85 text-gray-800 border border-gray-300 rounded px-1.5 py-0.5 text-[11px] hover:bg-white z-20"
+          aria-label="Set as main"
+        >
+          Set main
+        </button>
+      )}
       {!loaded && !error && (
         <div className="absolute inset-0 animate-pulse bg-gray-100 rounded-lg" />
       )}
       {error ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200">
-          <span className="text-gray-400 text-sm">Failed to load image</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 rounded-lg border border-gray-200 gap-2">
+          <span className="text-gray-500 text-xs">Failed to load image</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              // retry: clear flag and reattempt by swapping src with cache-busting param
+              setError(false);
+              setLoaded(false);
+              try {
+                const imgEl = new Image();
+                const cacheBust = (url: string) =>
+                  url ? (url.includes("?") ? `${url}&r=${Date.now()}` : `${url}?r=${Date.now()}`) : url;
+                imgEl.src = cacheBust(img.url);
+              } catch {}
+            }}
+            className="px-2 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-50"
+          >
+            Retry
+          </button>
+          {/* Optional small fallback thumbnail area */}
+          <div className="w-10 h-10 bg-gray-200 rounded" aria-hidden="true" />
         </div>
       ) : (
         <img
           src={img.url}
           alt="Profile"
+          loading="lazy"
           className={
             "w-full h-full object-cover rounded-lg border border-gray-200 cursor-pointer " +
             (loaded ? "opacity-100" : "opacity-0")
@@ -107,6 +157,14 @@ const SortableImage = ({
           onLoad={() => setLoaded(true)}
           onError={() => setError(true)}
           onClick={() => setModalState({ open: true, index: imageIndex })}
+        />
+      )}
+      {/* Disable drag handles during server persistence by omitting listeners */}
+      {!isDragging && (
+        <div
+          // Provide the drag listeners here conditionally; parent passes a prop via context using isReordering
+          {...listeners}
+          className="absolute inset-0 z-0 pointer-events-none"
         />
       )}
       {onDeleteImage && (
@@ -148,10 +206,33 @@ export function ProfileImageReorder({
   onDeleteImage,
   onOptimisticDelete,
   loading = false,
+  preUpload = false,
 }: Props) {
   const { token } = useAuthContext();
   const [isReordering, setIsReordering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Controlled/uncontrolled mode fallback to avoid drift when parent doesn't reconcile promptly.
+  // If onReorder is not provided, maintain an internal copy of images for rendering.
+  const [internalImages, setInternalImages] = useState<ImageType[] | null>(null);
+
+  // Keep internal images in sync with prop updates when not actively reordering.
+  React.useEffect(() => {
+    if (!onReorder) {
+      setInternalImages(images);
+    }
+  }, [images, onReorder]);
+
+  const currentImages: ImageType[] = internalImages ?? images;
+
+  // Keep a snapshot of previous list to avoid stale closures for rollback on server errors
+  const prevImagesRef = useRef<ImageType[]>(currentImages);
+
+  React.useEffect(() => {
+    prevImagesRef.current = currentImages;
+  }, [currentImages]);
+
   // Modal state for swiping through images
   const [modalState, setModalState] = useState<{
     open: boolean;
@@ -161,13 +242,58 @@ export function ProfileImageReorder({
     index: 0,
   });
 
+  // Accessibility: add KeyboardSensor and improve touch activation constraints
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        // Slightly higher distance to prevent accidental drags
+        distance: 8,
+        // Add press delay for touch to reduce accidental drags
+        delay: 150,
+        tolerance: 5,
       },
-    })
+    }),
+    useSensor(KeyboardSensor)
   );
+
+  // Track drag start to render DragOverlay thumbnail
+  useDndMonitor({
+    onDragStart: (evt: DragStartEvent) => {
+      if (!evt.active?.id) return;
+      setActiveId(String(evt.active.id));
+    },
+    onDragEnd: () => setActiveId(null),
+    onDragCancel: () => setActiveId(null),
+  });
+
+  // Build a stable dnd-id per image with collision handling
+  const dndIds: string[] = useMemo(() => {
+    const seen = new Map<string, number>();
+    return currentImages.map((img, idx) => {
+      // Base id selection order: id -> storageId -> hashed url -> fallback index
+      let base = String(img.id ?? "");
+      if (!base) base = String(img.storageId ?? "");
+      if (!base) {
+        try {
+          // Deterministic short hash from URL for client-only items
+          const url = String(img.url ?? "");
+          let h = 0;
+          for (let i = 0; i < url.length; i++) {
+            h = (h * 31 + url.charCodeAt(i)) | 0;
+          }
+          base = `tmp-${Math.abs(h)}`;
+        } catch {
+          base = "";
+        }
+      }
+      if (!base) base = `idx-${idx}`;
+
+      // De-duplicate: append suffix if already seen
+      const count = seen.get(base) ?? 0;
+      seen.set(base, count + 1);
+      return count === 0 ? base : `${base}__${count}`;
+    });
+  }, [images]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -180,17 +306,52 @@ export function ProfileImageReorder({
       const activeId = String(active.id as UniqueIdentifier);
       const overId = String(over.id as UniqueIdentifier);
 
-      const oldIndex = images.findIndex((img) => String(img.id) === activeId);
-      const newIndex = images.findIndex((img) => String(img.id) === overId);
+      const idxOf = (id: string) => dndIds.findIndex((x) => x === id);
+
+      const oldIndex = idxOf(activeId);
+      const newIndex = idxOf(overId);
       if (oldIndex === -1 || newIndex === -1) return;
 
-      const newOrdered = arrayMove(images, oldIndex, newIndex);
-      const newStorageOrder = newOrdered.map((img) =>
-        img.storageId ? img.storageId : String(img.id)
-      );
+      const newOrdered = arrayMove(currentImages, oldIndex, newIndex);
 
       // Optimistic update: immediately update UI
-      if (onReorder) onReorder(newOrdered);
+      if (onReorder) {
+        onReorder(newOrdered);
+      } else {
+        setInternalImages(newOrdered);
+      }
+
+      // Capture snapshot for potential rollback
+      const snapshotForRollback = prevImagesRef.current;
+
+      // Announce for screen readers
+      try {
+        const msg = `Moved image ${oldIndex + 1} to position ${newIndex + 1}`;
+        if (liveRef.current) {
+          liveRef.current.textContent = msg;
+          // Clear message after a tick to allow subsequent announcements
+          setTimeout(() => {
+            if (liveRef.current) liveRef.current.textContent = "";
+          }, 750);
+        }
+      } catch {}
+
+      // Pre-upload mode: do not persist to server
+      if (preUpload) return;
+
+      // If modal is open, keep it anchored to the same image by id, recompute index
+      if (modalState?.open) {
+        const anchorId =
+          String(currentImages[oldIndex]?.id ?? currentImages[oldIndex]?.storageId ?? "");
+        const newIdxForAnchor = newOrdered.findIndex(
+          (im) => String(im.id ?? im.storageId ?? "") === anchorId
+        );
+        // Safely update modal index
+        setModalState((prev) => ({
+          ...prev,
+          index: newIdxForAnchor >= 0 ? newIdxForAnchor : 0,
+        }));
+      }
 
       try {
         setIsReordering(true);
@@ -200,7 +361,24 @@ export function ProfileImageReorder({
           throw new Error("Authentication required. Please sign in again.");
         }
 
-        await updateImageOrder({ token, userId, imageIds: newStorageOrder });
+        // Enforce storageId-only ordering for server persistence. If any are missing, skip and rollback.
+        const storageIds = newOrdered
+          .map((img) => img.storageId)
+          .filter((sid): sid is string => typeof sid === "string" && sid.length > 0);
+
+        if (storageIds.length !== newOrdered.length) {
+          showErrorToast(null, "Cannot update order yet. Some images are still pending upload.");
+          // Roll back optimistic update since we didn't persist
+          if (onReorder) {
+            onReorder(snapshotForRollback);
+          } else {
+            setInternalImages(snapshotForRollback);
+          }
+          setIsReordering(false);
+          return;
+        }
+
+        await updateImageOrder({ token, userId, imageIds: storageIds });
 
         showSuccessToast("Image order updated successfully");
       } catch (err) {
@@ -211,13 +389,20 @@ export function ProfileImageReorder({
         showErrorToast(null, `Failed to update order: ${errorMessage}`);
 
         // Revert optimistic update on error
-        if (onReorder) onReorder(images);
+        if (onReorder) {
+          onReorder(snapshotForRollback);
+        } else {
+          setInternalImages(snapshotForRollback);
+        }
       } finally {
         setIsReordering(false);
       }
     },
-    [loading, isReordering, images, onReorder, token, userId]
+    [loading, isReordering, currentImages, onReorder, token, userId, preUpload, dndIds]
   );
+
+  // ARIA live region for announcing reorder
+  const liveRef = useRef<HTMLDivElement | null>(null);
 
   if (loading) {
     return (
@@ -251,34 +436,110 @@ export function ProfileImageReorder({
   }));
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" aria-roledescription="sortable" aria-label="Reorder profile images">
+      {/* Live region for reorder announcements */}
+      <div
+        ref={liveRef}
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={images.map((img) => img.id)}
+          items={dndIds}
           strategy={horizontalListSortingStrategy}
         >
           <div className="flex flex-wrap gap-4">
-            {images.map((img, idx) => (
-              <div
-                key={`${img.id ?? "img"}-${idx}`}
-                style={{ width: 100, height: 100 }}
-              >
-                <SortableImage
-                  img={img}
-                  onDeleteImage={onDeleteImage}
-                  onOptimisticDelete={onOptimisticDelete}
-                  allImages={images}
-                  imageIndex={idx}
-                  setModalState={setModalState}
-                />
-              </div>
-            ))}
+            {currentImages.map((img, idx) => {
+              const dndId = dndIds[idx] ?? `idx-${idx}`;
+              return (
+                <div
+                  key={dndId}
+                  style={{ width: 100, height: 100 }}
+                  className="rounded-lg"
+                >
+                  <div
+                    className={
+                      "w-full h-full rounded-lg " +
+                      // simple drop placeholder effect via outline when a drag is active
+                      (activeId && activeId !== dndId
+                        ? "outline outline-1 outline-dashed outline-gray-300"
+                        : "")
+                    }
+                  >
+                    <SortableImageBase
+                      img={img}
+                      dndId={dndId}
+                      onDeleteImage={onDeleteImage}
+                      onOptimisticDelete={onOptimisticDelete}
+                      imageIndex={idx}
+                      setModalState={setModalState}
+                      onSetMain={(chosenId: string) => {
+                        const from = dndIds.findIndex((x) => x === chosenId);
+                        if (from <= 0) return;
+                        const reordered = arrayMove(currentImages, from, 0);
+                        if (onReorder) {
+                          onReorder(reordered);
+                        } else {
+                          setInternalImages(reordered);
+                        }
+                        // Persist if not preUpload
+                        if (!preUpload) {
+                          (async () => {
+                            try {
+                              if (!token) throw new Error("Authentication required. Please sign in again.");
+                              const newOrderIds = reordered.map((im) =>
+                                im.storageId ? im.storageId : String(im.id)
+                              );
+                              await updateImageOrder({ token, userId, imageIds: newOrderIds });
+                              showSuccessToast("Set as main");
+                            } catch (e) {
+                              const msg = e instanceof Error ? e.message : "Failed to set main";
+                              showErrorToast(null, msg);
+                              // rollback
+                              if (onReorder) {
+                                onReorder(currentImages);
+                              } else {
+                                setInternalImages(currentImages);
+                              }
+                            }
+                          })();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </SortableContext>
+
+        {/* Drag overlay preview to reduce layout jitter */}
+        <DragOverlay adjustScale={true}>
+          {activeId ? (
+            (() => {
+              const idx = dndIds.findIndex((x) => x === activeId);
+              const img = currentImages[idx];
+              if (!img) return null;
+              return (
+                <div
+                  style={{ width: 100, height: 100 }}
+                  className="rounded-lg overflow-hidden shadow-lg"
+                >
+                  <img
+                    src={img.url}
+                    alt="Dragging"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              );
+            })()
+          ) : null}
+        </DragOverlay>
       </DndContext>
       <ProfileImageModal
         isOpen={modalState.open}

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
+// Extract bearer token from header
 function getToken(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (!auth) return null;
@@ -48,6 +50,29 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Subscription-aware rate limiting for unread counts polling
+    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      req,
+      token,
+      userId,
+      "unread_counts",
+      60000
+    );
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: rate.error || "Rate limit exceeded",
+          correlationId,
+          plan: rate.plan,
+          limit: rate.limit,
+          remaining: rate.remaining,
+          resetTime: new Date(rate.resetTime).toISOString(),
+        },
+        { status: 429 }
+      );
+    }
+
     const convex = getConvexClient();
     if (!convex) {
       console.error("Matches unread GET convex not configured", {
@@ -85,7 +110,7 @@ export async function GET(req: NextRequest) {
 
     if (!counts) {
       return NextResponse.json(
-        { success: false, error: "Failed", correlationId },
+        { success: false, error: "Failed to fetch unread counts", correlationId },
         { status: 500 }
       );
     }

@@ -10,8 +10,23 @@ import {
   logSecurityEvent,
 } from "@/lib/utils/securityHeaders";
 
+import { SUBSCRIPTION_PLANS } from "../../../../constants";
+
 interface RequestBody {
   planId: "premium" | "premiumPlus";
+}
+
+function isValidPlanId(planId: string): boolean {
+  // Validate against server-side source of truth
+  const allowed = new Set<string>([
+    "premium",
+    "premiumPlus",
+  ]);
+  // Additionally ensure the plan exists in SUBSCRIPTION_PLANS
+  const existsInConstants =
+    (planId === "premium" && SUBSCRIPTION_PLANS.PREMIUM) ||
+    (planId === "premiumPlus" && SUBSCRIPTION_PLANS.PREMIUM_PLUS);
+  return allowed.has(planId) && Boolean(existsInConstants);
 }
 
 export async function POST(req: NextRequest) {
@@ -43,7 +58,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("Missing or invalid body", 400);
     }
     const { planId } = body;
-    if (!planId || !["premium", "premiumPlus"].includes(planId)) {
+    if (!planId || !isValidPlanId(planId)) {
       return errorResponse("Invalid or missing planId", 400);
     }
 

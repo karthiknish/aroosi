@@ -18,6 +18,8 @@ import {
   BarChart,
 } from "lucide-react";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
+// Stripe portal helper
+import { openBillingPortal } from "@/lib/utils/stripeUtil";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -150,6 +152,49 @@ const ProfileView: FC<ProfileViewProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
   const { token } = useAuthContext();
+
+  // Small mapping utility for plan labels
+  const planLabel = (id?: string | null) => {
+    if (!id) return "Free";
+    switch (id) {
+      case "free":
+        return "Free";
+      case "premium":
+        return "Premium";
+      case "premiumPlus":
+        return "Premium Plus";
+      default:
+        return String(id).charAt(0).toUpperCase() + String(id).slice(1);
+    }
+  };
+
+  // Format annual income (GBP by default)
+  const formatCurrency = (v?: string | number) => {
+    if (v === undefined || v === null || v === "") return "-";
+    const n =
+      typeof v === "number"
+        ? v
+        : Number(String(v).replace(/[^\d.-]/g, ""));
+    if (!Number.isFinite(n)) return String(v);
+    try {
+      return new Intl.NumberFormat("en-GB", {
+        style: "currency",
+        currency: "GBP",
+        maximumFractionDigits: 0,
+      }).format(n);
+    } catch {
+      return String(v);
+    }
+  };
+
+  const handleOpenBillingPortal = async () => {
+    try {
+      await openBillingPortal();
+    } catch (e) {
+      // Fallback to subscription page if portal not available
+      router.push("/subscription");
+    }
+  };
 
   // Format images for the image reorder component
   const imageList = React.useMemo(() => {
@@ -332,7 +377,39 @@ const ProfileView: FC<ProfileViewProps> = ({
                           />
                         ))}
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="w-full">
+                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-white/60">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                              <Camera className="h-6 w-6 text-gray-400" />
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              You haven’t added any photos yet
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Add 2–6 clear photos to get more matches
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                              <Button
+                                onClick={() => router.push("/profile/edit/images")}
+                                className="bg-pink-600 hover:bg-pink-700 text-white"
+                                size="sm"
+                              >
+                                Add Photos
+                              </Button>
+                              <Button
+                                onClick={() => router.push("/profile/edit")}
+                                variant="outline"
+                                size="sm"
+                              >
+                                Edit Profile
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </DisplaySection>
 
@@ -445,6 +522,20 @@ const ProfileView: FC<ProfileViewProps> = ({
                   />
                 </DisplaySection>
 
+                {/* Cultural Background - added for parity with onboarding/edit */}
+                <DisplaySection
+                  title={
+                    <span className="flex items-center gap-2">
+                      <UserCircle className="h-5 w-5 text-accent" />
+                      Cultural Background
+                    </span>
+                  }
+                >
+                  <ProfileDetailView label="Mother Tongue" value={profileData.motherTongue} />
+                  <ProfileDetailView label="Religion" value={profileData.religion} />
+                  <ProfileDetailView label="Ethnicity" value={profileData.ethnicity} />
+                </DisplaySection>
+
                 <DisplaySection
                   title={
                     <span className="flex items-center gap-2">
@@ -464,7 +555,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   />
                   <ProfileDetailView
                     label="Annual Income"
-                    value={profileData.annualIncome}
+                    value={formatCurrency(profileData.annualIncome)}
                   />
                 </DisplaySection>
 
@@ -519,8 +610,8 @@ const ProfileView: FC<ProfileViewProps> = ({
                   }
                 >
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-md font-semibold capitalize">
-                      {profileData.subscriptionPlan || "Free"}
+                    <span className="text-md font-semibold">
+                      {planLabel(profileData.subscriptionPlan)}
                     </span>
 
                     {/* Action buttons based on plan */}
@@ -548,7 +639,8 @@ const ProfileView: FC<ProfileViewProps> = ({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => router.push("/subscription")}
+                          onClick={handleOpenBillingPortal}
+                          title="Open Stripe Billing Portal"
                         >
                           Manage
                         </Button>
@@ -559,7 +651,8 @@ const ProfileView: FC<ProfileViewProps> = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => router.push("/subscription")}
+                        onClick={handleOpenBillingPortal}
+                        title="Open Stripe Billing Portal"
                       >
                         Manage Subscription
                       </Button>

@@ -274,6 +274,8 @@ export default defineSchema({
     duration: v.optional(v.number()), // duration in seconds for voice messages
     fileSize: v.optional(v.number()), // file size in bytes
     mimeType: v.optional(v.string()), // MIME type for audio files
+    // NEW: normalized waveform peaks for voice playback UI
+    peaks: v.optional(v.array(v.number())),
     createdAt: v.float64(),
     readAt: v.optional(v.float64()), // timestamp when recipient read the message
   })

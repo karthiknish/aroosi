@@ -3,12 +3,15 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
 interface TypingIndicatorProps {
   userName?: string;
+  avatarUrl?: string;
   className?: string;
 }
 
-export function TypingIndicator({ userName = "Someone", className }: TypingIndicatorProps) {
+export function TypingIndicator({ userName = "Someone", avatarUrl, className }: TypingIndicatorProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -18,6 +21,13 @@ export function TypingIndicator({ userName = "Someone", className }: TypingIndic
     >
       <div className="max-w-[280px] px-4 py-3 rounded-2xl rounded-bl-md bg-gray-100 shadow-sm">
         <div className="flex items-center gap-2">
+          <Avatar className="h-5 w-5">
+            {avatarUrl ? (
+              <AvatarImage src={avatarUrl} alt={userName} />
+            ) : (
+              <AvatarFallback>{userName[0]}</AvatarFallback>
+            )}
+          </Avatar>
           <span className="text-xs text-gray-500">{userName} is typing</span>
           <div className="flex gap-1">
             {[0, 1, 2].map((i) => (

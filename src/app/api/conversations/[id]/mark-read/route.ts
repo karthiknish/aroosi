@@ -3,6 +3,8 @@ import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { requireUserToken } from "@/app/api/_utils/auth";
+import { validateConversationId } from "@/lib/utils/messageValidation";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -34,6 +36,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rate limit read operations with subscription-aware limiter
+    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      request,
+      token,
+      userId,
+      "message_read",
+      60000
+    );
+    if (!rate.allowed) {
+      console.warn("Conversation mark-read rate limited", {
+        scope: "conversations.mark_read",
+        type: "rate_limit",
+        correlationId,
+        statusCode: 429,
+        durationMs: Date.now() - startedAt,
+        plan: rate.plan,
+        limit: rate.limit,
+        remaining: rate.remaining,
+      });
+      return NextResponse.json(
+        {
+          error: rate.error || "Rate limit exceeded",
+          correlationId,
+          plan: rate.plan,
+          limit: rate.limit,
+          remaining: rate.remaining,
+          resetTime: new Date(rate.resetTime).toISOString(),
+        },
+        { status: 429 }
+      );
+    }
+
     const convex = getConvexClient();
     if (!convex) {
       console.error("Conversation mark-read convex not configured", {
@@ -61,7 +95,23 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (!validateConversationId(conversationId)) {
+      return NextResponse.json(
+        { error: "Invalid conversationId format", correlationId },
+        { status: 400 }
+      );
+    }
 
+    // Ensure the user is part of the conversation (legacy format check)
+    const parts = conversationId.split("_");
+    if (!parts.includes(userId)) {
+      return NextResponse.json(
+        { error: "Unauthorized access to conversation", correlationId },
+        { status: 403 }
+      );
+    }
+
+    const readAt = Date.now();
     const result = await convex
       .mutation(api.messages.markConversationRead, {
         conversationId,
@@ -86,6 +136,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Publish SSE read event for subscribers
+    try {
+      const { eventBus } = await import("@/lib/eventBus");
+      eventBus.emit(conversationId, {
+        type: "message_read",
+        conversationId,
+        userId,
+        readAt,
+      });
+    } catch (eventError) {
+      console.warn("Conversation mark-read broadcast warn", {
+        scope: "conversations.mark_read",
+        type: "broadcast_warn",
+        message: eventError instanceof Error ? eventError.message : String(eventError),
+        correlationId,
+      });
+    }
+
     console.info("Conversation mark-read success", {
       scope: "conversations.mark_read",
       type: "success",
@@ -94,7 +162,7 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     return NextResponse.json(
-      { success: true, result, correlationId },
+      { success: true, conversationId, userId, readAt, correlationId },
       { status: 200 }
     );
   } catch (error) {

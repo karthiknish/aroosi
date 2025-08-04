@@ -4,16 +4,6 @@ import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import {
   Dialog,
@@ -21,43 +11,57 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useStepValidation } from "@/hooks/useStepValidation";
+// Step components (extracted)
+import {
+  Step1Basic,
+  Step2LocationPhysical,
+  Step3CulturalLifestyle,
+  Step4EducationCareer,
+  Step5PartnerPreferences,
+  Step6Photos,
+  Step7AccountCreation,
+} from "./steps/StepComponents";
 
 import { useAuth } from "@/components/AuthProvider";
-import { LocalImageUpload } from "@/components/LocalImageUpload";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  MOTHER_TONGUE_OPTIONS,
-  RELIGION_OPTIONS,
-  ETHNICITY_OPTIONS,
-} from "@/lib/constants/languages";
+
 import { COUNTRIES } from "@/lib/constants/countries";
-import CustomSignupForm from "@/components/auth/CustomSignupForm";
+
 import {
   submitProfile,
   getCurrentUserWithProfile,
 } from "@/lib/profile/userProfileApi";
-import {
-  getImageUploadUrl,
-  saveImageMeta,
-  updateImageOrder,
-} from "@/lib/utils/imageUtil";
+
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import {
-  clearAllOnboardingData,
-  STORAGE_KEYS,
-} from "@/lib/utils/onboardingStorage";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 import type { ImageType } from "@/types/image";
-import { cmToFeetInches } from "@/lib/utils/height";
+// Centralize helpers (static imports for always-used helpers)
+import {
+  computeNextStep,
+  normalizeStartStep,
+  focusFirstErrorField,
+  normalizeStepData,
+  computeMissingRequiredFields,
+  normalizePhoneE164Like,
+  filterEmptyValues,
+  buildProfilePayload,
+  // Centralized image helpers
+  requestImageUploadUrl,
+  confirmImageMetadata,
+  validateBlobSize,
+  safeRevokeObjectURL,
+  deriveSafeImageMimeType,
+  fetchBlobFromObjectURL,
+  summarizeImageUploadErrors,
+  persistServerImageOrder,
+  persistPendingImageOrderToLocal,
+  safeNavigate,
+  createOrGetUploadManager,
+  createUploadManager,
+  uploadWithProgress,
+} from "./profileCreationHelpers";
 
 // Enhanced validation imports
-import { ValidatedInput } from "@/components/ui/ValidatedInput";
-import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
-import { ValidatedTextarea } from "@/components/ui/ValidatedTextarea";
-import { ErrorSummary } from "@/components/ui/ErrorSummary";
-import { SimpleProgress } from "@/components/ui/ProgressIndicator";
-import { useStepValidation } from "@/hooks/useStepValidation";
-import { stepSchemaMapping } from "@/lib/validation/profileValidation";
 
 interface ProfileCreationData {
   profileFor: string;
@@ -181,6 +185,8 @@ export function ProfileCreationModal({
 
   // Step state is now only controlled by contextStep and navigation handlers
   // Ensure step is always a sane number between 1 and 7
+  // Note: Hero gating collects required basics; normalizeStartStep(hasBasicData) below
+  // provides idempotent normalization if context updates arrive late or after refresh.
   const step =
     Number.isFinite(contextStep) && contextStep >= 1 && contextStep <= 7
       ? contextStep
@@ -188,6 +194,26 @@ export function ProfileCreationModal({
   const setStep = (newStep: number) => {
     const clamped = Math.max(1, Math.min(7, Math.floor(Number(newStep) || 1)));
     setContextStep(clamped);
+    // Persist PROFILE_CREATION snapshot on step transitions (SSR-guarded)
+    try {
+      if (typeof window !== "undefined") {
+        const snapshot = {
+          step: clamped,
+          data: {
+            fullName: (formData as any)?.fullName ?? "",
+            dateOfBirth: (formData as any)?.dateOfBirth ?? "",
+            phoneNumber: (formData as any)?.phoneNumber ?? "",
+            city: (formData as any)?.city ?? "",
+            height: (formData as any)?.height ?? "",
+            maritalStatus: (formData as any)?.maritalStatus ?? "",
+          },
+        };
+        window.localStorage.setItem(
+          "PROFILE_CREATION",
+          JSON.stringify(snapshot)
+        );
+      }
+    } catch {}
   };
 
   console.log("Starting step variables:", {
@@ -227,12 +253,12 @@ export function ProfileCreationModal({
   // For step 2 specifically, ensure height is always normalized to "<cm> cm".
   const validationData = React.useMemo(() => {
     if (step !== 2) return formData;
-    const normalizedHeight =
+    const normalized =
       typeof formData.height === "string" &&
       /^\d{2,3}$/.test(formData.height.trim())
         ? `${formData.height.trim()} cm`
         : formData.height;
-    return { ...formData, height: normalizedHeight };
+    return { ...formData, height: normalized };
   }, [formData, step]);
 
   const stepValidation = useStepValidation({
@@ -250,17 +276,16 @@ export function ProfileCreationModal({
   // Custom close handler that clears localStorage
   const handleClose = useCallback(() => {
     try {
-      // Clear all onboarding data from localStorage
+      // Clear via dynamic import to avoid SSR/window coupling on build
+      const { clearAllOnboardingData } = require("./profileCreationHelpers");
       clearAllOnboardingData();
-
-      // Reset the wizard context
       resetWizard();
-
-      console.log("Profile creation modal closed - localStorage cleared");
+      console.log(
+        "Profile creation modal closed - onboarding data cleared and wizard reset"
+      );
     } catch (error) {
-      console.error("Error clearing localStorage on modal close:", error);
+      console.error("Error on modal close:", error);
     } finally {
-      // Always call the original onClose
       onClose();
     }
   }, [resetWizard, onClose]);
@@ -284,18 +309,18 @@ export function ProfileCreationModal({
   );
 
   const handleProfileImagesChange = useCallback(
-    (imgs: (string | ImageType)[]) => {
+    async (imgs: (string | ImageType)[]) => {
       // Always accept the images and update immediately
       const ids = imgs.map((img) => (typeof img === "string" ? img : img.id));
 
       // Update context immediately
       handleInputChange("profileImageIds", ids);
 
-      // Store in localStorage for persistence using STORAGE_KEYS
+      // Store in localStorage for persistence using helper
       try {
-        localStorage.setItem(STORAGE_KEYS.PENDING_IMAGES, JSON.stringify(ids));
+        persistPendingImageOrderToLocal(ids);
       } catch (err) {
-        console.warn("Unable to store images in localStorage", err);
+        console.warn("Unable to store images locally", err);
       }
 
       // Extract ImageType objects for later upload
@@ -310,15 +335,12 @@ export function ProfileCreationModal({
   // Enhanced validation function using the step validation hook
   const validateStep = async () => {
     const result = await stepValidation.validateCurrentStep();
-
     if (!result.isValid) {
       const summary = stepValidation.getValidationSummary();
-      // Only show toast on explicit Next click; inline errors are visible
       showErrorToast(null, summary.summary);
       console.log("Validation errors:", summary);
       return false;
     }
-
     return true;
   };
 
@@ -359,39 +381,16 @@ export function ProfileCreationModal({
       return;
     }
 
-    // For step 2 (Location & Physical), ensure values conform before validation
+    // For step 2 (Location & Physical), normalize via helper before validation
     if (step === 2) {
-      console.log("[Next][step2] pre-normalize start", {
-        heightRaw: formData.height,
-        cityRaw: formData.city,
-        maritalStatus: formData.maritalStatus,
-      });
-
-      // Normalize height (store normalized for consistency)
-      if (typeof formData.height === "string") {
-        const raw = formData.height.trim();
-        if (/^\d{2,3}$/.test(raw)) {
-          handleInputChange("height", `${raw} cm`);
-          console.log("[Next][step2] normalized height ->", `${raw} cm`);
-        }
+      const normalized = normalizeStepData(step, formData);
+      if (normalized.height !== formData.height) {
+        handleInputChange("height", normalized.height as string);
       }
-      // Trim city
-      if (typeof formData.city === "string") {
-        const trimmedCity = formData.city.trim();
-        if (trimmedCity !== formData.city) {
-          handleInputChange("city", trimmedCity);
-          console.log("[Next][step2] trimmed city ->", trimmedCity);
-        }
+      if (normalized.city !== formData.city) {
+        handleInputChange("city", normalized.city as string);
       }
-
-      // Force a tick to let context flush before validation
       await new Promise((r) => setTimeout(r, 0));
-      console.log("[Next][step2] post-flush snapshot", {
-        city: (document.getElementById("city") as HTMLInputElement | null)
-          ?.value,
-        height: formData.height,
-        maritalStatus: formData.maritalStatus,
-      });
     }
 
     console.log("[Next] validating step", step);
@@ -408,18 +407,11 @@ export function ProfileCreationModal({
       console.log("[Next] Step validation failed. Not proceeding.");
       // Attempt to guide user by focusing first missing field
       try {
-        const missingOrder = ["city", "height", "maritalStatus"];
-        for (const field of missingOrder) {
-          const err = stepValidation.getFieldError(field);
-          if (err) {
-            console.log("[Next] focusing field with error:", field, err);
-            const el = document.getElementById(field);
-            if (el) {
-              (el as HTMLElement).focus();
-              break;
-            }
-          }
-        }
+        focusFirstErrorField(stepValidation.getFieldError, [
+          "city",
+          "height",
+          "maritalStatus",
+        ]);
       } catch (e) {
         console.log("[Next] focus guidance failed:", e);
       }
@@ -432,17 +424,30 @@ export function ProfileCreationModal({
 
     console.log("[Next] Step validation passed.");
 
-    // Advance to next step; new mapping sets 3 = Cultural, 4 = Education, 5 = Preferences, 6 = Photos, 7 = Account
+    // Advance to next step via helper
     if (step < 7) {
-      const next = step + 1;
+      const next = computeNextStep({
+        step,
+        hasBasicData: !!hasBasicData,
+        direction: "next",
+        min: 1,
+        max: 7,
+      });
       console.log("[Next] advancing to step:", next);
       setStep(next);
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (step > 1) {
-      setStep(step - 1);
+      const prev = computeNextStep({
+        step,
+        hasBasicData: !!hasBasicData,
+        direction: "back",
+        min: 1,
+        max: 7,
+      });
+      setStep(prev);
     }
   };
 
@@ -450,20 +455,15 @@ export function ProfileCreationModal({
   const { isAuthenticated, signOut } = useAuth();
 
   // Listen for authentication success (native auth doesn't use popups)
-  // This effect is kept for potential future OAuth integrations
+  // Kept for potential future OAuth integrations
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Verify the message is from our domain
+    function handleMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
-
-      // Check if it's an auth success message
       if (event.data?.type === "auth-success" && event.data?.isAuthenticated) {
         console.log("ProfileCreationModal: Received auth success message");
-        // Refresh auth state
         window.location.reload();
       }
-    };
-
+    }
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
@@ -535,18 +535,19 @@ export function ProfileCreationModal({
             console.warn("Failed to refresh user data:", err);
           }
           try {
-            clearAllOnboardingData();
+            // Use centralized helper to clear onboarding data
+            const {
+              clearAllOnboardingData: __clear,
+            } = require("./profileCreationHelpers");
+            __clear();
           } catch (err) {
             console.warn("Failed to clear onboarding data:", err);
           }
           showSuccessToast("Account created. Finalizing your profile...");
           handleClose();
-          try {
-            router.push("/success");
-          } catch (err) {
-            console.error("Failed to redirect to success page:", err);
-            window.location.href = "/success";
-          }
+          // Centralized navigation helper
+          const { safeNavigate } = await import("./profileCreationHelpers");
+          safeNavigate(router, "/success");
           return;
         }
 
@@ -588,7 +589,7 @@ export function ProfileCreationModal({
           cleanedData,
         });
 
-        // Validate only truly required fields before submission
+        // Validate only truly required fields before submission (via helper)
         const requiredFields = [
           "fullName",
           "dateOfBirth",
@@ -603,10 +604,13 @@ export function ProfileCreationModal({
           "phoneNumber",
         ];
 
-        const missingFields = requiredFields.filter((field) => {
-          const value = cleanedData[field];
-          return !value || (typeof value === "string" && value.trim() === "");
-        });
+        const { computeMissingRequiredFields } = await import(
+          "./profileCreationHelpers"
+        );
+        const { missing: missingFields } = computeMissingRequiredFields(
+          cleanedData as Record<string, unknown>,
+          requiredFields
+        );
 
         if (missingFields.length > 0) {
           console.error(
@@ -627,19 +631,12 @@ export function ProfileCreationModal({
           return;
         }
 
-        // Normalize phone number to E.164-like format before submission
-        const normalizeToE164 = (phone: unknown): string | null => {
-          if (typeof phone !== "string") return null;
-          const cleaned = phone.replace(/[^\d+]/g, "");
-          const digits = cleaned.replace(/\D/g, "");
-          if (digits.length >= 10 && digits.length <= 15) {
-            return `+${digits}`;
-          }
-          return null;
-        };
-
+        // Normalize phone using helper
+        const { normalizePhoneE164Like } = await import(
+          "./profileCreationHelpers"
+        );
         const normalizedPhone =
-          normalizeToE164(cleanedData.phoneNumber as string) ??
+          normalizePhoneE164Like(cleanedData.phoneNumber as string) ??
           (typeof cleanedData.phoneNumber === "string"
             ? cleanedData.phoneNumber
             : "");
@@ -651,23 +648,17 @@ export function ProfileCreationModal({
           }
         } catch {}
 
-        const payload: Partial<import("@/types/profile").ProfileFormValues> = {
-          ...(cleanedData as unknown as import("@/types/profile").ProfileFormValues),
-          profileFor: (cleanedData.profileFor ?? "self") as
-            | "self"
-            | "friend"
-            | "family",
-          dateOfBirth: String(cleanedData.dateOfBirth ?? ""),
-          partnerPreferenceCity: Array.isArray(
-            cleanedData.partnerPreferenceCity
-          )
-            ? (cleanedData.partnerPreferenceCity as string[])
-            : [],
-          email:
-            // user?.primaryEmailAddress?.emailAddress || // Disabled for native auth
-            (cleanedData.email as string) || "",
-          phoneNumber: normalizedPhone,
-        };
+        // Filter empty values via helper for a cleaner payload
+        const { filterEmptyValues, buildProfilePayload } = await import(
+          "./profileCreationHelpers"
+        );
+        const trimmedData = filterEmptyValues(
+          cleanedData as Record<string, unknown>
+        );
+        const payload = buildProfilePayload(
+          trimmedData as Record<string, unknown>,
+          normalizedPhone || undefined
+        );
 
         console.log("Submitting profile with payload:", payload);
         const profileRes = await submitProfile(authToken, payload, "create");
@@ -686,94 +677,209 @@ export function ProfileCreationModal({
 
           // Collect successfully created imageIds in the same order as pendingImages
           const createdImageIds: string[] = [];
-          const failedImages: { name: string; reason: string }[] = [];
+          // Include index for robust diagnostics
+          const failedImages: {
+            index: number;
+            id?: string;
+            name: string;
+            reason: string;
+          }[] = [];
 
-          for (const img of pendingImages) {
+          // Per-image uploads
+          for (let index = 0; index < pendingImages.length; index++) {
+            const img = pendingImages[index];
             try {
               // Validate image before upload
               if (!img.url || !img.url.startsWith("blob:")) {
                 const reason = "Invalid local image URL";
-                console.warn(`${reason}, skipping:`, img);
+                console.warn(`[upload:${index}] ${reason}, skipping`, {
+                  id: img.id,
+                  name: img.fileName || "photo.jpg",
+                });
                 failedImages.push({
+                  index,
+                  id: img.id,
                   name: img.fileName || "photo.jpg",
                   reason,
                 });
                 continue;
               }
 
-              // Fetch the blob from the object URL
+              // Fetch the blob from the object URL via helper (no inline logic kept here)
               let blob: Blob;
               try {
-                const resp = await fetch(img.url);
-                if (!resp.ok) {
-                  const reason = `Failed to read local image (${resp.status})`;
-                  console.error(reason);
+                blob = await fetchBlobFromObjectURL(img.url);
+              } catch (e) {
+                const reason = e instanceof Error ? e.message : "Failed to read local image blob";
+                console.error(`[upload:${index}] ${reason}`, e);
+                failedImages.push({ index, id: img.id, name: img.fileName || "photo.jpg", reason });
+                continue;
+              }
+
+              // Validate file size (max 5MB) using helper
+              const MAX_SIZE = 5 * 1024 * 1024;
+              {
+                const sizeCheck = validateBlobSize(blob, MAX_SIZE);
+                if (!sizeCheck.ok) {
+                  console.warn(`[upload:${index}] ${sizeCheck.reason}`, img.fileName);
                   failedImages.push({
+                    index,
+                    id: img.id,
                     name: img.fileName || "photo.jpg",
-                    reason,
+                    reason: sizeCheck.reason,
                   });
+                  // Revoke object URL early to avoid leaks
+                  safeRevokeObjectURL(img.url);
                   continue;
                 }
-                blob = await resp.blob();
-              } catch (e) {
-                const reason = "Failed to read local image blob";
-                console.error(reason, e);
-                failedImages.push({
-                  name: img.fileName || "photo.jpg",
-                  reason,
-                });
-                continue;
+
+                // Create a safe File from blob using helper
+                const file = (() => {
+                  try {
+                    const { fileFromBlob } = require("./profileCreationHelpers");
+                    return fileFromBlob(blob, img.fileName || "photo.jpg");
+                  } catch {
+                    const safeType = deriveSafeImageMimeType(blob.type);
+                    return new File([blob], img.fileName || "photo.jpg", { type: safeType });
+                  }
+                })();
+
+                // 1) Generate upload URL
+                let uploadUrl: string | null = null;
+                try {
+                  uploadUrl = await requestImageUploadUrl(authToken);
+                } catch (e) {
+                  const reason = e instanceof Error ? e.message : "Failed to get upload URL";
+                  console.error(`[upload:${index}] getImageUploadUrl error:`, e);
+                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  continue;
+                }
+                if (!uploadUrl) {
+                  const reason = "Failed to get upload URL";
+                  console.error(`[upload:${index}] ${reason}`);
+                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  continue;
+                }
+
+                // 2) Upload binary via PUT with progress and cancel support to get { storageId }
+                const mgr = createOrGetUploadManager(createUploadManager);
+                const uploadResp = await uploadWithProgress(uploadUrl as string, file, mgr, img.id);
+
+                if (!uploadResp.ok) {
+                  let errText = uploadResp.statusText;
+                  try {
+                    errText = await uploadResp.text();
+                  } catch {}
+                  const reason = `Upload failed (${uploadResp.status})${errText ? `: ${errText}` : ""}`;
+                  console.error(`[upload:${index}] Upload failed`, uploadResp.status, errText);
+                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  continue;
+                }
+
+                // Parse response -> storageId
+                let storageJson: unknown;
+                try {
+                  storageJson = await uploadResp.json();
+                } catch (e) {
+                  const reason = "Failed to parse upload response";
+                  console.error(`[upload:${index}] ${reason}`, e);
+                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  continue;
+                }
+                const storageId =
+                  typeof storageJson === "object" && storageJson !== null && "storageId" in storageJson
+                    ? (storageJson as { storageId?: string }).storageId
+                    : typeof storageJson === "string"
+                      ? storageJson
+                      : null;
+
+                if (!storageId) {
+                  const reason = "No storageId returned from upload";
+                  console.error(`[upload:${index}] ${reason}`);
+                  failedImages.push({ index, id: img.id, name: file.name, reason });
+                  continue;
+                }
+
+                // 3) Confirm metadata and capture imageId for ordering
+                try {
+                  const meta = await confirmImageMetadata({
+                    token: authToken,
+                    userId,
+                    storageId,
+                    fileName: file.name,
+                    contentType: file.type,
+                    fileSize: file.size,
+                  });
+
+                  if (meta?.imageId) {
+                    createdImageIds.push(meta.imageId);
+                    // Successful upload & metadata saved: revoke the object URL to free memory
+                    safeRevokeObjectURL(img.url);
+                  } else {
+                    const reason = "Server did not return imageId";
+                    console.error(`[upload:${index}] ${reason}`);
+                    failedImages.push({ index, id: img.id, name: file.name, reason });
+                    // Best-effort revoke even on failure
+                    safeRevokeObjectURL(img.url);
+                    continue;
+                  }
+                } catch (e) {
+                  const message = e instanceof Error ? e.message : "Failed to save image metadata";
+                  console.error(`[upload:${index}] saveImageMeta error:`, e);
+                  failedImages.push({ index, id: img.id, name: file.name, reason: message });
+                  // Revoke object URL on failure as well
+                  safeRevokeObjectURL(img.url);
+                  continue;
+                }
               }
 
-              // Validate file size (max 5MB)
-              const MAX_SIZE = 5 * 1024 * 1024;
-              if (blob.size > MAX_SIZE) {
-                const reason = "Image exceeds 5MB";
-                console.warn(reason, img.fileName);
-                failedImages.push({
-                  name: img.fileName || "photo.jpg",
-                  reason,
-                });
-                continue;
-              }
-
-              // Derive a safe content type, default to jpeg if unknown/empty
-              const safeType =
-                blob.type &&
-                ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(
-                  blob.type.toLowerCase()
-                )
-                  ? blob.type
-                  : "image/jpeg";
-
-              const file = new File([blob], img.fileName || "photo.jpg", {
-                type: safeType,
-              });
+              // Create file with derived safe MIME type (central helper fileFromBlob)
+              const file = (() => {
+                try {
+                  const { fileFromBlob } = require("./profileCreationHelpers");
+                  return fileFromBlob(blob, img.fileName || "photo.jpg");
+                } catch {
+                  const safeTypeLocal = deriveSafeImageMimeType(blob.type);
+                  return new File([blob], img.fileName || "photo.jpg", { type: safeTypeLocal });
+                }
+              })();
 
               // 1) Generate upload URL
               let uploadUrl: string | null = null;
               try {
-                uploadUrl = await getImageUploadUrl(authToken);
+                uploadUrl = await requestImageUploadUrl(authToken);
               } catch (e) {
                 const reason =
                   e instanceof Error ? e.message : "Failed to get upload URL";
-                console.error("getImageUploadUrl error:", e);
-                failedImages.push({ name: file.name, reason });
+                console.error(`[upload:${index}] getImageUploadUrl error:`, e);
+                failedImages.push({
+                  index,
+                  id: img.id,
+                  name: file.name,
+                  reason,
+                });
                 continue;
               }
               if (!uploadUrl) {
                 const reason = "Failed to get upload URL";
-                console.error(reason);
-                failedImages.push({ name: file.name, reason });
+                console.error(`[upload:${index}] ${reason}`);
+                failedImages.push({
+                  index,
+                  id: img.id,
+                  name: file.name,
+                  reason,
+                });
                 continue;
               }
 
-              // 2) Upload binary via POST and JSON-parse Convex response for storageId
-              const uploadResp = await fetch(uploadUrl, {
-                method: "POST",
-                headers: { "Content-Type": file.type },
-                body: file,
-              });
+              // 2) Upload binary via POST with progress and cancel support to get { storageId }
+              const mgr = createOrGetUploadManager(createUploadManager);
+              const uploadResp = await uploadWithProgress(
+                uploadUrl as string,
+                file,
+                mgr,
+                img.id
+              );
 
               if (!uploadResp.ok) {
                 let errText = uploadResp.statusText;
@@ -781,8 +887,17 @@ export function ProfileCreationModal({
                   errText = await uploadResp.text();
                 } catch {}
                 const reason = `Upload failed (${uploadResp.status})${errText ? `: ${errText}` : ""}`;
-                console.error("Upload failed", uploadResp.status, errText);
-                failedImages.push({ name: file.name, reason });
+                console.error(
+                  `[upload:${index}] Upload failed`,
+                  uploadResp.status,
+                  errText
+                );
+                failedImages.push({
+                  index,
+                  id: img.id,
+                  name: file.name,
+                  reason,
+                });
                 continue;
               }
 
@@ -792,8 +907,13 @@ export function ProfileCreationModal({
                 storageJson = await uploadResp.json();
               } catch (e) {
                 const reason = "Failed to parse upload response";
-                console.error(reason, e);
-                failedImages.push({ name: file.name, reason });
+                console.error(`[upload:${index}] ${reason}`, e);
+                failedImages.push({
+                  index,
+                  id: img.id,
+                  name: file.name,
+                  reason,
+                });
                 continue;
               }
               const storageId =
@@ -807,14 +927,19 @@ export function ProfileCreationModal({
 
               if (!storageId) {
                 const reason = "No storageId returned from upload";
-                console.error(reason);
-                failedImages.push({ name: file.name, reason });
+                console.error(`[upload:${index}] ${reason}`);
+                failedImages.push({
+                  index,
+                  id: img.id,
+                  name: file.name,
+                  reason,
+                });
                 continue;
               }
 
               // 3) Confirm metadata and capture imageId for ordering
               try {
-                const meta = await saveImageMeta({
+                const meta = await confirmImageMetadata({
                   token: authToken,
                   userId,
                   storageId,
@@ -825,10 +950,19 @@ export function ProfileCreationModal({
 
                 if (meta?.imageId) {
                   createdImageIds.push(meta.imageId);
+                  // Successful upload & metadata saved: revoke the object URL to free memory
+                  safeRevokeObjectURL(img.url);
                 } else {
                   const reason = "Server did not return imageId";
-                  console.error(reason);
-                  failedImages.push({ name: file.name, reason });
+                  console.error(`[upload:${index}] ${reason}`);
+                  failedImages.push({
+                    index,
+                    id: img.id,
+                    name: file.name,
+                    reason,
+                  });
+                  // Best-effort revoke even on failure
+                  safeRevokeObjectURL(img.url);
                   continue;
                 }
               } catch (e) {
@@ -836,14 +970,21 @@ export function ProfileCreationModal({
                   e instanceof Error
                     ? e.message
                     : "Failed to save image metadata";
-                console.error("saveImageMeta error:", e);
-                failedImages.push({ name: file.name, reason: message });
+                console.error(`[upload:${index}] saveImageMeta error:`, e);
+                failedImages.push({
+                  index,
+                  id: img.id,
+                  name: file.name,
+                  reason: message,
+                });
+                // Revoke object URL on failure as well
+                safeRevokeObjectURL(img.url);
                 continue;
               }
 
               uploadedCount++;
               console.log(
-                `Successfully uploaded image ${uploadedCount}/${pendingImages.length}`
+                `[upload:${index}] Successfully uploaded image ${uploadedCount}/${pendingImages.length}`
               );
             } catch (err) {
               const message =
@@ -852,6 +993,8 @@ export function ProfileCreationModal({
                   : "Unknown image upload error";
               console.error("Image upload error for", img.fileName, ":", err);
               failedImages.push({
+                index,
+                id: img.id,
                 name: img.fileName || "photo.jpg",
                 reason: message,
               });
@@ -859,21 +1002,22 @@ export function ProfileCreationModal({
             }
           }
 
-          // Show aggregated error toast if some images failed
+          // Show aggregated error toast if some images failed (central summarize already applied mapping friendly)
           if (failedImages.length > 0) {
-            const sample = failedImages
-              .slice(0, 3)
-              .map((f) => `${f.name}: ${f.reason}`)
-              .join("; ");
-            const extra =
-              failedImages.length > 3
-                ? `, and ${failedImages.length - 3} more`
-                : "";
-            showErrorToast(
-              null,
-              `Some images failed to upload (${failedImages.length}). ${sample}${extra}`
-            );
+            const mapped = failedImages.map((f) => ({
+              name: `#${f.index} ${f.name}`,
+              reason: f.reason,
+            }));
+            const msg = summarizeImageUploadErrors(mapped, 3);
+            showErrorToast(null, msg);
           }
+
+          // Cleanup upload manager refs (single call)
+          try {
+            const mgr = (window as any).__profileUploadMgr;
+            if (mgr && typeof mgr.cleanup === "function") mgr.cleanup();
+            (window as any).__profileUploadMgr = undefined;
+          } catch {}
 
           if (uploadedCount > 0) {
             console.log(
@@ -896,7 +1040,7 @@ export function ProfileCreationModal({
                   id.trim().length > 0
               );
               if (filteredOrderIds.length > 1) {
-                await updateImageOrder({
+                await persistServerImageOrder({
                   token: authToken,
                   userId,
                   imageIds: filteredOrderIds,
@@ -920,13 +1064,27 @@ export function ProfileCreationModal({
           // Don't block the success flow for this
         }
 
-        // Clean up all onboarding data
+        // Clean up all onboarding data using centralized helper
         try {
-          clearAllOnboardingData();
+          // Use helper which may evolve without touching modal
+          // Keeping a dynamic import out; simply re-using safeNavigate for redirection below
+          // The actual clearing can also be performed on server success page load if needed
+          // For now, rely on handleClose -> resetWizard and this client-side clear through helper
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const {
+            clearAllOnboardingData: __clear,
+          } = require("./profileCreationHelpers");
+          __clear();
         } catch (err) {
           console.warn("Failed to clear onboarding data:", err);
           // Don't block the success flow for this
         }
+        // Clear PROFILE_CREATION snapshot on success as well
+        try {
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem("PROFILE_CREATION");
+          }
+        } catch {}
 
         // Mark completion flags locally to eliminate stale 'profile not created' toasts
         try {
@@ -939,13 +1097,11 @@ export function ProfileCreationModal({
         showSuccessToast("Profile created successfully!");
         handleClose();
 
-        // Redirect to success page
+        // Redirect to success page (centralized helper)
         try {
-          router.push("/success");
+          safeNavigate(router, "/success");
         } catch (err) {
-          console.error("Failed to redirect to success page:", err);
-          // Fallback: reload the page to ensure clean state
-          window.location.href = "/success";
+          console.error("Failed to navigate to success page:", err);
         }
       } catch (err) {
         console.error("Profile submission error", err);
@@ -1010,7 +1166,13 @@ export function ProfileCreationModal({
   useEffect(() => {
     if (!isOpen) return;
     const handleUnload = () => {
-      clearAllOnboardingData();
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const {
+          clearAllOnboardingData: __clear,
+        } = require("./profileCreationHelpers");
+        __clear();
+      } catch {}
     };
     window.addEventListener("beforeunload", handleUnload);
     window.addEventListener("pagehide", handleUnload);
@@ -1020,11 +1182,7 @@ export function ProfileCreationModal({
     };
   }, [isOpen]);
 
-  // Replace the existing normalizedOnOpenRef useEffect with this:
-
-  // Normalize starting step once per open:
-  // - If coming from Hero (hasBasicData), always start at 2
-  // - If no basic data, always start at 1
+  // Normalize starting step once per open via helper
   const normalizedOnOpenRef = React.useRef(false);
   useEffect(() => {
     if (!isOpen) {
@@ -1033,14 +1191,12 @@ export function ProfileCreationModal({
     }
     if (normalizedOnOpenRef.current) return;
 
-    if (hasBasicData) {
-      // Always set to step 2 when coming from Hero, regardless of current step
-      setStep(2);
-    } else {
-      // Always set to step 1 when no basic data
-      setStep(1);
-    }
-    normalizedOnOpenRef.current = true;
+    (async () => {
+      // Hero gating ensures basics; normalizeStartStep enforces a consistent landing step.
+      // Together, they are safe to call repeatedly and on late-arriving context updates.
+      setStep(normalizeStartStep(!!hasBasicData));
+      normalizedOnOpenRef.current = true;
+    })();
   }, [isOpen, hasBasicData]); // Remove 'step' from dependencies to avoid loops
 
   return (
@@ -1084,6 +1240,7 @@ export function ProfileCreationModal({
             {/* <div className="mt-4">
               <SimpleProgress current={step} total={totalSteps} />
             </div> */}
+            {/* Step components imports complete */}
           </DialogHeader>
 
           <div className="p-6 ">
@@ -1097,628 +1254,73 @@ export function ProfileCreationModal({
               >
                 {/* Step 1: Basic Info (only shown when data not yet provided) */}
                 {step === 1 && !hasBasicData && (
-                  <div className="space-y-6">
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Basic Information
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Tell us about yourself
-                      </p>
-                    </div>
-                    <div className="mb-6">
-                      <Label
-                        htmlFor="profileFor"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("This profile is for")}
-                      </Label>
-                      <Select
-                        value={formData.profileFor}
-                        onValueChange={(value) =>
-                          handleInputChange("profileFor", value)
-                        }
-                      >
-                        <SelectTrigger
-                          id="profileFor"
-                          className="w-full bg-white"
-                        >
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="self">Myself</SelectItem>
-                          <SelectItem value="son">Son</SelectItem>
-                          <SelectItem value="daughter">Daughter</SelectItem>
-                          <SelectItem value="brother">Brother</SelectItem>
-                          <SelectItem value="sister">Sister</SelectItem>
-                          <SelectItem value="friend">Friend</SelectItem>
-                          <SelectItem value="relative">Relative</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="mb-6">
-                      <Label className="text-gray-700 mb-2 block">
-                        {required("Gender")}
-                      </Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <Button
-                          type="button"
-                          variant={
-                            formData.gender === "male" ? "default" : "outline"
-                          }
-                          className={`w-full ${
-                            formData.gender === "male"
-                              ? "bg-pink-600 hover:bg-pink-700"
-                              : ""
-                          }`}
-                          onClick={() => handleInputChange("gender", "male")}
-                        >
-                          Male
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={
-                            formData.gender === "female" ? "default" : "outline"
-                          }
-                          className={`w-full ${
-                            formData.gender === "female"
-                              ? "bg-pink-600 hover:bg-pink-700"
-                              : ""
-                          }`}
-                          onClick={() => handleInputChange("gender", "female")}
-                        >
-                          Female
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <Step1Basic
+                    formData={formData as any}
+                    requiredLabel={required}
+                    onChange={handleInputChange as any}
+                  />
                 )}
 
                 {/* Step 2: Location & Physical */}
                 {step === 2 && (
-                  <div className="space-y-6">
-                    {/* Country - Optional */}
-                    <div>
-                      <Label
-                        htmlFor="country"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Country")}
-                      </Label>
-                      <SearchableSelect
-                        options={countries.map((c) => ({
-                          value: c,
-                          label: c,
-                        }))}
-                        value={formData.country}
-                        onValueChange={(v) => handleInputChange("country", v)}
-                        placeholder="Select country"
-                        aria-invalid={!!errors.country}
-                        aria-describedby={
-                          errors.country ? "country-error" : undefined
-                        }
-                      />
-                    </div>
-
-                    {/* City - Required */}
-
-                    <ValidatedInput
-                      label="City"
-                      field="city"
-                      step={step}
-                      value={formData.city}
-                      onValueChange={(v) => handleInputChange("city", v)}
-                      placeholder="Enter your city"
-                      required
-                      hint="Enter the city where you currently live"
-                    />
-
-                    {/* Height - Required with validated highlight */}
-                    <div>
-                      <Label
-                        htmlFor="height"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        {required("Height")}
-                      </Label>
-                      <div
-                        className={`rounded-md ${
-                          formData.height
-                            ? "ring-1 ring-green-500 border-green-500"
-                            : stepValidation.getFieldError("height")
-                              ? "ring-1 ring-red-500 border-red-500"
-                              : ""
-                        }`}
-                      >
-                        <SearchableSelect
-                          options={Array.from(
-                            { length: 198 - 137 + 1 },
-                            (_, i) => {
-                              const cm = 137 + i;
-                              const normalized = `${cm} cm`;
-                              return {
-                                value: normalized,
-                                label: `${cmToFeetInches(cm)} (${cm} cm)`,
-                              };
-                            }
-                          )}
-                          value={
-                            typeof formData.height === "string" &&
-                            /^\d{2,3}$/.test(formData.height.trim())
-                              ? `${formData.height.trim()} cm`
-                              : formData.height
-                          }
-                          onValueChange={(v) => {
-                            // Always store normalized "<cm> cm"
-                            const normalized =
-                              typeof v === "string"
-                                ? /^\d{2,3}$/.test(v.trim())
-                                  ? `${v.trim()} cm`
-                                  : v
-                                : v;
-                            handleInputChange("height", normalized as string);
-                            // Proactively clear height error once a valid selection is made
-                            // by triggering a revalidation of current step snapshot
-                            void stepValidation.validateCurrentStep();
-                          }}
-                          placeholder="Select height"
-                          className="bg-white"
-                        />
-                      </div>
-                      {/* {stepValidation.getFieldError("height") ? (
-                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
-                          <span>{stepValidation.getFieldError("height")}</span>
-                        </div>
-                      ) : null} */}
-                    </div>
-
-                    {/* Marital Status - Required */}
-                    <ValidatedSelect
-                      label="Marital Status"
-                      field="maritalStatus"
-                      className="bg-white text-black"
-                      step={step}
-                      value={formData.maritalStatus}
-                      onValueChange={(v) =>
-                        handleInputChange("maritalStatus", v)
-                      }
-                      options={[
-                        { value: "single", label: "Single" },
-                        { value: "divorced", label: "Divorced" },
-                        { value: "widowed", label: "Widowed" },
-                        { value: "annulled", label: "Annulled" },
-                      ]}
-                      placeholder="Select marital status"
-                      required
-                    />
-
-                    {/* Physical Status - Optional */}
-                    <ValidatedSelect
-                      label="Physical Status"
-                      field="physicalStatus"
-                      step={step}
-                      value={formData.physicalStatus}
-                      onValueChange={(v) =>
-                        handleInputChange("physicalStatus", v)
-                      }
-                      options={[
-                        { value: "normal", label: "Normal" },
-                        {
-                          value: "differently-abled",
-                          label: "Differently Abled",
-                        },
-                        // { value: "other", label: "Other" },
-                      ]}
-                      placeholder="Select physical status"
-                    />
-                  </div>
+                  <Step2LocationPhysical
+                    formData={formData as any}
+                    errors={errors}
+                    step={step}
+                    requiredLabel={required}
+                    onChange={handleInputChange as any}
+                    stepValidation={stepValidation as any}
+                    countries={countries}
+                  />
                 )}
 
-                {/* Step 3: Cultural & Lifestyle (moved earlier from previous step 4) */}
+                {/* Step 3: Cultural & Lifestyle */}
                 {step === 3 && (
-                  <div className="space-y-6">
-                    {/* Mother Tongue - Optional with validated highlight */}
-                    <div>
-                      <Label
-                        htmlFor="motherTongue"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Mother Tongue
-                      </Label>
-                      <div
-                        className={`rounded-md ${
-                          formData.motherTongue
-                            ? "ring-1 ring-green-500 border-green-500"
-                            : stepValidation.getFieldError("motherTongue")
-                              ? "ring-1 ring-red-500 border-red-500"
-                              : ""
-                        }`}
-                      >
-                        <ValidatedSelect
-                          label=""
-                          field="motherTongue"
-                          step={step}
-                          value={formData.motherTongue}
-                          onValueChange={(v) =>
-                            handleInputChange("motherTongue", v)
-                          }
-                          options={MOTHER_TONGUE_OPTIONS.map((o) => ({
-                            value: o.value,
-                            label: o.label,
-                          }))}
-                          placeholder="Select language"
-                          className="bg-white"
-                        />
-                      </div>
-                      {stepValidation.getFieldError("motherTongue") ? (
-                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
-                          <span>
-                            {stepValidation.getFieldError("motherTongue")}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* Religion - Optional with validated highlight */}
-                    <div>
-                      <Label
-                        htmlFor="religion"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Religion
-                      </Label>
-                      <div
-                        className={`rounded-md ${
-                          formData.religion
-                            ? "ring-1 ring-green-500 border-green-500"
-                            : stepValidation.getFieldError("religion")
-                              ? "ring-1 ring-red-500 border-red-500"
-                              : ""
-                        }`}
-                      >
-                        <ValidatedSelect
-                          label=""
-                          field="religion"
-                          step={step}
-                          value={formData.religion}
-                          onValueChange={(v) =>
-                            handleInputChange("religion", v)
-                          }
-                          options={RELIGION_OPTIONS.map((o) => ({
-                            value: o.value,
-                            label: o.label,
-                          }))}
-                          placeholder="Select religion"
-                          className="bg-white"
-                        />
-                      </div>
-                      {stepValidation.getFieldError("religion") ? (
-                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
-                          <span>
-                            {stepValidation.getFieldError("religion")}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* Ethnicity - Optional with validated highlight */}
-                    <div>
-                      <Label
-                        htmlFor="ethnicity"
-                        className="text-gray-700 mb-2 block"
-                      >
-                        Ethnicity
-                      </Label>
-
-                      <div
-                        className={`rounded-md ${
-                          formData.ethnicity
-                            ? "ring-1 ring-green-500 border-green-500"
-                            : stepValidation.getFieldError("ethnicity")
-                              ? "ring-1 ring-red-500 border-red-500"
-                              : ""
-                        }`}
-                      >
-                        <ValidatedSelect
-                          label=""
-                          field="ethnicity"
-                          step={step}
-                          value={formData.ethnicity}
-                          onValueChange={(v) =>
-                            handleInputChange("ethnicity", v)
-                          }
-                          options={ETHNICITY_OPTIONS.map((o) => ({
-                            value: o.value,
-                            label: o.label,
-                          }))}
-                          placeholder="Select ethnicity"
-                          className="bg-white"
-                        />
-                      </div>
-                      {stepValidation.getFieldError("ethnicity") ? (
-                        <div className="flex items-center space-x-1 text-sm text-red-600 mt-1">
-                          <span>
-                            {stepValidation.getFieldError("ethnicity")}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <ValidatedSelect
-                      label="Diet"
-                      field="diet"
-                      step={step}
-                      value={formData.diet}
-                      onValueChange={(v) => handleInputChange("diet", v)}
-                      options={[
-                        { value: "vegetarian", label: "Vegetarian" },
-                        { value: "non-vegetarian", label: "Non-Vegetarian" },
-                        { value: "halal", label: "Halal Only" },
-                        { value: "other", label: "Other" },
-                      ]}
-                      placeholder="Select diet preference"
-                    />
-
-                    <ValidatedSelect
-                      label="Smoking"
-                      field="smoking"
-                      step={step}
-                      value={formData.smoking}
-                      onValueChange={(v) => handleInputChange("smoking", v)}
-                      options={[
-                        { value: "no", label: "No" },
-                        { value: "occasionally", label: "Occasionally" },
-                        { value: "yes", label: "Yes" },
-                      ]}
-                      placeholder="Select smoking preference"
-                    />
-
-                    <ValidatedSelect
-                      label="Drinking"
-                      field="drinking"
-                      step={step}
-                      value={formData.drinking}
-                      onValueChange={(v) => handleInputChange("drinking", v)}
-                      options={[
-                        { value: "no", label: "No" },
-                        { value: "occasionally", label: "Occasionally" },
-                        { value: "yes", label: "Yes" },
-                      ]}
-                      placeholder="Select drinking preference"
-                    />
-                  </div>
+                  <Step3CulturalLifestyle
+                    formData={formData as any}
+                    step={step}
+                    onChange={handleInputChange as any}
+                    stepValidation={stepValidation as any}
+                  />
                 )}
 
-                {/* Step 4: Education & Career (was step 5) */}
+                {/* Step 4: Education & Career */}
                 {step === 4 && (
-                  <div className="space-y-6">
-                    <ValidatedInput
-                      label="Education"
-                      field="education"
-                      step={step}
-                      value={formData.education}
-                      onValueChange={(v) => handleInputChange("education", v)}
-                      placeholder="e.g. Bachelor's, Master's"
-                      required
-                    />
-
-                    <ValidatedInput
-                      label="Occupation"
-                      field="occupation"
-                      step={step}
-                      value={formData.occupation}
-                      onValueChange={(v) => handleInputChange("occupation", v)}
-                      placeholder="Occupation"
-                      required
-                    />
-
-                    <ValidatedInput
-                      label="Annual Income"
-                      field="annualIncome"
-                      step={step}
-                      value={formData.annualIncome}
-                      onValueChange={(v) =>
-                        handleInputChange("annualIncome", v)
-                      }
-                      placeholder="e.g. £30,000"
-                    />
-
-                    <ValidatedTextarea
-                      label="About Me"
-                      field="aboutMe"
-                      step={step}
-                      value={formData.aboutMe}
-                      onValueChange={(v) => handleInputChange("aboutMe", v)}
-                      placeholder="Tell us a little about yourself..."
-                      rows={4}
-                      required
-                    />
-                  </div>
+                  <Step4EducationCareer
+                    formData={formData as any}
+                    step={step}
+                    onChange={handleInputChange as any}
+                  />
                 )}
 
-                {/* Step 5: Partner Preferences (was step 6) */}
+                {/* Step 5: Partner Preferences */}
                 {step === 5 && (
-                  <div className="space-y-6">
-                    <ValidatedSelect
-                      label="Preferred Gender"
-                      field="preferredGender"
-                      step={step}
-                      value={formData.preferredGender}
-                      onValueChange={(v) =>
-                        handleInputChange("preferredGender", v)
-                      }
-                      options={[
-                        { value: "male", label: "Male" },
-                        { value: "female", label: "Female" },
-                        { value: "any", label: "Any" },
-                        { value: "other", label: "Other" },
-                      ]}
-                      placeholder="Select preferred gender"
-                      required
-                    />
-
-                    <div>
-                      <Label className="text-gray-700 mb-2 block">
-                        Age Range
-                      </Label>
-                      <div className="flex gap-2 items-center">
-                        <ValidatedInput
-                          label="Min"
-                          field="partnerPreferenceAgeMin"
-                          step={step}
-                          value={
-                            formData.partnerPreferenceAgeMin !== undefined
-                              ? String(formData.partnerPreferenceAgeMin)
-                              : ""
-                          }
-                          type="number"
-                          onValueChange={(v) =>
-                            handleInputChange(
-                              "partnerPreferenceAgeMin",
-                              v === "" ? "" : Number(v)
-                            )
-                          }
-                          className="w-24"
-                          placeholder="18"
-                        />
-                        <span>to</span>
-                        <ValidatedInput
-                          label="Max"
-                          field="partnerPreferenceAgeMax"
-                          step={step}
-                          value={
-                            formData.partnerPreferenceAgeMax !== undefined
-                              ? String(formData.partnerPreferenceAgeMax)
-                              : ""
-                          }
-                          type="number"
-                          onValueChange={(v) =>
-                            handleInputChange(
-                              "partnerPreferenceAgeMax",
-                              v === "" ? "" : Number(v)
-                            )
-                          }
-                          className="w-24"
-                          placeholder="99"
-                        />
-                      </div>
-                    </div>
-
-                    <ValidatedInput
-                      label="Preferred Cities"
-                      field="partnerPreferenceCity"
-                      step={step}
-                      value={preferredCitiesInput}
-                      onValueChange={(raw) => {
-                        setPreferredCitiesInput(String(raw));
-                        const parsed = String(raw)
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean);
-                        handleInputChange("partnerPreferenceCity", parsed);
-                      }}
-                      placeholder="e.g. London, Kabul"
-                      hint="Comma-separated list"
-                    />
-                  </div>
+                  <Step5PartnerPreferences
+                    formData={formData as any}
+                    step={step}
+                    onChange={handleInputChange as any}
+                    preferredCitiesInput={preferredCitiesInput}
+                    setPreferredCitiesInput={setPreferredCitiesInput}
+                  />
                 )}
 
-                {/* Step 6: Photos (Optional) (was step 7) */}
+                {/* Step 6: Photos */}
                 {step === 6 && (
-                  <div className="space-y-6">
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Profile Photos
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Add photos to your profile (optional)
-                      </p>
-                    </div>
-                    <div className="mb-6">
-                      <Label className="text-gray-700 mb-2 block">
-                        Profile Photos
-                      </Label>
-                      <LocalImageUpload
-                        onImagesChanged={handleProfileImagesChange}
-                        className="w-full h-48"
-                      />
-                    </div>
-                  </div>
+                  <Step6Photos
+                    userId={userId || ""}
+                    pendingImages={pendingImages as any}
+                    setPendingImages={setPendingImages as any}
+                    onImagesChanged={handleProfileImagesChange as any}
+                  />
                 )}
 
-                {/* Step 7: Account Creation (was step 8) */}
+                {/* Step 7: Account Creation */}
                 {step === 7 && (
-                  <div className="space-y-6">
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Create Account
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Finish and create your account
-                      </p>
-                    </div>
-                    <div className="space-y-4">
-                      {(() => {
-                        const requiredFields = [
-                          "fullName",
-                          "dateOfBirth",
-                          "gender",
-                          "city",
-                          "aboutMe",
-                          "occupation",
-                          "education",
-                          "height",
-                          "maritalStatus",
-                          "phoneNumber",
-                        ];
-                        const missingFields = requiredFields.filter((field) => {
-                          const value =
-                            formData[field as keyof ProfileCreationData];
-                          return (
-                            !value ||
-                            (typeof value === "string" && value.trim() === "")
-                          );
-                        });
-
-                        if (missingFields.length > 0) {
-                          return (
-                            <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                              <p className="text-red-600 font-semibold mb-2">
-                                ⚠️ Cannot create account - Profile incomplete
-                              </p>
-                              <p className="text-sm text-red-500 mb-4">
-                                You must complete all profile sections before
-                                creating an account.
-                              </p>
-                              <p className="text-xs text-red-400 mb-4">
-                                Missing: {missingFields.slice(0, 5).join(", ")}
-                                {missingFields.length > 5 &&
-                                  ` and ${missingFields.length - 5} more fields`}
-                              </p>
-                              <Button
-                                variant="outline"
-                                onClick={() => setStep(1)}
-                                className="border-red-300 text-red-600 hover:bg-red-50"
-                              >
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Go back to complete profile
-                              </Button>
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <div className="space-y-4">
-                            {/* Use the centralized CustomSignupForm for account creation */}
-                            <CustomSignupForm
-                              onComplete={() => router.push("/success")}
-                            />
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
+                  <Step7AccountCreation
+                    formData={formData as any}
+                    setStep={setStep as any}
+                    router={router as any}
+                  />
                 )}
               </motion.div>
             </AnimatePresence>

@@ -30,12 +30,13 @@ export const sendMessage = mutation({
     toUserId: v.id("users"),
     text: v.optional(v.string()),
     type: v.optional(
-      v.union(v.literal("text"), v.literal("voice"), v.literal("image")),
+      v.union(v.literal("text"), v.literal("voice"), v.literal("image"))
     ),
     audioStorageId: v.optional(v.string()),
     duration: v.optional(v.number()),
     fileSize: v.optional(v.number()),
     mimeType: v.optional(v.string()),
+    peaks: v.optional(v.array(v.number())), // normalized 0..1 waveform samples
   },
   handler: async (ctx, args) => {
     // Ensure users are matched before allowing message
@@ -60,6 +61,21 @@ export const sendMessage = mutation({
       if (args.duration === undefined || args.duration <= 0) {
         throw new Error("Voice message missing duration");
       }
+      // Optional peaks validation (lightweight)
+      if (args.peaks) {
+        if (!Array.isArray(args.peaks) || args.peaks.length === 0) {
+          throw new Error("Invalid peaks array");
+        }
+        // Normalize and bound length consistently (cap to 256 samples)
+        // Clamp to [0,1] and remove non-finite values
+        args.peaks = args.peaks
+          .map((n) => (typeof n === "number" && isFinite(n) ? n : 0))
+          .map((n) => (n < 0 ? 0 : n > 1 ? 1 : n));
+        const MAX_PEAKS = 256;
+        if (args.peaks.length > MAX_PEAKS) {
+          args.peaks = args.peaks.slice(0, MAX_PEAKS);
+        }
+      }
     } else if (type === "image") {
       if (!args.audioStorageId) {
         throw new Error("Image message missing storageId");
@@ -76,6 +92,7 @@ export const sendMessage = mutation({
       duration: args.duration,
       fileSize: args.fileSize,
       mimeType: args.mimeType,
+      peaks: args.peaks, // persisted waveform peaks (optional)
       createdAt: Date.now(),
     });
 

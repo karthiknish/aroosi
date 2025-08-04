@@ -3,8 +3,9 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
 import { requireUserToken } from "@/app/api/_utils/auth";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { validateConversationId } from "@/lib/utils/messageValidation";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 // Initialize Convex client
 const convexClient = getConvexClient();
@@ -17,10 +18,11 @@ export async function POST(request: NextRequest) {
     if ("errorResponse" in authCheck) {
       const res = authCheck.errorResponse as NextResponse;
       const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
+      let message = "Unauthorized";
       try {
         const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
+        const parsed = txt ? JSON.parse(txt) : undefined;
+        message = (parsed?.error as string) || message;
       } catch {}
       console.warn("Messages read POST auth failed", {
         scope: "messages.read",
@@ -29,64 +31,58 @@ export async function POST(request: NextRequest) {
         statusCode: status,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(body, { status });
+      return errorResponse(message, status, { correlationId });
     }
     const { token, userId } = authCheck;
 
-    const rateLimitResult = checkApiRateLimit(
-      `mark_conversation_read_${userId}`,
-      50,
-      60000,
+    // Use subscription-aware rate limiter for consistency
+    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      request,
+      token,
+      userId || "unknown",
+      "message_read",
+      60000
     );
-    if (!rateLimitResult.allowed) {
+    if (!rate.allowed) {
       console.warn("Messages read POST rate limited", {
         scope: "messages.read",
         type: "rate_limit",
         correlationId,
         statusCode: 429,
         durationMs: Date.now() - startedAt,
+        plan: rate.plan,
+        limit: rate.limit,
+        remaining: rate.remaining,
       });
-      return NextResponse.json(
-        { error: "Rate limit exceeded", correlationId },
-        { status: 429 }
-      );
+      return errorResponse(rate.error || "Rate limit exceeded", 429, {
+        correlationId,
+        plan: rate.plan,
+        limit: rate.limit,
+        remaining: rate.remaining,
+        resetTime: new Date(rate.resetTime).toISOString(),
+      });
     }
 
     let body: unknown;
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: "Invalid request body", correlationId },
-        { status: 400 }
-      );
+      return errorResponse("Invalid request body", 400, { correlationId });
     }
 
     const { conversationId, userId: requestUserId } =
       (body as { conversationId?: string; userId?: string }) || {};
 
     if (!conversationId) {
-      return NextResponse.json(
-        { error: "Missing required field: conversationId", correlationId },
-        { status: 400 }
-      );
+      return errorResponse("Missing required field: conversationId", 400, { correlationId });
     }
 
     if (!validateConversationId(conversationId)) {
-      return NextResponse.json(
-        { error: "Invalid conversationId format", correlationId },
-        { status: 400 }
-      );
+      return errorResponse("Invalid conversationId format", 400, { correlationId });
     }
 
     if (requestUserId && requestUserId !== userId) {
-      return NextResponse.json(
-        {
-          error: "Cannot mark conversation as read for another user",
-          correlationId,
-        },
-        { status: 403 }
-      );
+      return errorResponse("Cannot mark conversation as read for another user", 403, { correlationId });
     }
 
     let client = convexClient || getConvexClient();
@@ -98,10 +94,7 @@ export async function POST(request: NextRequest) {
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(
-        { error: "Database connection failed", correlationId },
-        { status: 500 }
-      );
+      return errorResponse("Database connection failed", 500, { correlationId });
     }
     try {
       // @ts-ignore legacy
@@ -110,17 +103,7 @@ export async function POST(request: NextRequest) {
 
     const userIds = conversationId.split("_");
     if (!userId || !userIds.includes(userId as string)) {
-      return NextResponse.json(
-        { error: "Unauthorized access to conversation", correlationId },
-        { status: 403 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID not found", correlationId },
-        { status: 401 }
-      );
+      return errorResponse("Unauthorized access to conversation", 403, { correlationId });
     }
 
     await client
@@ -140,6 +123,25 @@ export async function POST(request: NextRequest) {
         throw e;
       });
 
+    // Publish SSE event for read receipts
+    try {
+      const { eventBus } = await import("@/lib/eventBus");
+      eventBus.emit(conversationId, {
+        type: "message_read",
+        conversationId,
+        userId,
+        readAt: Date.now(),
+      });
+    } catch (eventError) {
+      console.warn("Messages read POST broadcast warn", {
+        scope: "messages.read",
+        type: "broadcast_warn",
+        message:
+          eventError instanceof Error ? eventError.message : String(eventError),
+        correlationId,
+      });
+    }
+
     console.info("Messages read POST success", {
       scope: "messages.read",
       type: "success",
@@ -147,17 +149,13 @@ export async function POST(request: NextRequest) {
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Conversation marked as read",
-        conversationId,
-        userId,
-        readAt: Date.now(),
-        correlationId,
-      },
-      { status: 200 }
-    );
+    return successResponse({
+      message: "Conversation marked as read",
+      conversationId,
+      userId,
+      readAt: Date.now(),
+      correlationId,
+    }, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("Messages read POST unhandled error", {
@@ -168,9 +166,6 @@ export async function POST(request: NextRequest) {
       statusCode: 500,
       durationMs: Date.now() - startedAt,
     });
-    return NextResponse.json(
-      { error: "Failed to mark conversation as read", correlationId },
-      { status: 500 }
-    );
+    return errorResponse("Failed to mark conversation as read", 500, { correlationId });
   }
 }

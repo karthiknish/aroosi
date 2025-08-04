@@ -26,7 +26,7 @@ export function useDeliveryReceipts({
   ) => DeliveryStatus;
   markMessageAsPending: (messageId: string) => void;
   markMessageAsSent: (messageId: string) => void;
-  markMessageAsRead: (messageId: string) => void;
+  markMessageAsRead: (messageId: string) => Promise<void>;
   markMessageAsDelivered: (messageId: string) => void;
   sendDeliveryReceipt: (
     messageId: string,
@@ -165,10 +165,21 @@ export function useDeliveryReceipts({
 
   // Mark message as read (for incoming messages)
   const markMessageAsRead = useCallback(
-    (messageId: string) => {
-      void sendDeliveryReceipt(messageId, "read");
+    async (messageId: string) => {
+      try {
+        await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/mark-read`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (e) {
+        console.warn("markMessageAsRead failed, falling back to delivery receipt", e);
+        await sendDeliveryReceipt(messageId, "read");
+      }
     },
-    [sendDeliveryReceipt],
+    [conversationId, token, sendDeliveryReceipt],
   );
 
   // Mark message as delivered (for incoming messages)

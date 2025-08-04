@@ -38,9 +38,9 @@ const RATE_LIMITS = {
   
   // AI/Chat operations
   '/api/gemini-chat': { requests: 20, window: 60 * 60 * 1000 }, // 20 AI chats per hour
-  
   // Payment operations
   '/api/stripe/checkout': { requests: 10, window: 60 * 60 * 1000 }, // 10 checkouts per hour
+  '/api/stripe/portal': { requests: 20, window: 60 * 60 * 1000 },   // 20 portal entries per hour
   
   // Default rate limit
   'default': { requests: 100, window: 60 * 60 * 1000 }, // 100 requests per hour

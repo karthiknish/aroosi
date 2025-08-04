@@ -1,9 +1,12 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { matchMessagesAPI, type MatchMessage } from "@/lib/api/matchMessages";
 import { getConversationEventsSSEUrl } from "@/lib/api/conversation";
 
 // Use the MatchMessage type from the API
 type Message = MatchMessage;
+
+type TypingState = Record<string, number>; // userId -> last typing timestamp (ms)
+type ReadState = Record<string, number>;   // userId -> last read timestamp (ms)
 
 export function useMatchMessages(conversationId: string, token: string) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -11,6 +14,17 @@ export function useMatchMessages(conversationId: string, token: string) {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // New: typing and read receipt state
+  const [typingUsers, setTypingUsers] = useState<TypingState>({});
+  const [readBy, setReadBy] = useState<ReadState>({});
+  const getLastReadAtForOther = useCallback(
+    (otherUserId: string): number => {
+      return readBy[otherUserId] || 0;
+    },
+    [readBy],
+  );
+  const sseRef = useRef<EventSource | null>(null);
 
   const fetchMessages = useCallback(async () => {
     setLoading(true);
@@ -21,11 +35,16 @@ export function useMatchMessages(conversationId: string, token: string) {
         limit: 20,
       });
 
-      if (response.success && response.data) {
-        setMessages(response.data);
-        setHasMore(response.data.length === 20);
+      if ((response as any).success && (response as any).data) {
+        const data = (response as any).data as Message[];
+        setMessages(data);
+        setHasMore(data.length === 20);
+      } else if (Array.isArray(response)) {
+        const data = response as Message[];
+        setMessages(data);
+        setHasMore(data.length === 20);
       } else {
-        setError(response.error || "Failed to fetch messages");
+        setError((response as any)?.error || "Failed to fetch messages");
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch messages");
@@ -46,11 +65,16 @@ export function useMatchMessages(conversationId: string, token: string) {
         before: oldestTimestamp,
       });
 
-      if (response.success && response.data) {
-        setMessages((prev) => [...(response.data || []), ...prev]);
-        if (response.data && response.data.length < 20) setHasMore(false);
+      if ((response as any).success && (response as any).data) {
+        const data = (response as any).data as Message[];
+        setMessages((prev) => [...data, ...prev]);
+        if (data.length < 20) setHasMore(false);
+      } else if (Array.isArray(response)) {
+        const data = response as Message[];
+        setMessages((prev) => [...data, ...prev]);
+        if (data.length < 20) setHasMore(false);
       } else {
-        setError(response.error || "Failed to fetch older messages");
+        setError((response as any)?.error || "Failed to fetch older messages");
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch older messages");
@@ -71,20 +95,20 @@ export function useMatchMessages(conversationId: string, token: string) {
     }) => {
       setError(null);
       try {
-        // Debug log (remove in production)
         if (process.env.NODE_ENV === "development") {
           console.log("[sendMatchMessage] payload", {
             conversationId,
             fromUserId,
             toUserId,
-            text: text.substring(0, 50) + (text.length > 50 ? "..." : ""), // Truncate for privacy
+            text: text.substring(0, 50) + (text.length > 50 ? "..." : ""),
             token: token ? "<present>" : "<missing>",
           });
         }
 
         // Optimistic UI update
+        const tmpId = `tmp-${Date.now()}`;
         const optimisticMsg = {
-          _id: `tmp-${Date.now()}`,
+          _id: tmpId,
           conversationId,
           fromUserId,
           toUserId,
@@ -103,25 +127,24 @@ export function useMatchMessages(conversationId: string, token: string) {
           })
           .then((response: any) => {
             if (response.success && response.data) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m._id && m._id.startsWith("tmp-") ? response.data : m
-                )
-              );
+              const serverMsg = response.data as Message;
+              setMessages((prev) => {
+                const replaced = prev.map((m) =>
+                  m._id === tmpId || m._id?.startsWith("tmp-") ? serverMsg : m
+                );
+                // Deduplicate if server also arrives via SSE later
+                const unique = new Map<string, Message>();
+                for (const m of replaced) unique.set(m._id, m);
+                return Array.from(unique.values());
+              });
             } else {
               setError(response.error || "Failed to send message");
-              // Remove optimistic message on failure
-              setMessages((prev) =>
-                prev.filter((m) => !m._id?.startsWith("tmp-"))
-              );
+              setMessages((prev) => prev.filter((m) => m._id !== tmpId));
             }
           })
           .catch((err: Error) => {
             setError(err.message || "Failed to send message");
-            // Remove optimistic message on failure
-            setMessages((prev) =>
-              prev.filter((m) => !m._id?.startsWith("tmp-"))
-            );
+            setMessages((prev) => prev.filter((m) => m._id !== tmpId));
           });
       } finally {
         /* no-op */
@@ -135,75 +158,90 @@ export function useMatchMessages(conversationId: string, token: string) {
     void fetchMessages();
   }, [fetchMessages]);
 
-  // Preload next batch when hasMore true and not loading
-  useEffect(() => {
-    if (!hasMore || messages.length < 20) return;
-    // Could prefetch here if desired using a timeout
-  }, [hasMore, messages.length]);
-
-  // Real-time updates via Server-Sent Events with enhanced security
+  // Real-time updates via SSE with normalized event envelopes
   useEffect(() => {
     if (!token || !conversationId) return;
 
-    // Validate conversation ID format before making SSE connection
     const conversationIdPattern = /^[a-zA-Z0-9_-]+$/;
     if (!conversationIdPattern.test(conversationId)) {
       console.error("[SSE] Invalid conversation ID format");
       return;
     }
 
-    // Use utility to get SSE URL (token as query param)
     const url = getConversationEventsSSEUrl({ conversationId, token });
-
     let es: EventSource;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
-    const reconnectDelay = 1000; // Start with 1 second
+    const reconnectDelay = 1000;
 
     const connect = () => {
       es = new EventSource(url);
+      sseRef.current = es;
 
       es.onopen = () => {
         console.log("[SSE] Connection opened");
-        reconnectAttempts = 0; // Reset on successful connection
+        reconnectAttempts = 0;
       };
 
       es.onmessage = (event) => {
         try {
-          const msg = JSON.parse(event.data) as Message;
+          const payload = JSON.parse(event.data);
 
-          // Validate message structure
-          if (!msg._id || !msg.conversationId || !msg.text) {
-            console.warn("[SSE] Received invalid message structure:", msg);
+          // Handle normalized event envelopes
+          if (payload?.type === "message_sent" && payload?.message) {
+            const msg = payload.message as Message;
+            if (!msg?._id || msg.conversationId !== conversationId) return;
+            setMessages((prev) => {
+              if (prev.some((m) => m._id === msg._id)) return prev;
+              // Replace any optimistic tmp if same text/fromUser matches closely
+              const withoutTmp = prev.filter((m) => !m._id?.startsWith("tmp-"));
+              return [...withoutTmp, msg];
+            });
             return;
           }
 
-          // Verify message belongs to this conversation
-          if (msg.conversationId !== conversationId) {
-            console.warn("[SSE] Received message for different conversation");
+          if (payload?.type === "message_read") {
+            const { userId, readAt, conversationId: cid } = payload;
+            if (!cid || cid !== conversationId || !userId) return;
+            setReadBy((prev) => ({ ...prev, [userId]: readAt || Date.now() }));
+            // Optional: update message read flags locally if needed
             return;
           }
 
-          setMessages((prev) => {
-            // Avoid duplicates (by _id)
-            if (prev.some((m) => m._id === msg._id)) return prev;
-            return [...prev, msg];
-          });
+          if (payload?.type === "typing_start" || payload?.type === "typing_stop") {
+            const { userId, conversationId: cid, at } = payload;
+            if (!cid || cid !== conversationId || !userId) return;
+            setTypingUsers((prev) => {
+              const next = { ...prev };
+              if (payload.type === "typing_start") {
+                next[userId] = at || Date.now();
+              } else {
+                delete next[userId];
+              }
+              return next;
+            });
+            return;
+          }
+
+          // Backward-compat: some servers may emit raw message
+          if (payload?._id && payload?.conversationId) {
+            const msg = payload as Message;
+            if (msg.conversationId !== conversationId) return;
+            setMessages((prev) => {
+              if (prev.some((m) => m._id === msg._id)) return prev;
+              const withoutTmp = prev.filter((m) => !m._id?.startsWith("tmp-"));
+              return [...withoutTmp, msg];
+            });
+          }
         } catch (e) {
-          console.error("[SSE] Failed to parse message:", e);
+          console.error("[SSE] Failed to parse event:", e);
         }
       };
 
       es.onerror = (e) => {
         console.error("[SSE] Connection error:", e);
-
-        // Attempt reconnection with exponential backoff
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = reconnectDelay * Math.pow(2, reconnectAttempts);
-          console.log(
-            `[SSE] Attempting reconnection in ${delay}ms (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`
-          );
-
           setTimeout(() => {
             reconnectAttempts++;
             es.close();
@@ -219,7 +257,9 @@ export function useMatchMessages(conversationId: string, token: string) {
     connect();
 
     return () => {
-      if (es) {
+      if (sseRef.current) {
+        sseRef.current.close();
+      } else if (es) {
         es.close();
       }
     };
@@ -234,5 +274,8 @@ export function useMatchMessages(conversationId: string, token: string) {
     fetchMessages,
     fetchOlder,
     sendMessage,
+    typingUsers,
+    readBy,
+    getLastReadAtForOther,
   };
 }

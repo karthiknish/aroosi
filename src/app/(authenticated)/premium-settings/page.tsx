@@ -276,26 +276,78 @@ export default function PremiumSettingsPage() {
                   </CardHeader>
                 </div>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-lg">
-                        {profile.subscriptionPlan === "premium"
-                          ? "Premium Plan"
-                          : "Premium Plus Plan"}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {profile.subscriptionExpiresAt
-                          ? `Expires: ${new Date(profile.subscriptionExpiresAt as number).toLocaleDateString()}`
-                          : "Active subscription"}
-                      </p>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {/* Highlighted current plan badge */}
+                      <div className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2
+                        ${profile.subscriptionPlan === "premiumPlus"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-pink-100 text-pink-700"}`}>
+                        {profile.subscriptionPlan === "premiumPlus" ? (
+                          <Rocket className="w-4 h-4" />
+                        ) : (
+                          <Crown className="w-4 h-4" />
+                        )}
+                        {profile.subscriptionPlan === "premium" ? "Premium" : "Premium Plus"}
+                      </div>
+                      <div className="flex flex-col">
+                        {/* Renewal / expiry emphasis */}
+                        <span className="text-sm text-gray-700">
+                          {profile.subscriptionExpiresAt
+                            ? `Renews ${new Date(profile.subscriptionExpiresAt as number).toLocaleDateString()}`
+                            : "Active subscription"}
+                        </span>
+                        {profile.subscriptionExpiresAt && (
+                          <span className="text-xs text-gray-500">
+                            {(() => {
+                              const ms = (profile.subscriptionExpiresAt as number) - Date.now();
+                              const days = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+                              return days > 0 ? `${days} day${days > 1 ? "s" : ""} remaining` : "Renews today";
+                            })()}
+                          </span>
+                        )}
+                      </div>
+    
+                      <div className="mt-4 flex gap-3">
+                        {/* Manage billing portal */}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const { openBillingPortal } = await import("@/lib/utils/stripeUtil");
+                              await openBillingPortal();
+                            } catch (e) {
+                              console.error("Manage billing failed", e);
+                            }
+                          }}
+                          className="inline-flex items-center justify-center rounded-md bg-[#BFA67A] px-4 py-2 text-white hover:bg-[#a69063] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#BFA67A]"
+                        >
+                          Manage billing
+                        </button>
+                      </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleNavigate("/subscription")}
-                      className="border-pink-200 hover:bg-pink-50 hover:border-pink-300"
-                    >
-                      Manage Plan
-                    </Button>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleNavigate("/subscription")}
+                        className="border-pink-200 hover:bg-pink-50 hover:border-pink-300"
+                        title="Switch plans"
+                      >
+                        Manage Plan
+                      </Button>
+                      <Button
+                        variant="default"
+                        onClick={async () => {
+                          const { openBillingPortal } = await import("@/lib/utils/stripeUtil");
+                          await openBillingPortal();
+                        }}
+                        className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-md"
+                        title="Open Stripe Billing Portal"
+                      >
+                        Billing Portal
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

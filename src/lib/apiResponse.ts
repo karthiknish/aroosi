@@ -1,6 +1,16 @@
+export type ApiSuccess<T> = { success: true; data?: T };
+export type ApiFailure = { success: false; error: string } & Record<
+  string,
+  unknown
+>;
+export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
 export const successResponse = <T = unknown>(data?: T, status = 200) =>
   new Response(
-    JSON.stringify({ success: true, ...(data !== undefined ? { data } : {}) }),
+    JSON.stringify({
+      success: true,
+      ...(data !== undefined ? { data } : {}),
+    } satisfies ApiSuccess<T>),
     {
       status,
       headers: { "Content-Type": "application/json" },
@@ -23,7 +33,11 @@ export const errorResponse = (
     : "Something went wrong";
 
   return new Response(
-    JSON.stringify({ success: false, error: message, ...(extra ?? {}) }),
+    JSON.stringify({
+      success: false,
+      error: message,
+      ...(extra ?? {}),
+    } satisfies ApiFailure),
     {
       status,
       headers: { "Content-Type": "application/json" },

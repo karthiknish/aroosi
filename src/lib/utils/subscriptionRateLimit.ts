@@ -118,6 +118,12 @@ export class SubscriptionRateLimiter {
    * Get rate limit based on subscription tier
    */
   private getRateLimitForPlan(plan: string, feature: string): number {
+    // Canonicalize feature aliases
+    const normalized =
+      feature === "message_send" ? "message_sent" :
+      feature === "voice_send" ? "voice_message_sent" :
+      feature;
+
     const limits = {
       message_sent: {
         free: 10, // 10 messages per minute
@@ -149,10 +155,10 @@ export class SubscriptionRateLimiter {
         premium: 25, // 25 voice messages per minute
         premiumPlus: 100, // 100 voice messages per minute
       },
-    };
+    } as const;
 
     const featureLimits =
-      limits[feature as keyof typeof limits] || limits.search_performed;
+      limits[normalized as keyof typeof limits] || limits.search_performed;
     return (
       featureLimits[plan as keyof typeof featureLimits] || featureLimits.free
     );
@@ -246,6 +252,17 @@ export class SubscriptionRateLimiter {
 
     keysToDelete.forEach((key) => rateLimitStore.delete(key));
   }
+}
+
+/**
+ * Entitlement helpers to centralize plan checks.
+ */
+export function isPremium(plan?: string | null): boolean {
+  return plan === "premium" || plan === "premiumPlus";
+}
+
+export function isPremiumPlus(plan?: string | null): boolean {
+  return plan === "premiumPlus";
 }
 
 export const subscriptionRateLimiter = new SubscriptionRateLimiter();

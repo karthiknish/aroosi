@@ -4,12 +4,30 @@ import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
 export async function POST(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   try {
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) return authCheck.errorResponse;
     const { token, userId } = authCheck;
+
+    // Rate limit typing updates (cheap but potentially noisy)
+    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      request,
+      token,
+      userId || "unknown",
+      "typing_update",
+      60000
+    );
+    if (!rate.allowed) {
+      return errorResponse(
+        rate.error || "Rate limit exceeded",
+        429
+      );
+    }
 
     let client = getConvexClient();
     if (!client) client = getConvexClient();
@@ -28,6 +46,23 @@ export async function POST(request: NextRequest) {
       isTyping: action === "start",
     });
 
+    // Emit SSE typing event
+    try {
+      const { eventBus } = await import("@/lib/eventBus");
+      eventBus.emit(conversationId, {
+        type: action === "start" ? "typing_start" : "typing_stop",
+        conversationId,
+        userId,
+        at: Date.now(),
+      });
+    } catch (eventError) {
+      console.warn("Typing SSE emit failed", {
+        scope: "typing.update",
+        correlationId,
+        message: eventError instanceof Error ? eventError.message : String(eventError),
+      });
+    }
+
     return successResponse({
       message: `Typing indicator ${action}ed`,
       indicatorId,
@@ -35,6 +70,8 @@ export async function POST(request: NextRequest) {
       userId,
       action,
       isTyping: action === "start",
+      correlationId,
+      durationMs: Date.now() - startedAt,
     });
   } catch (error) {
     console.error("Error handling typing indicator:", error);

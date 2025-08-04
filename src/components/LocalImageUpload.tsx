@@ -5,6 +5,7 @@ import { X, Upload, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { showErrorToast } from "@/lib/ui/toast";
 import type { ImageType } from "@/types/image";
+import { computeFileHash, DuplicateSession, sanitizeDisplayName } from "@/lib/utils/imageUploadHelpers";
 
 interface LocalImageUploadProps {
   onImagesChanged: (imageFiles: (string | ImageType)[]) => void;
@@ -13,7 +14,7 @@ interface LocalImageUploadProps {
 }
 
 type LocalImageItem = {
-  localId: string;
+  localId: string; // stable temp id derived from file metadata hash
   file: File;
   previewUrl: string;
 };
@@ -27,6 +28,50 @@ export function LocalImageUpload({
   const [isLoading, setIsLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Minimum dimensions to accept (client-side)
+  const MIN_WIDTH = 512;
+  const MIN_HEIGHT = 512;
+
+  // Utility: read an image file and return its dimensions without leaking object URLs
+  const getImageDimensions = useCallback(async (file: File): Promise<{ width: number; height: number } | null> => {
+    let objectUrl: string | null = null;
+    try {
+      objectUrl = URL.createObjectURL(file);
+      // Prefer createImageBitmap for performance if available
+      if (typeof (globalThis as any).createImageBitmap === "function") {
+        const bitmap: ImageBitmap = await (globalThis as any).createImageBitmap(file);
+        const dims = { width: bitmap.width, height: bitmap.height };
+        if (typeof (bitmap as any).close === "function") {
+          try {
+            (bitmap as any).close();
+          } catch {}
+        }
+        return dims;
+      }
+      // Fallback to HTMLImageElement
+      const dims = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const img = document.createElement("img");
+        img.onload = () =>
+          resolve({
+            width: (img as HTMLImageElement).naturalWidth || (img as HTMLImageElement).width,
+            height: (img as HTMLImageElement).naturalHeight || (img as HTMLImageElement).height,
+          });
+        img.onerror = () => reject(new Error("Failed to load image for dimension check"));
+        img.src = objectUrl as string;
+      });
+      return dims;
+    } catch (e) {
+      console.warn("Failed to inspect image dimensions", e);
+      return null;
+    } finally {
+      if (objectUrl && objectUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch {}
+      }
+    }
+  }, []);
 
   // Cleanup previews on unmount
   useEffect(() => {
@@ -45,8 +90,9 @@ export function LocalImageUpload({
         id: it.localId,
         _id: it.localId,
         url: it.previewUrl,
-        fileName: it.file.name,
-        name: it.file.name,
+        // Sanitize UI-facing names only; underlying upload uses File object
+        fileName: sanitizeDisplayName(it.file.name),
+        name: sanitizeDisplayName(it.file.name),
         size: it.file.size,
         storageId: "",
         uploadedAt: Date.now(),
@@ -57,7 +103,7 @@ export function LocalImageUpload({
   );
 
   const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
+    async (acceptedFiles: File[]) => {
       setIsLoading(true);
       setUploadError(null);
 
@@ -72,8 +118,8 @@ export function LocalImageUpload({
           );
         }
 
-        // Validate only size here; type normalization is handled at upload time
-        const validFiles = filesToAdd.filter((file) => {
+        // Validate size and minimum dimensions before creating any object URLs
+        const sizeValidFiles = filesToAdd.filter((file) => {
           const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
           if (!isValidSize) {
             setUploadError("Image files must be 5MB or smaller");
@@ -82,6 +128,70 @@ export function LocalImageUpload({
           return true;
         });
 
+        // Session duplicate detection via fast file hash
+        const nonDuplicateFiles: { file: File; hash?: string }[] = [];
+        for (const f of sizeValidFiles) {
+          try {
+            const h = await computeFileHash(f);
+            if (DuplicateSession.has(h)) {
+              showErrorToast(null, `Duplicate image skipped: ${sanitizeDisplayName(f.name)}`);
+              continue;
+            }
+            nonDuplicateFiles.push({ file: f, hash: h });
+          } catch {
+            // If hashing fails, allow file through (best-effort)
+            nonDuplicateFiles.push({ file: f });
+          }
+        }
+
+        const validFiles: { file: File; hash?: string; tempId: string }[] = [];
+        for (const entry of nonDuplicateFiles) {
+          const file = entry.file;
+          try {
+            const dims = await getImageDimensions(file);
+            if (!dims) {
+              // If dimensions cannot be determined, reject defensively
+              showErrorToast(null, "Unable to read image. Please try another file.");
+              continue;
+            }
+            if (dims.width < MIN_WIDTH || dims.height < MIN_HEIGHT) {
+              showErrorToast(
+                null,
+                `Image too small (${dims.width}x${dims.height}). Minimum ${MIN_WIDTH}x${MIN_HEIGHT}px`
+              );
+              continue;
+            }
+
+            // Create a stable temporary ID based on file.name + size + lastModified
+            // This improves reorder robustness across re-renders/hot reloads
+            const baseName = `${file.name}:${file.size}:${file.lastModified}`;
+            // Hash-like deterministic string via TextEncoder + crypto.subtle (fast enough on small input)
+            let tempId = "";
+            try {
+              const enc = new TextEncoder().encode(baseName);
+              const digest = await crypto.subtle.digest("SHA-256", enc);
+              const hex = Array.from(new Uint8Array(digest))
+                .map((b) => b.toString(16).padStart(2, "0"))
+                .join("");
+              tempId = `local-${hex.slice(0, 24)}`;
+            } catch {
+              // Fallback to readable ID if subtle crypto not available
+              tempId = `local-${baseName.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 32)}`;
+            }
+
+            // Passed all checks: record hash in session to prevent duplicates this session
+            if (entry.hash) {
+              try {
+                DuplicateSession.add(entry.hash);
+              } catch {}
+            }
+
+            validFiles.push({ file, hash: entry.hash, tempId });
+          } catch {
+            showErrorToast(null, "Failed to process image. Please try again.");
+          }
+        }
+
         if (validFiles.length === 0) {
           setIsLoading(false);
           return;
@@ -89,8 +199,8 @@ export function LocalImageUpload({
 
         const newItems: LocalImageItem[] = [
           ...items,
-          ...validFiles.map((file) => ({
-            localId: `local-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
+          ...validFiles.map(({ file, tempId }) => ({
+            localId: tempId,
             file,
             previewUrl: URL.createObjectURL(file),
           })),

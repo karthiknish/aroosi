@@ -18,6 +18,7 @@ import {
   BarChart,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { isPremium } from "@/lib/utils/subscriptionRateLimit";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
@@ -167,30 +168,28 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 </Link>
               </motion.div>
 
-              {profile &&
-                (profile.subscriptionPlan === "premium" ||
-                  profile.subscriptionPlan === "premiumPlus") && (
-                  <motion.div
-                    custom={1.7}
-                    variants={navItemVariants}
-                    initial="hidden"
-                    animate="visible"
+              {profile && isPremium(profile.subscriptionPlan) && (
+                <motion.div
+                  custom={1.7}
+                  variants={navItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  <Link
+                    href="/premium-settings"
+                    onClick={onClick}
+                    className="block"
                   >
-                    <Link
-                      href="/premium-settings"
-                      onClick={onClick}
-                      className="block"
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
                     >
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
-                      >
-                        <Shield className="h-5 w-5 mr-2" />
-                        <span>Premium Settings</span>
-                      </Button>
-                    </Link>
-                  </motion.div>
-                )}
+                      <Shield className="h-5 w-5 mr-2" />
+                      <span>Premium Settings</span>
+                    </Button>
+                  </Link>
+                </motion.div>
+              )}
 
               <motion.div
                 custom={1.8}

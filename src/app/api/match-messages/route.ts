@@ -3,7 +3,6 @@ import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { requireUserToken } from "@/app/api/_utils/auth";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import {
   validateMessagePayload,
@@ -40,47 +39,29 @@ export async function GET(request: NextRequest) {
     const { token, userId } = authCheck;
 
     if (!userId) {
-      console.warn("Messages GET no userId", {
-        scope: "messages.get",
-        type: "auth_context_missing",
-        correlationId,
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-      });
       return NextResponse.json(
         { error: "User ID not found", correlationId },
         { status: 401 }
       );
     }
 
-    const rateLimitResult =
-      await subscriptionRateLimiter.checkSubscriptionRateLimit(
-        request,
-        token,
-        userId,
-        "message_sent",
-        60000
-      );
-
-    if (!rateLimitResult.allowed) {
-      console.warn("Messages GET rate limited", {
-        scope: "messages.get",
-        type: "rate_limit",
-        correlationId,
-        statusCode: 429,
-        durationMs: Date.now() - startedAt,
-        plan: rateLimitResult.plan,
-        limit: rateLimitResult.limit,
-        remaining: rateLimitResult.remaining,
-      });
+    // Use subscription-aware rate limiter (read/list window)
+    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      request,
+      token,
+      userId,
+      "message_list",
+      60000
+    );
+    if (!rate.allowed) {
       return NextResponse.json(
         {
-          error: rateLimitResult.error || "Rate limit exceeded",
+          error: rate.error || "Rate limit exceeded",
           correlationId,
-          plan: rateLimitResult.plan,
-          limit: rateLimitResult.limit,
-          remaining: rateLimitResult.remaining,
-          resetTime: new Date(rateLimitResult.resetTime).toISOString(),
+          plan: rate.plan,
+          limit: rate.limit,
+          remaining: rate.remaining,
+          resetTime: new Date(rate.resetTime).toISOString(),
         },
         { status: 429 }
       );
@@ -235,25 +216,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rateLimitResult =
-      await subscriptionRateLimiter.checkSubscriptionRateLimit(
-        request,
-        token,
-        userId,
-        "message_sent",
-        60000
-      );
-    if (!rateLimitResult.allowed) {
+    // subscription-aware limiter for message send
+    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
+      request,
+      token,
+      userId,
+      "message_sent",
+      60000
+    );
+    if (!rate.allowed) {
       return NextResponse.json(
         {
           error:
-            rateLimitResult.error ||
+            rate.error ||
             "Rate limit exceeded. Please wait before sending more messages.",
           correlationId,
-          plan: rateLimitResult.plan,
-          limit: rateLimitResult.limit,
-          remaining: rateLimitResult.remaining,
-          resetTime: new Date(rateLimitResult.resetTime).toISOString(),
+          plan: rate.plan,
+          limit: rate.limit,
+          remaining: rate.remaining,
+          resetTime: new Date(rate.resetTime).toISOString(),
         },
         { status: 429 }
       );
@@ -390,9 +371,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Publish normalized SSE event payload for message_sent
     try {
       const { eventBus } = await import("@/lib/eventBus");
-      eventBus.emit(conversationId, result);
+      eventBus.emit(conversationId, {
+        type: "message_sent",
+        message: result,
+      });
     } catch (eventError) {
       console.warn("Failed to broadcast message", {
         scope: "messages.post",

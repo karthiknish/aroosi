@@ -12,18 +12,47 @@ import {
   ArrowRight,
   Check,
 } from "lucide-react";
-import { showErrorToast, showInfoToast } from "@/lib/ui/toast";
-import { createCheckoutSession } from "@/lib/utils/stripeUtil";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/types/profile";
-import React, { useState } from "react";
+import { showErrorToast, showInfoToast, showSuccessToast } from "@/lib/ui/toast";
+import { createCheckoutSession, getPlans, type NormalizedPlan } from "@/lib/utils/stripeUtil";
+import React, { useEffect, useMemo, useState } from "react";
 
-type PlanId = SubscriptionPlan;
+type PlanId = "free" | "premium" | "premiumPlus" | string;
 
 export default function ManagePlansPage() {
   const { profile, getToken } = useAuthContext();
   const [loading, setLoading] = useState<string | null>(null);
+  const [plans, setPlans] = useState<NormalizedPlan[] | null>(null);
+  const [isFetching, setIsFetching] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const currentPlan = ((profile as { subscriptionPlan?: string })
     ?.subscriptionPlan || "free") as PlanId;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setIsFetching(true);
+        setFetchError(null);
+        const data = await getPlans();
+        if (mounted) {
+          setPlans(data);
+          if (!data || data.length === 0) {
+            setFetchError("No plans available at the moment.");
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setPlans([]);
+          setFetchError(e instanceof Error ? e.message : "Failed to load plans");
+        }
+      } finally {
+        if (mounted) setIsFetching(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (planId === currentPlan) {
@@ -55,6 +84,7 @@ export default function ManagePlansPage() {
       if (!result.success || !result.checkoutUrl) {
         throw new Error(result.error || "Unknown error");
       }
+      showSuccessToast("Opening secure Stripe checkout");
 
       window.location.href = result.checkoutUrl;
     } catch (err) {
@@ -90,14 +120,38 @@ export default function ManagePlansPage() {
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
                 <Check className="w-4 h-4" />
                 You&apos;re currently on{" "}
-                {SUBSCRIPTION_PLANS.find((p) => p.id === currentPlan)?.name}
+                {plans?.find((p: NormalizedPlan) => p.id === currentPlan)?.name || String(currentPlan)}
               </div>
             )}
           </div>
 
           {/* Plans Grid */}
           <div className="grid gap-8 lg:grid-cols-3 max-w-6xl mx-auto pt-6">
-            {SUBSCRIPTION_PLANS.map((plan) => {
+            {isFetching && (
+              <>
+                {[0,1,2].map((i) => (
+                  <Card key={i} className="mx-4 p-6 animate-pulse">
+                    <div className="h-6 w-28 bg-gray-200 rounded mb-4" />
+                    <div className="h-8 w-40 bg-gray-200 rounded mb-6" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-full bg-gray-100 rounded" />
+                      <div className="h-4 w-5/6 bg-gray-100 rounded" />
+                      <div className="h-4 w-2/3 bg-gray-100 rounded" />
+                    </div>
+                    <div className="h-10 w-full bg-gray-200 rounded mt-6" />
+                  </Card>
+                ))}
+              </>
+            )}
+            {!isFetching && fetchError && (
+              <div className="lg:col-span-3 text-center text-sm text-red-600">{fetchError}</div>
+            )}
+            {(!isFetching && (!plans || plans.length === 0)) && (
+              <div className="lg:col-span-3 text-center text-sm text-gray-600">No plans to display.</div>
+            )}
+            {(plans && plans.length ? plans : [
+              { id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false },
+            ]).map((plan) => {
               const selected = isCurrent(plan.id);
               const isPopular = plan.popular || plan.id === "premium";
               const isLoading = loading === plan.id;
@@ -109,7 +163,7 @@ export default function ManagePlansPage() {
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20">
                       <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1 whitespace-nowrap">
                         <Sparkles className="w-3 h-3" />
-                        {plan.badge || "Most Popular"}
+                        Most Popular
                       </div>
                     </div>
                   )}
@@ -182,11 +236,14 @@ export default function ManagePlansPage() {
                                 : "text-amber-600"
                           }`}
                         >
-                          {plan.displayPrice}
+                          {plan.id === "free"
+                            ? "Free"
+                            : new Intl.NumberFormat(undefined, {
+                                style: "currency",
+                                currency: (plan as any).currency || "GBP",
+                              }).format((plan as any).price / 100)}
                         </span>
-                        <span className="text-gray-500 ml-1">
-                          / {plan.duration}
-                        </span>
+                        <span className="text-gray-500 ml-1">/ month</span>
                       </div>
 
                       {plan.id !== "free" && (
@@ -223,9 +280,12 @@ export default function ManagePlansPage() {
                             ? "bg-green-600 hover:bg-green-700"
                             : plan.id === "premium"
                               ? "bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
-                              : "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600"
-                        } ${selected ? "bg-green-500 hover:bg-green-500" : ""}`}
+                              : "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-rose-600"
+                        } ${selected ? "bg-green-500 hover:bg-green-500" : ""} ${isLoading ? "opacity-80 cursor-wait" : ""}`}
                         onClick={() => handleSelectPlan(plan.id)}
+                        aria-disabled={selected || isLoading}
+                        aria-busy={isLoading}
+                        title={selected ? "Current plan" : plan.id === "free" ? "Choose Free" : `Choose ${plan.name}`}
                       >
                         {isLoading ? (
                           <div className="flex items-center gap-2">

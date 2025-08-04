@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,11 @@ import {
   ProfileWizardProvider,
   useProfileWizard,
 } from "@/contexts/ProfileWizardContext";
+import {
+  enhancedValidationSchemas,
+} from "@/lib/validation/profileValidation";
+import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
+import RequiredLabel from "../ui/RequiredLabel";
 
 interface OnboardingData {
   profileFor: string;
@@ -41,36 +46,26 @@ interface OnboardingData {
   phoneNumber: string;
 }
 
-const onboardingSchema = z.object({
-  profileFor: z.string().min(1, "Required"),
-  gender: z.string().min(1, "Required"),
-  fullName: z.string().min(2, "Required"),
-  dateOfBirth: z.string().min(1, "Required"),
-  phoneNumber: z
-    .string()
-    // Normalize to E.164-like "+<digits>" if possible; otherwise keep as-is for UI but fail validation.
-    .transform((v) => {
-      // Reuse same logic as client validation: keep +, strip others, validate 10-15 digits.
-      const cleaned = v.replace(/[^\d+]/g, "");
-      const digits = cleaned.replace(/\D/g, "");
-      if (digits.length >= 10 && digits.length <= 15) {
-        return `+${digits}`;
-      }
-      return v;
-    })
-    .refine((v) => /^\+\d{10,15}$/.test(v), "Enter a valid phone number"),
+/**
+ * Thin wrappers that reuse enhancedValidationSchemas.basicInfo to eliminate drift.
+ * We validate the subset of fields collected in each hero step.
+ */
+const heroStep1Schema = enhancedValidationSchemas.basicInfo.pick({
+  profileFor: true,
+  gender: true,
+});
+const heroStep2Schema = enhancedValidationSchemas.basicInfo.pick({
+  fullName: true,
+  dateOfBirth: true,
+});
+const heroStep3Schema = enhancedValidationSchemas.basicInfo.pick({
+  phoneNumber: true,
 });
 
-const onboardingStepSchemas = [
-  onboardingSchema.pick({ profileFor: true, gender: true }),
-  onboardingSchema.pick({ fullName: true, dateOfBirth: true }),
-  onboardingSchema.pick({ phoneNumber: true }),
-];
+const onboardingStepSchemas = [heroStep1Schema, heroStep2Schema, heroStep3Schema];
 
 function HeroOnboardingInner() {
   const { step, setStep, formData, updateFormData } = useProfileWizard();
-
-  // Cast through unknown to map generic wizard data to the specific onboarding shape
 
   const heroData = formData as unknown as OnboardingData;
   const [loading, setLoading] = useState(false);
@@ -78,6 +73,19 @@ function HeroOnboardingInner() {
 
   const handleInputChange = (field: keyof OnboardingData, value: string) => {
     updateFormData({ [field]: value });
+    // Persist HERO_ONBOARDING snapshot for symmetry; modal will clear on success/close
+    try {
+      if (typeof window === "undefined") return;
+      const snapshot: Partial<OnboardingData> = {
+        profileFor: (formData.profileFor as string) ?? "",
+        gender: (formData.gender as string) ?? "",
+        fullName: (formData.fullName as string) ?? "",
+        dateOfBirth: (formData.dateOfBirth as string) ?? "",
+        phoneNumber: (formData.phoneNumber as string) ?? "",
+        [field]: value,
+      };
+      window.localStorage.setItem(STORAGE_KEYS.HERO_ONBOARDING, JSON.stringify(snapshot));
+    } catch {}
   };
 
   const validateOnboardingStep = (): boolean => {
@@ -94,27 +102,18 @@ function HeroOnboardingInner() {
   };
 
   const handleNext = () => {
-    if (!validateOnboardingStep()) return;
-
-    // Enhanced age validation with better feedback
-    if (step === 2) {
-      const age = calculateAge(heroData.dateOfBirth);
-      if (isNaN(age)) {
-        showErrorToast(null, "Please select a valid date of birth.");
-        return;
-      }
-      if (age < 18) {
-        showErrorToast(
-          null,
-          `You must be at least 18 years old to use this app. Current age: ${age}`
-        );
-        return;
-      }
-      if (age > 100) {
-        showErrorToast(null, "Please enter a valid date of birth.");
-        return;
+    // Defensive normalization: on step 3, ensure we store canonical E.164-like phone before validation
+    if (step === 3) {
+      const cleaned = String(heroData.phoneNumber ?? "").replace(/[^\d+]/g, "");
+      const digits = cleaned.replace(/\D/g, "");
+      const normalized = digits.length >= 10 && digits.length <= 15 ? `+${digits}` : String(heroData.phoneNumber ?? "");
+      if (normalized !== heroData.phoneNumber) {
+        updateFormData({ phoneNumber: normalized });
       }
     }
+
+    // Delegate validation (including 18+ age) to the shared schema wrappers
+    if (!validateOnboardingStep()) return;
 
     if (step < 3) {
       setStep(step + 1);
@@ -126,35 +125,43 @@ function HeroOnboardingInner() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Gate opening modal on unified required set to match modal’s hasBasicData
+      const required: (keyof OnboardingData)[] = [
+        "profileFor",
+        "gender",
+        "fullName",
+        "dateOfBirth",
+        "phoneNumber",
+      ];
+      const missing = required.filter(
+        (k) => !heroData[k] || String(heroData[k] ?? "").trim() === ""
+      );
+      if (missing.length > 0) {
+        showErrorToast(null, "Please complete all required fields first.");
+        return;
+      }
       // Open the profile creation modal with the collected data
       setShowProfileModal(true);
-      // The data is already in the ProfileWizardContext
+      try {
+        if (typeof window !== "undefined") {
+          // Fire-and-forget signal for belt-and-braces clearing listeners
+          window.postMessage({ type: "onboarding-opened" }, window.location.origin);
+        }
+      } catch {}
     } catch {
       showErrorToast(null, "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-  const calculateAge = (dob: string) => {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-    return age;
-  };
 
-  // Helper to show * for required fields
-  const required = (label: string) => (
+  // Helper to show * for required fields (can be extracted into a tiny component)
+  const RequiredLabel = ({ children }: { children: React.ReactNode }) => (
     <span>
-      {label} <span className="text-red-500">*</span>
+      {children} <span className="text-red-500">*</span>
     </span>
   );
+  const required = (label: string) => <RequiredLabel>{label}</RequiredLabel>;
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -375,12 +382,15 @@ function HeroOnboardingInner() {
                               : undefined
                           }
                           onSelect={(date) => {
-                            if (date) {
-                              handleInputChange(
-                                "dateOfBirth",
-                                format(date, "yyyy-MM-dd"),
-                              );
+                            // Guard against invalid dates before writing to state
+                            if (!date || isNaN(date.getTime())) {
+                              showErrorToast(null, "Please select a valid date.");
+                              return;
                             }
+                            handleInputChange(
+                              "dateOfBirth",
+                              format(date, "yyyy-MM-dd"),
+                            );
                           }}
                           disabled={(date) => {
                             const today = new Date();
@@ -398,9 +408,10 @@ function HeroOnboardingInner() {
                         />
                       </PopoverContent>
                     </Popover>
+                    {/* Optional friendly message without duplicating validation logic */}
                     {heroData.dateOfBirth && (
                       <p className="text-sm text-gray-500 mt-1">
-                        Age: {calculateAge(heroData.dateOfBirth)} years
+                        Date selected: {format(new Date(heroData.dateOfBirth), "PPP")}
                       </p>
                     )}
                   </div>
