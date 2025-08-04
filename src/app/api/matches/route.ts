@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     // Cookie-auth alignment: infer current user from session, do not require userId in query
 
-    const authCheck = requireUserToken(req);
+    const authCheck = await requireUserToken(req);
     if ("errorResponse" in authCheck) {
       const res = authCheck.errorResponse as NextResponse;
       const status = res.status || 401;
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token } = authCheck;
+    // Cookie-only model: no token is provided
 
     const convex = getConvexClient();
     if (!convex) {
@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
       );
     }
     try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
+      // Cookie-only model: do not set token on convex client
+      // convex.setAuth?.(undefined as unknown as string);
     } catch {}
 
     const matches = await convex

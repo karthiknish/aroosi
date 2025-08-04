@@ -35,7 +35,8 @@ function formatTimeRemaining(boostedUntil: number): string {
 
 const ProfileBoostButton = () => {
   const { profile, refetchProfileStatus, isLoading } = useProfileContext();
-  const { token } = useAuthContext();
+  // Cookie-only auth: no client token required
+  const {} = useAuthContext();
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
 
@@ -64,8 +65,9 @@ const ProfileBoostButton = () => {
   const handleBoost = async () => {
     setLoading(true);
     try {
-      if (!token) throw new Error("No token");
-      const result = await boostProfile(token);
+      // Cookie-only migration: boostProfile currently expects a token param by type.
+      // Pass an empty string to satisfy the current signature; server uses cookies.
+      const result = await boostProfile("");
       showSuccessToast(
         `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`
       );

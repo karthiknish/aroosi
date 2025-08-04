@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { logSecurityEvent } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
@@ -17,9 +17,9 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = await requireUserToken(req);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -35,9 +35,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       });
       return NextResponse.json(body, { status });
     }
-    const { userId } = authCheck;
-    // Cookie-only model: token is not provided; keep variable for legacy optional calls
-    const token: string | undefined = undefined;
+    const { userId } = session;
 
     if (!userId) {
       console.warn("Interests action missing userId", {
@@ -53,8 +51,8 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         req,
-        undefined as unknown as string, // cookie-only: no token; keep signature compatibility
-        userId,
+        "", // cookie-only: no token string
+        String(userId),
         "interest_sent"
       );
 
@@ -95,55 +93,43 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       return NextResponse.json({ error: "Invalid or missing toUserId", correlationId }, { status: 400 });
     }
 
-    let convexClient: ReturnType<typeof getConvexClient>;
-    let fromUserIdConvex: Id<"users">;
-
-    {
-      const convex = getConvexClient();
-      if (!convex) {
-        console.error("Interests action convex not configured", {
-          scope: "interests.action",
-          type: "convex_not_configured",
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return NextResponse.json(
-          { error: "Convex client not configured", correlationId },
-          { status: 500 }
-        );
-      }
-      try {
-        // @ts-ignore optional legacy
-        convex.setAuth?.(token);
-      } catch {}
-
-      let currentUserRecord;
-      try {
-        currentUserRecord = await convex.query(
-          api.users.getCurrentUserWithProfile,
-          {}
-        );
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        const isAuth =
-          message.includes("Unauthenticated") || message.includes("token");
-        return NextResponse.json(
-          {
-            error: isAuth ? "Authentication failed" : "Failed to fetch current user",
-            correlationId,
-          },
-          { status: isAuth ? 401 : 400 }
-        );
-      }
-
-      if (!currentUserRecord) {
-        return NextResponse.json({ error: "User not found", correlationId }, { status: 404 });
-      }
-
-      fromUserIdConvex = currentUserRecord._id as Id<"users">;
-      convexClient = convex;
+    const convex = getConvexClient();
+    if (!convex) {
+      console.error("Interests action convex not configured", {
+        scope: "interests.action",
+        type: "convex_not_configured",
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
+      return NextResponse.json(
+        { error: "Convex client not configured", correlationId },
+        { status: 500 }
+      );
     }
+
+    // Optionally confirm current user from Convex for mutation preconditions
+    let currentUserRecord;
+    try {
+      currentUserRecord = await convex.query(api.users.getCurrentUserWithProfile, {});
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const isAuth =
+        message.includes("Unauthenticated") || message.includes("token");
+      return NextResponse.json(
+        {
+          error: isAuth ? "Authentication failed" : "Failed to fetch current user",
+          correlationId,
+        },
+        { status: isAuth ? 401 : 400 }
+      );
+    }
+
+    if (!currentUserRecord) {
+      return NextResponse.json({ error: "User not found", correlationId }, { status: 404 });
+    }
+
+    const fromUserIdConvex = currentUserRecord._id as Id<"users">;
 
     if (fromUserIdConvex === (toUserId as Id<"users">)) {
       return NextResponse.json(
@@ -151,8 +137,6 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
         { status: 400 }
       );
     }
-
-    const convex = convexClient;
 
     try {
       const result = await convex
@@ -210,7 +194,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
 
       logSecurityEvent(
         "VALIDATION_FAILED",
-        { userId, endpoint: "interests", action, error: message, correlationId },
+        { userId: String(userId), endpoint: "interests", action, error: message, correlationId },
         req
       );
 
@@ -250,9 +234,9 @@ export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = await requireUserToken(req);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -268,9 +252,7 @@ export async function GET(req: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { userId: authenticatedUserId } = authCheck;
-    // Cookie-only model: token is not provided; keep variable for legacy optional calls
-    const token: string | undefined = undefined;
+    const { userId: authenticatedUserId } = session;
 
     if (!authenticatedUserId) {
       return NextResponse.json({ error: "User ID is required", correlationId }, { status: 400 });
@@ -279,8 +261,8 @@ export async function GET(req: NextRequest) {
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         req,
-        undefined as unknown as string, // cookie-only: no token; keep signature compatibility
-        authenticatedUserId,
+        "", // cookie-only: no token string
+        String(authenticatedUserId),
         "interest_sent"
       );
 
@@ -308,10 +290,7 @@ export async function GET(req: NextRequest) {
         { status: 500 }
       );
     }
-    try {
-      // @ts-ignore optional legacy
-      convex.setAuth?.(token);
-    } catch {}
+    // No convex.setAuth in cookie-only model
 
     let currentUserRecord;
     try {

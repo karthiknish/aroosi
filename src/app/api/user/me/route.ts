@@ -22,10 +22,9 @@ function log(scope: string, level: "info" | "warn" | "error", message: string, e
 }
 
 /**
- * Robust cookie/session token extraction with clear diagnostics.
- * No Authorization: Bearer is supported anywhere.
+ * Cookie-only session context. No Authorization header or explicit token passthrough.
  */
-function getSessionToken(): { token: string | null; source: "cookie" | "header" | "none"; cookieTried: string[] } {
+function getSessionContext(): { source: "cookie"; cookieTried: string[] } {
   const cookieNames = [
     "__Secure-next-auth.session-token",
     "next-auth.session-token",
@@ -35,43 +34,21 @@ function getSessionToken(): { token: string | null; source: "cookie" | "header" 
     "jwt",
   ];
   const tried: string[] = [];
-
-  // Try cookies first
   try {
     const jar: any = (cookies as any)();
     if (jar && typeof jar.get === "function" && typeof jar.then !== "function") {
       for (const name of cookieNames) {
         tried.push(name);
-        const c = jar.get(name);
-        if (c?.value && typeof c.value === "string" && c.value.trim()) {
-          return { token: c.value, source: "cookie", cookieTried: tried };
-        }
+        // We do not return the value; only record the probe for diagnostics.
+        void jar.get(name);
       }
     } else {
       log("api/user/me", "warn", "cookies() not usable or Promise-like in this runtime", {});
     }
   } catch (e) {
-    log("api/user/me", "warn", "cookies() threw during token extraction", { error: (e as Error)?.message });
+    log("api/user/me", "warn", "cookies() threw during cookie probe", { error: (e as Error)?.message });
   }
-
-  // Optional header fallback for special non-browser callers
-  try {
-    const h: any = (headers as any)();
-    const hasGet = h && typeof h.get === "function" && typeof h.then !== "function";
-    if (hasGet) {
-      const headersToTry = ["X-Session-Token", "x-session-token", "X-Auth-Token", "x-auth-token"];
-      for (const hdr of headersToTry) {
-        const val = h.get(hdr);
-        if (typeof val === "string" && val.trim()) {
-          return { token: val, source: "header", cookieTried: tried };
-        }
-      }
-    }
-  } catch (e) {
-    log("api/user/me", "warn", "headers() threw during token extraction", { error: (e as Error)?.message });
-  }
-
-  return { token: null, source: "none", cookieTried: tried };
+  return { source: "cookie", cookieTried: tried };
 }
 
 /**
@@ -97,33 +74,19 @@ export async function GET(_request: NextRequest) {
     return errorResponse("Convex client not configured", 500);
   }
 
-  const { token, source, cookieTried } = getSessionToken();
-  log(scope, "info", "Session token resolved", {
+  const { source, cookieTried } = getSessionContext();
+  log(scope, "info", "Session context probed", {
     source,
     tried: cookieTried,
-    hasToken: Boolean(token),
   });
 
   try {
-    let userWithProfile: any | null = null;
-
-    try {
-      convex.setAuth(token || "");
-      userWithProfile = await convex.query(api.users.getCurrentUserWithProfile, {});
-      log(scope, "info", "Convex query success", { mode: token ? "session" : "anonymous" });
-    } catch (convexError: unknown) {
+    // Cookie-only: do not call convex.setAuth with tokens
+    const userWithProfile = await convex.query(api.users.getCurrentUserWithProfile, {}).catch((convexError: unknown) => {
       const details = toErrorDetails(convexError);
-      log(scope, "warn", "Convex query failed with token; retrying anonymous", details);
-      try {
-        convex.setAuth("");
-        userWithProfile = await convex.query(api.users.getCurrentUserWithProfile, {});
-        log(scope, "info", "Convex anonymous retry success");
-      } catch (anonErr: unknown) {
-        const d2 = toErrorDetails(anonErr);
-        log(scope, "error", "Convex anonymous retry failed", d2);
-        return errorResponse("Failed to fetch user profile", 500, { details: d2 });
-      }
-    }
+      log(scope, "error", "Convex query failed", details);
+      return null;
+    });
 
     if (!userWithProfile || !userWithProfile.profile) {
       log(scope, "warn", "Profile missing in response");
@@ -146,15 +109,15 @@ export async function PUT(request: NextRequest) {
     return errorResponse("Convex client not configured", 500);
   }
 
-  const { token, source, cookieTried } = getSessionToken();
-  log(scope, "info", "Session token resolved", {
+  const { source, cookieTried } = getSessionContext();
+  log(scope, "info", "Session context probed", {
     source,
     tried: cookieTried,
-    hasToken: Boolean(token),
   });
-
-  if (!token) {
-    log(scope, "warn", "No session token; rejecting");
+  
+  // Cookie-only gate: ensure a cookie exists by probing typical names; reject if none found
+  if (!cookieTried || cookieTried.length === 0) {
+    log(scope, "warn", "No session cookies observed; rejecting");
     return errorResponse("Unauthorized - session cookie not found", 401);
   }
 
@@ -167,7 +130,7 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    convex.setAuth(token);
+    // Cookie-only: do not call convex.setAuth with tokens
     const updatedUser = await convex.mutation(api.users.updateProfile, body as any);
 
     if (!updatedUser) {

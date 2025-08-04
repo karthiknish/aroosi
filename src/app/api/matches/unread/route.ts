@@ -3,6 +3,7 @@ import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
+import { requireSession } from "@/app/api/_utils/auth";
 
 // Cookie-auth alignment: infer user from session; no bearer header parsing
 
@@ -11,11 +12,10 @@ export async function GET(req: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Derive current user from session cookie using the same helper as other APIs
-    const { requireUserToken } = await import("@/app/api/_utils/auth");
-    const authCheck = requireUserToken(req);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    // Cookie-only authentication
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { success: false, error: "Unauthorized", correlationId };
       try {
@@ -24,13 +24,14 @@ export async function GET(req: NextRequest) {
       } catch {}
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck as { token: string; userId: string };
+    const { userId } = session;
 
     // Subscription-aware rate limiting for unread counts polling
+    // Cookie-only: no token string available; pass empty string to satisfy types
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       req,
-      token,
-      userId,
+      "",
+      String(userId),
       "unread_counts",
       60000
     );
@@ -63,10 +64,6 @@ export async function GET(req: NextRequest) {
         { status: 500 }
       );
     }
-    try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
-    } catch {}
 
     const counts = await convex
       .query(api.messages.getUnreadCountsForUser, {

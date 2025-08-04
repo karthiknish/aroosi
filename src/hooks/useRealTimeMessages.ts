@@ -31,7 +31,7 @@ export function useRealTimeMessages({
   conversationId,
   initialMessages = [],
 }: UseRealTimeMessagesProps): UseRealTimeMessagesReturn {
-  const { token: contextToken, userId } = useAuthContext();
+  const { userId } = useAuthContext();
   const [messages, setMessages] = useState<MessageData[]>(initialMessages);
   const [isTyping, setIsTyping] = useState<Record<string, boolean>>({});
   const [isConnected, setIsConnected] = useState(false);
@@ -148,14 +148,10 @@ export function useRealTimeMessages({
       if (!userId || !text.trim()) return;
 
       try {
-        const token = contextToken;
-        if (!token) throw new Error("Authentication required");
-
         const response = await fetch("/api/match-messages", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             conversationId,
@@ -217,7 +213,7 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId, contextToken],
+    [userId, conversationId],
   );
 
   // Send voice message
@@ -226,11 +222,7 @@ export function useRealTimeMessages({
       if (!userId) return;
 
       try {
-        const token = contextToken;
-        if (!token) throw new Error("Authentication required");
-
         const saved = await uploadVoiceMessage({
-          token,
           conversationId,
           fromUserId: userId,
           toUserId,
@@ -262,7 +254,7 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId, contextToken],
+    [userId, conversationId],
   );
 
   // Send typing indicators
@@ -301,14 +293,10 @@ export function useRealTimeMessages({
       if (!userId || messageIds.length === 0) return;
 
       try {
-        const token = contextToken;
-        if (!token) throw new Error("Authentication required");
-
         const response = await fetch("/api/messages/mark-read", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ messageIds }),
         });
@@ -349,7 +337,7 @@ export function useRealTimeMessages({
         }
       }
     },
-    [userId, contextToken],
+    [userId],
   );
 
   // Refresh messages from server
@@ -357,15 +345,10 @@ export function useRealTimeMessages({
     if (!userId) return;
 
     try {
-      const token = contextToken;
-      if (!token) throw new Error("Authentication required");
-
       const response = await fetch(
         `/api/match-messages?conversationId=${conversationId}&limit=50`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          // Cookie-only auth: no Authorization header; server uses cookies
         },
       );
 
@@ -413,7 +396,7 @@ export function useRealTimeMessages({
         setError("Failed to refresh messages");
       }
     }
-  }, [userId, conversationId, contextToken]);
+  }, [userId, conversationId]);
 
   // Initialize connection on mount
   useEffect(() => {
