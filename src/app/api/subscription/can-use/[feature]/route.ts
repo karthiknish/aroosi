@@ -4,12 +4,8 @@ import { api } from "@convex/_generated/api";
 import { requireUserToken } from "@/app/api/_utils/auth";
 
 /**
- * IMPORTANT:
- * We use app-layer auth. Do NOT pass the app JWT to Convex (no convex.setAuth).
- * Instead, identify the current Convex user via server-side queries and use that identity.
- *
- * Also: Prevent implicit domain redirect (307) by forcing JSON and absolute URL handling,
- * and by returning explicit NextResponse JSON without delegating to helpers that might revalidate.
+ * Prevent 307 domain redirects and enforce JSON-only responses with structured logs.
+ * This endpoint uses app-layer auth and never passes tokens to Convex.
  */
 
 const validFeatures = [
@@ -23,25 +19,47 @@ const validFeatures = [
 
 type Feature = (typeof validFeatures)[number];
 
+function log(
+  scope: string,
+  level: "info" | "warn" | "error",
+  message: string,
+  extra?: Record<string, unknown>
+) {
+  const payload = {
+    scope,
+    level,
+    message,
+    ts: new Date().toISOString(),
+    ...(extra && Object.keys(extra).length > 0 ? { extra } : {}),
+  };
+  if (level === "error") console.error(payload);
+  else if (level === "warn") console.warn(payload);
+  else console.info(payload);
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ feature: string }> }
 ) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
+  const scope = "api/subscription/can-use#GET";
+  const correlationId =
+    request.headers.get("x-request-id") ||
+    Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  // Force JSON response type; explicitly avoid redirects
   const json = (data: unknown, status = 200) =>
     new NextResponse(JSON.stringify(data), {
       status,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
     });
 
   try {
-    // Require an app-layer user token for gating the endpoint
+    // Gate with app-layer auth; normalize any helper response into plain JSON
     const authCheck = requireUserToken(request);
     if ("errorResponse" in authCheck) {
-      // Normalize helper response to plain JSON to avoid any revalidation/redirect behavior
       const res = authCheck.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
@@ -49,11 +67,9 @@ export async function GET(
         const txt = await res.text();
         body = txt ? { ...JSON.parse(txt), correlationId } : body;
       } catch {
-        // keep default
+        // fall through with default body
       }
-      console.warn("Subscription can-use auth failed", {
-        scope: "subscription.can_use",
-        type: "auth_failed",
+      log(scope, "warn", "Auth failed", {
         correlationId,
         statusCode: status,
         durationMs: Date.now() - startedAt,
@@ -62,19 +78,22 @@ export async function GET(
     }
 
     const params = await context.params;
-    const feature = params.feature as Feature;
-    if (!validFeatures.includes(feature)) {
-      console.warn("Subscription can-use invalid feature", {
-        scope: "subscription.can_use",
-        type: "invalid_feature",
-        feature,
+    const rawFeature = params?.feature;
+    const feature = rawFeature as Feature;
+
+    if (!rawFeature || !validFeatures.includes(feature)) {
+      log(scope, "warn", "Invalid feature", {
         correlationId,
+        feature: rawFeature,
+        valid: validFeatures,
         statusCode: 400,
         durationMs: Date.now() - startedAt,
       });
       return json(
         {
-          error: `Invalid feature. Must be one of: ${validFeatures.join(", ")}`,
+          error: "Invalid feature",
+          reason: `Must be one of: ${validFeatures.join(", ")}`,
+          feature: rawFeature ?? null,
           correlationId,
         },
         400
@@ -83,9 +102,7 @@ export async function GET(
 
     const convex = getConvexClient();
     if (!convex) {
-      console.error("Subscription can-use convex not configured", {
-        scope: "subscription.can_use",
-        type: "convex_not_configured",
+      log(scope, "error", "Convex client not configured", {
         correlationId,
         statusCode: 500,
         durationMs: Date.now() - startedAt,
@@ -96,32 +113,30 @@ export async function GET(
       );
     }
 
-    // App-layer auth: DO NOT call convex.setAuth(token)
-    // Resolve Convex identity using server function
-    const current = await convex
-      .query(api.users.getCurrentUserWithProfile, {})
-      .catch((e: unknown) => {
-        console.error("Subscription can-use identity error", {
-          scope: "subscription.can_use",
-          type: "identity_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    // App-layer auth only; never set Convex auth with app token
+    let current: any = null;
+    try {
+      current = await convex.query(api.users.getCurrentUserWithProfile, {});
+    } catch (e: unknown) {
+      log(scope, "error", "Identity resolve failed", {
+        correlationId,
+        statusCode: 500,
+        message: e instanceof Error ? e.message : String(e),
+        durationMs: Date.now() - startedAt,
       });
+      return json(
+        { error: "Unable to resolve user identity", correlationId },
+        500
+      );
+    }
 
-    // current is shaped like { user, profile } per server function contract; be defensive on typing
     const userId =
       (current as { user?: { _id?: unknown } } | null)?.user?._id ??
       (current as { _id?: unknown } | null)?._id ??
       null;
 
     if (!userId) {
-      console.warn("Subscription can-use user not found", {
-        scope: "subscription.can_use",
-        type: "user_not_found",
+      log(scope, "warn", "User not found", {
         correlationId,
         statusCode: 404,
         durationMs: Date.now() - startedAt,
@@ -129,55 +144,39 @@ export async function GET(
       return json({ error: "User not found in database", correlationId }, 404);
     }
 
-    // Check if user can use the feature using server-enforced identity
-    const result = await convex
-      .query(api.usageTracking.checkActionLimit, {
+    let result: any = null;
+    try {
+      result = await convex.query(api.usageTracking.checkActionLimit, {
         action: feature,
-        // userId,
-      })
-      .catch((e: unknown) => {
-        console.error("Subscription can-use check error", {
-          scope: "subscription.can_use",
-          type: "check_error",
-          feature,
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
       });
-
-    if (result == null) {
+    } catch (e: unknown) {
+      log(scope, "error", "Feature check failed", {
+        correlationId,
+        feature,
+        statusCode: 500,
+        message: e instanceof Error ? e.message : String(e),
+        durationMs: Date.now() - startedAt,
+      });
       return json(
-        {
-          error: "Failed to check feature availability",
-          correlationId,
-        },
+        { error: "Failed to check feature availability", correlationId },
         500
       );
     }
 
-    const response = json({ success: true, data: result, correlationId }, 200);
-
-    console.info("Subscription can-use success", {
-      scope: "subscription.can_use",
-      type: "success",
-      feature,
+    const responseBody = { success: true, data: result, correlationId };
+    log(scope, "info", "Feature check success", {
       correlationId,
+      feature,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
-
-    return response;
+    return json(responseBody, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("Subscription can-use unhandled error", {
-      scope: "subscription.can_use",
-      type: "unhandled_error",
-      message,
+    log(scope, "error", "Unhandled error", {
       correlationId,
       statusCode: 500,
+      message,
       durationMs: Date.now() - startedAt,
     });
     return json(
