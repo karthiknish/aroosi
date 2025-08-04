@@ -76,7 +76,8 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
           <Badge className={`${config.color} text-white text-xs`}>
             {config.name}
           </Badge>
-          {status.hasSpotlightBadge && (
+          {/* Spotlight badge presence is not part of SubscriptionStatusResponse; show for Plus by convention */}
+          {status.plan === 'premiumPlus' && (
             <Badge variant="outline" className="text-yellow-600 border-yellow-600 text-xs">
               ✨
             </Badge>
@@ -107,7 +108,8 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
           <Badge className={`${config.color} text-white`}>
             {config.name}
           </Badge>
-          {status.hasSpotlightBadge && (
+          {/* Spotlight indicator derived from plan (not part of status payload) */}
+          {status.plan === 'premiumPlus' && (
             <Badge variant="outline" className="text-yellow-600 border-yellow-600">
               ✨ Spotlight
             </Badge>
@@ -191,9 +193,10 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
                 {isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
+            {/* boostsRemaining is not part of SubscriptionStatusResponse; remove to keep types and data aligned */}
             <div className="flex justify-between">
-              <span>Boosts:</span>
-              <span className="font-medium">{status.boostsRemaining}/5</span>
+              <span>Benefits:</span>
+              <span className="font-medium">Includes profile boosts</span>
             </div>
           </div>
           
