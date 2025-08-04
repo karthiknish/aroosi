@@ -298,6 +298,7 @@ export function useRealTimeMessages({
           headers: {
             "Content-Type": "application/json",
           },
+          // Cookie-only auth: identity from HttpOnly cookies
           body: JSON.stringify({ messageIds }),
         });
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
 // Initialize Convex client
@@ -12,9 +12,10 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    // Cookie-only authentication
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     const rateLimitResult = checkApiRateLimit(`mark_read_${userId}`, 50, 60000);
     if (!rateLimitResult.allowed) {
@@ -98,10 +99,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    try {
-      // @ts-ignore legacy
-      client.setAuth?.(token);
-    } catch {}
+    // Cookie-only: do not set auth token on client
 
     if (!userId) {
       return NextResponse.json(
