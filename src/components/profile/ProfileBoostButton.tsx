@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { boostProfile } from "@/lib/utils/profileApi";
+// Use the implemented API helper inside lib/profile
+import { boostProfile } from "@/lib/profile/userProfileApi";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Rocket, Zap, Clock } from "lucide-react";
