@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import type { Profile } from "@convex/users";
-import { requireAdminToken } from "@/app/api/_utils/auth";
+import { requireAdminSession } from "@/app/api/_utils/auth";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const adminCheck = requireAdminToken(req);
+  const adminCheck = await requireAdminSession(req);
   if ("errorResponse" in adminCheck) {
     const res = adminCheck.errorResponse as NextResponse;
     const status = res.status || 401;
@@ -26,7 +26,6 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json(body, { status });
   }
-  const { token } = adminCheck;
 
   const convex = getConvexClient();
   if (!convex) {
@@ -42,10 +41,6 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-  try {
-    // @ts-ignore legacy
-    convex.setAuth?.(token);
-  } catch {}
 
   try {
     const profiles = await convex
@@ -65,7 +60,8 @@ export async function GET(req: NextRequest) {
         return { profiles: [] as Profile[] };
       });
 
-    const allProfiles: Profile[] = (profiles as { profiles?: Profile[] }).profiles || [];
+    const allProfiles: Profile[] =
+      (profiles as { profiles?: Profile[] }).profiles || [];
 
     const allMatches = await Promise.all(
       allProfiles.map(async (profile: Profile) => {
@@ -84,7 +80,11 @@ export async function GET(req: NextRequest) {
             statusCode: 500,
             durationMs: Date.now() - startedAt,
           });
-          return { profileId: profile._id, matches: [], error: "Failed to fetch matches" };
+          return {
+            profileId: profile._id,
+            matches: [],
+            error: "Failed to fetch matches",
+          };
         }
       })
     );

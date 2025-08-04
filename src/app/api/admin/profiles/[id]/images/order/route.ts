@@ -3,13 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireAdminToken } from "@/app/api/_utils/auth";
+import { requireAdminSession } from "@/app/api/_utils/auth";
 
 export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const adminCheck = requireAdminToken(req);
+  const adminCheck = await requireAdminSession(req);
   if ("errorResponse" in adminCheck) {
     const res = adminCheck.errorResponse as NextResponse;
     const status = res.status || 401;
@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(bodyOut, { status });
   }
-  const { token } = adminCheck;
 
   const convex = getConvexClient();
   if (!convex) {
@@ -43,10 +42,6 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-  try {
-    // @ts-ignore optional legacy
-    convex.setAuth?.(token);
-  } catch {}
 
   let body: Record<string, unknown>;
   try {

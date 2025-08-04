@@ -4,22 +4,29 @@ import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@/types/profile";
+import { requireAdminSession } from "@/app/api/_utils/auth";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
+  const adminCheck = await requireAdminSession(req);
+  if ("errorResponse" in adminCheck) {
+    const res = adminCheck.errorResponse as NextResponse;
+    const status = res.status || 401;
+    let body: unknown = { error: "Unauthorized", correlationId };
+    try {
+      const txt = await res.text();
+      body = txt ? { ...JSON.parse(txt), correlationId } : body;
+    } catch {}
     console.warn("Admin profile GET auth failed", {
       scope: "admin.profile",
       type: "auth_failed",
       correlationId,
-      statusCode: 401,
+      statusCode: status,
       durationMs: Date.now() - startedAt,
     });
-    return NextResponse.json({ error: "Unauthorized", correlationId }, { status: 401 });
+    return NextResponse.json(body, { status });
   }
 
   const convex = getConvexClient();
@@ -36,10 +43,6 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-  try {
-    // @ts-ignore legacy
-    convex.setAuth?.(token);
-  } catch {}
 
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
@@ -127,10 +130,16 @@ export async function PUT(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized", correlationId }, { status: 401 });
+  const adminCheck = await requireAdminSession(req);
+  if ("errorResponse" in adminCheck) {
+    const res = adminCheck.errorResponse as NextResponse;
+    const status = res.status || 401;
+    let body: unknown = { error: "Unauthorized", correlationId };
+    try {
+      const txt = await res.text();
+      body = txt ? { ...JSON.parse(txt), correlationId } : body;
+    } catch {}
+    return NextResponse.json(body, { status });
   }
 
   const convex = getConvexClient();
@@ -140,10 +149,6 @@ export async function PUT(req: NextRequest) {
       { status: 500 }
     );
   }
-  try {
-    // @ts-ignore legacy
-    convex.setAuth?.(token);
-  } catch {}
 
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
@@ -222,10 +227,16 @@ export async function DELETE(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized", correlationId }, { status: 401 });
+  const adminCheck = await requireAdminSession(req);
+  if ("errorResponse" in adminCheck) {
+    const res = adminCheck.errorResponse as NextResponse;
+    const status = res.status || 401;
+    let body: unknown = { error: "Unauthorized", correlationId };
+    try {
+      const txt = await res.text();
+      body = txt ? { ...JSON.parse(txt), correlationId } : body;
+    } catch {}
+    return NextResponse.json(body, { status });
   }
 
   const convex = getConvexClient();
@@ -235,10 +246,6 @@ export async function DELETE(req: NextRequest) {
       { status: 500 }
     );
   }
-  try {
-    // @ts-ignore legacy
-    convex.setAuth?.(token);
-  } catch {}
 
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
