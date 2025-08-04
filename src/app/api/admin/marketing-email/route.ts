@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdminToken } from "@/app/api/_utils/auth";
+import { requireAdminSession } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import {
   MarketingEmailTemplateFn,
@@ -13,17 +13,21 @@ import { sendUserNotification } from "@/lib/email";
 import type { Profile } from "@/types/profile";
 
 const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
-  profileCompletionReminder: profileCompletionReminderTemplate as unknown as MarketingEmailTemplateFn,
+  profileCompletionReminder:
+    profileCompletionReminderTemplate as unknown as MarketingEmailTemplateFn,
   premiumPromo: premiumPromoTemplate as unknown as MarketingEmailTemplateFn,
-  recommendedProfiles: recommendedProfilesTemplate as unknown as MarketingEmailTemplateFn,
+  recommendedProfiles:
+    recommendedProfilesTemplate as unknown as MarketingEmailTemplateFn,
 };
 
 export async function POST(request: Request) {
   try {
-    const adminCheck = requireAdminToken(request as unknown as NextRequest);
+    const adminCheck = await requireAdminSession(
+      request as unknown as NextRequest
+    );
     if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
 
-    const { token, userId } = adminCheck;
+    const { userId } = adminCheck;
 
     let body: unknown;
     try {
@@ -32,7 +36,8 @@ export async function POST(request: Request) {
       return errorResponse("Invalid JSON body", 400);
     }
 
-    const { templateKey, params, dryRun, confirm, maxAudience } = (body || {}) as {
+    const { templateKey, params, dryRun, confirm, maxAudience } = (body ||
+      {}) as {
       templateKey?: string;
       params?: Record<string, unknown>;
       dryRun?: boolean;
@@ -45,14 +50,18 @@ export async function POST(request: Request) {
     }
 
     // Safety switches: require confirm for live send; enforce audience cap
-    const effectiveMax = Number.isFinite(maxAudience) ? Math.max(1, Math.min(10000, Number(maxAudience))) : 1000;
+    const effectiveMax = Number.isFinite(maxAudience)
+      ? Math.max(1, Math.min(10000, Number(maxAudience)))
+      : 1000;
     if (!dryRun && confirm !== true) {
-      return errorResponse("Confirmation required for live send", 400, { hint: "Pass confirm: true or use dryRun: true" });
+      return errorResponse("Confirmation required for live send", 400, {
+        hint: "Pass confirm: true or use dryRun: true",
+      });
     }
 
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex not configured", 500);
-    convex.setAuth(token);
+    // Cookie-only model: do not set bearer token; Convex queries use server identity.
 
     // Fetch candidate audience
     const result = await convex.query(api.users.adminListProfiles, {
@@ -62,8 +71,21 @@ export async function POST(request: Request) {
     });
 
     // Be tolerant to backend shape; only pick what we need and keep optionals
-    const profiles = (Array.isArray(result?.profiles) ? result.profiles : []) as Array<
-      Partial<Pick<Profile, "email" | "fullName" | "aboutMe" | "profileImageUrls" | "images" | "interests" | "isProfileComplete">> & {
+    const profiles = (
+      Array.isArray(result?.profiles) ? result.profiles : []
+    ) as Array<
+      Partial<
+        Pick<
+          Profile,
+          | "email"
+          | "fullName"
+          | "aboutMe"
+          | "profileImageUrls"
+          | "images"
+          | "interests"
+          | "isProfileComplete"
+        >
+      > & {
         email?: string;
       }
     >;
@@ -86,10 +108,14 @@ export async function POST(request: Request) {
           templateKey === "profileCompletionReminder"
             ? templateFn(baseProfile, p.isProfileComplete ? 100 : 70, "")
             : templateKey === "premiumPromo"
-            ? templateFn(baseProfile, 30, "")
-            : templateKey === "recommendedProfiles"
-            ? templateFn(baseProfile, [], "")
-            : templateFn(baseProfile, ...((params?.args || []) as unknown[]), "");
+              ? templateFn(baseProfile, 30, "")
+              : templateKey === "recommendedProfiles"
+                ? templateFn(baseProfile, [], "")
+                : templateFn(
+                    baseProfile,
+                    ...((params?.args || []) as unknown[]),
+                    ""
+                  );
 
         previews.push({ email: p.email, subject: payload.subject });
       }
@@ -115,7 +141,11 @@ export async function POST(request: Request) {
 
         let emailPayload;
         if (templateKey === "profileCompletionReminder") {
-          emailPayload = templateFn(baseProfile, p.isProfileComplete ? 100 : 70, "");
+          emailPayload = templateFn(
+            baseProfile,
+            p.isProfileComplete ? 100 : 70,
+            ""
+          );
         } else if (templateKey === "premiumPromo") {
           emailPayload = templateFn(baseProfile, 30, "");
         } else if (templateKey === "recommendedProfiles") {
@@ -129,7 +159,11 @@ export async function POST(request: Request) {
           );
         }
         if (p.email) {
-          await sendUserNotification(p.email, emailPayload.subject, emailPayload.html);
+          await sendUserNotification(
+            p.email,
+            emailPayload.subject,
+            emailPayload.html
+          );
           sent += 1;
         }
       } catch (err) {
