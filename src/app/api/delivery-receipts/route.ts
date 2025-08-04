@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireSession } from "@/app/api/_utils/auth";
 
 const VALID_STATUSES = ["delivered", "read", "failed"] as const;
 
@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = session;
 
     let client = getConvexClient();
     if (!client) {
@@ -44,10 +44,6 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    try {
-      // @ts-ignore legacy
-      client.setAuth?.(token);
-    } catch {}
 
     let body: unknown;
     try {
@@ -143,9 +139,9 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -161,7 +157,6 @@ export async function GET(request: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token } = authCheck;
 
     let client = getConvexClient();
     if (!client) {
@@ -177,10 +172,6 @@ export async function GET(request: NextRequest) {
         { status: 503 }
       );
     }
-    try {
-      // @ts-ignore legacy
-      client.setAuth?.(token);
-    } catch {}
 
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get("conversationId");
@@ -220,7 +211,9 @@ export async function GET(request: NextRequest) {
       correlationId,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
-      count: Array.isArray(deliveryReceipts) ? deliveryReceipts.length : undefined,
+      count: Array.isArray(deliveryReceipts)
+        ? deliveryReceipts.length
+        : undefined,
     });
     return NextResponse.json(
       { success: true, conversationId, deliveryReceipts, correlationId },
