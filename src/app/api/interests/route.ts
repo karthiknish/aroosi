@@ -17,7 +17,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(req);
+    const authCheck = await requireUserToken(req);
     if ("errorResponse" in authCheck) {
       const res = authCheck.errorResponse as NextResponse;
       const status = res.status || 401;
@@ -35,7 +35,9 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId } = authCheck;
+    const { userId } = authCheck;
+    // Cookie-only model: token is not provided; keep variable for legacy optional calls
+    const token: string | undefined = undefined;
 
     if (!userId) {
       console.warn("Interests action missing userId", {
@@ -51,7 +53,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         req,
-        token,
+        undefined as unknown as string, // cookie-only: no token; keep signature compatibility
         userId,
         "interest_sent"
       );
@@ -248,7 +250,7 @@ export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = requireUserToken(req);
+    const authCheck = await requireUserToken(req);
     if ("errorResponse" in authCheck) {
       const res = authCheck.errorResponse as NextResponse;
       const status = res.status || 401;
@@ -266,7 +268,9 @@ export async function GET(req: NextRequest) {
       });
       return NextResponse.json(body, { status });
     }
-    const { token, userId: authenticatedUserId } = authCheck;
+    const { userId: authenticatedUserId } = authCheck;
+    // Cookie-only model: token is not provided; keep variable for legacy optional calls
+    const token: string | undefined = undefined;
 
     if (!authenticatedUserId) {
       return NextResponse.json({ error: "User ID is required", correlationId }, { status: 400 });
@@ -275,7 +279,7 @@ export async function GET(req: NextRequest) {
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         req,
-        token,
+        undefined as unknown as string, // cookie-only: no token; keep signature compatibility
         authenticatedUserId,
         "interest_sent"
       );
