@@ -3,17 +3,15 @@ import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAdminToken } from "@/app/api/_utils/auth";
+import { requireAdminSession } from "@/app/api/_utils/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const adminCheck = requireAdminToken(request);
+    const adminCheck = await requireAdminSession(request);
     if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
-    const { token } = adminCheck;
 
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
 
     const url = new URL(request.url);
     const profileId = url.pathname.split("/").slice(-2, -1)[0];
