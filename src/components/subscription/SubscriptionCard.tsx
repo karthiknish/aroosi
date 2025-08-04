@@ -7,7 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 // import { formatDistanceToNow } from 'date-fns';
 
-const planConfig = {
+// Narrow the plan key type so TS knows valid indices
+type PlanKey = "free" | "premium" | "premiumPlus";
+
+const planConfig: Record<
+  PlanKey,
+  {
+    name: string;
+    color: string;
+    features: string[];
+    price?: string;
+  }
+> = {
   free: {
     name: "Free",
     color: "bg-gray-500",
@@ -46,6 +57,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   className,
   token,
 }) => {
+  // Ensure the hook returns a strongly typed shape so status.plan is a string but we safely narrow later
   const { data: status, isLoading, error } = useSubscriptionStatus(token);
 
   if (isLoading) {
@@ -71,8 +83,14 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   }
 
   if (!status) return null;
-
-  const config = planConfig[status.plan];
+  
+  // Derive a safe, narrowed key for config lookup using a guarded mapper
+  const toPlanKey = (plan: unknown): PlanKey => {
+    return plan === "premiumPlus" ? "premiumPlus" : plan === "premium" ? "premium" : "free";
+  };
+  const planKey = toPlanKey(status.plan as unknown);
+  
+  const config = planConfig[planKey];
   const isExpiringSoon = status.daysRemaining > 0 && status.daysRemaining <= 7;
   const isExpired =
     status.expiresAt && status.expiresAt < Date.now() && status.plan !== "free";
@@ -82,7 +100,9 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Badge className={`${config.color} text-white`}>{config.name}</Badge>
-          {status.hasSpotlightBadge && (
+          {/* Spotlight badge visibility depends on a broader profile context; not part of status payload */}
+          {/* Show only when plan is premiumPlus for clarity */}
+          {planKey === "premiumPlus" && (
             <Badge
               variant="outline"
               className="text-yellow-600 border-yellow-600"
@@ -125,10 +145,11 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           </div>
         )}
 
-        {status.plan === "premiumPlus" && (
+        {/* boostsRemaining is not in SubscriptionStatusResponse; omit to fix TS and data mismatch */}
+        {planKey === "premiumPlus" && (
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Profile boosts remaining:</span>
-            <span className="font-medium">{status.boostsRemaining}/5</span>
+            <span className="text-gray-600">Premium Plus benefits:</span>
+            <span className="font-medium">Includes profile boosts</span>
           </div>
         )}
       </div>

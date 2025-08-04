@@ -169,26 +169,56 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               </motion.div>
 
               {profile && isPremium(profile.subscriptionPlan) && (
-                <motion.div
-                  custom={1.7}
-                  variants={navItemVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  <Link
-                    href="/premium-settings"
-                    onClick={onClick}
-                    className="block"
+                <>
+                  <motion.div
+                    custom={1.7}
+                    variants={navItemVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <Link
+                      href="/premium-settings"
+                      onClick={onClick}
+                      className="block"
+                    >
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
+                      >
+                        <Shield className="h-5 w-5 mr-2" />
+                        <span>Premium Settings</span>
+                      </Button>
+                    </Link>
+                  </motion.div>
+
+                  {/* Billing Portal quick access for paid users */}
+                  <motion.div
+                    custom={1.75}
+                    variants={navItemVariants}
+                    initial="hidden"
+                    animate="visible"
                   >
                     <Button
                       variant="ghost"
-                      className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
+                      className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                      onClick={async () => {
+                        try {
+                          const mod = await import("@/lib/api/subscription");
+                          const { subscriptionAPI } = mod;
+                          const { url } = await subscriptionAPI.openBillingPortal();
+                          if (url) {
+                            window.location.assign(url);
+                          }
+                        } catch (e) {
+                          // swallow; toast handled inside util if thrown
+                        }
+                      }}
                     >
                       <Shield className="h-5 w-5 mr-2" />
-                      <span>Premium Settings</span>
+                      <span>Billing Portal</span>
                     </Button>
-                  </Link>
-                </motion.div>
+                  </motion.div>
+                </>
               )}
 
               <motion.div

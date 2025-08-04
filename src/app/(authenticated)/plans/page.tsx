@@ -13,7 +13,7 @@ import {
   Check,
 } from "lucide-react";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/lib/ui/toast";
-// Source of truth: fetch normalized plans from server
+// Source of truth: fetch normalized plans from server only (no client constants)
 import { createCheckoutSession, getPlans, type NormalizedPlan } from "@/lib/utils/stripeUtil";
 import React, { useEffect, useMemo, useState } from "react";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
@@ -158,6 +158,7 @@ export default function ManagePlansPage() {
               <div className="lg:col-span-3 text-center text-sm text-gray-600">No plans to display.</div>
             )}
             {(plans && plans.length ? plans : [
+              // Defensive minimal fallback to avoid render crash if server returns nothing
               { id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false },
             ]).map((plan) => {
               const selected = isCurrent(plan.id);
