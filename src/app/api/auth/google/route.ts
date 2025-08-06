@@ -616,9 +616,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if account is banned
+    // Check if account is banned (proactively clear cookies to avoid sticky invalid sessions)
     if (user.banned) {
-      return NextResponse.json({ error: "Account is banned" }, { status: 403 });
+      const bannedRes = NextResponse.json({ error: "Account is banned" }, { status: 403 });
+      try {
+        const { appendClearAuthCookies } = await import("@/lib/auth/cookies");
+        appendClearAuthCookies(bannedRes);
+      } catch {
+        // best-effort; do not throw
+      }
+      return bannedRes;
     }
 
     // Generate access & refresh tokens (same as signin/signup)

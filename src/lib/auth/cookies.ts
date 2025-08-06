@@ -7,12 +7,20 @@
  * - COOKIE_SAMESITE: "Lax" | "None" (default "Lax").
  * - COOKIE_SECURE: "1" | "0" (default NODE_ENV === "production" ? "1" : "0").
  *
+ * TTL constants (enforced across all routes):
+ * - ACCESS_TTL_SEC = 900 (15 minutes)
+ * - REFRESH_TTL_SEC = 604800 (7 days)
+ * - PUBLIC_TTL_SEC = 60 (1 minute)
+ *
  * Notes:
  * - When SameSite=None, Secure must be set; this helper enforces it.
  * - Use getAuthCookieAttrs for HttpOnly auth cookies.
  * - Use getPublicCookieAttrs for non-HttpOnly short-lived public cookie.
  * - Use getExpireCookieAttrs for immediate-expiry headers (Max-Age=0).
  */
+export const ACCESS_TTL_SEC = 60 * 15; // 900
+export const REFRESH_TTL_SEC = 60 * 60 * 24 * 7; // 604800
+export const PUBLIC_TTL_SEC = 60;
 const getBaseFlags = () => {
   const DOMAIN = process.env.COOKIE_DOMAIN?.trim();
   const SAMESITE_RAW = process.env.COOKIE_SAMESITE;
@@ -108,4 +116,15 @@ export function getExpireCookieAttrs(): string {
   const parts = getBaseFlags();
   parts.push("Max-Age=0");
   return parts.join("; ");
+}
+
+/**
+ * Append clear cookies for auth in a response:
+ * - Clears auth-token, refresh-token (HttpOnly) and authTokenPublic (public) using Max-Age=0
+ */
+export function appendClearAuthCookies(res: Response): void {
+  const expired = getExpireCookieAttrs();
+  res.headers.append("Set-Cookie", `auth-token=; HttpOnly; ${expired}`);
+  res.headers.append("Set-Cookie", `refresh-token=; HttpOnly; ${expired}`);
+  res.headers.append("Set-Cookie", `authTokenPublic=; ${expired}`);
 }

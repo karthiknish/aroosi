@@ -475,20 +475,26 @@ export async function POST(request: NextRequest) {
       correlationId,
     });
 
-    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
-
+    const {
+      getAuthCookieAttrs,
+      getPublicCookieAttrs,
+      ACCESS_TTL_SEC,
+      REFRESH_TTL_SEC,
+      PUBLIC_TTL_SEC,
+    } = await import("@/lib/auth/cookies");
+ 
     response.headers.set(
       "Set-Cookie",
-      `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
+      `auth-token=${accessToken}; ${getAuthCookieAttrs(ACCESS_TTL_SEC)}`
     );
     response.headers.append(
       "Set-Cookie",
-      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
+      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(REFRESH_TTL_SEC)}`
     );
     if (process.env.SHORT_PUBLIC_TOKEN === "1") {
       response.headers.append(
         "Set-Cookie",
-        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`
+        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(PUBLIC_TTL_SEC)}`
       );
     }
 
