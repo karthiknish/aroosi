@@ -36,7 +36,7 @@ export function useTypingIndicators({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            // Cookie-based session; no Authorization header
           },
           body: JSON.stringify({
             conversationId,
@@ -61,7 +61,7 @@ export function useTypingIndicators({
         `/api/typing-indicators?conversationId=${encodeURIComponent(conversationId)}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            // Cookie-based session; no Authorization header
           },
         },
       );

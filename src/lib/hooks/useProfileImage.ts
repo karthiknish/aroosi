@@ -10,7 +10,7 @@ export function useProfileImage(
     queryFn: async () => {
       if (!userId || !token) return null;
       const res = await fetch(`/api/profile-detail/${userId}/images`, {
-        headers: { Authorization: `Bearer ${token}` },
+        // Cookie-based session; no Authorization header
       });
       if (!res.ok) return null;
       const json = await res.json();

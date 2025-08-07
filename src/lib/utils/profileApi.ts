@@ -9,7 +9,7 @@ export async function updateProfile({
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify(updates),
   });

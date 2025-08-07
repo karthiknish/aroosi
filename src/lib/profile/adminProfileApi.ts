@@ -14,7 +14,7 @@ export async function fetchAdminProfiles({
   page: number;
   pageSize?: number;
 }): Promise<{ profiles: AdminProfile[]; total: number }> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
   try {
     const res = await fetch(
       `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=${pageSize}`,
@@ -48,7 +48,7 @@ export async function fetchAdminProfileImages({
   token: string;
   userId: string;
 }): Promise<{ userProfileImages: ImageType[] }> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
   try {
     console.log(
       "[fetchAdminProfileImages] Fetching images for userId:",
@@ -95,7 +95,7 @@ export async function updateAdminProfile({
 }): Promise<AdminProfile> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    // Cookie-based session; no Authorization header
   };
   try {
     const res = await fetch(`/api/admin/profiles/${id}`, {
@@ -122,7 +122,7 @@ export async function deleteAdminProfile({
   token: string;
   id: string;
 }): Promise<{ success: boolean; message?: string }> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
   try {
     const res = await fetch(`/api/admin/profiles/${id}`, {
       method: "DELETE",
@@ -151,7 +151,7 @@ export async function banAdminProfile({
 }): Promise<{ success: boolean; message?: string }> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    // Cookie-based session; no Authorization header
   };
   try {
     const res = await fetch(`/api/admin/profiles/${id}/ban`, {
@@ -234,7 +234,7 @@ export async function createAdminProfile({
 }): Promise<AdminProfile> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    // Cookie-based session; no Authorization header
   };
   try {
     const res = await fetch(`/api/admin/profiles`, {
@@ -272,7 +272,7 @@ export async function setProfileBannedStatus(
   const res = await fetch(`/api/admin/profiles/${profileId}/ban`, {
     method: "PUT",
     headers: {
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ banned }),
@@ -299,7 +299,7 @@ export async function fetchAdminAllMatches({
 }: {
   token: string;
 }): Promise<AdminProfileMatchesResult> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
   try {
     const res = await fetch(`/api/admin/matches`, { headers });
     if (!res.ok) {
@@ -329,7 +329,7 @@ export async function fetchAdminProfileById({
   token: string;
   id: string;
 }): Promise<AdminProfile | null> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
   try {
     const res = await fetch(`/api/admin/profiles/${id}`, { headers });
     if (!res.ok) {
@@ -356,7 +356,7 @@ export async function updateAdminProfileById({
 }): Promise<AdminProfile> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    // Cookie-based session; no Authorization header
   };
   try {
     const res = await fetch(`/api/admin/profiles/${id}`, {
@@ -384,7 +384,7 @@ export async function fetchAdminProfileImagesById({
   token: string;
   profileId: string;
 }): Promise<ImageType[]> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
   try {
     const res = await fetch(`/api/profile-detail/${profileId}/images`, {
       headers,
@@ -422,7 +422,7 @@ export async function updateAdminProfileImageById({
 }): Promise<ImageType> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    // Cookie-based session; no Authorization header
   };
   try {
     const res = await fetch(
@@ -457,7 +457,7 @@ export async function deleteAdminProfileImageById({
 }): Promise<{ success: boolean; message?: string }> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    // Cookie-based session; no Authorization header
   };
   try {
     const res = await fetch(`/api/profile-images`, {
@@ -493,7 +493,7 @@ export async function adminUploadProfileImage({
 
   // 1) upload URL
   const uploadUrlRes = await fetch(`/api/profile-images/upload-url`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {},
   });
   if (!uploadUrlRes.ok) {
     throw new Error("Failed to get upload URL");
@@ -519,7 +519,7 @@ export async function adminUploadProfileImage({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify({
       userId: profileId,
@@ -582,7 +582,7 @@ export async function createManualMatch({
 }): Promise<{ success: boolean; error?: string }> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    // Cookie-based session; no Authorization header
   };
   const res = await fetch(`/api/admin/matches/create`, {
     method: "POST",
@@ -603,7 +603,7 @@ export async function fetchAdminProfileMatches({
   token: string;
   profileId: string;
 }): Promise<Profile[]> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
   try {
     const res = await fetch(`/api/admin/profiles/${profileId}/matches`, {
       headers,
