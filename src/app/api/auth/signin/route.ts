@@ -101,16 +101,22 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       console.warn("Signin invalid JSON body", {
         scope: "auth.signin",
         correlationId,
         type: "parse_error",
-        message: e instanceof Error ? e.message : String(e),
+        message: msg,
         statusCode: 400,
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
-        { error: "Invalid JSON body", correlationId },
+        {
+          error: "Invalid JSON body",
+          code: "INVALID_JSON",
+          correlationId,
+          details: msg,
+        },
         { status: 400 }
       );
     }
@@ -138,20 +144,31 @@ export async function POST(request: NextRequest) {
           durationMs: Date.now() - startedAt,
         });
         return NextResponse.json(
-          { error: "Invalid input data", issues, correlationId },
+          {
+            error: "Invalid input data",
+            code: "INVALID_INPUT",
+            issues,
+            correlationId,
+          },
           { status: 400 }
         );
       }
+      const msg = error instanceof Error ? error.message : String(error);
       console.error("Signin parsing failure", {
         scope: "auth.signin",
         correlationId,
         type: "parse_unhandled",
-        message: error instanceof Error ? error.message : String(error),
+        message: msg,
         statusCode: 400,
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
-        { error: "Invalid input", correlationId },
+        {
+          error: "Invalid input",
+          code: "PARSE_ERROR",
+          details: msg,
+          correlationId,
+        },
         { status: 400 }
       );
     }
@@ -228,6 +245,9 @@ export async function POST(request: NextRequest) {
 
     // Generic invalid error to avoid enumeration
     if (!user || !user.hashedPassword) {
+      const msg = !user
+        ? "No user found for this email."
+        : "User exists but has no password set (Google sign-in only or incomplete signup).";
       console.warn("Signin invalid user or no password", {
         scope: "auth.signin",
         correlationId,
@@ -235,9 +255,15 @@ export async function POST(request: NextRequest) {
         emailHash: Buffer.from(normalizedEmail).toString("base64url"),
         statusCode: 401,
         durationMs: Date.now() - startedAt,
+        details: msg,
       });
       return NextResponse.json(
-        { error: "Invalid email or password", correlationId },
+        {
+          error: "Invalid email or password",
+          code: !user ? "USER_NOT_FOUND" : "NO_PASSWORD_SET",
+          correlationId,
+          details: msg,
+        },
         { status: 401 }
       );
     }
@@ -253,7 +279,7 @@ export async function POST(request: NextRequest) {
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
-        { error: "Account is banned", correlationId },
+        { error: "Account is banned", code: "USER_BANNED", correlationId },
         { status: 403 }
       );
     }
@@ -270,7 +296,11 @@ export async function POST(request: NextRequest) {
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json(
-        { error: "Invalid email or password", correlationId },
+        {
+          error: "Invalid email or password",
+          code: "INVALID_PASSWORD",
+          correlationId,
+        },
         { status: 401 }
       );
     }
@@ -319,6 +349,7 @@ export async function POST(request: NextRequest) {
       {
         status: "ok",
         message: "Signed in successfully",
+        code: "SIGNED_IN",
         token: accessToken, // backward compatibility field
         accessToken,
         refreshToken,
@@ -335,7 +366,6 @@ export async function POST(request: NextRequest) {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-
 
     console.info("Signin success", {
       scope: "auth.signin",
@@ -360,6 +390,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Invalid input data",
+          code: "UNHANDLED_ZOD_ERROR",
           details: error.errors?.map((e) => ({
             path: e.path,
             message: e.message,
@@ -370,7 +401,12 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { error: "Internal server error", correlationId },
+      {
+        error: "Internal server error",
+        code: "INTERNAL_SERVER_ERROR",
+        correlationId,
+        details: errMsg,
+      },
       { status: 500 }
     );
   }
