@@ -10,13 +10,11 @@ interface TypingUser {
 interface UseTypingIndicatorsProps {
   conversationId: string;
   currentUserId: string;
-  token: string;
 }
 
 export function useTypingIndicators({
   conversationId,
   currentUserId,
-  token,
 }: UseTypingIndicatorsProps): {
   typingUsers: TypingUser[];
   isTyping: boolean;

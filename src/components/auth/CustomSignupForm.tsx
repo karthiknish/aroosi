@@ -193,17 +193,8 @@ export default function CustomSignupForm({
         /* dev: signup payload preview */
       }
 
-      // POST to unified signup route which atomically creates user+profile in Convex
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password,
-          fullName,
-          profile: normalizedProfile,
-        }),
-      });
+      // Signup disabled
+      const res = new Response(JSON.stringify({ error: "Signup disabled" }), { status: 410 }) as any;
 
       const data = await res.json().catch(() => ({}) as unknown);
       // Handle explicit password policy error payloads eagerly

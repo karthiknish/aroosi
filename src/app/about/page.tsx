@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "About Aroosi | Afghan Matrimony",
+  description: "Learn about Aroosi's mission to connect Afghans worldwide with a safe, private, and trusted matrimony platform.",
+  alternates: { canonical: "/about" },
+  openGraph: {
+    title: "About Aroosi | Afghan Matrimony",
+    description: "Our mission and values: safety, privacy, and meaningful connections for Afghans worldwide.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About Aroosi | Afghan Matrimony",
+    description: "Our mission and values: safety, privacy, and meaningful connections for Afghans worldwide.",
+  },
+};
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";

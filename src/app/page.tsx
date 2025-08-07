@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "Aroosi | Afghan Matrimony – Find Your Match",
+  description: "No 1 Afghan matrimony site. Join Aroosi to meet verified Afghan singles and find your life partner.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Aroosi | Afghan Matrimony – Find Your Match",
+    description: "Join Aroosi to meet verified Afghan singles and find your life partner.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Aroosi | Afghan Matrimony – Find Your Match",
+    description: "Join Aroosi to meet verified Afghan singles and find your life partner.",
+  },
+};
 "use client";
 
 import Head from "next/head";

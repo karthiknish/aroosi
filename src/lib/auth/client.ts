@@ -20,15 +20,7 @@ export async function signin(params: { email: string; password: string }) {
   return res;
 }
 
-export async function signup(params: {
-  email: string;
-  password: string;
-  fullName: string;
-  profile: Record<string, unknown>;
-}) {
-  const res = await postJson<SigninResponse>("/api/auth/signup", params, { cache: "no-store" });
-  return res;
-}
+// Signup disabled: route removed
 
 /**
  * For Google, the server expects either an ID token or user info JSON in "credential",

@@ -17,14 +17,12 @@ type UseModernChatArgs = {
   conversationId: string;
   currentUserId: string;
   matchUserId: string;
-  token: string;
 };
 
 export function useModernChat({
   conversationId,
   currentUserId,
   matchUserId,
-  token,
 }: UseModernChatArgs) {
   const subscriptionStatus = useSubscriptionStatus();
   const { trackUsage } = useUsageTracking(undefined);
@@ -44,7 +42,6 @@ export function useModernChat({
   const { typingUsers, startTyping, stopTyping } = useTypingIndicators({
     conversationId,
     currentUserId,
-    token: "",
   });
 
   // Delivery receipts
@@ -55,7 +52,6 @@ export function useModernChat({
     markMessageAsRead,
   } = useDeliveryReceipts({
     conversationId,
-    token: "",
   });
 
   // UI state
@@ -274,7 +270,6 @@ export function useModernChat({
     try {
       await blockUserUtil({
         matchUserId,
-        token,
         setIsBlocked,
         setShowReportModal,
       });
@@ -284,7 +279,7 @@ export function useModernChat({
       console.error("Error blocking user:", mapped.message);
       showErrorToast(null, "Failed to block user");
     }
-  }, [matchUserId, token]);
+  }, [matchUserId]);
 
   const handleReportUser = useCallback(
     async (reason: ReportReason, description: string) => {
@@ -293,7 +288,6 @@ export function useModernChat({
           matchUserId,
           reason,
           description,
-          token,
           setShowReportModal,
         });
         showSuccessToast("Report submitted successfully");
@@ -303,7 +297,7 @@ export function useModernChat({
         showErrorToast(null, "Failed to submit report");
       }
     },
-    [matchUserId, token, setShowReportModal]
+    [matchUserId, setShowReportModal]
   );
 
   // Public API
