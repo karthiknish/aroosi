@@ -603,16 +603,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if account is banned (proactively clear cookies to avoid sticky invalid sessions)
+    // Check if account is banned (pure token model: do not set cookies)
     if (user.banned) {
-      const bannedRes = NextResponse.json({ error: "Account is banned" }, { status: 403 });
-      try {
-        const { appendClearAuthCookies } = await import("@/lib/auth/cookies");
-        appendClearAuthCookies(bannedRes);
-      } catch {
-        // best-effort; do not throw
-      }
-      return bannedRes;
+      return NextResponse.json({ error: "Account is banned" }, { status: 403 });
     }
 
     // Generate access & refresh tokens (same as signin/signup)
@@ -649,7 +642,7 @@ export async function POST(request: NextRequest) {
         : "/profile/create";
 
     // PURE TOKEN MODEL: return tokens in body, no Set-Cookie
-    const response = NextResponse.json({
+    return NextResponse.json({
       status: isNewUser ? "success" : "ok",
       message: isNewUser ? "Account created successfully" : "Signed in successfully",
       accessToken,
@@ -665,8 +658,6 @@ export async function POST(request: NextRequest) {
       redirectTo: isNewUser ? "/success" : redirectTo,
       refreshed: false,
     });
-
-    return response;
   } catch (error: unknown) {
     // PII-safe logging: do not log tokens or payloads
     const errMsg = error instanceof Error ? error.message : String(error);

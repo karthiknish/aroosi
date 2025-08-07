@@ -42,7 +42,7 @@ export interface SubscriptionUsageResponse {
  
 class SubscriptionAPI {
   /**
-   * Low-level request with cookie credentials and no redirect following.
+   * Low-level request with token-based auth and no redirect following.
    * This version assumes API endpoints return either:
    *  - { success: true, data: ... } or
    *  - direct JSON payload
@@ -77,7 +77,7 @@ class SubscriptionAPI {
       method: options?.method || "GET",
       headers,
       body: options?.body,
-      credentials: "include",
+      // credentials removed; use token-based auth
       redirect: "manual",
     });
 

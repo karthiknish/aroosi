@@ -1,5 +1,5 @@
 /**
- * Unified Interests API wrapper (cookie-based auth).
+ * Unified Interests API wrapper (token-based auth).
  * Mirrors the style of subscriptionAPI with a small makeRequest helper.
  */
 class InterestsAPI {
@@ -17,7 +17,7 @@ class InterestsAPI {
       method: options?.method || "GET",
       headers,
       body: options?.body,
-      credentials: "include",
+      // credentials removed; use token-based auth
       redirect: "manual",
     });
 

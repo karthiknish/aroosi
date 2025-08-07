@@ -60,13 +60,11 @@ function handleApiError(error: unknown, context: string): ApiResponse<null> {
   };
 }
 
-// Helper to validate token
-function validateToken(token: string): string | null {
-  if (!token) {
-    console.error("[ProfileAPI] No authentication token provided");
-    return "No authentication token provided";
-  }
-  return null;
+import { getJson, postJson, putJson, deleteJson } from "@/lib/http/client";
+
+// Helper to validate token - deprecated in token-based client usage
+function validateToken(_token: string): string | null {
+ return null;
 }
 
 /**
@@ -77,56 +75,34 @@ function validateToken(token: string): string | null {
  * @returns Promise with profile data or error
  */
 export async function fetchUserProfile(
-  token: string,
+  _token: string,
   userId: string,
   retries = 2
 ): Promise<ProfileResponse> {
-  const error = validateToken(token);
-  if (error) {
-    return { success: false, error };
-  }
-
   if (!userId) {
     console.error("[ProfileAPI] No user ID provided to fetchUserProfile");
     return { success: false, error: "No user ID provided" };
   }
 
   const url = `/api/profile-detail/${encodeURIComponent(userId)}`;
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
 
   try {
-    const response = await fetchWithTimeout(url, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return { success: true, data: null, status: 404 };
-      }
-
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message ||
-          `Failed to fetch profile: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
+    const data = await getJson<any>(url);
     return {
       success: true,
-      data: data.profileData || data.profile || data.data || data,
-      isProfileComplete: data.isProfileComplete,
+      data: data?.profileData || data?.profile || data?.data || data,
+      isProfileComplete: data?.isProfileComplete,
     };
-  } catch (error) {
+  } catch (error: unknown) {
+    const status = (error as any)?.status as number | undefined;
+    if (status === 404) {
+      return { success: true, data: null, status: 404 };
+    }
     if (retries > 0) {
       console.warn(
         `[ProfileAPI] Retrying fetchUserProfile (${retries} attempts left)...`
       );
-      return fetchUserProfile(token, userId, retries - 1);
+      return fetchUserProfile("", userId, retries - 1);
     }
     return handleApiError(error, "fetchUserProfile");
   }
@@ -140,53 +116,25 @@ export async function fetchUserProfile(
  * @returns Promise with profile images or error
  */
 export async function fetchUserProfileImages(
-  token: string,
+  _token: string,
   userId: string,
   retries = 2
 ): Promise<ApiResponse<{ url: string; storageId: string }[]>> {
-  const error = validateToken(token);
-  if (error) {
-    return { success: false, error };
-  }
-
   if (!userId) {
     console.error("[ProfileAPI] No user ID provided to fetchUserProfileImages");
     return { success: false, error: "No user ID provided" };
   }
 
   const url = `/api/profile-detail/${encodeURIComponent(userId)}/images`;
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
 
   try {
-    const response = await fetchWithTimeout(url, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return { success: true, data: [], status: 404 };
-      }
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message ||
-          `Failed to fetch profile images: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-    console.log(data);
-    // Accept any of these keys, fallback to empty array
+    const data = await getJson<any>(url);
     const images =
       (Array.isArray(data) && data) ||
-      data.userProfileImages ||
-      data.images ||
+      data?.userProfileImages ||
+      data?.images ||
       [];
 
-    // Ensure each image has at least url and storageId
     type RawImage = {
       url?: string;
       storageId?: string;
@@ -201,16 +149,17 @@ export async function fetchUserProfileImages(
         ...img,
       }));
 
-    return {
-      success: true,
-      data: normalized,
-    };
+    return { success: true, data: normalized };
   } catch (error) {
+    const status = (error as any)?.status as number | undefined;
+    if (status === 404) {
+      return { success: true, data: [], status: 404 };
+    }
     if (retries > 0) {
       console.warn(
         `[ProfileAPI] Retrying fetchUserProfileImages (${retries} attempts left)...`
       );
-      return fetchUserProfileImages(token, userId, retries - 1);
+      return fetchUserProfileImages("", userId, retries - 1);
     }
     const apiError = handleApiError(error, "fetchUserProfileImages");
     return { success: false, data: [], error: apiError.error };
@@ -225,53 +174,30 @@ export async function fetchUserProfileImages(
  * @returns Promise with updated profile or error
  */
 export async function updateUserProfile(
-  token: string,
+  _token: string,
   updates: Partial<Profile>,
   retries = 2
 ): Promise<ProfileResponse> {
-  const error = validateToken(token);
-  if (error) {
-    return { success: false, error };
-  }
-
   if (!updates || Object.keys(updates).length === 0) {
     console.error("[ProfileAPI] No updates provided to updateUserProfile");
     return { success: false, error: "No updates provided" };
   }
 
   const url = "/api/profile";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   try {
-    const response = await fetchWithTimeout(url, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(updates),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message ||
-          `Failed to update profile: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
+    const data = await putJson<any>(url, updates);
     return {
       success: true,
-      data: data.profile || data,
-      isProfileComplete: data.isProfileComplete,
+      data: data?.profile || data,
+      isProfileComplete: data?.isProfileComplete,
     };
   } catch (error) {
     if (retries > 0) {
       console.warn(
         `[ProfileAPI] Retrying updateUserProfile (${retries} attempts left)...`
       );
-      return updateUserProfile(token, updates, retries - 1);
+      return updateUserProfile("", updates, retries - 1);
     }
     return handleApiError(error, "updateUserProfile");
   }
@@ -286,22 +212,16 @@ export async function updateUserProfile(
  * @returns Promise with operation result and profile data
  */
 export async function submitProfile(
-  token: string,
+  _token: string,
   values: Partial<ProfileFormValues>,
   mode: "create" | "edit",
   retries = 2
 ): Promise<ProfileResponse> {
-  const error = validateToken(token);
-  if (error) {
-    return { success: false, error };
-  }
-
   if (!values) {
     console.error("[ProfileAPI] No values provided to submitProfile");
     return { success: false, error: "No profile data provided" };
   }
 
-  // Remove empty/null/undefined values
   const sanitize = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
     const clean: Partial<T> = {};
     Object.entries(obj).forEach(([k, v]) => {
@@ -317,47 +237,31 @@ export async function submitProfile(
     return clean;
   };
 
-  // Format the data for profile creation/update and sanitize
   const profileData = sanitize({
-    // Basic info
     fullName: values.fullName,
     dateOfBirth: values.dateOfBirth,
     gender: values.gender,
     profileFor: values.profileFor,
-
-    // Location
     city: values.city,
     country: values.country,
-
-    // Physical & lifestyle
     height: values.height,
     maritalStatus: values.maritalStatus,
     physicalStatus: values.physicalStatus || "normal",
     diet: values.diet,
     smoking: (values.smoking as "no" | "occasionally" | "yes" | "") || "no",
     drinking: values.drinking || "no",
-
-    // Cultural
     motherTongue: values.motherTongue,
     religion: values.religion,
     ethnicity: values.ethnicity,
-
-    // Education & career
     education: values.education,
     occupation: values.occupation,
     annualIncome: values.annualIncome,
-
-    // Contact
     phoneNumber: values.phoneNumber,
     email: values.email,
-
-    // Partner preferences
     preferredGender: values.preferredGender,
     partnerPreferenceAgeMin: values.partnerPreferenceAgeMin,
     partnerPreferenceAgeMax: values.partnerPreferenceAgeMax,
     partnerPreferenceCity: values.partnerPreferenceCity,
-
-    // Other
     aboutMe: values.aboutMe,
     profileImageIds: values.profileImageIds || [],
   });
@@ -366,33 +270,17 @@ export async function submitProfile(
     mode === "create" ? profileData : { ...values, isProfileComplete: true };
 
   const url = "/api/profile";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
-  // Use POST for profile creation, PUT for update
   const method = mode === "create" ? "POST" : "PUT";
 
   try {
-    const response = await fetchWithTimeout(url, {
-      method,
-      headers,
-      body: JSON.stringify(requestData),
-    });
+    const data =
+      method === "POST"
+        ? await postJson<any>(url, requestData)
+        : await putJson<any>(url, requestData);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message ||
-          `Failed to ${mode} profile: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
     return {
       success: true,
-      data: data.profile || data,
+      data: data?.profile || data,
       isProfileComplete: true,
     };
   } catch (error) {
@@ -400,7 +288,7 @@ export async function submitProfile(
       console.warn(
         `[ProfileAPI] Retrying submitProfile (${retries} attempts left)...`
       );
-      return submitProfile(token, values, mode, retries - 1);
+      return submitProfile("", values, mode, retries - 1);
     }
     return handleApiError(error, "submitProfile");
   }
@@ -413,81 +301,19 @@ export async function submitProfile(
  * @returns Promise with user profile or error
  */
 export async function getCurrentUserWithProfile(
-  token: string,
+  _token: string,
   retries = 2
 ): Promise<ProfileResponse> {
-  const error = validateToken(token);
-  if (error) {
-    return { success: false, error };
-  }
-
   const url = "/api/user/me";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
 
   try {
-    // Log token prefix for debugging (don't log full token for security)
-    console.log(
-      "[ProfileAPI] Fetching current user profile with token prefix:",
-      token.substring(0, 6) + "..."
-    );
+    const data = await getJson<any>(url);
 
-    const response = await fetchWithTimeout(url, {
-      method: "GET",
-      headers,
-    });
-
-    const responseText = await response.text();
-    let data: unknown;
-
-    // Safely parse JSON response
-    try {
-      data = responseText ? JSON.parse(responseText) : null;
-    } catch {
-      console.error(
-        "[ProfileAPI] Failed to parse response as JSON:",
-        responseText.substring(0, 200)
-      );
-      throw new Error(
-        `Invalid JSON response: ${responseText.substring(0, 100)}...`
-      );
-    }
-
-    // Handle non-OK responses
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.error("[ProfileAPI] Unauthorized - invalid or expired token");
-        return {
-          success: false,
-          error: "Your session has expired. Please sign in again.",
-          status: 401,
-        };
-      }
-
-      if (response.status === 404) {
-        console.log("[ProfileAPI] Profile not found - returning empty profile");
-        return {
-          success: true,
-          data: null,
-          isProfileComplete: false,
-          status: 404,
-        };
-      }
-
-      let errorMessage = `Failed to fetch user profile: ${response.status} ${response.statusText}`;
-      if (typeof data === "object" && data !== null && "message" in data) {
-        errorMessage = (data as { message?: string }).message || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
-
-    // Validate the response data structure
     const profile =
       typeof data === "object" && data !== null && "profile" in data
         ? (data as { profile: Profile }).profile
         : (data as Profile);
+
     if (!profile) {
       throw new Error("Invalid profile data received from server");
     }
@@ -495,14 +321,14 @@ export async function getCurrentUserWithProfile(
     let userId = "unknown";
     let isProfileComplete: boolean | undefined = undefined;
     if (typeof profile === "object" && profile !== null) {
-      if ("userId" in profile && typeof profile.userId === "string") {
-        userId = profile.userId;
+      if ("userId" in profile && typeof (profile as any).userId === "string") {
+        userId = (profile as any).userId;
       }
       if (
         "isProfileComplete" in profile &&
-        typeof profile.isProfileComplete === "boolean"
+        typeof (profile as any).isProfileComplete === "boolean"
       ) {
-        isProfileComplete = profile.isProfileComplete;
+        isProfileComplete = (profile as any).isProfileComplete;
       }
     }
 
@@ -516,11 +342,28 @@ export async function getCurrentUserWithProfile(
       isProfileComplete,
       status: 200,
     };
-  } catch (error) {
-    // Retry on network errors or 5xx responses
+  } catch (error: unknown) {
+    const status = (error as any)?.status as number | undefined;
+    if (status === 401) {
+      console.error("[ProfileAPI] Unauthorized - invalid or expired token");
+      return {
+        success: false,
+        error: "Your session has expired. Please sign in again.",
+        status: 401,
+      };
+    }
+    if (status === 404) {
+      console.log("[ProfileAPI] Profile not found - returning empty profile");
+      return {
+        success: true,
+        data: null,
+        isProfileComplete: false,
+        status: 404,
+      };
+    }
     if (
       retries > 0 &&
-      (error instanceof TypeError || // Network error
+      (error instanceof TypeError ||
         (error instanceof Error &&
           (error.message.includes("Failed to fetch") ||
             error.message.includes("timed out"))))
@@ -528,9 +371,8 @@ export async function getCurrentUserWithProfile(
       console.warn(
         `[ProfileAPI] Retrying getCurrentUserWithProfile (${retries} attempts left)...`
       );
-      return getCurrentUserWithProfile(token, retries - 1);
+      return getCurrentUserWithProfile("", retries - 1);
     }
-
     return handleApiError(error, "getCurrentUserWithProfile");
   }
 }
@@ -542,48 +384,19 @@ export async function getCurrentUserWithProfile(
  * @returns Promise with user profile or error
  */
 export async function fetchMyProfile(
-  token: string,
+  _token: string,
   retries = 2
 ): Promise<Profile | null> {
-  const error = validateToken(token);
-  if (error) {
-    return null;
-  }
-
   const url = "/api/user/me";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
   try {
-    const response = await fetchWithTimeout(url, {
-      method: "GET",
-      headers,
-    });
-    const responseText = await response.text();
-    let data: unknown;
-    try {
-      data = responseText ? JSON.parse(responseText) : null;
-    } catch {
-      throw new Error(
-        `Invalid JSON response: ${responseText.substring(0, 100)}...`
-      );
-    }
-    if (!response.ok) {
-      let errorMessage = `Failed to fetch profile: ${response.status} ${response.statusText}`;
-      if (typeof data === "object" && data !== null && "message" in data) {
-        errorMessage = (data as { message?: string }).message || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
-    // The API returns the profile as data.profile or data
+    const data = await getJson<any>(url);
     const profile =
       typeof data === "object" && data !== null && "profile" in data
         ? (data as { profile: Profile }).profile
         : (data as Profile);
-    return profile;
-  } catch (error) {
+    return profile ?? null;
+  } catch (error: unknown) {
+    const status = (error as any)?.status as number | undefined;
     if (
       retries > 0 &&
       (error instanceof TypeError ||
@@ -591,8 +404,9 @@ export async function fetchMyProfile(
           (error.message.includes("Failed to fetch") ||
             error.message.includes("timed out"))))
     ) {
-      return fetchMyProfile(token, retries - 1);
+      return fetchMyProfile("", retries - 1);
     }
+    if (status === 404) return null;
     console.error("[fetchMyProfile] Error:", error);
     return null;
   }
@@ -605,38 +419,16 @@ export async function fetchMyProfile(
  * @returns Promise with operation result
  */
 export async function deleteUserProfile(
-  token: string,
+  _token: string,
   retries = 2
 ): Promise<ApiResponse<null>> {
-  const error = validateToken(token);
-  if (error) {
-    return { success: false, error };
-  }
-
   const url = "/api/profile";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
   try {
-    const response = await fetchWithTimeout(url, {
-      method: "DELETE",
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message ||
-          `Failed to delete profile: ${response.status} ${response.statusText}`
-      );
-    }
-
+    const resp = await deleteJson<string | { success?: boolean }>(url);
     return {
       success: true,
       data: null,
-      status: response.status,
+      status: 200,
     };
   } catch (error) {
     if (
@@ -649,7 +441,7 @@ export async function deleteUserProfile(
       console.warn(
         `[ProfileAPI] Retrying deleteUserProfile (${retries} attempts left)...`
       );
-      return deleteUserProfile(token, retries - 1);
+      return deleteUserProfile("", retries - 1);
     }
     return handleApiError(error, "deleteUserProfile");
   }
@@ -667,38 +459,12 @@ export async function deleteUserProfile(
  *  - return JSON: { success: boolean, boostsRemaining?: number, boostedUntil?: number, message?: string }
  */
 export async function boostProfile(
-  token: string,
+  _token: string,
   retries = 1
 ): Promise<{ success: boolean; boostsRemaining?: number; boostedUntil?: number; message?: string }> {
-  const error = validateToken(token);
-  if (error) {
-    return { success: false, message: error };
-  }
-
   const url = "/api/profile/boost";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-
   try {
-    const response = await fetchWithTimeout(url, { method: "POST", headers });
-    const text = await response.text();
-    let data: any = null;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      // Non-JSON response, synthesize minimal message
-      data = null;
-    }
-
-    if (!response.ok) {
-      const message =
-        (data && (data.message || data.error)) ||
-        `Failed to boost profile: ${response.status} ${response.statusText}`;
-      throw new Error(message);
-    }
-
+    const data = await postJson<any>(url, {});
     return {
       success: true,
       boostsRemaining: data?.boostsRemaining,
@@ -713,7 +479,7 @@ export async function boostProfile(
           (err.message.includes("Failed to fetch") ||
             err.message.includes("timed out"))))
     ) {
-      return boostProfile(token, retries - 1);
+      return boostProfile("", retries - 1);
     }
     const handled = handleApiError(err, "boostProfile");
     return { success: false, message: handled.error };

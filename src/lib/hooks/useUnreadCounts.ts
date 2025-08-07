@@ -9,7 +9,7 @@ export function useUnreadCounts(
     queryKey: ["unreadCounts", "self"],
     queryFn: async () => {
       const res = await fetch(`/api/matches/unread`, {
-        credentials: "include",
+        // credentials removed; use token-based auth
       });
       if (!res.ok) return {};
       const data = await res.json().catch(() => ({} as any));

@@ -4,6 +4,7 @@
  */
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 import { saveImageMeta, updateImageOrder, getImageUploadUrl } from "@/lib/utils/imageUtil";
+import { tokenStorage } from "@/lib/http/client";
 
 /* ======================
  * Upload manager accessor
@@ -400,16 +401,18 @@ export function persistPendingImageOrderToLocal(ids: string[]) {
  * Filters out local placeholders defensively.
  */
 export async function persistServerImageOrder(params: {
-  token: string;
   userId: string;
   imageIds: string[];
 }) {
-  const { token, userId, imageIds } = params;
+  const { userId, imageIds } = params;
   const filtered = imageIds.filter(
     (id) => typeof id === "string" && !id.startsWith("local-") && id.trim().length > 0
   );
   if (filtered.length > 1) {
-    await updateImageOrder({ token, userId, imageIds: filtered });
+    // The imageUtil helper should read Authorization from centralized client or accept token.
+    // Preserve compatibility by passing current access token if the util still needs it.
+    const accessToken = tokenStorage.access || "";
+    await updateImageOrder({ token: accessToken, userId, imageIds: filtered });
   }
 }
 
@@ -420,8 +423,10 @@ export async function persistServerImageOrder(params: {
 /**
  * Create upload URL for a new image.
  */
-export async function requestImageUploadUrl(token: string): Promise<string> {
-  const url = await getImageUploadUrl(token);
+export async function requestImageUploadUrl(): Promise<string> {
+  // If getImageUploadUrl still expects a token, supply current access token.
+  const accessToken = tokenStorage.access || "";
+  const url = await getImageUploadUrl(accessToken);
   if (!url) throw new Error("Failed to get upload URL");
   return url;
 }
@@ -430,14 +435,14 @@ export async function requestImageUploadUrl(token: string): Promise<string> {
  * Confirm image metadata after successful binary upload.
  */
 export async function confirmImageMetadata(args: {
-  token: string;
   userId: string;
   storageId: string;
   fileName: string;
   contentType: string;
   fileSize: number;
 }) {
-  return saveImageMeta(args);
+  const accessToken = tokenStorage.access || "";
+  return saveImageMeta({ token: accessToken, ...args });
 }
 
 /**

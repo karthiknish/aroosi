@@ -559,7 +559,7 @@ export async function updateAdminProfileImageOrder({
     headers: {
       "Content-Type": "application/json",
     },
-    credentials: "include",
+    // credentials removed; use token-based auth
     body: JSON.stringify({ profileId, imageIds }),
   });
 

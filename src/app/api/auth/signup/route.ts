@@ -461,8 +461,16 @@ export async function POST(request: NextRequest) {
       role: "user",
     });
 
-    // Return tokens in body and set cookies using centralized helper for multi-domain support
-    const response = NextResponse.json(
+    // Return tokens in body only (pure token-based auth)
+    console.info("Signup success", {
+      scope: "auth.signup",
+      correlationId,
+      type: "success",
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+      userId: String(result.userId),
+    });
+    return NextResponse.json(
       {
         status: "success",
         message: "Account created successfully",
@@ -481,36 +489,6 @@ export async function POST(request: NextRequest) {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-
-    // Set cookies using centralized helper
-    try {
-      const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
-      // Access token cookie (15 minutes)
-      response.headers.append("Set-Cookie", `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`);
-      // Refresh token cookie (7 days)
-      response.headers.append("Set-Cookie", `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`);
-      // Optional short-lived public token for legacy, gated by SHORT_PUBLIC_TOKEN=1
-      if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-        response.headers.append("Set-Cookie", `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`);
-      }
-    } catch (e) {
-      console.warn("Signup cookie helper import failed; continuing without cookies", {
-        scope: "auth.signup",
-        correlationId,
-        type: "cookie_helper_warning",
-        message: e instanceof Error ? e.message : String(e),
-      });
-    }
-
-    console.info("Signup success", {
-      scope: "auth.signup",
-      correlationId,
-      type: "success",
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      userId: String(result.userId),
-    });
-    return response;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("Signup failure", {

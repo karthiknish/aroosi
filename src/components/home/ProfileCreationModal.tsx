@@ -816,8 +816,8 @@ export function ProfileCreationModal({
                 // 1) Generate upload URL
                 let uploadUrl: string | null = null;
                 try {
-                  // helper will use credentials
-                  uploadUrl = await requestImageUploadUrl("");
+                  // Centralized client attaches Authorization automatically
+                  uploadUrl = await requestImageUploadUrl();
                 } catch (e) {
                   const reason =
                     e instanceof Error ? e.message : "Failed to get upload URL";
@@ -924,9 +924,7 @@ export function ProfileCreationModal({
 
                 // 3) Confirm metadata and capture imageId for ordering
                 try {
-                  // pass empty string to satisfy type (server ignores)
                   const meta = await confirmImageMetadata({
-                    token: "",
                     userId,
                     storageId,
                     fileName: file.name,
@@ -985,8 +983,7 @@ export function ProfileCreationModal({
               // 1) Generate upload URL
               let uploadUrl: string | null = null;
               try {
-                // Helper expects a string token; pass empty to indicate no token
-                uploadUrl = await requestImageUploadUrl("");
+                uploadUrl = await requestImageUploadUrl();
               } catch (e) {
                 const reason =
                   e instanceof Error ? e.message : "Failed to get upload URL";
@@ -1078,9 +1075,7 @@ export function ProfileCreationModal({
 
               // 3) Confirm metadata and capture imageId for ordering
               try {
-                // pass empty string to satisfy type (server ignores)
                 const meta = await confirmImageMetadata({
-                  token: "",
                   userId,
                   storageId,
                   fileName: file.name,
@@ -1185,9 +1180,7 @@ export function ProfileCreationModal({
                   id.trim().length > 0
               );
               if (filteredOrderIds.length > 1) {
-                // pass empty string to satisfy type (server ignores)
                 await persistServerImageOrder({
-                  token: "",
                   userId,
                   imageIds: filteredOrderIds,
                 });
