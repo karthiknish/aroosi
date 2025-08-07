@@ -64,10 +64,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Resolve current user (by Convex; no reliance on cookies)
-    // If Convex requires server identity rather than user bearer, we still rely on server-side auth result (tokenPayload)
-    const current = await fetchQuery(api.users.getCurrentUserWithProfile, {} as any).catch((e: unknown) => {
-      log(scope, "error", "Convex getCurrentUserWithProfile failed", {
+    // Resolve current user explicitly by verified userId to avoid auth-context ambiguity in Convex
+    const current = await fetchQuery(api.users.getUserByIdWithProfile, { userId: tokenPayload.userId as unknown as Id<"users"> }).catch((e: unknown) => {
+      log(scope, "error", "Convex getUserByIdWithProfile failed", {
         correlationId,
         message: e instanceof Error ? e.message : String(e),
         durationMs: Date.now() - startedAt,
@@ -78,11 +77,14 @@ export async function GET(request: NextRequest) {
     const user = (current as any)?.user ?? current ?? null;
 
     if (!user) {
-      log(scope, "warn", "User not found", {
+      const duration = Date.now() - startedAt;
+      // Soften log level for very-fast misses which are often hydration/propagation races
+      const level: "info" | "warn" = duration < 300 ? "info" : "warn";
+      log(scope, level, "User not found", {
         correlationId,
         type: "user_not_found",
         statusCode: 404,
-        durationMs: Date.now() - startedAt,
+        durationMs: duration,
       });
       return withNoStore(
         NextResponse.json(
