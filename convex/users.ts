@@ -97,20 +97,32 @@ export const getProfile = query({
 
 /**
  * Retrieves the user record and their profile for the currently authenticated user.
+ * TOKEN-BASED: expects ctx.auth.getUserIdentity().subject to be our Convex userId string, or uses email fallback.
  */
 export const getCurrentUserWithProfile = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      // Not authenticated or token is invalid
       return null;
     }
 
-    const user = await getUserByEmailInternal(ctx, identity.email!);
-
+    // Prefer subject as Convex user id if present and shaped like an Id<"users">
+    let user: any | null = null;
+    const subject = (identity as any).subject as string | undefined;
+    if (subject) {
+      try {
+        // Attempt direct fetch by id if subject looks like an Id (Convex will validate)
+        user = await ctx.db.get(subject as unknown as Id<"users">);
+      } catch {
+        user = null;
+      }
+    }
+    // Fallback: resolve by email if direct id not available
+    if (!user && identity.email) {
+      user = await getUserByEmailInternal(ctx, identity.email);
+    }
     if (!user) {
-      console.warn(`User with email ${identity.email} not found in Convex DB.`);
       return null;
     }
 
@@ -119,12 +131,11 @@ export const getCurrentUserWithProfile = query({
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .unique();
 
-    // Ensure profileImageIds is included in the response
     const profileWithImages = profile
       ? {
           ...profile,
           profileImageIds: profile.profileImageIds || [],
-          profileImageUrls: profile.profileImageUrls || [],
+          profileImageUrls: (profile as any).profileImageUrls || [],
         }
       : null;
 
@@ -860,6 +871,7 @@ export const linkGoogleAccountGuarded = mutation({
 
 /**
  * Updates the profile for the currently authenticated user.
+ * TOKEN-BASED: identity.subject (Convex userId) preferred; falls back to email.
  */
 export const updateProfile = mutation({
   args: {
@@ -951,8 +963,19 @@ export const updateProfile = mutation({
       return { success: false, message: "Not authenticated" };
     }
 
-    // Find user by Clerk ID
-    const user = await getUserByEmailInternal(ctx, identity.email!);
+    // Resolve user via subject (Convex user id) first, then email fallback
+    let user: any | null = null;
+    const subject = (identity as any).subject as string | undefined;
+    if (subject) {
+      try {
+        user = await ctx.db.get(subject as unknown as Id<"users">);
+      } catch {
+        user = null;
+      }
+    }
+    if (!user && identity.email) {
+      user = await getUserByEmailInternal(ctx, identity.email);
+    }
 
     if (!user) {
       return { success: false, message: "User not found in Convex" };
@@ -1675,8 +1698,19 @@ export const updateProfileImageOrder = mutation({
       return { success: false, error: "Not authenticated" };
     }
     // Only allow updating your own profile
-    const user = await getUserByEmailInternal(ctx, identity.email!);
-    if (!user || user._id !== userId) {
+    let me: any | null = null;
+    const subject = (identity as any).subject as string | undefined;
+    if (subject) {
+      try {
+        me = await ctx.db.get(subject as unknown as Id<"users">);
+      } catch {
+        me = null;
+      }
+    }
+    if (!me && identity.email) {
+      me = await getUserByEmailInternal(ctx, identity.email);
+    }
+    if (!me || me._id !== userId) {
       return { success: false, error: "Unauthorized" };
     }
     const profile = await ctx.db
@@ -1816,8 +1850,19 @@ export const createProfile = mutation({
       return { success: false, message: "Not authenticated" };
     }
 
-    // Find user by Clerk ID
-    const user = await getUserByEmailInternal(ctx, identity.email!);
+    // Resolve user via subject first, then email
+    let user: any | null = null;
+    const subject = (identity as any).subject as string | undefined;
+    if (subject) {
+      try {
+        user = await ctx.db.get(subject as unknown as Id<"users">);
+      } catch {
+        user = null;
+      }
+    }
+    if (!user && identity.email) {
+      user = await getUserByEmailInternal(ctx, identity.email);
+    }
 
     if (!user) {
       return { success: false, message: "User not found in Convex" };
@@ -1991,7 +2036,19 @@ export const getMyMatches = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
-    const user = await getUserByEmailInternal(ctx, identity.email!);
+    // Resolve user from subject or email
+    let user: any | null = null;
+    const subject = (identity as any).subject as string | undefined;
+    if (subject) {
+      try {
+        user = await ctx.db.get(subject as unknown as Id<"users">);
+      } catch {
+        user = null;
+      }
+    }
+    if (!user && identity.email) {
+      user = await getUserByEmailInternal(ctx, identity.email);
+    }
     if (!user) return [];
 
     // Get matches from the matches table
@@ -2581,9 +2638,19 @@ export const recordProfileView = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return;
 
-    const viewer = await ctx.runQuery(api.users.getUserByEmail, {
-      email: identity.email!,
-    });
+    // Resolve viewer from subject or email
+    let viewer: any | null = null;
+    const subject = (identity as any).subject as string | undefined;
+    if (subject) {
+      try {
+        viewer = await ctx.db.get(subject as unknown as Id<"users">);
+      } catch {
+        viewer = null;
+      }
+    }
+    if (!viewer && identity.email) {
+      viewer = await getUserByEmailInternal(ctx, identity.email!);
+    }
     if (!viewer) return;
 
     // Prevent logging self views
@@ -2608,9 +2675,19 @@ export const getProfileViewers = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return [];
 
-    const viewerUser = await ctx.runQuery(api.users.getUserByEmail, {
-      email: identity.email!,
-    });
+    // Resolve current user from subject or email
+    let viewerUser: any | null = null;
+    const subject = (identity as any).subject as string | undefined;
+    if (subject) {
+      try {
+        viewerUser = await ctx.db.get(subject as unknown as Id<"users">);
+      } catch {
+        viewerUser = null;
+      }
+    }
+    if (!viewerUser && identity.email) {
+      viewerUser = await getUserByEmailInternal(ctx, identity.email!);
+    }
     if (!viewerUser) return [];
 
     const profile = await ctx.db.get(args.profileId);
