@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
@@ -67,7 +67,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's matches which represent conversations
-    const matches = await fetchQuery(api.users.getMyMatches, {}).catch((e: unknown) => {
+    const matches = await convexQueryWithAuth(
+      request,
+      api.users.getMyMatches,
+      {}
+    ).catch((e: unknown) => {
       console.error("Conversations getMyMatches error", {
         scope: "conversations.list",
         type: "convex_query_error",
@@ -76,13 +80,22 @@ export async function GET(request: NextRequest) {
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
-      return [] as Array<{ userId: string; fullName?: string | null; profileImageUrls?: string[] | null; createdAt?: number | null }>;
+      return [] as Array<{
+        userId: string;
+        fullName?: string | null;
+        profileImageUrls?: string[] | null;
+        createdAt?: number | null;
+      }>;
     });
 
     // Get unread counts for each conversation
-    const unreadCounts = await fetchQuery(api.messages.getUnreadCountsForUser, {
-      userId: userId as Id<"users">,
-    }).catch((e: unknown) => {
+    const unreadCounts = await convexQueryWithAuth(
+      request,
+      api.messages.getUnreadCountsForUser,
+      {
+        userId: userId as Id<"users">,
+      }
+    ).catch((e: unknown) => {
       console.error("Conversations getUnreadCounts error", {
         scope: "conversations.list",
         type: "convex_query_error",
@@ -110,10 +123,14 @@ export async function GET(request: NextRequest) {
           const conversationId = [String(userId), match.userId].sort().join("_");
 
           // Get last message for this conversation
-          const messages = await fetchQuery(api.messages.getMessages, {
-            conversationId,
-            limit: 1,
-          }).catch(() => [] as Array<any>);
+          const messages = await convexQueryWithAuth(
+            request,
+            api.messages.getMessages,
+            {
+              conversationId,
+              limit: 1,
+            }
+          ).catch(() => [] as Array<any>);
           const lastMessage =
             messages.length > 0 ? messages[messages.length - 1] : null;
 

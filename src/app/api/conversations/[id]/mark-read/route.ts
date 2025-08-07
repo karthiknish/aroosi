@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchMutation } from "convex/nextjs";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { requireAuth } from "@/lib/auth/requireAuth";
@@ -70,10 +70,14 @@ export async function POST(request: NextRequest) {
     }
 
     const readAt = Date.now();
-    const result = await fetchMutation(api.messages.markConversationRead, {
-      conversationId,
-      userId: userId as Id<"users">,
-    } as any).catch((e: unknown) => {
+    const result = await convexMutationWithAuth(
+      request,
+      api.messages.markConversationRead,
+      {
+        conversationId,
+        userId: userId as Id<"users">,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Conversation mark-read mutation error", {
         scope: "conversations.mark_read",
         type: "convex_mutation_error",

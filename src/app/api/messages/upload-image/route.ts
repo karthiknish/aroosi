@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { fetchMutation } from "convex/nextjs";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
@@ -111,16 +111,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the message in Convex (type=image)
-    const message = await fetchMutation(api.messages.sendMessage, {
-      conversationId,
-      fromUserId: fromUserId as any,
-      toUserId: toUserId as any,
-      type: "image",
-      audioStorageId: storageId,
-      fileSize: image.size,
-      mimeType: contentType,
-    } as any).catch((e: unknown) => {
-      const msg = e instanceof Error ? e.message : typeof e === "string" ? e : "Send failed";
+    const message = await convexMutationWithAuth(
+      request,
+      api.messages.sendMessage,
+      {
+        conversationId,
+        fromUserId: fromUserId as any,
+        toUserId: toUserId as any,
+        type: "image",
+        audioStorageId: storageId,
+        fileSize: image.size,
+        mimeType: contentType,
+      } as any
+    ).catch((e: unknown) => {
+      const msg =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : "Send failed";
       throw new Error(String(msg));
     });
 

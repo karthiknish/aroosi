@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { fetchMutation } from "convex/nextjs";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
@@ -52,23 +52,33 @@ export async function POST(request: NextRequest) {
       (body as { conversationId?: string; userId?: string }) || {};
 
     if (!conversationId) {
-      return errorResponse("Missing required field: conversationId", 400, { correlationId });
+      return errorResponse("Missing required field: conversationId", 400, {
+        correlationId,
+      });
     }
 
     if (!validateConversationId(conversationId)) {
-      return errorResponse("Invalid conversationId format", 400, { correlationId });
+      return errorResponse("Invalid conversationId format", 400, {
+        correlationId,
+      });
     }
 
     if (requestUserId && requestUserId !== userId) {
-      return errorResponse("Cannot mark conversation as read for another user", 403, { correlationId });
+      return errorResponse(
+        "Cannot mark conversation as read for another user",
+        403,
+        { correlationId }
+      );
     }
 
     const userIds = conversationId.split("_");
     if (!userId || !userIds.includes(userId as string)) {
-      return errorResponse("Unauthorized access to conversation", 403, { correlationId });
+      return errorResponse("Unauthorized access to conversation", 403, {
+        correlationId,
+      });
     }
 
-    await fetchMutation(api.messages.markConversationRead, {
+    await convexMutationWithAuth(request, api.messages.markConversationRead, {
       conversationId,
       userId: userId as Id<"users">,
     } as any).catch((e: unknown) => {
@@ -109,13 +119,16 @@ export async function POST(request: NextRequest) {
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
-    return successResponse({
-      message: "Conversation marked as read",
-      conversationId,
-      userId,
-      readAt: Date.now(),
-      correlationId,
-    }, 200);
+    return successResponse(
+      {
+        message: "Conversation marked as read",
+        conversationId,
+        userId,
+        readAt: Date.now(),
+        correlationId,
+      },
+      200
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("Messages read POST unhandled error", {
@@ -126,6 +139,8 @@ export async function POST(request: NextRequest) {
       statusCode: 500,
       durationMs: Date.now() - startedAt,
     });
-    return errorResponse("Failed to mark conversation as read", 500, { correlationId });
+    return errorResponse("Failed to mark conversation as read", 500, {
+      correlationId,
+    });
   }
 }

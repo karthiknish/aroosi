@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchMutation } from "convex/nextjs";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { requireAuth } from "@/lib/auth/requireAuth";
 
@@ -36,8 +36,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { messageIds } =
-      (body as { messageIds?: string[] }) || {};
+    const { messageIds } = (body as { messageIds?: string[] }) || {};
 
     if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
       return NextResponse.json(
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await fetchMutation(api.messages.markConversationRead, {
+    await convexMutationWithAuth(request, api.messages.markConversationRead, {
       conversationId: messageIds[0]!,
       userId: userId as any,
     } as any).catch((e: unknown) => {

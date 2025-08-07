@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { requireSession } from "@/app/api/_utils/auth";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import {
+  convexQueryWithAuth,
+  convexMutationWithAuth,
+} from "@/lib/convexServer";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import {
   validateMessagePayload,
@@ -15,14 +18,14 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) {
       return NextResponse.json(
         { error: "Unauthorized", correlationId },
         { status: 401 }
       );
     }
-    const { userId } = session as unknown as { userId: string };
+    const { userId } = session;
 
     if (!userId) {
       return NextResponse.json(
@@ -90,7 +93,6 @@ export async function GET(request: NextRequest) {
       before = parsedBefore;
     }
 
-
     const userIds = conversationId.split("_");
     if (!userIds.includes(userId)) {
       return NextResponse.json(
@@ -99,11 +101,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await fetchQuery(api.messages.getMessages, {
-      conversationId,
-      limit,
-      before,
-    } as any).catch((e: unknown) => {
+    const result = await convexQueryWithAuth(
+      request,
+      api.messages.getMessages,
+      {
+        conversationId,
+        limit,
+        before,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Messages GET query error", {
         scope: "messages.get",
         type: "convex_query_error",
@@ -156,14 +162,14 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) {
       return NextResponse.json(
         { error: "Unauthorized", correlationId },
         { status: 401 }
       );
     }
-    const { userId } = session as unknown as { userId: string };
+    const { userId } = session;
 
     if (!userId) {
       return NextResponse.json(
@@ -249,19 +255,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-
     const canMessage = await validateUserCanMessage(fromUserId, toUserId);
     if (!canMessage) {
       return NextResponse.json(
-        { error: "Users are not authorized to message each other", correlationId },
+        {
+          error: "Users are not authorized to message each other",
+          correlationId,
+        },
         { status: 403 }
       );
     }
 
-    const blockStatus = await fetchQuery(api.safety.getBlockStatus, {
-      blockerUserId: fromUserId as Id<"users">,
-      blockedUserId: toUserId as Id<"users">,
-    } as any).catch((e: unknown) => {
+    const blockStatus = await convexQueryWithAuth(
+      request,
+      api.safety.getBlockStatus,
+      {
+        blockerUserId: fromUserId as Id<"users">,
+        blockedUserId: toUserId as Id<"users">,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Messages POST getBlockStatus error", {
         scope: "messages.post",
         type: "convex_query_error",
@@ -282,12 +294,16 @@ export async function POST(request: NextRequest) {
 
     const sanitizedText = validation.sanitizedText || text;
 
-    const result = await fetchMutation(api.messages.sendMessage, {
-      conversationId,
-      fromUserId: fromUserId as Id<"users">,
-      toUserId: toUserId as Id<"users">,
-      text: sanitizedText,
-    } as any).catch((e: unknown) => {
+    const result = await convexMutationWithAuth(
+      request,
+      api.messages.sendMessage,
+      {
+        conversationId,
+        fromUserId: fromUserId as Id<"users">,
+        toUserId: toUserId as Id<"users">,
+        text: sanitizedText,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Messages POST sendMessage error", {
         scope: "messages.post",
         type: "convex_mutation_error",
