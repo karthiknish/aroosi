@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireAdminSession } from "@/app/api/_utils/auth";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { requireAuth } from "@/lib/auth/requireAuth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 

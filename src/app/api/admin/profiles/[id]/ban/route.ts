@@ -1,25 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@/types/profile";
-import { requireAdminSession } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 export async function PUT(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const adminCheck = await requireAdminSession(req);
-  if ("errorResponse" in adminCheck) {
-    const res = adminCheck.errorResponse as NextResponse;
-    const status = res.status || 401;
-    let body: unknown = { error: "Unauthorized", correlationId };
-    try {
-      const txt = await res.text();
-      body = txt ? { ...JSON.parse(txt), correlationId } : body;
-    } catch {}
-  console.warn("Admin profile.ban PUT auth missing", {
+  const { role } = await requireAuth(req);
+  if ((role || "user") !== "admin") {
+    const status = 403;
+    const body = { error: "Unauthorized", correlationId };
+    console.warn("Admin profile.ban PUT auth missing", {
       scope: "admin.profile_ban",
       type: "auth_failed",
       correlationId,
@@ -27,21 +22,6 @@ export async function PUT(req: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     return NextResponse.json(body, { status });
-  }
-
-  const convex = getConvexClient();
-  if (!convex) {
-    console.error("Admin profile.ban PUT convex not configured", {
-      scope: "admin.profile_ban",
-      type: "convex_not_configured",
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
   }
 
   const url = new URL(req.url);
@@ -65,11 +45,10 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const profile = await convex
-      .query(api.users.getProfileById, {
-        id: id as unknown as Id<"profiles">,
-      })
-      .catch((e: unknown) => {
+    const profile = await fetchQuery(
+      api.users.getProfileById,
+      { id: id as unknown as Id<"profiles"> } as any
+    ).catch((e: unknown) => {
         console.error("Admin profile.ban PUT getProfileById error", {
           scope: "admin.profile_ban",
           type: "convex_query_error",
@@ -90,12 +69,10 @@ export async function PUT(req: NextRequest) {
 
     let result: unknown;
     if (body.banned) {
-      result = await convex
-        .mutation(api.users.banUser, {
-          userId: (profile as { userId: Id<"users"> }).userId,
-        })
-        .catch((e: unknown) => {
-          console.error("Admin profile.ban PUT banUser error", {
+       result = await fetchMutation(
+         api.users.banUser,
+         { userId: (profile as { userId: Id<"users"> }).userId } as any
+       ).catch((e: unknown) => {          console.error("Admin profile.ban PUT banUser error", {
             scope: "admin.profile_ban",
             type: "convex_mutation_error",
             message: e instanceof Error ? e.message : String(e),
@@ -121,12 +98,10 @@ export async function PUT(req: NextRequest) {
         }
       }
     } else {
-      result = await convex
-        .mutation(api.users.unbanUser, {
-          userId: (profile as { userId: Id<"users"> }).userId,
-        })
-        .catch((e: unknown) => {
-          console.error("Admin profile.ban PUT unbanUser error", {
+       result = await fetchMutation(
+         api.users.unbanUser,
+         { userId: (profile as { userId: Id<"users"> }).userId } as any
+       ).catch((e: unknown) => {          console.error("Admin profile.ban PUT unbanUser error", {
             scope: "admin.profile_ban",
             type: "convex_mutation_error",
             message: e instanceof Error ? e.message : String(e),

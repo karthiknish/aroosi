@@ -11,8 +11,8 @@ import { requireAuth } from "@/lib/auth/requireAuth";
  * - maxAudience: hard cap unless overridden with smaller allowed segments (server-side control is limited by provider)
  */
 export async function POST(request: Request) {
-  const admin = requireAdminToken(request as unknown as NextRequest);
-  if ("errorResponse" in admin) return admin.errorResponse;
+  const { role } = await requireAuth(request as unknown as NextRequest);
+  if ((role || "user") !== "admin") return errorResponse("Admin privileges required", 403);
 
   let body: unknown;
   try {

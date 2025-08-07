@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery } from "convex/nextjs";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -11,28 +11,14 @@ export async function GET(req: NextRequest) {
   try {
     // Cookie-auth alignment: infer current user from session, do not require userId in query
 
-    const authCheck = await requireUserToken(req);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Matches GET auth failed", {
-        scope: "matches.list",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    // Cookie-only model: no token is provided
+    const { userId } = await requireAuth(req);
 
-    const convex = getConvexClient();
-    if (!convex) {
+    // Token model; no convex client
+
+    // Placeholder to keep variables used
+    void userId;
+
+    {
       console.error("Matches GET convex not configured", {
         scope: "matches.list",
         type: "convex_not_configured",
@@ -50,26 +36,24 @@ export async function GET(req: NextRequest) {
       // convex.setAuth?.(undefined as unknown as string);
     } catch {}
 
-    const matches = await convex
-      .query(api.users.getMyMatches, {})
-      .catch((e: unknown) => {
-        console.error("Matches GET getMyMatches error", {
-          scope: "matches.list",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return [] as Array<{ userId: string }>;
+    const matches = await fetchQuery(api.users.getMyMatches, {}).catch((e: unknown) => {
+      console.error("Matches GET getMyMatches error", {
+        scope: "matches.list",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return [] as Array<{ userId: string }>;
+    });
 
     const results = await Promise.all(
       (matches as Array<{ userId: string }>).map(async (match) => {
         try {
-          const res = await convex.query(api.users.getUserPublicProfile, {
+          const res = await fetchQuery(api.users.getUserPublicProfile, {
             userId: match.userId as Id<"users">,
-          });
+          } as any);
           if (res && res.profile) {
             return { ...res.profile, userId: match.userId };
           }

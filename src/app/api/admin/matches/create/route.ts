@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
-import { requireAdminSession } from "@/app/api/_utils/auth";
 import { Notifications } from "@/lib/notify";
 import type { Doc, Id } from "@convex/_generated/dataModel";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 
 export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const adminCheck = await requireAdminSession(req);
-  if ("errorResponse" in adminCheck) {
-    const res = adminCheck.errorResponse as NextResponse;
-    const status = res.status || 401;
-    let body: unknown = { error: "Unauthorized", correlationId };
-    try {
-      const txt = await res.text();
-      body = txt ? { ...JSON.parse(txt), correlationId } : body;
-    } catch {}
+  const { role } = await requireAuth(req);
+  if ((role || "user") !== "admin") {
+    const status = 403;
+    const body = { error: "Unauthorized", correlationId };
     console.warn("Admin matches.create POST auth failed", {
       scope: "admin.matches_create",
       type: "auth_failed",
@@ -73,27 +68,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const convex = getConvexClient();
-  if (!convex) {
-    console.error("Admin matches.create POST convex not configured", {
-      scope: "admin.matches_create",
-      type: "convex_not_configured",
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
-  }
-
   try {
-    const fromProfile = (await convex
-      .query(api.users.getProfileById, {
+    const fromProfile = (await fetchQuery(
+      api.users.getProfileById,
+      {
         id: fromProfileId as Id<"profiles">,
-      })
-      .catch((e: unknown) => {
+      } as any
+    ).catch((e: unknown) => {
         console.error("Admin matches.create POST getProfileById(from) error", {
           scope: "admin.matches_create",
           type: "convex_query_error",
@@ -105,11 +86,12 @@ export async function POST(req: NextRequest) {
         return null;
       })) as Doc<"profiles"> | null;
 
-    const toProfile = (await convex
-      .query(api.users.getProfileById, {
+    const toProfile = (await fetchQuery(
+      api.users.getProfileById,
+      {
         id: toProfileId as Id<"profiles">,
-      })
-      .catch((e: unknown) => {
+      } as any
+    ).catch((e: unknown) => {
         console.error("Admin matches.create POST getProfileById(to) error", {
           scope: "admin.matches_create",
           type: "convex_query_error",
@@ -135,11 +117,12 @@ export async function POST(req: NextRequest) {
       fromUser: Id<"users">,
       toUser: Id<"users">
     ) => {
-      const existing = (await convex
-        .query(api.interests.getSentInterests, {
+      const existing = (await fetchQuery(
+        api.interests.getSentInterests,
+        {
           userId: fromUser,
-        })
-        .catch((e: unknown) => {
+        } as any
+      ).catch((e: unknown) => {
           console.error("Admin matches.create POST getSentInterests error", {
             scope: "admin.matches_create",
             type: "convex_query_error",
@@ -154,12 +137,10 @@ export async function POST(req: NextRequest) {
       const found = existing.find((i) => i.toUserId === toUser);
       if (found) {
         if (found.status !== "accepted") {
-          await convex
-            .mutation(api.interests.respondToInterest, {
-              interestId: found._id,
-              status: "accepted",
-            })
-            .catch((e: unknown) => {
+           await fetchMutation(api.interests.respondToInterest, {
+             interestId: found._id,
+             status: "accepted",
+           } as any).catch((e: unknown) => {
               console.error(
                 "Admin matches.create POST respondToInterest update error",
                 {
@@ -175,12 +156,13 @@ export async function POST(req: NextRequest) {
         }
         return found._id;
       }
-      const result = await convex
-        .mutation(api.interests.sendInterest, {
+      const result = await fetchMutation(
+        api.interests.sendInterest,
+        {
           fromUserId: fromUser,
           toUserId: toUser,
-        })
-        .catch((e: unknown) => {
+        } as any
+      ).catch((e: unknown) => {
           console.error("Admin matches.create POST sendInterest error", {
             scope: "admin.matches_create",
             type: "convex_mutation_error",
@@ -202,12 +184,10 @@ export async function POST(req: NextRequest) {
         );
       }
       const newId = (result as { interestId?: Id<"interests"> }).interestId as Id<"interests">;
-      await convex
-        .mutation(api.interests.respondToInterest, {
-          interestId: newId,
-          status: "accepted",
-        })
-        .catch((e: unknown) => {
+      await fetchMutation(api.interests.respondToInterest, {
+        interestId: newId,
+        status: "accepted",
+      } as any).catch((e: unknown) => {
           console.error("Admin matches.create POST respondToInterest create error", {
             scope: "admin.matches_create",
             type: "convex_mutation_error",

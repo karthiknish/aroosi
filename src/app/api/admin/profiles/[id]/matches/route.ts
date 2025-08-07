@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { requireAdminSession } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const adminCheck = await requireAdminSession(req);
-  if ("errorResponse" in adminCheck) {
-    const res = adminCheck.errorResponse as NextResponse;
-    const status = res.status || 401;
-    let body: unknown = { error: "Unauthorized", correlationId };
-    try {
-      const txt = await res.text();
-      body = txt ? { ...JSON.parse(txt), correlationId } : body;
-    } catch {}
+  const { role } = await requireAuth(req);
+  if ((role || "user") !== "admin") {
+    const status = 403;
+    const body = { error: "Unauthorized", correlationId };
     console.warn("Admin profile matches GET auth failed", {
       scope: "admin.profile_matches",
       type: "auth_failed",
@@ -27,28 +22,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(body, { status });
   }
 
-  const convex = getConvexClient();
-  if (!convex) {
-    console.error("Admin profile matches GET convex not configured", {
-      scope: "admin.profile_matches",
-      type: "convex_not_configured",
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
-  }
-
   try {
     const profileId = req.nextUrl.pathname.split("/").slice(-2)[0] as string;
-    const matches = await convex
-      .query(api.users.getMatchesForProfile, {
-        profileId: profileId as Id<"profiles">,
-      })
-      .catch((e: unknown) => {
+    const matches = await fetchQuery(
+      api.users.getMatchesForProfile,
+      { profileId: profileId as Id<"profiles"> } as any
+    ).catch((e: unknown) => {
         console.error("Admin profile matches GET query error", {
           scope: "admin.profile_matches",
           type: "convex_query_error",

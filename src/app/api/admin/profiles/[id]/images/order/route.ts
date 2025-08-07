@@ -1,23 +1,18 @@
 // Admin API route for reordering profile images by profileId
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchMutation } from "convex/nextjs";
 import { Id } from "@convex/_generated/dataModel";
-import { requireAdminSession } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const adminCheck = await requireAdminSession(req);
-  if ("errorResponse" in adminCheck) {
-    const res = adminCheck.errorResponse as NextResponse;
-    const status = res.status || 401;
-    let bodyOut: unknown = { error: "Unauthorized", correlationId };
-    try {
-      const txt = await res.text();
-      bodyOut = txt ? { ...JSON.parse(txt), correlationId } : bodyOut;
-    } catch {}
+  const { role } = await requireAuth(req);
+  if ((role || "user") !== "admin") {
+    const status = 403;
+    const bodyOut = { error: "Unauthorized", correlationId };
     console.warn("Admin profile.images.order POST auth failed", {
       scope: "admin.profile_images_order",
       type: "auth_failed",
@@ -26,21 +21,6 @@ export async function POST(req: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     return NextResponse.json(bodyOut, { status });
-  }
-
-  const convex = getConvexClient();
-  if (!convex) {
-    console.error("Admin profile.images.order POST convex not configured", {
-      scope: "admin.profile_images_order",
-      type: "convex_not_configured",
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
   }
 
   let body: Record<string, unknown>;
@@ -82,12 +62,13 @@ export async function POST(req: NextRequest) {
     );
   }
   try {
-    const result = await convex
-      .mutation(api.users.adminUpdateProfileImageOrder, {
+    const result = await fetchMutation(
+      api.users.adminUpdateProfileImageOrder,
+      {
         profileId: profileId as Id<"profiles">,
         imageIds: (imageIds as string[]).map((id) => id as Id<"_storage">),
-      })
-      .catch((e: unknown) => {
+      } as any
+    ).catch((e: unknown) => {
         console.error("Admin profile.images.order POST mutation error", {
           scope: "admin.profile_images_order",
           type: "convex_mutation_error",
