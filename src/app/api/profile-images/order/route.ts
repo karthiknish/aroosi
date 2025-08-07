@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchMutation } from "convex/nextjs";
 import { Id } from "@convex/_generated/dataModel";
 
 export async function POST(req: NextRequest) {
@@ -23,25 +23,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Profile images ORDER convex not configured", {
-        scope: "profile_images.order",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-    try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
-    } catch {}
-
     let body: { profileId?: string; imageIds?: string[] } = {};
     try {
       body = await req.json();
@@ -55,12 +36,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await convex
-      .mutation(api.images.updateProfileImageOrder, {
+    const result = await fetchMutation(
+      api.images.updateProfileImageOrder,
+      {
         userId: profileId as Id<"users">,
         imageIds: imageIds as Id<"_storage">[],
-      })
-      .catch((e: unknown) => {
+      } as any
+    ).catch((e: unknown) => {
         console.error("Profile images ORDER mutation error", {
           scope: "profile_images.order",
           type: "convex_mutation_error",

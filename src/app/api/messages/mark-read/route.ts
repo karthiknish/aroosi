@@ -1,37 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireSession } from "@/app/api/_utils/auth";
-import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
-// Initialize Convex client
-const convexClient = getConvexClient();
+import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Cookie-only authentication
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Messages mark-read POST auth failed", {
-        scope: "messages.mark_read",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
+    const { userId } = await requireAuth(request);
 
     const rateLimitResult = checkApiRateLimit(`mark_read_${userId}`, 50, 60000);
     if (!rateLimitResult.allowed) {
@@ -85,22 +63,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let client = convexClient || getConvexClient();
-    if (!client) {
-      console.error("Messages mark-read POST convex not configured", {
-        scope: "messages.mark_read",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Database connection failed", correlationId },
-        { status: 500 }
-      );
-    }
-    // Cookie-only: do not set auth token on client
-
     if (!userId) {
       return NextResponse.json(
         { error: "User ID not found", correlationId },
@@ -108,22 +70,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await client
-      .mutation(api.messages.markConversationRead, {
-        conversationId: messageIds[0]!,
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Messages mark-read POST mutation error", {
-          scope: "messages.mark_read",
-          type: "convex_mutation_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        throw e;
+    await fetchMutation(api.messages.markConversationRead, {
+      conversationId: messageIds[0]!,
+      userId: userId as any,
+    } as any).catch((e: unknown) => {
+      console.error("Messages mark-read POST mutation error", {
+        scope: "messages.mark_read",
+        type: "convex_mutation_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      throw e;
+    });
 
     console.info("Messages mark-read POST success", {
       scope: "messages.mark_read",

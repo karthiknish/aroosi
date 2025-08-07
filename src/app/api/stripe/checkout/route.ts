@@ -115,7 +115,6 @@ export async function POST(req: NextRequest) {
       `Creating Stripe checkout session for user ${userId}, plan: ${planId}`
     );
     // Create Stripe checkout session with security considerations
-    const sessionCookiesToForward = session.setCookiesToForward || [];
     const stripeSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -150,12 +149,7 @@ export async function POST(req: NextRequest) {
       `Stripe checkout session created: ${stripeSession.id} for user ${userId}`
     );
 
-    // Build response and forward any refreshed cookies
-    const res = successResponse({ url: stripeSession.url, sessionId: stripeSession.id });
-    for (const c of sessionCookiesToForward) {
-      res.headers.append("Set-Cookie", c);
-    }
-    return res;
+    return successResponse({ url: stripeSession.url, sessionId: stripeSession.id });
   } catch (error) {
     console.error("Error in Stripe checkout:", error);
     logSecurityEvent(
