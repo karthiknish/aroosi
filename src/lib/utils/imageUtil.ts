@@ -31,6 +31,11 @@ export async function updateImageOrder(args: {
   return { ok: true };
 }
 
+// Provide an object wrapper to ease spying in tests without redefining the function
+export const imageApi = {
+  updateImageOrder,
+};
+
 export async function uploadProfileImage(
   file: File
 ): Promise<{ imageId: string; url?: string }> {

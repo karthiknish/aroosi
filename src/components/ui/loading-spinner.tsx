@@ -24,6 +24,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   return (
     <Loader2
       role="status"
+      data-testid="loading-spinner"
       aria-label={label}
       className={cn(
         `animate-spin`,

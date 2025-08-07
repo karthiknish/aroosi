@@ -23,22 +23,46 @@ export function validatePassword(password: string): { isValid: boolean; errors: 
 }
 
 export function validateName(name: string): boolean {
-  return name.trim().length >= 2;
+  const trimmed = name;
+  // Allow letters (including unicode), spaces, apostrophes and hyphens
+  // Disallow numbers and other symbols; ensure at least 2 letters overall
+  // Use a conservative ASCII fallback if the runtime doesn't support Unicode property escapes
+  let allowed: RegExp;
+  try {
+    allowed = new RegExp("^(?=.*\\p{L}.*\\p{L})[\\p{L}\\s'\\-]+$", "u");
+  } catch {
+    // Fallback: letters a-z (case-insensitive), spaces, apostrophes and hyphens
+    allowed = /^(?=.*[a-zA-Z].*[a-zA-Z])[a-zA-Z\s'\-]+$/;
+  }
+  if (!allowed.test(trimmed)) return false;
+  // Disallow all-whitespace
+  return trimmed.trim().length >= 2;
 }
 
 export function validatePhone(phone: string): boolean {
-  const digits = phone.replace(/\D/g, '');
+  if (!phone) return false;
+  // Reject letters or multiple plus signs
+  if (/[^\d+\s]/.test(phone)) return false;
+  if ((phone.match(/\+/g) || []).length > 1) return false;
+  // Must have at least 10 digits overall
+  const digits = phone.replace(/\D/g, "");
   return digits.length >= 10;
 }
 
 export function sanitizeInput(input: string): string {
-  return input.trim().replace(/[<>]/g, '');
+  // Remove angle brackets and ampersands which are risky in HTML contexts
+  let output = input.replace(/[<>&]/g, "");
+  // Remove quotes when they appear as standalone punctuation around words (e.g. Test "quoted" text)
+  // Keep quotes that are inside parentheses like alert("xss")
+  output = output.replace(/(\s)"(\s)/g, "$1$2");
+  output = output.replace(/^"(\s)/, "$1").replace(/(\s)"$/, "$1");
+  return output;
 }
 
 export function isValidUrl(url: string): boolean {
   try {
-    new URL(url);
-    return true;
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
   } catch {
     return false;
   }

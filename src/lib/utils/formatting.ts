@@ -3,7 +3,9 @@ export function formatCurrency(
   currency: string = "GBP",
 ): string {
   const value = amount / 100; // Convert pence to pounds
-  return new Intl.NumberFormat("en-GB", {
+  // Force USD to use the $ symbol without the US prefix in some locales
+  const locale = currency === "USD" ? "en-US" : "en-GB";
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: currency,
   }).format(value);
@@ -41,10 +43,21 @@ export function formatDate(
 }
 
 export function formatName(name: string): string {
-  return name
-    .split(/[\s-']/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(name.includes("-") ? "-" : name.includes("'") ? "'" : " ");
+  if (!name) return "";
+  const separators = name.includes("-") ? "-" : name.includes("'") ? "'" : " ";
+  const parts = name.split(/[\s-']/);
+  const cased = parts.map((part) => {
+    const lower = part.toLowerCase();
+    // Preserve common prefixes like Mc and Mac
+    if (/^mc[a-z]/i.test(part)) {
+      return "Mc" + part.slice(2, 3).toUpperCase() + part.slice(3).toLowerCase();
+    }
+    if (/^mac[a-z]/i.test(part)) {
+      return "Mac" + part.slice(3, 4).toUpperCase() + part.slice(4).toLowerCase();
+    }
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  });
+  return cased.join(separators);
 }
 
 export function formatPhoneNumber(phone: string): string {
@@ -89,7 +102,14 @@ export function truncateText(
 ): string {
   if (maxLength <= 0) return suffix;
   if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength - suffix.length) + suffix;
+  const limit = Math.max(0, maxLength - suffix.length);
+  let cut = text.slice(0, limit);
+  // Avoid cutting in the middle of a word if possible
+  const lastSpace = cut.lastIndexOf(" ");
+  if (lastSpace > 0) {
+    cut = cut.slice(0, lastSpace);
+  }
+  return cut + suffix;
 }
 
 export function formatDistance(
@@ -100,7 +120,7 @@ export function formatDistance(
     return `${distance} km`;
   }
 
-  if (distance < 1) return "Less than 1 mile";
+  if (distance < 1) return `${distance} miles`;
   if (distance === 1) return "1 mile";
 
   const formatted =
