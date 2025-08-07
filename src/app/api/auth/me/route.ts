@@ -66,7 +66,8 @@ export async function GET(request: NextRequest) {
           fromPage,
         });
         // Return structured error payload for frontend toast consumption
-        const res = authErrorResponse(e.message, { status: e.status, code: e.code, correlationId, fromPage });
+        // Note: fromPage is included in logs and JSON responses below, but not a supported field of authErrorResponse meta
+        const res = authErrorResponse(e.message, { status: e.status, code: e.code, correlationId });
         return withNoStore(res);
       }
       log(scope, "warn", "Unexpected auth failure in /api/auth/me", {
@@ -76,7 +77,8 @@ export async function GET(request: NextRequest) {
         durationMs: Date.now() - startedAt,
         fromPage,
       });
-      const res = authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId, fromPage });
+      // Note: fromPage is included in logs and JSON responses below, but not a supported field of authErrorResponse meta
+      const res = authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId });
       return withNoStore(res);
     }
 
