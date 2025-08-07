@@ -55,6 +55,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const profileId = searchParams.get("profileId");
+    const mode = searchParams.get("mode");
+    const limit = parseInt(searchParams.get("limit") || "0", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     if (!profileId) {
       return NextResponse.json(
@@ -64,11 +67,35 @@ export async function GET(request: NextRequest) {
     }
 
     // Convex enforces authorization; requesterUserId parameter is not required when using subject-based identity
-    const viewers = await convexQueryWithAuth(request, api.users.getProfileViewers, {
-      profileId: profileId as Id<"profiles">,
-    } as any);
+    const viewers = await convexQueryWithAuth(
+      request,
+      api.users.getProfileViewers,
+      {
+        profileId: profileId as Id<"profiles">,
+      } as any
+    );
 
-    return NextResponse.json({ success: true, viewers, correlationId });
+    // Simple count mode for lightweight badge
+    if (mode === "count") {
+      return NextResponse.json({
+        success: true,
+        count: Array.isArray(viewers) ? viewers.length : 0,
+        correlationId,
+      });
+    }
+
+    // Optional naive pagination
+    const start = Number.isFinite(offset) && offset > 0 ? offset : 0;
+    const end = Number.isFinite(limit) && limit > 0 ? start + limit : undefined;
+    const paged = Array.isArray(viewers) ? viewers.slice(start, end) : [];
+    const total = Array.isArray(viewers) ? viewers.length : 0;
+
+    return NextResponse.json({
+      success: true,
+      viewers: paged,
+      total,
+      correlationId,
+    });
   } catch (err: any) {
     const status = err instanceof AuthError ? err.status : err?.status ?? 400;
     const error =

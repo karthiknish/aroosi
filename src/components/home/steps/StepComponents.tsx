@@ -16,6 +16,7 @@ import { MOTHER_TONGUE_OPTIONS, RELIGION_OPTIONS, ETHNICITY_OPTIONS } from "@/li
 import { loadImageMeta, validateImageMeta } from "@/lib/utils/imageMeta";
 // Local uploader for Step 6
 import { LocalImageUpload } from "@/components/LocalImageUpload";
+import { Pause, Play, X } from "lucide-react";
 
 export type ProfileCreationData = Record<string, any>;
 
@@ -537,6 +538,11 @@ export function Step6Photos(props: {
     [onImagesChanged, pendingImages]
   );
 
+  // Pause/Cancel placeholders; actual cancellation wired during upload in helpers
+  const [pausedIds, setPausedIds] = React.useState<Record<string, boolean>>({});
+  const setPaused = (id: string, val: boolean) =>
+    setPausedIds((p) => ({ ...p, [id]: val }));
+
   // Local client-side guards prior to upload request (optional early feedback)
   const preflightValidate = React.useCallback(async (img: ImageType) => {
     try {
@@ -558,15 +564,45 @@ export function Step6Photos(props: {
   }, []);
 
   // Guard feedback rendering for tiles
-  const renderTileOverlay = (s: { status: "idle" | "uploading" | "success" | "error"; progress: number; error?: string }, onRetry: () => void) => {
+  const renderTileOverlay = (s: { status: "idle" | "uploading" | "success" | "error"; progress: number; error?: string }, onRetry: () => void, id?: string) => {
     return (
       <div className="absolute inset-0 flex flex-col justify-end">
         {s.status === "uploading" && (
-          <div className="w-full h-1 bg-black/10">
-            <div
-              className="h-1 bg-pink-600 transition-all"
-              style={{ width: `${Math.max(0, Math.min(100, s.progress))}%` }}
-            />
+          <div className="w-full">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] text-white/90 bg-black/40 rounded px-1 py-0.5">{Math.max(0, Math.min(100, s.progress))}%</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="p-1 rounded bg-black/40 text-white hover:bg-black/60"
+                  aria-label={pausedIds[id || ""] ? "Resume" : "Pause"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPaused(id || "", !pausedIds[id || ""]);
+                  }}
+                >
+                  {pausedIds[id || ""] ? <Play className="w-3 h-3" /> : <Pause className="w-3 h-3" />}
+                </button>
+                <button
+                  type="button"
+                  className="p-1 rounded bg-black/40 text-white hover:bg-black/60"
+                  aria-label="Cancel upload"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Cancel handled in upload helpers via AbortController/XHR abort; here we just reset UI for this item
+                    setItemState((prev) => ({ ...prev, [id || ""]: { status: "error", progress: s.progress, error: "Canceled" } }));
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+            <div className="h-1 bg-black/10">
+              <div
+                className="h-1 bg-pink-600 transition-all"
+                style={{ width: `${Math.max(0, Math.min(100, s.progress))}%` }}
+              />
+            </div>
           </div>
         )}
         {s.status === "error" && (
@@ -622,7 +658,7 @@ export function Step6Photos(props: {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No preview</div>
                     )}
-                    {renderTileOverlay(s, () => handleRetry(img))}
+                    {renderTileOverlay(s, () => handleRetry(img), img.id)}
                   </div>
                 );
               })}

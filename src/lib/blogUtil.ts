@@ -147,9 +147,7 @@ export async function fetchBlogPostById(
   id: string,
   token?: string
 ): Promise<BlogPost | null> {
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const data = (await getJson(`/api/blog/${id}`, { headers })) as unknown;
+  const data = (await getJson(`/api/blog/${id}`)) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
   if (
@@ -166,11 +164,7 @@ export async function fetchBlogPostBySlug(
   slug: string,
   token?: string
 ): Promise<BlogPost | null> {
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const data = (await getJson(`/api/blog/${encodeURIComponent(slug)}`, {
-    headers,
-  })) as unknown;
+  const data = (await getJson(`/api/blog/${encodeURIComponent(slug)}`)) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
   if (

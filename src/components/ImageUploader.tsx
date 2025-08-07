@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Upload } from "lucide-react";
 import type { ImageType } from "@/types/image";
 import Cropper, { Area } from "react-easy-crop";
+import { Pause, Play, RotateCw, RotateCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -62,24 +63,20 @@ async function getCroppedImg(
   image: HTMLImageElement,
   crop: Area,
   fileName: string,
-  quality = 1
+  quality = 0.92,
+  rotateDeg = 0
 ): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = crop.width;
   canvas.height = crop.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No 2d context");
-  ctx.drawImage(
-    image,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    crop.width,
-    crop.height
-  );
+  if (rotateDeg) {
+    ctx.translate(crop.width / 2, crop.height / 2);
+    ctx.rotate((rotateDeg * Math.PI) / 180);
+    ctx.translate(-crop.width / 2, -crop.height / 2);
+  }
+  ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -115,6 +112,8 @@ export function ImageUploader({
   const [isCropping, setIsCropping] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [aspect, setAspect] = useState<1 | 0.8 | 0.75>(1);
+  const [rotate, setRotate] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isClient, setIsClient] = useState(typeof window !== "undefined");
 
@@ -388,7 +387,7 @@ export function ImageUploader({
                   image={imagePreview}
                   crop={crop}
                   zoom={zoom}
-                  aspect={1}
+                  aspect={aspect}
                   minZoom={1}
                   maxZoom={3}
                   cropShape="rect"
@@ -409,6 +408,17 @@ export function ImageUploader({
                     },
                   }}
                 />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 justify-between">
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant={aspect === 1 ? "default" : "outline"} onClick={() => setAspect(1)} size="sm">1:1</Button>
+                  <Button type="button" variant={aspect === 0.8 ? "default" : "outline"} onClick={() => setAspect(0.8)} size="sm">4:5</Button>
+                  <Button type="button" variant={aspect === 0.75 ? "default" : "outline"} onClick={() => setAspect(0.75)} size="sm">3:4</Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r - 90 + 360) % 360)}><RotateCcw className="w-3 h-3 mr-1" />Rotate</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r + 90) % 360)}><RotateCw className="w-3 h-3 mr-1" />Rotate</Button>
+                </div>
               </div>
             )}
             <div className="flex justify-end space-x-3 pt-2">
@@ -439,7 +449,8 @@ export function ImageUploader({
                       image,
                       croppedAreaPixels,
                       `cropped_${timestamp}.jpg`,
-                      1
+                      0.9,
+                      rotate
                     );
                     const croppedFile = new File(
                       [croppedBlob],

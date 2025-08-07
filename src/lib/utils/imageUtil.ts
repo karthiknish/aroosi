@@ -94,3 +94,50 @@ export function uploadProfileImageWithProgress(
     }
   });
 }
+
+export function uploadProfileImageWithProgressCancellable(
+  file: File,
+  onProgress?: (loaded: number, total: number) => void
+): { promise: Promise<{ imageId: string; url?: string }>; cancel: () => void } {
+  let xhr: XMLHttpRequest | null = null;
+  const promise = new Promise<{ imageId: string; url?: string }>((resolve, reject) => {
+    try {
+      xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/profile-images/upload", true);
+      xhr.responseType = "json";
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && typeof onProgress === "function") {
+          onProgress(evt.loaded, evt.total);
+        }
+      };
+      xhr.onload = () => {
+        const status = xhr!.status;
+        if (status >= 200 && status < 300) {
+          const data = (xhr!.response || {}) as { imageId?: string; url?: string };
+          if (!data.imageId) {
+            reject(new Error("Upload response missing imageId"));
+            return;
+          }
+          resolve({ imageId: data.imageId, url: data.url });
+        } else {
+          const body = typeof xhr!.responseText === "string" ? xhr!.responseText : "";
+          reject(new Error(body || `Upload failed (${status})`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error during image upload"));
+      const form = new FormData();
+      form.append("image", file, file.name);
+      xhr.send(form);
+    } catch (e) {
+      reject(e);
+    }
+  });
+  const cancel = () => {
+    try {
+      xhr?.abort();
+    } catch {
+      // ignore
+    }
+  };
+  return { promise, cancel };
+}

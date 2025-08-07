@@ -3,7 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
-import { fetchProfileViewers } from "@/lib/utils/profileApi";
+import {
+  fetchProfileViewers,
+  type ProfileViewer,
+} from "@/lib/utils/profileApi";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -20,20 +23,19 @@ export default function ProfileViewersPage() {
   const enabled = Boolean(profile?._id);
 
   const {
-    data: viewers = [],
+    data: viewersData,
     isLoading,
     isError,
-  } = useQuery<{ _id: string; email?: string }[]>({
+  } = useQuery<{ viewers: ProfileViewer[]; total?: number }>({
     queryKey: ["profileViewers", profile?._id],
     queryFn: async () => {
-      if (!profile?._id) return [];
-      return (await fetchProfileViewers({
-        token: "" as unknown as string,
+      if (!profile?._id) return { viewers: [], total: 0 };
+      const result = await fetchProfileViewers({
         profileId: profile._id as unknown as string,
-      })) as {
-        _id: string;
-        email?: string;
-      }[];
+        limit: 50,
+        offset: 0,
+      });
+      return result;
     },
     enabled,
   });
@@ -57,22 +59,22 @@ export default function ProfileViewersPage() {
             <Skeleton className="w-full h-10" />
           ) : isError ? (
             <p className="text-sm text-red-600">Failed to load viewers.</p>
-          ) : viewers.length === 0 ? (
+          ) : !viewersData || viewersData.viewers.length === 0 ? (
             <p className="text-sm text-gray-600">
               No one has viewed your profile yet.
             </p>
           ) : (
             <ul className="space-y-4">
-              {viewers.map((v) => (
-                <li key={v._id} className="flex items-center gap-3">
+              {viewersData.viewers.map((v) => (
+                <li key={v.userId} className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-700 uppercase">
-                    {v.email?.[0] ?? "U"}
+                    {v.fullName?.[0] ?? "U"}
                   </div>
                   <Link
-                    href={`/profile/${v._id}`}
+                    href={`/profile/${v.userId}`}
                     className="text-sm text-primary hover:underline"
                   >
-                    {v.email ?? v._id}
+                    {v.fullName ?? v.userId}
                   </Link>
                 </li>
               ))}

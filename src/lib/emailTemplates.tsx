@@ -7,8 +7,7 @@ All emails use <contact@aroosi.app> as the "from" address via the default in sen
 */
 
 import { Profile } from "@/types/profile";
-import { renderEmail } from "@/lib/renderEmail";
-import { EmailContainer } from "@/emails/WelcomeEmail";
+// Keep templates as HTML strings to avoid importing react-dom/server into route modules
 
 type EmailPayload = {
   subject: string;
@@ -17,14 +16,33 @@ type EmailPayload = {
 
 // Shared wrapper with clean, modern, minimal styling
 function wrapEmailContent(_title: string, body: string): string {
-  return renderEmail(
-    <EmailContainer>
-      <div dangerouslySetInnerHTML={{ __html: body }} />
-      <div style={{ marginTop: 16, fontSize: 11, color: "#777", borderTop: "1px solid #f0f0f0", paddingTop: 12 }}>
-        You’re receiving this because you have an Aroosi account.
-      </div>
-    </EmailContainer>
-  );
+  return `<!doctype html>
+<html>
+ <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;">
+   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0;background:#f5f5f5;">
+     <tr>
+       <td align="center">
+         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:560px;background:#ffffff;border:1px solid #eee;border-radius:12px;overflow:hidden">
+           <tr>
+             <td style="padding:20px 24px;text-align:center;border-bottom:1px solid #f0f0f0">
+               <img src="https://aroosi.app/logo.png" alt="Aroosi" width="96" style="display:block;margin:0 auto 4px auto" />
+               <div style="font-weight:600;letter-spacing:.3px;color:#555;font-size:13px">Aroosi</div>
+             </td>
+           </tr>
+           <tr>
+             <td style="padding:28px 24px">${body}</td>
+           </tr>
+           <tr>
+             <td style="padding:16px 24px;text-align:center;border-top:1px solid #f0f0f0;font-size:11px;color:#777">
+               You’re receiving this because you have an Aroosi account.
+             </td>
+           </tr>
+         </table>
+       </td>
+     </tr>
+   </table>
+ </body>
+</html>`;
 }
 
 // 1. Profile created (user)

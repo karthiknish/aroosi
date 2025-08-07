@@ -1,8 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
-import { renderEmail } from "@/lib/renderEmail";
-import { WelcomeEmail } from "@/emails/WelcomeEmail";
-import { ResetPasswordEmail } from "@/emails/ResetPasswordEmail";
+import { welcomeEmailHtml } from "@/emails/welcome";
+import { resetPasswordEmailHtml } from "@/emails/resetPassword";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -13,7 +12,7 @@ export async function sendWelcomeEmail(
   name: string
 ): Promise<boolean> {
   try {
-    const html = renderEmail(<WelcomeEmail name={name} />);
+    const html = welcomeEmailHtml(name);
     await resend.emails.send({
       from: "Aroosi <noreply@aroosi.app>",
       to: email,
@@ -35,7 +34,7 @@ export async function sendResetLinkEmail(
   resetUrl: string
 ): Promise<boolean> {
   try {
-    const html = renderEmail(<ResetPasswordEmail resetUrl={resetUrl} />);
+    const html = resetPasswordEmailHtml(resetUrl);
     await resend.emails.send({
       from: "Aroosi <noreply@aroosi.app>",
       to: email,

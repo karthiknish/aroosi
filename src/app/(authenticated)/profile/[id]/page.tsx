@@ -302,12 +302,10 @@ export default function ProfileDetailPage() {
     queryKey: ["profileViewersCount", profile?._id],
     queryFn: async () => {
       if (!isOwnProfile || !profile?._id) return 0;
-      const mod = await import("@/lib/utils/profileApi");
-      const arr = await mod.fetchProfileViewers({
-        token: "",
-        profileId: String(profile._id),
-      });
-      return Array.isArray(arr) ? arr.length : 0;
+      const { fetchProfileViewersCount } = await import(
+        "@/lib/utils/profileApi"
+      );
+      return await fetchProfileViewersCount(String(profile._id));
     },
     enabled: Boolean(profile?._id) && isOwnProfile && isPremiumPlus,
     staleTime: 60_000,
