@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import { getJson, postJson, tokenStorage } from "@/lib/http/client";
+import { waitForAccessToken } from "@/lib/auth/requireAccessTokenClient";
 
 interface User {
   id: string;
@@ -100,9 +101,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // Refresh user data (auto-refresh on 401 handled by client)
+  // Refresh user data (guarded: ensure token exists before calling /api/auth/me)
   const refreshUser = useCallback(async () => {
-    const currentToken = token || getStoredToken();
+    let currentToken = token || getStoredToken();
+    if (!currentToken) {
+      currentToken = await waitForAccessToken(1000, 50);
+    }
     if (!currentToken) {
       setUser(null);
       return;
@@ -111,12 +115,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(userData);
   }, [token, getStoredToken, fetchUser]);
 
-  // Initialize auth state
+  // Initialize auth state (guard: wait briefly for token to exist in client before calling /api/auth/me)
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = getStoredToken();
-      if (storedToken) {
-        setToken(storedToken);
+      // Wait up to 1.5s for access token to appear (handles race right after sign-in/redirect)
+      const tokenMaybe = (await waitForAccessToken(1500, 50)) || getStoredToken();
+      if (tokenMaybe) {
+        setToken(tokenMaybe);
         const userData = await fetchUser();
         if (userData) {
           setUser(userData);
