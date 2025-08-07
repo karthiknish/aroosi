@@ -148,6 +148,7 @@ export interface FetchJsonOptions extends Omit<RequestInit, "headers"> {
 }
 
 export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptions = {}): Promise<T> {
+
   const {
     method = "GET",
     headers: userHeaders,
@@ -183,6 +184,12 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
 
   if (!skipAuth && accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  // Debug: Log token and headers for /api/auth/me requests
+  if (typeof window !== "undefined" && typeof input === "string" && input.includes("/api/auth/me")) {
+    // eslint-disable-next-line no-console
+    console.info("[fetchJson] /api/auth/me debug", { accessToken, headers });
   }
 
   let resp = await fetch(input, {
