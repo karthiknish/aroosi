@@ -1,35 +1,3 @@
-// This route is now handled by Convex Auth's built-in endpoint.
-// Please POST /api/auth/signin (Convex Auth) instead.
-import { NextResponse } from "next/server";
-
-export async function POST() {
-  return NextResponse.json({
-    message: "Please use Convex Auth's /api/auth/signin endpoint. This endpoint is deprecated.",
-  });
-}
-
-// Additional code or comments can be added here if necessary.
-
-// This route is now handled by Convex Auth's built-in endpoint.
-// Please POST to /api/auth/password/signin instead.
-import { NextResponse } from "next/server";
-
-export async function POST() {
-  return NextResponse.json({
-    message:
-      "Please use /api/auth/password/signin for authentication. This endpoint is deprecated.",
-  });
-}
-// This route is now handled by Convex Auth's built-in endpoint.
-// Please POST to /api/auth/password/signin instead.
-import { NextResponse } from "next/server";
-
-export async function POST() {
-  return NextResponse.json({
-    message:
-      "Please use /api/auth/password/signin for authentication. This endpoint is deprecated.",
-  });
-}
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -59,15 +27,14 @@ const normalizeGmailForCompare = (e: string) => {
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+  const _startedAt = Date.now();
 
   try {
     // Distributed IP throttling via Convex
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
-      // @ts-ignore Next runtime fallback
-      (request as any).ip ||
+      ((request as any).ip as string | undefined) ||
       "unknown";
     const ipKey = `signin_ip:${ip}`;
     const WINDOW_MS = 30 * 1000;
@@ -95,15 +62,6 @@ export async function POST(request: NextRequest) {
             1,
             Math.ceil((toNum(existing.windowStart) + WINDOW_MS - now) / 1000)
           );
-          console.warn("Signin rate limited", {
-            scope: "auth.signin",
-            correlationId,
-            type: "rate_limited_ip",
-            ip,
-            retryAfterSec,
-            statusCode: 429,
-            durationMs: Date.now() - startedAt,
-          });
           return NextResponse.json(
             {
               error: "Too many attempts. Please wait and try again.",
@@ -116,16 +74,8 @@ export async function POST(request: NextRequest) {
         }
         await fetchMutation(api.users.incrementRateLimit, { key: ipKey });
       }
-    } catch (e) {
-      console.warn("Signin ratelimit store unavailable (best-effort)", {
-        scope: "auth.signin",
-        correlationId,
-        type: "ratelimit_warning",
-        message: e instanceof Error ? e.message : String(e),
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-      });
-      // best-effort; if Convex unavailable, continue
+    } catch {
+      // best-effort; continue
     }
 
     let body: unknown;
@@ -133,14 +83,6 @@ export async function POST(request: NextRequest) {
       body = await request.json();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.warn("Signin invalid JSON body", {
-        scope: "auth.signin",
-        correlationId,
-        type: "parse_error",
-        message: msg,
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
       return NextResponse.json(
         {
           error: "Invalid JSON body",
@@ -165,15 +107,6 @@ export async function POST(request: NextRequest) {
           message: e.message,
           code: e.code,
         }));
-        console.warn("Signin validation failed", {
-          scope: "auth.signin",
-          correlationId,
-          type: "validation_error",
-          issueCount: issues.length,
-          issues,
-          statusCode: 400,
-          durationMs: Date.now() - startedAt,
-        });
         return NextResponse.json(
           {
             error: "Invalid input data",
@@ -185,14 +118,6 @@ export async function POST(request: NextRequest) {
         );
       }
       const msg = error instanceof Error ? error.message : String(error);
-      console.error("Signin parsing failure", {
-        scope: "auth.signin",
-        correlationId,
-        type: "parse_unhandled",
-        message: msg,
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
       return NextResponse.json(
         {
           error: "Invalid input",
@@ -231,13 +156,6 @@ export async function POST(request: NextRequest) {
             1,
             Math.ceil((toNum(existing.windowStart) + WINDOW_MS - now) / 1000)
           );
-          console.warn("Signin rate limited by email", {
-            scope: "auth.signin",
-            correlationId,
-            type: "rate_limited_id",
-            emailCompare,
-            retryAfterSec,
-          });
           return NextResponse.json(
             {
               error:
@@ -251,43 +169,20 @@ export async function POST(request: NextRequest) {
         }
         await fetchMutation(api.users.incrementRateLimit, { key });
       }
-    } catch (e) {
-      console.warn("Signin email ratelimit warning", {
-        scope: "auth.signin",
-        correlationId,
-        type: "ratelimit_warning",
-        message: e instanceof Error ? e.message : String(e),
-      });
+    } catch {
       // skip if Convex unavailable
     }
 
     // Get user by email (normalized)
     const user = await fetchQuery(api.users.getUserByEmail, {
       email: normalizedEmail,
-    }).catch((e: unknown) => {
-      console.error("Signin fetch user error", {
-        scope: "auth.signin",
-        correlationId,
-        type: "convex_query_error",
-        message: e instanceof Error ? e.message : String(e),
-      });
-      return null;
-    });
+    }).catch(() => null as any);
 
     // Generic invalid error to avoid enumeration
     if (!user || !user.hashedPassword) {
       const msg = !user
         ? "No user found for this email."
         : "User exists but has no password set (Google sign-in only or incomplete signup).";
-      console.warn("Signin invalid user or no password", {
-        scope: "auth.signin",
-        correlationId,
-        type: "invalid_credentials_no_user",
-        emailHash: Buffer.from(normalizedEmail).toString("base64url"),
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-        details: msg,
-      });
       return NextResponse.json(
         {
           error: "Invalid email or password",
@@ -299,16 +194,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if account is banned
+    // Banned?
     if (user.banned) {
-      console.warn("Signin banned account attempt", {
-        scope: "auth.signin",
-        correlationId,
-        type: "banned",
-        userId: String(user._id),
-        statusCode: 403,
-        durationMs: Date.now() - startedAt,
-      });
       return NextResponse.json(
         { error: "Account is banned", code: "USER_BANNED", correlationId },
         { status: 403 }
@@ -318,14 +205,6 @@ export async function POST(request: NextRequest) {
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.hashedPassword);
     if (!isValidPassword) {
-      console.warn("Signin invalid password", {
-        scope: "auth.signin",
-        correlationId,
-        type: "invalid_credentials_bad_password",
-        userId: String(user._id),
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-      });
       return NextResponse.json(
         {
           error: "Invalid email or password",
@@ -336,23 +215,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Cookie-session model: do not issue access/refresh tokens here
-    const accessToken = undefined;
-    const refreshToken = undefined;
-
-    // Fetch profile for gating flags (by userId)
+    // Fetch profile flags
     const profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
       userId: user._id,
-    }).catch((e: unknown) => {
-      console.error("Signin fetch profile error", {
-        scope: "auth.signin",
-        correlationId,
-        type: "convex_query_error",
-        message: e instanceof Error ? e.message : String(e),
-      });
-      return null;
-    });
-
+    }).catch(() => null);
     const profilePayload = profile
       ? {
           id: profile._id,
@@ -385,26 +251,9 @@ export async function POST(request: NextRequest) {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-
-    console.info("Signin success", {
-      scope: "auth.signin",
-      correlationId,
-      type: "success",
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      userId: String(user._id),
-    });
     return response;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error("Signin unhandled error", {
-      scope: "auth.signin",
-      correlationId,
-      type: "unhandled_error",
-      message: errMsg,
-      statusCode: error instanceof z.ZodError ? 400 : 500,
-      durationMs: Date.now() - startedAt,
-    });
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
