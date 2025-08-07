@@ -16,9 +16,17 @@ function log(scope: string, level: "info" | "warn" | "error", message: string, e
     ts: new Date().toISOString(),
     ...((extra && Object.keys(extra).length > 0) ? { extra } : {}),
   };
-  if (level === "error") console.error(payload);
-  else if (level === "warn") console.warn(payload);
-  else console.info(payload);
+  // Ensure log level maps consistently for tooling
+  switch (level) {
+    case "error":
+      console.error(payload);
+      break;
+    case "warn":
+      console.warn(payload);
+      break;
+    default:
+      console.info(payload);
+  }
 }
 
 
@@ -49,9 +57,9 @@ export async function GET(request: NextRequest) {
           statusCode: e.status,
           durationMs: Date.now() - startedAt,
         });
-        return withNoStore(
-          authErrorResponse(e.message, { status: e.status, code: e.code, correlationId })
-        );
+        // Return structured error payload for frontend toast consumption
+        const res = authErrorResponse(e.message, { status: e.status, code: e.code, correlationId });
+        return withNoStore(res);
       }
       log(scope, "warn", "Unexpected auth failure in /api/auth/me", {
         correlationId,
@@ -59,9 +67,8 @@ export async function GET(request: NextRequest) {
         statusCode: 401,
         durationMs: Date.now() - startedAt,
       });
-      return withNoStore(
-        authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId })
-      );
+      const res = authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId });
+      return withNoStore(res);
     }
 
     // Fallback to existing Convex query until explicit-by-id variant is available
@@ -86,6 +93,7 @@ export async function GET(request: NextRequest) {
         statusCode: 404,
         durationMs: duration,
       });
+      // Ensure consistent structured error for frontend toasts
       return withNoStore(
         NextResponse.json(
           {
@@ -107,7 +115,7 @@ export async function GET(request: NextRequest) {
       });
       return withNoStore(
         NextResponse.json(
-          { error: "Account is banned", correlationId },
+          { error: "Account is banned", code: "USER_FORBIDDEN", correlationId },
           { status: 403 }
         )
       );
@@ -159,7 +167,7 @@ export async function GET(request: NextRequest) {
     });
     return withNoStore(
       NextResponse.json(
-        { error: "Server error", correlationId },
+        { error: "Server error", code: "SERVER_ERROR", correlationId },
         { status: 500 }
       )
     );
