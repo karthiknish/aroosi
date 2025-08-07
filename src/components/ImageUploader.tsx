@@ -19,16 +19,13 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 interface ImageUploaderProps {
   userId: string;
   orderedImages: ImageType[];
+  // Deprecated props retained for compatibility; ignored in local-only flow
   generateUploadUrl: () => Promise<
     string | { success: boolean; error: string }
   >;
-  uploadImage: (args: {
-    userId: string;
-    storageId: string;
-    fileName: string;
-    contentType: string;
-    fileSize: number;
-  }) => Promise<{ success: boolean; imageId: string; message: string }>;
+  uploadImage: (
+    args: any
+  ) => Promise<{ success: boolean; imageId: string; message: string }>;
   setIsUploading: (val: boolean) => void;
   disabled?: boolean;
   isUploading?: boolean;
@@ -240,55 +237,44 @@ export function ImageUploader({
           };
         }
 
-        // Step 1: Get upload URL
-        const uploadUrl = await generateUploadUrl();
-        if (typeof uploadUrl !== "string") {
-          throw new Error("Failed to get upload URL");
-        }
-
-        // Step 2: Upload the file to storage
-        const storageResp = await fetch(uploadUrl, {
+        // Local-only: send multipart form-data to single endpoint
+        const fd = new FormData();
+        fd.append("image", file, file.name);
+        const storageResp = await fetch("/api/profile-images/upload", {
           method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
+          body: fd,
         });
 
         if (!storageResp.ok) {
           const msg =
             storageResp.status === 413
               ? "Image is too large (max 5MB)."
-              : "Failed to upload image to storage.";
-          throw new Error(msg);
+              : await storageResp.text();
+          throw new Error(msg || "Failed to upload image");
         }
 
-        // Convex storage responds with JSON: { storageId: "..." }
-        const storageJson = await storageResp.json().catch(() => null);
-        const storageId =
-          storageJson?.storageId ||
-          (typeof storageJson === "string" ? storageJson : null);
-        if (!storageId) {
-          throw new Error("Invalid response from storage upload");
-        }
+        const json = (await storageResp.json().catch(() => ({}))) as {
+          imageId?: string;
+          url?: string;
+          success?: boolean;
+        };
 
-        // Optimistic update: immediately show the image in UI
-        if (onOptimisticUpdate) {
+        // Optimistic update
+        if (onOptimisticUpdate && json?.imageId) {
           const optimisticImage: ImageType = {
-            id: storageId,
-            url: `${process.env.NEXT_PUBLIC_CONVEX_URL}/api/storage/${storageId}`,
-            storageId: storageId,
+            id: json.imageId,
+            url: json.url || "",
+            storageId: json.imageId,
             fileName: file.name,
           };
           onOptimisticUpdate(optimisticImage);
         }
 
-        // Step 3: Save the image reference in the database
-        const mutationResult = await uploadImage({
-          userId,
-          storageId,
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        });
+        const mutationResult = {
+          success: true,
+          imageId: json.imageId || "",
+          message: "Uploaded",
+        };
 
         if (!mutationResult?.success) {
           throw new Error(mutationResult?.message || "Upload failed");

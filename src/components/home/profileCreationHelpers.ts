@@ -3,7 +3,7 @@
  * and keep the component lean/testable.
  */
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
-import { saveImageMeta, updateImageOrder, getImageUploadUrl } from "@/lib/utils/imageUtil";
+import { updateImageOrder } from "@/lib/utils/imageUtil";
 import { validateImageMeta } from "@/lib/utils/imageMeta";
 import type { ImageType } from "@/types/image";
 
@@ -455,22 +455,18 @@ export async function persistServerImageOrder(params: {
  * Create upload URL for a new image.
  */
 export async function requestImageUploadUrl(): Promise<string> {
-  const url = await getImageUploadUrl();
-  if (!url) throw new Error("Failed to get upload URL");
-  return url;
+  throw new Error(
+    "Deprecated: use /api/profile-images/upload with multipart FormData"
+  );
 }
 
 /**
  * Confirm image metadata after successful binary upload.
  */
-export async function confirmImageMetadata(args: {
-  userId: string;
-  storageId: string;
-  fileName: string;
-  contentType: string;
-  fileSize: number;
-}) {
-  return saveImageMeta(args);
+export async function confirmImageMetadata(_: any) {
+  throw new Error(
+    "Deprecated: metadata saved server-side in /api/profile-images/upload"
+  );
 }
 
 /**
@@ -554,8 +550,14 @@ export function summarizeImageUploadErrors(
   sampleCount = 3
 ) {
   if (failed.length === 0) return "";
-  const sample = failed.slice(0, sampleCount).map((f) => `${f.name}: ${f.reason}`).join("; ");
-  const extra = failed.length > sampleCount ? `, and ${failed.length - sampleCount} more` : "";
+  const sample = failed
+    .slice(0, sampleCount)
+    .map((f) => `${f.name}: ${f.reason}`)
+    .join("; ");
+  const extra =
+    failed.length > sampleCount
+      ? `, and ${failed.length - sampleCount} more`
+      : "";
   return `Some images failed to upload (${failed.length}). ${sample}${extra}`;
 }
 
@@ -585,7 +587,7 @@ export async function uploadPendingImages(params: {
   userId: string;
   onProgress?: UploadProgressHandler;
 }): Promise<UploadPendingImagesResult> {
-  const { pendingImages, userId, onProgress } = params;
+  const { pendingImages, onProgress } = params;
 
   const createdImageIds: string[] = [];
   const failedImages: UploadPendingImagesResultItem[] = [];
@@ -613,16 +615,26 @@ export async function uploadPendingImages(params: {
       // Dimension/aspect ratio guard (best-effort)
       try {
         const tmpUrl = URL.createObjectURL(blob);
-        const meta = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-          const el = new Image();
-          el.onload = () =>
-            resolve({ width: el.naturalWidth || el.width, height: el.naturalHeight || el.height });
-          el.onerror = () => reject(new Error("Failed to decode image for metadata"));
-          el.src = tmpUrl;
-        });
+        const meta = await new Promise<{ width: number; height: number }>(
+          (resolve, reject) => {
+            const el = new Image();
+            el.onload = () =>
+              resolve({
+                width: el.naturalWidth || el.width,
+                height: el.naturalHeight || el.height,
+              });
+            el.onerror = () =>
+              reject(new Error("Failed to decode image for metadata"));
+            el.src = tmpUrl;
+          }
+        );
         URL.revokeObjectURL(tmpUrl);
 
-        const { ok, reason } = validateImageMeta(meta, { minDim: 512, minAspect: 0.5, maxAspect: 2.0 });
+        const { ok, reason } = validateImageMeta(meta, {
+          minDim: 512,
+          minAspect: 0.5,
+          maxAspect: 2.0,
+        });
         if (!ok) {
           failedImages.push({
             index,
@@ -653,16 +665,15 @@ export async function uploadPendingImages(params: {
       // Build File object
       const file = fileFromBlob(blob, img.fileName || "photo.jpg");
 
-      // 1) Upload URL
-      const uploadUrl = await requestImageUploadUrl();
-
-      // 2) Upload binary
-      const uploadResp = await uploadWithProgress(uploadUrl, file, mgr, img.id);
+      // Local-only: send multipart directly to API
+      const fd = new FormData();
+      fd.append("image", file, file.name);
+      const uploadResp = await fetch("/api/profile-images/upload", {
+        method: "POST",
+        body: fd,
+      });
       if (!uploadResp.ok) {
-        let errText = uploadResp.statusText;
-        try {
-          errText = await uploadResp.text();
-        } catch {}
+        const errText = await uploadResp.text().catch(() => "");
         failedImages.push({
           index,
           id: img.id,
@@ -672,44 +683,29 @@ export async function uploadPendingImages(params: {
         continue;
       }
 
-      // 3) Parse response for storageId
-      let storageJson: unknown;
-      try {
-        storageJson = await uploadResp.json();
-      } catch {
-        failedImages.push({ index, id: img.id, name: file.name, reason: "Failed to parse upload response" });
+      const json = (await uploadResp.json().catch(() => ({}))) as {
+        imageId?: string;
+      };
+      if (!json?.imageId) {
+        failedImages.push({
+          index,
+          id: img.id,
+          name: file.name,
+          reason: "No imageId returned",
+        });
         continue;
       }
-      const storageId =
-        typeof storageJson === "object" && storageJson !== null && "storageId" in storageJson
-          ? (storageJson as { storageId?: string }).storageId
-          : typeof storageJson === "string"
-            ? storageJson
-            : null;
-      if (!storageId) {
-        failedImages.push({ index, id: img.id, name: file.name, reason: "No storageId returned from upload" });
-        continue;
-      }
-
-      // 4) Confirm metadata -> get imageId
-      const meta = await confirmImageMetadata({
-        userId,
-        storageId,
-        fileName: file.name,
-        contentType: file.type,
-        fileSize: file.size,
-      });
-      if (meta?.imageId) {
-        createdImageIds.push(meta.imageId);
-        safeRevokeObjectURL(img.url);
-      } else {
-        failedImages.push({ index, id: img.id, name: file.name, reason: "Server did not return imageId" });
-        safeRevokeObjectURL(img.url);
-        continue;
-      }
+      createdImageIds.push(json.imageId);
+      safeRevokeObjectURL(img.url);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown image upload error";
-      failedImages.push({ index, id: img.id, name: img.fileName || "photo.jpg", reason: message });
+      const message =
+        err instanceof Error ? err.message : "Unknown image upload error";
+      failedImages.push({
+        index,
+        id: img.id,
+        name: img.fileName || "photo.jpg",
+        reason: message,
+      });
     }
   }
 

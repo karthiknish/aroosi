@@ -1,17 +1,18 @@
 import { NextRequest } from "next/server";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireSession } from "@/app/api/_utils/auth";
-import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import {
+  checkApiRateLimit,
+  logSecurityEvent,
+} from "@/lib/utils/securityHeaders";
 import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      return errorResponse("Unauthorized", 401);
-    }
-    const { userId: authenticatedUserId } = session as unknown as { userId: string };
+    const session = await getSessionFromRequest(req);
+    if (!session.ok) return errorResponse("Unauthorized", 401);
+    const authenticatedUserId = String(session.userId);
 
     const rateLimitResult = checkApiRateLimit(
       `interest_received_${authenticatedUserId}`,
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
       return errorResponse("Invalid userId parameter", 400);
     }
 
-    if (userId !== String(authenticatedUserId)) {
+    if (userId !== authenticatedUserId) {
       logSecurityEvent(
         "UNAUTHORIZED_ACCESS",
         {
@@ -43,14 +44,18 @@ export async function GET(req: NextRequest) {
         },
         req
       );
-      return errorResponse("Unauthorized: can only view your own interests", 403);
+      return errorResponse(
+        "Unauthorized: can only view your own interests",
+        403
+      );
     }
 
     console.log(`User ${authenticatedUserId} querying received interests`);
 
     const result = await convexQueryWithAuth(
       req,
-      (await import("@convex/_generated/api")).api.interests.getReceivedInterests,
+      (await import("@convex/_generated/api")).api.interests
+        .getReceivedInterests,
       { userId: userId as Id<"users"> }
     );
 

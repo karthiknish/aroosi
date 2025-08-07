@@ -23,7 +23,7 @@ export function AdminHeader({
   setSidebarCollapsed,
   currentPath,
 }: AdminHeaderProps) {
-  const { profile: rawProfile } = useAuthContext();
+  const { profile: rawProfile, signOut } = useAuthContext();
   const profile = rawProfile as { fullName?: string; email?: string } | null;
   const router = useRouter();
 
@@ -152,12 +152,7 @@ export function AdminHeader({
                 <Button
                   variant="ghost"
                   className="w-full justify-start px-3 py-2 h-auto text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={async () => {
-                    try {
-                      await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
-                    } catch {}
-                    router.push("/sign-in");
-                  }}
+                  onClick={() => signOut()}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>

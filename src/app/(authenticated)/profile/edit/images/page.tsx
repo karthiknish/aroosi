@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Profile } from "@/types/profile";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { updateImageOrder, saveImageMeta } from "@/lib/utils/imageUtil";
+import { updateImageOrder } from "@/lib/utils/imageUtil";
 
 export default function EditProfileImagesPage() {
   const {
@@ -139,16 +139,7 @@ export default function EditProfileImagesPage() {
         // For now, skip client-side delete to avoid type errors and rely on saving new order below.
       }
 
-      // Save new images metadata
-      for (const img of additions) {
-        await saveImageMeta({
-          userId: profile.userId,
-          storageId: img.id,
-          fileName: (img as any).fileName || "image.jpg",
-          contentType: "image/jpeg",
-          fileSize: img.size || 0,
-        });
-      }
+      // Metadata now saved server-side during upload; no-op here
 
       // Update order if changed
       if (!arraysEqual(initialIds, editedIds)) {

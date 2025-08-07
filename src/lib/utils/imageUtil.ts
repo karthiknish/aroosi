@@ -5,38 +5,17 @@ import { getJson, postJson, putJson } from "@/lib/http/client";
  * No token parameters are accepted; Authorization is auto-attached via tokenStorage.
  */
 
+// Deprecated: switched to single local multipart endpoint
 export async function getImageUploadUrl(): Promise<string> {
-  // GET presigned upload URL
-  // Endpoint present at: /api/profile-images/upload-url
-  const res = await getJson<{ uploadUrl: string }>("/api/profile-images/upload-url");
-  const url = (res as any)?.uploadUrl || (typeof res === "string" ? res : "");
-  if (!url || typeof url !== "string") {
-    throw new Error("Failed to obtain upload URL");
-  }
-  return url;
+  throw new Error(
+    "Deprecated: use /api/profile-images/upload with multipart FormData"
+  );
 }
 
-export async function saveImageMeta(args: {
-  userId: string;
-  storageId: string;
-  fileName: string;
-  contentType: string;
-  fileSize: number;
-}): Promise<{ imageId: string }> {
-  // POST metadata confirmation after successful binary upload
-  // Endpoint present at: /api/profile-images/confirm
-  const res = await postJson<{ imageId: string }>("/api/profile-images/confirm", {
-    userId: args.userId,
-    storageId: args.storageId,
-    fileName: args.fileName,
-    contentType: args.contentType,
-    fileSize: args.fileSize,
-  });
-  const imageId = (res as any)?.imageId;
-  if (!imageId || typeof imageId !== "string") {
-    throw new Error("Image metadata confirmation failed");
-  }
-  return { imageId };
+export async function saveImageMeta(_: any): Promise<{ imageId: string }> {
+  throw new Error(
+    "Deprecated: metadata saved server-side in /api/profile-images/upload"
+  );
 }
 
 export async function updateImageOrder(args: {

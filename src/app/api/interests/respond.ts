@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
-import { fetchMutation } from "convex/nextjs";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 
 export async function POST(req: NextRequest) {
   const { userId } = await requireAuth(req);
@@ -36,11 +36,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await fetchMutation(api.interests.respondToInterest, {
-      interestId: interestId as Id<"interests">,
-      status,
-      userId: userId as Id<"users">,
-    } as any);
+    const result = await convexMutationWithAuth(
+      req,
+      api.interests.respondToInterest,
+      {
+        interestId: interestId as Id<"interests">,
+        status,
+        userId: userId as Id<"users">,
+      } as any
+    );
     return successResponse(result);
   } catch (error) {
     return errorResponse(

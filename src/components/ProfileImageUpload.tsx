@@ -6,7 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
+// Local-only upload now handled inside ImageUploader; old helpers removed
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
 import { ProfileImageReorder } from "./ProfileImageReorder";
@@ -269,13 +269,7 @@ export function ProfileImageUpload({
 
   const handleStartUpload = () => setIsUploadingFile(true);
 
-  const generateUploadUrl = useCallback(async () => {
-    if (mode === "create") {
-      // In create mode, return a dummy URL since we'll handle locally
-      return "dummy-url-for-create-mode";
-    }
-    return await getImageUploadUrl();
-  }, [mode]);
+  const generateUploadUrl = useCallback(async () => "", []);
 
   // Move uploadImage definition above uploadImageToUse
   const uploadImage = useCallback(
@@ -305,12 +299,9 @@ export function ProfileImageUpload({
         };
       }
 
-      // Save image metadata to ensure it persists (cookie-auth)
-      const result = await saveImageMeta(args);
-
       return {
         success: true,
-        imageId: result.imageId as Id<"_storage">,
+        imageId: args.storageId as Id<"_storage">,
         message: "Image uploaded",
       };
     },

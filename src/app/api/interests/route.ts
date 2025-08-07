@@ -3,8 +3,11 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { logSecurityEvent } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
-import { requireSession } from "@/app/api/_utils/auth";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import {
+  convexQueryWithAuth,
+  convexMutationWithAuth,
+} from "@/lib/convexServer";
 
 type InterestAction = "send" | "remove";
 
@@ -17,15 +20,8 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      return NextResponse.json(
-        { error: "Unauthorized", correlationId },
-        { status }
-      );
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session.ok) return session.errorResponse!;
     const { userId } = session;
 
     if (!userId) {
@@ -103,37 +99,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       );
     }
 
-    let currentUserRecord;
-    try {
-      // Use session userId and then fetch minimal user to confirm existence if needed
-      currentUserRecord = await fetchQuery(api.users.getUserByEmail, {
-        email: "",
-      });
-      // getUserByEmail with empty email will return null; rely on session userId instead
-      currentUserRecord = { _id: userId } as any;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const isAuth =
-        message.includes("Unauthenticated") || message.includes("token");
-      return NextResponse.json(
-        {
-          error: isAuth
-            ? "Authentication failed"
-            : "Failed to fetch current user",
-          correlationId,
-        },
-        { status: isAuth ? 401 : 400 }
-      );
-    }
-
-    if (!currentUserRecord) {
-      return NextResponse.json(
-        { error: "User not found", correlationId },
-        { status: 404 }
-      );
-    }
-
-    const fromUserIdConvex = currentUserRecord._id as Id<"users">;
+    const fromUserIdConvex = userId as Id<"users">;
 
     if (fromUserIdConvex === (toUserId as Id<"users">)) {
       return NextResponse.json(
@@ -143,7 +109,8 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     }
 
     try {
-      const result = await fetchMutation(
+      const result = await convexMutationWithAuth(
+        req,
         action === "send"
           ? api.interests.sendInterest
           : api.interests.removeInterest,
@@ -263,18 +230,11 @@ export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      return NextResponse.json(
-        { error: "Unauthorized", correlationId },
-        { status }
-      );
-    }
-    const { userId: authenticatedUserId } = session as {
+    const session = await getSessionFromRequest(req);
+    if (!session.ok) return session.errorResponse!;
+    const { userId: authenticatedUserId } = session as unknown as {
       userId: Id<"users">;
-    } as any;
+    };
 
     if (!authenticatedUserId) {
       return NextResponse.json(
@@ -304,33 +264,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const userIdParam = searchParams.get("userId");
 
-    let currentUserRecord;
-    try {
-      // We already have session.userId; skip fetching a composite user/profile
-      currentUserRecord = { _id: session.userId } as any;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const isAuth =
-        message.includes("Unauthenticated") || message.includes("token");
-      return NextResponse.json(
-        {
-          error: isAuth
-            ? "Authentication failed"
-            : "Failed to fetch current user",
-          correlationId,
-        },
-        { status: isAuth ? 401 : 400 }
-      );
-    }
-
-    if (!currentUserRecord) {
-      return NextResponse.json(
-        { error: "User not found", correlationId },
-        { status: 404 }
-      );
-    }
-
-    const currentUserId = currentUserRecord._id as Id<"users">;
+    const currentUserId = authenticatedUserId as Id<"users">;
 
     if (userIdParam && userIdParam !== (currentUserId as unknown as string)) {
       logSecurityEvent(
@@ -354,9 +288,13 @@ export async function GET(req: NextRequest) {
 
     const userId = currentUserId;
 
-    const result = await fetchQuery(api.interests.getSentInterests, {
-      userId: userId as Id<"users">,
-    } as any).catch((e: unknown) => {
+    const result = await convexQueryWithAuth(
+      req,
+      api.interests.getSentInterests,
+      {
+        userId: userId as Id<"users">,
+      } as any
+    ).catch((e: unknown) => {
       if (process.env.NODE_ENV !== "production")
         console.error("Interests GET query error", {
           scope: "interests.get",
