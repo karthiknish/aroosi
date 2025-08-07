@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
+import { getJson, postJson, tokenStorage } from "@/lib/http/client";
 
 interface User {
   id: string;
@@ -31,20 +32,16 @@ interface AuthContextType {
   token: string | null;
   signIn: (
     email: string,
-    password: string,
+    password: string
   ) => Promise<{ success: boolean; error?: string }>;
   signUp: (
     email: string,
     password: string,
     firstName: string,
-    lastName: string,
-  ) => Promise<{ success: boolean; error?: string }>;
-  verifyOTP: (
-    email: string,
-    otp: string,
+    lastName: string
   ) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: (
-    credential: string,
+    credential: string
   ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
@@ -70,63 +67,47 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Get token from localStorage or cookie
+  // Get token from centralized storage (localStorage under the hood)
   const getStoredToken = useCallback(() => {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem("auth-token") || null;
+    return tokenStorage.access;
   }, []);
 
-  // Store token in localStorage and cookie
+  // Store token via centralized storage
   const storeToken = useCallback((newToken: string) => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("auth-token", newToken);
-    // Set cookie for middleware
-    document.cookie = `auth-token=${newToken}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=strict`;
+    tokenStorage.access = newToken;
     setToken(newToken);
   }, []);
 
   // Remove token from storage
   const removeToken = useCallback(() => {
     if (typeof window === "undefined") return;
-    localStorage.removeItem("auth-token");
-    document.cookie =
-      "auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    tokenStorage.clearAll();
     setToken(null);
   }, []);
 
-  // Fetch current user data
-  const fetchUser = useCallback(
-    async (authToken: string): Promise<User | null> => {
-      try {
-        const response = await fetch("/api/auth/me", {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        });
+  // Fetch current user data using Authorization header (auto-attached)
+  const fetchUser = useCallback(async (): Promise<User | null> => {
+    try {
+      const data = await getJson<{ user: User }>("/api/auth/me", {
+        cache: "no-store",
+      });
+      return data?.user ?? null;
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      return null;
+    }
+  }, []);
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch user");
-        }
-
-        const data = await response.json();
-        return data.user;
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        return null;
-      }
-    },
-    [],
-  );
-
-  // Refresh user data
+  // Refresh user data (auto-refresh on 401 handled by client)
   const refreshUser = useCallback(async () => {
     const currentToken = token || getStoredToken();
     if (!currentToken) {
       setUser(null);
       return;
     }
-
-    const userData = await fetchUser(currentToken);
+    const userData = await fetchUser();
     setUser(userData);
   }, [token, getStoredToken, fetchUser]);
 
@@ -136,7 +117,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const storedToken = getStoredToken();
       if (storedToken) {
         setToken(storedToken);
-        const userData = await fetchUser(storedToken);
+        const userData = await fetchUser();
         if (userData) {
           setUser(userData);
         } else {
@@ -147,28 +128,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     };
 
-    initAuth();
+    void initAuth();
   }, [getStoredToken, fetchUser, removeToken]);
 
-  // Sign in with email/password
+  // Sign in with email/password using centralized client
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        const response = await fetch("/api/auth/signin", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        });
+        const data = await postJson<{
+          accessToken?: string;
+          user?: User;
+          error?: string;
+        }>("/api/auth/signin", { email, password }, { cache: "no-store" });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          return { success: false, error: data.error || "Sign in failed" };
+        if (!data || !data.accessToken || !data.user) {
+          return { success: false, error: data?.error || "Sign in failed" };
         }
 
-        storeToken(data.token);
+        storeToken(data.accessToken);
         setUser(data.user);
         return { success: true };
       } catch (error) {
@@ -176,7 +153,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: "Network error" };
       }
     },
-    [storeToken],
+    [storeToken]
   );
 
   // Sign up with email/password
@@ -185,21 +162,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       email: string,
       password: string,
       firstName: string,
-      lastName: string,
+      lastName: string
     ) => {
       try {
-        const response = await fetch("/api/auth/signup", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password, firstName, lastName }),
-        });
+        // signup may or may not return tokens; treat as public
+        const data = await postJson<{ error?: string }>(
+          "/api/auth/signup",
+          { email, password, firstName, lastName },
+          { skipAuth: true, noRefresh: true, cache: "no-store" }
+        );
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          return { success: false, error: data.error || "Sign up failed" };
+        if ((data as any)?.error) {
+          return {
+            success: false,
+            error: (data as any).error || "Sign up failed",
+          };
         }
 
         return { success: true };
@@ -208,63 +185,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: "Network error" };
       }
     },
-    [],
+    []
   );
 
-  // Verify OTP
-  const verifyOTP = useCallback(
-    async (email: string, otp: string) => {
-      try {
-        const response = await fetch("/api/auth/verify-otp", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, otp }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          return {
-            success: false,
-            error: data.error || "OTP verification failed",
-          };
-        }
-
-        storeToken(data.token);
-        setUser(data.user);
-        return { success: true };
-      } catch (error) {
-        console.error("OTP verification error:", error);
-        return { success: false, error: "Network error" };
-      }
-    },
-    [storeToken],
-  );
-
-  // Sign in with Google
+  // Sign in with Google (public)
   const signInWithGoogle = useCallback(
     async (credential: string) => {
       try {
-        const response = await fetch("/api/auth/google", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ credential }),
-        });
+        const data = await postJson<{
+          accessToken?: string;
+          user?: User;
+          error?: string;
+        }>(
+          "/api/auth/google",
+          { credential },
+          { skipAuth: true, noRefresh: true, cache: "no-store" }
+        );
 
-        const data = await response.json();
-
-        if (!response.ok) {
+        if (!data || !data.accessToken || !data.user) {
           return {
             success: false,
-            error: data.error || "Google sign in failed",
+            error: data?.error || "Google sign in failed",
           };
         }
 
-        storeToken(data.token);
+        storeToken(data.accessToken);
         setUser(data.user);
         return { success: true };
       } catch (error) {
@@ -272,7 +217,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: "Network error" };
       }
     },
-    [storeToken],
+    [storeToken]
   );
 
   // Sign out
@@ -289,7 +234,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     token,
     signIn,
     signUp,
-    verifyOTP,
     signInWithGoogle,
     signOut,
     refreshUser,
