@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "Privacy Policy | Aroosi Afghan Matrimony",
+  description: "Read how Aroosi protects your privacy and data across our Afghan matrimony platform.",
+  alternates: { canonical: "/privacy" },
+  openGraph: {
+    title: "Privacy Policy | Aroosi Afghan Matrimony",
+    description: "Our commitment to privacy and responsible data use.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy | Aroosi Afghan Matrimony",
+    description: "Our commitment to privacy and responsible data use.",
+  },
+};
 "use client";
 
 import Link from "next/link";

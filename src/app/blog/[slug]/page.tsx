@@ -1,3 +1,14 @@
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const title = `Aroosi Blog | ${params.slug.replace(/-/g, " ")}`;
+  const description = "Read this story on Aroosi's blog.";
+  return {
+    title,
+    description,
+    alternates: { canonical: `/blog/${params.slug}` },
+    openGraph: { title, description, type: "article" },
+    twitter: { card: "summary_large_image", title, description },
+  } as const;
+}
 "use client";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";

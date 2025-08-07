@@ -8,11 +8,10 @@ export type Message = MatchMessage;
 
 export const getMessages = async (
   conversationId: string,
-  token: string,
   limit?: number,
   before?: number,
 ): Promise<Message[]> => {
-  const res = await matchMessagesAPI.getMessages(token, {
+  const res = await matchMessagesAPI.getMessages(null, {
     conversationId,
     ...(typeof limit === "number" ? { limit } : {}),
     ...(typeof before === "number" ? { before } : {}),
@@ -31,14 +30,13 @@ export const sendMessage = async (message: {
   toUserId: string;
   conversationId: string;
   fromUserId: string;
-  token: string;
   type?: "text" | "voice" | "image";
   audioStorageId?: string;
   duration?: number;
   fileSize?: number;
   mimeType?: string;
 }): Promise<Message | null> => {
-  const res = await matchMessagesAPI.sendMessage(message.token, {
+  const res = await matchMessagesAPI.sendMessage(null, {
     conversationId: message.conversationId,
     fromUserId: message.fromUserId,
     toUserId: message.toUserId,
@@ -59,10 +57,9 @@ export const sendMessage = async (message: {
 
 export const markConversationRead = async (
   conversationId: string,
-  token: string,
 ): Promise<{ success: boolean }> => {
   // Prefer canonical /api/messages/mark-read wrapper
-  const res = await matchMessagesAPI.markConversationAsRead(token, {
+  const res = await matchMessagesAPI.markConversationAsRead(null, {
     conversationId,
     userId: "", // server derives from token; field ignored if not needed
   }) as unknown as ApiResponse<void>;

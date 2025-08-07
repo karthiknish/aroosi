@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "How Aroosi Works | Find Your Afghan Match",
+  description: "Learn how Aroosi helps Afghans find trusted matches with safety and privacy at heart.",
+  alternates: { canonical: "/how-it-works" },
+  openGraph: {
+    title: "How Aroosi Works | Find Your Afghan Match",
+    description: "Steps to create your profile, match, and connect on Aroosi.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "How Aroosi Works | Find Your Afghan Match",
+    description: "Steps to create your profile, match, and connect on Aroosi.",
+  },
+};
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "Contact Aroosi | Support & Inquiries",
+  description: "Get in touch with Aroosi support for help with your Afghan matrimony profile or account.",
+  alternates: { canonical: "/contact" },
+  openGraph: {
+    title: "Contact Aroosi | Support & Inquiries",
+    description: "We’re here to help with your Aroosi account and matches.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Contact Aroosi | Support & Inquiries",
+    description: "We’re here to help with your Aroosi account and matches.",
+  },
+};
 "use client";
 import Head from "next/head";
 import { motion } from "framer-motion";

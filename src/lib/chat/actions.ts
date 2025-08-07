@@ -52,17 +52,15 @@ export async function sendVoiceMessageAction(
   opts: {
     sendMessage: (payload: { toUserId: string; text?: string; audioStorageId?: string; duration?: number }) => Promise<string | void>;
     // optional fields to satisfy upload requirements if needed by your implementation
-    token?: string;
     conversationId?: string;
     fromUserId?: string;
     mimeType?: string;
   }
 ) {
-  const { sendMessage, token = "", conversationId = "", fromUserId = "", mimeType } = opts;
+  const { sendMessage, conversationId = "", fromUserId = "", mimeType } = opts;
 
   // Upload to storage (adapt to expected payload shape)
   const uploaded = await uploadVoiceMessage({
-    token,
     conversationId,
     fromUserId,
     toUserId: matchUserId,
@@ -92,21 +90,17 @@ export async function reportUserAction(
   matchUserId: string,
   reason: ReportReason,
   description: string,
-  token: string
 ) {
-  await safetyAPI.reportUser(
-    {
-      targetUserId: matchUserId,
-      reason,
-      description,
-    } as any,
-    token as any
-  );
+  await safetyAPI.reportUser(null, {
+    reportedUserId: matchUserId,
+    reason: reason as any,
+    description,
+  } as any);
 }
 
 /**
  * Block a user via safety API. Typically (payload, token)
  */
-export async function blockUserAction(matchUserId: string, token: string) {
-  await safetyAPI.blockUser({ targetUserId: matchUserId } as any, token as any);
+export async function blockUserAction(matchUserId: string) {
+  await safetyAPI.blockUser(null, matchUserId as any);
 }

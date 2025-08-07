@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "Aroosi Pricing | Premium Plans",
+  description: "Explore Aroosi premium plans to boost visibility, messaging, and more.",
+  alternates: { canonical: "/pricing" },
+  openGraph: {
+    title: "Aroosi Pricing | Premium Plans",
+    description: "Premium features to find your match faster on Aroosi.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Aroosi Pricing | Premium Plans",
+    description: "Premium features to find your match faster on Aroosi.",
+  },
+};
 "use client";
 
 import Head from "next/head";

@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "Aroosi Blog | Guidance & Stories",
+  description: "Read tips, stories, and guidance for Afghan matchmaking and relationships.",
+  alternates: { canonical: "/blog" },
+  openGraph: {
+    title: "Aroosi Blog | Guidance & Stories",
+    description: "Tips and stories for Afghan matchmaking and relationships.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Aroosi Blog | Guidance & Stories",
+    description: "Tips and stories for Afghan matchmaking and relationships.",
+  },
+};
 "use client";
 
 import Head from "next/head";

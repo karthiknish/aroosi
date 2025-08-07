@@ -12,12 +12,10 @@ interface DeliveryReceipt {
 
 interface UseDeliveryReceiptsProps {
   conversationId: string;
-  token: string;
 }
 
 export function useDeliveryReceipts({
   conversationId,
-  token,
 }: UseDeliveryReceiptsProps): {
   receipts: Record<string, DeliveryReceipt[]>;
   getMessageDeliveryStatus: (
@@ -68,7 +66,7 @@ export function useDeliveryReceipts({
         }
       }
     },
-    [token],
+    [],
   );
 
   // Fetch delivery receipts for conversation
@@ -112,7 +110,7 @@ export function useDeliveryReceipts({
         console.error("Error fetching delivery receipts:", error);
       }
     }
-  }, [conversationId, token]);
+  }, [conversationId]);
 
   // Get delivery status for a message
   const getMessageDeliveryStatus = useCallback(
@@ -179,7 +177,7 @@ export function useDeliveryReceipts({
         await sendDeliveryReceipt(messageId, "read");
       }
     },
-    [conversationId, token, sendDeliveryReceipt],
+    [conversationId, sendDeliveryReceipt],
   );
 
   // Mark message as delivered (for incoming messages)

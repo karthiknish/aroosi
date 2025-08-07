@@ -13,7 +13,6 @@ export type ModernChatProps = {
   matchUserName?: string;
   matchUserAvatarUrl?: string;
   className?: string;
-  token?: string; // cookie-session; token unused
 };
 
 function ModernChat({
@@ -23,7 +22,6 @@ function ModernChat({
   matchUserName = "",
   matchUserAvatarUrl = "",
   className = "",
-  token,
 }: ModernChatProps) {
   const {
     subscriptionStatus,
@@ -39,7 +37,6 @@ function ModernChat({
     conversationId,
     currentUserId,
     matchUserId,
-    token: token || "",
   });
 
   const {

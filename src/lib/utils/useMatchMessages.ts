@@ -8,7 +8,7 @@ type Message = MatchMessage;
 type TypingState = Record<string, number>; // userId -> last typing timestamp (ms)
 type ReadState = Record<string, number>;   // userId -> last read timestamp (ms)
 
-export function useMatchMessages(conversationId: string, token: string) {
+export function useMatchMessages(conversationId: string, _token: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -51,7 +51,7 @@ export function useMatchMessages(conversationId: string, token: string) {
     } finally {
       setLoading(false);
     }
-  }, [conversationId, token]);
+  }, [conversationId]);
 
   const fetchOlder = useCallback(async () => {
     if (!hasMore || loadingOlder || messages.length === 0) return;

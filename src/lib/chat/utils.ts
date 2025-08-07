@@ -148,7 +148,6 @@ export type ReportReason =
 /** Params for blockUserUtil */
 export type BlockUserParams = {
   matchUserId: string;
-  token: string;
   setIsBlocked: (blocked: boolean) => void;
   setShowReportModal: (open: boolean) => void;
 };
@@ -158,7 +157,6 @@ export type ReportUserParams = {
   matchUserId: string;
   reason: ReportReason;
   description: string;
-  token: string;
   setShowReportModal: (open: boolean) => void;
 };
 
@@ -176,9 +174,9 @@ async function loadActions() {
  * Throws on failure; caller should handle toast/logging.
  */
 export async function blockUserUtil(params: BlockUserParams): Promise<void> {
-  const { matchUserId, token, setIsBlocked, setShowReportModal } = params;
+  const { matchUserId, setIsBlocked, setShowReportModal } = params;
   const { blockUserAction } = await loadActions();
-  await blockUserAction(matchUserId, token);
+  await blockUserAction(matchUserId);
   setIsBlocked(true);
   setShowReportModal(false);
 }
@@ -188,8 +186,8 @@ export async function blockUserUtil(params: BlockUserParams): Promise<void> {
  * Throws on failure; caller should handle toast/logging.
  */
 export async function reportUserUtil(params: ReportUserParams): Promise<void> {
-  const { matchUserId, reason, description, token, setShowReportModal } = params;
+  const { matchUserId, reason, description, setShowReportModal } = params;
   const { reportUserAction } = await loadActions();
-  await reportUserAction(matchUserId, reason, description, token);
+  await reportUserAction(matchUserId, reason, description);
   setShowReportModal(false);
 }
