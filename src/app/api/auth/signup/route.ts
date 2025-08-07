@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
-import { convex } from "@/lib/convexClient";
 
 /**
  * Utility: normalize Gmail for comparison-only throttling
@@ -13,7 +13,10 @@ const normalizeGmailForCompare = (e: string) => {
   const d = domain.toLowerCase();
   if (d === "gmail.com" || d === "googlemail.com") {
     const plusIdx = local.indexOf("+");
-    const base = (plusIdx === -1 ? local : local.slice(0, plusIdx)).replace(/\./g, "");
+    const base = (plusIdx === -1 ? local : local.slice(0, plusIdx)).replace(
+      /\./g,
+      ""
+    );
     return `${base}@${d}`;
   }
   return `${local}@${d}`;
@@ -29,7 +32,10 @@ const isAdult18 = (dateString: string): boolean => {
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+  ) {
     age -= 1;
   }
   return age >= 18 && age <= 100;
@@ -69,7 +75,10 @@ const profileSchema = z
     height: z
       .string()
       .min(1, "height is required")
-      .refine(isValidHeight, 'Height must be a number or in the format like "170 cm"'),
+      .refine(
+        isValidHeight,
+        'Height must be a number or in the format like "170 cm"'
+      ),
     maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"], {
       errorMap: () => ({ message: "maritalStatus is required" }),
     }),
@@ -94,7 +103,16 @@ const profileSchema = z
       ),
 
     profileFor: z
-      .enum(["self", "son", "daughter", "brother", "sister", "friend", "relative", ""])
+      .enum([
+        "self",
+        "son",
+        "daughter",
+        "brother",
+        "sister",
+        "friend",
+        "relative",
+        "",
+      ])
       .optional(),
     country: z.string().optional(),
     annualIncome: z.union([z.string(), z.number()]).optional(),
@@ -133,7 +151,15 @@ const profileSchema = z
       ])
       .optional(),
     diet: z
-      .enum(["vegetarian", "non-vegetarian", "halal", "vegan", "eggetarian", "other", ""])
+      .enum([
+        "vegetarian",
+        "non-vegetarian",
+        "halal",
+        "vegan",
+        "eggetarian",
+        "other",
+        "",
+      ])
       .optional(),
     physicalStatus: z.enum(["normal", "differently-abled", ""]).optional(),
     smoking: z.enum(["no", "occasionally", "yes", ""]).optional(),
@@ -180,48 +206,49 @@ export async function POST(request: NextRequest) {
     const WINDOW_MS = 30 * 1000;
     const MAX_ATTEMPTS = 8;
 
-    // Use singleton convex client; ensure NEXT_PUBLIC_CONVEX_URL is configured
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      console.error("Signup failure", {
-        scope: "auth.signup",
-        correlationId,
-        type: "config_error",
-        message: "NEXT_PUBLIC_CONVEX_URL is not set",
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Convex client not configured", hint: "Set NEXT_PUBLIC_CONVEX_URL in environment.", correlationId },
-        { status: 500 }
-      );
-    }
-
     try {
       const now = Date.now();
-      const existing = await convex.query(api.users.getRateLimitByKey, { key: ipKey }).catch(() => null);
-      const toNum = (v: unknown) => (typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0);
-      if (!existing || now - (existing.windowStart as number) > WINDOW_MS) {
-        await convex.mutation(api.users.setRateLimitWindow, { key: ipKey, windowStart: now, count: 1 });
+      const existing = (await fetchQuery(api.users.getRateLimitByKey, {
+        key: ipKey,
+      }).catch(() => null)) as any;
+      const toNum = (v: unknown) =>
+        typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0;
+      if (!existing || now - toNum(existing.windowStart) > WINDOW_MS) {
+        await fetchMutation(api.users.setRateLimitWindow, {
+          key: ipKey,
+          windowStart: now,
+          count: 1,
+        });
       } else {
         const next = toNum(existing.count) + 1;
         if (next > MAX_ATTEMPTS) {
-          const retryAfterSec = Math.max(1, Math.ceil(((existing.windowStart as number) + WINDOW_MS - now) / 1000));
+          const retryAfterSec = Math.max(
+            1,
+            Math.ceil((toNum(existing.windowStart) + WINDOW_MS - now) / 1000)
+          );
           return NextResponse.json(
-            { error: "Too many signup attempts. Please wait and try again.", code: "RATE_LIMITED", retryAfter: retryAfterSec, correlationId },
+            {
+              error: "Too many signup attempts. Please wait and try again.",
+              code: "RATE_LIMITED",
+              retryAfter: retryAfterSec,
+              correlationId,
+            },
             { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
           );
         }
-        await convex.mutation(api.users.incrementRateLimit, { key: ipKey });
+        await fetchMutation(api.users.incrementRateLimit, { key: ipKey });
       }
     } catch (e) {
-      console.warn("Rate limit store unavailable (best-effort only)", {
-        scope: "auth.signup",
-        correlationId,
-        type: "ratelimit_warning",
-        message: e instanceof Error ? e.message : String(e),
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Rate limit store unavailable (best-effort only)", {
+          scope: "auth.signup",
+          correlationId,
+          type: "ratelimit_warning",
+          message: e instanceof Error ? e.message : String(e),
+          statusCode: 200,
+          durationMs: Date.now() - startedAt,
+        });
+      }
       // best-effort: do not block if rate limit store is unavailable
     }
 
@@ -229,14 +256,16 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (e) {
-      console.warn("Signup invalid JSON body", {
-        scope: "auth.signup",
-        correlationId,
-        type: "parse_error",
-        message: e instanceof Error ? e.message : String(e),
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Signup invalid JSON body", {
+          scope: "auth.signup",
+          correlationId,
+          type: "parse_error",
+          message: e instanceof Error ? e.message : String(e),
+          statusCode: 400,
+          durationMs: Date.now() - startedAt,
+        });
+      }
       return NextResponse.json(
         { error: "Invalid JSON body", correlationId },
         { status: 400 }
@@ -253,28 +282,32 @@ export async function POST(request: NextRequest) {
           message: e.message,
           code: e.code,
         }));
-        console.warn("Signup validation failed", {
-          scope: "auth.signup",
-          correlationId,
-          type: "validation_error",
-          issueCount: issues.length,
-          issues,
-          statusCode: 400,
-          durationMs: Date.now() - startedAt,
-        });
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Signup validation failed", {
+            scope: "auth.signup",
+            correlationId,
+            type: "validation_error",
+            issueCount: issues.length,
+            issues,
+            statusCode: 400,
+            durationMs: Date.now() - startedAt,
+          });
+        }
         return NextResponse.json(
           { error: "Invalid input data", issues, correlationId },
           { status: 400 }
         );
       }
-      console.error("Signup parsing failure", {
-        scope: "auth.signup",
-        correlationId,
-        type: "parse_unhandled",
-        message: error instanceof Error ? error.message : String(error),
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Signup parsing failure", {
+          scope: "auth.signup",
+          correlationId,
+          type: "parse_unhandled",
+          message: error instanceof Error ? error.message : String(error),
+          statusCode: 400,
+          durationMs: Date.now() - startedAt,
+        });
+      }
       return NextResponse.json(
         { error: "Invalid input", correlationId },
         { status: 400 }
@@ -290,30 +323,48 @@ export async function POST(request: NextRequest) {
     try {
       const now = Date.now();
       const key = `signup_email_cmp:${emailCompare}`;
-      const existing = await convex.query(api.users.getRateLimitByKey, { key }).catch(() => null);
-      const toNum = (v: unknown) => (typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0);
-      if (!existing || now - (existing.windowStart as number) > WINDOW_MS) {
-        await convex.mutation(api.users.setRateLimitWindow, { key, windowStart: now, count: 1 });
+      const existing = (await fetchQuery(api.users.getRateLimitByKey, {
+        key,
+      }).catch(() => null)) as any;
+      const toNum = (v: unknown) =>
+        typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0;
+      if (!existing || now - toNum(existing.windowStart) > WINDOW_MS) {
+        await fetchMutation(api.users.setRateLimitWindow, {
+          key,
+          windowStart: now,
+          count: 1,
+        });
       } else {
         const next = toNum(existing.count) + 1;
         if (next > MAX_ATTEMPTS) {
-          const retryAfterSec = Math.max(1, Math.ceil(((existing.windowStart as number) + WINDOW_MS - now) / 1000));
+          const retryAfterSec = Math.max(
+            1,
+            Math.ceil((toNum(existing.windowStart) + WINDOW_MS - now) / 1000)
+          );
           return NextResponse.json(
-            { error: "Too many attempts for this email. Please wait and try again.", code: "RATE_LIMITED_ID", retryAfter: retryAfterSec, correlationId },
+            {
+              error:
+                "Too many attempts for this email. Please wait and try again.",
+              code: "RATE_LIMITED_ID",
+              retryAfter: retryAfterSec,
+              correlationId,
+            },
             { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
           );
         }
-        await convex.mutation(api.users.incrementRateLimit, { key });
+        await fetchMutation(api.users.incrementRateLimit, { key });
       }
     } catch (e) {
-      console.warn("Email key rate limit warning", {
-        scope: "auth.signup",
-        correlationId,
-        type: "ratelimit_warning",
-        message: e instanceof Error ? e.message : String(e),
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Email key rate limit warning", {
+          scope: "auth.signup",
+          correlationId,
+          type: "ratelimit_warning",
+          message: e instanceof Error ? e.message : String(e),
+          statusCode: 200,
+          durationMs: Date.now() - startedAt,
+        });
+      }
       // continue on failure
     }
 
@@ -325,16 +376,21 @@ export async function POST(request: NextRequest) {
       /\d/.test(password) &&
       /[^A-Za-z0-9]/.test(password);
     if (!strongPolicy) {
-      console.warn("Password policy failed", {
-        scope: "auth.signup",
-        correlationId,
-        type: "password_policy",
-        reason: "weak_password",
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Password policy failed", {
+          scope: "auth.signup",
+          correlationId,
+          type: "password_policy",
+          reason: "weak_password",
+          statusCode: 400,
+          durationMs: Date.now() - startedAt,
+        });
+      }
       return NextResponse.json(
-        { error: "Password does not meet security requirements", correlationId },
+        {
+          error: "Password does not meet security requirements",
+          correlationId,
+        },
         { status: 400 }
       );
     }
@@ -342,40 +398,49 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // 2) Existing account policy
-    const existingByEmail = await convex
-      .query(api.users.getUserByEmail, { email: normalizedEmail })
-      .catch(() => null);
+    const existingByEmail = await fetchQuery(api.users.getUserByEmail, {
+      email: normalizedEmail,
+    }).catch(() => null);
 
     if (existingByEmail) {
       if (existingByEmail.googleId && !existingByEmail.hashedPassword) {
-        console.info("Existing Google-linked account for email", {
-          scope: "auth.signup",
-          correlationId,
-          type: "account_exists_google",
-          statusCode: 200,
-          durationMs: Date.now() - startedAt,
-        });
+        if (process.env.NODE_ENV !== "production") {
+          console.info("Existing Google-linked account for email", {
+            scope: "auth.signup",
+            correlationId,
+            type: "account_exists_google",
+            statusCode: 200,
+            durationMs: Date.now() - startedAt,
+          });
+        }
         return NextResponse.json(
           {
             status: "ok",
-            message: "An account exists for this email. Please continue with Google sign-in.",
+            message:
+              "An account exists for this email. Please continue with Google sign-in.",
             code: "USE_GOOGLE_SIGNIN",
             correlationId,
           },
           { status: 200 }
         );
       }
-      console.warn("Signup attempt for existing email (generic client response)", {
-        scope: "auth.signup",
-        correlationId,
-        type: "account_exists_native_or_unknown",
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "Signup attempt for existing email (generic client response)",
+          {
+            scope: "auth.signup",
+            correlationId,
+            type: "account_exists_native_or_unknown",
+            statusCode: 200,
+            durationMs: Date.now() - startedAt,
+          }
+        );
+      }
       return NextResponse.json(
         {
           status: "ok",
-          message: "If an account exists for this email, follow the sign-in or password recovery flow.",
+          message:
+            "If an account exists for this email, follow the sign-in or password recovery flow.",
           code: "ACCOUNT_EXISTS_MAYBE",
           correlationId,
         },
@@ -386,7 +451,12 @@ export async function POST(request: NextRequest) {
     // Normalize profile payload
     const scrubLocalStorageIds = (ids: unknown): string[] =>
       Array.isArray(ids)
-        ? ids.filter((s) => typeof s === "string" && s.trim().length > 0 && !s.startsWith("local-"))
+        ? ids.filter(
+            (s) =>
+              typeof s === "string" &&
+              s.trim().length > 0 &&
+              !s.startsWith("local-")
+          )
         : [];
 
     // Ensure final canonical phone normalization as a last-mile guard
@@ -414,55 +484,63 @@ export async function POST(request: NextRequest) {
       annualIncome:
         typeof (profile as Record<string, unknown>).annualIncome === "number"
           ? (profile as Record<string, unknown>).annualIncome
-          : typeof (profile as Record<string, unknown>).annualIncome === "string"
-          ? (profile as Record<string, unknown>).annualIncome
-          : undefined,
+          : typeof (profile as Record<string, unknown>).annualIncome ===
+              "string"
+            ? (profile as Record<string, unknown>).annualIncome
+            : undefined,
       partnerPreferenceCity: Array.isArray(
         (profile as Record<string, unknown>).partnerPreferenceCity
       )
-        ? ((profile as Record<string, unknown>).partnerPreferenceCity as string[])
+        ? ((profile as Record<string, unknown>)
+            .partnerPreferenceCity as string[])
         : [],
       profileImageIds: scrubLocalStorageIds(
         (profile as Record<string, unknown>).profileImageIds
       ),
     };
 
-    // Create user and profile atomically (Convex action schema excludes hashedPassword/fullName)
-    const result = await convex.action(api.users.createUserAndProfileViaSignup, {
+    // Create user and profile atomically via mutation
+    const createdUserId = await fetchMutation(api.users.createUserAndProfile, {
       email: normalizedEmail,
-      // hashedPassword is managed by server-side auth; exclude from this action
       name: fullName,
       picture: undefined,
       googleId: undefined,
     });
 
-    const userIdOk = !!result?.userId;
+    const userIdOk = !!createdUserId;
     if (!userIdOk) {
-      console.error("Signup failure", {
-        scope: "auth.signup",
-        correlationId,
-        type: "create_user_failed",
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json({ error: "Failed to create user", correlationId }, { status: 500 });
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Signup failure", {
+          scope: "auth.signup",
+          correlationId,
+          type: "create_user_failed",
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
+        });
+      }
+      return NextResponse.json(
+        { error: "Failed to create user", correlationId },
+        { status: 500 }
+      );
     }
 
     // Cookie-session model: do not issue tokens here.
-    console.info("Signup success", {
-      scope: "auth.signup",
-      correlationId,
-      type: "success",
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      userId: String(result.userId),
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.info("Signup success", {
+        scope: "auth.signup",
+        correlationId,
+        type: "success",
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
+        userId: String(createdUserId),
+      });
+    }
     return NextResponse.json(
       {
         status: "success",
         message: "Account created successfully",
         user: {
-          id: result.userId,
+          id: createdUserId,
           email: normalizedEmail,
           role: "user",
         },
@@ -474,14 +552,16 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error("Signup failure", {
-      scope: "auth.signup",
-      correlationId,
-      type: "unhandled_error",
-      message: errMsg,
-      statusCode: 400,
-      durationMs: Date.now() - startedAt,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Signup failure", {
+        scope: "auth.signup",
+        correlationId,
+        type: "unhandled_error",
+        message: errMsg,
+        statusCode: 400,
+        durationMs: Date.now() - startedAt,
+      });
+    }
     return NextResponse.json(
       { error: "Unable to complete signup at this time", correlationId },
       { status: 400 }

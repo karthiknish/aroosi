@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
+import { convexQueryWithAuth } from "@/lib/convexServer";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
 
 /**
  * Normalize subscription status response and avoid wrappers that might cause 404/rewrites.
@@ -19,95 +21,41 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const profileId = searchParams.get("profileId");
     const userIdParam = searchParams.get("userId");
 
-    // Convex client (cookie-auth flow; do not rely on bearer headers)
-    const { getConvexClient } = await import("@/lib/convexClient");
-    const client = getConvexClient();
-    if (!client) {
-      console.error("Subscription status convex not configured", {
-        scope: "subscription.status",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return json(
-        { success: false, error: "Convex backend not configured", correlationId },
-        500
-      );
-    }
-
     let profile: unknown = null;
-
-    if (profileId) {
-      profile = await client
-        .query(api.users.getProfile, {
-          id: profileId as Id<"profiles">,
-        })
-        .catch((e: unknown) => {
-          console.error("Subscription status getProfile error", {
-            scope: "subscription.status",
-            type: "convex_query_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return null;
+    if (userIdParam) {
+      profile = await convexQueryWithAuth(request, api.profiles.getProfileByUserId, {
+        userId: userIdParam as Id<"users">,
+      }).catch((e: unknown) => {
+        console.error("Subscription status getProfileByUserId error", {
+          scope: "subscription.status",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
         });
-    } else if (userIdParam) {
-      profile = await client
-        .query(api.profiles.getProfileByUserId, {
-          userId: userIdParam as Id<"users">,
-        })
-        .catch((e: unknown) => {
-          console.error("Subscription status getProfileByUserId error", {
-            scope: "subscription.status",
-            type: "convex_query_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return null;
-        });
+        return null;
+      });
     } else {
-      // Resolve session using centralized helper
-      const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
       const session = await getSessionFromRequest(request);
-      if (!session.ok) {
-        return session.errorResponse!;
-      }
-
-      // Lookup profile by resolved userId
-      profile = await client
-        .query(api.profiles.getProfileByUserId, {
-          userId: session.userId as unknown as Id<"users">,
-        })
-        .catch((e: unknown) => {
-          console.error("Subscription status getProfileByUserId (session) error", {
-            scope: "subscription.status",
-            type: "convex_query_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return null;
+      if (!session.ok) return session.errorResponse!;
+      profile = await convexQueryWithAuth(
+        request,
+        api.profiles.getProfileByUserId,
+        { userId: session.userId as unknown as Id<"users"> }
+      ).catch((e: unknown) => {
+        console.error("Subscription status getProfileByUserId (session) error", {
+          scope: "subscription.status",
+          type: "convex_query_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
         });
-
-      // Forward any refreshed cookies
-      if (profile) {
-        const setCookies = session.setCookiesToForward || [];
-        if (setCookies.length) {
-          const res = json({ forwarding: true }, 204);
-          for (const c of setCookies) res.headers.append("Set-Cookie", c);
-          // fallthrough to final response below; headers will be ignored here,
-          // but pattern shows how to use in other routes that craft a single response.
-        }
-      }
+        return null;
+      });
     }
 
     if (!profile) {

@@ -1,28 +1,26 @@
 import { NextRequest } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { stripe } from "@/lib/stripe";
 // Profile type removed as it's not used
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
-
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    // Cookie-only: do not set bearer on client
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) return session.errorResponse!;
+    const { userId } = session;
 
     if (!userId) {
       return errorResponse("User ID not found in session", 401);
     }
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
-      userId: userId as Id<"users">,
-    });
+    const profile = await convexQueryWithAuth(
+      request,
+      api.profiles.getProfileByUserId,
+      { userId: userId as Id<"users"> }
+    );
     if (!profile) return errorResponse("User profile not found", 404);
 
     if (profile.subscriptionPlan === "free") {

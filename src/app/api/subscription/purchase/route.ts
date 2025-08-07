@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@/types/profile";
 
@@ -138,14 +138,10 @@ async function validateGooglePurchase(
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) return session.errorResponse!;
+    const { userId } = session;
     if (!userId) return errorResponse("User ID not found in session", 401);
-
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    // Cookie-only: do not set bearer on client
 
     const { productId, purchaseToken, platform, receiptData } =
       await request.json();
@@ -180,17 +176,20 @@ export async function POST(request: NextRequest) {
       // Use the expiry from Google
       const expiresAt =
         result.expiresAt || Date.now() + 30 * 24 * 60 * 60 * 1000;
-      await convex.mutation(api.users.updateProfile, {
+      await convexMutationWithAuth(request, api.profiles.updateProfileFields, {
+        userId: userId as Id<"users">,
         updates: {
           subscriptionPlan: plan,
           subscriptionExpiresAt: expiresAt,
           updatedAt: Date.now(),
         },
-      });
+      } as any);
       // Optionally notify admin
-      const profile = await convex.query(api.profiles.getProfileByUserId, {
-        userId: userId as Id<"users">,
-      });
+      const profile = await convexQueryWithAuth(
+        request,
+        api.profiles.getProfileByUserId,
+        { userId: userId as Id<"users"> }
+      );
       if (profile && typeof profile.email === "string") {
         try {
           await Notifications.subscriptionPurchasedAdmin(
@@ -221,17 +220,20 @@ export async function POST(request: NextRequest) {
       // Use the expiry from Apple
       const expiresAt =
         result.expiresAt || Date.now() + 30 * 24 * 60 * 60 * 1000;
-      await convex.mutation(api.users.updateProfile, {
+      await convexMutationWithAuth(request, api.profiles.updateProfileFields, {
+        userId: userId as Id<"users">,
         updates: {
           subscriptionPlan: plan,
           subscriptionExpiresAt: expiresAt,
           updatedAt: Date.now(),
         },
-      });
+      } as any);
       // Optionally notify admin
-      const profile = await convex.query(api.profiles.getProfileByUserId, {
-        userId: userId as Id<"users">,
-      });
+      const profile = await convexQueryWithAuth(
+        request,
+        api.profiles.getProfileByUserId,
+        { userId: userId as Id<"users"> }
+      );
       if (profile && typeof profile.email === "string") {
         try {
           await Notifications.subscriptionPurchasedAdmin(

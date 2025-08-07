@@ -1,20 +1,19 @@
 import { NextRequest } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function GET(request: NextRequest) {
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) return session.errorResponse!;
     
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    // Cookie-only: do not set bearer on client
-    
-    // Get usage statistics from Convex
-    const stats = await convex.query(api.usageTracking.getUsageStats, {});
+    const stats = await convexQueryWithAuth(
+      request,
+      api.usageTracking.getUsageStats,
+      {}
+    );
     
     // Transform the data to match the expected format
     const usage = {
