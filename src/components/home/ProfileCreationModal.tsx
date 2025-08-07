@@ -194,30 +194,36 @@ export function ProfileCreationModal({
     Number.isFinite(contextStep) && contextStep >= 1 && contextStep <= 7
       ? contextStep
       : 1;
-  const setStep = React.useCallback((newStep: number) => {
-    const clamped = Math.max(1, Math.min(7, Math.floor(Number(newStep) || 1)));
-    setContextStep(clamped);
-    // Persist PROFILE_CREATION snapshot on step transitions (SSR-guarded)
-    try {
-      if (typeof window !== "undefined") {
-        const snapshot = {
-          step: clamped,
-          data: {
-            fullName: (formData as any)?.fullName ?? "",
-            dateOfBirth: (formData as any)?.dateOfBirth ?? "",
-            phoneNumber: (formData as any)?.phoneNumber ?? "",
-            city: (formData as any)?.city ?? "",
-            height: (formData as any)?.height ?? "",
-            maritalStatus: (formData as any)?.maritalStatus ?? "",
-          },
-        };
-        window.localStorage.setItem(
-          "PROFILE_CREATION",
-          JSON.stringify(snapshot)
-        );
-      }
-    } catch {}
-  }, [setContextStep, formData]);
+  const setStep = React.useCallback(
+    (newStep: number) => {
+      const clamped = Math.max(
+        1,
+        Math.min(7, Math.floor(Number(newStep) || 1))
+      );
+      setContextStep(clamped);
+      // Persist PROFILE_CREATION snapshot on step transitions (SSR-guarded)
+      try {
+        if (typeof window !== "undefined") {
+          const snapshot = {
+            step: clamped,
+            data: {
+              fullName: (formData as any)?.fullName ?? "",
+              dateOfBirth: (formData as any)?.dateOfBirth ?? "",
+              phoneNumber: (formData as any)?.phoneNumber ?? "",
+              city: (formData as any)?.city ?? "",
+              height: (formData as any)?.height ?? "",
+              maritalStatus: (formData as any)?.maritalStatus ?? "",
+            },
+          };
+          window.localStorage.setItem(
+            "PROFILE_CREATION",
+            JSON.stringify(snapshot)
+          );
+        }
+      } catch {}
+    },
+    [setContextStep, formData]
+  );
 
   console.log("Starting step variables:", {
     contextStep, // ProfileWizard context se
@@ -272,7 +278,7 @@ export function ProfileCreationModal({
     },
   });
 
-  // Auth context for userId only (cookie-auth; no tokens stored client-side)
+  // Auth context for userId only (no tokens stored client-side)
   const { user: authUser, refreshUser } = useAuth();
   const userId = authUser?.id;
 
@@ -455,7 +461,7 @@ export function ProfileCreationModal({
     }
   };
 
-  // Native authentication (cookie-based; no token/getToken usage)
+  // Native authentication (no token/getToken usage)
   const { isAuthenticated, signOut } = useAuth();
 
   // Listen for authentication success (native auth doesn't use popups)
@@ -639,7 +645,7 @@ export function ProfileCreationModal({
         );
 
         console.log("Submitting profile with payload:", payload);
-        // cookie-auth: pass undefined for token, server reads HttpOnly cookies
+        // pass undefined for token, server reads HttpOnly cookies
         const profileRes = await submitProfile(
           undefined as unknown as string,
           payload,
@@ -810,7 +816,7 @@ export function ProfileCreationModal({
                 // 1) Generate upload URL
                 let uploadUrl: string | null = null;
                 try {
-                  // cookie-auth: helper will use credentials: 'include'
+                  // helper will use credentials
                   uploadUrl = await requestImageUploadUrl("");
                 } catch (e) {
                   const reason =
@@ -918,7 +924,7 @@ export function ProfileCreationModal({
 
                 // 3) Confirm metadata and capture imageId for ordering
                 try {
-                  // token moved to cookie-based auth; pass empty string to satisfy type (server ignores)
+                  // pass empty string to satisfy type (server ignores)
                   const meta = await confirmImageMetadata({
                     token: "",
                     userId,
@@ -979,7 +985,7 @@ export function ProfileCreationModal({
               // 1) Generate upload URL
               let uploadUrl: string | null = null;
               try {
-                // Helper expects a string token; pass empty to indicate cookie-auth
+                // Helper expects a string token; pass empty to indicate no token
                 uploadUrl = await requestImageUploadUrl("");
               } catch (e) {
                 const reason =
@@ -1072,7 +1078,7 @@ export function ProfileCreationModal({
 
               // 3) Confirm metadata and capture imageId for ordering
               try {
-                // token moved to cookie-based auth; pass empty string to satisfy type (server ignores)
+                // pass empty string to satisfy type (server ignores)
                 const meta = await confirmImageMetadata({
                   token: "",
                   userId,
@@ -1179,7 +1185,7 @@ export function ProfileCreationModal({
                   id.trim().length > 0
               );
               if (filteredOrderIds.length > 1) {
-                // token moved to cookie-based auth; pass empty string to satisfy type (server ignores)
+                // pass empty string to satisfy type (server ignores)
                 await persistServerImageOrder({
                   token: "",
                   userId,
@@ -1279,10 +1285,10 @@ export function ProfileCreationModal({
     };
 
     void submitProfileAndImages();
-  // This effect purposefully runs when the core submission drivers change.
-  // Some dependencies (contextData, initialData) are not included to avoid
-  // excessive re-runs; formData is memoized and already represents them.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // This effect purposefully runs when the core submission drivers change.
+    // Some dependencies (contextData, initialData) are not included to avoid
+    // excessive re-runs; formData is memoized and already represents them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isAuthenticated,
     formData,
@@ -1294,7 +1300,7 @@ export function ProfileCreationModal({
     refreshUser,
     onClose,
     router,
-    signOut
+    signOut,
   ]);
 
   // Helper to add * to required labels

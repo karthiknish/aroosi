@@ -168,18 +168,27 @@ export default function SearchProfilesPage() {
   }, [isSignedIn, isAuthenticated, isLoaded]);
 
   // Proactively call /api/auth/me (no authClient; pure fetch)
+  const { user } = useAuthContext();
+  const accessToken =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   React.useEffect(() => {
     async function pingMe() {
       try {
-        await fetch("/api/auth/me", { method: "GET", headers: { accept: "application/json" } });
+        await fetch("/api/auth/me", {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+        });
       } catch {
         // ignore debug failures
       }
     }
-    if (isLoaded) {
+    if (isLoaded && accessToken) {
       void pingMe();
     }
-  }, [isLoaded]);
+  }, [isLoaded, accessToken]);
 
   // Defensive: if client-side code tries to route away, log it explicitly
   const originalPush = router.push.bind(router);
