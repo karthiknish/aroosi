@@ -43,6 +43,13 @@ export async function GET(request: NextRequest) {
     Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
+  // Capture caller hint (page/route) if provided by clients
+  const fromPage =
+    request.headers.get("x-page") ||
+    request.nextUrl.searchParams.get("from") ||
+    request.headers.get("referer") ||
+    undefined;
+
   try {
     // Prefer centralized Bearer parsing + verification for consistency
     const { requireAuth, AuthError, authErrorResponse } = await import("@/lib/auth/requireAuth");
@@ -56,9 +63,10 @@ export async function GET(request: NextRequest) {
           type: e.code,
           statusCode: e.status,
           durationMs: Date.now() - startedAt,
+          fromPage,
         });
         // Return structured error payload for frontend toast consumption
-        const res = authErrorResponse(e.message, { status: e.status, code: e.code, correlationId });
+        const res = authErrorResponse(e.message, { status: e.status, code: e.code, correlationId, fromPage });
         return withNoStore(res);
       }
       log(scope, "warn", "Unexpected auth failure in /api/auth/me", {
@@ -66,8 +74,9 @@ export async function GET(request: NextRequest) {
         type: "unexpected_auth_failure",
         statusCode: 401,
         durationMs: Date.now() - startedAt,
+        fromPage,
       });
-      const res = authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId });
+      const res = authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId, fromPage });
       return withNoStore(res);
     }
 
@@ -92,6 +101,7 @@ export async function GET(request: NextRequest) {
         type: "user_not_found",
         statusCode: 404,
         durationMs: duration,
+        fromPage,
       });
       // Ensure consistent structured error for frontend toasts
       return withNoStore(
@@ -100,6 +110,7 @@ export async function GET(request: NextRequest) {
             error: "User not found",
             code: "USER_NOT_FOUND",
             correlationId,
+            fromPage,
           },
           { status: 404 }
         )
@@ -112,10 +123,11 @@ export async function GET(request: NextRequest) {
         userId: String(user._id),
         statusCode: 403,
         durationMs: Date.now() - startedAt,
+        fromPage,
       });
       return withNoStore(
         NextResponse.json(
-          { error: "Account is banned", code: "USER_FORBIDDEN", correlationId },
+          { error: "Account is banned", code: "USER_FORBIDDEN", correlationId, fromPage },
           { status: 403 }
         )
       );
@@ -155,6 +167,7 @@ export async function GET(request: NextRequest) {
       correlationId,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
+      fromPage,
     });
     return withNoStore(response);
   } catch (error) {
@@ -164,10 +177,11 @@ export async function GET(request: NextRequest) {
       statusCode: 500,
       message,
       durationMs: Date.now() - startedAt,
+      fromPage,
     });
     return withNoStore(
       NextResponse.json(
-        { error: "Server error", code: "SERVER_ERROR", correlationId },
+        { error: "Server error", code: "SERVER_ERROR", correlationId, fromPage },
         { status: 500 }
       )
     );
