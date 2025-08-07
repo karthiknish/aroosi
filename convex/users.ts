@@ -226,6 +226,72 @@ export const getMyMatches = query({
 });
 
 /**
+ * Record a profile view by the current authenticated user.
+ */
+export const recordProfileView = mutation({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, { profileId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+    const email = (identity as any).email as string | undefined;
+    if (!email) throw new Error("Unauthenticated");
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    if (!me) throw new Error("User not found");
+    await ctx.db.insert("profileViews", {
+      viewerId: (me._id as Id<"users">),
+      profileId,
+      createdAt: Date.now(),
+    } as any);
+    return { success: true } as const;
+  },
+});
+
+/**
+ * Get viewers for a profile. Caller should be authorized by route logic; this
+ * query does not enforce ownership beyond Convex authentication.
+ */
+export const getProfileViewers = query({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, { profileId }) => {
+    const views = await ctx.db
+      .query("profileViews")
+      .withIndex("by_profileId_createdAt", (q) => q.eq("profileId", profileId))
+      .collect();
+    const results: Array<{
+      viewerId: Id<"users">;
+      fullName?: string | null;
+      profileImageUrls?: string[] | null;
+      viewedAt: number;
+    }> = [];
+    for (const vrow of views) {
+      const viewerId = (vrow as any).viewerId as Id<"users">;
+      let fullName: string | null = null;
+      let profileImageUrls: string[] | null = null;
+      try {
+        const profile = await ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", viewerId))
+          .first();
+        if (profile) {
+          fullName = (profile as any).fullName ?? null;
+          profileImageUrls = ((profile as any).profileImageUrls ?? null) as string[] | null;
+        }
+      } catch {}
+      results.push({
+        viewerId,
+        fullName,
+        profileImageUrls,
+        viewedAt: (vrow as any).createdAt ?? Date.now(),
+      });
+    }
+    return results;
+  },
+});
+
+/**
  * Admin: list profiles with simple filtering and pagination (naive scan).
  */
 export const adminListProfiles = query({
