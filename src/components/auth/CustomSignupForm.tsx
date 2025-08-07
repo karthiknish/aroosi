@@ -357,10 +357,29 @@ export default function CustomSignupForm({
         return;
       }
 
-      // Success: The signup API now sets cookies, so we need to refresh auth state
-      console.log("CustomSignupForm: Signup successful, refreshing auth state");
+      // Success: Persist tokens from pure token-based signup, then refresh auth state
+      console.log("CustomSignupForm: Signup successful, persisting tokens and refreshing auth state");
 
-      // IMPORTANT: Refresh the auth state to pick up the new session
+      // The signup API returns accessToken and refreshToken in the response body (pure token model).
+      // Persist them via AuthProvider by temporarily importing tokenStorage to keep this component decoupled
+      // from internal saveToken. This mirrors AuthProvider behavior.
+      try {
+        const { token } = (data as any) || {};
+        const accessToken =
+          (data as any)?.accessToken || (typeof token === "string" ? token : null);
+        const refreshToken = (data as any)?.refreshToken || null;
+
+        if (accessToken) {
+          const { tokenStorage } = await import("@/lib/http/client");
+          // Set tokens so the centralized client immediately starts attaching Authorization
+          tokenStorage.access = accessToken;
+          if (refreshToken) tokenStorage.refresh = refreshToken;
+        }
+      } catch (e) {
+        console.warn("CustomSignupForm: Failed to persist tokens (non-fatal):", e);
+      }
+
+      // Refresh the auth state to reflect the new session
       await refreshUser();
 
       // Clean up any onboarding/local wizard storage
