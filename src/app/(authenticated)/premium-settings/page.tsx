@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
-import { updateProfile, boostProfileCookieAuth } from "@/lib/utils/profileApi";
+import { updateUserProfile, boostProfile } from "@/lib/profile/userProfileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import {
   Eye,
@@ -59,12 +59,21 @@ export default function PremiumSettingsPage() {
   const { profile: rawProfile, refreshProfile } = useAuthContext();
   const profile = rawProfile as ProfileData;
   const [hideProfile, setHideProfile] = useState<boolean>(
-    !!profile?.hideFromFreeUsers,
+    !!profile?.hideFromFreeUsers
   );
   const [saving, setSaving] = useState(false);
   const [boostLoading, setBoostLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
   const router = useRouter();
+  const nextMonthlyResetDate = React.useMemo(() => {
+    const d = new Date();
+    // First day of next month, local time
+    return new Date(d.getFullYear(), d.getMonth() + 1, 1, 0, 0, 0, 0);
+  }, []);
+  const nextResetLabel = React.useMemo(
+    () => `Resets on ${nextMonthlyResetDate.toLocaleDateString()}`,
+    [nextMonthlyResetDate]
+  );
 
   // Update time remaining every minute when boosted
   useEffect(() => {
@@ -100,11 +109,13 @@ export default function PremiumSettingsPage() {
   async function handleSave() {
     try {
       setSaving(true);
-      // Cookie-auth: server reads session cookies
-      await updateProfile({
-        token: "",
-        updates: { hideFromFreeUsers: hideProfile },
+      // Cookie-auth via central userProfileApi util
+      const result = await updateUserProfile({
+        hideFromFreeUsers: hideProfile,
       });
+      if (!result.success) {
+        throw new Error(result.error || "Failed to save settings");
+      }
       await refreshProfile();
       showSuccessToast("Settings saved successfully");
     } catch (err) {
@@ -118,14 +129,28 @@ export default function PremiumSettingsPage() {
   async function handleBoost() {
     try {
       setBoostLoading(true);
-      // Use cookie-auth; server reads session cookies
-      const result = await boostProfileCookieAuth();
-      showSuccessToast(
-        `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`,
-      );
+      // Use central util; surfaces server messages and remaining quota
+      const result = await boostProfile();
+      if (!result.success) {
+        const msg =
+          result.message ||
+          (profile.subscriptionPlan !== "premiumPlus"
+            ? "Requires Premium Plus"
+            : (profile.boostsRemaining || 0) <= 0
+              ? `No boosts left this month. ${nextResetLabel}`
+              : "Boost failed");
+        showErrorToast(msg);
+      } else {
+        const remaining =
+          result.boostsRemaining ?? profile.boostsRemaining ?? 0;
+        showSuccessToast(
+          `Profile boosted for 24 hours! (${remaining} boosts left this month)`
+        );
+      }
       await refreshProfile();
     } catch (error: unknown) {
-      showErrorToast(error, "Boost failed");
+      const msg = error instanceof Error ? error.message : "Boost failed";
+      showErrorToast(msg);
     } finally {
       setBoostLoading(false);
     }
@@ -205,7 +230,9 @@ export default function PremiumSettingsPage() {
       title: "Profile Boost",
       description: isCurrentlyBoosted
         ? `Profile is boosted! (${timeRemaining || formatTimeRemaining(profile.boostedUntil!)})`
-        : `Boost your profile visibility (${profile.boostsRemaining || 5} remaining this month)`,
+        : (profile.boostsRemaining || 0) > 0
+          ? `Boost your profile visibility (${profile.boostsRemaining} remaining this month)`
+          : `No boosts left this month. ${nextResetLabel}`,
       available: isPremiumPlus,
       action: isCurrentlyBoosted ? undefined : handleBoost,
       isBoost: true,
@@ -279,16 +306,22 @@ export default function PremiumSettingsPage() {
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="flex items-center gap-3">
                       {/* Highlighted current plan badge */}
-                      <div className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2
-                        ${profile.subscriptionPlan === "premiumPlus"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-pink-100 text-pink-700"}`}>
+                      <div
+                        className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2
+                        ${
+                          profile.subscriptionPlan === "premiumPlus"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-pink-100 text-pink-700"
+                        }`}
+                      >
                         {profile.subscriptionPlan === "premiumPlus" ? (
                           <Rocket className="w-4 h-4" />
                         ) : (
                           <Crown className="w-4 h-4" />
                         )}
-                        {profile.subscriptionPlan === "premium" ? "Premium" : "Premium Plus"}
+                        {profile.subscriptionPlan === "premium"
+                          ? "Premium"
+                          : "Premium Plus"}
                       </div>
                       <div className="flex flex-col">
                         {/* Renewal / expiry emphasis */}
@@ -300,21 +333,30 @@ export default function PremiumSettingsPage() {
                         {profile.subscriptionExpiresAt && (
                           <span className="text-xs text-gray-500">
                             {(() => {
-                              const ms = (profile.subscriptionExpiresAt as number) - Date.now();
-                              const days = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-                              return days > 0 ? `${days} day${days > 1 ? "s" : ""} remaining` : "Renews today";
+                              const ms =
+                                (profile.subscriptionExpiresAt as number) -
+                                Date.now();
+                              const days = Math.max(
+                                0,
+                                Math.ceil(ms / (1000 * 60 * 60 * 24))
+                              );
+                              return days > 0
+                                ? `${days} day${days > 1 ? "s" : ""} remaining`
+                                : "Renews today";
                             })()}
                           </span>
                         )}
                       </div>
-    
+
                       <div className="mt-4 flex gap-3">
                         {/* Manage billing portal */}
                         <button
                           type="button"
                           onClick={async () => {
                             try {
-                              const { openBillingPortal } = await import("@/lib/utils/stripeUtil");
+                              const { openBillingPortal } = await import(
+                                "@/lib/utils/stripeUtil"
+                              );
                               await openBillingPortal();
                             } catch (e) {
                               console.error("Manage billing failed", e);
@@ -339,7 +381,9 @@ export default function PremiumSettingsPage() {
                       <Button
                         variant="default"
                         onClick={async () => {
-                          const { openBillingPortal } = await import("@/lib/utils/stripeUtil");
+                          const { openBillingPortal } = await import(
+                            "@/lib/utils/stripeUtil"
+                          );
                           await openBillingPortal();
                         }}
                         className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-md"

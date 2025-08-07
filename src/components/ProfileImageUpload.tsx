@@ -322,7 +322,7 @@ export function ProfileImageUpload({
     if (!profileId)
       throw new Error("Profile ID not available for admin upload.");
     // TODO: migrate adminUploadProfileImage to cookie-auth; until then pass empty token
-    await adminUploadProfileImage({ token: "", profileId, file });
+    await adminUploadProfileImage({ profileId, file });
     showSuccessToast("Image uploaded successfully");
     await refetchImages();
   };

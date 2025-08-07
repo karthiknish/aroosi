@@ -262,11 +262,10 @@ export async function createAdminProfile({
  * @returns { success: boolean; error?: string }
  */
 export async function setProfileBannedStatus(
-  token: string,
+  _token: string,
   profileId: string,
   banned: boolean
 ): Promise<{ success: boolean; error?: string }> {
-  if (!token) return { success: false, error: "No token provided" };
   if (!profileId) return { success: false, error: "No profileId provided" };
 
   const res = await fetch(`/api/admin/profiles/${profileId}/ban`, {
@@ -479,15 +478,12 @@ export async function deleteAdminProfileImageById({
 
 // Upload a profile image for a given profileId (admin)
 export async function adminUploadProfileImage({
-  token,
   profileId,
   file,
 }: {
-  token: string;
   profileId: string;
   file: File;
 }): Promise<ImageType> {
-  if (!token) throw new Error("Authentication required");
   if (!profileId) throw new Error("Profile ID required");
   if (!file) throw new Error("File required");
 
