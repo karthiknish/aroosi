@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireSession } from "@/app/api/_utils/auth";
+import { fetchMutation } from "convex/nextjs";
+import { requireAuth } from "@/lib/auth/requireAuth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
@@ -19,20 +18,7 @@ export async function POST(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Cookie-only auth
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as Response;
-      const status = (res as any)?.status || 401;
-      let message = "Unauthorized";
-      try {
-        const txt = await (res as any).text?.();
-        const parsed = txt ? JSON.parse(txt) : undefined;
-        message = (parsed?.error as string) || message;
-      } catch {}
-      return errorResponse(message, status, { correlationId });
-    }
-    const { userId } = session;
+    const { userId } = await requireAuth(request);
 
     // Subscription-aware rate limit for image message upload
     // Cookie-only: pass empty string for token parameter to satisfy current signature
@@ -100,14 +86,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Prepare Convex client
-    const client = getConvexClient();
-    if (!client) {
-      return errorResponse("Database connection failed", 500, {
-        correlationId,
-      });
-    }
-    // Cookie-only: do not call client.setAuth with a bearer token
 
     // Build bytes for upload
     const arrayBuffer = await image.arrayBuffer();
@@ -133,25 +111,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the message in Convex (type=image)
-    const message = await client
-      .mutation(api.messages.sendMessage, {
-        conversationId,
-        fromUserId: fromUserId as Id<"users">,
-        toUserId: toUserId as Id<"users">,
-        type: "image",
-        audioStorageId: storageId, // schema may alias
-        fileSize: image.size,
-        mimeType: contentType,
-      })
-      .catch((e: unknown) => {
-        const msg =
-          e instanceof Error
-            ? e.message
-            : typeof e === "string"
-              ? e
-              : "Send failed";
-        throw new Error(String(msg));
-      });
+    const message = await fetchMutation(api.messages.sendMessage, {
+      conversationId,
+      fromUserId: fromUserId as any,
+      toUserId: toUserId as any,
+      type: "image",
+      audioStorageId: storageId,
+      fileSize: image.size,
+      mimeType: contentType,
+    } as any).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : typeof e === "string" ? e : "Send failed";
+      throw new Error(String(msg));
+    });
 
     // Broadcast SSE event for UI refresh
     try {

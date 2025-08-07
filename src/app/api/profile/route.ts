@@ -232,9 +232,9 @@ export async function PUT(request: NextRequest) {
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
+    const profile = await fetchQuery(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
-    });
+    } as any);
     if (!profile)
       return new Response(
         JSON.stringify({ error: "User profile not found", correlationId }),
@@ -246,10 +246,10 @@ export async function PUT(request: NextRequest) {
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
 
-    await convex.mutation(api.users.updateProfile, { updates });
-    const updatedProfile = await convex.query(api.profiles.getProfileByUserId, {
+    await fetchMutation(api.users.updateProfile, { updates } as any);
+    const updatedProfile = await fetchQuery(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
-    });
+    } as any);
 
     if (isProfileWithEmail(updatedProfile)) {
       try {
@@ -276,9 +276,6 @@ export async function PUT(request: NextRequest) {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-    for (const c of session.setCookiesToForward) {
-      response.headers.append("Set-Cookie", c);
-    }
     console.info("Profile PUT success", {
       scope: "profile.update",
       type: "success",
@@ -324,19 +321,6 @@ export async function POST(req: NextRequest) {
         JSON.stringify({ error: "Rate limit exceeded", correlationId }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
-    const convex = getConvexClient();
-    if (!convex)
-      return new Response(
-        JSON.stringify({
-          error: "Convex client not configured",
-          correlationId,
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    try {
-      // cookie-only model: do not set Convex auth token here
-      // convex.setAuth?.(undefined as unknown as string);
-    } catch {}
     let body: Record<string, unknown>;
     try {
       body = await req.json();
@@ -385,9 +369,9 @@ export async function POST(req: NextRequest) {
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
-    const existingProfile = await convex.query(
+    const existingProfile = await fetchQuery(
       api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
+      { userId: userId as Id<"users"> } as any
     );
     if (existingProfile)
       return new Response(
@@ -511,11 +495,10 @@ export async function POST(req: NextRequest) {
       isProfileComplete: true,
     };
 
-    // @ts-expect-error Convex generated types can be restrictive in app router context; values match runtime schema.
-    await convex.mutation(api.users.createProfile, profileData);
-    const newProfile = await convex.query(api.profiles.getProfileByUserId, {
+    await fetchMutation(api.users.createProfile, profileData as any);
+    const newProfile = await fetchQuery(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
-    });
+    } as any);
     if (isProfileWithEmail(newProfile)) {
       try {
         await Notifications.profileCreated(newProfile.email, newProfile);
@@ -538,9 +521,6 @@ export async function POST(req: NextRequest) {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-    for (const c of session.setCookiesToForward) {
-      response.headers.append("Set-Cookie", c);
-    }
     console.info("Profile POST success", {
       scope: "profile.create",
       type: "success",
@@ -587,22 +567,9 @@ export async function DELETE(request: NextRequest) {
         JSON.stringify({ error: "Rate limit exceeded", correlationId }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
-    const convex = getConvexClient();
-    if (!convex)
-      return new Response(
-        JSON.stringify({
-          error: "Convex client not configured",
-          correlationId,
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    try {
-      // cookie-only model: do not set Convex auth token here
-      // convex.setAuth?.(undefined as unknown as string);
-    } catch {}
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
+    const profile = await fetchQuery(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
-    });
+    } as any);
     if (!profile || !profile._id)
       return new Response(
         JSON.stringify({
@@ -616,7 +583,7 @@ export async function DELETE(request: NextRequest) {
         JSON.stringify({ error: "Unauthorized", correlationId }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
-    await convex.mutation(api.users.deleteProfile, { id: profile._id });
+    await fetchMutation(api.users.deleteProfile, { id: profile._id } as any);
     const response = new Response(
       JSON.stringify({
         message: "User and profile deleted successfully",
@@ -625,9 +592,6 @@ export async function DELETE(request: NextRequest) {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-    for (const c of session.setCookiesToForward) {
-      response.headers.append("Set-Cookie", c);
-    }
     console.info("Profile DELETE success", {
       scope: "profile.delete",
       type: "success",

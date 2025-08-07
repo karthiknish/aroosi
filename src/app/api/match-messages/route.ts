@@ -149,25 +149,7 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Messages POST auth failed", {
-        scope: "messages.post",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
+    const { userId } = await requireAuth(request);
 
     if (!userId) {
       return NextResponse.json(
@@ -253,20 +235,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let client = convexClient || getConvexClient();
-    if (!client) {
-      console.error("Messages POST convex not configured", {
-        scope: "messages.post",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Database connection failed", correlationId },
-        { status: 500 }
-      );
-    }
 
     const canMessage = await validateUserCanMessage(fromUserId, toUserId);
     if (!canMessage) {
@@ -276,22 +244,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const blockStatus = await client
-      .query(api.safety.getBlockStatus, {
-        blockerUserId: fromUserId as Id<"users">,
-        blockedUserId: toUserId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Messages POST getBlockStatus error", {
-          scope: "messages.post",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const blockStatus = await fetchQuery(api.safety.getBlockStatus, {
+      blockerUserId: fromUserId as Id<"users">,
+      blockedUserId: toUserId as Id<"users">,
+    } as any).catch((e: unknown) => {
+      console.error("Messages POST getBlockStatus error", {
+        scope: "messages.post",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null;
+    });
 
     if (blockStatus) {
       return NextResponse.json(
@@ -302,24 +268,22 @@ export async function POST(request: NextRequest) {
 
     const sanitizedText = validation.sanitizedText || text;
 
-    const result = await client
-      .mutation(api.messages.sendMessage, {
-        conversationId,
-        fromUserId: fromUserId as Id<"users">,
-        toUserId: toUserId as Id<"users">,
-        text: sanitizedText,
-      })
-      .catch((e: unknown) => {
-        console.error("Messages POST sendMessage error", {
-          scope: "messages.post",
-          type: "convex_mutation_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const result = await fetchMutation(api.messages.sendMessage, {
+      conversationId,
+      fromUserId: fromUserId as Id<"users">,
+      toUserId: toUserId as Id<"users">,
+      text: sanitizedText,
+    } as any).catch((e: unknown) => {
+      console.error("Messages POST sendMessage error", {
+        scope: "messages.post",
+        type: "convex_mutation_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null;
+    });
 
     if (!result) {
       return NextResponse.json(
