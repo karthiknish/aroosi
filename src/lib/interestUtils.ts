@@ -1,109 +1,98 @@
 /**
- * Interests utilities (cookie-based auth).
- * All requests include credentials and rely on HttpOnly session cookies.
- * Provides normalized error handling.
+ * Interests utilities (token-based auth).
+ * Uses centralized HTTP client which attaches Authorization from tokenStorage
+ * and handles single-refresh-on-401 automatically.
  */
+import { getJson, postJson, deleteJson } from "@/lib/http/client";
 
-async function parseJsonSafely(res: Response): Promise<any> {
-  const ct = res.headers.get("content-type") || "";
-  if (ct.toLowerCase().includes("application/json")) {
-    try {
-      return await res.json();
-    } catch {
-      return {};
-    }
-  }
-  try {
-    const text = await res.text();
-    return text ? { message: text } : {};
-  } catch {
-    return {};
-  }
+function normalizeError<T extends Record<string, unknown>>(
+  json: T | null | undefined,
+  fallbackMsg: string
+): string {
+  if (!json) return fallbackMsg;
+  return (json.error as string) || (json.message as string) || fallbackMsg;
 }
 
-function ensureOk(json: any, res: Response, fallbackMsg: string) {
-  if (!res.ok || (json && json.success === false)) {
-    const msg =
-      (json && (json.error as string)) ||
-      (json && (json.message as string)) ||
-      `${fallbackMsg} (HTTP ${res.status})`;
+/**
+ * Send interest to a user (token-based)
+ */
+export async function sendInterest(toUserId: string): Promise<any> {
+  try {
+    return await postJson<any>("/api/interests", { toUserId }, {
+      headers: { "Content-Type": "application/json", Accept: "application/json", "x-client-check": "interest-send" },
+      cache: "no-store",
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to send interest";
     throw new Error(msg);
   }
 }
 
 /**
- * Send interest to a user (cookie session)
+ * Remove previously sent interest (token-based)
  */
-export async function sendInterestCookie(toUserId: string): Promise<any> {
-  const res = await fetch("/api/interests", {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ toUserId }),
-    redirect: "manual",
-  });
-  const json = await parseJsonSafely(res);
-  ensureOk(json, res, "Failed to send interest");
-  return json;
+export async function removeInterest(toUserId: string): Promise<any> {
+  try {
+    // deleteJson sends a DELETE request with JSON body via fetchJson wrapper
+    return await deleteJson<any>("/api/interests", {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "x-client-check": "interest-remove",
+      },
+      cache: "no-store",
+      // fetchJson supports body via options; our client forwards it in deleteJson
+      body: JSON.stringify({ toUserId }) as unknown as undefined,
+    } as any);
+  } catch (err) {
+    const msg =
+      err instanceof Error ? err.message : "Failed to remove interest";
+    throw new Error(msg);
+  }
 }
 
 /**
- * Remove previously sent interest (cookie session)
+ * Get interests sent by current user (token-based)
  */
-export async function removeInterestCookie(toUserId: string): Promise<any> {
-  const res = await fetch("/api/interests", {
-    method: "DELETE",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ toUserId }),
-    redirect: "manual",
-  });
-  const json = await parseJsonSafely(res);
-  ensureOk(json, res, "Failed to remove interest");
-  return json;
+export async function getSentInterests(): Promise<any> {
+  try {
+    return await getJson<any>("/api/interests", {
+      headers: {
+        Accept: "application/json",
+        "x-client-check": "interest-sent",
+      },
+      cache: "no-store",
+    });
+  } catch (err) {
+    const msg =
+      err instanceof Error ? err.message : "Failed to fetch sent interests";
+    throw new Error(msg);
+  }
 }
 
 /**
- * Get interests sent by current user (cookie session)
+ * Respond to an interest (accept/reject) (token-based)
  */
-export async function getSentInterestsCookie(): Promise<any> {
-  const res = await fetch(`/api/interests`, {
-    method: "GET",
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-    },
-    redirect: "manual",
-  });
-  const json = await parseJsonSafely(res);
-  ensureOk(json, res, "Failed to fetch sent interests");
-  return json;
-}
-
-/**
- * Respond to an interest (accept/reject) (cookie session)
- */
-export async function respondToInterestCookie(
+export async function respondToInterest(
   interestId: string,
   status: "accepted" | "rejected"
 ): Promise<any> {
-  const res = await fetch("/api/interests/respond", {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ interestId, status }),
-    redirect: "manual",
-  });
-  const json = await parseJsonSafely(res);
-  ensureOk(json, res, "Failed to respond to interest");
-  return json;
+  try {
+    return await postJson<any>(
+      "/api/interests/respond",
+      { interestId, status },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "x-client-check": "interest-respond",
+        },
+        cache: "no-store",
+      }
+    );
+  } catch (err) {
+    const msg =
+      err instanceof Error ? err.message : "Failed to respond to interest";
+    throw new Error(msg);
+  }
 }

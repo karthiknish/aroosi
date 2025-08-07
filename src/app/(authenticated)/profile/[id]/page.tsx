@@ -39,9 +39,9 @@ import {
   fetchUserProfile,
 } from "@/lib/profile/userProfileApi";
 import {
-  sendInterestCookie,
-  removeInterestCookie,
-  getSentInterestsCookie,
+  sendInterest,
+  removeInterest,
+  getSentInterests,
 } from "@/lib/interestUtils";
 import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
@@ -223,17 +223,11 @@ export default function ProfileDetailPage() {
     queryKey: ["sentInterests", fromUserId, toUserId],
     queryFn: async () => {
       if (!fromUserId) return [];
-      const res = await getSentInterestsCookie();
-      let payload: unknown = res;
-      if (
-        payload &&
-        typeof payload === "object" &&
-        "success" in payload &&
-        "data" in payload
-      ) {
-        payload = (payload as { data: unknown }).data;
-      }
-      return Array.isArray(payload) ? payload : [];
+      const res = await getSentInterests();
+      const payload: unknown = res && typeof res === "object" && "data" in (res as any)
+        ? (res as { data: unknown }).data
+        : res;
+      return Array.isArray(payload) ? (payload as Interest[]) : [];
     },
     enabled: !!fromUserId,
     retry: false,
@@ -325,7 +319,7 @@ export default function ProfileDetailPage() {
       if (alreadySentInterest) {
         // Optimistically update UI: switch heart back immediately
         setLocalInterest(false);
-        const responseData = await removeInterestCookie(toUserId);
+        const responseData = await removeInterest(toUserId);
         showSuccessToast("Interest withdrawn successfully!");
 
         // Invalidate and refetch related queries
@@ -348,7 +342,7 @@ export default function ProfileDetailPage() {
         // Optimistically update UI: switch heart immediately
         setLocalInterest(true);
         setShowHeartPop(true); // trigger pop animation
-        const responseData = await sendInterestCookie(toUserId);
+        const responseData = await sendInterest(toUserId);
         showSuccessToast("Interest sent successfully!");
 
         // Track interest sent usage
