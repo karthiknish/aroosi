@@ -78,10 +78,10 @@ export default function ConversationList({
     try {
       setLoading(true);
 
-      // Cookie-auth direction: pass empty token to satisfy current signature
-      const result = await getConversations({ token: "" });
-      const conversationsData =
-        (result.conversations as ApiConversation[]) || [];
+      const result = (await getConversations()) as { conversations?: ApiConversation[] } | ApiConversation[];
+      const conversationsData = Array.isArray(result)
+        ? (result as ApiConversation[])
+        : ((result?.conversations as ApiConversation[]) || []);
 
       // Transform conversations to include user info and metadata
       const transformedConversations: ConversationWithUser[] =

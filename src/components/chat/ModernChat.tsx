@@ -31,7 +31,7 @@ function ModernChat({
     scrollRef,
     inputRef,
     toggleBtnRef,
-    pickerRef,
+    // pickerRef not used here; kept local in hook
     state,
     messagesState,
     handlers,
@@ -75,7 +75,7 @@ function ModernChat({
     handleReportUser,
     onFetchOlder,
     onScrollToBottom,
-    setMessageFeedback,
+    // setMessageFeedback managed inside hook
   } = handlers;
 
   return (

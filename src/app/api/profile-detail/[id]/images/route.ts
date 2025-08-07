@@ -116,9 +116,15 @@ export async function GET(req: NextRequest) {
 
       // Get profile images using the resolved user ID
       try {
-        const resolvedUserId = userId as NonNullable<typeof userId> as Id<"users">; // assert non-null after prior 404 guard
+        if (!userId) {
+          // Extra safety net for type checker; logic above already 404s if missing
+          return NextResponse.json(
+            { error: "User or profile not found", requestId },
+            { status: 404 }
+          );
+        }
         images = await convexQueryWithAuth(req, api.images.getProfileImages, {
-          userId: resolvedUserId,
+          userId: userId as Id<"users">,
         } as any);
         if (!Array.isArray(images)) {
           throw new Error("Invalid response format from getProfileImages");

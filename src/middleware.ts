@@ -86,10 +86,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For authenticated client routes, allow if Authorization header exists, otherwise redirect to sign-in
+  // For authenticated client routes, allow if Authorization header OR auth cookies exist, otherwise redirect to sign-in
   if (isAuthenticatedClientRoute(pathname)) {
     const authz = request.headers.get("authorization") || "";
-    if (authz.toLowerCase().startsWith("bearer ")) {
+    const hasAuthHeader = authz.toLowerCase().startsWith("bearer ");
+    const cookies = request.cookies;
+    const hasAuthCookie = Boolean(
+      cookies.get("__Secure-auth-token")?.value ||
+        cookies.get("auth-token")?.value ||
+        cookies.get("__Secure-next-auth.session-token")?.value ||
+        cookies.get("next-auth.session-token")?.value ||
+        cookies.get("__Secure-session-token")?.value ||
+        cookies.get("session-token")?.value ||
+        cookies.get("jwt")?.value
+    );
+    if (hasAuthHeader || hasAuthCookie) {
       return NextResponse.next();
     }
     // No token present: redirect to sign-in with callback for return

@@ -12,6 +12,10 @@ export async function sendMarketingEmail(
     templateKey: string;
     subject?: string;
     body?: string;
+    confirm?: boolean;
+    dryRun?: boolean;
+    maxAudience?: number;
+    params?: Record<string, unknown>;
   }
 ): Promise<ApiResponse<null>> {
   try {

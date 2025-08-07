@@ -35,8 +35,8 @@ export default function MarketingEmailAdminPage() {
   const handleSend = async () => {
     setSending(true);
     try {
-      // Server reads HttpOnly cookies
-      await sendMarketingEmail("", { templateKey });
+      // Server reads HttpOnly cookies; pass confirm flag for live send
+      await sendMarketingEmail("", { templateKey, confirm: true });
     } finally {
       setSending(false);
     }
