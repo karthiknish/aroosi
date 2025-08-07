@@ -1,5 +1,5 @@
 // import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+// Cookie-based Convex Auth is used in server routes; this is a pure UI utility module.
 
 // Message types and interfaces
 export interface MessageData {
@@ -230,25 +230,10 @@ export function getMessageStatus(message: MessageData): MessageStatus {
 export async function getConversationWithUser(
   _currentUserId: string,
   _otherUserId: string,
-  token: string,
+  _token: string
 ): Promise<ConversationData | null> {
-  try {
-    // const conversationId = createConversationId(currentUserId, otherUserId);
-    const client = getConvexClient();
-    if (!client) return null;
-
-    client.setAuth(token);
-
-    // TODO: Implement getConversation when available
-    // const conversation = await client.query(api.messages.getConversation, {
-    //   conversationId
-    // });
-    // return conversation;
-    return null;
-  } catch (error) {
-    console.error("Error fetching conversation:", error);
-    return null;
-  }
+  // Not implemented in UI util; conversations are fetched via server API routes.
+  return null;
 }
 
 // Subscription feature checks

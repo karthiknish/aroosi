@@ -3,23 +3,25 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireSession, devLog } from "@/app/api/_utils/auth";
 import { fetchMutation } from "convex/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId } = session;
 
     // Rate limiting for safety reports
     const rateLimitResult = checkApiRateLimit(
       `safety_report_${userId}`,
       10,
-      60000,
+      60000
     ); // 10 reports per minute
     if (!rateLimitResult.allowed) {
       return errorResponse(
         "Rate limit exceeded. Please wait before reporting again.",
-        429,
+        429
       );
     }
 
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (!reportedUserId || !reason) {
       return errorResponse(
         "Missing required fields: reportedUserId and reason",
-        400,
+        400
       );
     }
 
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
     ) {
       return errorResponse(
         "Description is required for 'other' report type",
-        400,
+        400
       );
     }
 
@@ -71,7 +73,9 @@ export async function POST(request: NextRequest) {
       reportId: result,
     });
   } catch (error) {
-    console.error("Error in safety report API:", error);
+    devLog("error", "safety.report", "unhandled_error", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return errorResponse("Failed to submit report", 500);
   }
 }

@@ -3,19 +3,28 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireSession, devLog } from "@/app/api/_utils/auth";
 import { fetchMutation } from "convex/nextjs";
 
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const correlationId = Math.random().toString(36).slice(2, 10);
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId } = session;
 
     // Rate limiting for unblocking actions
-    const rateLimitResult = checkApiRateLimit(`safety_unblock_${userId}`, 20, 60000); // 20 unblocks per minute
+    const rateLimitResult = checkApiRateLimit(
+      `safety_unblock_${userId}`,
+      20,
+      60000
+    ); // 20 unblocks per minute
     if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded. Please wait before unblocking again.", 429);
+      return errorResponse(
+        "Rate limit exceeded. Please wait before unblocking again.",
+        429
+      );
     }
 
     const body = await request.json();
@@ -34,19 +43,14 @@ export async function POST(request: NextRequest) {
       message: "User unblocked successfully",
       correlationId,
     });
-    console.info("Safety unblock success", {
-      scope: "safety.unblock",
-      type: "success",
+    devLog("info", "safety.unblock", "success", {
       correlationId,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
     return res;
-
   } catch (error) {
-    console.error("Error in safety unblock API:", {
-      scope: "safety.unblock",
-      type: "unhandled_error",
+    devLog("error", "safety.unblock", "unhandled_error", {
       message: error instanceof Error ? error.message : String(error),
       correlationId,
       statusCode: 500,
