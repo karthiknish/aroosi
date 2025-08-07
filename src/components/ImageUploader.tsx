@@ -6,7 +6,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Upload } from "lucide-react";
 import type { ImageType } from "@/types/image";
 import Cropper, { Area } from "react-easy-crop";
-import { Pause, Play, RotateCw, RotateCcw } from "lucide-react";
+import { RotateCw, RotateCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -304,6 +304,7 @@ export function ImageUploader({
       customUploadFile,
       maxFiles,
       fetchImages,
+      onOptimisticUpdate,
     ]
   );
 
@@ -382,44 +383,46 @@ export function ImageUploader({
           </DialogHeader>
           <div className="space-y-6">
             {isClient && imagePreview && (
-              <div className="relative max-h-[60vh] h-[400px] w-full bg-muted/20 rounded-lg border border-border">
-                <Cropper
-                  image={imagePreview}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={aspect}
-                  minZoom={1}
-                  maxZoom={3}
-                  cropShape="rect"
-                  showGrid={true}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={(_, croppedAreaPixels) =>
-                    setCroppedAreaPixels(croppedAreaPixels)
-                  }
-                  style={{
-                    containerStyle: { borderRadius: "0.75rem" },
-                    cropAreaStyle: {
-                      border: "2px solid #BFA67A",
-                      borderRadius: "0.75rem",
-                      boxShadow: "0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,0.12)",
-                      cursor: "move",
-                      background: "rgba(255,255,255,0.02)",
-                    },
-                  }}
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 justify-between">
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant={aspect === 1 ? "default" : "outline"} onClick={() => setAspect(1)} size="sm">1:1</Button>
-                  <Button type="button" variant={aspect === 0.8 ? "default" : "outline"} onClick={() => setAspect(0.8)} size="sm">4:5</Button>
-                  <Button type="button" variant={aspect === 0.75 ? "default" : "outline"} onClick={() => setAspect(0.75)} size="sm">3:4</Button>
+              <>
+                <div className="relative max-h-[60vh] h-[400px] w-full bg-muted/20 rounded-lg border border-border">
+                  <Cropper
+                    image={imagePreview}
+                    crop={crop}
+                    zoom={zoom}
+                    aspect={aspect}
+                    minZoom={1}
+                    maxZoom={3}
+                    cropShape="rect"
+                    showGrid={true}
+                    onCropChange={setCrop}
+                    onZoomChange={setZoom}
+                    onCropComplete={(_, croppedAreaPixels) =>
+                      setCroppedAreaPixels(croppedAreaPixels)
+                    }
+                    style={{
+                      containerStyle: { borderRadius: "0.75rem" },
+                      cropAreaStyle: {
+                        border: "2px solid #BFA67A",
+                        borderRadius: "0.75rem",
+                        boxShadow: "0 0 0 2px #fff, 0 2px 8px rgba(0,0,0,0.12)",
+                        cursor: "move",
+                        background: "rgba(255,255,255,0.02)",
+                      },
+                    }}
+                  />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r - 90 + 360) % 360)}><RotateCcw className="w-3 h-3 mr-1" />Rotate</Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r + 90) % 360)}><RotateCw className="w-3 h-3 mr-1" />Rotate</Button>
+                <div className="flex flex-wrap items-center gap-2 justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant={aspect === 1 ? "default" : "outline"} onClick={() => setAspect(1)} size="sm">1:1</Button>
+                    <Button type="button" variant={aspect === 0.8 ? "default" : "outline"} onClick={() => setAspect(0.8)} size="sm">4:5</Button>
+                    <Button type="button" variant={aspect === 0.75 ? "default" : "outline"} onClick={() => setAspect(0.75)} size="sm">3:4</Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r - 90 + 360) % 360)}><RotateCcw className="w-3 h-3 mr-1" />Rotate</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r + 90) % 360)}><RotateCw className="w-3 h-3 mr-1" />Rotate</Button>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
             <div className="flex justify-end space-x-3 pt-2">
               <Button
