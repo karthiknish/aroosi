@@ -199,15 +199,18 @@ export default function ProfileDetailPage() {
     queryKey: ["interestStatus", fromUserId, toUserId],
     queryFn: async () => {
       if (!fromUserId || !toUserId) return null;
-      const res = await fetch(
-        `/api/interests/status?targetUserId=${encodeURIComponent(String(toUserId))}`,
-        { credentials: "include" }
-      );
-      if (!res.ok) return null;
-      const data = await res.json().catch(() => ({}));
-      return data && typeof data === "object" ? (data as any) : null;
+      const url = `/api/interests/status?targetUserId=${encodeURIComponent(String(toUserId))}`;
+      try {
+        const data = await (await import("@/lib/http/client")).getJson<any>(url, {
+          cache: "no-store",
+          headers: { "x-client-check": "interest-status" },
+        });
+        return data && typeof data === "object" ? (data as any) : null;
+      } catch {
+        return null;
+      }
     },
-    enabled: !!fromUserId && !!toUserId,
+    enabled: !!fromUserId && !!toUserId && isLoaded && isAuthenticated,
     staleTime: 30000,
   });
 

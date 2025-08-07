@@ -77,18 +77,16 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Cache-Control": "max-age=300, stale-while-revalidate=60",
-      };
-      const profileRes = await fetch(`/api/admin/profiles/${id}?nocache=true`, {
-        headers,
-        next: { revalidate: 300 },
+      const { getJson } = await import("@/lib/http/client");
+      const data = await getJson<any>(`/api/admin/profiles/${id}?nocache=true`, {
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "max-age=300, stale-while-revalidate=60",
+          "x-client-check": "admin-profile",
+        },
+        cache: "no-store",
+        next: { revalidate: 300 } as any,
       });
-      if (!profileRes.ok) {
-        throw new Error("Failed to fetch profile");
-      }
-      const data = await profileRes.json();
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -116,21 +114,20 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Cache-Control": "max-age=300, stale-while-revalidate=60",
-      };
-      const imagesRes = await fetch(
+      const { getJson } = await import("@/lib/http/client");
+      const payload = await getJson<any>(
         `/api/profile-detail/${userId}/images?nocache=true`,
         {
-          headers,
-          next: { revalidate: 300 },
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "max-age=300, stale-while-revalidate=60",
+            "x-client-check": "admin-profile-images",
+          },
+          cache: "no-store",
+          next: { revalidate: 300 } as any,
         }
       );
-      if (!imagesRes.ok) {
-        throw new Error("Failed to fetch profile images");
-      }
-      const data = (await imagesRes.json()).userProfileImages as ImageType[];
+      const data = (payload?.userProfileImages ?? []) as ImageType[];
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -155,21 +152,19 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Cache-Control": "max-age=300, stale-while-revalidate=60",
-      };
-      const matchesRes = await fetch(
+      const { getJson } = await import("@/lib/http/client");
+      const data = await getJson<MatchType[]>(
         `/api/admin/profiles/${id}/matches?nocache=true`,
         {
-          headers,
-          next: { revalidate: 300 },
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "max-age=300, stale-while-revalidate=60",
+            "x-client-check": "admin-profile-matches",
+          },
+          cache: "no-store",
+          next: { revalidate: 300 } as any,
         }
       );
-      if (!matchesRes.ok) {
-        throw new Error("Failed to fetch profile matches");
-      }
-      const data = (await matchesRes.json()) as MatchType[];
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -245,22 +240,18 @@ export default function AdminProfileDetailPage() {
 
     try {
       setIsDeleting(true);
-      const headers: Record<string, string> = {};
-      const deleteRes = await fetch(`/api/profile-images`, {
-        method: "DELETE",
-        headers: {
-          ...headers,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId: profile.userId, imageId: storageId }),
-      });
+      const { deleteJson } = await import("@/lib/http/client");
+      const deleteRes = await deleteJson<{ success?: boolean }>(`/api/profile-images`, {
+        headers: { "Content-Type": "application/json", "x-client-check": "admin-delete-image" },
+        body: { userId: profile.userId, imageId: storageId } as any,
+      } as any);
 
-      if (deleteRes.ok) {
+      if (deleteRes && (deleteRes as any).success !== false) {
         showSuccessToast("Image deleted successfully");
         setImageToDelete(null);
         setIsDeleteModalOpen(false);
       } else {
-        console.error("Error deleting image:", deleteRes.statusText);
+        console.error("Error deleting image");
         showErrorToast(null, "Failed to delete image");
       }
     } catch (error) {

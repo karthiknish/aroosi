@@ -31,11 +31,14 @@ export default function UsagePage() {
   const { data: history } = useQuery({
     queryKey: ["usage-history"],
     queryFn: async () => {
-      const response = await fetch("/api/subscription/usage-history", {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch usage history");
-      const json: { data: UsageHistoryItem[] } = await response.json();
+      const { getJson } = await import("@/lib/http/client");
+      const json = await getJson<{ data: UsageHistoryItem[] }>(
+        "/api/subscription/usage-history",
+        {
+          cache: "no-store",
+          headers: { "x-client-check": "usage-history" },
+        }
+      );
       return json.data;
     },
     enabled: true,
