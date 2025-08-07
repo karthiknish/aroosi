@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { convexQueryWithAuth } from "@/lib/convexServer";
+import { requireSession } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import type { Id } from "@convex/_generated/dataModel";
 
 // NOTE: Explicit JSON helper to avoid accidental 404/redirect behavior from wrappers.
-const json = (data: unknown, status = 200) =>
+  const json = (data: unknown, status = 200) =>
   new NextResponse(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
   });
 
-// Initialize Convex client (best-effort)
-const convexClient = getConvexClient();
+// Cookie-auth only
 
 export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -21,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Authentication (cookie-only, app-layer auth)
-    const authCheck = await requireUserToken(request);
+    const authCheck = await requireSession(request);
     if ("errorResponse" in authCheck) {
       // Normalize helper response to plain JSON
       const res = authCheck.errorResponse as NextResponse;
@@ -55,22 +54,8 @@ export async function GET(request: NextRequest) {
       return json({ success: false, error: "Rate limit exceeded", correlationId }, 429);
     }
 
-    const client = convexClient ?? getConvexClient();
-    if (!client) {
-      console.error("Safety blocked convex not configured", {
-        scope: "safety.blocked",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return json({ success: false, error: "Database connection failed", correlationId }, 500);
-    }
-
-    // Resolve Convex identity via server-side function (no client-side JWT to Convex)
-    const currentUser = (await client
-      .query(api.users.getCurrentUserWithProfile, {})
-      .catch((e: unknown) => {
+    const currentUser = (await convexQueryWithAuth(request, api.users.getCurrentUserWithProfile, {}).catch(
+      (e: unknown) => {
         console.error("Safety blocked identity error", {
           scope: "safety.blocked",
           type: "identity_error",
@@ -79,8 +64,9 @@ export async function GET(request: NextRequest) {
           statusCode: 500,
           durationMs: Date.now() - startedAt,
         });
-        return null;
-      })) as { _id: Id<"users"> } | null;
+        return null as any;
+      },
+    )) as { _id: Id<"users"> } | null;
 
     if (!currentUser) {
       console.warn("Safety blocked user not found", {
@@ -94,21 +80,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Get blocked users by explicit user id
-    const blockedUsers = await client
-      .query(api.safety.getBlockedUsers, {
-        blockerUserId: currentUser._id,
-      })
-      .catch((e: unknown) => {
-        console.error("Safety blocked query error", {
-          scope: "safety.blocked",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const blockedUsers = await convexQueryWithAuth(request, api.safety.getBlockedUsers, {
+      blockerUserId: currentUser._id,
+    }).catch((e: unknown) => {
+      console.error("Safety blocked query error", {
+        scope: "safety.blocked",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null as any;
+    });
 
     if (blockedUsers == null) {
       return json({ success: false, error: "Failed to fetch blocked users", correlationId }, 500);

@@ -4,7 +4,7 @@ import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
-import { fetchMutation } from "convex/nextjs";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("Missing required field: blockedUserId", 400);
     }
 
-    await fetchMutation(api.users.unblockUser, {
+    await convexMutationWithAuth(request, api.users.unblockUser, {
       blockerUserId: userId as Id<"users">,
       blockedUserId: blockedUserId as Id<"users">,
     } as any);

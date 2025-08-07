@@ -3,7 +3,7 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
-import { fetchMutation } from "convex/nextjs";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
 export async function POST(request: NextRequest) {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Block the user via server-side mutation helper
-    await fetchMutation(api.users.blockUser, {
+    await convexMutationWithAuth(request, api.users.blockUser, {
       blockerUserId: userId as Id<"users">,
       blockedUserId: blockedUserId as Id<"users">,
     } as any);

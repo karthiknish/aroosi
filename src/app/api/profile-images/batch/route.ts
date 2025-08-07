@@ -1,27 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { Id } from "@convex/_generated/dataModel";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.split(" ")[1] || null;
-    if (!token) {
-      console.warn("Profile images BATCH GET auth failed", {
-        scope: "profile_images.batch_get",
-        type: "auth_failed",
-        correlationId,
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Unauthorized", correlationId },
-        { status: 401 }
-      );
-    }
+    // Cookie/session-only auth; no bearer
 
     const url = new URL(req.url);
     const userIdsParam = url.searchParams.get("userIds");
@@ -43,40 +29,19 @@ export async function GET(req: NextRequest) {
       .split(",")
       .map((id) => id.trim()) as Id<"users">[];
 
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Profile images BATCH GET convex not configured", {
+    const result = await convexQueryWithAuth(req, api.images.batchGetProfileImages, {
+      userIds,
+    }).catch((e: unknown) => {
+      console.error("/api/profile-images/batch GET query error", {
         scope: "profile_images.batch_get",
-        type: "convex_not_configured",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
         correlationId,
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(
-        { error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-    try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
-    } catch {}
-
-    const result = await convex
-      .query(api.images.batchGetProfileImages, {
-        userIds,
-      })
-      .catch((e: unknown) => {
-        console.error("/api/profile-images/batch GET query error", {
-          scope: "profile_images.batch_get",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
-      });
+      return null as any;
+    });
 
     if (!result) {
       return NextResponse.json(

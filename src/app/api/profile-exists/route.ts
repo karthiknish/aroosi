@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { Id } from "@convex/_generated/dataModel";
 
 export async function GET(req: NextRequest) {
@@ -13,15 +13,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const convex = getConvexClient();
-    if (!convex)
-      return NextResponse.json(
-        { success: false, error: "Server" },
-        { status: 500 }
-      );
-
     // Look up user by email (case-insensitive)
-    const user = await convex.query(api.users.getUserByEmail, {
+    const user = await convexQueryWithAuth(req, api.users.getUserByEmail, {
       email: email.toLowerCase(),
     });
 
@@ -33,7 +26,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
+    const profile = await convexQueryWithAuth(req, api.profiles.getProfileByUserId, {
       userId: user._id as Id<"users">,
     });
 

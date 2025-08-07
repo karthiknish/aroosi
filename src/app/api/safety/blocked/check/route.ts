@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { Id } from "@convex/_generated/dataModel";
@@ -26,10 +26,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch current user (authenticated) record with profile
-    const currentUser = await fetchQuery(
-      api.users.getCurrentUserWithProfile,
-      {}
-    ).catch(() => null as any);
+    const currentUser = await convexQueryWithAuth(request, api.users.getCurrentUserWithProfile, {}).catch(
+      () => null as any,
+    );
 
     if (!currentUser || !currentUser.profile) {
       return errorResponse("Current user profile not found", 404);
@@ -37,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     let targetUserId: Id<"users">;
     if (targetProfileId) {
-      const targetProfile = await fetchQuery(api.users.getProfile, {
+      const targetProfile = await convexQueryWithAuth(request, api.users.getProfileOwnerById, {
         id: targetProfileId as Id<"profiles">,
       } as any).catch(() => null as any);
       if (!targetProfile) {
@@ -49,7 +48,7 @@ export async function GET(request: NextRequest) {
       targetUserId = targetUserIdParam as Id<"users">;
     }
 
-    const blockStatus = await fetchQuery(api.safety.getBlockStatus, {
+    const blockStatus = await convexQueryWithAuth(request, api.safety.getBlockStatus, {
       blockerUserId: currentUser._id as Id<"users">,
       blockedUserId: targetUserId,
     } as any).catch(() => null as any);
