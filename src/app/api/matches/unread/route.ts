@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
@@ -50,36 +50,23 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Matches unread GET convex not configured", {
+    const counts = await convexQueryWithAuth(
+      req,
+      api.messages.getUnreadCountsForUser,
+      {
+        userId: userId as Id<"users">,
+      }
+    ).catch((e: unknown) => {
+      console.error("Matches unread GET query error", {
         scope: "matches.unread",
-        type: "convex_not_configured",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
         correlationId,
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(
-        { success: false, error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-
-    const counts = await convex
-      .query(api.messages.getUnreadCountsForUser, {
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Matches unread GET query error", {
-          scope: "matches.unread",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
-      });
+      return null as any;
+    });
 
     if (!counts) {
       return NextResponse.json(

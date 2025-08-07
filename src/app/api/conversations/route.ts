@@ -111,16 +111,18 @@ export async function GET(request: NextRequest) {
     const conversations = await Promise.all(
       (matches || [])
         .filter((m): m is NonNullable<typeof m> => m !== null)
-        .map(async (m: { userId: string; fullName?: string | null; profileImageUrls?: string[] | null; createdAt?: number | null }) => {
-          // Narrowing guard to satisfy TS even inside async mapper
+        .map(async (m) => {
           const match = m as {
             userId: string;
             fullName?: string | null;
             profileImageUrls?: string[] | null;
             createdAt?: number | null;
           };
+          // Narrowing guard to satisfy TS even inside async mapper
 
-          const conversationId = [String(userId), match.userId].sort().join("_");
+          const conversationId = [String(userId), match.userId]
+            .sort()
+            .join("_");
 
           // Get last message for this conversation
           const messages = await convexQueryWithAuth(

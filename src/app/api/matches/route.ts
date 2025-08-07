@@ -17,31 +17,36 @@ export async function GET(req: NextRequest) {
     }
     const { userId } = session;
 
-    // If users.getMyMatches is not exposed, fallback to deriving matches from interests or return empty list.
-    let matches: Array<{ userId: string }> = [];
-    try {
-      const apiMod = await import("@convex/_generated/api");
-      const fn = (apiMod.api.users as any).getMyMatches;
-      if (fn) {
-        matches =
-          (await convexQueryWithAuth(req, fn, {})) as Array<{ userId: string }>;
-      }
-    } catch {
-      matches = [];
-    }
+    // Fetch matches via Convex using cookie/session auth
+    const matches = (await convexQueryWithAuth(
+      req,
+      (await import("@convex/_generated/api")).api.users.getMyMatches,
+      {}
+    ).catch(() => [])) as Array<{
+      userId: string;
+      fullName?: string | null;
+      profileImageUrls?: string[] | null;
+      createdAt?: number | null;
+    }>;
 
     const results = await Promise.all(
-      (matches as Array<{ userId: string }>).map(async (match) => {
+      (matches || []).map(async (match) => {
         try {
+          // If getMyMatches already returned basic fields, just use them
           const publicProfile = await convexQueryWithAuth(
             req,
             (await import("@convex/_generated/api")).api.users
               .getProfileByUserIdPublic,
             { userId: match.userId as Id<"users"> }
-          );
-          if (publicProfile) {
-            return { ...publicProfile, userId: match.userId };
-          }
+          ).catch(() => null as any);
+          const merged = publicProfile || {};
+          return {
+            userId: match.userId,
+            fullName: match.fullName ?? merged.fullName ?? null,
+            profileImageUrls:
+              match.profileImageUrls ?? merged.profileImageUrls ?? [],
+            createdAt: match.createdAt ?? merged.createdAt ?? Date.now(),
+          };
         } catch (e) {
           console.error("[matches API] Error fetching profile", {
             scope: "matches.list",

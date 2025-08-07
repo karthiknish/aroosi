@@ -126,7 +126,11 @@ export async function DELETE(req: NextRequest) {
     const { userId } = adminCheck;
 
     // Strict rate limiting for profile deletion
-    const rateLimitResult = checkApiRateLimit(`admin_delete_profile_${userId}`, 10, 60000); // 10 deletions per minute
+    const rateLimitResult = checkApiRateLimit(
+      `admin_delete_profile_${userId}`,
+      10,
+      60000
+    ); // 10 deletions per minute
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
     }
@@ -154,21 +158,24 @@ export async function DELETE(req: NextRequest) {
     //   targetProfileId: body.id
     // }, req);
 
-    console.log(`Admin ${userId} attempting to delete profile: ${body.id}`);
+    // dev log only
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.log(`Admin ${userId} attempting to delete profile: ${body.id}`);
+    }
 
     const result = await fetchMutation(api.users.deleteProfile, {
       id: body.id,
     } as any).catch(() => null as any);
 
     // Validate deletion result
-    if (!result || typeof result !== 'object') {
+    if (!result || typeof result !== "object") {
       console.error("Invalid deletion result from Convex:", result);
       return errorResponse("Profile deletion failed", 500);
     }
 
     devLog("info", "admin.profiles", "deleted", { profileId: body.id, userId });
     return successResponse(result);
-
   } catch (error) {
     devLog("error", "admin.profiles", "delete_unhandled_error", { message: error instanceof Error ? error.message : String(error) });
     

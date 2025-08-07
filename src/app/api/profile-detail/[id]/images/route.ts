@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
       // Get profile images using the resolved user ID
       try {
         images = await convexQueryWithAuth(req, api.images.getProfileImages, {
-          userId,
+          userId: userId as Id<"users">,
         } as any);
         if (!Array.isArray(images)) {
           throw new Error("Invalid response format from getProfileImages");

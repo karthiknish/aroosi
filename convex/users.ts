@@ -133,6 +133,235 @@ export const getCurrentUserWithProfile = query({
 });
 
 /**
+ * List current user's matches using cookie/session auth (Convex Auth).
+ * Returns minimal info needed by callers:
+ * [{ userId, fullName?, profileImageUrls?, createdAt? }]
+ */
+export const getMyMatches = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [] as Array<{
+      userId: Id<"users">;
+      fullName?: string | null;
+      profileImageUrls?: string[] | null;
+      createdAt?: number | null;
+    }>;
+
+    // Resolve current user record via email
+    const email = (identity as any).email as string | undefined;
+    let me: any = null;
+    if (email && email.trim()) {
+      me = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email.trim()))
+        .first();
+    }
+    if (!me) return [];
+
+    const myId = me._id as Id<"users">;
+
+    // Collect matches where I'm either user1 or user2
+    const asUser1 = await ctx.db
+      .query("matches")
+      .withIndex("by_user1", (q) => q.eq("user1Id", myId))
+      .collect();
+    const asUser2 = await ctx.db
+      .query("matches")
+      .withIndex("by_user2", (q) => q.eq("user2Id", myId))
+      .collect();
+
+    const rows = [...asUser1, ...asUser2].filter((m: any) => m?.status === "matched");
+
+    // Map to the other participant and enrich with profile basics
+    const results: Array<{
+      userId: Id<"users">;
+      fullName?: string | null;
+      profileImageUrls?: string[] | null;
+      createdAt?: number | null;
+    }> = [];
+
+    for (const m of rows) {
+      const otherUserId = (m.user1Id === myId ? m.user2Id : m.user1Id) as Id<"users">;
+      let fullName: string | null = null;
+      let profileImageUrls: string[] | null = null;
+      try {
+        const profile = await ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", otherUserId))
+          .first();
+        if (profile) {
+          fullName = (profile as any).fullName ?? null;
+          profileImageUrls = ((profile as any).profileImageUrls ?? null) as string[] | null;
+        }
+      } catch {}
+
+      results.push({
+        userId: otherUserId,
+        fullName,
+        profileImageUrls,
+        createdAt: (m as any)?.createdAt ?? null,
+      });
+    }
+
+    return results;
+  },
+});
+
+/**
+ * Admin: list profiles with simple filtering and pagination (naive scan).
+ */
+export const adminListProfiles = query({
+  args: {
+    search: v.optional(v.string()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+    sortBy: v.optional(v.string()),
+    sortDir: v.optional(v.string()),
+    banned: v.optional(v.string()),
+    plan: v.optional(v.string()),
+    isProfileComplete: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query("profiles").collect();
+    let profiles = all as any[];
+    const term = (args.search ?? "").toLowerCase().trim();
+    if (term) {
+      profiles = profiles.filter((p) =>
+        String(p.fullName ?? "").toLowerCase().includes(term) ||
+        String(p.aboutMe ?? "").toLowerCase().includes(term)
+      );
+    }
+    // Enrich banned flag by joining users
+    const enriched = await Promise.all(
+      profiles.map(async (p) => {
+        const user = await ctx.db.get(p.userId as Id<"users">);
+        return { ...p, banned: Boolean((user as any)?.banned), subscriptionPlan: (user as any)?.subscriptionPlan };
+      })
+    );
+    let filtered = enriched;
+    if (args.banned === "true") filtered = filtered.filter((p) => p.banned === true);
+    if (args.banned === "false") filtered = filtered.filter((p) => p.banned !== true);
+    if (args.isProfileComplete === "true") filtered = filtered.filter((p) => p.isProfileComplete === true);
+    if (args.isProfileComplete === "false") filtered = filtered.filter((p) => p.isProfileComplete !== true);
+    // simple sort by createdAt or subscriptionPlan or banned
+    const sortBy = (args.sortBy as string) || "createdAt";
+    const dir = (args.sortDir as string) === "asc" ? 1 : -1;
+    filtered.sort((a: any, b: any) => {
+      const av = a?.[sortBy] ?? 0;
+      const bv = b?.[sortBy] ?? 0;
+      return av === bv ? 0 : av > bv ? dir : -dir;
+    });
+    const pageSize = Math.min(Math.max(args.pageSize ?? 10, 1), 100);
+    const page = Math.max(args.page ?? 1, 1);
+    const start = (page - 1) * pageSize;
+    const pageItems = filtered.slice(start, start + pageSize);
+    return { profiles: pageItems, total: filtered.length, page, pageSize } as const;
+  },
+});
+
+/**
+ * Admin: get profile by id (public fields).
+ */
+export const getProfileById = query({
+  args: { id: v.id("profiles") },
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
+  },
+});
+
+/**
+ * Admin: update profile by id with a whitelist of fields.
+ */
+export const adminUpdateProfile = mutation({
+  args: {
+    id: v.id("profiles"),
+    updates: v.object({
+      fullName: v.optional(v.string()),
+      aboutMe: v.optional(v.string()),
+      isProfileComplete: v.optional(v.boolean()),
+      motherTongue: v.optional(v.string()),
+      religion: v.optional(v.string()),
+      ethnicity: v.optional(v.string()),
+      hideFromFreeUsers: v.optional(v.boolean()),
+      subscriptionPlan: v.optional(v.string()),
+      subscriptionExpiresAt: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, { id, updates }) => {
+    await ctx.db.patch(id as Id<"profiles">, { ...(updates as any), updatedAt: Date.now() } as any);
+    return { ok: true } as const;
+  },
+});
+
+/**
+ * Admin: delete a profile by id.
+ */
+export const deleteProfile = mutation({
+  args: { id: v.id("profiles") },
+  handler: async (ctx, { id }) => {
+    const existing = await ctx.db.get(id);
+    if (!existing) return { ok: true, deleted: false } as const;
+    await ctx.db.delete(id);
+    return { ok: true, deleted: true } as const;
+  },
+});
+
+/**
+ * Admin: reorder profile image ids.
+ */
+export const adminUpdateProfileImageOrder = mutation({
+  args: {
+    profileId: v.id("profiles"),
+    imageIds: v.array(v.id("_storage")),
+  },
+  handler: async (ctx, { profileId, imageIds }) => {
+    await ctx.db.patch(profileId as Id<"profiles">, { profileImageIds: imageIds as any, updatedAt: Date.now() } as any);
+    return { ok: true } as const;
+  },
+});
+
+/**
+ * Admin: ban/unban a user by userId.
+ */
+export const banUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId as Id<"users">, { banned: true } as any);
+    return { ok: true } as const;
+  },
+});
+
+export const unbanUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId as Id<"users">, { banned: false } as any);
+    return { ok: true } as const;
+  },
+});
+
+/**
+ * Admin: get matches for a profile by profileId.
+ */
+export const getMatchesForProfile = query({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, { profileId }) => {
+    const profile = await ctx.db.get(profileId);
+    if (!profile) return [] as any[];
+    const userId = (profile as any).userId as Id<"users">;
+    const a = await ctx.db
+      .query("matches")
+      .withIndex("by_user1", (q) => q.eq("user1Id", userId))
+      .collect();
+    const b = await ctx.db
+      .query("matches")
+      .withIndex("by_user2", (q) => q.eq("user2Id", userId))
+      .collect();
+    return [...a, ...b];
+  },
+});
+
+/**
  * Minimal viable public profile search
  * This is a naive scan; for production use, add appropriate indexes/filters.
  */
