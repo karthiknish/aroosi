@@ -29,8 +29,8 @@ jest.mock("@/lib/ui/toast", () => ({
   showSuccessToast: jest.fn(),
 }));
 
-// Spy on updateImageOrder to validate storageId-only persistence and error flows
-const updateImageOrderSpy = jest.spyOn(imageUtil, "updateImageOrder");
+// Spy on updateImageOrder via wrapper to avoid redefining property errors
+const updateImageOrderSpy = jest.spyOn(imageUtil.imageApi, "updateImageOrder");
 
 type Img = {
   id?: string;

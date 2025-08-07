@@ -8,7 +8,8 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { HeroOnboarding } from "@/components/home/HeroOnboarding";
-import { useAuthContext } from "@/components/AuthProvider";
+// Use the test-friendly wrapper hook so tests can mock it easily
+import { useAuth } from "@/hooks/useAuth";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -36,7 +37,7 @@ const fadeIn = {
 } as const;
 
 function OnboardingSlot() {
-  const { isLoaded, isAuthenticated } = useAuthContext();
+  const { isLoaded, isAuthenticated } = useAuth();
   if (!isLoaded) return null;
   if (isAuthenticated) return null;
   return (
