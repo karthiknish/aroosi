@@ -53,6 +53,34 @@ function envCookieDiagnostics(request: NextRequest) {
   const hasRefresh = !!readCookie(request, "refresh-token");
   const hasPublic = !!readCookie(request, "authTokenPublic");
 
+  // Additional derived diagnostics for troubleshooting wrong env setup
+  const currentHostHint =
+    process.env.NEXT_PUBLIC_APP_HOST ||
+    process.env.VERCEL_URL ||
+    "(unknown)";
+
+  // Whether COOKIE_DOMAIN appears compatible with current host
+  let domainMatchHint: "ok" | "mismatch" | "unset" = "unset";
+  if (COOKIE_DOMAIN === "(unset)") {
+    domainMatchHint = "unset";
+  } else {
+    const cd = String(COOKIE_DOMAIN).trim();
+    if (cd.startsWith(".")) {
+      domainMatchHint = (`.${host}`).endsWith(cd) ? "ok" : "mismatch";
+    } else {
+      // host-only cookie domain provided; check exact match
+      domainMatchHint = host === cd ? "ok" : "mismatch";
+    }
+  }
+
+  // SameSite=None must have Secure
+  const requiresSecureForNone =
+    (String(COOKIE_SAMESITE).toLowerCase() === "none") && (COOKIE_SECURE !== "1" && !String(COOKIE_SECURE).startsWith("1"));
+
+  // Suggest if no Cookie header present
+  const headerCookie = request.headers.get("cookie") || "";
+  const noCookieHeader = headerCookie.length === 0;
+
   return {
     host,
     protocol: proto,
@@ -66,7 +94,14 @@ function envCookieDiagnostics(request: NextRequest) {
       refreshToken: hasRefresh,
       authTokenPublic: hasPublic,
     },
-    headerCookieLength: (request.headers.get("cookie") || "").length,
+    headerCookieLength: headerCookie.length,
+    currentHostHint,
+    domainMatchHint,
+    requiresSecureForNone,
+    sameOrigin: url.origin,
+    referer: request.headers.get("referer") || null,
+    userAgent: request.headers.get("user-agent") || null,
+    hasCookieHeader: !noCookieHeader,
   };
 }
 
@@ -99,37 +134,46 @@ export async function GET(request: NextRequest) {
       const likelyIssues: string[] = [];
 
       // Heuristics for common misconfigurations
-      if (diag.COOKIE_SAMESITE.toLowerCase().includes("none")) {
-        if (diag.secureEffective !== "1") {
+      if (String(diag.COOKIE_SAMESITE).toLowerCase().includes("none")) {
+        if (diag.secureEffective !== "1" && String(diag.COOKIE_SECURE) !== "1") {
           likelyIssues.push(
             "COOKIE_SAMESITE=None requires Secure cookies; set COOKIE_SECURE=1 and use HTTPS."
           );
         }
       }
+
+      // Domain-Host compatibility check
       if (diag.COOKIE_DOMAIN !== "(unset)") {
-        if (
-          typeof diag.COOKIE_DOMAIN === "string" &&
-          diag.COOKIE_DOMAIN.startsWith(".") &&
-          !`.${diag.host}`.endsWith(diag.COOKIE_DOMAIN)
-        ) {
+        if (diag.domainMatchHint === "mismatch") {
           likelyIssues.push(
-            `COOKIE_DOMAIN=${diag.COOKIE_DOMAIN} does not match current host ${diag.host}. Remove it for host-only or set it to the apex domain.`
+            `COOKIE_DOMAIN=${diag.COOKIE_DOMAIN} may not match current host ${diag.host}. On previews (e.g., vercel.app) leave COOKIE_DOMAIN empty for host-only cookies.`
           );
         }
       } else {
-        if (
-          !diag.cookiesPresent.authToken &&
-          !diag.cookiesPresent.refreshToken
-        ) {
+        if (!diag.cookiesPresent.authToken && !diag.cookiesPresent.refreshToken) {
           likelyIssues.push(
-            "If frontend and API are on different subdomains, set COOKIE_DOMAIN to your apex domain (e.g., .aroosi.app)."
+            "If frontend and API are on different subdomains, set COOKIE_DOMAIN to your apex domain (e.g., .aroosi.app) and use SameSite=None; Secure."
           );
         }
       }
 
+      // Missing Cookie header
       if (diag.headerCookieLength === 0) {
         likelyIssues.push(
-          "No Cookie header present. Ensure client fetch uses credentials: 'include' and same-origin paths (or correct CORS)."
+          "No Cookie header present. Ensure client fetch uses credentials: 'include' and same-origin paths (or set CORS with Access-Control-Allow-Credentials for cross-site)."
+        );
+      }
+
+      // Additional actionable hints
+      if (diag.referer && !diag.referer.startsWith(`${diag.sameOrigin}/`)) {
+        likelyIssues.push(
+          `Cross-origin navigation detected (referer=${diag.referer}). SameSite=Lax will not attach cookies to some cross-site contexts. Prefer same-origin calls or set COOKIE_SAMESITE=None with Secure and proper CORS.`
+        );
+      }
+
+      if (diag.currentHostHint !== "(unknown)" && diag.domainMatchHint === "mismatch") {
+        likelyIssues.push(
+          `Current host hint=${diag.currentHostHint}. Align COOKIE_DOMAIN or deploy to matching domain to allow cookies.`
         );
       }
 
