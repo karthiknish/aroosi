@@ -2,10 +2,10 @@ import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchQuery } from "convex/nextjs";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { z } from "zod";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 
 type Gender = "any" | "male" | "female" | "other";
 
@@ -43,8 +43,7 @@ export async function GET(request: NextRequest) {
         }
       })();
 
-    // Authentication via centralized Authorization: Bearer <accessToken>
-    // Keep local bearer extraction for subscription limiter usage below.
+    // Cookie-session auth; keep bearer extraction only if a limiter depends on it
     const authHeader =
       request.headers.get("authorization") ||
       request.headers.get("Authorization") ||
@@ -141,19 +140,31 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const result = await fetchQuery(api.users.searchPublicProfiles, {
-      city,
-      country,
-      ageMin,
-      ageMax,
-      preferredGender,
-      page,
-      pageSize,
-      ethnicity,
-      motherTongue,
-      language,
-      correlationId: cid,
-    } as any);
+    // Convex query via cookie-aware server helper
+    const result = await convexQueryWithAuth(
+      request,
+      (await import("@convex/_generated/api")).api.users.searchPublicProfiles,
+      {
+        city,
+        country,
+        ageMin,
+        ageMax,
+        preferredGender,
+        page,
+        pageSize,
+        ethnicity,
+        motherTongue,
+        language,
+        correlationId: cid,
+      }
+    ).catch((e: unknown) => {
+      console.error("searchPublicProfiles failed", {
+        scope: "search",
+        correlationId: cid,
+        message: e instanceof Error ? e.message : String(e),
+      });
+      return null;
+    });
 
     if (!result || typeof result !== "object") {
       console.error("Invalid search results from Convex:", result, {

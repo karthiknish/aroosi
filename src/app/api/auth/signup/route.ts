@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
-import { signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
+import { convex } from "@/lib/convexClient";
 
 /**
  * Utility: normalize Gmail for comparison-only throttling
@@ -181,13 +180,13 @@ export async function POST(request: NextRequest) {
     const WINDOW_MS = 30 * 1000;
     const MAX_ATTEMPTS = 8;
 
-    const convex = getConvexClient();
-    if (!convex) {
+    // Use singleton convex client; ensure NEXT_PUBLIC_CONVEX_URL is configured
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
       console.error("Signup failure", {
         scope: "auth.signup",
         correlationId,
         type: "config_error",
-        message: "Convex client not configured",
+        message: "NEXT_PUBLIC_CONVEX_URL is not set",
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
@@ -428,12 +427,13 @@ export async function POST(request: NextRequest) {
       ),
     };
 
-    // Create user and profile atomically
+    // Create user and profile atomically (Convex action schema excludes hashedPassword/fullName)
     const result = await convex.action(api.users.createUserAndProfileViaSignup, {
       email: normalizedEmail,
-      hashedPassword,
-      fullName,
-      profile: normalizedProfile,
+      // hashedPassword is managed by server-side auth; exclude from this action
+      name: fullName,
+      picture: undefined,
+      googleId: undefined,
     });
 
     const userIdOk = !!result?.userId;
@@ -448,20 +448,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create user", correlationId }, { status: 500 });
     }
 
-    // Issue tokens (embed Convex userId for subject-based Convex auth)
-    const convexUserId = result.userId.toString();
-    const accessToken = await signAccessJWT({
-      userId: convexUserId,
-      email: normalizedEmail,
-      role: "user",
-    });
-    const refreshToken = await signRefreshJWT({
-      userId: convexUserId,
-      email: normalizedEmail,
-      role: "user",
-    });
-
-    // Return tokens in body only (pure token-based auth)
+    // Cookie-session model: do not issue tokens here.
     console.info("Signup success", {
       scope: "auth.signup",
       correlationId,
@@ -474,9 +461,6 @@ export async function POST(request: NextRequest) {
       {
         status: "success",
         message: "Account created successfully",
-        token: accessToken, // backward compatibility field
-        accessToken,
-        refreshToken,
         user: {
           id: result.userId,
           email: normalizedEmail,
@@ -484,7 +468,6 @@ export async function POST(request: NextRequest) {
         },
         isNewUser: true,
         redirectTo: "/success",
-        refreshed: false,
         correlationId,
       },
       { headers: { "Cache-Control": "no-store" } }

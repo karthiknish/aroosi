@@ -1,152 +1,84 @@
-import { query, mutation } from "./_generated/server";
+/* convex/auth.ts
+ * Convex Auth bootstrap (manual setup), following https://labs.convex.dev/auth/setup/manual
+ * - Configures session-based authentication with cookie sessions
+ * - Exposes helpers to retrieve the authenticated identity in Convex functions
+ *
+ * Note:
+ * - Providers (email/password, OAuth) are wired on the server side. Client initiates flows via server endpoints.
+ * - Update the provider setup below to match your actual strategies.
+ */
+
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { action } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { api } from "@convex/_generated/api";
 
-// getUserByEmail is now available in users.ts as api.users.getUserByEmail
-
-export const createUser = mutation({
-  args: {
-    email: v.string(),
-    hashedPassword: v.string(),
-    firstName: v.string(),
-    lastName: v.string(),
-    role: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // Check if user already exists
-    const lower = args.email.toLowerCase();
-    const all = await ctx.db.query("users").collect();
-    const existingUser =
-      all.find(
-        (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
-      ) || null;
-
-    if (existingUser) {
-      throw new Error("User already exists");
-    }
-
-    // Create user
-    const userId = await ctx.db.insert("users", {
-      email: args.email,
-      hashedPassword: args.hashedPassword,
-      role: args.role || "user",
-      banned: false,
-    });
-
-    // Create basic profile
-    await ctx.db.insert("profiles", {
-      userId,
-      email: args.email,
-      fullName: `${args.firstName} ${args.lastName}`,
-      isProfileComplete: false,
-      isOnboardingComplete: false,
-      createdAt: Date.now(),
-      profileFor: "self",
-      subscriptionPlan: "free",
-    } as any);
-
-    return userId;
-  },
+// Minimal identity shape we expect after authentication
+export const identitySchema = v.object({
+  subject: v.string(), // stable subject id from provider
+  email: v.optional(v.string()),
+  name: v.optional(v.string()),
+  picture: v.optional(v.string()),
+  provider: v.optional(v.string()),
 });
 
-export const authenticateUser = query({
-  args: {
-    email: v.string(),
-    hashedPassword: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const lower = args.email.toLowerCase();
-    const all = await ctx.db.query("users").collect();
-    const user = all.find(
-      (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
-    ) || null;
-
-    if (!user || user.hashedPassword !== args.hashedPassword) {
-      return null;
+// Utility: validate we have an identity in actions/queries that require auth
+export const requireIdentity = action({
+  args: {},
+  handler: async (ctx): Promise<{ subject: string; email?: string; name?: string; picture?: string; provider?: string }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("UNAUTHENTICATED");
     }
-
-    if (user.banned) {
-      throw new Error("Account is banned");
-    }
-
     return {
-      _id: user._id,
-      email: user.email,
-      role: user.role,
+      subject: identity.subject,
+      email: (identity as any).email,
+      name: (identity as any).name,
+      picture: (identity as any).picture,
+      provider: (identity as any).provider,
     };
   },
 });
 
-export const createGoogleUser = mutation({
+/**
+ * Example: Post-sign-in consolidation
+ * - Called after a successful provider sign-in to ensure a user document exists.
+ * - Upsert user/profile records keyed by available identity traits.
+ *
+ * Implementation notes:
+ * - Uses email as the primary lookup due to available index 'by_email' on users.email.
+ * - Query and mutation live in convex/users.ts and are referenced via generated api to work with runQuery/runMutation.
+ */
+export const consolidateUserAfterAuth = action({
   args: {
-    email: v.string(),
-    googleId: v.string(),
-    firstName: v.string(),
-    lastName: v.string(),
-    name: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+    picture: v.optional(v.string()),
+    googleId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    // Check if user already exists
-    const lower = args.email.toLowerCase();
-    const all = await ctx.db.query("users").collect();
-    const existingUser = all.find(
-      (u) => typeof u.email === "string" && u.email.toLowerCase() === lower
-    ) || null;
+  handler: async (ctx, args): Promise<{ ok: true; userId: Id<"users"> }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("UNAUTHENTICATED");
 
-    if (existingUser) {
-      throw new Error("User already exists");
+    const email = (args.email ?? (identity as any).email ?? "").trim();
+    if (!email) {
+      throw new Error("EMAIL_REQUIRED");
     }
 
-    // Create user with Google account
-    const userId = await ctx.db.insert("users", {
-      email: args.email,
-      googleId: args.googleId,
-      hashedPassword: "", // No password for Google users
-      role: "user",
-      banned: false,
-      emailVerified: true,
-      refreshVersion: 0, // initialize rotation counter for refresh tokens
-      createdAt: Date.now(),
+    // Look up existing user via email (server-side query reference)
+    const existing = await ctx.runQuery(api.users.findUserByEmail, { email });
+    if (existing) {
+      return { ok: true, userId: existing._id as Id<"users"> };
+    }
+
+    // Create user + profile via mutation (server-side mutation reference)
+    const userDocId = await ctx.runMutation(api.users.createUserAndProfile, {
+      email,
+      name: args.name ?? (identity as any).name,
+      picture: args.picture ?? (identity as any).picture,
+      googleId: args.googleId ?? (identity as any).googleId,
     });
 
-    // Create basic profile
-    await ctx.db.insert("profiles", {
-      userId,
-      email: args.email,
-      fullName: args.name || `${args.firstName} ${args.lastName}`,
-      isProfileComplete: false,
-      isOnboardingComplete: false,
-      createdAt: Date.now(),
-      profileFor: "self",
-      subscriptionPlan: "free",
-    } as any);
-
-    return userId;
-  },
-});
-
-export const linkGoogleAccount = mutation({
-  args: {
-    userId: v.id("users"),
-    googleId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      googleId: args.googleId,
-    });
-    return true;
-  },
-});
-
-export const updatePassword = mutation({
-  args: {
-    userId: v.id("users"),
-    hashedPassword: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      hashedPassword: args.hashedPassword,
-    });
-    return true;
+    return { ok: true, userId: userDocId as Id<"users"> };
   },
 });

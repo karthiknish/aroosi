@@ -5,6 +5,8 @@ import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
+import { ConvexProvider } from "convex/react";
+import { convex } from "@/lib/convexClient";
 
 export const viewport = "width=device-width, initial-scale=1";
 
@@ -118,9 +120,12 @@ export default function RootLayout({
         </a>
 
         <ReactQueryProvider>
-          <AuthProvider>
-            <ClientRoot>{children}</ClientRoot>
-          </AuthProvider>
+          {/* ConvexProvider enables client-side useQuery/useMutation with cookie sessions */}
+          <ConvexProvider client={convex}>
+            <AuthProvider>
+              <ClientRoot>{children}</ClientRoot>
+            </AuthProvider>
+          </ConvexProvider>
         </ReactQueryProvider>
 
         {/* OneSignal SDK v16 */}

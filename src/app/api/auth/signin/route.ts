@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 
@@ -305,18 +304,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate access & refresh tokens embedding Convex userId for subject-based Convex auth
-    const convexUserId = user._id.toString();
-    const accessToken = await signAccessJWT({
-      userId: convexUserId,
-      email: user.email,
-      role: user.role || "user",
-    });
-    const refreshToken = await signRefreshJWT({
-      userId: convexUserId,
-      email: user.email,
-      role: user.role || "user",
-    });
+    // Cookie-session model: do not issue access/refresh tokens here
+    const accessToken = undefined;
+    const refreshToken = undefined;
 
     // Fetch profile for gating flags (by userId)
     const profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
@@ -344,15 +334,12 @@ export async function POST(request: NextRequest) {
         ? "/search"
         : "/profile/create";
 
-    // Unified response shape with Set-Cookie via centralized helper for multi-domain support
+    // Cookie-session model: rely on server-auth cookie; do not return tokens
     const response = NextResponse.json(
       {
         status: "ok",
         message: "Signed in successfully",
         code: "SIGNED_IN",
-        token: accessToken, // backward compatibility field
-        accessToken,
-        refreshToken,
         user: {
           id: user._id,
           email: user.email,

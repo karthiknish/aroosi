@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
 import { useRouter } from "next/navigation";
-import { getJson, tokenStorage } from "@/lib/http/client";
+import { getJson } from "@/lib/http/client";
 
 export default function SignInPage() {
   const {
@@ -42,10 +42,16 @@ export default function SignInPage() {
   // Rely on AuthProvider hydration state and token presence, then redirect once.
   React.useEffect(() => {
     if (!isLoaded || !isTrulyAuthenticated) return;
-    const access = tokenStorage.access;
-    if (!access) return;
-    // Trust AuthProvider + tokenStorage; avoid extra verification calls here.
-    router.push(finalRedirect);
+    // With Convex cookie sessions, avoid token checks and let server-side cookies drive identity.
+    // Optionally confirm once and then redirect.
+    (async () => {
+      try {
+        await getJson("/api/auth/me", { correlationId: "signin-redirect" });
+      } catch {
+        // non-fatal
+      }
+      router.push(finalRedirect);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isTrulyAuthenticated, finalRedirect]);
 

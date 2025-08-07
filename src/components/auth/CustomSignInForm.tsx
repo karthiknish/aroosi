@@ -41,31 +41,12 @@ export default function CustomSignInForm({
 
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-  // Ensure tokenStorage has access token before redirecting to avoid immediate 401 on /api/auth/me
-  const waitForAccessToken = async (maxMs = 700): Promise<boolean> => {
-    try {
-      const { tokenStorage } = await import("@/lib/http/client");
-      const start = Date.now();
-      if (tokenStorage.access && tokenStorage.access.trim().length > 0)
-        return true;
-      while (Date.now() - start < maxMs) {
-        // eslint-disable-next-line no-await-in-loop
-        await sleep(100);
-        if (tokenStorage.access && tokenStorage.access.trim().length > 0)
-          return true;
-      }
-      return Boolean(tokenStorage.access);
-    } catch {
-      return false;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // 1) Perform sign in (stores tokens and triggers token-changed)
+      // 1) Perform sign in (cookie-based session)
       const result = await signIn(email, password);
       if (!result.success) {
         const msg = result.error || "Sign in failed";
@@ -74,15 +55,11 @@ export default function CustomSignInForm({
         setIsLoading(false);
         return;
       }
-
-      // 2) Ensure access token is available to centralized client to avoid /api/auth/me 401 flicker
-      await waitForAccessToken(700);
-
-      // 3) Hydration retry loop to cover 404 user-not-found immediately after sign-in
-      // Backoffs: 150ms, 300ms, 750ms (total ~1.2s)
+  
+      // 2) Hydration retry loop to cover propagation delay after sign-in
       const backoffs = [0, 150, 300, 750];
       let hydratedUser: any = null;
-
+  
       for (let i = 0; i < backoffs.length; i++) {
         if (backoffs[i] > 0) {
           await sleep(backoffs[i]);
@@ -92,14 +69,13 @@ export default function CustomSignInForm({
         } catch {
           // ignore, allow next retry
         }
-
-        // Optional: warm up /api/auth/me (non-blocking)
+  
+        // Optional: warm up /api/auth/me (non-blocking, relies on cookies)
         void fetch("/api/auth/me", {
           method: "GET",
           headers: { accept: "application/json", "cache-control": "no-store" },
         }).catch(() => {});
-
-        // Read from context after refreshUser returns
+  
         hydratedUser = (user as any) ?? null;
         if (
           hydratedUser &&
@@ -110,18 +86,8 @@ export default function CustomSignInForm({
           break;
         }
       }
-
-      const hasProfile =
-        !!hydratedUser?.profile?.id || !!hydratedUser?.profile?._id;
-
-      if (!hasProfile) {
-        // Final fallback: proceed to redirect (downstream guards can handle creating a profile)
-        // or surface a friendly message and stay on page. Choose navigation by default.
-        handleOnboardingComplete();
-        setIsLoading(false);
-        return;
-      }
-
+  
+      // Proceed regardless; downstream guards handle profile completion
       handleOnboardingComplete();
       setIsLoading(false);
     } catch (err) {

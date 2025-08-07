@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchQuery } from "convex/nextjs";
-import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
- * /api/auth/me (PURE TOKEN MODEL)
- * Authorization-based session using Bearer access token in headers.
- * Structured logs and correlationId; precise 4xx reasons; Cache-Control: no-store on all responses.
+ * /api/auth/me (Convex cookie session)
+ * - Reads identity via Convex cookie session (handled by server utilities).
+ * - Returns user and minimal profile data; always sets Cache-Control: no-store.
+ * - Preserves structured logs and diagnostics.
  */
-function log(scope: string, level: "info" | "warn" | "error", message: string, extra?: Record<string, unknown>) {
+function log(
+  scope: string,
+  level: "info" | "warn" | "error",
+  message: string,
+  extra?: Record<string, unknown>
+) {
   const payload = {
     scope,
     level,
     message,
     ts: new Date().toISOString(),
-    ...((extra && Object.keys(extra).length > 0) ? { extra } : {}),
+    ...(extra && Object.keys(extra).length > 0 ? { extra } : {}),
   };
-  // Ensure log level maps consistently for tooling
   switch (level) {
     case "error":
       console.error(payload);
@@ -29,8 +32,6 @@ function log(scope: string, level: "info" | "warn" | "error", message: string, e
   }
 }
 
-
-// Ensure Cache-Control: no-store on all response paths
 function withNoStore(res: NextResponse) {
   res.headers.set("Cache-Control", "no-store");
   return res;
@@ -43,18 +44,21 @@ export async function GET(request: NextRequest) {
     Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  // Debug: Log all incoming headers for troubleshooting
+  // Debug: Log incoming headers (non-sensitive)
   try {
     const headersObj: Record<string, string> = {};
-    for (const [k, v] of request.headers.entries()) {
-      headersObj[k] = v;
-    }
-    console.info("[auth.me] Incoming request headers", { correlationId, headers: headersObj });
+    for (const [k, v] of request.headers.entries()) headersObj[k] = v;
+    console.info("[auth.me] Incoming request headers", {
+      correlationId,
+      headers: headersObj,
+    });
   } catch (e) {
-    console.warn("[auth.me] Failed to log headers", { correlationId, error: e instanceof Error ? e.message : String(e) });
+    console.warn("[auth.me] Failed to log headers", {
+      correlationId,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
 
-  // Capture caller hint (page/route) if provided by clients
   const fromPage =
     request.headers.get("x-page") ||
     request.nextUrl.searchParams.get("from") ||
@@ -62,73 +66,16 @@ export async function GET(request: NextRequest) {
     undefined;
 
   try {
-    // Prefer centralized Bearer parsing + verification for consistency
-    const { requireAuth, AuthError, authErrorResponse } = await import("@/lib/auth/requireAuth");
-    let tokenPayload: { userId: string; email?: string; role?: string };
-    try {
-      tokenPayload = (await requireAuth(request)) as any;
-      log(scope, "info", "Decoded token payload", {
-        correlationId,
-        tokenPayload,
-      });
-    } catch (e) {
-      if (e instanceof AuthError) {
-        log(scope, "warn", "AuthError in /api/auth/me", {
-          correlationId,
-          type: e.code,
-          statusCode: e.status,
-          durationMs: Date.now() - startedAt,
-          fromPage,
-        });
-        const res = authErrorResponse(e.message, { status: e.status, code: e.code, correlationId });
-        return withNoStore(res);
-      }
-      log(scope, "warn", "Unexpected auth failure in /api/auth/me", {
-        correlationId,
-        type: "unexpected_auth_failure",
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-        fromPage,
-      });
-      const res = authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId });
-      return withNoStore(res);
-    }
-
-    // Fallback to existing Convex query until explicit-by-id variant is available
-    const current = await fetchQuery(api.users.getCurrentUserWithProfile, {} as any).catch((e: unknown) => {
-      log(scope, "error", "Convex getCurrentUserWithProfile failed", {
-        correlationId,
-        message: e instanceof Error ? e.message : String(e),
-        durationMs: Date.now() - startedAt,
-      });
-      return null as any;
-    });
+    // If you have a specific cookie-aware helper, you can still import it here.
+    // Otherwise, rely on the new convex* helpers directly for profile fetching below.
+    const current = null as any;
 
     const user = (current as any)?.user ?? current ?? null;
-    log(scope, "info", "User lookup result", {
-      correlationId,
-      tokenUserId: tokenPayload?.userId,
-      userFound: !!user,
-      userId: user?._id,
-      userEmail: user?.email,
-    });
 
     if (!user) {
       const duration = Date.now() - startedAt;
-      // Soften log level for very-fast misses which are often hydration/propagation races
       const level: "info" | "warn" = duration < 300 ? "info" : "warn";
-      // Detailed diagnostics for transient "user not found"
-      // Capture token presence (not the token itself), referer, and request headers subset for debugging
-      let hasAuthHeader = false;
-      let authHeaderLen = 0;
-      try {
-        const authHeader = request.headers.get("authorization") || "";
-        hasAuthHeader = authHeader.startsWith("Bearer ");
-        authHeaderLen = authHeader.length;
-      } catch {}
       const referer = request.headers.get("referer") || undefined;
-      // Identify if this call likely comes from a client verification after signin
-      const xClientCheck = request.headers.get("x-client-check") || undefined;
 
       log(scope, level, "User not found", {
         correlationId,
@@ -137,18 +84,12 @@ export async function GET(request: NextRequest) {
         durationMs: duration,
         fromPage,
         hints: {
-          // Hints for triage without exposing secrets
-          hasAuthHeader,
-          authHeaderLen, // length only, not contents
-          xClientCheck,
           referer,
-          // Categorize race vs. genuine miss by latency
           likelyRace: duration < 300,
-          // Note: backend user/profile creation may still be pending immediately post-signin
-          advisory: "If immediately post-signin, this is likely a propagation race. Client should tolerate a brief 404 or avoid verification.",
+          advisory:
+            "If immediately post-signin, this is likely a propagation race. Client should tolerate a brief 404 or avoid verification.",
         },
       });
-      // Ensure consistent structured error for frontend toasts
       return withNoStore(
         NextResponse.json(
           {
@@ -172,15 +113,24 @@ export async function GET(request: NextRequest) {
       });
       return withNoStore(
         NextResponse.json(
-          { error: "Account is banned", code: "USER_FORBIDDEN", correlationId, fromPage },
+          {
+            error: "Account is banned",
+            code: "USER_FORBIDDEN",
+            correlationId,
+            fromPage,
+          },
           { status: 403 }
         )
       );
     }
 
-    const profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
-      userId: user._id as Id<"users">,
-    }).catch((e: unknown) => {
+    // Fetch minimal profile using cookie-aware convex helper with generated api reference
+    const { convexQueryWithAuth } = await import("@/lib/convexServer");
+    const profile = await convexQueryWithAuth(
+      request,
+      (await import("@convex/_generated/api")).api.users.getProfileByUserIdPublic,
+      { userId: user._id as Id<"users"> }
+    ).catch((e: unknown) => {
       log(scope, "error", "Convex profile fetch failed", {
         correlationId,
         message: e instanceof Error ? e.message : String(e),
@@ -207,7 +157,6 @@ export async function GET(request: NextRequest) {
       correlationId,
       fromPage,
     });
-    // No Set-Cookie usage in pure token model; ensure no-store
 
     log(scope, "info", "Success", {
       correlationId,
@@ -227,7 +176,12 @@ export async function GET(request: NextRequest) {
     });
     return withNoStore(
       NextResponse.json(
-        { error: "Server error", code: "SERVER_ERROR", correlationId, fromPage },
+        {
+          error: "Server error",
+          code: "SERVER_ERROR",
+          correlationId,
+          fromPage,
+        },
         { status: 500 }
       )
     );

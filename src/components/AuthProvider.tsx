@@ -8,7 +8,6 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
-import { tokenStorage } from "@/lib/http/client";
 
 interface User {
   id: string;
@@ -78,57 +77,31 @@ interface AuthProviderProps {
 }
 
 // Util: get token from localStorage (for SSR safety, fallback to memory)
-function getInitialToken() {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("accessToken") || null;
-  }
-  return null;
-}
 
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(getInitialToken());
   const router = useRouter();
   // Guard against late async state overwrites during logout
   const logoutVersionRef = React.useRef(0);
 
   // Store tokens in localStorage for persistence and sync the centralized client immediately
-  const saveToken = useCallback((token: string | null, refresh?: string | null) => {
-    setAccessToken(token);
-
-    // 1) Persist to localStorage
-    if (typeof window !== "undefined") {
-      if (token) localStorage.setItem("accessToken", token);
-      else localStorage.removeItem("accessToken");
-
-      if (refresh !== undefined) {
-        if (refresh) localStorage.setItem("refreshToken", refresh);
-        else localStorage.removeItem("refreshToken");
-      }
-    }
-
-    // 2) Immediately bootstrap centralized client token storage (emits token-changed inside setters)
-    tokenStorage.access = token ?? null;
-    if (refresh !== undefined) tokenStorage.refresh = refresh ?? null;
+  const saveToken = useCallback((_token: string | null, _refresh?: string | null) => {
+    // No-op in Convex cookie session model; kept for legacy compatibility with callers
   }, []);
 
   // Remove all auth markers (access + refresh)
   const removeLocalMarkers = useCallback(() => {
-    // Clear both persistence and centralized client storage
+    // No tokens to clear in cookie-based auth; kept for compatibility
     saveToken(null, null);
-    tokenStorage.clearAll();
   }, [saveToken]);
 
   // Fetch current user using Bearer token (centralized http client with auto-refresh on 401)
   const fetchUser = useCallback(async (): Promise<User | null> => {
-    if (!accessToken) return null;
     try {
-      // Use centralized client to inherit 401 -> refresh retry automatically
       const data = (await (await import("@/lib/http/client")).getJson<{ user?: User }>("/api/auth/me").catch(async (err: any) => {
-        // One manual retry after a short delay to cover transient races
         try {
           await new Promise((r) => setTimeout(r, 150));
           return await (await import("@/lib/http/client")).getJson<{ user?: User }>("/api/auth/me");
@@ -136,12 +109,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw err;
         }
       })) as { user?: User };
-      return data?.user ?? null;
+    return data?.user ?? null;
     } catch (error) {
       console.warn("AuthProvider.fetchUser failed", error);
       return null;
     }
-  }, [accessToken]);
+  }, []);
 
 
   // Refresh user data
@@ -165,69 +138,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
-      if (accessToken) {
-        // Attempt initial fetch with one retry inside fetchUser
-        const tokenUser = await fetchUser();
-        if (tokenUser) {
-          setUser(tokenUser);
-        }
+      const tokenUser = await fetchUser();
+      if (tokenUser) {
+        setUser(tokenUser);
+      } else {
+        setUser(null);
       }
       setIsLoading(false);
     };
     void initAuth();
-
-    // Listen for centralized client token changes to keep user state in sync
-    const onTokenChanged = (ev: Event) => {
-      try {
-        // CustomEvent<{accessToken: string|null, refreshToken: string|null, reason: 'set'|'clear'|'refresh'}>
-        const detail = (ev as CustomEvent).detail as {
-          accessToken: string | null;
-          refreshToken: string | null;
-          reason: "set" | "clear" | "refresh";
-        };
-        // Update local access token state for immediate effect
-        setAccessToken(detail?.accessToken ?? null);
-        // Re-fetch user when we have an access token, or clear user on clear
-        if (detail?.accessToken) {
-          void refreshUser();
-        } else {
-          setUser(null);
-        }
-      } catch {
-        // no-op
-      }
-    };
-
-    // Cross-tab token sync via storage event
-    const onStorage = (e: StorageEvent) => {
-      try {
-        if (!e.key) return;
-        if (e.key !== "accessToken" && e.key !== "refreshToken") return;
-        const newAccess = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-        const newRefresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-        setAccessToken(newAccess);
-        if (newAccess) {
-          void refreshUser();
-        } else {
-          setUser(null);
-        }
-      } catch {
-        // no-op
-      }
-    };
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("token-changed", onTokenChanged as EventListener);
-      window.addEventListener("storage", onStorage);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("token-changed", onTokenChanged as EventListener);
-        window.removeEventListener("storage", onStorage);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchUser]);
 
 
   // Sign in with email/password (token-based) + centralized hydration retry
@@ -401,18 +321,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign out
   const signOut = useCallback(async () => {
-    // Bump version to invalidate any in-flight refreshUser completions
     logoutVersionRef.current += 1;
-    // Attempt server-side logout to invalidate refresh token (best-effort, non-blocking)
     try {
-      const refresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-      if (refresh) {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${refresh}` },
-          cache: "no-store",
-        }).catch(() => {});
-      }
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+      }).catch(() => {});
     } finally {
       removeLocalMarkers();
       setUser(null);
