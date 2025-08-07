@@ -39,6 +39,8 @@ export default function CustomSignInForm({
     }
   };
 
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -54,38 +56,42 @@ export default function CustomSignInForm({
         return;
       }
 
-      // 2) Force a reliable hydration of user state from server
-      //    This ensures persisted sessions and profile data are available post-signin.
-      await refreshUser();
+      // 2) Hydration retry loop to cover 404 user-not-found immediately after sign-in
+      // Backoffs: 150ms, 300ms, 750ms (total ~1.2s)
+      const backoffs = [0, 150, 300, 750];
+      let hydratedUser: any = null;
 
-      // Optional: warm up auth endpoint (non-blocking) to ensure cookies/headers settle
-      void fetch("/api/auth/me", { method: "GET", headers: { accept: "application/json", "cache-control": "no-store" } }).catch(() => {});
+      for (let i = 0; i < backoffs.length; i++) {
+        if (backoffs[i] > 0) {
+          await sleep(backoffs[i]);
+        }
+        try {
+          await refreshUser();
+        } catch {
+          // ignore, allow next retry
+        }
 
-      // 3) Read the freshly updated user snapshot
-      const hasProfile = (() => {
-        const u = user as any;
-        // user may still be the stale closure; prefer reading from localStorage-backed marker if needed
-        // but try the context first; if not present, proceed with navigation and let downstream guards handle it
-        return Boolean(u?.profile?.id || u?.profile?._id);
-      })();
+        // Optional: warm up /api/auth/me (non-blocking)
+        void fetch("/api/auth/me", {
+          method: "GET",
+          headers: { accept: "application/json", "cache-control": "no-store" },
+        }).catch(() => {});
+
+        // Read from context after refreshUser returns
+        hydratedUser = (user as any) ?? null;
+        if (hydratedUser && (hydratedUser.profile?.id || hydratedUser.profile?._id || hydratedUser.id)) {
+          break;
+        }
+      }
+
+      const hasProfile =
+        !!hydratedUser?.profile?.id || !!hydratedUser?.profile?._id;
 
       if (!hasProfile) {
-        // Allow post-sign-in hydration to complete; then re-check once after a short delay
-        setTimeout(async () => {
-          await refreshUser();
-          const u2 = (typeof window !== "undefined" ? (window as any).__lastUserFromAuthProvider : null) || null;
-          const ctxUser = (user as any) ?? u2;
-          const finalHasProfile = Boolean(ctxUser?.profile?.id || ctxUser?.profile?._id);
-          if (!finalHasProfile) {
-            const msg = "No profile found for this account. Please create a profile first.";
-            onError?.(msg);
-            showErrorToast(msg);
-            setIsLoading(false);
-            return;
-          }
-          handleOnboardingComplete();
-          setIsLoading(false);
-        }, 200);
+        // Final fallback: proceed to redirect (downstream guards can handle creating a profile)
+        // or surface a friendly message and stay on page. Choose navigation by default.
+        handleOnboardingComplete();
+        setIsLoading(false);
         return;
       }
 
