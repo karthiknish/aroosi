@@ -489,6 +489,8 @@ export function ProfileCreationModal({
   // -------- Auto submit profile & images when user is signed in --------
   useEffect(() => {
     const submitProfileAndImages = async () => {
+      // Hydration-safe guard: only proceed after auth is fully loaded and authenticated
+      // and avoid duplicate or concurrent submissions
       if (!isAuthenticated) return;
       if (hasSubmittedProfile) return; // guard
       if (isSubmitting) return; // prevent double submission
@@ -1041,6 +1043,7 @@ export function ProfileCreationModal({
 
         // Refresh profile data and finish
         try {
+          // Ensure latest session state is reflected after submissions
           await refreshUser();
         } catch (err) {
           console.warn("Failed to refresh user data:", err);
