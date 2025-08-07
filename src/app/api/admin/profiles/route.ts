@@ -161,9 +161,9 @@ export async function DELETE(req: NextRequest) {
 
     console.log(`Admin ${userId} attempting to delete profile: ${body.id}`);
 
-    const result = await convex.mutation(api.users.deleteProfile, {
+    const result = await fetchMutation(api.users.deleteProfile, {
       id: body.id,
-    });
+    } as any);
 
     // Validate deletion result
     if (!result || typeof result !== 'object') {
@@ -300,10 +300,10 @@ export async function PUT(req: NextRequest) {
 
     console.log(`Admin ${userId} updating profile ${body.id} with fields: ${Object.keys(sanitizedUpdates).join(', ')}`);
 
-    const result = await convex.mutation(api.users.adminUpdateProfile, {
+    const result = await fetchMutation(api.users.adminUpdateProfile, {
       id: body.id,
       updates: sanitizedUpdates,
-    });
+    } as any);
 
     // Validate update result
     if (!result || typeof result !== 'object') {
