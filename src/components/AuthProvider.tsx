@@ -393,10 +393,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign out
   const signOut = useCallback(async () => {
-    removeLocalMarkers();
-    setUser(null);
-    setError(null);
-    router.push("/sign-in");
+    // Attempt server-side logout to invalidate refresh token (best-effort, non-blocking)
+    try {
+      const refresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+      if (refresh) {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${refresh}` },
+          cache: "no-store",
+        }).catch(() => {});
+      }
+    } finally {
+      removeLocalMarkers();
+      setUser(null);
+      setError(null);
+      router.push("/sign-in");
+    }
   }, [removeLocalMarkers, router]);
 
 
