@@ -27,21 +27,33 @@ export async function fetchBlogPosts({
   params.append("pageSize", String(pageSize));
   if (category) params.append("category", category);
 
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const data = (await getJson(`/api/blog?${params.toString()}`, { headers })) as unknown;
+  const data = (await getJson(`/api/blog?${params.toString()}`)) as unknown;
   // Support multiple envelope shapes
   // 1. Bare array
   if (Array.isArray(data)) return data;
 
   // 2. { data: BlogPost[] }
-  if (data && Array.isArray(data.data)) return data.data;
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { data?: unknown[] }).data)
+  )
+    return (data as { data: BlogPost[] }).data;
 
   // 3. { posts: BlogPost[] }
-  if (data && Array.isArray(data.posts)) return data.posts;
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { posts?: unknown[] }).posts)
+  )
+    return (data as { posts: BlogPost[] }).posts;
 
   // 4. { success: true, data: { posts: BlogPost[] } }
-  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) {
+  if (
+    data &&
+    typeof data === "object" &&
+    "data" in (data as Record<string, unknown>)
+  ) {
     const inner = (data as Record<string, unknown>).data as unknown;
     if (
       inner &&
@@ -78,10 +90,15 @@ export async function createBlogPost(
   if (!(data as Record<string, unknown>)?.success) {
     return {
       success: false,
-      error: (data as Record<string, unknown>)?.error as string || "Failed to create blog post",
+      error:
+        ((data as Record<string, unknown>)?.error as string) ||
+        "Failed to create blog post",
     };
   }
-  return { success: true, data: (data as { data: BlogPost }).data };
+  return {
+    success: true,
+    data: (data as { data?: BlogPost }).data as BlogPost,
+  };
 }
 
 // Delete a blog post by _id (requires auth)
@@ -89,11 +106,15 @@ export async function deleteBlogPost(
   _token: string,
   _id: string
 ): Promise<BlogApiResponse<unknown>> {
-  const data = (await deleteJson("/api/blog", { body: JSON.stringify({ _id }) })) as unknown;
+  const data = (await deleteJson("/api/blog", {
+    body: JSON.stringify({ _id }),
+  })) as unknown;
   if (!(data as Record<string, unknown>)?.success) {
     return {
       success: false,
-      error: (data as Record<string, unknown>)?.error as string || "Failed to delete blog post",
+      error:
+        ((data as Record<string, unknown>)?.error as string) ||
+        "Failed to delete blog post",
     };
   }
   return { success: true, data };
@@ -108,10 +129,15 @@ export async function editBlogPost(
   if (!(data as Record<string, unknown>)?.success) {
     return {
       success: false,
-      error: (data as Record<string, unknown>)?.error as string || "Failed to edit blog post",
+      error:
+        ((data as Record<string, unknown>)?.error as string) ||
+        "Failed to edit blog post",
     };
   }
-  return { success: true, data };
+  return {
+    success: true,
+    data: (data as { data?: BlogPost }).data as BlogPost,
+  };
 }
 
 // Admin: Delete a blog post by _id (admin endpoint, requires auth)
@@ -126,7 +152,12 @@ export async function fetchBlogPostById(
   const data = (await getJson(`/api/blog/${id}`, { headers })) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
-  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) return (data as { data: BlogPost }).data;
+  if (
+    data &&
+    typeof data === "object" &&
+    "data" in (data as Record<string, unknown>)
+  )
+    return (data as { data: BlogPost }).data;
   return data as BlogPost;
 }
 
@@ -137,10 +168,17 @@ export async function fetchBlogPostBySlug(
 ): Promise<BlogPost | null> {
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const data = (await getJson(`/api/blog/${encodeURIComponent(slug)}`, { headers })) as unknown;
+  const data = (await getJson(`/api/blog/${encodeURIComponent(slug)}`, {
+    headers,
+  })) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
-  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) return (data as { data: BlogPost }).data;
+  if (
+    data &&
+    typeof data === "object" &&
+    "data" in (data as Record<string, unknown>)
+  )
+    return (data as { data: BlogPost }).data;
   return data as BlogPost;
 }
 
@@ -158,9 +196,15 @@ export async function uploadBlogImageMeta({
   contentType?: string;
   fileSize?: number;
 }): Promise<string> {
-  const data = (await postJson("/api/images/blog", { storageId, fileName, contentType, fileSize })) as unknown;
+  const data = (await postJson("/api/images/blog", {
+    storageId,
+    fileName,
+    contentType,
+    fileSize,
+  })) as unknown;
   // Support shapes { url } or { data: { url } }
-  const url = (data as { url?: string })?.url ??
+  const url =
+    (data as { url?: string })?.url ??
     ((data as { data?: { url?: string } })?.data?.url as string | undefined);
   if (!url) {
     throw new Error("Image URL missing in response");
@@ -170,7 +214,7 @@ export async function uploadBlogImageMeta({
 
 // Convert AI text (excerpt/category) to plain text via server-side Gemini call
 export async function convertAiTextToHtml({
-  token,
+  token: _token,
   text,
   type,
 }: {
@@ -203,7 +247,7 @@ export async function convertAiTextToHtml({
 
 // Convert arbitrary text to markdown using Gemini
 export async function convertTextToMarkdown({
-  token,
+  token: _token,
   text,
   prompt,
 }: {

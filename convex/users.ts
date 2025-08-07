@@ -97,6 +97,42 @@ export const getProfileByUserIdPublic = query({
 });
 
 /**
+ * Current user with public profile, resolved via Convex Auth cookie session.
+ * Uses ctx.auth.getUserIdentity() to derive the authenticated identity, then
+ * looks up the user by email and returns a minimal shape along with profile.
+ */
+export const getCurrentUserWithProfile = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const email = (identity as any).email as string | undefined;
+    let user: any = null;
+    if (email && email.trim()) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email.trim()))
+        .first();
+    }
+
+    if (!user) return null;
+
+    let profile: any = null;
+    try {
+      profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id as Id<"users">))
+        .first();
+    } catch {
+      profile = null;
+    }
+
+    return { user, profile } as const;
+  },
+});
+
+/**
  * Minimal viable public profile search
  * This is a naive scan; for production use, add appropriate indexes/filters.
  */

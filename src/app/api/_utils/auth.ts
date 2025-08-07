@@ -49,9 +49,10 @@ export async function requireSession(
   }
 
   // Use Convex server-side identity to fetch user
-  const current = await fetchQuery(api.users.getCurrentUserWithProfile, {}).catch(
-    () => null as any
-  );
+  const current = (await fetchQuery(
+    api.users.getCurrentUserWithProfile,
+    {}
+  ).catch(() => null as any)) as any;
 
   const user = (current as any)?.user ?? current ?? null;
   if (!user) {
@@ -120,4 +121,35 @@ export async function requireUserToken(
   const res = await requireSession(req as unknown as NextRequest);
   if ("errorResponse" in res) return res;
   return { userId: String(res.userId) };
+}
+
+/**
+ * Debug logger for API routes. Emits structured logs only in development.
+ */
+export function devLog(
+  level: "info" | "warn" | "error",
+  scope: string,
+  message: string,
+  extra?: Record<string, unknown>
+) {
+  if (process.env.NODE_ENV === "production") return;
+  const payload = {
+    ts: new Date().toISOString(),
+    level,
+    scope,
+    message,
+    ...(extra && Object.keys(extra).length > 0 ? { extra } : {}),
+  };
+  // eslint-disable-next-line no-console
+  if (level === "error") {
+    console.error(payload);
+    return;
+  }
+  // eslint-disable-next-line no-console
+  if (level === "warn") {
+    console.warn(payload);
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console.info(payload);
 }
