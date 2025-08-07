@@ -109,6 +109,7 @@ function ModernChat({
         getMessageDeliveryStatus={getMessageDeliveryStatus}
         onScrollToBottom={onScrollToBottom}
         showScrollToBottom={showScrollToBottom}
+        otherLastReadAt={messagesState.otherLastReadAt}
       />
 
       <Composer
@@ -131,6 +132,9 @@ function ModernChat({
         messageFeedback={messageFeedback}
         setMessageFeedback={() => {}}
         error={error}
+        // tiny typing hint inline below composer
+        // @ts-ignore - allow passing unknown prop; Composer ignores extras
+        isOtherTyping={Array.isArray(typingUsers) && typingUsers.length > 0}
       />
 
       <ReportModal

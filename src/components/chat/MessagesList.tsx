@@ -32,6 +32,7 @@ type MessagesListProps = {
   onScrollToBottom: (smooth?: boolean) => void;
   showScrollToBottom: boolean;
   lastReadAt?: number;
+  otherLastReadAt?: number;
 };
 
 export default function MessagesList(props: MessagesListProps) {
@@ -45,13 +46,15 @@ export default function MessagesList(props: MessagesListProps) {
     currentUserId,
     isBlocked,
     matchUserName,
-    matchUserAvatarUrl,     typingUsers,
+    matchUserAvatarUrl,
+    typingUsers,
     playingVoice,
     setPlayingVoice,
     getMessageDeliveryStatus,
     onScrollToBottom,
     showScrollToBottom,
     lastReadAt = 0,
+    otherLastReadAt = 0,
   } = props;
 
   if (loading) {
@@ -93,6 +96,17 @@ export default function MessagesList(props: MessagesListProps) {
       if (m.createdAt > lastReadAt) return i;
     }
     return -1;
+  })();
+
+  const lastSeenSeparatorIndex = (() => {
+    if (!otherLastReadAt) return -1;
+    let idx = -1;
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      if (m.createdAt <= otherLastReadAt) idx = i;
+      else break;
+    }
+    return idx;
   })();
 
   return (
@@ -157,6 +171,13 @@ export default function MessagesList(props: MessagesListProps) {
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
                     )}
+                    {index === lastSeenSeparatorIndex && (
+                      <div className="flex items-center gap-3 my-1">
+                        <div className="flex-1 h-px bg-blue-200" />
+                        <span className="text-[10px] uppercase tracking-wide text-blue-500">Seen</span>
+                        <div className="flex-1 h-px bg-blue-200" />
+                      </div>
+                    )}
                         {showTime && (
                           <div className="text-center py-1">
                             <span className="text-[10px] text-gray-500 bg-gray-100/80 px-2.5 py-0.5 rounded-full shadow-sm">
@@ -193,8 +214,14 @@ export default function MessagesList(props: MessagesListProps) {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
-                          </span>                          <DeliveryStatus
-                            status={getMessageDeliveryStatus(msg._id, isCurrentUser)}
+                          </span>
+                          <DeliveryStatus
+                            status={(() => {
+                              const base = getMessageDeliveryStatus(msg._id, isCurrentUser);
+                              if (!isCurrentUser) return base;
+                              if (otherLastReadAt && msg.createdAt <= otherLastReadAt) return "read" as const;
+                              return base;
+                            })()}
                             isCurrentUser={isCurrentUser}
                           />
                         </div>
