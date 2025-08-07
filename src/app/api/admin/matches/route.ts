@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import type { Profile } from "@convex/users";
+type Profile = any;
 import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
 import { fetchQuery } from "convex/nextjs";
 
