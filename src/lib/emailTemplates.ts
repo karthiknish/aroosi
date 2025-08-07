@@ -12,53 +12,37 @@ type EmailPayload = {
   html: string;
 };
 
-// Shared wrapper that adds branded header / footer & inline styling for better compatibility
+// Shared wrapper with clean, modern, minimal styling
 function wrapEmailContent(title: string, body: string): string {
-  const brandGold = "#BFA67A";
-  return `<!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>${title}</title>
-      <style>
-        /* Ensure full-width on mobile */
-        @media only screen and (max-width: 600px) {
-          .container { width: 100% !important; }
-        }
-        a.btn:hover { opacity: .9; }
-      </style>
-    </head>
-    <body style="margin:0; padding:0; background:#faf7f2; font-family:'Nunito Sans',Helvetica,Arial,sans-serif; color:#222;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#faf7f2; padding:24px 0;">
-        <tr>
-          <td align="center">
-            <table role="presentation" width="600" class="container" cellspacing="0" cellpadding="0" style="width:600px; max-width:600px; background:#ffffff; border:1px solid ${brandGold}; border-radius:8px; overflow:hidden;">
-              <!-- Header -->
-              <tr>
-                <td style="background:${brandGold}; padding:24px; text-align:center;">
-                  <img src="https://aroosi.app/logo.png" alt="Aroosi" width="120" style="display:block; margin:0 auto;" />
-                </td>
-              </tr>
-              <!-- Content -->
-              <tr>
-                <td style="padding:32px 24px;">
-                  ${body}
-                </td>
-              </tr>
-              <!-- Footer -->
-              <tr>
-                <td style="background:#f5f5f5; padding:20px; text-align:center; font-size:12px; color:#666;">
-                  You're receiving this email because you have an account on <strong>Aroosi</strong>.<br />
-                  If you didn't expect this, please ignore it.
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    </body>
-  </html>`;
+  return `<!doctype html>
+<html>
+ <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;">
+   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0;background:#f5f5f5;">
+     <tr>
+       <td align="center">
+         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:560px;background:#ffffff;border:1px solid #eee;border-radius:12px;overflow:hidden">
+           <tr>
+             <td style="padding:20px 24px;text-align:center;border-bottom:1px solid #f0f0f0">
+               <img src="https://aroosi.app/logo.png" alt="Aroosi" width="96" style="display:block;margin:0 auto 4px auto" />
+               <div style="font-weight:600;letter-spacing:.3px;color:#555;font-size:13px">Aroosi</div>
+             </td>
+           </tr>
+           <tr>
+             <td style="padding:28px 24px">
+               ${body}
+             </td>
+           </tr>
+           <tr>
+             <td style="padding:16px 24px;text-align:center;border-top:1px solid #f0f0f0;font-size:11px;color:#777">
+               You’re receiving this because you have an Aroosi account.
+             </td>
+           </tr>
+         </table>
+       </td>
+     </tr>
+   </table>
+ </body>
+</html>`;
 }
 
 // 1. Profile created (user)
@@ -66,15 +50,14 @@ export function profileCreatedTemplate(profile: Profile): EmailPayload {
   const fullName = profile.fullName || "there";
   const subject = "Welcome to Aroosi – Your profile has been created";
   const body = `
-    <h1 style="margin-top:0;">🎉 Welcome to the Aroosi family, ${fullName}!</h1>
-    <p style="font-size:16px; line-height:1.6;">Your account is now active.  It only takes a few minutes to make your profile shine:</p>
-    <ul style="font-size:15px; line-height:1.6; padding-left:20px;">
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Welcome to Aroosi, ${fullName}!</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Your account is ready. A few quick steps will help your profile shine:</p>
+    <ul style="margin:0 0 16px 18px;padding:0;color:#444;font-size:14px;line-height:1.6">
       <li>Add a couple of recent photos</li>
-      <li>Tell the community a bit about yourself</li>
-      <li>Set your preferences so we can surface the best matches</li>
+      <li>Share a short bio</li>
+      <li>Set your preferences</li>
     </ul>
-    <p style="font-size:16px; line-height:1.6;">When you're ready, our search page is waiting for you ✨</p>
-    <a href="https://aroosi.app/" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">Complete my profile</a>
+    <a href="https://aroosi.app/profile/create" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Complete my profile</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -83,15 +66,14 @@ export function profileCreatedTemplate(profile: Profile): EmailPayload {
 export function profileApprovedTemplate(profile: Profile): EmailPayload {
   const subject = "Your Aroosi profile has been approved";
   const body = `
-    <h1 style="margin-top:0;">✅ Your profile is now live!</h1>
-    <p style="font-size:16px; line-height:1.6;">Hi ${profile.fullName}, our moderators just approved your profile.  Members can now discover & message you.</p>
-    <p style="font-size:16px; line-height:1.6;">Tips for success:</p>
-    <ul style="font-size:15px; line-height:1.6; padding-left:20px;">
-      <li>Be genuine and polite in conversations</li>
-      <li>Upload at least 3 photos to get 5× more views</li>
-      <li>Keep your profile updated – it boosts you in search</li>
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Your profile is live</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${profile.fullName}, our moderators approved your profile. Members can now discover and message you.</p>
+    <ul style="margin:0 0 16px 18px;padding:0;color:#444;font-size:14px;line-height:1.6">
+      <li>Be genuine and polite</li>
+      <li>Upload at least 3 photos</li>
+      <li>Keep your profile updated</li>
     </ul>
-    <a href="https://aroosi.app/search" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">Find Matches</a>
+    <a href="https://aroosi.app/search" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Find matches</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -107,13 +89,12 @@ export function profileBanStatusTemplate(options: {
     ? "Your Aroosi profile has been banned"
     : "Your Aroosi profile is active again";
   const body = banned
-    ? `<h1>Profile Banned</h1>
-       <p>Hi ${profile.fullName || "there"},</p>
-       <p>Unfortunately, your profile has been banned due to a violation of our community guidelines.</p>
-       ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
-       <p>If you believe this is a mistake, please reply to this email.</p>`
-    : `<h1 style="margin-top:0;">🎉 You're back online!</h1>
-       <p style="font-size:16px; line-height:1.6;">Hi ${profile.fullName || "there"}, your profile is active once more and ready to be discovered.</p>`;
+    ? `<h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Profile banned</h1>
+       <p style="margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#444">Hi ${profile.fullName || "there"}, your profile has been banned due to violations of our community guidelines.</p>
+       ${reason ? `<p style="margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#444"><strong>Reason:</strong> ${reason}</p>` : ""}
+       <p style="margin:0 0 0 0;font-size:14px;line-height:1.6;color:#444">If you believe this is a mistake, reply to this email.</p>`
+    : `<h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">You’re back online</h1>
+       <p style="margin:0 0 0 0;font-size:14px;line-height:1.6;color:#444">Hi ${profile.fullName || "there"}, your profile is active again and ready to be discovered.</p>`;
   return { subject, html: wrapEmailContent(subject, body) };
 }
 
@@ -125,10 +106,9 @@ export function newMatchTemplate(options: {
   const { fullName, matchName } = options;
   const subject = `You've matched with ${matchName} on Aroosi!`;
   const body = `
-    <h1 style="margin-top:0;">💖 It's a Match!</h1>
-    <p style="font-size:16px; line-height:1.6;">Hi ${fullName},</p>
-    <p style="font-size:16px; line-height:1.6;">You and <strong>${matchName}</strong> liked each other – exciting!  Send a friendly hello and break the ice.</p>
-    <a href="https://aroosi.app/matches" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">Open Chat</a>
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">It’s a match</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, you and <strong>${matchName}</strong> liked each other. Say hello and break the ice.</p>
+    <a href="https://aroosi.app/matches" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Open chat</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -142,11 +122,10 @@ export function newMessageTemplate(options: {
   const { receiverName, senderName, preview } = options;
   const subject = `New message from ${senderName} on Aroosi`;
   const body = `
-    <h1 style="margin-top:0;">📬 You've got mail!</h1>
-    <p style="font-size:16px; line-height:1.6;">Hi ${receiverName}, <strong>${senderName}</strong> just sent you a message:</p>
-    <blockquote style="font-size:15px; line-height:1.6; border-left:4px solid #BFA67A; margin:16px 0; padding-left:12px;">${preview}</blockquote>
-    <p style="font-size:16px; line-height:1.6;">Don't keep them waiting – jump back into the conversation.</p>
-    <a href="https://aroosi.app/messages" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">Reply Now</a>
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">New message from ${senderName}</h1>
+    <p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#444">Hi ${receiverName}, you received a new message:</p>
+    <blockquote style="margin:0 0 16px 0;padding:8px 12px;border-left:3px solid #111;color:#444;font-size:14px;line-height:1.6">${preview}</blockquote>
+    <a href="https://aroosi.app/messages" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Reply now</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -160,14 +139,14 @@ export function contactFormAdminTemplate(options: {
   const { name, email, message } = options;
   const subject = `New contact form submission from ${name}`;
   const body = `
-    <h1 style="margin-top:0;">📥 New contact enquiry</h1>
-    <p style="font-size:16px; line-height:1.6;">Someone just reached out via the website contact form. Details below:</p>
-    <table style="font-size:15px; line-height:1.6; width:100%; border-collapse:collapse;">
-      <tr><td style="padding:6px; border:1px solid #eee; width:120px;"><strong>Name</strong></td><td style="padding:6px; border:1px solid #eee;">${name}</td></tr>
-      <tr><td style="padding:6px; border:1px solid #eee;"><strong>Email</strong></td><td style="padding:6px; border:1px solid #eee;">${email}</td></tr>
-      <tr><td style="padding:6px; border:1px solid #eee; vertical-align:top;"><strong>Message</strong></td><td style="padding:6px; border:1px solid #eee; white-space:pre-wrap;">${message}</td></tr>
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">New contact enquiry</h1>
+    <p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#444">A new contact form submission was received:</p>
+    <table style="font-size:14px;line-height:1.6;width:100%;border-collapse:collapse">
+      <tr><td style="padding:6px;border:1px solid #eee;width:120px"><strong>Name</strong></td><td style="padding:6px;border:1px solid #eee">${name}</td></tr>
+      <tr><td style="padding:6px;border:1px solid #eee"><strong>Email</strong></td><td style="padding:6px;border:1px solid #eee">${email}</td></tr>
+      <tr><td style="padding:6px;border:1px solid #eee;vertical-align:top"><strong>Message</strong></td><td style="padding:6px;border:1px solid #eee;white-space:pre-wrap">${message}</td></tr>
     </table>
-    <p style="font-size:14px; color:#666;">Respond directly to this email to reply to the user.</p>
+    <p style="margin:12px 0 0 0;font-size:12px;color:#777">Reply directly to this email to respond to the user.</p>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -180,9 +159,9 @@ export function subscriptionChangedTemplate(options: {
   const { fullName, newPlan } = options;
   const subject = `Your subscription has been updated to ${newPlan}`;
   const body = `
-    <h1 style="margin-top:0;">⭐ Your plan has been updated!</h1>
-    <p style="font-size:16px; line-height:1.6;">Hi ${fullName}, you've switched to <strong>${newPlan}</strong>.  Enjoy your new benefits and extra visibility.</p>
-    <a href="https://aroosi.app/premium-settings" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">See My Benefits</a>
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Your plan has been updated</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, you’ve switched to <strong>${newPlan}</strong>. Enjoy your new benefits.</p>
+    <a href="https://aroosi.app/premium-settings" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">See my benefits</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -194,10 +173,10 @@ export function contactFormUserAckTemplate(options: {
   const { name } = options;
   const subject = "We've received your message – Aroosi Support";
   const body = `
-    <h1 style="margin-top:0;">👋 Thanks for reaching out, ${name}!</h1>
-    <p style="font-size:16px; line-height:1.6;">We've received your message and one of our team members will get back to you within 24&nbsp;hours (usually sooner).</p>
-    <p style="font-size:16px; line-height:1.6;">In the meantime you can browse our <a href="https://aroosi.app/faq" style="color:#BFA67A;">FAQ section</a> or continue discovering matches.</p>
-    <a href="https://aroosi.app/search" style="display:inline-block;background:#BFA67A;color:#ffffff!important;padding:12px 20px;border-radius:6px;text-decoration:none;">Continue on Aroosi</a>
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Thanks for reaching out, ${name}</h1>
+    <p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#444">We received your message. We’ll get back to you within 24 hours.</p>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Meanwhile, you can browse our <a href="https://aroosi.app/faq" style="color:#111">FAQ</a> or continue discovering matches.</p>
+    <a href="https://aroosi.app/search" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px">Continue on Aroosi</a>
   `;
   return { subject, html: wrapEmailContent(subject, body) };
 }
@@ -258,20 +237,20 @@ export function recommendedProfilesTemplate(options: {
   const profileCards = profiles
     .map(
       (profile) => `
-    <div style="border:1px solid #eee; border-radius:8px; overflow:hidden; margin-bottom:16px; background:#fff;">
-      <div style="display:flex; padding:16px;">
-        <div style="flex:0 0 80px; margin-right:16px;">
-          <img src="${profile.profileImageUrl}" alt="${profile.fullName}" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" />
+    <div style="border:1px solid #eee;border-radius:12px;overflow:hidden;margin-bottom:16px;background:#fff">
+      <div style="display:flex;padding:16px;gap:16px">
+        <div style="flex:0 0 80px">
+          <img src="${profile.profileImageUrl}" alt="${profile.fullName}" style="width:80px;height:80px;border-radius:10px;object-fit:cover" />
         </div>
-        <div style="flex:1;">
-          <h3 style="margin:0 0 8px 0; font-size:18px; color:#222;">${profile.fullName}</h3>
-          <p style="margin:0 0 8px 0; color:#666; font-size:14px;">${profile.city}, ${profile.country}</p>
-          <p style="margin:0 0 8px 0; color:#888; font-size:14px;">Compatibility: ${profile.compatibilityScore}%</p>
-          <p style="margin:0; color:#444; font-size:14px; line-height:1.4;">${profile.aboutMe.substring(0, 120)}${profile.aboutMe.length > 120 ? "..." : ""}</p>
+        <div style="flex:1">
+          <h3 style="margin:0 0 6px 0;font-size:16px;color:#111">${profile.fullName}</h3>
+          <p style="margin:0 0 6px 0;color:#666;font-size:13px">${profile.city}, ${profile.country}</p>
+          <p style="margin:0 0 6px 0;color:#777;font-size:12px">Compatibility: ${profile.compatibilityScore}%</p>
+          <p style="margin:0;color:#444;font-size:13px;line-height:1.5">${profile.aboutMe.substring(0, 120)}${profile.aboutMe.length > 120 ? "..." : ""}</p>
         </div>
       </div>
-      <div style="padding:0 16px 16px;">
-        <a href="https://aroosi.app/profile/${profile.id}" style="display:inline-block; background:#BFA67A; color:#ffffff!important; padding:8px 16px; border-radius:6px; text-decoration:none; font-size:14px;">View Profile</a>
+      <div style="padding:0 16px 16px">
+        <a href="https://aroosi.app/profile/${profile.id}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:8px 12px;border-radius:10px;font-size:13px">View profile</a>
       </div>
     </div>
   `
