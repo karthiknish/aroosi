@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
 import { useRouter } from "next/navigation";
+import { getJson } from "@/lib/http/client";
 
 export default function SignInPage() {
   const {
@@ -46,13 +47,12 @@ export default function SignInPage() {
       // Force a server truth check that also forwards Set-Cookie if refresh was needed.
       // This ensures cookie auth is the source of truth and avoids relying on any legacy public token.
       try {
-        const resp = await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            "cache-control": "no-store",
-            accept: "application/json",
-          },
-          credentials: "include",
+        // Use token-aware client so Authorization is attached and refresh is handled
+        const resp = await getJson<Response>("/api/auth/me", {
+          cache: "no-store",
+        }).catch((e) => {
+          // Normalize to a faux Response-like object for existing logic
+          return { ok: false } as unknown as Response;
         });
 
         if (!resp.ok) {
@@ -133,14 +133,10 @@ export default function SignInPage() {
               // After successful sign-in, rely on cookies. Call /api/auth/me to ensure
               // any Set-Cookie from refresh or issuance is fully applied, then redirect.
               try {
-                await fetch("/api/auth/me", {
-                  method: "GET",
-                  headers: {
-                    accept: "application/json",
-                    "cache-control": "no-store",
-                  },
-                  credentials: "include",
-                });
+                // Ensure server/me sees Authorization via centralized client
+                await getJson("/api/auth/me", {
+                  cache: "no-store",
+                }).catch(() => {});
               } catch {
                 // ignore
               }
