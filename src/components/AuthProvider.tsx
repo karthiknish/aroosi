@@ -50,7 +50,8 @@ export interface AuthContextType {
     lastName: string
   ) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: (
-    credential: string
+    credential: string,
+    state: string
   ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
@@ -312,13 +313,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign in with Google (token-based)
   const signInWithGoogle = useCallback(
-    async (credential: string) => {
+    async (credential: string, state: string) => {
       try {
         setError(null);
         const response = await fetch("/api/auth/google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ credential }),
+          body: JSON.stringify({ credential, state }),
         });
 
         const data = await response.json();

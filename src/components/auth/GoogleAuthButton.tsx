@@ -26,7 +26,7 @@ export default function GoogleAuthButton({
 }: GoogleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, refreshUser } = useAuth();
   const stateRef = useRef<string | null>(null);
 
   const isProd = process.env.NODE_ENV === "production";
@@ -141,21 +141,61 @@ export default function GoogleAuthButton({
               throw new Error("Invalid or missing OAuth state");
             }
 
-            // Send to backend
-            const result = await signInWithGoogle(json);
+            // Send to backend with state
+            const result = await signInWithGoogle(json, state);
 
             if (result.success) {
+              // Hydration retry loop similar to email/password flow
+              const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+              const backoffs = [0, 150, 300, 750];
+              for (let i = 0; i < backoffs.length; i++) {
+                if (backoffs[i] > 0) await sleep(backoffs[i]);
+                try {
+                  await refreshUser();
+                } catch { /* ignore */ }
+              }
               onSuccess?.();
             } else {
-              onError?.(result.error || "Authentication failed");
+              // Bubble server semantics (RATE_LIMITED, TOKEN_REPLAY, etc.) when available
+              const defaultMsg = "Authentication failed";
+              const raw = result.error || defaultMsg;
+              try {
+                // Try to parse structured server message if JSON was passed through
+                const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+                const code = parsed?.code as string | undefined;
+                const retryAfter = parsed?.retryAfter as number | undefined;
+                const message =
+                  parsed?.error ||
+                  parsed?.message ||
+                  (code === "RATE_LIMITED" && retryAfter
+                    ? `Too many attempts. Try again in ${retryAfter}s.`
+                    : raw);
+                onError?.(message);
+              } catch {
+                onError?.(raw);
+              }
             }
-          } catch (error) {
-            console.warn("Error processing Google auth");
-            onError?.(
-              error instanceof Error
-                ? error.message
-                : "Failed to process Google authentication"
-            );
+          } catch (error: any) {
+            // Map known server error shapes for actionable feedback
+            let msg = "Failed to process Google authentication";
+            if (error instanceof Error && error.message) {
+              msg = error.message;
+              // Attempt to extract structured details from server text
+              try {
+                const parsed = JSON.parse(error.message);
+                if (parsed?.code === "RATE_LIMITED" && parsed?.retryAfter) {
+                  msg = `Too many attempts. Try again in ${parsed.retryAfter}s.`;
+                } else if (parsed?.code && parsed?.error) {
+                  msg = `${parsed.error}`;
+                }
+              } catch {
+                // leave msg as-is
+              }
+            }
+            console.warn("Error processing Google auth", {
+              message: msg,
+            });
+            onError?.(msg);
           } finally {
             // Invalidate state cookie promptly
             setCookie("oauth_state", "", 0);
@@ -163,18 +203,32 @@ export default function GoogleAuthButton({
             setIsLoading(false);
           }
         },
-        error_callback: (_error: any) => {
-          console.warn("Google OAuth error callback (init)");
-          onError?.("Google sign in cancelled or failed");
+        error_callback: (err: any) => {
+          // Bubble richer details if available for actionable UX
+          const msg =
+            (err && (err.message || err.error || err.error_description)) ||
+            "Google sign in cancelled or failed";
+          console.warn("Google OAuth error callback (init)", {
+            code: err?.code,
+            message: err?.message || err?.error_description || String(err || ""),
+          });
+          onError?.(msg);
           setIsLoading(false);
         },
       });
 
       // Request access token (opens popup)
       client.requestAccessToken({ prompt: "consent" });
-    } catch (_error) {
-      console.warn("Google auth initialization failure");
-      onError?.("Failed to initialize Google sign in");
+    } catch (e: any) {
+      // Surface reason if present
+      const msg =
+        (e && (e.message || e.error || e.error_description)) ||
+        "Failed to initialize Google sign in";
+      console.warn("Google auth initialization failure", {
+        code: e?.code,
+        message: e?.message || e?.error_description || String(e || ""),
+      });
+      onError?.(msg);
       setIsLoading(false);
     }
   };
