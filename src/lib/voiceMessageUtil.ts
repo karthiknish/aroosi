@@ -1,5 +1,5 @@
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { ConvexHttpClient } from "convex/browser";
 import type { Id } from "@convex/_generated/dataModel";
 
 export interface VoiceMessage {
@@ -37,9 +37,8 @@ export async function uploadVoiceMessage({
   mimeType?: string;
   duration: number; // seconds
 }): Promise<VoiceMessage[]> {
-  // Step 1: initialise Convex client
-  const client = getConvexClient();
-  if (!client) throw new Error("Failed to initialise Convex client");
+  // Step 1: initialise Convex client (cookie-based; browser)
+  const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL || "");
 
   // TODO: Implement upload and send flow here if needed. For now, fetch existing
   // voice messages in this conversation to return a list.

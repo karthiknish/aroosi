@@ -115,7 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         })) as { user?: User };
       return data?.user ?? null;
-    } catch (error) {
+    } catch {
       if (process.env.NODE_ENV !== "production") {
         console.warn("AuthProvider.fetchUser failed");
       }
@@ -270,7 +270,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
         await refreshUser();
         return { success: true };
-      } catch (error) {
+      } catch {
         if (process.env.NODE_ENV !== "production") {
           console.error("Sign up error");
         }
@@ -302,7 +302,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
         await refreshUser();
         return { success: true };
-      } catch (error) {
+      } catch {
         if (process.env.NODE_ENV !== "production") {
           console.error("Google sign in error");
         }

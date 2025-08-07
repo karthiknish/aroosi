@@ -6,7 +6,7 @@ import { validateConversationId } from "@/lib/utils/messageValidation";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchMutation, fetchQuery } from "convex/nextjs";
+import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if either user has blocked the other
-    const blockStatus = await fetchQuery(api.safety.getBlockStatus, {
+    const blockStatus = await convexQueryWithAuth(request, api.safety.getBlockStatus, {
       blockerUserId: userId as Id<"users">,
       blockedUserId: toUserId as Id<"users">,
     } as any);
@@ -111,13 +111,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check subscription limits for voice messages
-    const canSendVoice = await fetchQuery(
-      api.subscriptions.checkFeatureAccess,
-      {
-        userId: userId as Id<"users">,
-        feature: "voice_messages",
-      } as any,
-    );
+    const canSendVoice = await convexQueryWithAuth(request, api.subscriptions.checkFeatureAccess, {
+      userId: userId as Id<"users">,
+      feature: "voice_messages",
+    } as any);
 
     if (!canSendVoice) {
       return errorResponse(
@@ -127,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate upload URL for the audio file
-    const uploadUrl = await fetchMutation(api.messages.generateUploadUrl, {} as any);
+    const uploadUrl = await convexMutationWithAuth(request, api.messages.generateUploadUrl, {} as any);
 
     // Upload the audio file to Convex storage
     const uploadResponse = await fetch(uploadUrl, {
@@ -142,7 +139,7 @@ export async function POST(request: NextRequest) {
     const { storageId } = await uploadResponse.json();
 
     // Create the voice message record
-    const message = await fetchMutation(api.messages.sendMessage, {
+    const message = await convexMutationWithAuth(request, api.messages.sendMessage, {
       conversationId,
       fromUserId: userId as Id<"users">,
       toUserId: toUserId as Id<"users">,

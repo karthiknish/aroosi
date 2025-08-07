@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import Script from "next/script";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";

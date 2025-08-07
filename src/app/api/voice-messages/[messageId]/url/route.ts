@@ -4,7 +4,7 @@ import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function GET(
   request: NextRequest,
@@ -33,7 +33,7 @@ export async function GET(
       return errorResponse("User ID not found in token", 401);
     }
 
-    const voiceMessage = await fetchQuery(api.messages.getVoiceMessage, {
+    const voiceMessage = await convexQueryWithAuth(request, api.messages.getVoiceMessage, {
       messageId: messageId as Id<"messages">,
     } as any);
 
@@ -47,7 +47,7 @@ export async function GET(
       return errorResponse("Unauthorized access to voice message", 403);
     }
 
-    const audioUrl = await fetchQuery(api.messages.getVoiceMessageUrl, {
+    const audioUrl = await convexQueryWithAuth(request, api.messages.getVoiceMessageUrl, {
       storageId: voiceMessage.audioStorageId!,
     } as any);
 
