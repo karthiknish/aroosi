@@ -41,6 +41,25 @@ export default function CustomSignInForm({
 
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
+  // Ensure tokenStorage has access token before redirecting to avoid immediate 401 on /api/auth/me
+  const waitForAccessToken = async (maxMs = 700): Promise<boolean> => {
+    try {
+      const { tokenStorage } = await import("@/lib/http/client");
+      const start = Date.now();
+      if (tokenStorage.access && tokenStorage.access.trim().length > 0)
+        return true;
+      while (Date.now() - start < maxMs) {
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(100);
+        if (tokenStorage.access && tokenStorage.access.trim().length > 0)
+          return true;
+      }
+      return Boolean(tokenStorage.access);
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -56,7 +75,10 @@ export default function CustomSignInForm({
         return;
       }
 
-      // 2) Hydration retry loop to cover 404 user-not-found immediately after sign-in
+      // 2) Ensure access token is available to centralized client to avoid /api/auth/me 401 flicker
+      await waitForAccessToken(700);
+
+      // 3) Hydration retry loop to cover 404 user-not-found immediately after sign-in
       // Backoffs: 150ms, 300ms, 750ms (total ~1.2s)
       const backoffs = [0, 150, 300, 750];
       let hydratedUser: any = null;
@@ -79,7 +101,12 @@ export default function CustomSignInForm({
 
         // Read from context after refreshUser returns
         hydratedUser = (user as any) ?? null;
-        if (hydratedUser && (hydratedUser.profile?.id || hydratedUser.profile?._id || hydratedUser.id)) {
+        if (
+          hydratedUser &&
+          (hydratedUser.profile?.id ||
+            hydratedUser.profile?._id ||
+            hydratedUser.id)
+        ) {
           break;
         }
       }

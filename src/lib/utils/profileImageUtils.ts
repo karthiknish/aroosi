@@ -28,19 +28,15 @@ export const useProfileImages = (profileId: string) => {
     queryKey: ["profile-images", profileId] as const,
     queryFn: async (): Promise<ApiImage[]> => {
       if (!profileId) return [];
-      const response = await fetch(`/api/profile-detail/${profileId}/images`, {
-        credentials: "include",
+      const { getJson } = await import("@/lib/http/client");
+      const data = await getJson<any>(`/api/profile-detail/${profileId}/images`, {
+        cache: "no-store",
+        headers: { "x-client-check": "profile-images" },
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch profile images");
-      }
-
-      const data = await response.json();
       return Array.isArray(data)
-        ? data
+        ? (data as ApiImage[])
         : Array.isArray(data.images)
-          ? data.images
+          ? (data.images as ApiImage[])
           : [];
     },
     retry: 1,
@@ -76,26 +72,12 @@ export const useImageReorder = (profileId: string) => {
       .filter(Boolean) as string[];
 
     try {
-      const res = await fetch(`/api/profile-images/order`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          profileId,
-          imageIds: imageIds,
-        }),
+      const { postJson } = await import("@/lib/http/client");
+      await postJson(`/api/profile-images/order`, { profileId, imageIds }, {
+        headers: { "Content-Type": "application/json", "x-client-check": "image-reorder" },
+        cache: "no-store",
       });
-
-      if (!res.ok) {
-        throw new Error("Failed to update image order");
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: ["profile-images", profileId],
-      });
-
+      await queryClient.invalidateQueries({ queryKey: ["profile-images", profileId] });
       showSuccessToast("Image order updated successfully");
       return true;
     } catch (error) {
@@ -125,24 +107,15 @@ export const useDeleteImage = (profileId: string) => {
     }
 
     try {
-      const response = await fetch(`/api/profile-images`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
+      const { deleteJson } = await import("@/lib/http/client");
+      await deleteJson(`/api/profile-images`, {
+        headers: { "Content-Type": "application/json", "x-client-check": "image-delete" },
+        // fetchJson supports body in options for DELETE
+        // @ts-ignore
         body: JSON.stringify({ userId: profile?.userId || profileId, imageId }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to delete image");
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: ["profile-images", profileId],
-      });
-
+        cache: "no-store",
+      } as any);
+      await queryClient.invalidateQueries({ queryKey: ["profile-images", profileId] });
       showSuccessToast("Image deleted successfully");
       return true;
     } catch (error) {
@@ -166,18 +139,12 @@ export const useImageUpload = (userId: string) => {
     }
 
     try {
-      // 1) Get an upload URL from our API (which proxies Convex generateUploadUrl)
-      const uploadUrlRes = await fetch("/api/profile-images/upload-url", {
-        credentials: "include",
+      // 1) Get an upload URL from our API (token-based client)
+      const { getJson, postJson } = await import("@/lib/http/client");
+      const { uploadUrl } = await getJson<{ uploadUrl: string }>("/api/profile-images/upload-url", {
+        cache: "no-store",
+        headers: { "x-client-check": "image-upload-url" },
       });
-
-      if (!uploadUrlRes.ok) {
-        throw new Error("Failed to get upload URL");
-      }
-
-      const { uploadUrl } = (await uploadUrlRes.json()) as {
-        uploadUrl: string;
-      };
       if (!uploadUrl) {
         throw new Error("Upload URL missing");
       }
@@ -201,28 +168,17 @@ export const useImageUpload = (userId: string) => {
         throw new Error("storageId missing from upload response");
       }
 
-      // 3) Save the file metadata via our metadata endpoint
-      const metaRes = await fetch("/api/profile-images", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          userId,
-          storageId,
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        }),
+      // 3) Save the file metadata via our metadata endpoint (token-based)
+      const data = await postJson<any>("/api/profile-images", {
+        userId,
+        storageId,
+        fileName: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+      }, {
+        headers: { "Content-Type": "application/json", "x-client-check": "image-meta" },
+        cache: "no-store",
       });
-
-      if (!metaRes.ok) {
-        const errorData = await metaRes.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to save image metadata");
-      }
-
-      const data = await metaRes.json();
 
       // Invalidate and refetch images for realtime UI update
       await queryClient.invalidateQueries({

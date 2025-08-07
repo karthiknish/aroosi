@@ -486,19 +486,14 @@ export async function checkEmailHasProfile(
   email: string
 ): Promise<{ exists: boolean; hasProfile: boolean }> {
   try {
-    const res = await fetch(
-      `/api/profile-exists?email=${encodeURIComponent(email)}`
+    const { getJson } = await import("@/lib/http/client");
+    const data = await getJson<{ exists?: boolean; hasProfile?: boolean }>(
+      `/api/profile-exists?email=${encodeURIComponent(email)}`,
+      { cache: "no-store", headers: { "x-client-check": "email-has-profile" } }
     );
-    if (!res.ok) {
-      return { exists: false, hasProfile: false };
-    }
-    const data = (await res.json()) as {
-      exists?: boolean;
-      hasProfile?: boolean;
-    };
     return {
-      exists: Boolean(data.exists),
-      hasProfile: Boolean(data.hasProfile),
+      exists: Boolean(data?.exists),
+      hasProfile: Boolean(data?.hasProfile),
     };
   } catch {
     return { exists: false, hasProfile: false };
