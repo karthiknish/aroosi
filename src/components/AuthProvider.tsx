@@ -8,6 +8,7 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
+import { tokenStorage } from "@/lib/http/client";
 
 interface User {
   id: string;
@@ -91,18 +92,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [accessToken, setAccessToken] = useState<string | null>(getInitialToken());
   const router = useRouter();
 
-  // Store token in localStorage for persistence (optional, can use memory only for more security)
-  const saveToken = useCallback((token: string | null) => {
+  // Store tokens in localStorage for persistence and sync the centralized client immediately
+  const saveToken = useCallback((token: string | null, refresh?: string | null) => {
     setAccessToken(token);
+
+    // 1) Persist to localStorage
     if (typeof window !== "undefined") {
       if (token) localStorage.setItem("accessToken", token);
       else localStorage.removeItem("accessToken");
+
+      if (refresh !== undefined) {
+        if (refresh) localStorage.setItem("refreshToken", refresh);
+        else localStorage.removeItem("refreshToken");
+      }
     }
+
+    // 2) Immediately bootstrap centralized client token storage (emits token-changed inside setters)
+    tokenStorage.access = token ?? null;
+    if (refresh !== undefined) tokenStorage.refresh = refresh ?? null;
   }, []);
 
-  // Remove all auth markers
+  // Remove all auth markers (access + refresh)
   const removeLocalMarkers = useCallback(() => {
-    saveToken(null);
+    // Clear both persistence and centralized client storage
+    saveToken(null, null);
+    tokenStorage.clearAll();
   }, [saveToken]);
 
   // Fetch current user using Bearer token
@@ -155,6 +169,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     };
     void initAuth();
+
+    // Listen for centralized client token changes to keep user state in sync
+    const onTokenChanged = (ev: Event) => {
+      try {
+        // CustomEvent<{accessToken: string|null, refreshToken: string|null, reason: 'set'|'clear'|'refresh'}>
+        const detail = (ev as CustomEvent).detail as {
+          accessToken: string | null;
+          refreshToken: string | null;
+          reason: "set" | "clear" | "refresh";
+        };
+        // Update local access token state for immediate effect
+        setAccessToken(detail?.accessToken ?? null);
+        // Re-fetch user when we have an access token, or clear user on clear
+        if (detail?.accessToken) {
+          void refreshUser();
+        } else {
+          setUser(null);
+        }
+      } catch {
+        // no-op
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("token-changed", onTokenChanged as EventListener);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("token-changed", onTokenChanged as EventListener);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -184,9 +229,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
-        // Store access token
+        // Store access + refresh tokens
         const token = data.accessToken || data.token;
-        if (token) saveToken(token);
+        const refresh = data.refreshToken || null;
+        if (token) saveToken(token, refresh);
         await refreshUser();
         return { success: true };
       } catch (error) {
@@ -247,9 +293,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
-        // Store access token
+        // Store access + refresh tokens
         const token = data.accessToken || data.token;
-        if (token) saveToken(token);
+        const refresh = data.refreshToken || null;
+        if (token) saveToken(token, refresh);
         await refreshUser();
         return { success: true };
       } catch (error) {
@@ -282,9 +329,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
-        // Store access token
+        // Store access + refresh tokens
         const token = data.accessToken || data.token;
-        if (token) saveToken(token);
+        const refresh = data.refreshToken || null;
+        if (token) saveToken(token, refresh);
         await refreshUser();
         return { success: true };
       } catch (error) {
