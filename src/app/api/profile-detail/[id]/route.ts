@@ -1,73 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { Id } from "@convex/_generated/dataModel";
-import { errorResponse } from "@/lib/apiResponse";
-
-/**
- * Extracts and validates the JWT token from the request headers
- */
-function getTokenFromRequest(req: NextRequest): {
-  token: string | null;
-  error?: string;
-} {
-  try {
-    const authHeader = req.headers.get("authorization");
-
-    if (!authHeader) {
-      return { token: null, error: "No authorization header" };
-    }
-
-    const [type, token] = authHeader.split(" ");
-
-    if (type !== "Bearer") {
-      return { token: null, error: "Invalid token type" };
-    }
-
-    if (!token) {
-      return { token: null, error: "No token provided" };
-    }
-
-    return { token };
-  } catch (error) {
-    return {
-      token: null,
-      error: error instanceof Error ? error.message : "Failed to process token",
-    };
-  }
-}
+// import { errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   try {
-    // Extract and validate token
-    const { token, error: tokenError } = getTokenFromRequest(req);
-
-    if (!token) {
-      return NextResponse.json(
-        {
-          error: "Authentication failed",
-          details: tokenError || "Invalid or missing token",
-          timestamp: new Date().toISOString(),
-        },
-        { status: 401 },
-      );
-    }
-
-    // Initialize Convex client
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 },
-      );
-    }
-
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-
     try {
-      // Set the auth token
-      convex.setAuth(token);
-
       // Get the user ID from the URL
       const url = new URL(req.url);
       const id = url.pathname.split("/").pop();
@@ -79,16 +18,29 @@ export async function GET(req: NextRequest) {
             details: "The user ID is missing from the URL",
             path: url.pathname,
           },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
       const viewedUserId = id as Id<"users">;
 
       try {
-        const result = await convex.action(api.users.getProfileDetailPageData, {
-          viewedUserId,
-        });
+        // Compose profile detail data from existing queries
+        const basicProfile = await convexQueryWithAuth(
+          req,
+          api.users.getProfileByUserIdPublic,
+          {
+            userId: viewedUserId,
+          } as any
+        );
+        // For now, return minimal shape expected by clients
+        const result = {
+          currentUser: null,
+          profileData: basicProfile,
+          isBlocked: false,
+          isMutualInterest: false,
+          sentInterest: [],
+        } as const;
 
         // Only return text/profile data, not images
         const {
@@ -97,7 +49,6 @@ export async function GET(req: NextRequest) {
           isBlocked = false,
           isMutualInterest = false,
           sentInterest = [],
-          error,
         } = result;
 
         const responseData = {
@@ -107,7 +58,7 @@ export async function GET(req: NextRequest) {
           isBlocked: Boolean(isBlocked),
           isMutualInterest: Boolean(isMutualInterest),
           sentInterest: Array.isArray(sentInterest) ? sentInterest : [],
-          ...(error ? { error } : {}),
+          // No additional error info in composed response
           timestamp: new Date().toISOString(),
         };
 
@@ -140,7 +91,7 @@ export async function GET(req: NextRequest) {
           {
             status: isAuthError ? 401 : 500,
             headers: { "Content-Type": "application/json" },
-          },
+          }
         );
       }
     } catch (convexError) {
@@ -159,7 +110,7 @@ export async function GET(req: NextRequest) {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     }
   } catch (error) {
@@ -178,7 +129,7 @@ export async function GET(req: NextRequest) {
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
-      },
+      }
     );
   }
 }

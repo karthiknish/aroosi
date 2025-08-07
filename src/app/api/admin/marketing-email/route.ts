@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import {
   MarketingEmailTemplateFn,
@@ -22,10 +22,9 @@ const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
 
 export async function POST(request: Request) {
   try {
-    const { userId, role } = await requireAuth(request as unknown as NextRequest);
-    if ((role || "user") !== "admin") {
-      return errorResponse("Admin privileges required", 403);
-    }
+    const adminCheck = await requireAdminSession(request as unknown as NextRequest);
+    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
+    const { userId } = adminCheck;
 
     let body: unknown;
     try {
@@ -164,8 +163,8 @@ export async function POST(request: Request) {
           );
           sent += 1;
         }
-      } catch (err) {
-        console.error("Marketing email send error", { email: p.email, err });
+      } catch {
+        devLog("warn", "admin.marketing-email", "send_error", { email: p.email });
       }
     }
 
@@ -177,7 +176,7 @@ export async function POST(request: Request) {
       actorId: userId,
     });
   } catch (error) {
-    console.error("Admin marketing-email error", error);
+    devLog("error", "admin.marketing-email", "unhandled_error", { message: error instanceof Error ? error.message : String(error) });
     return errorResponse("Unexpected error", 500);
   }
 }

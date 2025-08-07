@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@/types/profile";
@@ -29,20 +29,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(body, { status });
   }
 
-  const convex = getConvexClient();
-  if (!convex) {
-    console.error("Admin profile GET convex not configured", {
-      scope: "admin.profile",
-      type: "convex_not_configured",
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
-  }
+  // Convex accessed via server helpers
 
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
@@ -50,11 +37,9 @@ export async function GET(req: NextRequest) {
 
   try {
     if (searchParams.get("matches")) {
-      const result = await convex
-        .query(api.users.getMatchesForProfile, {
-          profileId: id as unknown as Id<"profiles">,
-        })
-        .catch((e: unknown) => {
+      const result = await fetchQuery(api.users.getMatchesForProfile, {
+        profileId: id as unknown as Id<"profiles">,
+      } as any).catch((e: unknown) => {
           console.error("Admin profile GET matches query error", {
             scope: "admin.profile",
             type: "convex_query_error",
@@ -81,11 +66,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, matches: result, correlationId }, { status: 200 });
     }
 
-    const result = await convex
-      .query(api.users.getProfileById, {
-        id: id as unknown as Id<"profiles">,
-      })
-      .catch((e: unknown) => {
+    const result = await fetchQuery(api.users.getProfileById, {
+      id: id as unknown as Id<"profiles">,
+    } as any).catch((e: unknown) => {
         console.error("Admin profile GET profileById error", {
           scope: "admin.profile",
           type: "convex_query_error",
@@ -142,13 +125,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json(body, { status });
   }
 
-  const convex = getConvexClient();
-  if (!convex) {
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
-  }
+  // Convex accessed via server helpers
 
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
@@ -163,12 +140,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Missing updates", correlationId }, { status: 400 });
   }
 
-  const result = await convex
-    .mutation(api.users.adminUpdateProfile, {
-      id: id as unknown as Id<"profiles">,
-      updates,
-    })
-    .catch((e: unknown) => {
+  const result = await fetchMutation(api.users.adminUpdateProfile, {
+    id: id as unknown as Id<"profiles">,
+    updates,
+  } as any).catch((e: unknown) => {
       console.error("Admin profile PUT mutation error", {
         scope: "admin.profile",
         type: "convex_mutation_error",
@@ -188,9 +163,9 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const updated = (await convex.query(api.users.getProfileById, {
+    const updated = (await fetchQuery(api.users.getProfileById, {
       id: id as unknown as Id<"profiles">,
-    })) as Profile | null;
+    } as any)) as Profile | null;
 
     if (updated && updated.email) {
       if (
@@ -239,22 +214,14 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json(body, { status });
   }
 
-  const convex = getConvexClient();
-  if (!convex) {
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
-  }
+  // Convex accessed via server helpers
 
   const url = new URL(req.url);
   const id = url.pathname.split("/").pop()!;
 
-  const result = await convex
-    .mutation(api.users.deleteProfile, {
-      id: id as unknown as Id<"profiles">,
-    })
-    .catch((e: unknown) => {
+  const result = await fetchMutation(api.users.deleteProfile, {
+    id: id as unknown as Id<"profiles">,
+  } as any).catch((e: unknown) => {
       console.error("Admin profile DELETE mutation error", {
         scope: "admin.profile",
         type: "convex_mutation_error",

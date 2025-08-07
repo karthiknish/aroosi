@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { convexQueryWithAuth } from "@/lib/convexServer";
+import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
+import { fetchQuery } from "convex/nextjs";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const { userId, role } = await requireAuth(req);
-  if ((role || "user") !== "admin") {
+  const adminCheck = await requireAdminSession(req);
+  if ("errorResponse" in adminCheck) {
     const status = 403;
     const body = { error: "Admin privileges required", correlationId };
-    console.warn("Admin interests GET auth failed", {
-      scope: "admin.interests",
-      type: "auth_failed",
+    devLog("warn", "admin.interests", "auth_failed", {
       correlationId,
       statusCode: status,
       durationMs: Date.now() - startedAt,
@@ -22,17 +20,15 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await convexQueryWithAuth(req, api.interests.listAllInterests, {}).catch((e: unknown) => {
-        console.error("Admin interests GET query error", {
-          scope: "admin.interests",
-          type: "convex_query_error",
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-          message: e instanceof Error ? e.message : String(e),
-        });
-        return null;
+    const result = await fetchQuery(api.interests.listAllInterests, {}).catch((e: unknown) => {
+      devLog("error", "admin.interests", "convex_query_error", {
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+        message: e instanceof Error ? e.message : String(e),
       });
+      return null;
+    });
 
     if (!result) {
       return NextResponse.json(
@@ -41,9 +37,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.info("Admin interests GET success", {
-      scope: "admin.interests",
-      type: "success",
+    devLog("info", "admin.interests", "success", {
       correlationId,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
@@ -55,9 +49,7 @@ export async function GET(req: NextRequest) {
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("Admin interests GET unhandled error", {
-      scope: "admin.interests",
-      type: "unhandled_error",
+    devLog("error", "admin.interests", "unhandled_error", {
       correlationId,
       statusCode: 500,
       durationMs: Date.now() - startedAt,

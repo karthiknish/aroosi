@@ -1,15 +1,16 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { convexQueryWithAuth, convexMutationWithAuth } from "@/lib/convexServer";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId, role } = await requireAuth(req);
-    if ((role || "user") !== "admin") return errorResponse("Unauthorized", 403);
+    const adminCheck = await requireAdminSession(req);
+    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
+    const { userId } = adminCheck;
 
     // Rate limiting for admin operations
     const rateLimitResult = checkApiRateLimit(`admin_profiles_${userId}`, 100, 60000); // 100 requests per minute
@@ -17,9 +18,7 @@ export async function GET(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      return errorResponse("Service temporarily unavailable", 503);
-    }
+    // Convex accessed via server helpers; NEXT_PUBLIC_CONVEX_URL not required here
     
     const { searchParams } = new URL(req.url);
 
@@ -75,7 +74,7 @@ export async function GET(req: NextRequest) {
     //   params: { search: !!search, page, pageSize }
     // }, req);
 
-    const result = await convexQueryWithAuth(req, api.users.adminListProfiles, {
+    const result = await fetchQuery(api.users.adminListProfiles, {
       search,
       page,
       pageSize,
@@ -84,11 +83,11 @@ export async function GET(req: NextRequest) {
       banned,
       plan,
       isProfileComplete,
-    } as any);
+    } as any).catch(() => null as any);
 
     // Validate result structure
     if (!result || typeof result !== 'object') {
-      console.error("Invalid admin profiles result from Convex:", result);
+      devLog("error", "admin.profiles", "invalid_result", {});
       return errorResponse("Admin service error", 500);
     }
 
@@ -104,7 +103,7 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error in admin profiles GET:", error);
+    devLog("error", "admin.profiles", "unhandled_error", { message: error instanceof Error ? error.message : String(error) });
     
     // logSecurityEvent('VALIDATION_FAILED', {
     //   endpoint: 'admin/profiles',
@@ -122,9 +121,9 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    // Bearer admin authentication via centralized requireAuth
-    const { userId, role } = await requireAuth(req);
-    if ((role || "user") !== "admin") return errorResponse("Unauthorized", 403);
+    const adminCheck = await requireAdminSession(req);
+    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
+    const { userId } = adminCheck;
 
     // Strict rate limiting for profile deletion
     const rateLimitResult = checkApiRateLimit(`admin_delete_profile_${userId}`, 10, 60000); // 10 deletions per minute
@@ -157,9 +156,9 @@ export async function DELETE(req: NextRequest) {
 
     console.log(`Admin ${userId} attempting to delete profile: ${body.id}`);
 
-    const result = await convexMutationWithAuth(req, api.users.deleteProfile, {
+    const result = await fetchMutation(api.users.deleteProfile, {
       id: body.id,
-    } as any);
+    } as any).catch(() => null as any);
 
     // Validate deletion result
     if (!result || typeof result !== 'object') {
@@ -167,11 +166,11 @@ export async function DELETE(req: NextRequest) {
       return errorResponse("Profile deletion failed", 500);
     }
 
-    console.log(`Profile ${body.id} deleted successfully by admin ${userId}`);
+    devLog("info", "admin.profiles", "deleted", { profileId: body.id, userId });
     return successResponse(result);
 
   } catch (error) {
-    console.error("Error in admin profile DELETE:", error);
+    devLog("error", "admin.profiles", "delete_unhandled_error", { message: error instanceof Error ? error.message : String(error) });
     
     // logSecurityEvent('VALIDATION_FAILED', {
     //   endpoint: 'admin/profiles',
@@ -189,9 +188,9 @@ export async function DELETE(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    // Bearer admin authentication via centralized requireAuth
-    const { userId, role } = await requireAuth(req);
-    if ((role || "user") !== "admin") return errorResponse("Unauthorized", 403);
+    const adminCheck = await requireAdminSession(req);
+    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
+    const { userId } = adminCheck;
 
     // Rate limiting for admin profile updates
     const rateLimitResult = checkApiRateLimit(`admin_update_profile_${userId}`, 50, 60000); // 50 updates per minute
@@ -290,12 +289,12 @@ export async function PUT(req: NextRequest) {
     //   fields: Object.keys(sanitizedUpdates)
     // }, req);
 
-    console.log(`Admin ${userId} updating profile ${body.id} with fields: ${Object.keys(sanitizedUpdates).join(', ')}`);
+    devLog("info", "admin.profiles", "updating", { profileId: body.id, fields: Object.keys(sanitizedUpdates) });
 
-    const result = await convexMutationWithAuth(req, api.users.adminUpdateProfile, {
+    const result = await fetchMutation(api.users.adminUpdateProfile, {
       id: body.id,
       updates: sanitizedUpdates,
-    } as any);
+    } as any).catch(() => null as any);
 
     // Validate update result
     if (!result || typeof result !== 'object') {
@@ -303,11 +302,11 @@ export async function PUT(req: NextRequest) {
       return errorResponse("Profile update failed", 500);
     }
 
-    console.log(`Profile ${body.id} updated successfully by admin ${userId}`);
+    devLog("info", "admin.profiles", "updated", { profileId: body.id, userId });
     return successResponse(result);
 
   } catch (error) {
-    console.error("Error in admin profile PUT:", error);
+    devLog("error", "admin.profiles", "update_unhandled_error", { message: error instanceof Error ? error.message : String(error) });
     
     // logSecurityEvent('VALIDATION_FAILED', {
     //   endpoint: 'admin/profiles',
