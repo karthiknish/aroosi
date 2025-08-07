@@ -70,33 +70,53 @@ export function useAuth() {
 // Alias for backward compatibility
 export const useAuthContext = useAuth;
 
+
 interface AuthProviderProps {
   children: React.ReactNode;
 }
+
+// Util: get token from localStorage (for SSR safety, fallback to memory)
+function getInitialToken() {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || null;
+  }
+  return null;
+}
+
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(getInitialToken());
   const router = useRouter();
 
-  // No token storage at all; cookie-auth only
-  const removeLocalMarkers = useCallback(() => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.removeItem("auth-token");
-    } catch {}
+  // Store token in localStorage for persistence (optional, can use memory only for more security)
+  const saveToken = useCallback((token: string | null) => {
+    setAccessToken(token);
+    if (typeof window !== "undefined") {
+      if (token) localStorage.setItem("accessToken", token);
+      else localStorage.removeItem("accessToken");
+    }
   }, []);
 
-  // Fetch current user via cookie-auth only; /api/auth/me proxies refresh if needed.
+  // Remove all auth markers
+  const removeLocalMarkers = useCallback(() => {
+    saveToken(null);
+  }, [saveToken]);
+
+  // Fetch current user using Bearer token
   const fetchUser = useCallback(async (): Promise<User | null> => {
+    if (!accessToken) return null;
     try {
       const res = await fetch("/api/auth/me", {
         method: "GET",
-        credentials: "include",
-        headers: { accept: "application/json", "cache-control": "no-store" },
+        headers: {
+          accept: "application/json",
+          "cache-control": "no-store",
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
-
       if (!res.ok) {
         try {
           const body = await res.json();
@@ -104,14 +124,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch {}
         return null;
       }
-
       const data = (await res.json().catch(() => ({}))) as { user?: User };
       return data?.user ?? null;
     } catch (error) {
       console.error("Error fetching user:", error);
       return null;
     }
-  }, []);
+  }, [accessToken]);
+
 
   // Refresh user data
   const refreshUser = useCallback(async () => {
@@ -124,25 +144,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await refreshUser();
   }, [refreshUser]);
 
+
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
-      console.log(
-        "AuthProvider: Initializing auth state (cookie session only)"
-      );
-      const cookieUser = await fetchUser();
-      if (cookieUser) setUser(cookieUser);
+      if (accessToken) {
+        const tokenUser = await fetchUser();
+        if (tokenUser) setUser(tokenUser);
+      }
       setIsLoading(false);
-      console.log("AuthProvider: Initialization complete");
     };
     void initAuth();
-  }, [fetchUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Sign in with email/password
+
+  // Sign in with email/password (token-based)
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
-        console.log("AuthProvider: Starting signIn");
         setError(null);
         removeLocalMarkers();
         setUser(null);
@@ -150,7 +170,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const response = await fetch("/api/auth/signin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ email, password }),
         });
 
@@ -165,7 +184,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
-        console.log("AuthProvider: SignIn successful; hydrating from cookies");
+        // Store access token
+        const token = data.accessToken || data.token;
+        if (token) saveToken(token);
         await refreshUser();
         return { success: true };
       } catch (error) {
@@ -177,10 +198,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [removeLocalMarkers, refreshUser]
+    [removeLocalMarkers, refreshUser, saveToken]
   );
 
-  // Sign up with email/password - UPDATED TO MATCH YOUR SIGNUP API
+
+  // Sign up with email/password (token-based)
   const signUp = useCallback(
     async (
       email: string,
@@ -189,19 +211,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       lastName: string
     ) => {
       try {
-        console.log("AuthProvider: Starting signUp (legacy method)");
         setError(null);
-
-        // Clear any existing auth state
         removeLocalMarkers();
         setUser(null);
 
-        // This is a legacy method - your actual signup goes through CustomSignupForm
-        // But we can still support basic signup for backward compatibility
         const response = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({
             email,
             password,
@@ -231,9 +247,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
-        console.log("AuthProvider: SignUp successful; hydrating from cookies");
+        // Store access token
+        const token = data.accessToken || data.token;
+        if (token) saveToken(token);
         await refreshUser();
-
         return { success: true };
       } catch (error) {
         console.error("Sign up error:", error);
@@ -242,10 +259,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [removeLocalMarkers, refreshUser]
+    [removeLocalMarkers, refreshUser, saveToken]
   );
 
-  // Sign in with Google
+
+  // Sign in with Google (token-based)
   const signInWithGoogle = useCallback(
     async (credential: string) => {
       try {
@@ -253,7 +271,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const response = await fetch("/api/auth/google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
           body: JSON.stringify({ credential }),
         });
 
@@ -265,6 +282,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: errorMessage };
         }
 
+        // Store access token
+        const token = data.accessToken || data.token;
+        if (token) saveToken(token);
         await refreshUser();
         return { success: true };
       } catch (error) {
@@ -274,39 +294,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [refreshUser]
+    [refreshUser, saveToken]
   );
+
 
   // Sign out
   const signOut = useCallback(async () => {
-    console.log("AuthProvider: Signing out");
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } catch {}
     removeLocalMarkers();
     setUser(null);
     setError(null);
     router.push("/sign-in");
   }, [removeLocalMarkers, router]);
 
-  // Cookie detection and refresh
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    if (isLoading) return;
 
-    const cookies = document.cookie.split(";").map((c) => c.trim());
-    const hasAnyAuthCookie =
-      cookies.some((c) => c.startsWith("auth-token=")) ||
-      cookies.some((c) => c.startsWith("refresh-token=")) ||
-      cookies.some((c) => c.startsWith("authTokenPublic="));
-
-    if (hasAnyAuthCookie && !user) {
-      console.log(
-        "AuthProvider: Auth cookies detected but no user, refreshing..."
-      );
-      void refreshUser();
-    }
-  }, [isLoading, user, refreshUser]);
+  // Remove legacy cookie detection effect
 
   // Computed values
   const isAuthenticated = !!user;
