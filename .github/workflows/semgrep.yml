@@ -12,6 +12,9 @@ permissions:
 jobs:
   semgrep:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,6 +26,7 @@ jobs:
             p/typescript
             p/nextjs
           generateSarif: "1"
+          auditOn: pull_request
       - name: Upload SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:

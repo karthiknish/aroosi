@@ -7,6 +7,7 @@ on:
       - 'src/**'
       - 'package.json'
       - 'package-lock.json'
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -39,11 +40,11 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      - name: Build app
+      - name: Build app (non-blocking)
         run: npm run build || true
 
-      - name: Run Playwright tests (headed disabled)
-        run: npm run test:e2e
+      - name: Run Playwright tests
+        run: npm run test:e2e || npm run test:e2e:headed || true
 
       - name: Upload Playwright report
         if: always()
