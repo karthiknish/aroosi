@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import {
@@ -15,7 +15,14 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      return NextResponse.json(
+        { error: "Unauthorized", correlationId },
+        { status: 401 }
+      );
+    }
+    const { userId } = session as unknown as { userId: string };
 
     if (!userId) {
       return NextResponse.json(
@@ -149,7 +156,14 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      return NextResponse.json(
+        { error: "Unauthorized", correlationId },
+        { status: 401 }
+      );
+    }
+    const { userId } = session as unknown as { userId: string };
 
     if (!userId) {
       return NextResponse.json(

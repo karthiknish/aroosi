@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
+import {
+  convexQueryWithAuth,
+  convexMutationWithAuth,
+} from "@/lib/convexServer";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 // GET /api/profile-images -> get user's profile images
@@ -14,9 +17,13 @@ export async function GET(request: NextRequest) {
   try {
     const { userId } = await requireAuth(request);
 
-    const images = await fetchQuery(api.images.getProfileImages, {
-      userId: userId as Id<"users">,
-    } as any).catch((e: unknown) => {
+    const images = await convexQueryWithAuth(
+      request,
+      api.images.getProfileImages,
+      {
+        userId: userId as Id<"users">,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Profile images GET query error", {
         scope: "profile_images.get",
         type: "convex_query_error",
@@ -76,10 +83,14 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const result = await fetchMutation(api.images.deleteProfileImage, {
-      userId: userId as Id<"users">,
-      imageId: imageId as Id<"_storage">,
-    } as any).catch((e: unknown) => {
+    const result = await convexMutationWithAuth(
+      req,
+      api.images.deleteProfileImage,
+      {
+        userId: userId as Id<"users">,
+        imageId: imageId as Id<"_storage">,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Profile images DELETE mutation error", {
         scope: "profile_images.delete",
         type: "convex_mutation_error",
@@ -110,8 +121,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          (result as { message?: string }).message ||
-          "Failed to delete image",
+          (result as { message?: string }).message || "Failed to delete image",
         correlationId,
       },
       { status: 400 }
@@ -179,9 +189,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingImages = await fetchQuery(api.images.getProfileImages, {
-      userId: userId as Id<"users">,
-    } as any).catch((e: unknown) => {
+    const existingImages = await convexQueryWithAuth(
+      req,
+      api.images.getProfileImages,
+      {
+        userId: userId as Id<"users">,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Profile images POST getProfileImages error", {
         scope: "profile_images.post",
         type: "convex_query_error",
@@ -205,13 +219,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await fetchMutation(api.images.uploadProfileImage, {
-      userId: userId as Id<"users">,
-      storageId: storageId as Id<"_storage">,
-      fileName,
-      contentType,
-      fileSize,
-    } as any).catch((e: unknown) => {
+    const result = await convexMutationWithAuth(
+      req,
+      api.images.uploadProfileImage,
+      {
+        userId: userId as Id<"users">,
+        storageId: storageId as Id<"_storage">,
+        fileName,
+        contentType,
+        fileSize,
+      } as any
+    ).catch((e: unknown) => {
       console.error("Profile images POST upload error", {
         scope: "profile_images.post",
         type: "convex_mutation_error",

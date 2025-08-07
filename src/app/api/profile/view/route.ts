@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
-import { fetchMutation, fetchQuery } from "convex/nextjs";
+import {
+  convexMutationWithAuth,
+  convexQueryWithAuth,
+} from "@/lib/convexServer";
 
 /**
  * POST  /api/profile/view
@@ -25,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // recordProfileView now infers viewer via Convex identity; do not pass viewerUserId
-    await fetchMutation(api.users.recordProfileView, {
+    await convexMutationWithAuth(request, api.users.recordProfileView, {
       profileId: profileId as Id<"profiles">,
     } as any);
 
@@ -61,9 +64,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Convex enforces authorization; requesterUserId parameter is not required when using subject-based identity
-    const viewers = await fetchQuery(api.users.getProfileViewers, {
-      profileId: profileId as Id<"profiles">,
-    } as any);
+    const viewers = await convexQueryWithAuth(
+      request,
+      api.users.getProfileViewers,
+      {
+        profileId: profileId as Id<"profiles">,
+      } as any
+    );
 
     return NextResponse.json({ success: true, viewers, correlationId });
   } catch (err: any) {

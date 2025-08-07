@@ -2,13 +2,17 @@ import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { fetchQuery } from "convex/nextjs";
 import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders";
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId: authenticatedUserId } = await requireAuth(req);
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const { userId: authenticatedUserId } = session as unknown as { userId: string };
 
     // Rate limiting for interest status queries
     const rateLimitResult = checkApiRateLimit(`interest_status_${authenticatedUserId}`, 200, 60000); // 200 requests per minute

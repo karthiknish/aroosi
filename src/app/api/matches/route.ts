@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Id } from "@convex/_generated/dataModel";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function GET(req: NextRequest) {
@@ -8,13 +8,14 @@ export async function GET(req: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    const { userId } = await requireAuth(req);
-    if (!userId) {
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
       return NextResponse.json(
         { success: false, error: "Unauthorized", correlationId },
         { status: 401 }
       );
     }
+    const { userId } = session;
 
     // If users.getMyMatches is not exposed, fallback to deriving matches from interests or return empty list.
     let matches: Array<{ userId: string }> = [];

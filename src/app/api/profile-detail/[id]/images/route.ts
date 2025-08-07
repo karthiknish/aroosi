@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 // Add debug logging
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     if (debug) {
       console.log(
         `[${new Date().toISOString()}] [${requestId}] ${message}`,
-        data || "",
+        data || ""
       );
     }
   };
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           requestId,
           details: `URL path format should be /api/profile-detail/[id]/images`,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
           requestId,
           details: "ID should only contain alphanumeric characters",
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -68,9 +68,13 @@ export async function GET(req: NextRequest) {
       if (id && id.length === 24) {
         // Convex profile IDs are usually 24 chars, adjust as needed
         try {
-          const profile = await fetchQuery(api.users.getProfileById, {
-            id: id as Id<"profiles">,
-          } as any);
+          const profile = await convexQueryWithAuth(
+            req,
+            api.users.getProfileById,
+            {
+              id: id as Id<"profiles">,
+            } as any
+          );
           if (profile) {
             userId = profile.userId;
             log("Found profile by ID", {
@@ -88,9 +92,13 @@ export async function GET(req: NextRequest) {
       // If no profile found by ID, try to get user by ID
       if (!userId) {
         try {
-          const user = await fetchQuery(api.users.getUserPublicProfile, {
-            userId: id as Id<"users">,
-          } as any);
+          const user = await convexQueryWithAuth(
+            req,
+            api.users.getUserPublicProfile,
+            {
+              userId: id as Id<"users">,
+            } as any
+          );
 
           if (user) {
             userId = id as Id<"users">;
@@ -110,13 +118,15 @@ export async function GET(req: NextRequest) {
             requestId,
             details: "The provided ID does not match any user or profile",
           },
-          { status: 404 },
+          { status: 404 }
         );
       }
 
       // Get profile images using the resolved user ID
       try {
-        images = await fetchQuery(api.images.getProfileImages, { userId } as any);
+        images = await convexQueryWithAuth(req, api.images.getProfileImages, {
+          userId,
+        } as any);
         if (!Array.isArray(images)) {
           throw new Error("Invalid response format from getProfileImages");
         }
@@ -127,7 +137,7 @@ export async function GET(req: NextRequest) {
           userId: userId.toString(),
         });
         throw new Error(
-          `Failed to fetch images: ${queryError instanceof Error ? queryError.message : "Unknown error"}`,
+          `Failed to fetch images: ${queryError instanceof Error ? queryError.message : "Unknown error"}`
         );
       }
     } catch (error) {
@@ -138,7 +148,7 @@ export async function GET(req: NextRequest) {
           requestId,
           details: error instanceof Error ? error.message : "Unknown error",
         },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -182,7 +192,7 @@ export async function GET(req: NextRequest) {
           "X-Request-ID": requestId,
           "X-Response-Time": `${duration}ms`,
         },
-      },
+      }
     );
   }
 }

@@ -1,13 +1,17 @@
 import { NextRequest } from "next/server";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders";
 import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId: authenticatedUserId } = await requireAuth(req);
+    const session = await requireSession(req);
+    if ("errorResponse" in session) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const { userId: authenticatedUserId } = session as unknown as { userId: string };
 
     const rateLimitResult = checkApiRateLimit(
       `interest_received_${authenticatedUserId}`,
