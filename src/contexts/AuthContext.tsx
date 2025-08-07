@@ -136,6 +136,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     void initAuth();
   }, [getStoredToken, fetchUser, removeToken]);
 
+  // React to token changes immediately (token event bus)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        accessToken: string | null;
+        refreshToken: string | null;
+        reason: "set" | "clear" | "refresh";
+      };
+      setToken(detail?.accessToken ?? null);
+      // On token set or refresh, proactively refresh user
+      if (detail?.accessToken) {
+        void refreshUser();
+      } else {
+        // token cleared -> clear user
+        setUser(null);
+      }
+    };
+    window.addEventListener("token-changed", handler as EventListener);
+    return () => window.removeEventListener("token-changed", handler as EventListener);
+  }, [refreshUser]);
+
   // Sign in with email/password using centralized client
   const signIn = useCallback(
     async (email: string, password: string) => {

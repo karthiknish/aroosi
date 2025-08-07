@@ -11,9 +11,11 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
+    // Single auth call
+    let userId: string;
     try {
-      const { userId } = await requireAuth(request);
-      // Rate limiting continues below
+      const auth = await requireAuth(request);
+      userId = auth.userId;
     } catch (e) {
       const err = e as AuthError;
       const status = typeof err?.status === "number" ? err.status : 401;
@@ -26,7 +28,6 @@ export async function GET(request: NextRequest) {
       });
       return NextResponse.json({ error: "Unauthorized", correlationId }, { status });
     }
-    const { userId } = await requireAuth(request);
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(
@@ -48,10 +49,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Database operations now via fetchQuery with server identity
-
+    // Database operations via fetchQuery with server identity
     // Do not forward bearer tokens; server identity is used in Convex
-    // No client.setAuth call in cookie-only model.
 
     if (!userId) {
       console.warn("Conversations missing userId", {
@@ -111,10 +110,11 @@ export async function GET(request: NextRequest) {
           const conversationId = [String(userId), match.userId].sort().join("_");
 
           // Get last message for this conversation
-           const messages = await fetchQuery(api.messages.getMessages, {
-             conversationId,
-             limit: 1,
-           }).catch(() => [] as Array<any>);          const lastMessage =
+          const messages = await fetchQuery(api.messages.getMessages, {
+            conversationId,
+            limit: 1,
+          }).catch(() => [] as Array<any>);
+          const lastMessage =
             messages.length > 0 ? messages[messages.length - 1] : null;
 
           return {

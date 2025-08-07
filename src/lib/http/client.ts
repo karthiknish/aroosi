@@ -10,6 +10,23 @@
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
+/**
+ * Lightweight token event bus using window CustomEvent.
+ * Consumers can listen for "token-changed" to react immediately on updates.
+ */
+function emitTokenChanged(detail: {
+  accessToken: string | null;
+  refreshToken: string | null;
+  reason: "set" | "clear" | "refresh";
+}) {
+  try {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("token-changed", { detail }));
+  } catch {
+    // ignore
+  }
+}
+
 export const tokenStorage = {
   get access(): string | null {
     try {
@@ -23,6 +40,11 @@ export const tokenStorage = {
       if (typeof window === "undefined") return;
       if (value) localStorage.setItem("accessToken", value);
       else localStorage.removeItem("accessToken");
+      emitTokenChanged({
+        accessToken: value ?? null,
+        refreshToken: tokenStorage.refresh,
+        reason: value ? "set" : "clear",
+      });
     } catch {
       // ignore
     }
@@ -39,13 +61,27 @@ export const tokenStorage = {
       if (typeof window === "undefined") return;
       if (value) localStorage.setItem("refreshToken", value);
       else localStorage.removeItem("refreshToken");
+      emitTokenChanged({
+        accessToken: tokenStorage.access,
+        refreshToken: value ?? null,
+        reason: value ? "set" : "clear",
+      });
     } catch {
       // ignore
     }
   },
   clearAll() {
-    this.access = null;
-    this.refresh = null;
+    try {
+      this.access = null;
+      this.refresh = null;
+      emitTokenChanged({
+        accessToken: null,
+        refreshToken: null,
+        reason: "clear",
+      });
+    } catch {
+      // ignore
+    }
   },
 };
 
@@ -73,8 +109,23 @@ async function refreshTokensOnce(correlationId?: string): Promise<boolean> {
     refreshToken: string;
   }>;
 
-  if (data.accessToken) tokenStorage.access = data.accessToken;
-  if (data.refreshToken) tokenStorage.refresh = data.refreshToken;
+  let updated = false;
+  if (data.accessToken) {
+    tokenStorage.access = data.accessToken;
+    updated = true;
+  }
+  if (data.refreshToken) {
+    tokenStorage.refresh = data.refreshToken;
+    updated = true;
+  }
+
+  if (updated) {
+    emitTokenChanged({
+      accessToken: tokenStorage.access,
+      refreshToken: tokenStorage.refresh,
+      reason: "refresh",
+    });
+  }
 
   return Boolean(data.accessToken);
 }
@@ -90,7 +141,8 @@ export interface FetchJsonOptions extends Omit<RequestInit, "headers"> {
    */
   noRefresh?: boolean;
   /**
-   * Optional correlation id for logging/debugging on the server.
+   * Correlation id for logging/debugging on the server.
+   * If not provided, a stable per-session id will be generated (browser only).
    */
   correlationId?: string;
 }
@@ -105,12 +157,27 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
     ...rest
   } = opts;
 
+  // Generate or reuse a stable correlation id per browser session if not provided
+  let cid = correlationId;
+  try {
+    if (!cid && typeof window !== "undefined") {
+      const KEY = "__cid";
+      cid = sessionStorage.getItem(KEY) || "";
+      if (!cid) {
+        cid = Math.random().toString(36).slice(2, 10);
+        sessionStorage.setItem(KEY, cid);
+      }
+    }
+  } catch {
+    // ignore storage errors
+  }
+
   const headers: Record<string, string> = {
     Accept: "application/json",
     ...userHeaders,
   };
 
-  if (correlationId) headers["x-correlation-id"] = correlationId;
+  if (cid) headers["x-correlation-id"] = cid;
 
   const accessToken = tokenStorage.access;
 
@@ -126,7 +193,7 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
 
   // If unauthorized and we can refresh, try once
   if (resp.status === 401 && !noRefresh && !skipAuth) {
-    const refreshed = await refreshTokensOnce(correlationId);
+    const refreshed = await refreshTokensOnce(cid);
     if (refreshed) {
       const retryHeaders: Record<string, string> = {
         ...headers,
