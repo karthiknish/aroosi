@@ -14,11 +14,20 @@ export async function GET(request: NextRequest) {
       api.usageTracking.getUsageStats,
       {}
     );
+    type UsageStatItem = {
+      feature: string;
+      used: number;
+      limit: number;
+      unlimited?: boolean;
+      remaining?: number;
+      percentageUsed?: number;
+    };
+    const usageList = (stats.usage ?? []) as UsageStatItem[];
     
     // Transform the data to match the expected format
     const usage = {
       plan: stats.plan,
-      features: stats.usage.map((feature) => ({
+      features: usageList.map((feature) => ({
         name: feature.feature,
         used: feature.used,
         limit: feature.limit,
@@ -28,28 +37,38 @@ export async function GET(request: NextRequest) {
       })),
       // Legacy format for backward compatibility
       messaging: {
-        sent: stats.usage.find((u) => u.feature === "message_sent")?.used || 0,
+        sent:
+          usageList.find((u: UsageStatItem) => u.feature === "message_sent")
+            ?.used || 0,
         limit:
-          stats.usage.find((u) => u.feature === "message_sent")?.limit || 0,
+          usageList.find((u: UsageStatItem) => u.feature === "message_sent")
+            ?.limit || 0,
       },
       profileViews: {
-        count: stats.usage.find((u) => u.feature === "profile_view")?.used || 0,
+        count:
+          usageList.find((u: UsageStatItem) => u.feature === "profile_view")
+            ?.used || 0,
         limit:
-          stats.usage.find((u) => u.feature === "profile_view")?.limit || 0,
+          usageList.find((u: UsageStatItem) => u.feature === "profile_view")
+            ?.limit || 0,
       },
       searches: {
         count:
-          stats.usage.find((u) => u.feature === "search_performed")?.used || 0,
+          usageList.find((u: UsageStatItem) => u.feature === "search_performed")
+            ?.used || 0,
         limit:
-          stats.usage.find((u) => u.feature === "search_performed")?.limit || 0,
+          usageList.find((u: UsageStatItem) => u.feature === "search_performed")
+            ?.limit || 0,
       },
       boosts: {
         used:
-          stats.usage.find((u) => u.feature === "profile_boost_used")?.used ||
-          0,
+          usageList.find(
+            (u: UsageStatItem) => u.feature === "profile_boost_used"
+          )?.used || 0,
         monthlyLimit:
-          stats.usage.find((u) => u.feature === "profile_boost_used")?.limit ||
-          0,
+          usageList.find(
+            (u: UsageStatItem) => u.feature === "profile_boost_used"
+          )?.limit || 0,
       },
     };
     

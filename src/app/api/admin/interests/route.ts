@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await fetchQuery(api.interests.listAllInterests, {}).catch((e: unknown) => {
+    const result = await convexQueryWithAuth(req, api.interests.listAllInterests, {}).catch((e: unknown) => {
         console.error("Admin interests GET query error", {
           scope: "admin.interests",
           type: "convex_query_error",

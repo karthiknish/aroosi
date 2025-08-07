@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { convexQueryWithAuth, convexMutationWithAuth } from "@/lib/convexServer";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     //   params: { search: !!search, page, pageSize }
     // }, req);
 
-    const result = await fetchQuery(api.users.adminListProfiles, {
+    const result = await convexQueryWithAuth(req, api.users.adminListProfiles, {
       search,
       page,
       pageSize,
@@ -132,10 +132,6 @@ export async function DELETE(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    const { getConvexClient } = await import("@/lib/convexClient");
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-
     // Parse and validate request body
     let body;
     try {
@@ -161,7 +157,7 @@ export async function DELETE(req: NextRequest) {
 
     console.log(`Admin ${userId} attempting to delete profile: ${body.id}`);
 
-    const result = await fetchMutation(api.users.deleteProfile, {
+    const result = await convexMutationWithAuth(req, api.users.deleteProfile, {
       id: body.id,
     } as any);
 
@@ -202,10 +198,6 @@ export async function PUT(req: NextRequest) {
     if (!rateLimitResult.allowed) {
       return errorResponse("Rate limit exceeded", 429);
     }
-
-    const { getConvexClient } = await import("@/lib/convexClient");
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
 
     // Parse and validate request body
     let body;
@@ -300,7 +292,7 @@ export async function PUT(req: NextRequest) {
 
     console.log(`Admin ${userId} updating profile ${body.id} with fields: ${Object.keys(sanitizedUpdates).join(', ')}`);
 
-    const result = await fetchMutation(api.users.adminUpdateProfile, {
+    const result = await convexMutationWithAuth(req, api.users.adminUpdateProfile, {
       id: body.id,
       updates: sanitizedUpdates,
     } as any);

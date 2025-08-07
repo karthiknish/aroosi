@@ -7,7 +7,7 @@ import {
   premiumPromoTemplate,
   recommendedProfilesTemplate,
 } from "@/lib/marketingEmailTemplates";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { sendUserNotification } from "@/lib/email";
 import type { Profile } from "@/types/profile";
@@ -58,11 +58,15 @@ export async function POST(request: Request) {
     }
 
     // Fetch candidate audience
-    const result = await fetchQuery(api.users.adminListProfiles, {
-      search: undefined,
-      page: 0,
-      pageSize: effectiveMax,
-    } as any);
+    const result = await convexQueryWithAuth(
+      request as unknown as NextRequest,
+      api.users.adminListProfiles,
+      {
+        search: undefined,
+        page: 0,
+        pageSize: effectiveMax,
+      } as any
+    );
 
     // Be tolerant to backend shape; only pick what we need and keep optionals
     const profiles = (

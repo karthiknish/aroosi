@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import type { Profile } from "@convex/users";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const profilesResult = await fetchQuery(api.users.adminListProfiles, {
+    const profilesResult = await convexQueryWithAuth(req, api.users.adminListProfiles, {
       page: 1,
       pageSize: 10000,
     }).catch((e: unknown) => {
@@ -43,9 +43,13 @@ export async function GET(req: NextRequest) {
     const allMatches = await Promise.all(
       allProfiles.map(async (profile: Profile) => {
         try {
-          const matches = await fetchQuery(api.users.getMatchesForProfile, {
-            profileId: (profile as any)._id,
-          });
+          const matches = await convexQueryWithAuth(
+            req,
+            api.users.getMatchesForProfile,
+            {
+              profileId: (profile as any)._id,
+            }
+          );
           return { profileId: (profile as any)._id, matches };
         } catch (e) {
           console.error("Admin matches GET getMatchesForProfile error", {

@@ -187,15 +187,11 @@ export default function CustomSignupForm({
           : [],
       };
 
-      console.log("CustomSignupForm: Signup payload preview", {
-        keys: Object.keys({
-          email: formData.email,
-          password: formData.password,
-          fullName,
-          profile: normalizedProfile,
-        }),
-        profileKeys: Object.keys(normalizedProfile || {}),
-      });
+      // dev log
+      // no-op in production; avoid noisy logs
+      if (process.env.NODE_ENV !== "production") {
+        /* dev: signup payload preview */
+      }
 
       // POST to unified signup route which atomically creates user+profile in Convex
       const res = await fetch("/api/auth/signup", {
@@ -278,32 +274,18 @@ export default function CustomSignupForm({
           return;
         }
 
-        // 1) Explicit "Profile incomplete" from server gate
-        if (
-          raw?.error &&
-          String(raw.error).toLowerCase().includes("profile incomplete")
-        ) {
-          const fields: string[] = Array.isArray(raw.details)
-            ? raw.details
-            : [];
-          if (fields.length > 0) {
-            userMsg = `Please complete: ${fields.slice(0, 6).join(", ")}${fields.length > 6 ? " and more" : ""}.`;
-          } else {
-            userMsg =
-              "Your profile is missing required information. Please complete all fields and try again.";
-          }
-          showErrorToast(userMsg);
-          setIsLoading(false);
-          onError?.(userMsg);
-          return;
-        }
-
-        // 2) Zod validation errors shape { details: [{ path, message } ...] }
-        if (Array.isArray(raw?.details) && raw.details.length > 0) {
-          const fields = raw.details
-            .map((d: any) => d?.path?.join("."))
+        // 1) Zod validation errors shape { issues: [{ path, message } ...] }
+        if (Array.isArray(raw?.issues) && raw.issues.length > 0) {
+          const fields = raw.issues
+            .map((d: any) =>
+              Array.isArray(d?.path)
+                ? (d.path as any[]).join(".")
+                : typeof d?.path === "string"
+                  ? d.path
+                  : null
+            )
             .filter(Boolean);
-          const messages = raw.details
+          const messages = raw.issues
             .map((d: any) =>
               typeof d?.message === "string" ? d.message : null
             )
@@ -358,7 +340,9 @@ export default function CustomSignupForm({
       }
 
       // Success: Cookie-based session; refresh the auth state to reflect the new session
-      console.log("CustomSignupForm: Signup successful, refreshing auth state");
+      if (process.env.NODE_ENV !== "production") {
+        /* dev: signup success */
+      }
       await refreshUser();
 
       // Clean up any onboarding/local wizard storage
@@ -382,8 +366,10 @@ export default function CustomSignupForm({
             } catch {}
           }
         }
-      } catch (e) {
-        console.warn("Onboarding storage cleanup failed (non-fatal):", e);
+      } catch {
+        if (process.env.NODE_ENV !== "production") {
+          /* dev: onboarding storage cleanup failed */
+        }
       }
 
       // Call onComplete callback if provided
@@ -400,14 +386,18 @@ export default function CustomSignupForm({
           ? (data as any).redirectTo
           : "/success";
 
-      console.log("CustomSignupForm: Navigating to:", redirectTo);
+      if (process.env.NODE_ENV !== "production") {
+        /* dev: navigating */
+      }
       try {
         router.push(redirectTo);
       } catch {
         window.location.href = redirectTo;
       }
     } catch (err) {
-      console.error("Signup request failed", err);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Signup request failed", err);
+      }
       showErrorToast("An unexpected error occurred");
       onError?.("An unexpected error occurred");
     } finally {

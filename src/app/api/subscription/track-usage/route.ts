@@ -54,7 +54,16 @@ export async function POST(request: NextRequest) {
       api.usageTracking.getUsageStats,
       {}
     );
-    const featureStats = stats.usage.find((u) => u.feature === feature);
+    type UsageStatItem = {
+      feature: string;
+      used: number;
+      limit: number;
+      unlimited?: boolean;
+      remaining?: number;
+    };
+    const featureStats = (stats.usage as UsageStatItem[]).find(
+      (u: UsageStatItem) => u.feature === feature
+    );
 
     return successResponse({
       feature,

@@ -116,7 +116,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         })) as { user?: User };
       return data?.user ?? null;
     } catch (error) {
-      console.warn("AuthProvider.fetchUser failed", error);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("AuthProvider.fetchUser failed");
+      }
       return null;
     }
   }, []);
@@ -152,7 +154,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     void initAuth();
   }, [fetchUser]);
 
-  // Sign in with email/password (token-based) + centralized hydration retry
+  // Sign in with email/password (cookie-session) + centralized hydration retry
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
@@ -180,11 +182,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: composed };
         }
 
-        // Store access + refresh tokens
-        const token = data.accessToken || data.token;
-        const refresh = data.refreshToken || null;
-        if (token) saveToken(token, refresh);
-
         // Hydration retry loop to centralize reliability across callers
         const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
         const backoffs = [0, 150, 300, 750];
@@ -192,8 +189,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (backoffs[i] > 0) await sleep(backoffs[i]);
           try {
             await refreshUser();
-            // If user is populated, we can break early
-            if (user) break;
+            // If user now present, we can break early
+            if (typeof window !== "undefined") break;
           } catch {
             // continue to next backoff
           }
@@ -215,17 +212,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch {
           // keep default
         }
-        console.error("Sign in error:", error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Sign in error");
+        }
         removeLocalMarkers();
         setUser(null);
         setError(errorMessage);
         return { success: false, error: errorMessage };
       }
     },
-    [removeLocalMarkers, refreshUser, saveToken, user]
+    [removeLocalMarkers, refreshUser]
   );
 
-  // Sign up with email/password (token-based)
+  // Sign up with email/password (cookie-session)
   const signUp = useCallback(
     async (
       email: string,
@@ -269,24 +268,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setError(errorMessage);
           return { success: false, error: errorMessage };
         }
-
-        // Store access + refresh tokens
-        const token = data.accessToken || data.token;
-        const refresh = data.refreshToken || null;
-        if (token) saveToken(token, refresh);
         await refreshUser();
         return { success: true };
       } catch (error) {
-        console.error("Sign up error:", error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Sign up error");
+        }
         const errorMessage = "Network error";
         setError(errorMessage);
         return { success: false, error: errorMessage };
       }
     },
-    [removeLocalMarkers, refreshUser, saveToken]
+    [removeLocalMarkers, refreshUser]
   );
 
-  // Sign in with Google (token-based)
+  // Sign in with Google (cookie-session)
   const signInWithGoogle = useCallback(
     async (credential: string, state?: string) => {
       try {
@@ -304,21 +300,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setError(errorMessage);
           return { success: false, error: errorMessage };
         }
-
-        // Store access + refresh tokens
-        const token = data.accessToken || data.token;
-        const refresh = data.refreshToken || null;
-        if (token) saveToken(token, refresh);
         await refreshUser();
         return { success: true };
       } catch (error) {
-        console.error("Google sign in error:", error);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Google sign in error");
+        }
         const errorMessage = "Network error";
         setError(errorMessage);
         return { success: false, error: errorMessage };
       }
     },
-    [refreshUser, saveToken]
+    [refreshUser]
   );
 
   // Sign out
@@ -351,11 +344,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Debug logging
   useEffect(() => {
-    console.log("AuthProvider state update:", {
-      isAuthenticated,
-      isLoaded,
-      hasUser: !!user,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      // dev: auth provider state update
+    }
   }, [isAuthenticated, isLoaded, user]);
 
   const value: AuthContextType = {
