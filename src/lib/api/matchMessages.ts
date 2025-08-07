@@ -96,7 +96,7 @@ class MatchMessagesAPI {
   private async makeRequest<T>(
     endpoint: string,
     options?: RequestInit,
-    token?: string | null
+    _token?: string | null
   ): Promise<T> {
     const baseHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -105,10 +105,11 @@ class MatchMessagesAPI {
       ...baseHeaders,
       ...((options?.headers as Record<string, string>) || {}),
     };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+
 
     const response = await fetch(`/api/messages${endpoint}`, {
       headers,
+      credentials: "include",
       ...options,
     });
 

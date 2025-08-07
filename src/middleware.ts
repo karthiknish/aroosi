@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 const publicRoutes = [
   "/",
   "/sign-in",
-  "/sign-up",
+  // removed sign-up
   "/about",
   "/how-it-works",
   "/privacy",

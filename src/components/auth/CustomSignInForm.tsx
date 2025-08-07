@@ -166,7 +166,7 @@ export default function CustomSignInForm({
         </span>
         <button
           type="button"
-          onClick={() => router.push("/sign-up")}
+          onClick={() => router.push("/sign-in")}
           className="text-primary hover:underline font-medium"
         >
           Sign up

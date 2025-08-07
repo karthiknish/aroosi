@@ -50,7 +50,7 @@ class SubscriptionAPI {
   private async makeRequest(
     endpoint: string,
     options?: RequestInit,
-    token?: string
+    _token?: string
   ): Promise<any> {
     const baseHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -71,14 +71,12 @@ class SubscriptionAPI {
       }
     }
     const headers: Record<string, string> = { ...baseHeaders, ...optHeaders };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
 
     const response = await fetch(endpoint, {
       method: options?.method || "GET",
       headers,
       body: options?.body,
-      // credentials removed; use token-based auth
-      redirect: "manual",
+      credentials: "include",
     });
 
     const ct = response.headers.get("content-type") || "";

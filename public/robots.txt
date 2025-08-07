@@ -13,7 +13,7 @@ Allow: /how-it-works
 
 # Disallow private/sensitive areas
 Disallow: /sign-in
-Disallow: /sign-up
+Disallow:
 Disallow: /profile
 Disallow: /search
 Disallow: /matches
