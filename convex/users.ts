@@ -292,6 +292,103 @@ export const getProfileViewers = query({
 });
 
 /**
+ * Boost the current user's profile for 24 hours.
+ * Enforces Premium Plus subscription and a monthly quota.
+ */
+export const boostProfile = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, status: 401, code: "UNAUTHENTICATED", message: "Sign in required" } as const;
+    }
+
+    const email = (identity as any).email as string | undefined;
+    if (!email) {
+      return { success: false, status: 401, code: "UNAUTHENTICATED", message: "Missing identity email" } as const;
+    }
+
+    // Resolve user and profile
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email.trim().toLowerCase()))
+      .first();
+    if (!user) {
+      return { success: false, status: 404, code: "USER_NOT_FOUND", message: "User not found" } as const;
+    }
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id as Id<"users">))
+      .first();
+    if (!profile) {
+      return { success: false, status: 404, code: "PROFILE_NOT_FOUND", message: "Profile not found" } as const;
+    }
+
+    const now = Date.now();
+    const currentMonthKey = new Date(now).getUTCFullYear() * 100 + (new Date(now).getUTCMonth() + 1);
+    const monthlyQuota = 5;
+
+    const plan = (profile as any).subscriptionPlan as string | undefined;
+    const expiresAt = (profile as any).subscriptionExpiresAt as number | undefined;
+    if (plan !== "premiumPlus" || (typeof expiresAt === "number" && expiresAt <= now)) {
+      return {
+        success: false,
+        status: 402,
+        code: "REQUIRES_PREMIUM_PLUS",
+        message: "Upgrade to Premium Plus to boost your profile",
+      } as const;
+    }
+
+    const boostedUntil = (profile as any).boostedUntil as number | undefined;
+    if (typeof boostedUntil === "number" && boostedUntil > now) {
+      return {
+        success: false,
+        status: 200,
+        code: "ALREADY_BOOSTED",
+        message: "Your profile is already boosted",
+        boostedUntil,
+        boostsRemaining: (profile as any).boostsRemaining ?? 0,
+      } as const;
+    }
+
+    let boostsMonth = (profile as any).boostsMonth as number | undefined;
+    let boostsRemaining = (profile as any).boostsRemaining as number | undefined;
+    if (boostsMonth !== currentMonthKey) {
+      boostsMonth = currentMonthKey;
+      boostsRemaining = monthlyQuota;
+    }
+    if ((boostsRemaining ?? 0) <= 0) {
+      return {
+        success: false,
+        status: 429,
+        code: "NO_BOOSTS_LEFT",
+        message: "No boosts remaining this month",
+        boostsRemaining: boostsRemaining ?? 0,
+      } as const;
+    }
+
+    const newBoostedUntil = now + 24 * 60 * 60 * 1000;
+    const newRemaining = Math.max((boostsRemaining ?? monthlyQuota) - 1, 0);
+
+    await ctx.db.patch((profile as any)._id as Id<"profiles">, {
+      boostedUntil: newBoostedUntil,
+      boostsRemaining: newRemaining,
+      boostsMonth: currentMonthKey,
+      updatedAt: now,
+    } as any);
+
+    return {
+      success: true,
+      status: 200,
+      code: "BOOST_APPLIED",
+      boostedUntil: newBoostedUntil,
+      boostsRemaining: newRemaining,
+      message: "Profile boosted for 24 hours",
+    } as const;
+  },
+});
+
+/**
  * Admin: list profiles with simple filtering and pagination (naive scan).
  */
 export const adminListProfiles = query({
