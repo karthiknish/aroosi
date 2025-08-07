@@ -14,7 +14,6 @@ function EditProfileE2ETestPageInner() {
     setStatus("loading");
     try {
       const res = await updateUserProfile(
-        token,
         { fullName },
         0, // retries
       );

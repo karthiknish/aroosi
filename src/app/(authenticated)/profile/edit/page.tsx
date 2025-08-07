@@ -184,7 +184,7 @@ export default function EditProfilePage() {
   } = useQuery<Profile | null>({
     queryKey: profileQueryKey,
     queryFn: async () => {
-      const result = await getCurrentUserWithProfile("" as unknown as string);
+      const result = await getCurrentUserWithProfile();
       return result.success ? (result.data as Profile) : null;
     },
     enabled: true,
@@ -275,7 +275,7 @@ export default function EditProfilePage() {
         _id: _omitId, // eslint-disable-line no-unused-vars
         ...safeValues
       } = values;
-      const apiResult = await submitProfile("" as unknown as string, safeValues, "edit");
+      const apiResult = await submitProfile(safeValues, "edit");
       if (!apiResult.success) {
         // Bubble up specific errors for better UX
         throw new Error(apiResult.error || "Profile update was not successful");

@@ -65,9 +65,7 @@ const ProfileBoostButton = () => {
   const handleBoost = async () => {
     setLoading(true);
     try {
-      // Cookie-only migration: boostProfile currently expects a token param by type.
-      // Pass an empty string to satisfy the current signature; server uses cookies.
-      const result = await boostProfile("");
+      const result = await boostProfile();
       showSuccessToast(
         `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`
       );

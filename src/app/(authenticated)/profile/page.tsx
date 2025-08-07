@@ -41,7 +41,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   >({
     queryKey: ["profile"],
     queryFn: async () => {
-      const result = await getCurrentUserWithProfile("" as unknown as string);
+      const result = await getCurrentUserWithProfile();
       if (!result.success || !result.data) return undefined;
 
       // Unwrap potential nested envelopes { success: true, data: {...} }
@@ -74,7 +74,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
       queryKey: ["profileImages", profile?.userId],
       queryFn: async () => {
         if (!profile?.userId) return [];
-        const result = await fetchUserProfileImages("" as unknown as string, profile.userId);
+        const result = await fetchUserProfileImages(profile.userId);
         if (
           !result.success ||
           result.data === undefined ||
@@ -118,7 +118,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   const deleteProfileMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
       if (!profile?._id) return;
-      await deleteUserProfile("" as unknown as string);
+      await deleteUserProfile();
     },
     onSuccess: () => {
       router.push("/");

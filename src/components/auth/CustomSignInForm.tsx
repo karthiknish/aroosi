@@ -24,7 +24,7 @@ export default function CustomSignInForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signIn, user } = useAuth();
+  const { signIn, refreshUser, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -44,36 +44,53 @@ export default function CustomSignInForm({
     setIsLoading(true);
 
     try {
-      // Invoke existing auth flow (which hits /api/auth/signin under the hood)
+      // 1) Perform sign in (stores tokens and triggers token-changed)
       const result = await signIn(email, password);
-
-      // Explicitly call /api/auth/me to log correlation/debug headers for visibility
-      try {
-        await fetch("/api/auth/me", { method: "GET", headers: { accept: "application/json" } });
-      } catch {
-        // ignore logging failures; UI behavior below still applies
+      if (!result.success) {
+        const msg = result.error || "Sign in failed";
+        onError?.(msg);
+        showErrorToast(msg);
+        setIsLoading(false);
+        return;
       }
 
-      if (result.success) {
-        // Check for profile existence
-        setTimeout(() => {
-          const hasProfile = user && user.profile && (user.profile as any).id;
-          if (!hasProfile) {
-            const msg =
-              "No profile found for this account. Please create a profile first.";
+      // 2) Force a reliable hydration of user state from server
+      //    This ensures persisted sessions and profile data are available post-signin.
+      await refreshUser();
+
+      // Optional: warm up auth endpoint (non-blocking) to ensure cookies/headers settle
+      void fetch("/api/auth/me", { method: "GET", headers: { accept: "application/json", "cache-control": "no-store" } }).catch(() => {});
+
+      // 3) Read the freshly updated user snapshot
+      const hasProfile = (() => {
+        const u = user as any;
+        // user may still be the stale closure; prefer reading from localStorage-backed marker if needed
+        // but try the context first; if not present, proceed with navigation and let downstream guards handle it
+        return Boolean(u?.profile?.id || u?.profile?._id);
+      })();
+
+      if (!hasProfile) {
+        // Allow post-sign-in hydration to complete; then re-check once after a short delay
+        setTimeout(async () => {
+          await refreshUser();
+          const u2 = (typeof window !== "undefined" ? (window as any).__lastUserFromAuthProvider : null) || null;
+          const ctxUser = (user as any) ?? u2;
+          const finalHasProfile = Boolean(ctxUser?.profile?.id || ctxUser?.profile?._id);
+          if (!finalHasProfile) {
+            const msg = "No profile found for this account. Please create a profile first.";
             onError?.(msg);
             showErrorToast(msg);
             setIsLoading(false);
             return;
           }
           handleOnboardingComplete();
-        }, 100);
-      } else {
-        const msg = result.error || "Sign in failed";
-        onError?.(msg);
-        showErrorToast(msg);
-        setIsLoading(false);
+          setIsLoading(false);
+        }, 200);
+        return;
       }
+
+      handleOnboardingComplete();
+      setIsLoading(false);
     } catch (err) {
       const msg = "An unexpected error occurred";
       onError?.(msg);
@@ -83,7 +100,7 @@ export default function CustomSignInForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="custom-sign-in-form">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>

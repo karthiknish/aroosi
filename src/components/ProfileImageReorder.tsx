@@ -375,8 +375,7 @@ export function ProfileImageReorder({
           return;
         }
 
-        // Cookie-auth: pass empty token to satisfy current types until util migrates
-        await updateImageOrder({ token: "", userId, imageIds: storageIds });
+        await updateImageOrder({ userId, imageIds: storageIds });
 
         showSuccessToast("Image order updated successfully");
       } catch (err) {
@@ -492,8 +491,7 @@ export function ProfileImageReorder({
                               const newOrderIds = reordered.map((im) =>
                                 im.storageId ? im.storageId : String(im.id)
                               );
-                              // Cookie-auth: pass empty token to satisfy current types until util migrates
-                              await updateImageOrder({ token: "", userId, imageIds: newOrderIds });
+                              await updateImageOrder({ userId, imageIds: newOrderIds });
                               showSuccessToast("Set as main");
                             } catch (e) {
                               const msg = e instanceof Error ? e.message : "Failed to set main";
