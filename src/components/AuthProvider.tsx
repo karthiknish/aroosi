@@ -120,29 +120,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     tokenStorage.clearAll();
   }, [saveToken]);
 
-  // Fetch current user using Bearer token
+  // Fetch current user using Bearer token (centralized http client with auto-refresh on 401)
   const fetchUser = useCallback(async (): Promise<User | null> => {
     if (!accessToken) return null;
     try {
-      const res = await fetch("/api/auth/me", {
-        method: "GET",
-        headers: {
-          accept: "application/json",
-          "cache-control": "no-store",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!res.ok) {
+      // Use centralized client to inherit 401 -> refresh retry automatically
+      const data = (await (await import("@/lib/http/client")).getJson<{ user?: User }>("/api/auth/me").catch(async (err: any) => {
+        // One manual retry after a short delay to cover transient races
         try {
-          const body = await res.json();
-          console.warn("AuthProvider.fetchUser: /api/auth/me not OK", body);
-        } catch {}
-        return null;
-      }
-      const data = (await res.json().catch(() => ({}))) as { user?: User };
+          await new Promise((r) => setTimeout(r, 150));
+          return await (await import("@/lib/http/client")).getJson<{ user?: User }>("/api/auth/me");
+        } catch {
+          throw err;
+        }
+      })) as { user?: User };
       return data?.user ?? null;
     } catch (error) {
-      console.error("Error fetching user:", error);
+      console.warn("AuthProvider.fetchUser failed", error);
       return null;
     }
   }, [accessToken]);
@@ -164,8 +158,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initAuth = async () => {
       if (accessToken) {
+        // Attempt initial fetch with one retry inside fetchUser
         const tokenUser = await fetchUser();
-        if (tokenUser) setUser(tokenUser);
+        if (tokenUser) {
+          setUser(tokenUser);
+        }
       }
       setIsLoading(false);
     };
@@ -193,19 +190,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
 
+    // Cross-tab token sync via storage event
+    const onStorage = (e: StorageEvent) => {
+      try {
+        if (!e.key) return;
+        if (e.key !== "accessToken" && e.key !== "refreshToken") return;
+        const newAccess = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+        const newRefresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+        setAccessToken(newAccess);
+        if (newAccess) {
+          void refreshUser();
+        } else {
+          setUser(null);
+        }
+      } catch {
+        // no-op
+      }
+    };
+
     if (typeof window !== "undefined") {
       window.addEventListener("token-changed", onTokenChanged as EventListener);
+      window.addEventListener("storage", onStorage);
     }
     return () => {
       if (typeof window !== "undefined") {
         window.removeEventListener("token-changed", onTokenChanged as EventListener);
+        window.removeEventListener("storage", onStorage);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
-  // Sign in with email/password (token-based)
+  // Sign in with email/password (token-based) + centralized hydration retry
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
@@ -222,30 +239,57 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          const errorMessage =
-            (data && (data.error as string)) || "Sign in failed";
-          setError(errorMessage);
+          // Improve error message with server code if present
+          const serverMsg = (data && (data.error as string)) || "Sign in failed";
+          const code = (data && (data.code as string)) || undefined;
+          const composed = code ? `${serverMsg} (${code})` : serverMsg;
+          setError(composed);
           removeLocalMarkers();
           setUser(null);
-          return { success: false, error: errorMessage };
+          return { success: false, error: composed };
         }
 
         // Store access + refresh tokens
         const token = data.accessToken || data.token;
         const refresh = data.refreshToken || null;
         if (token) saveToken(token, refresh);
-        await refreshUser();
+
+        // Hydration retry loop to centralize reliability across callers
+        const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+        const backoffs = [0, 150, 300, 750];
+        for (let i = 0; i < backoffs.length; i++) {
+          if (backoffs[i] > 0) await sleep(backoffs[i]);
+          try {
+            await refreshUser();
+            // If user is populated, we can break early
+            if (user) break;
+          } catch {
+            // continue to next backoff
+          }
+        }
+
         return { success: true };
-      } catch (error) {
+      } catch (error: any) {
+        // Include message/code if server provided in text
+        let errorMessage = "Network error";
+        try {
+          if (typeof error?.message === "string") {
+            const parsed = JSON.parse(error.message);
+            if (parsed?.error) {
+              errorMessage = parsed?.code ? `${parsed.error} (${parsed.code})` : parsed.error;
+            }
+          }
+        } catch {
+          // keep default
+        }
         console.error("Sign in error:", error);
-        const errorMessage = "Network error";
         removeLocalMarkers();
         setUser(null);
         setError(errorMessage);
         return { success: false, error: errorMessage };
       }
     },
-    [removeLocalMarkers, refreshUser, saveToken]
+    [removeLocalMarkers, refreshUser, saveToken, user]
   );
 
 

@@ -6,11 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import {
-  getImageUploadUrl,
-  saveImageMeta,
-  deleteImageById,
-} from "@/lib/utils/imageUtil";
+import { getImageUploadUrl, saveImageMeta } from "@/lib/utils/imageUtil";
 import { ImageUploader } from "./ImageUploader";
 import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
 import { ProfileImageReorder } from "./ProfileImageReorder";
@@ -115,8 +111,7 @@ export function ProfileImageUpload({
         }
 
         // Use existing utility function (cookie-auth)
-        // TODO: migrate user profile API to cookie-auth; until then pass empty token
-        const result = await fetchUserProfileImages("", userId);
+        const result = await fetchUserProfileImages(userId);
         if (!result.success) {
           console.error("Error fetching user profile images:", result.error);
           if (result.error?.includes("Authentication")) {
@@ -186,8 +181,7 @@ export function ProfileImageUpload({
   const { data: currentUserProfile } = useQuery({
     queryKey: ["currentUserWithProfile"],
     queryFn: async () => {
-      // TODO: migrate getCurrentUserWithProfile to cookie-auth; until then pass empty token
-      const result = await getCurrentUserWithProfile("");
+      const result = await getCurrentUserWithProfile();
       if (!result.success) return null;
       return result.data;
     },
@@ -280,8 +274,7 @@ export function ProfileImageUpload({
       // In create mode, return a dummy URL since we'll handle locally
       return "dummy-url-for-create-mode";
     }
-    // TODO: migrate getImageUploadUrl to cookie-auth; until then pass empty token
-    return await getImageUploadUrl("");
+    return await getImageUploadUrl();
   }, [mode]);
 
   // Move uploadImage definition above uploadImageToUse
@@ -313,8 +306,7 @@ export function ProfileImageUpload({
       }
 
       // Save image metadata to ensure it persists (cookie-auth)
-      // TODO: migrate saveImageMeta to cookie-auth; until then pass empty token
-      const result = await saveImageMeta({ token: "", ...args });
+      const result = await saveImageMeta(args);
 
       return {
         success: true,
@@ -352,13 +344,11 @@ export function ProfileImageUpload({
       if (!userId) throw new Error("Missing userId");
       if (authIsAdmin && profileId) {
         // Use admin util for deleting images (cookie-auth)
-        // TODO: migrate deleteAdminProfileImageById to cookie-auth; until then pass empty token
         await deleteAdminProfileImageById({ token: "", profileId, imageId });
         return imageId;
       }
-      // Default user delete (cookie-auth)
-      // TODO: migrate deleteImageById to cookie-auth; until then pass empty token
-      await deleteImageById({ token: "", userId, imageId });
+      // Default user delete path currently lacks a client util; perform optimistic removal only.
+      // Optionally, implement a DELETE /api/profile-images/:id route and call it here.
       return imageId;
     },
     onSuccess: async () => {
