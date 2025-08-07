@@ -1,17 +1,14 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { fetchQuery } from "convex/nextjs";
 import { checkApiRateLimit, logSecurityEvent } from "@/lib/utils/securityHeaders";
 
 export async function GET(req: NextRequest) {
   try {
-    // Enhanced authentication (cookie-only)
-    const authCheck = await requireUserToken(req);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId: authenticatedUserId } = authCheck;
+    const { userId: authenticatedUserId } = await requireAuth(req);
 
     // Rate limiting for interest status queries
     const rateLimitResult = checkApiRateLimit(`interest_status_${authenticatedUserId}`, 200, 60000); // 200 requests per minute
@@ -45,22 +42,12 @@ export async function GET(req: NextRequest) {
       return errorResponse("Unauthorized: can only check interest status involving yourself", 403);
     }
 
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    if (!convex) {
-      return errorResponse("Interest service temporarily unavailable", 503);
-    }
-    
-    // Cookie-only model: do not set auth token on convex client
-    // convex.setAuth?.(undefined as unknown as string);
-
-    // Log interest status query for monitoring
     console.log(`User ${authenticatedUserId} checking interest status: ${fromUserId} -> ${toUserId}`);
 
-    const result = await convex.query(api.interests.getInterestStatus, {
+    const result = await fetchQuery(api.interests.getInterestStatus, {
       fromUserId: fromUserId as Id<"users">,
       toUserId: toUserId as Id<"users">,
-    });
+    } as any);
 
     return successResponse({ status: result });
 

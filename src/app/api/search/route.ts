@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery } from "convex/nextjs";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { z } from "zod";
@@ -44,10 +44,7 @@ export async function GET(request: NextRequest) {
       })();
 
     // Authentication via centralized cookie session helper (auto-refresh + forwarding)
-    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) return session.errorResponse!;
-    const userId = session.userId!;
+    const { userId } = await requireAuth(request);
 
     if (!userId) {
       return errorResponse("User ID is required", 400);
@@ -75,11 +72,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const convexClient = getConvexClient();
-    if (!convexClient)
-      return errorResponse("Convex client not configured", 500);
-
-    // Cookie-only: do not set bearer on Convex client
 
     // Parse and validate with Zod
     const { searchParams } = new URL(request.url);
@@ -131,7 +123,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const result = await convexClient.query(api.users.searchPublicProfiles, {
+    const result = await fetchQuery(api.users.searchPublicProfiles, {
       city,
       country,
       ageMin,
@@ -139,13 +131,11 @@ export async function GET(request: NextRequest) {
       preferredGender,
       page,
       pageSize,
-      // extended filters
       ethnicity,
       motherTongue,
       language,
-      // correlation
       correlationId: cid,
-    });
+    } as any);
 
     if (!result || typeof result !== "object") {
       console.error("Invalid search results from Convex:", result, {
@@ -167,7 +157,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Forward any cookies updated during session refresh
-    const res = successResponse({
+    return successResponse({
       ...result,
       page,
       pageSize,
@@ -183,10 +173,6 @@ export async function GET(request: NextRequest) {
         language,
       },
     });
-    for (const c of session.setCookiesToForward) {
-      res.headers.append("Set-Cookie", c);
-    }
-    return res;
   } catch (error) {
     console.error("Error in search API route:", error);
 

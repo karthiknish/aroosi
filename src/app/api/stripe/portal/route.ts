@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { stripe } from "@/lib/stripe";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery } from "convex/nextjs";
 
 /**
  * POST /api/stripe/portal
@@ -15,9 +15,7 @@ import { requireUserToken } from "@/app/api/_utils/auth";
 export async function POST(req: NextRequest) {
   try {
     // Require cookie/JWT auth (same pattern as checkout)
-    const auth = await requireUserToken(req);
-    if ("errorResponse" in auth) return auth.errorResponse;
-    const { userId } = auth;
+    const { userId } = await requireAuth(req);
     if (!userId) return errorResponse("User ID not found in session", 401);
 
     if (!stripe) {
@@ -29,19 +27,11 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_BILLING_PORTAL_RETURN_URL || "https://aroosi.app/plans";
 
     // Fetch Stripe customer id for this user from Convex (server-side source of truth)
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    // Cookie-only: do not set bearer on Convex client
-
-    // Use an existing profile query and read a Stripe customer field if present.
-    // Adjust field name if your schema differs (e.g., stripeCustomerId, billing.customerId, etc.)
     let customerId: string | null = null;
     try {
-      // getProfileByUserIdPublic expects a Convex Id<"users">; cast safely
-      const profile = (await convex.query(api.users.getProfileByUserIdPublic, {
-        // Casting string token to Convex Id for server query context
+      const profile = (await fetchQuery(api.users.getProfileByUserIdPublic, {
         userId: userId as unknown as import("@convex/_generated/dataModel").Id<"users">,
-      })) as any;
+      } as any)) as any;
       customerId =
         profile?.stripeCustomerId ||
         profile?.billing?.customerId ||

@@ -1,31 +1,23 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchMutation } from "convex/nextjs";
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
-
-    let client = getConvexClient();
-    if (!client) client = getConvexClient();
-    if (!client) return errorResponse("Service temporarily unavailable", 503);
-    // Cookie-only: do not set auth bearer on client
+    const { userId } = await requireAuth(request);
 
     const { playerId, deviceType, deviceToken } = await request.json();
     if (!playerId) return errorResponse("Missing playerId", 400);
 
-    // Store registration in Convex
-    const registrationId = await client.mutation(api.pushNotifications.registerDevice, {
+    const registrationId = await fetchMutation(api.pushNotifications.registerDevice, {
       userId: userId as Id<"users">,
       playerId,
       deviceType: deviceType || "unknown",
       deviceToken: deviceToken || undefined,
-    });
+    } as any);
 
     return successResponse({
       message: "Push notifications registered successfully",
@@ -47,23 +39,16 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
-
-    let client = getConvexClient();
-    if (!client) client = getConvexClient();
-    if (!client) return errorResponse("Service temporarily unavailable", 503);
-    // Cookie-only: do not set auth bearer on client
+    const { userId } = await requireAuth(request);
 
     const { playerId } = await request.json();
     if (!playerId) return errorResponse("Missing playerId", 400);
 
     // Remove registration from Convex
-    const unregistered = await client.mutation(api.pushNotifications.unregisterDevice, {
+    const unregistered = await fetchMutation(api.pushNotifications.unregisterDevice, {
       userId: userId as Id<"users">,
       playerId,
-    });
+    } as any);
 
     return successResponse({
       message: unregistered ? "Push notifications unregistered successfully" : "No active registration found",

@@ -11,26 +11,7 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let message = "Unauthorized";
-      try {
-        const txt = await res.text();
-        const parsed = txt ? JSON.parse(txt) : undefined;
-        message = (parsed?.error as string) || message;
-      } catch {}
-      console.warn("Messages read POST auth failed", {
-        scope: "messages.read",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return errorResponse(message, status, { correlationId });
-    }
-    const { userId } = authCheck;
+    const { userId } = await requireAuth(request);
 
     // Use subscription-aware rate limiter for consistency
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -82,43 +63,25 @@ export async function POST(request: NextRequest) {
       return errorResponse("Cannot mark conversation as read for another user", 403, { correlationId });
     }
 
-    let client = convexClient || getConvexClient();
-    if (!client) {
-      console.error("Messages read POST convex not configured", {
-        scope: "messages.read",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return errorResponse("Database connection failed", 500, { correlationId });
-    }
-    try {
-      // cookie-only: do not set auth token on client
-      // client.setAuth?.(undefined as unknown as string);
-    } catch {}
-
     const userIds = conversationId.split("_");
     if (!userId || !userIds.includes(userId as string)) {
       return errorResponse("Unauthorized access to conversation", 403, { correlationId });
     }
 
-    await client
-      .mutation(api.messages.markConversationRead, {
-        conversationId,
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Messages read POST mutation error", {
-          scope: "messages.read",
-          type: "convex_mutation_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        throw e;
+    await fetchMutation(api.messages.markConversationRead, {
+      conversationId,
+      userId: userId as Id<"users">,
+    } as any).catch((e: unknown) => {
+      console.error("Messages read POST mutation error", {
+        scope: "messages.read",
+        type: "convex_mutation_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      throw e;
+    });
 
     // Publish SSE event for read receipts
     try {

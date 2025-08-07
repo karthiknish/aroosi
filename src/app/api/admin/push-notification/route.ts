@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { requireAdminToken } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
  * POST /api/admin/push-notification

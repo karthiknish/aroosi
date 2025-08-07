@@ -1,18 +1,16 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
+    const { userId } = await requireAuth(request);
 
     // Rate limit typing updates (cheap but potentially noisy)
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -29,22 +27,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let client = getConvexClient();
-    if (!client) client = getConvexClient();
-    if (!client) return errorResponse("Service temporarily unavailable", 503);
-    // Cookie-only: do not set bearer on client
-
     const { conversationId, action } = await request.json();
     if (!conversationId || !action || !["start", "stop"].includes(action)) {
       return errorResponse("Invalid request parameters", 400);
     }
 
-    // Update typing indicator in Convex
-    const indicatorId = await client.mutation(api.typingIndicators.updateTypingStatus, {
+    const indicatorId = await fetchMutation(api.typingIndicators.updateTypingStatus, {
       conversationId,
       userId: userId as Id<"users">,
       isTyping: action === "start",
-    });
+    } as any);
 
     // Emit SSE typing event
     try {
@@ -81,22 +73,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-
-    let client = getConvexClient();
-    if (!client) client = getConvexClient();
-    if (!client) return errorResponse("Service temporarily unavailable", 503);
-    // Cookie-only: do not set bearer on client
+    await requireAuth(request);
 
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get("conversationId");
     if (!conversationId) return errorResponse("Missing conversationId", 400);
 
-    // Fetch typing indicators from Convex
-    const typingUsers = await client.query(api.typingIndicators.getTypingUsers, {
+    const typingUsers = await fetchQuery(api.typingIndicators.getTypingUsers, {
       conversationId,
-    });
+    } as any);
 
     return successResponse({
       conversationId,

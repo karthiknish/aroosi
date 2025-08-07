@@ -21,88 +21,6 @@ function log(scope: string, level: "info" | "warn" | "error", message: string, e
   else console.info(payload);
 }
 
-function readCookie(request: NextRequest, name: string): string | null {
-  try {
-    const v = request.cookies.get(name)?.value;
-    return v && v.trim() ? v : null;
-  } catch {
-    return null;
-  }
-}
-
-// Diagnostics to help detect wrong env/cookie configuration
-function envCookieDiagnostics(request: NextRequest) {
-  const url = new URL(request.url);
-  const host = url.hostname;
-  const proto = url.protocol;
-  const isLocalhost =
-    host === "localhost" || host.endsWith(".local") || host.endsWith(".test");
-  const secure = proto === "https:" && !isLocalhost;
-
-  const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || "(unset)";
-  const COOKIE_SAMESITE = process.env.COOKIE_SAMESITE || "Lax (default)";
-  const COOKIE_SECURE =
-    typeof process.env.COOKIE_SECURE === "string"
-      ? process.env.COOKIE_SECURE
-      : secure
-        ? "1 (derived)"
-        : "0 (derived)";
-
-  const hasAuth = !!readCookie(request, "auth-token");
-  const hasRefresh = !!readCookie(request, "refresh-token");
-  const hasPublic = !!readCookie(request, "authTokenPublic");
-
-  // Additional derived diagnostics for troubleshooting wrong env setup
-  const currentHostHint =
-    process.env.NEXT_PUBLIC_APP_HOST ||
-    process.env.VERCEL_URL ||
-    "(unknown)";
-
-  // Whether COOKIE_DOMAIN appears compatible with current host
-  let domainMatchHint: "ok" | "mismatch" | "unset" = "unset";
-  if (COOKIE_DOMAIN === "(unset)") {
-    domainMatchHint = "unset";
-  } else {
-    const cd = String(COOKIE_DOMAIN).trim();
-    if (cd.startsWith(".")) {
-      domainMatchHint = (`.${host}`).endsWith(cd) ? "ok" : "mismatch";
-    } else {
-      // host-only cookie domain provided; check exact match
-      domainMatchHint = host === cd ? "ok" : "mismatch";
-    }
-  }
-
-  // SameSite=None must have Secure
-  const requiresSecureForNone =
-    (String(COOKIE_SAMESITE).toLowerCase() === "none") && (COOKIE_SECURE !== "1" && !String(COOKIE_SECURE).startsWith("1"));
-
-  // Suggest if no Cookie header present
-  const headerCookie = request.headers.get("cookie") || "";
-  const noCookieHeader = headerCookie.length === 0;
-
-  return {
-    host,
-    protocol: proto,
-    isLocalhost,
-    secureEffective: secure ? "1" : "0",
-    COOKIE_DOMAIN,
-    COOKIE_SAMESITE,
-    COOKIE_SECURE,
-    cookiesPresent: {
-      authToken: hasAuth,
-      refreshToken: hasRefresh,
-      authTokenPublic: hasPublic,
-    },
-    headerCookieLength: headerCookie.length,
-    currentHostHint,
-    domainMatchHint,
-    requiresSecureForNone,
-    sameOrigin: url.origin,
-    referer: request.headers.get("referer") || null,
-    userAgent: request.headers.get("user-agent") || null,
-    hasCookieHeader: !noCookieHeader,
-  };
-}
 
 // Ensure Cache-Control: no-store on all response paths
 function withNoStore(res: NextResponse) {
@@ -221,18 +139,10 @@ export async function GET(request: NextRequest) {
     const profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
       userId: user._id as Id<"users">,
     }).catch((e: unknown) => {
-      const diag = envCookieDiagnostics(request);
       log(scope, "error", "Convex profile fetch failed", {
         correlationId,
         message: e instanceof Error ? e.message : String(e),
         durationMs: Date.now() - startedAt,
-        cookieEnv: {
-          COOKIE_DOMAIN: diag.COOKIE_DOMAIN,
-          COOKIE_SAMESITE: diag.COOKIE_SAMESITE,
-          COOKIE_SECURE: diag.COOKIE_SECURE,
-          secureEffective: diag.secureEffective,
-          host: diag.host,
-        },
       });
       return null;
     });

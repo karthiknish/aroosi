@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireSession } from "@/app/api/_utils/auth";
 import { logSecurityEvent } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 
 type InterestAction = "send" | "remove";
 
@@ -17,25 +17,7 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Interests action auth failed", {
-        scope: "interests.action",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
+    const { userId } = await requireAuth(req);
 
     if (!userId) {
       console.warn("Interests action missing userId", {
@@ -93,25 +75,9 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
       return NextResponse.json({ error: "Invalid or missing toUserId", correlationId }, { status: 400 });
     }
 
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Interests action convex not configured", {
-        scope: "interests.action",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-
-    // Optionally confirm current user from Convex for mutation preconditions
     let currentUserRecord;
     try {
-      currentUserRecord = await convex.query(api.users.getCurrentUserWithProfile, {});
+      currentUserRecord = await fetchQuery(api.users.getCurrentUserWithProfile, {});
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const isAuth =
@@ -139,27 +105,25 @@ async function handleInterestAction(req: NextRequest, action: InterestAction) {
     }
 
     try {
-      const result = await convex
-        .mutation(
-          action === "send"
-            ? api.interests.sendInterest
-            : api.interests.removeInterest,
-          {
-            fromUserId: fromUserIdConvex,
-            toUserId: toUserId as Id<"users">,
-          }
-        )
-        .catch((e: unknown) => {
-          console.error("Interests action mutation error", {
-            scope: "interests.action",
-            type: "convex_mutation_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return null;
+      const result = await fetchMutation(
+        action === "send"
+          ? api.interests.sendInterest
+          : api.interests.removeInterest,
+        {
+          fromUserId: fromUserIdConvex,
+          toUserId: toUserId as Id<"users">,
+        } as any
+      ).catch((e: unknown) => {
+        console.error("Interests action mutation error", {
+          scope: "interests.action",
+          type: "convex_mutation_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+          statusCode: 500,
+          durationMs: Date.now() - startedAt,
         });
+        return null as any;
+      });
 
       if (!result || (typeof result !== "object" && typeof result !== "string")) {
         return NextResponse.json(
@@ -234,25 +198,7 @@ export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Interests GET auth failed", {
-        scope: "interests.get",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId: authenticatedUserId } = session;
+    const { userId: authenticatedUserId } = await requireAuth(req);
 
     if (!authenticatedUserId) {
       return NextResponse.json({ error: "User ID is required", correlationId }, { status: 400 });
@@ -276,25 +222,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const userIdParam = searchParams.get("userId");
 
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Interests GET convex not configured", {
-        scope: "interests.get",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-    // No convex.setAuth in cookie-only model
-
     let currentUserRecord;
     try {
-      currentUserRecord = await convex.query(
+      currentUserRecord = await fetchQuery(
         api.users.getCurrentUserWithProfile,
         {}
       );
@@ -336,21 +266,19 @@ export async function GET(req: NextRequest) {
 
     const userId = currentUserId;
 
-    const result = await convex
-      .query(api.interests.getSentInterests, {
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Interests GET query error", {
-          scope: "interests.get",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const result = await fetchQuery(api.interests.getSentInterests, {
+      userId: userId as Id<"users">,
+    } as any).catch((e: unknown) => {
+      console.error("Interests GET query error", {
+        scope: "interests.get",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null as any;
+    });
 
     if (!result || (typeof result !== "object" && !Array.isArray(result))) {
       return NextResponse.json(

@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireSession } from "@/app/api/_utils/auth";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { fetchMutation } from "convex/nextjs";
 
 export async function POST(req: NextRequest) {
-  // Cookie-only authentication
-  const session = await requireSession(req);
-  if ("errorResponse" in session) return session.errorResponse;
-  const { userId } = session;
+  const { userId } = await requireAuth(req);
 
   // Parse and validate body
   let body: { interestId?: string; status?: "accepted" | "rejected" } = {};
@@ -38,16 +35,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const convex = getConvexClient();
-  if (!convex) return errorResponse("Convex client not configured", 500);
-  // No convex.setAuth(token) in cookie-only model
-
   try {
-    const result = await convex.mutation(api.interests.respondToInterest, {
+    const result = await fetchMutation(api.interests.respondToInterest, {
       interestId: interestId as Id<"interests">,
       status,
-      // If the mutation requires caller identity, Convex will read it from cookies on the server
-      // Include userId if your mutation input expects it
       userId: userId as Id<"users">,
     } as any);
     return successResponse(result);

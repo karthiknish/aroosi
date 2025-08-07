@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Notifications } from "@/lib/notify";
 import { logSecurityEvent } from "@/lib/utils/securityHeaders";
+import { fetchAction } from "convex/nextjs";
 import Stripe from "stripe";
 
 // Disable automatic body parsing in Next.js (app router) by reading raw body via req.text()
@@ -171,24 +171,7 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          const convex = getConvexClient();
-          if (!convex) {
-            console.error("Stripe webhook convex not configured", {
-              scope: "stripe.webhook",
-              type: "convex_not_configured",
-              correlationId,
-              statusCode: 500,
-              durationMs: Date.now() - startedAt,
-            });
-            return NextResponse.json(
-              { error: "Convex client not configured", correlationId },
-              { status: 500 }
-            );
-          }
-
-          await convex
-            .action(api.users.stripeUpdateSubscription, { email, plan: planId })
-            .catch((e: unknown) => {
+          await fetchAction(api.users.stripeUpdateSubscription, { email, plan: planId }).catch((e: unknown) => {
               console.error("Stripe webhook convex action error", {
                 scope: "stripe.webhook",
                 type: "convex_action_error",
@@ -294,24 +277,7 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          const convex = getConvexClient();
-          if (!convex) {
-            console.error("Stripe webhook convex not configured", {
-              scope: "stripe.webhook",
-              type: "convex_not_configured",
-              correlationId,
-              statusCode: 500,
-              durationMs: Date.now() - startedAt,
-            });
-            return NextResponse.json(
-              { error: "Convex client not configured", correlationId },
-              { status: 500 }
-            );
-          }
-
-          await convex
-            .action(api.users.stripeUpdateSubscription, { email, plan: "free" })
-            .catch((e: unknown) => {
+          await fetchAction(api.users.stripeUpdateSubscription, { email, plan: "free" }).catch((e: unknown) => {
               console.error("Stripe webhook convex action downgrade error", {
                 scope: "stripe.webhook",
                 type: "convex_action_error",

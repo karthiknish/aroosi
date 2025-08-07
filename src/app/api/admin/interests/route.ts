@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireAdminSession } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery } from "convex/nextjs";
 
 export async function GET(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const adminCheck = await requireAdminSession(req);
-  if ("errorResponse" in adminCheck) {
-    const res = adminCheck.errorResponse as NextResponse;
-    const status = res.status || 401;
-    let body: unknown = { error: "Unauthorized", correlationId };
-    try {
-      const txt = await res.text();
-      body = txt ? { ...JSON.parse(txt), correlationId } : body;
-    } catch {}
+  const { userId, role } = await requireAuth(req);
+  if ((role || "user") !== "admin") {
+    const status = 403;
+    const body = { error: "Admin privileges required", correlationId };
     console.warn("Admin interests GET auth failed", {
       scope: "admin.interests",
       type: "auth_failed",
@@ -25,29 +20,9 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json(body, { status });
   }
-  // Cookie-only model: no bearer token forwarding required
-
-  const convex = getConvexClient();
-  if (!convex) {
-    console.error("Admin interests GET convex not configured", {
-      scope: "admin.interests",
-      type: "convex_not_configured",
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Convex client not configured", correlationId },
-      { status: 500 }
-    );
-  }
-
-  // No need to setAuth with a bearer token; identity is cookie/session-based now.
 
   try {
-    const result = await convex
-      .query(api.interests.listAllInterests, {})
-      .catch((e: unknown) => {
+    const result = await fetchQuery(api.interests.listAllInterests, {}).catch((e: unknown) => {
         console.error("Admin interests GET query error", {
           scope: "admin.interests",
           type: "convex_query_error",

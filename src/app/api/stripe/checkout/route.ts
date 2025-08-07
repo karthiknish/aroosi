@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery } from "convex/nextjs";
 import {
   checkApiRateLimit,
   logSecurityEvent,
@@ -37,10 +37,7 @@ function isValidPlanId(planId: unknown): planId is PublicPlanId {
 export async function POST(req: NextRequest) {
   try {
     // Centralized cookie-based session (with auto-refresh + cookie forwarding)
-    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
-    const session = await getSessionFromRequest(req);
-    if (!session.ok) return session.errorResponse!;
-    const userId = session.userId!;
+    const { userId } = await requireAuth(req);
 
     // Strict rate limiting for payment operations
     const rateLimitResult = checkApiRateLimit(
@@ -82,12 +79,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch user profile from Convex to pre-fill email and pass userId as metadata.
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    // Cookie-only flow for Convex in this endpoint; do not set bearer
-    const profile = await convex.query(api.profiles.getProfileByUserId, {
+    const profile = await fetchQuery(api.profiles.getProfileByUserId, {
       userId: userId as Id<"users">,
-    });
+    } as any);
     if (!profile) {
       return errorResponse("User not found", 404);
     }

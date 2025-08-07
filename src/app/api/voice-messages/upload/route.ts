@@ -1,24 +1,18 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
-
-// Initialize Convex client
-const convexClient = getConvexClient();
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Authentication (cookie-only)
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
+    const { userId } = await requireAuth(request);
 
     // Subscription-aware rate limiting for voice uploads
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -95,13 +89,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Database operations
-    let client = convexClient || getConvexClient();
-    if (!client) {
-      return errorResponse("Database connection failed", 500);
-    }
-
-    // Cookie-only: do not set auth bearer on client
+    // Database operations via Convex server
 
     // Verify user is part of this conversation
     if (!userId) {
@@ -113,22 +101,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if either user has blocked the other
-    const blockStatus = await client.query(api.safety.getBlockStatus, {
+    const blockStatus = await fetchQuery(api.safety.getBlockStatus, {
       blockerUserId: userId as Id<"users">,
       blockedUserId: toUserId as Id<"users">,
-    });
+    } as any);
 
     if (blockStatus) {
       return errorResponse("Cannot send voice message to this user", 403);
     }
 
     // Check subscription limits for voice messages
-    const canSendVoice = await client.query(
+    const canSendVoice = await fetchQuery(
       api.subscriptions.checkFeatureAccess,
       {
         userId: userId as Id<"users">,
         feature: "voice_messages",
-      },
+      } as any,
     );
 
     if (!canSendVoice) {
@@ -139,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate upload URL for the audio file
-    const uploadUrl = await client.mutation(api.messages.generateUploadUrl, {});
+    const uploadUrl = await fetchMutation(api.messages.generateUploadUrl, {} as any);
 
     // Upload the audio file to Convex storage
     const uploadResponse = await fetch(uploadUrl, {
@@ -154,7 +142,7 @@ export async function POST(request: NextRequest) {
     const { storageId } = await uploadResponse.json();
 
     // Create the voice message record
-    const message = await client.mutation(api.messages.sendMessage, {
+    const message = await fetchMutation(api.messages.sendMessage, {
       conversationId,
       fromUserId: userId as Id<"users">,
       toUserId: toUserId as Id<"users">,
@@ -164,8 +152,8 @@ export async function POST(request: NextRequest) {
       duration,
       fileSize: audioFile.size,
       mimeType: audioFile.type,
-      peaks, // optional normalized 0..1 array
-    });
+      peaks,
+    } as any);
 
     if (!message) {
       return errorResponse("Failed to create voice message record", 500);

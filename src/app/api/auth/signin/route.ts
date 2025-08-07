@@ -336,25 +336,6 @@ export async function POST(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } }
     );
 
-    // Set cookies using centralized helper
-    try {
-      const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
-      // Access token cookie (15 minutes)
-      response.headers.append("Set-Cookie", `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`);
-      // Refresh token cookie (7 days)
-      response.headers.append("Set-Cookie", `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`);
-      // Optional short-lived public token for legacy, gated by SHORT_PUBLIC_TOKEN=1
-      if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-        response.headers.append("Set-Cookie", `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`);
-      }
-    } catch (e) {
-      console.warn("Signin cookie helper import failed; continuing without cookies", {
-        scope: "auth.signin",
-        correlationId,
-        type: "cookie_helper_warning",
-        message: e instanceof Error ? e.message : String(e),
-      });
-    }
 
     console.info("Signin success", {
       scope: "auth.signin",

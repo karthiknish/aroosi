@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { errorResponse } from "@/lib/apiResponse";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchMutation } from "convex/nextjs";
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
-  const uploadUrl = await convex.mutation(api.images.generateUploadUrl, {});
+  await requireAuth(req);
+  const uploadUrl = await fetchMutation(api.images.generateUploadUrl, {} as any);
   if (!uploadUrl || typeof uploadUrl !== "string") {
     return NextResponse.json(
       { error: "Failed to generate upload URL" },

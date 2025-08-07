@@ -1,23 +1,17 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-
-// Initialize Convex client
-const convexClient = getConvexClient();
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { fetchQuery } from "convex/nextjs";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ messageId: string }> }
 ) {
   try {
-    // Authentication (cookie-only)
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const { userId } = authCheck;
+    const { userId } = await requireAuth(request);
 
     // Await params
     const { messageId } = await params;
@@ -35,26 +29,13 @@ export async function GET(
       return errorResponse("Invalid or missing messageId", 400);
     }
 
-    // Database operations
-    let client = convexClient;
-    if (!client) {
-      client = getConvexClient();
-    }
-
-    if (!client) {
-      return errorResponse("Database connection failed", 500);
-    }
-
-    // Cookie-only: do not set auth bearer on client
-
     if (!userId) {
       return errorResponse("User ID not found in token", 401);
     }
 
-    // Fetch the voice message record
-    const voiceMessage = await client.query(api.messages.getVoiceMessage, {
+    const voiceMessage = await fetchQuery(api.messages.getVoiceMessage, {
       messageId: messageId as Id<"messages">,
-    });
+    } as any);
 
     if (!voiceMessage) {
       return errorResponse("Voice message not found", 404);
@@ -66,10 +47,9 @@ export async function GET(
       return errorResponse("Unauthorized access to voice message", 403);
     }
 
-    // Get the download URL for the voice message
-    const audioUrl = await client.query(api.messages.getVoiceMessageUrl, {
+    const audioUrl = await fetchQuery(api.messages.getVoiceMessageUrl, {
       storageId: voiceMessage.audioStorageId!,
-    });
+    } as any);
 
     if (!audioUrl) {
       return errorResponse("Failed to generate audio URL", 500);

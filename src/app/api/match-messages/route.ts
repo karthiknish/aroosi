@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireSession } from "@/app/api/_utils/auth";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import {
   validateMessagePayload,
@@ -10,33 +10,12 @@ import {
   validateUserCanMessage,
 } from "@/lib/utils/messageValidation";
 
-// Initialize Convex client (may be undefined in some envs; we guard below)
-const convexClient = getConvexClient();
-
 // GET: Fetch messages for a conversation
 export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Messages GET auth failed", {
-        scope: "messages.get",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
+    const { userId } = await requireAuth(request);
 
     if (!userId) {
       return NextResponse.json(
@@ -104,20 +83,6 @@ export async function GET(request: NextRequest) {
       before = parsedBefore;
     }
 
-    let client = convexClient || getConvexClient();
-    if (!client) {
-      console.error("Messages GET convex not configured", {
-        scope: "messages.get",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Database connection failed", correlationId },
-        { status: 500 }
-      );
-    }
 
     const userIds = conversationId.split("_");
     if (!userIds.includes(userId)) {
@@ -127,23 +92,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await client
-      .query(api.messages.getMessages, {
-        conversationId,
-        limit,
-        before,
-      })
-      .catch((e: unknown) => {
-        console.error("Messages GET query error", {
-          scope: "messages.get",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const result = await fetchQuery(api.messages.getMessages, {
+      conversationId,
+      limit,
+      before,
+    } as any).catch((e: unknown) => {
+      console.error("Messages GET query error", {
+        scope: "messages.get",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null;
+    });
 
     if (!result) {
       return NextResponse.json(

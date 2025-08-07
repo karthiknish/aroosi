@@ -199,13 +199,6 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
-        // Clear state cookie to avoid leaking valid state after an attempt
-        resp.headers.append(
-          "Set-Cookie",
-          `oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${
-            process.env.NODE_ENV === "production" ? "; Secure" : ""
-          }`
-        );
         return resp;
       }
       // Record first-seen (or refresh window) using rate limit table as a lightweight TTL store
