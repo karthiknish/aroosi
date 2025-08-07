@@ -174,7 +174,7 @@ export default function EditProfilePage() {
   // Memoize the query key to prevent unnecessary refetches
   const profileQueryKey = useMemo(() => ["profile", userId], [userId]);
 
-  // Fetch profile data
+  // Fetch profile data using token-based client (Authorization attached by client)
   const {
     data: profileApiData,
     isLoading: isLoadingProfile,
@@ -187,6 +187,7 @@ export default function EditProfilePage() {
       const result = await getCurrentUserWithProfile();
       return result.success ? (result.data as Profile) : null;
     },
+    // Only run after auth hydration in token-based flow
     enabled: true,
     refetchOnMount: true,
     refetchOnReconnect: true,

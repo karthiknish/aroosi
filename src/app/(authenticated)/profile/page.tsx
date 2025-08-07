@@ -65,6 +65,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
       return profileObj ?? undefined;
     },
+    // Token-based client auto-attaches Authorization; only run after auth hydration
     enabled: isLoaded && isAuthenticated,
   });
 
@@ -110,6 +111,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
         return [];
       },
+      // Token-based client auto-attaches Authorization; only run after auth hydration
       enabled: isLoaded && isAuthenticated && !!profile?.userId,
     }
   );
