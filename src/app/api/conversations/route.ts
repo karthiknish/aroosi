@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireSession } from "@/app/api/_utils/auth";
+import { fetchQuery } from "convex/nextjs";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-
-// Initialize Convex client (best-effort)
-const convexClient = getConvexClient();
 
 // GET: Fetch conversations for a user
 export async function GET(request: NextRequest) {
@@ -14,16 +11,12 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Authentication via cookie-only session
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
+    try {
+      const { userId } = await requireAuth(request);
+      // Rate limiting continues below
+    } catch (e) {
+      const err = e as AuthError;
+      const status = typeof err?.status === "number" ? err.status : 401;
       console.warn("Conversations auth failed", {
         scope: "conversations.list",
         type: "auth_failed",
@@ -31,9 +24,9 @@ export async function GET(request: NextRequest) {
         statusCode: status,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(body, { status });
+      return NextResponse.json({ error: "Unauthorized", correlationId }, { status });
     }
-    const { userId } = session;
+    const { userId } = await requireAuth(request);
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(
@@ -55,21 +48,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Database operations
-    let client = convexClient ?? getConvexClient();
-    if (!client) {
-      console.error("Conversations convex not configured", {
-        scope: "conversations.list",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Database connection failed", correlationId },
-        { status: 500 }
-      );
-    }
+    // Database operations now via fetchQuery with server identity
 
     // Do not forward bearer tokens; server identity is used in Convex
     // No client.setAuth call in cookie-only model.
@@ -89,42 +68,38 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's matches which represent conversations
-    const matches = await client
-      .query(api.users.getMyMatches, {})
-      .catch((e: unknown) => {
-        console.error("Conversations getMyMatches error", {
-          scope: "conversations.list",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return [];
+    const matches = await fetchQuery(api.users.getMyMatches, {}).catch((e: unknown) => {
+      console.error("Conversations getMyMatches error", {
+        scope: "conversations.list",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return [] as Array<{ userId: string; fullName?: string | null; profileImageUrls?: string[] | null; createdAt?: number | null }>;
+    });
 
     // Get unread counts for each conversation
-    const unreadCounts = await client
-      .query(api.messages.getUnreadCountsForUser, {
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Conversations getUnreadCounts error", {
-          scope: "conversations.list",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return {} as Record<string, number>;
+    const unreadCounts = await fetchQuery(api.messages.getUnreadCountsForUser, {
+      userId: userId as Id<"users">,
+    }).catch((e: unknown) => {
+      console.error("Conversations getUnreadCounts error", {
+        scope: "conversations.list",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return {} as Record<string, number>;
+    });
 
     // Transform matches into conversation format
     const conversations = await Promise.all(
       (matches || [])
         .filter((m): m is NonNullable<typeof m> => m !== null)
-        .map(async (m) => {
+        .map(async (m: { userId: string; fullName?: string | null; profileImageUrls?: string[] | null; createdAt?: number | null }) => {
           // Narrowing guard to satisfy TS even inside async mapper
           const match = m as {
             userId: string;
@@ -136,13 +111,10 @@ export async function GET(request: NextRequest) {
           const conversationId = [String(userId), match.userId].sort().join("_");
 
           // Get last message for this conversation
-          const messages = await client
-            .query(api.messages.getMessages, {
-              conversationId,
-              limit: 1,
-            })
-            .catch(() => []);
-          const lastMessage =
+           const messages = await fetchQuery(api.messages.getMessages, {
+             conversationId,
+             limit: 1,
+           }).catch(() => [] as Array<any>);          const lastMessage =
             messages.length > 0 ? messages[messages.length - 1] : null;
 
           return {
@@ -196,7 +168,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Sort by last activity (most recent first)
-    conversations.sort((a, b) => b.lastActivity - a.lastActivity);
+    conversations.sort((a: any, b: any) => b.lastActivity - a.lastActivity);
 
     const response = NextResponse.json({
       conversations,

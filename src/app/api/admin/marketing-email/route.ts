@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import {
   MarketingEmailTemplateFn,
@@ -7,7 +7,7 @@ import {
   premiumPromoTemplate,
   recommendedProfilesTemplate,
 } from "@/lib/marketingEmailTemplates";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { sendUserNotification } from "@/lib/email";
 import type { Profile } from "@/types/profile";
@@ -22,12 +22,10 @@ const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
 
 export async function POST(request: Request) {
   try {
-    const adminCheck = await requireAdminSession(
-      request as unknown as NextRequest
-    );
-    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
-
-    const { userId } = adminCheck;
+    const { userId, role } = await requireAuth(request as unknown as NextRequest);
+    if ((role || "user") !== "admin") {
+      return errorResponse("Admin privileges required", 403);
+    }
 
     let body: unknown;
     try {
@@ -59,16 +57,12 @@ export async function POST(request: Request) {
       });
     }
 
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex not configured", 500);
-    // Cookie-only model: do not set bearer token; Convex queries use server identity.
-
     // Fetch candidate audience
-    const result = await convex.query(api.users.adminListProfiles, {
+    const result = await fetchQuery(api.users.adminListProfiles, {
       search: undefined,
       page: 0,
-      pageSize: effectiveMax, // cap audience
-    });
+      pageSize: effectiveMax,
+    } as any);
 
     // Be tolerant to backend shape; only pick what we need and keep optionals
     const profiles = (
