@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { verifyAccessJWT } from "@/lib/auth/jwt";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@convex/_generated/api";
 
 /**
  * Centralized cookie-based auth session resolver for App Router API routes.
@@ -19,7 +20,10 @@ export async function getSessionFromRequest(req: NextRequest): Promise<{
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), {
       status,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
     });
 
   // Helper to parse multiple Set-Cookie headers joined in a single string
@@ -40,94 +44,64 @@ export async function getSessionFromRequest(req: NextRequest): Promise<{
 
   const forwardSetCookies: string[] = [];
 
-  // 1) Try existing access token from cookie
-  let accessToken = getCookie("auth-token");
-  let refreshToken = getCookie("refresh-token");
-
-  // 2) If no access token, attempt a refresh if we have a refresh token cookie
-  if (!accessToken && refreshToken) {
-    try {
-      const refreshUrl = new URL("/api/auth/refresh", req.url);
-      const refreshResp = await fetch(refreshUrl.toString(), {
-        method: "POST",
-        headers: { cookie: req.headers.get("cookie") || "" },
-      });
-      if (refreshResp.ok) {
-        // forward any Set-Cookie headers to caller so browser updates session
-        const setCookieHeader = refreshResp.headers.get("set-cookie");
-        const setCookies = parseSetCookieHeader(setCookieHeader);
-        for (const c of setCookies) forwardSetCookies.push(c);
-
-        // Extract newly issued auth-token from refresh response cookies
-        const accessMatch = setCookies.find((c) => c.startsWith("auth-token="));
-        if (accessMatch) {
-          const m = accessMatch.match(/^auth-token=([^;]+)/);
-          if (m) accessToken = decodeURIComponent(m[1]);
-        }
-      } else {
-        // Refresh failed; fall through to error
-      }
-    } catch {
-      // network failure - treat as no session
-    }
-  }
-
-  if (!accessToken) {
+  // Use Convex cookie session to resolve identity
+  const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL || "";
+  if (!CONVEX_URL) {
     return {
       ok: false,
       setCookiesToForward: forwardSetCookies,
-      errorResponse: json(401, { success: false, error: "No auth session" }),
+      errorResponse: json(500, {
+        success: false,
+        error: "Convex not configured",
+      }),
     };
   }
 
-  // 3) Verify access token claims (iss/aud/typ)
+  const cookieHeader = req.headers.get("cookie") || "";
+  const client = new ConvexHttpClient(CONVEX_URL);
+
   try {
-    const payload = await verifyAccessJWT(accessToken);
-    const userId = payload.userId;
-    if (!userId) {
+    // Ask Convex who the user is via auth.requireIdentity action
+    const identity = await (client as any).action(
+      (api as any).auth.requireIdentity,
+      {},
+      { headers: { cookie: cookieHeader } }
+    );
+    const email = identity?.email ?? null;
+    if (!email) {
       return {
         ok: false,
         setCookiesToForward: forwardSetCookies,
-        errorResponse: json(401, { success: false, error: "Invalid session" }),
+        errorResponse: json(401, { success: false, error: "No auth session" }),
       };
     }
-    return { ok: true, userId, setCookiesToForward: forwardSetCookies };
-  } catch {
-    // Try one final refresh attempt if we haven't tried yet
-    if (refreshToken) {
-      try {
-        const refreshUrl = new URL("/api/auth/refresh", req.url);
-        const refreshResp = await fetch(refreshUrl.toString(), {
-          method: "POST",
-          headers: { cookie: req.headers.get("cookie") || "" },
-        });
-        if (refreshResp.ok) {
-          const setCookieHeader = refreshResp.headers.get("set-cookie");
-          const setCookies = parseSetCookieHeader(setCookieHeader);
-          for (const c of setCookies) forwardSetCookies.push(c);
 
-          const accessMatch = setCookies.find((c) => c.startsWith("auth-token="));
-          if (accessMatch) {
-            const m = accessMatch.match(/^auth-token=([^;]+)/);
-            if (m) {
-              accessToken = decodeURIComponent(m[1]);
-              // verify once more
-              const payload = await verifyAccessJWT(accessToken);
-              const userId = payload.userId;
-              if (userId) {
-                return { ok: true, userId, setCookiesToForward: forwardSetCookies };
-              }
-            }
-          }
-        }
-      } catch {
-        // ignore and return 401 below
-      }
+    // Map to our users table to get userId
+    const user = await (client as any).query(
+      (api as any).users.getUserByEmail,
+      { email },
+      { headers: { cookie: cookieHeader } }
+    );
+    if (!user?._id) {
+      return {
+        ok: false,
+        setCookiesToForward: forwardSetCookies,
+        errorResponse: json(404, { success: false, error: "User not found" }),
+      };
     }
+    return {
+      ok: true,
+      userId: String(user._id),
+      setCookiesToForward: forwardSetCookies,
+    };
+  } catch (e) {
     return {
       ok: false,
       setCookiesToForward: forwardSetCookies,
-      errorResponse: json(401, { success: false, error: "Invalid or expired session" }),
+      errorResponse: json(401, {
+        success: false,
+        error: "Invalid or expired session",
+      }),
     };
   }
 }
