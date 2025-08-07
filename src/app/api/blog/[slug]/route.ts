@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
@@ -25,24 +25,15 @@ export async function GET(req: NextRequest) {
   if (entry.count > RATE_LIMIT_MAX) {
     return errorResponse("Too many requests. Please try again later.", 429);
   }
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  // Do not set auth for public queries
+  // Public query; cookie not required
   const url = new URL(req.url);
   const slug = url.pathname.split("/").pop()!;
-  const result = await convex.query(api.blog.getBlogPostBySlug, { slug });
+  const result = await convexQueryWithAuth(req, api.blog.getBlogPostBySlug, { slug });
   return successResponse(result);
 }
 
 export async function PUT(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return errorResponse("Unauthorized", 401);
-  }
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
+  // Cookie-based auth via Convex session
   let body: unknown;
   try {
     body = await req.json();
@@ -93,7 +84,7 @@ export async function PUT(req: NextRequest) {
         ? ((body as Record<string, unknown>).categories as string[])
         : [],
     };
-    const result = await convex.mutation(api.blog.updateBlogPost, updateData);
+    const result = await convexMutationWithAuth(req, api.blog.updateBlogPost, updateData);
     console.log("[PUT /api/blog/[slug]] Convex mutation result:", result);
     return successResponse(result);
   } catch (err: unknown) {

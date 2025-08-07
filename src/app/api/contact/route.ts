@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 import { sendAdminNotification, sendUserNotification } from "@/lib/email";
 import { errorResponse } from "@/lib/apiResponse";
 import {
@@ -14,16 +14,9 @@ const RATE_LIMIT_WINDOW = 10 * 60 * 1000; // 10 minutes
 const RATE_LIMIT_MAX = 5;
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const convex = getConvexClient();
-  if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
+  // Cookie-based admin auth via Convex session
   // Only admin can list contact submissions
-  const result = await convex.query(api.contact.contactSubmissions, {});
+  const result = await convexQueryWithAuth(req, api.contact.contactSubmissions, {});
   return NextResponse.json(result);
 }
 
@@ -46,9 +39,7 @@ export async function POST(req: NextRequest) {
       { status: 429 },
     );
   }
-  const convex = getConvexClient();
-  if (!convex) return errorResponse("Convex client not configured", 500);
-  // Do not set auth for public queries
+  // Public endpoint: no cookie required
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -74,7 +65,7 @@ export async function POST(req: NextRequest) {
     );
   }
   try {
-    const result = await convex.mutation(api.contact.submitContact, {
+    const result = await convexMutationWithAuth(req, api.contact.submitContact, {
       email,
       name,
       subject,

@@ -1,19 +1,17 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   // Public endpoint: do not require authentication
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  // Do not set auth for public queries
+  // Public: cookie not required
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "0", 10);
   const pageSize = parseInt(searchParams.get("pageSize") || "6", 10);
   const category = searchParams.get("category") || undefined;
-  const result = await convex.query(api.blog.listBlogPostsPaginated, {
+  const result = await convexQueryWithAuth(req, api.blog.listBlogPostsPaginated, {
     page,
     pageSize,
     category,
@@ -22,14 +20,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return errorResponse("Unauthorized", 401);
-  }
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
+  // Cookie-based auth via Convex session
   let body: unknown;
   try {
     body = await req.json();
@@ -53,7 +44,8 @@ export async function POST(req: NextRequest) {
     }
   }
   try {
-    const result = await convex.mutation(
+    const result = await convexMutationWithAuth(
+      req,
       api.blog.createBlogPost,
       body as {
         imageUrl?: string;
@@ -74,14 +66,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return errorResponse("Unauthorized", 401);
-  }
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
+  // Cookie-based auth via Convex session
   let body: unknown;
   try {
     body = await req.json();
@@ -92,7 +77,7 @@ export async function DELETE(req: NextRequest) {
     return errorResponse("Missing or invalid _id", 400);
   }
   try {
-    const result = await convex.mutation(api.blog.deleteBlogPost, {
+    const result = await convexMutationWithAuth(req, api.blog.deleteBlogPost, {
       _id: (body as { _id: Id<"blogPosts"> })._id,
     });
     return successResponse(result);
