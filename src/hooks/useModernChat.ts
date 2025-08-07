@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useMatchMessages } from "@/lib/utils/useMatchMessages";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { useTypingIndicators } from "@/hooks/useTypingIndicators";
+import { getPresence, heartbeat } from "@/lib/api/conversation";
 import { useDeliveryReceipts } from "@/hooks/useDeliveryReceipts";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
@@ -74,6 +75,7 @@ export function useModernChat({
   const [connectionStatus, setConnectionStatus] = useState<
     "connected" | "connecting" | "disconnected"
   >("connecting");
+  const [otherPresence, setOtherPresence] = useState<{ isOnline: boolean; lastSeen: number }>({ isOnline: false, lastSeen: 0 });
 
   // Refs for UI elements
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -83,6 +85,30 @@ export function useModernChat({
 
   // reset blocked flag when match changes
   useEffect(() => setIsBlocked(false), [matchUserId]);
+
+  // Presence: poll other user's presence + heartbeat self
+  useEffect(() => {
+    let mounted = true;
+    let interval: any;
+    (async () => {
+      try {
+        await heartbeat();
+        const p = await getPresence(matchUserId);
+        if (mounted) setOtherPresence(p);
+      } catch {}
+    })();
+    interval = setInterval(async () => {
+      try {
+        await heartbeat();
+        const p = await getPresence(matchUserId);
+        if (mounted) setOtherPresence(p);
+      } catch {}
+    }, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [matchUserId]);
 
   // Mark incoming messages as read
   useEffect(() => {
@@ -342,6 +368,7 @@ export function useModernChat({
       onScrollToBottom: () =>
         scrollToBottomUtil(scrollRef as React.RefObject<HTMLDivElement>, true),
     },
+    presence: otherPresence,
   };
 }
 

@@ -34,7 +34,7 @@ export function PexelsImageModal({
   onClose,
   onSelect,
 }: PexelsImageModalProps) {
-  // Cookie-auth: AuthContext no longer exposes token
+  // Cookie-auth: AuthContext no longer exposes token; keep for guard if needed
   useAuthContext();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PexelsImage[]>([]);
@@ -50,8 +50,7 @@ export function PexelsImageModal({
     setResults([]);
 
     try {
-      // Pass empty token to satisfy current signature until searchImages migrates to cookie-auth
-      const result = await searchImages("", query, 1, 15);
+      const result = await searchImages(query, 1, 15);
 
       if (result.success && result.images) {
         setResults(result.images);

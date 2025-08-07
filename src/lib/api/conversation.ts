@@ -43,6 +43,21 @@ export async function markConversationRead({
   return json;
 }
 
+export async function getPresence(userId: string): Promise<{ isOnline: boolean; lastSeen: number }> {
+  const res = await fetch(`/api/presence?userId=${encodeURIComponent(userId)}`, {
+    headers: { "Content-Type": "application/json" },
+  });
+  const json = await res.json();
+  if (!res.ok || json.success === false) {
+    throw new Error(json.error || "Failed to fetch presence");
+  }
+  return json.data as { isOnline: boolean; lastSeen: number };
+}
+
+export async function heartbeat(): Promise<void> {
+  await fetch(`/api/presence`, { method: "POST" });
+}
+
 /**
  * Fetches the user's conversations from the API.
  * @param {string} token - Auth token

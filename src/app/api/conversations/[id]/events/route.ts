@@ -66,9 +66,15 @@ export async function GET(req: NextRequest) {
       };
       eventBus.on(conversationId, send);
 
-      heartbeat = setInterval(() => {
+      heartbeat = setInterval(async () => {
         if (closed) return;
         try {
+          // Update presence heartbeat for this user via local API
+          try {
+            await fetch(`/api/presence`, { method: "POST" });
+          } catch {
+            /* ignore */
+          }
           controller.enqueue(`:keep-alive\n\n`);
         } catch {
           cleanup();

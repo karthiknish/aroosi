@@ -31,23 +31,21 @@ export interface ImageSearchResponse {
  * Search for images using the Pexels API via our backend
  */
 export async function searchImages(
-  token: string,
   query: string,
   page: number = 1,
   perPage: number = 15
 ): Promise<ImageSearchResponse> {
   try {
-    const response = await fetch("/api/search-images", {
-      method: "POST",
+    const params = new URLSearchParams();
+    if (query) params.set("query", query);
+    if (page) params.set("page", String(page));
+    if (perPage) params.set("per_page", String(perPage));
+
+    const response = await fetch(`/api/search-images?${params.toString()}`, {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
-        // Cookie-based session; no Authorization header
       },
-      body: JSON.stringify({
-        query,
-        page,
-        per_page: perPage,
-      }),
     });
 
     if (!response.ok) {
@@ -55,12 +53,10 @@ export async function searchImages(
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    const data = await response.json();
-    
-    return {
-      success: true,
-      images: data.photos || [],
-    };
+    const json = await response.json();
+    const payload = json && typeof json === "object" && "data" in json ? json.data : json;
+    const images = (payload?.images || payload?.photos || []) as PexelsImage[];
+    return { success: true, images };
   } catch (error) {
     console.error("Failed to search images:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to search images";

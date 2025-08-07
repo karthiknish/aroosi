@@ -205,7 +205,7 @@ export default function MessagesList(props: MessagesListProps) {
               })}
 
               {/* Typing indicator */}
-              {(Array.isArray(typingUsers) ? typingUsers.length > 0 : !!typingUsers) && (
+              {Array.isArray(typingUsers) && typingUsers.length > 0 && (
                 <TypingIndicator userName={matchUserName} avatarUrl={matchUserAvatarUrl} key="typing-indicator" />
               )}
             </AnimatePresence>

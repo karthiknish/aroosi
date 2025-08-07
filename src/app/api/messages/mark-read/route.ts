@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { convexMutationWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
@@ -9,7 +9,11 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      return session.errorResponse;
+    }
+    const { userId } = session;
 
     const rateLimitResult = checkApiRateLimit(`mark_read_${userId}`, 50, 60000);
     if (!rateLimitResult.allowed) {

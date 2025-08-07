@@ -25,6 +25,7 @@ export function useTypingIndicators({
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
 
   // Send typing status to server
   const sendTypingStatus = useCallback(
@@ -121,20 +122,55 @@ export function useTypingIndicators({
     }
   }, [isTyping, sendTypingStatus]);
 
-  // Poll for typing users every 2 seconds
+  // Prefer SSE updates if available; fallback to polling
   useEffect(() => {
-    void fetchTypingUsers();
-
-    pollIntervalRef.current = setInterval(() => {
+    // Try SSE from conversation events endpoint
+    try {
+      const es = new EventSource(`/api/conversations/${encodeURIComponent(conversationId)}/events`);
+      sseRef.current = es;
+      es.onmessage = (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          if (
+            data?.conversationId === conversationId &&
+            (data?.type === "typing_start" || data?.type === "typing_stop")
+          ) {
+            setTypingUsers((prev) => {
+              const arr = Array.isArray(prev) ? prev : [];
+              if (data.type === "typing_start") {
+                const exists = arr.some((u) => u.userId === data.userId);
+                return exists
+                  ? arr
+                  : [...arr, { userId: data.userId as string, lastUpdated: Date.now() }];
+              } else {
+                return arr.filter((u) => u.userId !== data.userId);
+              }
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+      };
+      es.onerror = () => {
+        // Fallback to polling if SSE fails
+        es.close();
+        sseRef.current = null;
+        void fetchTypingUsers();
+        pollIntervalRef.current = setInterval(() => void fetchTypingUsers(), 2000);
+      };
+      return () => {
+        if (sseRef.current) sseRef.current.close();
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      };
+    } catch {
+      // If EventSource not available, use polling
       void fetchTypingUsers();
-    }, 2000);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, [fetchTypingUsers]);
+      pollIntervalRef.current = setInterval(() => void fetchTypingUsers(), 2000);
+      return () => {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      };
+    }
+  }, [conversationId, fetchTypingUsers]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -44,13 +44,14 @@ import {
   normalizeStepData,
   summarizeImageUploadErrors,
   persistServerImageOrder,
-  persistPendingImageOrderToLocal,
   safeNavigate,
   getGlobalRequiredFields,
   filterEmptyValues,
   buildProfilePayload,
   normalizePhoneE164Like,
   uploadPendingImages,
+  createOnChangeHandler,
+  createOnProfileImagesChangeHandler,
 } from "./profileCreationHelpers";
 
 // Enhanced validation imports
@@ -309,7 +310,6 @@ export function ProfileCreationModal({
 
   const handleInputChange = useCallback(
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
-      const { createOnChangeHandler } = require("./profileCreationHelpers");
       const onChange = createOnChangeHandler(updateContextData as any);
       onChange(field as string, value);
     },
@@ -318,10 +318,6 @@ export function ProfileCreationModal({
 
   const handleProfileImagesChange = useCallback(
     async (imgs: (string | ImageType)[]) => {
-      const {
-        createOnProfileImagesChangeHandler,
-        createOnChangeHandler,
-      } = require("./profileCreationHelpers");
       const onFieldChange = createOnChangeHandler(updateContextData as any);
       const handler = createOnProfileImagesChangeHandler(
         onFieldChange,
@@ -982,7 +978,10 @@ export function ProfileCreationModal({
                         String(formData.maritalStatus).trim() === "";
                       if (precheckMissing) {
                         // Trigger validation to surface inline errors
-                        showErrorToast(null, "Please complete location and physical details");
+                        showErrorToast(
+                          null,
+                          "Please complete location and physical details"
+                        );
                         await handleNext();
                         return;
                       }

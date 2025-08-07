@@ -13,6 +13,7 @@ type ModernChatHeaderProps = {
   matchUserAvatarUrl?: string;
   subscriptionPlan?: "free" | "premium" | "premiumPlus" | string;
   connectionStatus: "connected" | "connecting" | "disconnected";
+  lastSeenAt?: number;
   onReport: () => void;
   className?: string;
 };
@@ -22,9 +23,16 @@ export default function ModernChatHeader({
   matchUserAvatarUrl = "",
   subscriptionPlan,
   connectionStatus,
+  lastSeenAt,
   onReport,
   className = "",
 }: ModernChatHeaderProps) {
+  const lastSeenLabel = (() => {
+    if (connectionStatus === "connected") return "Online";
+    if (!lastSeenAt) return "Offline";
+    const d = new Date(lastSeenAt);
+    return `Last seen ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  })();
   return (
     <div className={`bg-gradient-to-r from-primary to-secondary text-white p-4 rounded-t-2xl ${className}`}>
       <div className="flex items-center justify-between">
@@ -49,7 +57,7 @@ export default function ModernChatHeader({
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-base leading-tight">{matchUserName || "User"}</span>
-            <span className="text-xs text-white/80 capitalize">{connectionStatus}</span>
+            <span className="text-xs text-white/80 capitalize">{lastSeenLabel}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">

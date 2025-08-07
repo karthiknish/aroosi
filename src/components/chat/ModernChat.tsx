@@ -32,6 +32,7 @@ function ModernChat({
     // pickerRef not used here; kept local in hook
     state,
     messagesState,
+    presence,
     handlers,
   } = useModernChat({
     conversationId,
@@ -86,7 +87,8 @@ function ModernChat({
         matchUserName={matchUserName}
         matchUserAvatarUrl={matchUserAvatarUrl}
         subscriptionPlan={subscriptionStatus.data?.plan}
-        connectionStatus={connectionStatus}
+        connectionStatus={presence?.isOnline ? "connected" : connectionStatus}
+        lastSeenAt={presence?.lastSeen}
         onReport={() => setShowReportModal(true)}
       />
 
