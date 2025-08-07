@@ -1,21 +1,15 @@
-import { getConvexClient } from "@/lib/convexClient";
+import {
+  convexMutationWithAuth,
+  convexQueryWithAuth,
+} from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import type { NextRequest } from "next/server";
 
-function getTokenFromRequest(request: NextRequest): string | null {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-  return authHeader.split(" ")[1] || null;
-}
+// Cookie-based auth: no bearer tokens
 
 export async function POST(request: NextRequest) {
   try {
-    const token = getTokenFromRequest(request);
-    if (!token) {
-      return errorResponse("Unauthorized - No token provided", 401);
-    }
-
     const { feature, metadata } = await request.json();
     const validFeatures = [
       "message_sent",
@@ -32,14 +26,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
-
     // Check if user can use the feature
-    const canUse = await convex.query(api.usageTracking.checkActionLimit, {
-      action: feature,
-    });
+    const canUse = await convexQueryWithAuth(
+      request,
+      api.usageTracking.checkActionLimit,
+      {
+        action: feature,
+      }
+    );
     if (!canUse.canPerform) {
       return errorResponse("Feature usage limit reached", 403, {
         limit: canUse.limit,
@@ -49,11 +43,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Track the usage
-    await convex.mutation(api.usageTracking.trackUsage, { feature, metadata });
+    await convexMutationWithAuth(request, api.usageTracking.trackUsage, {
+      feature,
+      metadata,
+    } as any);
 
     // Get updated usage stats
-    const stats = await convex.query(api.usageTracking.getUsageStats, {});
-    const featureStats = stats.usage.find(u => u.feature === feature);
+    const stats = await convexQueryWithAuth(
+      request,
+      api.usageTracking.getUsageStats,
+      {}
+    );
+    const featureStats = stats.usage.find((u) => u.feature === feature);
 
     return successResponse({
       feature,

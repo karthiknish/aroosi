@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
 import { api } from "@convex/_generated/api";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 
 /**
  * Prevent 307 domain redirects and enforce JSON-only responses with structured logs.
@@ -58,9 +58,9 @@ export async function GET(
 
   try {
     // Gate with app-layer auth; normalize any helper response into plain JSON
-    const authCheck = requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      const res = authCheck.errorResponse as NextResponse;
+    const session = await getSessionFromRequest(request);
+    if (!session.ok) {
+      const res = session.errorResponse as NextResponse;
       const status = res.status || 401;
       let body: unknown = { error: "Unauthorized", correlationId };
       try {
@@ -100,40 +100,7 @@ export async function GET(
       );
     }
 
-    const convex = getConvexClient();
-    if (!convex) {
-      log(scope, "error", "Convex client not configured", {
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return json(
-        { error: "Convex client not configured", correlationId },
-        500
-      );
-    }
-
-    // App-layer auth only; never set Convex auth with app token
-    let current: any = null;
-    try {
-      current = await convex.query(api.users.getCurrentUserWithProfile, {});
-    } catch (e: unknown) {
-      log(scope, "error", "Identity resolve failed", {
-        correlationId,
-        statusCode: 500,
-        message: e instanceof Error ? e.message : String(e),
-        durationMs: Date.now() - startedAt,
-      });
-      return json(
-        { error: "Unable to resolve user identity", correlationId },
-        500
-      );
-    }
-
-    const userId =
-      (current as { user?: { _id?: unknown } } | null)?.user?._id ??
-      (current as { _id?: unknown } | null)?._id ??
-      null;
+    const userId = session.userId;
 
     if (!userId) {
       log(scope, "warn", "User not found", {
@@ -146,9 +113,13 @@ export async function GET(
 
     let result: any = null;
     try {
-      result = await convex.query(api.usageTracking.checkActionLimit, {
-        action: feature,
-      });
+      result = await convexQueryWithAuth(
+        request,
+        api.usageTracking.checkActionLimit,
+        {
+          action: feature,
+        }
+      );
     } catch (e: unknown) {
       log(scope, "error", "Feature check failed", {
         correlationId,
