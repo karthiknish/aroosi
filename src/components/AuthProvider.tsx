@@ -92,6 +92,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(getInitialToken());
   const router = useRouter();
+  // Guard against late async state overwrites during logout
+  const logoutVersionRef = React.useRef(0);
 
   // Store tokens in localStorage for persistence and sync the centralized client immediately
   const saveToken = useCallback((token: string | null, refresh?: string | null) => {
@@ -144,7 +146,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Refresh user data
   const refreshUser = useCallback(async () => {
+    // Capture current logout version to ignore late updates occurring after a logout
+    const version = logoutVersionRef.current;
     const userData = await fetchUser();
+    if (logoutVersionRef.current !== version) {
+      // A logout occurred while we were fetching; ignore this result
+      return;
+    }
     setUser(userData ?? null);
   }, [fetchUser]);
 
@@ -393,6 +401,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign out
   const signOut = useCallback(async () => {
+    // Bump version to invalidate any in-flight refreshUser completions
+    logoutVersionRef.current += 1;
     // Attempt server-side logout to invalidate refresh token (best-effort, non-blocking)
     try {
       const refresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;

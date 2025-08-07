@@ -1,73 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyRefreshJWT, signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
 
-// Minimal JWT helpers without external deps (HS256)
-// NOTE: Replace with your existing project JWT utilities if available.
-import crypto from "node:crypto";
-
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || "dev_access_secret_change_me";
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || "dev_refresh_secret_change_me";
-
-type TokenPayload = {
-  sub: string; // user id
-  email?: string;
-  role?: string;
-  iat?: number;
-  exp?: number;
-};
-
-// Base64 URL helpers
-function b64url(input: Buffer | string) {
-  const b = Buffer.isBuffer(input) ? input : Buffer.from(input);
-  return b.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-
-function signHS256(payload: Record<string, unknown>, secret: string, expiresInSec: number): string {
-  const header = { alg: "HS256", typ: "JWT" };
-  const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + expiresInSec;
-  const body = { ...payload, iat, exp };
-
-  const headerPart = b64url(JSON.stringify(header));
-  const payloadPart = b64url(JSON.stringify(body));
-  const data = `${headerPart}.${payloadPart}`;
-
-  const sig = crypto.createHmac("sha256", secret).update(data).digest();
-  const sigPart = b64url(sig);
-
-  return `${data}.${sigPart}`;
-}
-
-function verifyHS256(token: string, secret: string): TokenPayload | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  const [headerPart, payloadPart, sigPart] = parts;
-
-  const data = `${headerPart}.${payloadPart}`;
-  const expected = b64url(crypto.createHmac("sha256", secret).update(data).digest());
-  if (expected !== sigPart) return null;
-
-  try {
-    const json = JSON.parse(Buffer.from(payloadPart.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as TokenPayload;
-    const now = Math.floor(Date.now() / 1000);
-    if (json.exp && now >= json.exp) return null;
-    return json;
-  } catch {
-    return null;
-  }
-}
-
-// Issue tokens
-function issueAccessToken(payload: TokenPayload): string {
-  // Typically 5–15 minutes
-  return signHS256(payload, ACCESS_TOKEN_SECRET, 15 * 60);
-}
-
-function issueRefreshToken(payload: TokenPayload): string {
-  // Typically 7–30 days
-  return signHS256(payload, REFRESH_TOKEN_SECRET, 30 * 24 * 60 * 60);
-}
-
-// Extracts the Bearer token from Authorization header
+/**
+ * Extract the Bearer token from Authorization header
+ */
 function getBearerToken(req: NextRequest): string | null {
   const auth = req.headers.get("authorization") || req.headers.get("Authorization");
   if (!auth) return null;
@@ -76,62 +12,88 @@ function getBearerToken(req: NextRequest): string | null {
   return token.trim();
 }
 
-// Optionally: load user or validate status (banned, deleted) from DB
-// Replace this with actual DB lookup if your security model requires it.
-async function loadUserById(userId: string): Promise<{ id: string; email?: string; role?: string; banned?: boolean } | null> {
-  // TODO: Wire to your user store
-  return { id: userId };
+/**
+ * Optional: Replace with actual DB lookup if required by your security model.
+ * For refresh rotation, persist and compare refresh "ver" per user.
+ */
+async function loadUserById(userId: string): Promise<{ id: string; email?: string; role?: string; banned?: boolean; refreshVer?: number } | null> {
+  // TODO: Integrate with your user store and return the persisted refreshVer (default 0)
+  return { id: userId, refreshVer: 0 };
+}
+
+/**
+ * Optional: If you adopt rotation on each refresh, increment and persist user's refreshVer.
+ */
+async function maybeRotateUserRefreshVersion(_userId: string): Promise<number> {
+  // TODO: Persist and return new refreshVer. For now, keep version static (0) for compatibility.
+  return 0;
+}
+
+function withNoStore(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store");
+  return res;
 }
 
 export async function POST(req: NextRequest) {
   try {
     const refreshToken = getBearerToken(req);
     if (!refreshToken) {
-      return NextResponse.json({ error: "Missing refresh token" }, { status: 400 });
+      return withNoStore(NextResponse.json({ error: "Missing refresh token", code: "MISSING_REFRESH" }, { status: 400 }));
     }
 
-    const payload = verifyHS256(refreshToken, REFRESH_TOKEN_SECRET);
-    if (!payload || !payload.sub) {
-      return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 });
+    // Verify refresh using project-standard JOSE helpers
+    const payload = await verifyRefreshJWT(refreshToken).catch(() => null);
+    if (!payload?.userId) {
+      return withNoStore(NextResponse.json({ error: "Invalid refresh token", code: "INVALID_REFRESH" }, { status: 401 }));
     }
 
-    const userId = typeof payload.sub === "string" ? payload.sub : undefined;
-    if (!userId) {
-      return NextResponse.json({ error: "Invalid token payload" }, { status: 401 });
+    const user = await loadUserById(payload.userId);
+    if (!user) {
+      return withNoStore(NextResponse.json({ error: "User not found", code: "USER_NOT_FOUND" }, { status: 404 }));
+    }
+    if (user.banned) {
+      return withNoStore(NextResponse.json({ error: "User not allowed", code: "USER_FORBIDDEN" }, { status: 403 }));
     }
 
-    // Optional: Check user still valid
-    const user = await loadUserById(userId);
-    if (!user || (user as any).banned) {
-      return NextResponse.json({ error: "User not allowed" }, { status: 403 });
+    // Refresh token version check (if your DB persists refreshVer)
+    const storedVer = typeof user.refreshVer === "number" ? user.refreshVer : 0;
+    const tokenVer = typeof payload.ver === "number" ? payload.ver : 0;
+    if (tokenVer !== storedVer) {
+      return withNoStore(NextResponse.json({ error: "Refresh token revoked", code: "REFRESH_REVOKED" }, { status: 401 }));
     }
 
-    const newAccessToken = issueAccessToken({
-      sub: user.id,
-      email: (user as any).email,
-      role: (user as any).role,
+    // Optionally rotate on every refresh (increment DB ver)
+    const nextVer = await maybeRotateUserRefreshVersion(user.id);
+
+    // Sign new access/refresh with consistent issuer/audience and payload
+    const newAccessToken = await signAccessJWT({
+      userId: user.id,
+      email: user.email || "",
+      role: user.role || "user",
     });
 
-    const newRefreshToken = issueRefreshToken({
-      sub: user.id,
-      email: (user as any).email,
-      role: (user as any).role,
+    const newRefreshToken = await signRefreshJWT({
+      userId: user.id,
+      email: user.email || "",
+      role: user.role || "user",
+      ver: nextVer,
     });
 
-    return NextResponse.json(
-      {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      },
-      { status: 200 }
+    return withNoStore(
+      NextResponse.json(
+        {
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        },
+        { status: 200 }
+      )
     );
   } catch (err) {
     console.error("Refresh error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return withNoStore(NextResponse.json({ error: "Server error", code: "SERVER_ERROR" }, { status: 500 }));
   }
 }
 
-// For parity, reject GET (or you can support if desired)
 export async function GET() {
-  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+  return withNoStore(NextResponse.json({ error: "Method not allowed" }, { status: 405 }));
 }
