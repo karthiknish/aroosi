@@ -49,7 +49,7 @@ function ResetPasswordInner() {
         await postJson<{ message?: string }>(
           "/api/auth/reset-password",
           { email: safeEmail, password: pwd },
-          { skipAuth: true, noRefresh: true, cache: "no-store" }
+          { cache: "no-store" }
         );
         setSuccess("Password reset successfully. Redirecting to sign-in...");
         setTimeout(() => router.push("/sign-in"), 900);

@@ -173,8 +173,8 @@ export default function MessagesList(props: MessagesListProps) {
                         )}                      >
                         {isVoice ? (
                           <VoiceMessageBubble
-                            url={(msg as any).audioUrl || ""}
-                            durationSeconds={Number((msg as any).durationSeconds || 0)}
+                            url={`/api/voice-messages/${encodeURIComponent(msg._id)}/url`}
+                            durationSeconds={Number((msg as any).duration || 0)}
                             peaks={(msg as any).peaks as number[] | undefined}
                             isMine={isCurrentUser}
                             messageId={msg._id}

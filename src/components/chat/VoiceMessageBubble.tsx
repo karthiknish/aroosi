@@ -74,19 +74,16 @@ export default function VoiceMessageBubble(props: VoiceMessageBubbleProps) {
       if (isPlaying) {
         audio.pause();
         setPlaying(false);
-        console.info("[VOICE] pause", { correlationId, messageId });
       } else {
         const p = audio.play();
         if (p && typeof p.then === "function") {
           await p;
         }
         setPlaying(true);
-        console.info("[VOICE] play", { correlationId, messageId });
       }
     } catch (e: any) {
       setError(e?.message || "Playback error");
       setPlaying(false);
-      console.error("[VOICE] play_error", { correlationId, messageId, message: e?.message || String(e) });
     }
   };
 
@@ -96,23 +93,18 @@ export default function VoiceMessageBubble(props: VoiceMessageBubbleProps) {
     const next = Number(e.target.value);
     audio.currentTime = isFinite(next) ? next : 0;
     setCurrentTime(audio.currentTime);
-    console.info("[VOICE] seek", { correlationId, messageId, to: next });
+    // no-op analytics in production build; keep UX silent
   };
 
   const onDownload = () => {
-    try {
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `voice-${messageId || Date.now()}.webm`;
-      a.rel = "noopener noreferrer";
-      a.target = "_blank";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      console.info("[VOICE] download", { correlationId, messageId });
-    } catch (e) {
-      console.warn("[VOICE] download_failed", { correlationId, messageId });
-    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `voice-${messageId || Date.now()}.webm`;
+    a.rel = "noopener noreferrer";
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   const bars = peaks.length > 0 ? peaks : undefined;

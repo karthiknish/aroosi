@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("Missing required field: blockedUserId", 400);
     }
 
-    await convexMutationWithAuth(request, api.users.unblockUser, {
+    await convexMutationWithAuth(request, api.safety.unblockUser, {
       blockerUserId: userId as Id<"users">,
       blockedUserId: blockedUserId as Id<"users">,
     } as any);

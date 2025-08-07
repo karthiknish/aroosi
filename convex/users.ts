@@ -389,6 +389,72 @@ export const boostProfile = mutation({
 });
 
 /**
+ * Update current user's profile with provided fields.
+ */
+export const updateProfile = mutation({
+  args: {
+    updates: v.object({
+      fullName: v.optional(v.string()),
+      aboutMe: v.optional(v.string()),
+      isProfileComplete: v.optional(v.boolean()),
+      motherTongue: v.optional(v.string()),
+      religion: v.optional(v.string()),
+      ethnicity: v.optional(v.string()),
+      hideFromFreeUsers: v.optional(v.boolean()),
+      subscriptionPlan: v.optional(v.string()),
+      subscriptionExpiresAt: v.optional(v.number()),
+      profileImageIds: v.optional(v.array(v.id("_storage"))),
+      profileImageUrls: v.optional(v.array(v.string())),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      height: v.optional(v.string()),
+      maritalStatus: v.optional(v.string()),
+      physicalStatus: v.optional(v.string()),
+      diet: v.optional(v.string()),
+      smoking: v.optional(v.string()),
+      drinking: v.optional(v.string()),
+      education: v.optional(v.string()),
+      occupation: v.optional(v.string()),
+      annualIncome: v.optional(v.number()),
+      partnerPreferenceAgeMin: v.optional(v.union(v.number(), v.string())),
+      partnerPreferenceAgeMax: v.optional(v.union(v.number(), v.string())),
+      partnerPreferenceCity: v.optional(v.array(v.string())),
+      preferredGender: v.optional(v.string()),
+      phoneNumber: v.optional(v.string()),
+      email: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, { updates }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, status: 401, code: "UNAUTHENTICATED" } as const;
+    }
+    const email = (identity as any).email as string | undefined;
+    if (!email) {
+      return { success: false, status: 401, code: "UNAUTHENTICATED" } as const;
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email.trim().toLowerCase()))
+      .first();
+    if (!user) {
+      return { success: false, status: 404, code: "USER_NOT_FOUND" } as const;
+    }
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id as Id<"users">))
+      .first();
+    if (!profile) {
+      return { success: false, status: 404, code: "PROFILE_NOT_FOUND" } as const;
+    }
+    const patch: any = { ...updates, updatedAt: Date.now() };
+    await ctx.db.patch((profile as any)._id as Id<"profiles">, patch);
+    const updated = await ctx.db.get((profile as any)._id as Id<"profiles">);
+    return { success: true, profile: updated } as const;
+  },
+});
+
+/**
  * Admin: list profiles with simple filtering and pagination (naive scan).
  */
 export const adminListProfiles = query({

@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 
 export async function POST(req: NextRequest) {
   try {
-    const convex = getConvexClient();
-    if (!convex) {
-      return NextResponse.json(
-        { error: "Convex client not configured" },
-        { status: 500 },
-      );
-    }
-
     const { email, role, text, timestamp } = await req.json();
 
     if (!email || !role || !text || !timestamp) {
@@ -21,12 +13,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await convex.mutation(api.messages.saveChatbotMessage, {
+    await convexMutationWithAuth(req, api.messages.saveChatbotMessage, {
       email,
       role,
       text,
       timestamp,
-    });
+    } as any);
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

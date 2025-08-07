@@ -3,7 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { api } from "@convex/_generated/api";
 import { Notifications } from "@/lib/notify";
 import { logSecurityEvent } from "@/lib/utils/securityHeaders";
-import { fetchAction } from "convex/nextjs";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import Stripe from "stripe";
 
 // Disable automatic body parsing in Next.js (app router) by reading raw body via req.text()
@@ -171,7 +171,10 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          await fetchAction(api.users.stripeUpdateSubscription, { email, plan: planId }).catch((e: unknown) => {
+          await convexMutationWithAuth(req, (api as any).users?.stripeUpdateSubscription ?? (api as any).users?.updateProfile, { 
+            updates: { subscriptionPlan: planId, updatedAt: Date.now() },
+            email,
+          } as any).catch((e: unknown) => {
               console.error("Stripe webhook convex action error", {
                 scope: "stripe.webhook",
                 type: "convex_action_error",
@@ -277,7 +280,10 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          await fetchAction(api.users.stripeUpdateSubscription, { email, plan: "free" }).catch((e: unknown) => {
+          await convexMutationWithAuth(req, (api as any).users?.stripeUpdateSubscription ?? (api as any).users?.updateProfile, { 
+            updates: { subscriptionPlan: "free", updatedAt: Date.now() },
+            email,
+          } as any).catch((e: unknown) => {
               console.error("Stripe webhook convex action downgrade error", {
                 scope: "stripe.webhook",
                 type: "convex_action_error",

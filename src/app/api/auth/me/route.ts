@@ -1,9 +1,23 @@
-// This route is now handled by Convex Auth's built-in endpoint.
-// Please GET /api/auth/me (Convex Auth) instead.
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireSession } from "@/app/api/_utils/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const session = await requireSession(req);
+  if ("errorResponse" in session) return session.errorResponse as NextResponse;
+
+  const { user, profile } = session;
   return NextResponse.json({
-    message: "Please use Convex Auth's /api/auth/me endpoint. This endpoint is deprecated.",
+    user: {
+      id: String(user._id || user.id || ""),
+      email: String(user.email || ""),
+      role: String(user.role || "user"),
+      profile: profile
+        ? {
+            id: String(profile._id || ""),
+            isProfileComplete: !!profile.isProfileComplete,
+            isOnboardingComplete: !!profile.isOnboardingComplete,
+          }
+        : null,
+    },
   });
 }

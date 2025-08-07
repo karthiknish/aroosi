@@ -110,80 +110,112 @@ export async function GET(request: NextRequest) {
     // Transform matches into conversation format
     const conversations = await Promise.all(
       (matches || [])
-        .filter((m): m is NonNullable<typeof m> => m !== null)
-        .map(async (m) => {
-          const match = m as {
+        .filter(
+          (
+            m: unknown
+          ): m is {
             userId: string;
             fullName?: string | null;
             profileImageUrls?: string[] | null;
             createdAt?: number | null;
-          };
-          // Narrowing guard to satisfy TS even inside async mapper
-
-          const conversationId = [String(userId), match.userId]
-            .sort()
-            .join("_");
-
-          // Get last message for this conversation
-          const messages = await convexQueryWithAuth(
-            request,
-            api.messages.getMessages,
-            {
-              conversationId,
-              limit: 1,
+          } => m !== null
+        )
+        .map(
+          async (
+            m: {
+              userId: string;
+              fullName?: string | null;
+              profileImageUrls?: string[] | null;
+              createdAt?: number | null;
             }
-          ).catch(() => [] as Array<any>);
-          const lastMessage =
-            messages.length > 0 ? messages[messages.length - 1] : null;
+          ): Promise<{
+            _id: string;
+            id: string;
+            conversationId: string;
+            participants: any[];
+            lastMessage: any;
+            lastActivity: number;
+            lastMessageAt?: number | null;
+            unreadCount: number;
+            createdAt: number;
+            updatedAt: number;
+          }> => {
+            const match = m as {
+              userId: string;
+              fullName?: string | null;
+              profileImageUrls?: string[] | null;
+              createdAt?: number | null;
+            };
+            // Narrowing guard to satisfy TS even inside async mapper
 
-          return {
-            _id: conversationId,
-            id: conversationId,
-            conversationId,
-            participants: [
+            const conversationId = [String(userId), match.userId]
+              .sort()
+              .join("_");
+
+            // Get last message for this conversation
+            const messages = await convexQueryWithAuth(
+              request,
+              api.messages.getMessages,
               {
-                userId: String(userId),
-                firstName: "You",
-              },
-              {
-                userId: match.userId,
-                firstName: match.fullName || "Unknown",
-                profileImageUrls: match.profileImageUrls || [],
-              },
-            ],
-            lastMessage: lastMessage
-              ? {
-                  _id: lastMessage._id,
-                  id: lastMessage._id,
-                  senderId: lastMessage.fromUserId,
-                  fromUserId: lastMessage.fromUserId,
-                  toUserId: lastMessage.toUserId,
-                  content: lastMessage.text,
-                  text: lastMessage.text,
-                  type: lastMessage.type || "text",
-                  timestamp: lastMessage.createdAt || lastMessage._creationTime,
-                  createdAt: lastMessage.createdAt || lastMessage._creationTime,
-                  _creationTime: lastMessage._creationTime,
-                  readAt: lastMessage.readAt,
-                  isRead: !!lastMessage.readAt,
-                }
-              : null,
-            lastActivity:
-              lastMessage?.createdAt ||
-              lastMessage?._creationTime ||
-              match.createdAt ||
-              Date.now(),
-            lastMessageAt: lastMessage?.createdAt || lastMessage?._creationTime,
-            unreadCount:
-              (unreadCounts as Record<string, number>)[match.userId] || 0,
-            createdAt: match.createdAt || Date.now(),
-            updatedAt:
-              lastMessage?.createdAt ||
-              lastMessage?._creationTime ||
-              match.createdAt ||
-              Date.now(),
-          };
-        })
+                conversationId,
+                limit: 1,
+              }
+            ).catch(() => [] as Array<any>);
+            const lastMessage =
+              messages.length > 0 ? messages[messages.length - 1] : null;
+
+            return {
+              _id: conversationId,
+              id: conversationId,
+              conversationId,
+              participants: [
+                {
+                  userId: String(userId),
+                  firstName: "You",
+                },
+                {
+                  userId: match.userId,
+                  firstName: match.fullName || "Unknown",
+                  profileImageUrls: match.profileImageUrls || [],
+                },
+              ],
+              lastMessage: lastMessage
+                ? {
+                    _id: lastMessage._id,
+                    id: lastMessage._id,
+                    senderId: lastMessage.fromUserId,
+                    fromUserId: lastMessage.fromUserId,
+                    toUserId: lastMessage.toUserId,
+                    content: lastMessage.text,
+                    text: lastMessage.text,
+                    type: lastMessage.type || "text",
+                    timestamp:
+                      lastMessage.createdAt || lastMessage._creationTime,
+                    createdAt:
+                      lastMessage.createdAt || lastMessage._creationTime,
+                    _creationTime: lastMessage._creationTime,
+                    readAt: lastMessage.readAt,
+                    isRead: !!lastMessage.readAt,
+                  }
+                : null,
+              lastActivity:
+                lastMessage?.createdAt ||
+                lastMessage?._creationTime ||
+                match.createdAt ||
+                Date.now(),
+              lastMessageAt:
+                lastMessage?.createdAt || lastMessage?._creationTime,
+              unreadCount:
+                (unreadCounts as Record<string, number>)[match.userId] || 0,
+              createdAt: match.createdAt || Date.now(),
+              updatedAt:
+                lastMessage?.createdAt ||
+                lastMessage?._creationTime ||
+                match.createdAt ||
+                Date.now(),
+            };
+          }
+        )
     );
 
     // Sort by last activity (most recent first)

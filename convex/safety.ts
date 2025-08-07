@@ -90,3 +90,38 @@ export const reportUser = mutation({
     return { success: true, message: "Report submitted successfully" };
   },
 });
+
+// Block a user
+export const blockUser = mutation({
+  args: { blockerUserId: v.id("users"), blockedUserId: v.id("users") },
+  handler: async (ctx, { blockerUserId, blockedUserId }) => {
+    if (blockerUserId === blockedUserId) throw new Error("Cannot block yourself");
+    const existing = await ctx.db
+      .query("blocks")
+      .withIndex("by_blocker", (q) => q.eq("blockerUserId", blockerUserId))
+      .filter((q) => q.eq(q.field("blockedUserId"), blockedUserId))
+      .first();
+    if (existing) return { success: true, already: true } as const;
+    await ctx.db.insert("blocks", {
+      blockerUserId,
+      blockedUserId,
+      createdAt: Date.now(),
+    } as any);
+    return { success: true } as const;
+  },
+});
+
+// Unblock a user
+export const unblockUser = mutation({
+  args: { blockerUserId: v.id("users"), blockedUserId: v.id("users") },
+  handler: async (ctx, { blockerUserId, blockedUserId }) => {
+    const existing = await ctx.db
+      .query("blocks")
+      .withIndex("by_blocker", (q) => q.eq("blockerUserId", blockerUserId))
+      .filter((q) => q.eq(q.field("blockedUserId"), blockedUserId))
+      .first();
+    if (!existing) return { success: true, already: true } as const;
+    await ctx.db.delete((existing as any)._id as Id<"blocks">);
+    return { success: true } as const;
+  },
+});

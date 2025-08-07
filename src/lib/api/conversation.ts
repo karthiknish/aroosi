@@ -8,12 +8,11 @@
  */
 export function getConversationEventsSSEUrl({
   conversationId,
-  token,
 }: {
   conversationId: string;
-  token: string;
 }) {
-  return `/api/conversations/${encodeURIComponent(conversationId)}/events?token=${encodeURIComponent(token)}`;
+  // Cookie-session: server reads identity from HttpOnly cookies; no token in URL
+  return `/api/conversations/${encodeURIComponent(conversationId)}/events`;
 }
 
 /**
@@ -24,10 +23,8 @@ export function getConversationEventsSSEUrl({
  */
 export async function markConversationRead({
   conversationId,
-  token,
 }: {
   conversationId: string;
-  token: string;
 }) {
   const res = await fetch(
     `/api/conversations/${encodeURIComponent(conversationId)}/mark-read`,
@@ -51,7 +48,7 @@ export async function markConversationRead({
  * @param {string} token - Auth token
  * @returns {Promise<{ conversations: Array<{ id: string; participants: string[]; lastMessage?: string; updatedAt: number }> }>} - The conversations data
  */
-export async function getConversations({ token }: { token: string }) {
+export async function getConversations(): Promise<unknown> {
   const res = await fetch("/api/conversations", {
     headers: {
       // Cookie-based session; no Authorization header

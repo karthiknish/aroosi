@@ -30,7 +30,7 @@ export function useMatchMessages(conversationId: string, token: string) {
     setLoading(true);
     setError(null);
     try {
-      const response = await matchMessagesAPI.getMessages(token, {
+      const response = await matchMessagesAPI.getMessages(null, {
         conversationId,
         limit: 20,
       });
@@ -59,7 +59,7 @@ export function useMatchMessages(conversationId: string, token: string) {
     setError(null);
     try {
       const oldestTimestamp = messages[0].createdAt;
-      const response = await matchMessagesAPI.getMessages(token, {
+      const response = await matchMessagesAPI.getMessages(null, {
         conversationId,
         limit: 20,
         before: oldestTimestamp,
@@ -118,7 +118,7 @@ export function useMatchMessages(conversationId: string, token: string) {
         setMessages((prev) => [...prev, optimisticMsg]);
 
         matchMessagesAPI
-          .sendMessage(token, {
+          .sendMessage(null, {
             fromUserId,
             toUserId,
             text,
@@ -160,7 +160,7 @@ export function useMatchMessages(conversationId: string, token: string) {
 
   // Real-time updates via SSE with normalized event envelopes
   useEffect(() => {
-    if (!token || !conversationId) return;
+    if (!conversationId) return;
 
     const conversationIdPattern = /^[a-zA-Z0-9_-]+$/;
     if (!conversationIdPattern.test(conversationId)) {
@@ -168,7 +168,7 @@ export function useMatchMessages(conversationId: string, token: string) {
       return;
     }
 
-    const url = getConversationEventsSSEUrl({ conversationId, token });
+    const url = getConversationEventsSSEUrl({ conversationId });
     let es: EventSource;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;

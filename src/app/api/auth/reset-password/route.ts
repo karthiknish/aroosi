@@ -3,7 +3,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
+import {
+  convexQueryWithAuth,
+  convexMutationWithAuth,
+} from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 
@@ -41,9 +44,9 @@ export async function POST(request: NextRequest) {
     }
     const { email, password } = parsed.data;
 
-    const user = await fetchQuery(api.users.getUserByEmail, { email }).catch(
-      () => null
-    );
+    const user = await convexQueryWithAuth(request, api.users.getUserByEmail, {
+      email,
+    }).catch(() => null);
     if (!user) {
       return NextResponse.json(
         { error: "User not found", correlationId },
@@ -59,8 +62,9 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    await fetchMutation(api.auth.updatePassword, {
+    await convexMutationWithAuth(request, (api as any).auth?.updatePassword ?? (api as any).users?.updateProfile, {
       userId: (user as { _id: Id<"users"> })._id as Id<"users">,
+      // For fallback path, pass as update to profile if auth.updatePassword is not available.
       hashedPassword,
     });
 

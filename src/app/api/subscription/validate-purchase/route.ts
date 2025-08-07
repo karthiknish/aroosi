@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
@@ -125,9 +125,7 @@ export async function POST(request: NextRequest) {
       return errorResponse("User ID not found in session", 401);
     }
 
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    // Cookie-only: do not set bearer on client
+    // Cookie-only: use server helper
 
     const body = await request.json();
     const { platform, productId, purchaseToken, receiptData } = body;
@@ -191,13 +189,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user profile with subscription
-    await convex.mutation(api.users.updateProfile, {
+    await convexMutationWithAuth(request, api.users.updateProfile, {
       updates: {
         subscriptionPlan: plan,
         subscriptionExpiresAt: expiresAt,
         updatedAt: Date.now(),
       },
-    });
+    } as any);
 
     return successResponse({
       message: "Purchase validated successfully",

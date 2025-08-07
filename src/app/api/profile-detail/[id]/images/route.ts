@@ -116,9 +116,9 @@ export async function GET(req: NextRequest) {
 
       // Get profile images using the resolved user ID
       try {
-        if (!userId) throw new Error("User ID missing after resolution");
+        const resolvedUserId = userId as NonNullable<typeof userId> as Id<"users">; // assert non-null after prior 404 guard
         images = await convexQueryWithAuth(req, api.images.getProfileImages, {
-          userId: userId as Id<"users">,
+          userId: resolvedUserId,
         } as any);
         if (!Array.isArray(images)) {
           throw new Error("Invalid response format from getProfileImages");

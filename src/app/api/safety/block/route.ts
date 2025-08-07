@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Block the user via server-side mutation helper
-    await convexMutationWithAuth(request, api.users.blockUser, {
+    await convexMutationWithAuth(request, api.safety.blockUser, {
       blockerUserId: userId as Id<"users">,
       blockedUserId: blockedUserId as Id<"users">,
     } as any);

@@ -33,28 +33,54 @@ export async function requireSession(
   | { userId: Id<"users">; user: any; profile: any | null }
   | { errorResponse: Response }
 > {
-  // Look for any of our accepted session cookies
-  const sessionToken =
-    readCookie(req, "__Secure-next-auth.session-token") ||
-    readCookie(req, "next-auth.session-token") ||
-    readCookie(req, "__Secure-session-token") ||
-    readCookie(req, "session-token") ||
-    readCookie(req, "auth-token") ||
-    readCookie(req, "jwt");
+  // 1) Try Convex cookie-backed identity first
+  try {
+    const current = (await fetchQuery(api.users.getCurrentUserWithProfile, {})) as any;
+    const user = current?.user ?? current ?? null;
+    if (user) {
+      if (user.banned) {
+        return { errorResponse: json(403, { success: false, error: "Account is banned" }) };
+      }
+      let profile: any | null = null;
+      try {
+        profile = await fetchQuery(api.users.getProfileByUserIdPublic, {
+          userId: user._id as Id<"users">,
+        });
+      } catch {
+        profile = null;
+      }
+      return { userId: user._id as Id<"users">, user, profile };
+    }
+  } catch {
+    // fall through to JWT cookie parsing
+  }
 
-  if (!sessionToken) {
+  // 2) Fallback: try our JWT auth cookie (set by sign-in/google routes)
+  const rawAuthCookie =
+    readCookie(req, "__Secure-auth-token") || readCookie(req, "auth-token");
+
+  if (!rawAuthCookie) {
     return {
       errorResponse: json(401, { success: false, error: "No auth session" }),
     };
   }
 
-  // Use Convex server-side identity to fetch user
-  const current = (await fetchQuery(
-    api.users.getCurrentUserWithProfile,
-    {}
-  ).catch(() => null as any)) as any;
+  const claims = await parseAndVerifyJwt(rawAuthCookie).catch(() => null as any);
+  if (!claims || typeof claims !== "object") {
+    return {
+      errorResponse: json(401, { success: false, error: "Invalid session" }),
+    };
+  }
 
-  const user = (current as any)?.user ?? current ?? null;
+  const email = typeof (claims as any).email === "string" ? (claims as any).email : undefined;
+  if (!email) {
+    return {
+      errorResponse: json(401, { success: false, error: "Invalid session payload" }),
+    };
+  }
+
+  // Fetch user by email
+  const user = (await fetchQuery(api.users.getUserByEmail, { email }).catch(() => null as any)) as any;
   if (!user) {
     return { errorResponse: json(404, { success: false, error: "User not found" }) };
   }
@@ -152,4 +178,70 @@ export function devLog(
   }
   // eslint-disable-next-line no-console
   console.info(payload);
+}
+
+// ------------------------------------------------------------
+// Minimal JWT HS256 verification for our cookie-based auth
+// ------------------------------------------------------------
+
+async function parseAndVerifyJwt(token: string): Promise<Record<string, unknown> | null> {
+  try {
+    const [headerB64, payloadB64, sigB64] = token.split(".");
+    if (!headerB64 || !payloadB64 || !sigB64) return null;
+
+    const encoder = new TextEncoder();
+    const data = `${headerB64}.${payloadB64}`;
+
+    const secret = process.env.JWT_ACCESS_SECRET || "dev-access-secret-change";
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+    const signature = bufferToBase64Url(new Uint8Array(sig));
+    if (timingSafeEqual(signature, sigB64) === false) {
+      return null;
+    }
+
+    const payloadJson = JSON.parse(base64UrlDecode(payloadB64) || "null");
+    if (!payloadJson || typeof payloadJson !== "object") return null;
+    // exp check (seconds)
+    const now = Math.floor(Date.now() / 1000);
+    const exp = (payloadJson as any).exp as number | undefined;
+    if (typeof exp === "number" && exp < now) return null;
+    return payloadJson as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function base64UrlDecode(input: string): string {
+  const pad = input.length % 4 === 2 ? "==" : input.length % 4 === 3 ? "=" : "";
+  const b64 = input.replace(/-/g, "+").replace(/_/g, "/") + pad;
+  try {
+    return Buffer.from(b64, "base64").toString("utf8");
+  } catch {
+    return "";
+  }
+}
+
+function bufferToBase64Url(buf: Uint8Array): string {
+  return Buffer.from(buf)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) {
+    out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return out === 0;
 }

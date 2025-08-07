@@ -30,11 +30,11 @@ export default function CustomForgotPasswordForm({ onComplete }: CustomForgotPas
 
       setSubmitting(true);
       try {
-        // Public endpoint: skip auth and no refresh
+        // Public endpoint
         await postJson<{ message?: string }>(
           "/api/auth/forgot-password",
           { email: safeEmail },
-          { skipAuth: true, noRefresh: true, cache: "no-store" }
+          { cache: "no-store" }
         );
         setSuccess("If an account with that email exists, we sent a password reset link.");
         if (onComplete) {

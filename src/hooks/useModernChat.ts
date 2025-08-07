@@ -26,8 +26,8 @@ export function useModernChat({
   matchUserId,
   token,
 }: UseModernChatArgs) {
-  const subscriptionStatus = useSubscriptionStatus(token);
-  const { trackUsage } = useUsageTracking(token);
+  const subscriptionStatus = useSubscriptionStatus();
+  const { trackUsage } = useUsageTracking(undefined);
 
   const {
     messages,
@@ -38,13 +38,13 @@ export function useModernChat({
     sendMessage,
     error,
     getLastReadAtForOther,
-  } = useMatchMessages(conversationId, token);
+  } = useMatchMessages(conversationId, "");
 
   // Typing indicators
   const { typingUsers, startTyping, stopTyping } = useTypingIndicators({
     conversationId,
     currentUserId,
-    token,
+    token: "",
   });
 
   // Delivery receipts
@@ -55,7 +55,7 @@ export function useModernChat({
     markMessageAsRead,
   } = useDeliveryReceipts({
     conversationId,
-    token,
+    token: "",
   });
 
   // UI state

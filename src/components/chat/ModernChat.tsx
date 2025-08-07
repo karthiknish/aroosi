@@ -13,7 +13,7 @@ export type ModernChatProps = {
   matchUserName?: string;
   matchUserAvatarUrl?: string;
   className?: string;
-  token: string;
+  token?: string; // cookie-session; token unused
 };
 
 function ModernChat({
@@ -39,7 +39,7 @@ function ModernChat({
     conversationId,
     currentUserId,
     matchUserId,
-    token,
+    token: token || "",
   });
 
   const {

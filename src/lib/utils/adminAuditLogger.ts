@@ -9,7 +9,7 @@
  * - Invoke adminAuditLog({ actorId: userId, action, targetId, metadata, timestamp: Date.now() }).
  * - Replace stubbed mutation call with your actual Convex audit mutation once added.
  */
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 
 export type AdminAuditAction =
   | "admin.profile.create"
@@ -34,17 +34,16 @@ export interface AdminAuditEvent {
  * Writes an audit event. Fails safe (logs to console if Convex unavailable).
  * Callers must set Convex auth (convex.setAuth(token)) before calling.
  */
-export async function adminAuditLog(event: AdminAuditEvent): Promise<void> {
+export async function adminAuditLog(event: AdminAuditEvent & { req?: Request }): Promise<void> {
   try {
-    const convex = getConvexClient();
-    if (!convex) {
-      console.warn("[adminAuditLog] Convex not configured", event);
-      return;
+    const { req, ...payload } = event as any;
+    const { api } = await import("@convex/_generated/api");
+    if (req) {
+      await convexMutationWithAuth(req as any, (api as any).admin?.logAudit ?? (api as any).audit?.recordAdminEvent, payload as any);
+    } else {
+      // Fallback: log locally if no request context provided
+      console.info("[adminAuditLog] (no-request) event", payload);
     }
-    // TODO: Replace with real Convex mutation when ready:
-    // import { api } from "@convex/_generated/api";
-    // await convex.mutation(api.audit.recordAdminEvent, event);
-    console.info("[adminAuditLog] (stub) event", event);
   } catch (e) {
     console.error("[adminAuditLog] failed", {
       error: e instanceof Error ? e.message : String(e),

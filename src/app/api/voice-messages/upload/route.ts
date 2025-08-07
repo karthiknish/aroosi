@@ -1,18 +1,20 @@
 import { NextRequest } from "next/server";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
+import { requireSession, devLog } from "@/app/api/_utils/auth";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId } = session;
 
     // Subscription-aware rate limiting for voice uploads
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -24,7 +26,8 @@ export async function POST(request: NextRequest) {
     );
     if (!rate.allowed) {
       return errorResponse(
-        rate.error || "Rate limit exceeded. Please wait before uploading more voice messages.",
+        rate.error ||
+          "Rate limit exceeded. Please wait before uploading more voice messages.",
         429
       );
     }
@@ -48,7 +51,10 @@ export async function POST(request: NextRequest) {
     if (typeof peaksRaw === "string" && peaksRaw.length) {
       try {
         const parsed = JSON.parse(peaksRaw);
-        if (Array.isArray(parsed) && parsed.every((n: any) => typeof n === "number" && n >= 0 && n <= 1)) {
+        if (
+          Array.isArray(parsed) &&
+          parsed.every((n: any) => typeof n === "number" && n >= 0 && n <= 1)
+        ) {
           // Bound payload size defensively
           peaks = parsed.slice(0, 256);
         }
@@ -61,7 +67,7 @@ export async function POST(request: NextRequest) {
     if (!audioFile || !conversationId || !duration || !toUserId) {
       return errorResponse(
         "Missing required fields: audio, conversationId, duration, toUserId",
-        400,
+        400
       );
     }
 
@@ -85,46 +91,50 @@ export async function POST(request: NextRequest) {
     if (duration <= 0 || duration > 300) {
       return errorResponse(
         "Invalid duration. Must be between 1 second and 5 minutes.",
-        400,
+        400
       );
     }
 
-    // Database operations via Convex server
-
     // Verify user is part of this conversation
-    if (!userId) {
-      return errorResponse("User ID not found", 401);
-    }
     const userIds = conversationId.split("_");
     if (!userIds.includes(userId)) {
       return errorResponse("Unauthorized access to conversation", 403);
     }
 
     // Check if either user has blocked the other
-    const blockStatus = await convexQueryWithAuth(request, api.safety.getBlockStatus, {
-      blockerUserId: userId as Id<"users">,
-      blockedUserId: toUserId as Id<"users">,
-    } as any);
+    const blockStatus = await fetchQuery(
+      api.safety.getBlockStatus as any,
+      {
+        blockerUserId: userId as Id<"users">,
+        blockedUserId: toUserId as Id<"users">,
+      } as any
+    ).catch(() => false as any);
 
     if (blockStatus) {
       return errorResponse("Cannot send voice message to this user", 403);
     }
 
     // Check subscription limits for voice messages
-    const canSendVoice = await convexQueryWithAuth(request, api.subscriptions.checkFeatureAccess, {
-      userId: userId as Id<"users">,
-      feature: "voice_messages",
-    } as any);
+    const canSendVoice = await fetchQuery(
+      api.subscriptions.checkFeatureAccess as any,
+      {
+        userId: userId as Id<"users">,
+        feature: "voice_messages",
+      } as any
+    ).catch(() => false as any);
 
     if (!canSendVoice) {
       return errorResponse(
         "Voice messages require a premium subscription",
-        403,
+        403
       );
     }
 
     // Generate upload URL for the audio file
-    const uploadUrl = await convexMutationWithAuth(request, api.messages.generateUploadUrl, {} as any);
+    const uploadUrl = await fetchMutation(
+      api.messages.generateUploadUrl as any,
+      {} as any
+    );
 
     // Upload the audio file to Convex storage
     const uploadResponse = await fetch(uploadUrl, {
@@ -139,18 +149,21 @@ export async function POST(request: NextRequest) {
     const { storageId } = await uploadResponse.json();
 
     // Create the voice message record
-    const message = await convexMutationWithAuth(request, api.messages.sendMessage, {
-      conversationId,
-      fromUserId: userId as Id<"users">,
-      toUserId: toUserId as Id<"users">,
-      text: `Voice message (${formatVoiceDuration(duration)})`,
-      type: "voice",
-      audioStorageId: storageId,
-      duration,
-      fileSize: audioFile.size,
-      mimeType: audioFile.type,
-      peaks,
-    } as any);
+    const message = await fetchMutation(
+      api.messages.sendMessage as any,
+      {
+        conversationId,
+        fromUserId: userId as Id<"users">,
+        toUserId: toUserId as Id<"users">,
+        text: `Voice message (${formatVoiceDuration(duration)})`,
+        type: "voice",
+        audioStorageId: storageId,
+        duration,
+        fileSize: audioFile.size,
+        mimeType: audioFile.type,
+        peaks,
+      } as any
+    );
 
     if (!message) {
       return errorResponse("Failed to create voice message record", 500);
@@ -167,20 +180,27 @@ export async function POST(request: NextRequest) {
       console.warn("Voice message SSE emit failed", {
         scope: "voice.upload",
         correlationId,
-        message: eventError instanceof Error ? eventError.message : String(eventError),
+        message:
+          eventError instanceof Error ? eventError.message : String(eventError),
       });
     }
 
-    return successResponse({
-      message: "Voice message uploaded successfully",
-      messageId: message._id,
-      duration,
-      storageId,
-      correlationId,
-      durationMs: Date.now() - startedAt,
-    }, 200);
+    return successResponse(
+      {
+        message: "Voice message uploaded successfully",
+        messageId: message._id,
+        duration,
+        storageId,
+        correlationId,
+        durationMs: Date.now() - startedAt,
+      },
+      200
+    );
   } catch (error) {
-    console.error("Error uploading voice message:", error);
+    devLog("error", "voice.upload", "Failed to upload voice message", {
+      error: error instanceof Error ? error.message : String(error),
+      correlationId,
+    });
     return errorResponse("Failed to upload voice message", 500);
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { cookies, headers } from "next/headers";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexQueryWithAuth, convexMutationWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
@@ -68,11 +68,7 @@ function toErrorDetails(err: unknown): { message: string; code?: string } {
 
 export async function GET(_request: NextRequest) {
   const scope = "api/user/me#GET";
-  const convex = getConvexClient();
-  if (!convex) {
-    log(scope, "error", "Convex client not configured");
-    return errorResponse("Convex client not configured", 500);
-  }
+  // Cookie/session-based auth via Convex server helpers
 
   const { source, cookieTried } = getSessionContext();
   log(scope, "info", "Session context probed", {
@@ -82,7 +78,7 @@ export async function GET(_request: NextRequest) {
 
   try {
     // Cookie-only: do not call convex.setAuth with tokens
-    const userWithProfile = await convex.query(api.users.getCurrentUserWithProfile, {}).catch((convexError: unknown) => {
+    const userWithProfile = await convexQueryWithAuth(_request, api.users.getCurrentUserWithProfile, {}).catch((convexError: unknown) => {
       const details = toErrorDetails(convexError);
       log(scope, "error", "Convex query failed", details);
       return null;
@@ -103,11 +99,7 @@ export async function GET(_request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const scope = "api/user/me#PUT";
-  const convex = getConvexClient();
-  if (!convex) {
-    log(scope, "error", "Convex client not configured");
-    return errorResponse("Convex client not configured", 500);
-  }
+  // Cookie/session-based auth via Convex server helpers
 
   const { source, cookieTried } = getSessionContext();
   log(scope, "info", "Session context probed", {
@@ -130,8 +122,7 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    // Cookie-only: do not call convex.setAuth with tokens
-    const updatedUser = await convex.mutation(api.users.updateProfile, body as any);
+    const updatedUser = await convexMutationWithAuth(request, api.users.updateProfile, { updates: body as any } as any);
 
     if (!updatedUser) {
       log(scope, "warn", "Update returned empty result");
