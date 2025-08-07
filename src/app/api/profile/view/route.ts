@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // recordProfileView now infers viewer via Convex identity; do not pass viewerUserId
+    // recordProfileView now exists and infers viewer via Convex identity
     await convexMutationWithAuth(request, api.users.recordProfileView, {
       profileId: profileId as Id<"profiles">,
     } as any);
@@ -64,13 +64,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Convex enforces authorization; requesterUserId parameter is not required when using subject-based identity
-    const viewers = await convexQueryWithAuth(
-      request,
-      api.users.getProfileViewers,
-      {
-        profileId: profileId as Id<"profiles">,
-      } as any
-    );
+    const viewers = await convexQueryWithAuth(request, api.users.getProfileViewers, {
+      profileId: profileId as Id<"profiles">,
+    } as any);
 
     return NextResponse.json({ success: true, viewers, correlationId });
   } catch (err: any) {

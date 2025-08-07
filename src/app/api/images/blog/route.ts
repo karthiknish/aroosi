@@ -1,18 +1,13 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 // POST /api/images/blog
 // Upload metadata for a blog image and retrieve its public URL.
 // Requires a valid Bearer token. Only admins are authorized to call this.
 export async function POST(req: NextRequest) {
-  // Extract Bearer token
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return errorResponse("Unauthorized", 401);
-  }
+  // Cookie/session auth; no bearer header expected
 
   // Parse body
   let body: {
@@ -45,10 +40,7 @@ export async function POST(req: NextRequest) {
 
   // Call Convex mutation (admin guard happens server-side)
   try {
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    convex.setAuth(token);
-    const result = await convex.mutation(api.images.uploadBlogImage, {
+    const result = await convexMutationWithAuth(req, api.images.uploadBlogImage, {
       storageId,
       fileName,
       contentType,

@@ -26,9 +26,13 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const profile = await convexQueryWithAuth(req, api.profiles.getProfileByUserId, {
-      userId: user._id as Id<"users">,
-    });
+    const profile = await convexQueryWithAuth(
+      req,
+      api.profiles.getProfileByUserId,
+      {
+        userId: user._id as Id<"users">,
+      }
+    );
 
     return NextResponse.json({
       success: true,

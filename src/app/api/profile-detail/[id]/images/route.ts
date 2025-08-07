@@ -116,6 +116,7 @@ export async function GET(req: NextRequest) {
 
       // Get profile images using the resolved user ID
       try {
+        if (!userId) throw new Error("User ID missing after resolution");
         images = await convexQueryWithAuth(req, api.images.getProfileImages, {
           userId: userId as Id<"users">,
         } as any);

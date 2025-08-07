@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 import { requireSession } from "@/app/api/_utils/auth";
 
 const VALID_STATUSES = ["delivered", "read", "failed"] as const;
@@ -30,20 +30,7 @@ export async function POST(request: NextRequest) {
     }
     const { userId } = session;
 
-    let client = getConvexClient();
-    if (!client) {
-      console.error("Delivery receipts POST convex not configured", {
-        scope: "delivery_receipts.post",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 503,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Service temporarily unavailable", correlationId },
-        { status: 503 }
-      );
-    }
+    // Cookie/session auth; use server helper
 
     let body: unknown;
     try {
@@ -74,23 +61,21 @@ export async function POST(request: NextRequest) {
     // Narrow status to the allowed literal union type
     const narrowedStatus = status as "delivered" | "read" | "failed";
 
-    const receiptId = await client
-      .mutation(api.deliveryReceipts.recordDeliveryReceipt, {
-        messageId: messageId as Id<"messages">,
-        userId: userId as Id<"users">,
-        status: narrowedStatus,
-      })
-      .catch((e: unknown) => {
-        console.error("Delivery receipts POST mutation error", {
-          scope: "delivery_receipts.post",
-          type: "convex_mutation_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const receiptId = await convexMutationWithAuth(request, api.deliveryReceipts.recordDeliveryReceipt, {
+      messageId: messageId as Id<"messages">,
+      userId: userId as Id<"users">,
+      status: narrowedStatus,
+    }).catch((e: unknown) => {
+      console.error("Delivery receipts POST mutation error", {
+        scope: "delivery_receipts.post",
+        type: "convex_mutation_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null as any;
+    });
 
     if (!receiptId) {
       return NextResponse.json(
@@ -158,20 +143,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(body, { status });
     }
 
-    let client = getConvexClient();
-    if (!client) {
-      console.error("Delivery receipts GET convex not configured", {
-        scope: "delivery_receipts.get",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 503,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { error: "Service temporarily unavailable", correlationId },
-        { status: 503 }
-      );
-    }
+    // Cookie/session auth; use server helper
 
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get("conversationId");
@@ -182,21 +154,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const deliveryReceipts = await client
-      .query(api.deliveryReceipts.getDeliveryReceipts, {
-        conversationId: conversationId as Id<"messages">,
-      })
-      .catch((e: unknown) => {
-        console.error("Delivery receipts GET query error", {
-          scope: "delivery_receipts.get",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const deliveryReceipts = await convexQueryWithAuth(request, api.deliveryReceipts.getDeliveryReceipts, {
+      conversationId: conversationId as Id<"messages">,
+    }).catch((e: unknown) => {
+      console.error("Delivery receipts GET query error", {
+        scope: "delivery_receipts.get",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null as any;
+    });
 
     if (!deliveryReceipts) {
       return NextResponse.json(
