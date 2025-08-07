@@ -50,7 +50,7 @@ export interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: (
     credential: string,
-    state: string
+    state?: string
   ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
@@ -71,13 +71,11 @@ export function useAuth() {
 // Alias for backward compatibility
 export const useAuthContext = useAuth;
 
-
 interface AuthProviderProps {
   children: React.ReactNode;
 }
 
 // Util: get token from localStorage (for SSR safety, fallback to memory)
-
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -88,9 +86,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logoutVersionRef = React.useRef(0);
 
   // Store tokens in localStorage for persistence and sync the centralized client immediately
-  const saveToken = useCallback((_token: string | null, _refresh?: string | null) => {
-    // No-op in Convex cookie session model; kept for legacy compatibility with callers
-  }, []);
+  const saveToken = useCallback(
+    (_token: string | null, _refresh?: string | null) => {
+      // No-op in Convex cookie session model; kept for legacy compatibility with callers
+    },
+    []
+  );
 
   // Remove all auth markers (access + refresh)
   const removeLocalMarkers = useCallback(() => {
@@ -101,21 +102,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Fetch current user using Bearer token (centralized http client with auto-refresh on 401)
   const fetchUser = useCallback(async (): Promise<User | null> => {
     try {
-      const data = (await (await import("@/lib/http/client")).getJson<{ user?: User }>("/api/auth/me").catch(async (err: any) => {
-        try {
-          await new Promise((r) => setTimeout(r, 150));
-          return await (await import("@/lib/http/client")).getJson<{ user?: User }>("/api/auth/me");
-        } catch {
-          throw err;
-        }
-      })) as { user?: User };
-    return data?.user ?? null;
+      const data = (await (await import("@/lib/http/client"))
+        .getJson<{ user?: User }>("/api/auth/me")
+        .catch(async (err: any) => {
+          try {
+            await new Promise((r) => setTimeout(r, 150));
+            return await (
+              await import("@/lib/http/client")
+            ).getJson<{ user?: User }>("/api/auth/me");
+          } catch {
+            throw err;
+          }
+        })) as { user?: User };
+      return data?.user ?? null;
     } catch (error) {
       console.warn("AuthProvider.fetchUser failed", error);
       return null;
     }
   }, []);
-
 
   // Refresh user data
   const refreshUser = useCallback(async () => {
@@ -134,7 +138,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await refreshUser();
   }, [refreshUser]);
 
-
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
@@ -148,7 +151,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
     void initAuth();
   }, [fetchUser]);
-
 
   // Sign in with email/password (token-based) + centralized hydration retry
   const signIn = useCallback(
@@ -168,7 +170,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (!response.ok) {
           // Improve error message with server code if present
-          const serverMsg = (data && (data.error as string)) || "Sign in failed";
+          const serverMsg =
+            (data && (data.error as string)) || "Sign in failed";
           const code = (data && (data.code as string)) || undefined;
           const composed = code ? `${serverMsg} (${code})` : serverMsg;
           setError(composed);
@@ -204,7 +207,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (typeof error?.message === "string") {
             const parsed = JSON.parse(error.message);
             if (parsed?.error) {
-              errorMessage = parsed?.code ? `${parsed.error} (${parsed.code})` : parsed.error;
+              errorMessage = parsed?.code
+                ? `${parsed.error} (${parsed.code})`
+                : parsed.error;
             }
           }
         } catch {
@@ -219,7 +224,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
     [removeLocalMarkers, refreshUser, saveToken, user]
   );
-
 
   // Sign up with email/password (token-based)
   const signUp = useCallback(
@@ -282,10 +286,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [removeLocalMarkers, refreshUser, saveToken]
   );
 
-
   // Sign in with Google (token-based)
   const signInWithGoogle = useCallback(
-    async (credential: string, state: string) => {
+    async (credential: string, state?: string) => {
       try {
         setError(null);
         const response = await fetch("/api/auth/google", {
@@ -318,7 +321,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [refreshUser, saveToken]
   );
 
-
   // Sign out
   const signOut = useCallback(async () => {
     logoutVersionRef.current += 1;
@@ -334,7 +336,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       router.push("/sign-in");
     }
   }, [removeLocalMarkers, router]);
-
 
   // Remove legacy cookie detection effect
 

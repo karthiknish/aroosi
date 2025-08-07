@@ -962,7 +962,6 @@ export function ProfileCreationModal({
                 }
               }
 
-
               uploadedCount++;
               console.log(
                 `[upload:${index}] Successfully uploaded image ${uploadedCount}/${pendingImages.length}`

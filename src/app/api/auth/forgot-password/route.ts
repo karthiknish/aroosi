@@ -1,3 +1,5 @@
+// This is a custom password reset endpoint for mobile/web compatibility.
+// Convex Auth handles all other authentication flows.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchQuery } from "convex/nextjs";
@@ -17,11 +19,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const parsed = ForgotSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid email", correlationId }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid email", correlationId },
+        { status: 400 }
+      );
     }
     const { email } = parsed.data;
 
-    const user = await fetchQuery(api.users.getUserByEmail, { email }).catch(() => null);
+    const user = await fetchQuery(api.users.getUserByEmail, { email }).catch(
+      () => null
+    );
 
     // Always respond 200 to avoid user enumeration; still attempt email if user exists and is not banned
     if (!user || (user as { banned?: boolean }).banned) {
@@ -32,7 +39,8 @@ export async function POST(request: NextRequest) {
         durationMs: Date.now() - startedAt,
       });
       return NextResponse.json({
-        message: "If an account with that email exists, we sent a password reset link.",
+        message:
+          "If an account with that email exists, we sent a password reset link.",
         correlationId,
       });
     }
@@ -40,7 +48,8 @@ export async function POST(request: NextRequest) {
     // Build reset link with opaque token generated server-side by reset handler
     const origin =
       process.env.NEXT_PUBLIC_APP_URL ||
-      (request.headers.get("x-forwarded-proto") && request.headers.get("x-forwarded-host")
+      (request.headers.get("x-forwarded-proto") &&
+      request.headers.get("x-forwarded-host")
         ? `${request.headers.get("x-forwarded-proto")}://${request.headers.get("x-forwarded-host")}`
         : new URL(request.url).origin);
 
@@ -59,7 +68,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      message: "If an account with that email exists, we sent a password reset link.",
+      message:
+        "If an account with that email exists, we sent a password reset link.",
       correlationId,
     });
   } catch (error) {
@@ -71,6 +81,9 @@ export async function POST(request: NextRequest) {
       correlationId,
       durationMs: Date.now() - startedAt,
     });
-    return NextResponse.json({ error: "Internal server error", correlationId }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error", correlationId },
+      { status: 500 }
+    );
   }
 }

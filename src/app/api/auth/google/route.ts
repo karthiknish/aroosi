@@ -1,3 +1,33 @@
+// This route is now handled by Convex Auth's built-in OAuth endpoint.
+// Please POST to /api/auth/oauth/google (Convex Auth) instead.
+import { NextResponse } from "next/server";
+
+// This route is now handled by Convex Auth's built-in OAuth endpoint.
+// Please POST to /api/auth/oauth/google (Convex Auth) instead.
+export async function POST() {
+  return NextResponse.json({
+    message: "Please use Convex Auth's /api/auth/oauth/google endpoint. This endpoint is deprecated.",
+  });
+}
+}
+// This route is now handled by Convex Auth's built-in OAuth endpoint.
+// Please POST to /api/auth/oauth/google (Convex Auth) instead.
+import { NextResponse } from "next/server";
+
+export async function POST() {
+  return NextResponse.json({
+    message: "Please use Convex Auth's /api/auth/oauth/google endpoint. This endpoint is deprecated.",
+  });
+}
+// This route is now handled by Convex Auth's built-in OAuth endpoint.
+// Please POST to /api/auth/oauth/google (Convex Auth) instead.
+import { NextResponse } from "next/server";
+
+export async function POST() {
+  return NextResponse.json({
+    message: "Please use Convex Auth's /api/auth/oauth/google endpoint. This endpoint is deprecated.",
+  });
+}
 import { NextRequest, NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
@@ -57,11 +87,11 @@ const googleAuthSchema = z.object({
   state: z.string().min(16, "Missing or invalid state"),
 });
 
-export async function POST(request: NextRequest) {
-  try {
-    // Persisted, distributed IP throttle using Convex rateLimits table.
-    // Falls back to in-memory throttle if Convex request fails.
-    const ip =
+  // This route is now handled by Convex Auth's built-in OAuth endpoint.
+  // Please POST to /api/auth/oauth/google (Convex Auth) instead.
+  return NextResponse.json({
+    message: "Please use Convex Auth's /api/auth/oauth/google endpoint. This endpoint is deprecated.",
+  });
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
       // @ts-ignore Next runtime fallback

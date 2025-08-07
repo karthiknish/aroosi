@@ -1,3 +1,5 @@
+// This is a custom password reset endpoint for mobile/web compatibility.
+// Convex Auth handles all other authentication flows.
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -39,12 +41,20 @@ export async function POST(request: NextRequest) {
     }
     const { email, password } = parsed.data;
 
-    const user = await fetchQuery(api.users.getUserByEmail, { email }).catch(() => null);
+    const user = await fetchQuery(api.users.getUserByEmail, { email }).catch(
+      () => null
+    );
     if (!user) {
-      return NextResponse.json({ error: "User not found", correlationId }, { status: 404 });
+      return NextResponse.json(
+        { error: "User not found", correlationId },
+        { status: 404 }
+      );
     }
     if ((user as { banned?: boolean }).banned) {
-      return NextResponse.json({ error: "Account is banned", correlationId }, { status: 403 });
+      return NextResponse.json(
+        { error: "Account is banned", correlationId },
+        { status: 403 }
+      );
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -61,7 +71,10 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
 
-    return NextResponse.json({ message: "Password reset successfully", correlationId }, { status: 200 });
+    return NextResponse.json(
+      { message: "Password reset successfully", correlationId },
+      { status: 200 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("reset-password POST error", {
@@ -77,6 +90,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    return NextResponse.json({ error: "Internal server error", correlationId }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error", correlationId },
+      { status: 500 }
+    );
   }
 }

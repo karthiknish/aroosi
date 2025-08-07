@@ -1,3 +1,35 @@
+// This route is now handled by Convex Auth's built-in endpoint.
+// Please POST /api/auth/signin (Convex Auth) instead.
+import { NextResponse } from "next/server";
+
+export async function POST() {
+  return NextResponse.json({
+    message: "Please use Convex Auth's /api/auth/signin endpoint. This endpoint is deprecated.",
+  });
+}
+
+// Additional code or comments can be added here if necessary.
+
+// This route is now handled by Convex Auth's built-in endpoint.
+// Please POST to /api/auth/password/signin instead.
+import { NextResponse } from "next/server";
+
+export async function POST() {
+  return NextResponse.json({
+    message:
+      "Please use /api/auth/password/signin for authentication. This endpoint is deprecated.",
+  });
+}
+// This route is now handled by Convex Auth's built-in endpoint.
+// Please POST to /api/auth/password/signin instead.
+import { NextResponse } from "next/server";
+
+export async function POST() {
+  return NextResponse.json({
+    message:
+      "Please use /api/auth/password/signin for authentication. This endpoint is deprecated.",
+  });
+}
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
