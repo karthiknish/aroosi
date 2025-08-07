@@ -1,4 +1,5 @@
 // Utility to fetch all contacts (admin) and submit contact (public)
+import { getJson, postJson } from "@/lib/http/client";
 export interface Contact {
   _id?: string;
   id?: string;
@@ -9,18 +10,11 @@ export interface Contact {
   createdAt: string;
 }
 
-export async function fetchAllContactsAdmin(token: string): Promise<Contact[]> {
+export async function fetchAllContactsAdmin(_token: string): Promise<Contact[]> {
   // Fetch all contacts for admin users
-  const res = await fetch("/api/contact", {
-    headers: {
-      // Cookie-based session; no Authorization header
-      "Content-Type": "application/json",
-    },
+  const data = await getJson<Contact[]>("/api/contact", {
+    headers: { "Content-Type": "application/json" },
   });
-  if (!res.ok) {
-    throw new Error("Failed to fetch contacts");
-  }
-  const data = await res.json();
   // Map to ensure each has id field for React keys
   return (data as Contact[]).map((c) => ({ ...c, id: c.id || c._id || "" }));
 }
@@ -32,15 +26,6 @@ export async function submitContactPublic(data: {
   message: string;
 }): Promise<{ success: boolean; error?: string }> {
   // Submit a contact form for public users
-  const res = await fetch("/api/contact", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    return { success: false, error: "Failed to submit contact" };
-  }
+  await postJson("/api/contact", data);
   return { success: true };
 }

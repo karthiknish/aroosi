@@ -15,7 +15,7 @@ export async function fetchBlogPosts({
   page = 0,
   pageSize = 6,
   category,
-  token,
+  token: _token,
 }: {
   page?: number;
   pageSize?: number;
@@ -29,7 +29,7 @@ export async function fetchBlogPosts({
 
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const data = await getJson(`/api/blog?${params.toString()}`, { headers });
+  const data = (await getJson(`/api/blog?${params.toString()}`, { headers })) as unknown;
   // Support multiple envelope shapes
   // 1. Bare array
   if (Array.isArray(data)) return data;
@@ -41,14 +41,15 @@ export async function fetchBlogPosts({
   if (data && Array.isArray(data.posts)) return data.posts;
 
   // 4. { success: true, data: { posts: BlogPost[] } }
-  if (
-    data &&
-    typeof data === "object" &&
-    "data" in data &&
-    data.data &&
-    Array.isArray((data.data as unknown as { posts?: unknown[] }).posts)
-  ) {
-    return (data.data as { posts: BlogPost[] }).posts;
+  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) {
+    const inner = (data as Record<string, unknown>).data as unknown;
+    if (
+      inner &&
+      typeof inner === "object" &&
+      Array.isArray((inner as { posts?: unknown[] }).posts)
+    ) {
+      return (inner as { posts: BlogPost[] }).posts;
+    }
   }
   return [];
 }
@@ -70,44 +71,44 @@ export async function fetchAdminBlogPosts({
 
 // Create a new blog post (requires auth)
 export async function createBlogPost(
-  token: string,
+  _token: string,
   post: Omit<BlogPost, "_id" | "createdAt" | "updatedAt">
 ): Promise<BlogApiResponse<BlogPost>> {
-  const data = await postJson("/api/blog", post);
-  if (!(data as any)?.success) {
+  const data = (await postJson("/api/blog", post)) as unknown;
+  if (!(data as Record<string, unknown>)?.success) {
     return {
       success: false,
-      error: (data as any)?.error || "Failed to create blog post",
+      error: (data as Record<string, unknown>)?.error as string || "Failed to create blog post",
     };
   }
-  return { success: true, data: (data as any).data };
+  return { success: true, data: (data as { data: BlogPost }).data };
 }
 
 // Delete a blog post by _id (requires auth)
 export async function deleteBlogPost(
-  token: string,
+  _token: string,
   _id: string
 ): Promise<BlogApiResponse<unknown>> {
-  const data = await deleteJson("/api/blog", { body: JSON.stringify({ _id }) });
-  if (!(data as any)?.success) {
+  const data = (await deleteJson("/api/blog", { body: JSON.stringify({ _id }) })) as unknown;
+  if (!(data as Record<string, unknown>)?.success) {
     return {
       success: false,
-      error: (data as any)?.error || "Failed to delete blog post",
+      error: (data as Record<string, unknown>)?.error as string || "Failed to delete blog post",
     };
   }
   return { success: true, data };
 }
 // Edit a blog post by _id (requires auth)
 export async function editBlogPost(
-  token: string,
+  _token: string,
   _id: string,
   updates: Partial<Omit<BlogPost, "_id" | "createdAt" | "updatedAt">>
 ): Promise<BlogApiResponse<BlogPost>> {
-  const data = await putJson("/api/blog", { _id, ...updates });
-  if (!(data as any)?.success) {
+  const data = (await putJson("/api/blog", { _id, ...updates })) as unknown;
+  if (!(data as Record<string, unknown>)?.success) {
     return {
       success: false,
-      error: (data as any)?.error || "Failed to edit blog post",
+      error: (data as Record<string, unknown>)?.error as string || "Failed to edit blog post",
     };
   }
   return { success: true, data };
@@ -122,11 +123,11 @@ export async function fetchBlogPostById(
 ): Promise<BlogPost | null> {
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const data = await getJson(`/api/blog/${id}`, { headers });
+  const data = (await getJson(`/api/blog/${id}`, { headers })) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
-  if (data && data.data) return data.data;
-  return data;
+  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) return (data as { data: BlogPost }).data;
+  return data as BlogPost;
 }
 
 // Fetch a single blog post by slug (optionally with admin token)
@@ -136,16 +137,16 @@ export async function fetchBlogPostBySlug(
 ): Promise<BlogPost | null> {
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const data = await getJson(`/api/blog/${encodeURIComponent(slug)}`, { headers });
+  const data = (await getJson(`/api/blog/${encodeURIComponent(slug)}`, { headers })) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
-  if (data && data.data) return data.data;
-  return data;
+  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) return (data as { data: BlogPost }).data;
+  return data as BlogPost;
 }
 
 // Upload blog image metadata and get public URL (requires admin token)
 export async function uploadBlogImageMeta({
-  token,
+  token: _token,
   storageId,
   fileName,
   contentType,
@@ -157,12 +158,10 @@ export async function uploadBlogImageMeta({
   contentType?: string;
   fileSize?: number;
 }): Promise<string> {
-  const data = await postJson("/api/images/blog", { storageId, fileName, contentType, fileSize });
+  const data = (await postJson("/api/images/blog", { storageId, fileName, contentType, fileSize })) as unknown;
   // Support shapes { url } or { data: { url } }
-  const url =
-    data?.url ??
-    (data?.data && (data.data as { url?: string }).url) ??
-    (data?.data?.url as string | undefined);
+  const url = (data as { url?: string })?.url ??
+    ((data as { data?: { url?: string } })?.data?.url as string | undefined);
   if (!url) {
     throw new Error("Image URL missing in response");
   }
