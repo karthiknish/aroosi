@@ -9,34 +9,25 @@ import type { Id } from "@convex/_generated/dataModel";
 import { getConvexClient } from "@/lib/convexClient";
 
 /**
- * POST /api/auth/refresh
- * - Reads refresh-token cookie
+ * POST /api/auth/refresh (PURE TOKEN MODEL)
+ * - Expects Authorization: Bearer <refreshToken> header
  * - Verifies refresh JWT
  * - Throttles by IP and by userId (30s window, limit 10)
  * - Enforces refresh rotation using CAS on users.refreshVersion
- * - Detects reuse (CAS failure) without extra bump and clears cookies
- * - On success: increments version and returns new access (15m) + refresh (7d) cookies
+ * - On success: returns JSON { accessToken, refreshToken }
  */
 export async function POST(req: NextRequest) {
   const startedAt = Date.now();
   const correlationId = Math.random().toString(36).slice(2, 10);
 
-  // Centralized immediate-expiry cookie attributes
-  const getExpireList = async () => {
-    const { getExpireCookieAttrs } = await import("@/lib/auth/cookies");
-    const attrs = getExpireCookieAttrs();
-    return [
-      `auth-token=; HttpOnly; ${attrs}`,
-      `refresh-token=; HttpOnly; ${attrs}`,
-      `authTokenPublic=; ${attrs}`,
-    ];
-  };
 
   try {
-    const cookies = req.cookies;
-    const refreshToken = cookies.get("refresh-token")?.value;
+    // Authorization: Bearer <refreshToken>
+    const authz = req.headers.get("authorization") || "";
+    const refreshToken = authz.toLowerCase().startsWith("bearer ")
+      ? authz.slice(7).trim()
+      : "";
 
-    // 1) Missing token fast-path: clear cookies and respond
     if (!refreshToken) {
       console.warn("Refresh missing token", {
         scope: "auth.refresh",
@@ -45,7 +36,7 @@ export async function POST(req: NextRequest) {
         statusCode: 401,
         durationMs: Date.now() - startedAt,
       });
-      const res = NextResponse.json(
+      return NextResponse.json(
         {
           error: "Missing refresh token",
           code: "MISSING_REFRESH",
@@ -53,9 +44,6 @@ export async function POST(req: NextRequest) {
         },
         { status: 401 }
       );
-      for (const c of await getExpireList())
-        res.headers.append("Set-Cookie", c);
-      return res;
     }
 
     // 2) Convex client
@@ -122,7 +110,7 @@ export async function POST(req: NextRequest) {
         durationMs: Date.now() - startedAt,
         message: e instanceof Error ? e.message : String(e),
       });
-      const res = NextResponse.json(
+      return NextResponse.json(
         {
           error: "Invalid refresh token",
           code: "INVALID_REFRESH",
@@ -130,9 +118,6 @@ export async function POST(req: NextRequest) {
         },
         { status: 401 }
       );
-      for (const c of await getExpireList())
-        res.headers.append("Set-Cookie", c);
-      return res;
     }
     const { userId, email, role, ver } = payload;
     const userIdConvex = userId as Id<"users">;
@@ -177,7 +162,7 @@ export async function POST(req: NextRequest) {
         statusCode: 401,
         durationMs: Date.now() - startedAt,
       });
-      const res = NextResponse.json(
+      return NextResponse.json(
         {
           error: "Refresh token reuse detected",
           code: "REFRESH_REUSE",
@@ -185,9 +170,6 @@ export async function POST(req: NextRequest) {
         },
         { status: 401 }
       );
-      for (const c of await getExpireList())
-        res.headers.append("Set-Cookie", c);
-      return res;
     }
 
     const nextVersion = cas.next as number;
@@ -207,34 +189,11 @@ export async function POST(req: NextRequest) {
       ver: nextVersion,
     });
 
-    const res = NextResponse.json({ success: true, token: newAccess });
-
-    // 8) Set cookies using centralized helper only (no fallback to avoid divergence)
-    {
-      const { getAuthCookieAttrs, getPublicCookieAttrs } = await import(
-        "@/lib/auth/cookies"
-      );
-      res.headers.set(
-        "Set-Cookie",
-        `auth-token=${newAccess}; ${getAuthCookieAttrs(60 * 15)}`
-      );
-      res.headers.append(
-        "Set-Cookie",
-        `refresh-token=${newRefresh}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
-      );
-      if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-        res.headers.append(
-          "Set-Cookie",
-          `authTokenPublic=${newAccess}; ${getPublicCookieAttrs(60)}`
-        );
-      } else {
-        // Explicitly expire any legacy public cookie to avoid lingering exposure
-        res.headers.append(
-          "Set-Cookie",
-          `authTokenPublic=; ${getPublicCookieAttrs(0)}`
-        );
-      }
-    }
+    const res = NextResponse.json({
+      accessToken: newAccess,
+      refreshToken: newRefresh,
+      correlationId,
+    });
 
     console.info("Refresh success", {
       scope: "auth.refresh",
@@ -254,11 +213,9 @@ export async function POST(req: NextRequest) {
       durationMs: Date.now() - startedAt,
       message: err instanceof Error ? err.message : String(err),
     });
-    const res = NextResponse.json(
+    return NextResponse.json(
       { error: "Invalid refresh token", code: "INVALID_REFRESH", correlationId },
       { status: 401 }
     );
-    for (const c of await getExpireList()) res.headers.append("Set-Cookie", c);
-    return res;
   }
 }

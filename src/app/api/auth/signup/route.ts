@@ -460,10 +460,12 @@ export async function POST(request: NextRequest) {
       role: "user",
     });
 
+    // PURE TOKEN MODEL: return tokens in body, no Set-Cookie
     const response = NextResponse.json({
       status: "success",
       message: "Account created successfully",
-      token: accessToken,
+      accessToken,
+      refreshToken,
       user: {
         id: result.userId,
         email: normalizedEmail,
@@ -474,29 +476,6 @@ export async function POST(request: NextRequest) {
       refreshed: false,
       correlationId,
     });
-
-    const {
-      getAuthCookieAttrs,
-      getPublicCookieAttrs,
-      ACCESS_TTL_SEC,
-      REFRESH_TTL_SEC,
-      PUBLIC_TTL_SEC,
-    } = await import("@/lib/auth/cookies");
- 
-    response.headers.set(
-      "Set-Cookie",
-      `auth-token=${accessToken}; ${getAuthCookieAttrs(ACCESS_TTL_SEC)}`
-    );
-    response.headers.append(
-      "Set-Cookie",
-      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(REFRESH_TTL_SEC)}`
-    );
-    if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-      response.headers.append(
-        "Set-Cookie",
-        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(PUBLIC_TTL_SEC)}`
-      );
-    }
 
     console.info("Signup success", {
       scope: "auth.signup",

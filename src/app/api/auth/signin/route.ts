@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if account is banned (clear cookies proactively to avoid sticky invalid sessions)
+    // Check if account is banned
     if (user.banned) {
       console.warn("Signin banned account attempt", {
         scope: "auth.signin",
@@ -252,17 +252,10 @@ export async function POST(request: NextRequest) {
         statusCode: 403,
         durationMs: Date.now() - startedAt,
       });
-      const bannedRes = NextResponse.json(
+      return NextResponse.json(
         { error: "Account is banned", correlationId },
         { status: 403 }
       );
-      try {
-        const { appendClearAuthCookies } = await import("@/lib/auth/cookies");
-        appendClearAuthCookies(bannedRes);
-      } catch {
-        // best-effort; do not throw if helper import fails
-      }
-      return bannedRes;
     }
 
     // Verify password
@@ -276,18 +269,10 @@ export async function POST(request: NextRequest) {
         statusCode: 401,
         durationMs: Date.now() - startedAt,
       });
-      const badPassRes = NextResponse.json(
+      return NextResponse.json(
         { error: "Invalid email or password", correlationId },
         { status: 401 }
       );
-      // Optionally clear cookies on invalid password to prevent sticky invalid sessions
-      try {
-        const { appendClearAuthCookies } = await import("@/lib/auth/cookies");
-        appendClearAuthCookies(badPassRes);
-      } catch {
-        // best-effort
-      }
-      return badPassRes;
     }
 
     // Generate access & refresh tokens with aud/iss and refresh ver embedded by library
@@ -328,12 +313,13 @@ export async function POST(request: NextRequest) {
         ? "/search"
         : "/profile/create";
 
-    // Unified response shape with no-store to avoid caching
+    // Unified response shape with no-store; PURE TOKEN MODEL (no cookies)
     const response = NextResponse.json(
       {
         status: "ok",
         message: "Signed in successfully",
-        token: accessToken,
+        accessToken,
+        refreshToken,
         user: {
           id: user._id,
           email: user.email,
@@ -347,38 +333,6 @@ export async function POST(request: NextRequest) {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-
-    // Cookie policy via centralized helper (env-driven)
-    const {
-      getAuthCookieAttrs,
-      getPublicCookieAttrs,
-      getExpireCookieAttrs,
-      ACCESS_TTL_SEC,
-      REFRESH_TTL_SEC,
-      PUBLIC_TTL_SEC
-    } = await import("@/lib/auth/cookies");
-    // Access token - short lived (15 minutes)
-    response.headers.set(
-      "Set-Cookie",
-      `auth-token=${accessToken}; ${getAuthCookieAttrs(ACCESS_TTL_SEC)}`
-    );
-    // Defensive: expire any existing refresh-token first to avoid stale family issues
-    response.headers.append(
-      "Set-Cookie",
-      `refresh-token=; HttpOnly; ${getExpireCookieAttrs()}`
-    );
-    // Refresh token - 7 days
-    response.headers.append(
-      "Set-Cookie",
-      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(REFRESH_TTL_SEC)}`
-    );
-    // Optional non-HttpOnly short-lived public mirror
-    if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-      response.headers.append(
-        "Set-Cookie",
-        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(PUBLIC_TTL_SEC)}`
-      );
-    }
 
     console.info("Signin success", {
       scope: "auth.signin",

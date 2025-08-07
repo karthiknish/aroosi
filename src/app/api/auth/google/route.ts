@@ -168,13 +168,7 @@ export async function POST(request: NextRequest) {
         { error: "Invalid OAuth state", code: "INVALID_STATE" },
         { status: 400 }
       );
-      // Clear potentially stale state cookie
-      resp.headers.append(
-        "Set-Cookie",
-        `oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${
-          process.env.NODE_ENV === "production" ? "; Secure" : ""
-        }`
-      );
+      // In pure token model, avoid cookie emission; client should clear its own local state
       return resp;
     }
 
@@ -661,13 +655,12 @@ export async function POST(request: NextRequest) {
         ? "/search"
         : "/profile/create";
 
-    // Create response with consistent structure and stable gating flags
+    // PURE TOKEN MODEL: return tokens in body, no Set-Cookie
     const response = NextResponse.json({
       status: isNewUser ? "success" : "ok",
-      message: isNewUser
-        ? "Account created successfully"
-        : "Signed in successfully",
-      token: accessToken, // Include token in response body for AuthProvider
+      message: isNewUser ? "Account created successfully" : "Signed in successfully",
+      accessToken,
+      refreshToken,
       user: {
         id: user._id,
         email: user.email,
@@ -679,39 +672,6 @@ export async function POST(request: NextRequest) {
       redirectTo: isNewUser ? "/success" : redirectTo,
       refreshed: false,
     });
-
-    // Set cookies using centralized helper (parity with native routes)
-    const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
-
-    // Set access token cookie (15 minutes)
-    response.headers.set(
-      "Set-Cookie",
-      `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`
-    );
-
-    // Append refresh token cookie (7 days)
-    response.headers.append(
-      "Set-Cookie",
-      `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`
-    );
-
-    // Remove public token cookie by default to avoid exposing access token to JS.
-    // If absolutely required for legacy clients, gate behind feature flag SHORT_PUBLIC_TOKEN=1 with 60s TTL.
-    if (process.env.SHORT_PUBLIC_TOKEN === "1") {
-      response.headers.append(
-        "Set-Cookie",
-        `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`
-      );
-    }
-
-    // Clear state cookie after successful validation to enforce one-time use
-    // Use helper for consistent attributes; Max-Age=0 to expire immediately
-    {
-      const { getAuthCookieAttrs } = await import("@/lib/auth/cookies");
-      // getAuthCookieAttrs will include HttpOnly; we override Max-Age=0 by constructing string manually
-      const expiredAttrs = getAuthCookieAttrs(0).replace(/Max-Age=\d+/, "Max-Age=0");
-      response.headers.append("Set-Cookie", `oauth_state=; ${expiredAttrs}`);
-    }
 
     return response;
   } catch (error: unknown) {
