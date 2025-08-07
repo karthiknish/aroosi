@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     log("Fetching profile details", { profileId: id });
 
-    let userId: Id<"users"> | null = null;
+    let resolvedUserId: Id<"users"> | null = null;
     let images: unknown[] = [];
 
     try {
@@ -68,14 +68,18 @@ export async function GET(req: NextRequest) {
       if (id && id.length === 24) {
         // Convex profile IDs are usually 24 chars, adjust as needed
         try {
-          const profile = await convexQueryWithAuth(req, api.users.getProfileOwnerById, {
-            id: id as Id<"profiles">,
-          } as any);
+          const profile = await convexQueryWithAuth(
+            req,
+            api.users.getProfileOwnerById,
+            {
+              id: id as Id<"profiles">,
+            } as any
+          );
           if (profile) {
-            userId = profile.userId;
+            resolvedUserId = profile.userId;
             log("Found profile by ID", {
               profileId: id,
-              userId: userId.toString(),
+              userId: String(resolvedUserId),
             });
           }
         } catch (profileError) {
@@ -86,15 +90,19 @@ export async function GET(req: NextRequest) {
       }
 
       // If no profile found by ID, try to get user by ID
-      if (!userId) {
+      if (!resolvedUserId) {
         try {
-          const user = await convexQueryWithAuth(req, api.users.getProfileByUserIdPublic, {
-            userId: id as Id<"users">,
-          } as any);
+          const user = await convexQueryWithAuth(
+            req,
+            api.users.getProfileByUserIdPublic,
+            {
+              userId: id as Id<"users">,
+            } as any
+          );
 
           if (user) {
-            userId = id as Id<"users">;
-            log("Found user by ID", { userId: userId.toString() });
+            resolvedUserId = id as Id<"users">;
+            log("Found user by ID", { userId: String(resolvedUserId) });
           }
         } catch (userError) {
           log("User not found by ID", { error: String(userError) });
@@ -102,7 +110,7 @@ export async function GET(req: NextRequest) {
       }
 
       // If we still don't have a user ID, return 404
-      if (!userId) {
+      if (!resolvedUserId) {
         log("No user or profile found with ID", { id });
         return NextResponse.json(
           {
@@ -116,7 +124,7 @@ export async function GET(req: NextRequest) {
 
       // Get profile images using the resolved user ID
       try {
-        if (!userId) {
+        if (!resolvedUserId) {
           // Extra safety net for type checker; logic above already 404s if missing
           return NextResponse.json(
             { error: "User or profile not found", requestId },
@@ -124,7 +132,7 @@ export async function GET(req: NextRequest) {
           );
         }
         images = await convexQueryWithAuth(req, api.images.getProfileImages, {
-          userId: userId as Id<"users">,
+          userId: resolvedUserId as Id<"users">,
         } as any);
         if (!Array.isArray(images)) {
           throw new Error("Invalid response format from getProfileImages");
@@ -133,7 +141,7 @@ export async function GET(req: NextRequest) {
       } catch (queryError) {
         log("Error in getProfileImages query", {
           error: String(queryError),
-          userId: userId.toString(),
+          userId: String(resolvedUserId),
         });
         throw new Error(
           `Failed to fetch images: ${queryError instanceof Error ? queryError.message : "Unknown error"}`
