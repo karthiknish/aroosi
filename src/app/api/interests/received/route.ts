@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchQuery } from "convex/nextjs";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireSession } from "@/app/api/_utils/auth";
+import { requireAuth } from "@/lib/auth/requireAuth";
 import {
   checkApiRateLimit,
   logSecurityEvent,
@@ -12,9 +12,7 @@ import {
 export async function GET(req: NextRequest) {
   try {
     // Cookie-only authentication
-    const session = await requireSession(req);
-    if ("errorResponse" in session) return session.errorResponse;
-    const { userId: authenticatedUserId } = session;
+    const { userId: authenticatedUserId } = await requireAuth(req);
 
     // Rate limiting for interest queries
     const rateLimitResult = checkApiRateLimit(`interest_received_${authenticatedUserId}`, 100, 60000);
@@ -45,15 +43,13 @@ export async function GET(req: NextRequest) {
       return errorResponse("Unauthorized: can only view your own interests", 403);
     }
 
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) return errorResponse("Service temporarily unavailable", 503);
 
-    // Log interest query for monitoring
     console.log(`User ${authenticatedUserId} querying received interests`);
 
-    const result = await convex.query(api.interests.getReceivedInterests, {
+    const result = await fetchQuery(api.interests.getReceivedInterests, {
       userId: userId as Id<"users">,
-    });
+    } as any);
 
     // Validate result
     if (!result || (typeof result !== "object" && !Array.isArray(result))) {

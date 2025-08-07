@@ -5,12 +5,11 @@ import { requireAuth } from "@/lib/auth/requireAuth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
+
 export async function GET(req: NextRequest) {
   try {
-    // Cookie-only admin authentication
-    const adminCheck = await requireAdminSession(req);
-    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
-    const { userId } = adminCheck;
+    const { userId, role } = await requireAuth(req);
+    if ((role || "user") !== "admin") return errorResponse("Unauthorized", 403);
 
     // Rate limiting for admin operations
     const rateLimitResult = checkApiRateLimit(`admin_profiles_${userId}`, 100, 60000); // 100 requests per minute
@@ -18,9 +17,7 @@ export async function GET(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-    if (!convex) {
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
       return errorResponse("Service temporarily unavailable", 503);
     }
     
@@ -78,7 +75,7 @@ export async function GET(req: NextRequest) {
     //   params: { search: !!search, page, pageSize }
     // }, req);
 
-    const result = await convex.query(api.users.adminListProfiles, {
+    const result = await fetchQuery(api.users.adminListProfiles, {
       search,
       page,
       pageSize,
@@ -87,7 +84,7 @@ export async function GET(req: NextRequest) {
       banned,
       plan,
       isProfileComplete,
-    });
+    } as any);
 
     // Validate result structure
     if (!result || typeof result !== 'object') {
@@ -125,10 +122,9 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    // Cookie-only admin authentication
-    const adminCheck = await requireAdminSession(req);
-    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
-    const { userId } = adminCheck;
+    // Bearer admin authentication via centralized requireAuth
+    const { userId, role } = await requireAuth(req);
+    if ((role || "user") !== "admin") return errorResponse("Unauthorized", 403);
 
     // Strict rate limiting for profile deletion
     const rateLimitResult = checkApiRateLimit(`admin_delete_profile_${userId}`, 10, 60000); // 10 deletions per minute
@@ -136,11 +132,9 @@ export async function DELETE(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
+    const { getConvexClient } = await import("@/lib/convexClient");
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    if (!convex) {
-      return errorResponse("Service temporarily unavailable", 503);
-    }
 
     // Parse and validate request body
     let body;
@@ -199,10 +193,9 @@ export async function DELETE(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    // Cookie-only admin authentication
-    const adminCheck = await requireAdminSession(req);
-    if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
-    const { userId } = adminCheck;
+    // Bearer admin authentication via centralized requireAuth
+    const { userId, role } = await requireAuth(req);
+    if ((role || "user") !== "admin") return errorResponse("Unauthorized", 403);
 
     // Rate limiting for admin profile updates
     const rateLimitResult = checkApiRateLimit(`admin_update_profile_${userId}`, 50, 60000); // 50 updates per minute
@@ -210,11 +203,9 @@ export async function PUT(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
+    const { getConvexClient } = await import("@/lib/convexClient");
     const convex = getConvexClient();
     if (!convex) return errorResponse("Convex client not configured", 500);
-    if (!convex) {
-      return errorResponse("Service temporarily unavailable", 503);
-    }
 
     // Parse and validate request body
     let body;
