@@ -20,7 +20,7 @@ export default function MatchChatPage() {
   const { data: matchProfile } = useQuery({
     queryKey: ["matchProfile", otherUserId],
     queryFn: async () => {
-      const res = await fetchUserProfile("", otherUserId);
+      const res = await fetchUserProfile(otherUserId);
       if (res.success && res.data) {
         return res.data as { fullName?: string };
       }
@@ -37,7 +37,8 @@ export default function MatchChatPage() {
     queryKey: ["markRead", conversationId, userId],
     queryFn: async () => {
       if (!userId) return true;
-      await markConversationRead(conversationId, "");
+      // markConversationRead expects (conversationId: string, userId: string)
+      await markConversationRead(conversationId, userId);
       return true;
     },
     enabled: !!userId && !!conversationId,

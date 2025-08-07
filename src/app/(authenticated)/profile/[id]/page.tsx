@@ -93,7 +93,7 @@ export default function ProfileDetailPage() {
     queryFn: async () => {
       if (!userId) return null;
       // Server reads HttpOnly cookies; token not required
-      const result = await fetchUserProfile("", userId);
+      const result = await fetchUserProfile(userId);
       return result;
     },
     enabled: !!userId,
@@ -117,7 +117,7 @@ export default function ProfileDetailPage() {
     queryKey: ["userProfileImages", userId],
     queryFn: async () => {
       if (!userId) return [];
-      const result = await fetchUserProfileImages("", userId);
+      const result = await fetchUserProfileImages(userId);
       if (result.success && Array.isArray(result.data)) {
         return result.data.map((img: unknown) =>
           typeof img === "object" && img !== null && "url" in img
@@ -291,8 +291,7 @@ export default function ProfileDetailPage() {
   useEffect(() => {
     if (!isOwnProfile && profile?._id) {
       void recordProfileView({
-        token: "",
-        profileId: profile._id as unknown as string,
+        profileId: String(profile._id ?? ""),
       });
       // Track profile view usage
       trackUsage({

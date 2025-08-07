@@ -72,7 +72,7 @@ export default function AdminCreateProfilePage() {
               };
               const { ...restValues } = submitValues;
               // Cookie-auth: server reads HttpOnly cookies
-              const response = await submitProfile("", restValues, "create");
+              const response = await submitProfile(restValues, "create");
               if (response.success) {
                 showSuccessToast("Profile created successfully");
                 router.push("/admin");
