@@ -9,6 +9,7 @@ import {
 } from "@/lib/utils/imageUtil";
 import { validateImageMeta } from "@/lib/utils/imageMeta";
 import type { ImageType } from "@/types/image";
+import { showErrorToast } from "@/lib/ui/toast";
 
 /* ======================
  * Upload manager accessor
@@ -425,6 +426,48 @@ export function persistPendingImageOrderToLocal(ids: string[]) {
   } catch {
     // ignore storage issues
   }
+}
+
+/**
+ * Create a generic field change handler for the profile creation wizard.
+ * Safely updates the shared context and surfaces a toast on failure.
+ */
+export function createOnChangeHandler(
+  updateContextData: (patch: Record<string, unknown>) => void
+) {
+  return (field: string, value: unknown) => {
+    try {
+      updateContextData({ [field]: value });
+    } catch (err) {
+      console.error(`Error updating field ${field}:`, err);
+      showErrorToast(null, `Failed to update ${field}. Please try again.`);
+    }
+  };
+}
+
+/**
+ * Create an images change handler that updates context and local pending images state.
+ * Persists local order to storage for resilience across refreshes.
+ */
+export function createOnProfileImagesChangeHandler(
+  onFieldChange: (field: string, value: unknown) => void,
+  setPendingImages: (imgs: ImageType[]) => void
+) {
+  return async (imgs: (string | ImageType)[]) => {
+    const ids = imgs.map((img) => (typeof img === "string" ? img : img.id));
+    onFieldChange("profileImageIds", ids);
+
+    try {
+      persistPendingImageOrderToLocal(ids);
+    } catch (err) {
+      console.warn("Unable to store images locally", err);
+    }
+
+    const imgObjects = imgs.filter(
+      (img): img is ImageType => typeof img !== "string"
+    );
+    setPendingImages(imgObjects);
+  };
 }
 
 /* ======================

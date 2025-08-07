@@ -309,41 +309,27 @@ export function ProfileCreationModal({
 
   const handleInputChange = useCallback(
     (field: keyof ProfileCreationData, value: string | number | string[]) => {
-      try {
-        // Update the context so data is shared with HeroOnboarding
-        updateContextData({ [field]: value });
-
-        // Field validation is now handled by ValidatedInput components
-      } catch (err) {
-        console.error(`Error updating field ${field}:`, err);
-        showErrorToast(null, `Failed to update ${field}. Please try again.`);
-      }
+      const { createOnChangeHandler } = require("./profileCreationHelpers");
+      const onChange = createOnChangeHandler(updateContextData as any);
+      onChange(field as string, value);
     },
     [updateContextData]
   );
 
   const handleProfileImagesChange = useCallback(
     async (imgs: (string | ImageType)[]) => {
-      // Always accept the images and update immediately
-      const ids = imgs.map((img) => (typeof img === "string" ? img : img.id));
-
-      // Update context immediately
-      handleInputChange("profileImageIds", ids);
-
-      // Store in localStorage for persistence using helper
-      try {
-        persistPendingImageOrderToLocal(ids);
-      } catch (err) {
-        console.warn("Unable to store images locally", err);
-      }
-
-      // Extract ImageType objects for later upload
-      const imgObjects = imgs.filter(
-        (img): img is ImageType => typeof img !== "string"
+      const {
+        createOnProfileImagesChangeHandler,
+        createOnChangeHandler,
+      } = require("./profileCreationHelpers");
+      const onFieldChange = createOnChangeHandler(updateContextData as any);
+      const handler = createOnProfileImagesChangeHandler(
+        onFieldChange,
+        setPendingImages as any
       );
-      setPendingImages(imgObjects);
+      await handler(imgs);
     },
-    [handleInputChange]
+    [updateContextData, setPendingImages]
   );
 
   // Enhanced validation function using the step validation hook

@@ -1,19 +1,3 @@
-export const metadata = {
-  title: "Aroosi FAQ | Help Center",
-  description: "Frequently asked questions about Aroosi Afghan matrimony, safety, and accounts.",
-  keywords: ["aroosi faq", "afghan matrimony help", "support"],
-  alternates: { canonical: "/faq" },
-  openGraph: {
-    title: "Aroosi FAQ | Help Center",
-    description: "Find answers to common questions about using Aroosi.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Aroosi FAQ | Help Center",
-    description: "Find answers to common questions about using Aroosi.",
-  },
-};
 "use client";
 
 import Head from "next/head";
