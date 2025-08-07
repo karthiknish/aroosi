@@ -371,6 +371,14 @@ export default defineSchema({
     .index("by_conversationId", ["conversationId"])
     .index("by_userId", ["userId"]),
 
+  // Presence tracking for online status and last seen
+  presence: defineTable({
+    userId: v.id("users"),
+    lastSeen: v.float64(),
+    isOnline: v.boolean(),
+  })
+    .index("by_userId", ["userId"]),
+
   // Biometric authentication audit logs
   biometricAuditLogs: defineTable({
     userId: v.id("users"),

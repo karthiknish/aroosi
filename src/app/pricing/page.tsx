@@ -1,18 +1,3 @@
-export const metadata = {
-  title: "Aroosi Pricing | Premium Plans",
-  description: "Explore Aroosi premium plans to boost visibility, messaging, and more.",
-  alternates: { canonical: "/pricing" },
-  openGraph: {
-    title: "Aroosi Pricing | Premium Plans",
-    description: "Premium features to find your match faster on Aroosi.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Aroosi Pricing | Premium Plans",
-    description: "Premium features to find your match faster on Aroosi.",
-  },
-};
 "use client";
 
 import Head from "next/head";
@@ -313,7 +298,7 @@ export default function PricingPage() {
           >
             {isFetching && (
               <>
-                {[0,1,2].map((i) => (
+                {[0, 1, 2].map((i) => (
                   <Card key={i} className="mx-4 p-6 animate-pulse">
                     <div className="h-6 w-28 bg-gray-200 rounded mb-4" />
                     <div className="h-8 w-40 bg-gray-200 rounded mb-6" />
@@ -328,14 +313,28 @@ export default function PricingPage() {
               </>
             )}
             {!isFetching && fetchError && (
-              <div className="lg:col-span-3 text-center text-sm text-red-600">{fetchError}</div>
+              <div className="lg:col-span-3 text-center text-sm text-red-600">
+                {fetchError}
+              </div>
             )}
-            {(!isFetching && (!plans || plans.length === 0)) && (
-              <div className="lg:col-span-3 text-center text-sm text-gray-600">No plans to display.</div>
+            {!isFetching && (!plans || plans.length === 0) && (
+              <div className="lg:col-span-3 text-center text-sm text-gray-600">
+                No plans to display.
+              </div>
             )}
-            {(plans && plans.length ? plans : [
-              { id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false },
-            ]).map((plan) => {
+            {(plans && plans.length
+              ? plans
+              : [
+                  {
+                    id: "free",
+                    name: "Free",
+                    price: 0,
+                    currency: "GBP",
+                    features: [],
+                    popular: false,
+                  },
+                ]
+            ).map((plan) => {
               const isPopular = plan.popular || plan.id === "premium";
 
               return (
@@ -465,7 +464,8 @@ export default function PricingPage() {
           {/* Indicative pricing note for SEO and expectations */}
           <div className="max-w-6xl mx-auto px-4 -mt-12 mb-8">
             <p className="text-xs text-gray-500 text-center">
-              Prices shown are indicative and may change. The Plans page reflects the latest live prices.
+              Prices shown are indicative and may change. The Plans page
+              reflects the latest live prices.
             </p>
           </div>
 

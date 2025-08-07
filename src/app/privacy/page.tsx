@@ -1,18 +1,3 @@
-export const metadata = {
-  title: "Privacy Policy | Aroosi Afghan Matrimony",
-  description: "Read how Aroosi protects your privacy and data across our Afghan matrimony platform.",
-  alternates: { canonical: "/privacy" },
-  openGraph: {
-    title: "Privacy Policy | Aroosi Afghan Matrimony",
-    description: "Our commitment to privacy and responsible data use.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Privacy Policy | Aroosi Afghan Matrimony",
-    description: "Our commitment to privacy and responsible data use.",
-  },
-};
 "use client";
 
 import Link from "next/link";
@@ -132,11 +117,11 @@ export default function PrivacyPage() {
 
             <h2>5. Your Data Protection Rights (GDPR)</h2>
             <p>
-              Under GDPR and applicable data protection laws, you have various rights in relation to your
-              personal data. These include the right to access, correct, erase,
-              restrict processing, data portability, and to object to
-              processing. If you wish to exercise any of these rights, please
-              contact us.
+              Under GDPR and applicable data protection laws, you have various
+              rights in relation to your personal data. These include the right
+              to access, correct, erase, restrict processing, data portability,
+              and to object to processing. If you wish to exercise any of these
+              rights, please contact us.
             </p>
 
             <p className="mt-8">

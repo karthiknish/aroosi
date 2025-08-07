@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import "./globals.css";
 
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
@@ -6,38 +5,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
 
-export const viewport = "width=device-width, initial-scale=1";
-
-export const metadata: Metadata = {
-  title: "Aroosi - Afghan Matrimony Platform",
-  description:
-    "No 1 Afghan matrimony site. Find your perfect Afghan match with Aroosi, the trusted Afghan matrimony platform.",
-  keywords:
-    "matrimony, afghan matrimony, afghan marriage, aroosi, matrimonial site, rishta, afghan community, afghan singles, afghan wedding",
-  robots: "index, follow",
-  authors: [{ name: "Aroosi Team" }],
-  openGraph: {
-    title: "Aroosi - Afghan Matrimony Platform",
-    description:
-      "No 1 Afghan matrimony site. Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
-    url: "https://aroosi.co.uk/",
-    siteName: "Aroosi",
-    // Remove explicit image imports to avoid build errors tied to icon route placement.
-    // Next.js will still use /og-image.png if present in /public when referenced by clients.
-    images: [],
-    locale: "en_GB",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Aroosi - Afghan Matrimony Platform",
-    description:
-      "No 1 Afghan matrimony site. Find your ideal Afghan life partner with Aroosi. Secure, private, and community-focused matrimonial services for Afghans worldwide.",
-    // Remove explicit images array; Twitter card can still resolve default if needed.
-    images: [],
-    site: "@aroosiuk",
-  },
-};
+// Removed Next.js Metadata/Viewport exports; using explicit <head> tags instead.
 
 export default function RootLayout({
   children,
