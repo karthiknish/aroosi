@@ -656,8 +656,10 @@ export function Step7AccountCreation(props: {
   formData: ProfileCreationData;
   setStep: (n: number) => void;
   router: { push: (p: string) => void };
+  onComplete?: () => void;
+  onError?: (msg?: string) => void;
 }) {
-  const { formData, setStep, router } = props;
+  const { formData, setStep, router, onComplete, onError } = props;
   const requiredFields = [
     "fullName",
     "dateOfBirth",
@@ -698,7 +700,13 @@ export function Step7AccountCreation(props: {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Consumer renders CustomSignupForm in parent; keep structural parity */}
+            {/* Lazy import to avoid SSR issues */}
+            {(() => {
+              const CustomSignupForm = require("@/components/auth/CustomSignupForm").default;
+              return (
+                <CustomSignupForm onComplete={onComplete} onError={onError} />
+              );
+            })()}
           </div>
         )}
       </div>

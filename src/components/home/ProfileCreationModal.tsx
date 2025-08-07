@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useStepValidation } from "@/hooks/useStepValidation";
-import CustomSignupForm from "@/components/auth/CustomSignupForm";
+// CustomSignupForm is rendered inside Step7AccountCreation
 // Step components (extracted)
 import {
   Step1Basic,
@@ -42,27 +42,41 @@ import {
   normalizeStartStep,
   focusFirstErrorField,
   normalizeStepData,
-  computeMissingRequiredFields,
-  normalizePhoneE164Like,
-  filterEmptyValues,
-  buildProfilePayload,
-  // Centralized image helpers
-  requestImageUploadUrl,
-  confirmImageMetadata,
-  validateBlobSize,
-  safeRevokeObjectURL,
-  deriveSafeImageMimeType,
-  fetchBlobFromObjectURL,
   summarizeImageUploadErrors,
   persistServerImageOrder,
   persistPendingImageOrderToLocal,
   safeNavigate,
+  getGlobalRequiredFields,
+  filterEmptyValues,
+  buildProfilePayload,
+  normalizePhoneE164Like,
+  // image helpers used directly here (to be refactored out later if desired)
+  fetchBlobFromObjectURL,
+  safeRevokeObjectURL,
+  validateBlobSize,
+  deriveSafeImageMimeType,
+  requestImageUploadUrl,
   createOrGetUploadManager,
   createUploadManager,
   uploadWithProgress,
+  confirmImageMetadata,
 } from "./profileCreationHelpers";
 
 // Enhanced validation imports
+// Dev logging helpers (no-op in production)
+const __isProd = process.env.NODE_ENV === "production";
+const __devLog = (...args: unknown[]) => {
+  if (!__isProd) {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+const __devInfo = (...args: unknown[]) => {
+  if (!__isProd) {
+    // eslint-disable-next-line no-console
+    console.info(...args);
+  }
+};
 
 interface ProfileCreationData {
   profileFor: string;
@@ -122,12 +136,9 @@ export function ProfileCreationModal({
     reset: resetWizard,
   } = useProfileWizard();
 
-  // Debug: comment out verbose logging in production
-  console.log(
-    "ProfileCreationModal contextData from ProfileWizard:",
-    contextData
-  );
-  console.log("ProfileCreationModal initialData prop:", initialData);
+  // Debug (silenced in production)
+  __devLog("ProfileCreationModal contextData from ProfileWizard:", contextData);
+  __devLog("ProfileCreationModal initialData prop:", initialData);
 
   // Determine if we already have the basic fields (collected in HeroOnboarding)
   const hasBasicData = Boolean(
@@ -184,7 +195,7 @@ export function ProfileCreationModal({
     };
   }, [contextData]);
 
-  console.log("ProfileCreationModal unified formData:", formData);
+  __devLog("ProfileCreationModal unified formData:", formData);
 
   // Step state is now only controlled by contextStep and navigation handlers
   // Ensure step is always a sane number between 1 and 7
@@ -225,7 +236,7 @@ export function ProfileCreationModal({
     [setContextStep, formData]
   );
 
-  console.log("Starting step variables:", {
+  __devLog("Starting step variables:", {
     contextStep, // ProfileWizard context se
     step, // Current computed step
     hasBasicData, // Basic fields present hai ya nahi
@@ -286,11 +297,13 @@ export function ProfileCreationModal({
   const handleClose = useCallback(() => {
     try {
       // Clear via dynamic import to avoid SSR/window coupling on build
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { clearAllOnboardingData } = require("./profileCreationHelpers");
-      clearAllOnboardingData();
+      void import("./profileCreationHelpers").then((m) => {
+        try {
+          m.clearAllOnboardingData();
+        } catch {}
+      });
       resetWizard();
-      console.log(
+      __devLog(
         "Profile creation modal closed - onboarding data cleared and wizard reset"
       );
     } catch (error) {
@@ -343,19 +356,10 @@ export function ProfileCreationModal({
   );
 
   // Enhanced validation function using the step validation hook
-  const validateStep = async () => {
-    const result = await stepValidation.validateCurrentStep();
-    if (!result.isValid) {
-      const summary = stepValidation.getValidationSummary();
-      showErrorToast(null, summary.summary);
-      console.log("Validation errors:", summary);
-      return false;
-    }
-    return true;
-  };
+  // validateStep removed; inline validation is used
 
   const handleNext = async () => {
-    console.log("[Next] clicked", {
+    __devLog("[Next] clicked", {
       step,
       hasBasicData,
       city: formData.city,
@@ -403,9 +407,9 @@ export function ProfileCreationModal({
       await new Promise((r) => setTimeout(r, 0));
     }
 
-    console.log("[Next] validating step", step);
+    __devLog("[Next] validating step", step);
     const result = await stepValidation.validateCurrentStep();
-    console.log("[Next] validation result", {
+    __devLog("[Next] validation result", {
       isValid: result.isValid,
       errors: result.errors,
       requiredFields: stepValidation.requiredFields,
@@ -414,7 +418,7 @@ export function ProfileCreationModal({
     });
 
     if (!result.isValid) {
-      console.log("[Next] Step validation failed. Not proceeding.");
+      __devLog("[Next] Step validation failed. Not proceeding.");
       // Attempt to guide user by focusing first missing field
       try {
         focusFirstErrorField(stepValidation.getFieldError, [
@@ -423,16 +427,16 @@ export function ProfileCreationModal({
           "maritalStatus",
         ]);
       } catch (e) {
-        console.log("[Next] focus guidance failed:", e);
+        __devLog("[Next] focus guidance failed:", e);
       }
       // Surface toast summary as well
       const summary = stepValidation.getValidationSummary();
-      console.log("[Next] validation summary:", summary);
+      __devLog("[Next] validation summary:", summary);
       showErrorToast(null, summary.summary);
       return;
     }
 
-    console.log("[Next] Step validation passed.");
+    __devLog("[Next] Step validation passed.");
 
     // Advance to next step via helper
     if (step < 7) {
@@ -443,7 +447,7 @@ export function ProfileCreationModal({
         min: 1,
         max: 7,
       });
-      console.log("[Next] advancing to step:", next);
+      __devLog("[Next] advancing to step:", next);
       setStep(next);
     }
   };
@@ -470,7 +474,7 @@ export function ProfileCreationModal({
     function handleMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === "auth-success" && event.data?.isAuthenticated) {
-        console.log("ProfileCreationModal: Received auth success message");
+        __devLog("ProfileCreationModal: Received auth success message");
         window.location.reload();
       }
     }
@@ -482,7 +486,7 @@ export function ProfileCreationModal({
   useEffect(() => {
     if (isAuthenticated && step === 7) {
       // User is signed in, profile submission will happen automatically
-      console.log("User signed in at step 7, profile will be submitted");
+      __devLog("User signed in at step 7, profile will be submitted");
     }
   }, [isAuthenticated, step]);
 
@@ -497,10 +501,7 @@ export function ProfileCreationModal({
 
       // Only submit if we're on the final actionable step (7 - Account Creation)
       if (step !== 7) {
-        console.log(
-          "Not on final step, skipping submission. Current step:",
-          step
-        );
+        __devLog("Not on final step, skipping submission. Current step:", step);
         return;
       }
 
@@ -510,7 +511,7 @@ export function ProfileCreationModal({
         // Server-check guard: if a profile already exists (created during signup), skip client submission and redirect
         const existing = await getCurrentUserWithProfile();
         if (existing.success && existing.data) {
-          console.log(
+          __devLog(
             "Profile exists after signup; skipping client submission and redirecting to success."
           );
           try {
@@ -520,9 +521,9 @@ export function ProfileCreationModal({
           }
           try {
             // Use centralized helper to clear onboarding data
-            const {
-              clearAllOnboardingData: __clear,
-            } = require("./profileCreationHelpers");
+            const { clearAllOnboardingData: __clear } = await import(
+              "./profileCreationHelpers"
+            );
             __clear();
           } catch (err) {
             console.warn("Failed to clear onboarding data:", err);
@@ -564,7 +565,7 @@ export function ProfileCreationModal({
         });
 
         // Debug logging
-        console.log("ProfileCreationModal - Submitting profile with data:", {
+        __devLog("ProfileCreationModal - Submitting profile with data:", {
           formData,
           initialData,
           hasBasicData,
@@ -574,19 +575,7 @@ export function ProfileCreationModal({
         });
 
         // Validate only truly required fields before submission (via helper)
-        const requiredFields = [
-          "fullName",
-          "dateOfBirth",
-          "gender",
-          "preferredGender",
-          "city",
-          "aboutMe",
-          "occupation",
-          "education",
-          "height",
-          "maritalStatus",
-          "phoneNumber",
-        ];
+        const requiredFields = getGlobalRequiredFields();
 
         const { computeMissingRequiredFields } = await import(
           "./profileCreationHelpers"
@@ -616,9 +605,6 @@ export function ProfileCreationModal({
         }
 
         // Normalize phone using helper
-        const { normalizePhoneE164Like } = await import(
-          "./profileCreationHelpers"
-        );
         const normalizedPhone =
           normalizePhoneE164Like(cleanedData.phoneNumber as string) ??
           (typeof cleanedData.phoneNumber === "string"
@@ -633,9 +619,6 @@ export function ProfileCreationModal({
         } catch {}
 
         // Filter empty values via helper for a cleaner payload
-        const { filterEmptyValues, buildProfilePayload } = await import(
-          "./profileCreationHelpers"
-        );
         const trimmedData = filterEmptyValues(
           cleanedData as Record<string, unknown>
         );
@@ -644,7 +627,7 @@ export function ProfileCreationModal({
           normalizedPhone || undefined
         );
 
-        console.log("Submitting profile with payload:", payload);
+        __devLog("Submitting profile with payload:", payload);
         const profileRes = await submitProfile(payload, "create");
         if (!profileRes.success) {
           console.error("Profile submission failed:", profileRes.error);
@@ -656,7 +639,7 @@ export function ProfileCreationModal({
 
         // Upload any pending images collected during wizard
         if (pendingImages.length > 0 && userId) {
-          console.log(`Uploading ${pendingImages.length} images...`);
+          __devLog(`Uploading ${pendingImages.length} images...`);
           let uploadedCount = 0;
 
           // Collect successfully created imageIds in the same order as pendingImages
@@ -694,16 +677,9 @@ export function ProfileCreationModal({
                 const { loadImageMeta, validateImageMeta } = await import(
                   "@/lib/utils/imageMeta"
                 );
-                const meta = await loadImageMeta(
-                  (() => {
-                    // Convert blob: URL to File for meta reader if needed
-                    // We already fetch the Blob below for upload; for guard, reuse blob if available post-fetch.
-                    return new File([], img.fileName || "photo.jpg");
-                  })()
-                );
-                // If using the File-above shortcut is undesirable, switch to decoding after we fetch blob below.
-                // We will re-run guard after blob fetch with actual file for accuracy.
-              } catch (e) {
+                void loadImageMeta; // no-op to satisfy linter when skipping this pre-check
+                void validateImageMeta;
+              } catch {
                 // Soft-fail guard loading; continue to blob fetch
               }
 
@@ -728,7 +704,7 @@ export function ProfileCreationModal({
 
               // New: run guard with accurate metadata after blob fetch
               try {
-                const { loadImageMeta, validateImageMeta } = await import(
+                const { validateImageMeta } = await import(
                   "@/lib/utils/imageMeta"
                 );
                 // Create an object URL from the fetched blob to read dimensions accurately
@@ -794,19 +770,18 @@ export function ProfileCreationModal({
                 }
 
                 // Create a safe File from blob using helper
-                const file = (() => {
-                  try {
-                    const {
-                      fileFromBlob,
-                    } = require("./profileCreationHelpers");
-                    return fileFromBlob(blob, img.fileName || "photo.jpg");
-                  } catch {
-                    const safeType = deriveSafeImageMimeType(blob.type);
-                    return new File([blob], img.fileName || "photo.jpg", {
-                      type: safeType,
-                    });
-                  }
-                })();
+                let file: File;
+                try {
+                  const { fileFromBlob } = await import(
+                    "./profileCreationHelpers"
+                  );
+                  file = fileFromBlob(blob, img.fileName || "photo.jpg");
+                } catch {
+                  const safeType = deriveSafeImageMimeType(blob.type);
+                  file = new File([blob], img.fileName || "photo.jpg", {
+                    type: safeType,
+                  });
+                }
 
                 // 1) Generate upload URL
                 let uploadUrl: string | null = null;
@@ -963,7 +938,7 @@ export function ProfileCreationModal({
               }
 
               uploadedCount++;
-              console.log(
+              __devLog(
                 `[upload:${index}] Successfully uploaded image ${uploadedCount}/${pendingImages.length}`
               );
             } catch (err) {
@@ -992,7 +967,7 @@ export function ProfileCreationModal({
             showErrorToast(null, msg);
 
             // New: offer inline retry guidance for failed images
-            console.info(
+            __devInfo(
               "Some images failed to upload. You can retry failed items individually from Step 6."
             );
           }
@@ -1005,7 +980,7 @@ export function ProfileCreationModal({
           } catch {}
 
           if (uploadedCount > 0) {
-            console.log(
+            __devLog(
               `Successfully uploaded ${uploadedCount} out of ${pendingImages.length} images`
             );
 
@@ -1055,10 +1030,9 @@ export function ProfileCreationModal({
           // Keeping a dynamic import out; simply re-using safeNavigate for redirection below
           // The actual clearing can also be performed on server success page load if needed
           // For now, rely on handleClose -> resetWizard and this client-side clear through helper
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const {
-            clearAllOnboardingData: __clear,
-          } = require("./profileCreationHelpers");
+          const { clearAllOnboardingData: __clear } = await import(
+            "./profileCreationHelpers"
+          );
           __clear();
         } catch (err) {
           console.warn("Failed to clear onboarding data:", err);
@@ -1154,11 +1128,11 @@ export function ProfileCreationModal({
     if (!isOpen) return;
     const handleUnload = () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const {
-          clearAllOnboardingData: __clear,
-        } = require("./profileCreationHelpers");
-        __clear();
+        void import("./profileCreationHelpers").then((m) => {
+          try {
+            m.clearAllOnboardingData();
+          } catch {}
+        });
       } catch {}
     };
     window.addEventListener("beforeunload", handleUnload);
@@ -1304,29 +1278,25 @@ export function ProfileCreationModal({
 
                 {/* Step 7: Account Creation */}
                 {step === 7 && (
-                  <div className="space-y-6">
-                    {/* Keep legacy Step7 wrapper for future props if needed */}
-                    {/* Replace inner content with CustomSignupForm to ensure all fields appear */}
-                    <CustomSignupForm
-                      onComplete={() => {
-                        // After signup completes, we rely on the existing auto-submit effect
-                        // to create the profile and navigate. Keep a lightweight guard here.
-                        try {
-                          showSuccessToast(
-                            "Account created. Finalizing your profile..."
-                          );
-                        } catch {}
-                      }}
-                      onError={(msg) => {
-                        const m =
-                          typeof msg === "string" && msg.trim().length > 0
-                            ? msg
-                            : "Sign up failed";
-                        // Surface inline via toast; Step 7 does not have a dedicated inline error area yet.
-                        showErrorToast(m);
-                      }}
-                    />
-                  </div>
+                  <Step7AccountCreation
+                    formData={formData as any}
+                    setStep={setStep}
+                    router={router as any}
+                    onComplete={() => {
+                      try {
+                        showSuccessToast(
+                          "Account created. Finalizing your profile..."
+                        );
+                      } catch {}
+                    }}
+                    onError={(msg?: string) => {
+                      const m =
+                        typeof msg === "string" && msg.trim().length > 0
+                          ? msg
+                          : "Sign up failed";
+                      showErrorToast(m);
+                    }}
+                  />
                 )}
               </motion.div>
             </AnimatePresence>
