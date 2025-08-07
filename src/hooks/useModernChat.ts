@@ -352,6 +352,7 @@ export function useModernChat({
       typingUsers,
       getMessageDeliveryStatus,
       showScrollToBottom,
+      otherLastReadAt: getLastReadAtForOther(matchUserId),
     },
     handlers: {
       setText,

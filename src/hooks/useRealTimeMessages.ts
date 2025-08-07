@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
+import { getConversationEventsSSEUrl, markConversationRead } from "@/lib/api/conversation";
 import { MessageData, MessageEvent } from "@/lib/utils/messageUtils";
 import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
 
@@ -95,7 +96,7 @@ export function useRealTimeMessages({
 
       // Create new EventSource connection (cookie-based auth; server reads session cookies)
       const eventSource = new EventSource(
-        `/api/messages/events?conversationId=${conversationId}`,
+        getConversationEventsSSEUrl({ conversationId }),
       );
 
       eventSource.onopen = () => {
@@ -302,32 +303,8 @@ export function useRealTimeMessages({
       if (!userId || messageIds.length === 0) return;
 
       try {
-        const response = await fetch("/api/messages/mark-read", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          // Cookie-only auth: identity from HttpOnly cookies
-          body: JSON.stringify({ messageIds }),
-        });
-
-        if (!response.ok) {
-          let errorData: unknown;
-          try {
-            errorData = await response.json();
-          } catch {
-            errorData = {};
-          }
-          if (
-            typeof errorData === "object" &&
-            errorData !== null &&
-            "error" in errorData &&
-            typeof (errorData as { error?: unknown }).error === "string"
-          ) {
-            throw new Error((errorData as { error: string }).error);
-          }
-          throw new Error("Failed to mark messages as read");
-        }
+        // Prefer conversation-based mark read endpoint
+        await markConversationRead({ conversationId });
 
         // Optimistically update local state
         setMessages((prev) =>
@@ -347,7 +324,7 @@ export function useRealTimeMessages({
         }
       }
     },
-    [userId],
+    [userId, conversationId],
   );
 
   // Refresh messages from server

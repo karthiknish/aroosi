@@ -18,13 +18,15 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query");
+    const pageParam = searchParams.get("page");
+    const perPageParam = searchParams.get("per_page");
 
     if (!query) {
       return errorResponse("Query parameter is required", 400);
     }
 
     // Input validation and sanitization
-    const sanitizedQuery = query.trim().replace(/[<>'\"&]/g, '');
+    const sanitizedQuery = query.trim().replace(/[<>'\"&]/g, "");
     if (!sanitizedQuery || sanitizedQuery.length < 2) {
       return errorResponse("Invalid query parameter", 400);
     }
@@ -40,8 +42,11 @@ export async function GET(request: NextRequest) {
     // Log image search for monitoring
     console.log(`Image search by user ${userId}: "${sanitizedQuery}"`);
 
+    const page = Math.max(1, Math.min(50, Number(pageParam) || 1));
+    const perPage = Math.max(1, Math.min(80, Number(perPageParam) || 12));
+
     const response = await fetch(
-      `${PEXELS_API_URL}?query=${encodeURIComponent(sanitizedQuery)}&per_page=12&orientation=landscape`,
+      `${PEXELS_API_URL}?query=${encodeURIComponent(sanitizedQuery)}&per_page=${perPage}&page=${page}&orientation=landscape`,
       {
         headers: {
           Authorization: PEXELS_API_KEY,
@@ -93,10 +98,15 @@ export async function GET(request: NextRequest) {
         alt: (photo.alt || "Image from Pexels").substring(0, 200), // Limit alt text length
       }));
 
-    return successResponse({ 
+    return successResponse({
       images,
       query: sanitizedQuery,
-      totalResults: images.length 
+      totalResults:
+        typeof data.total_results === "number"
+          ? data.total_results
+          : images.length,
+      page,
+      perPage,
     });
 
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { searchImages } from "@/lib/utils/imageSearchUtil";
 import { useAuthContext } from "@/components/AuthProvider";
@@ -40,9 +40,14 @@ export function PexelsImageModal({
   const [results, setResults] = useState<PexelsImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const perPage = 12;
+  const [total, setTotal] = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const hasResults = results.length > 0;
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!query.trim()) return;
 
     setLoading(true);
@@ -50,10 +55,13 @@ export function PexelsImageModal({
     setResults([]);
 
     try {
-      const result = await searchImages(query, 1, 15);
+      const result = await searchImages(query, page, perPage);
 
       if (result.success && result.images) {
         setResults(result.images);
+        if (typeof (result as any).total === "number") {
+          setTotal((result as any).total);
+        }
       } else {
         throw new Error(result.error || "Failed to search images");
       }
@@ -64,38 +72,98 @@ export function PexelsImageModal({
     }
   };
 
+  const canPrev = page > 1;
+  const canNext = useMemo(() => {
+    if (total == null) return true;
+    const maxPage = Math.ceil(total / perPage);
+    return page < maxPage;
+  }, [page, total]);
+
+  const onPrev = async () => {
+    if (!canPrev) return;
+    setPage((p) => Math.max(1, p - 1));
+    await handleSearch();
+  };
+
+  const onNext = async () => {
+    if (!canNext) return;
+    setPage((p) => p + 1);
+    await handleSearch();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Search Pexels Images</DialogTitle>
+      <DialogContent className="max-w-3xl p-0 overflow-hidden">
+        <DialogHeader className="px-4 pt-4 pb-2 border-b">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="text-base font-semibold">
+              Search Pexels Images
+            </DialogTitle>
+            <span className="ml-auto text-xs text-gray-500">
+              Powered by Pexels
+            </span>
+          </div>
         </DialogHeader>
-        <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-          <Input
-            placeholder="Search for images (e.g. wedding, couple, love)"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1"
-          />
-          <Button type="submit" className="bg-pink-600 hover:bg-pink-700">
-            <Search className="w-4 h-4 mr-2" />
-            Search
-          </Button>
-        </form>
+        <div className="p-4">
+          <form onSubmit={handleSearch} className="flex gap-2 mb-3">
+            <Input
+              ref={inputRef}
+              placeholder="Search for images (e.g. wedding, couple, love)"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="flex-1"
+            />
+            <Button type="submit" className="bg-pink-600 hover:bg-pink-700">
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </Button>
+          </form>
+          <div className="flex items-center justify-between mb-3 text-sm text-gray-600">
+            <div>
+              {loading
+                ? "Searching…"
+                : hasResults
+                  ? `${results.length} results`
+                  : query
+                    ? "No results"
+                    : "Enter a search term"}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={onPrev}
+                disabled={!canPrev || loading}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={onNext}
+                disabled={!canNext || loading}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
         {loading && (
-          <div className="flex flex-col items-center gap-4 py-4">
-            <Skeleton className="w-20 h-6 rounded" />
-            <Skeleton className="w-40 h-4 rounded" />
-            <Skeleton className="w-32 h-4 rounded" />
+          <div className="grid grid-cols-3 gap-3 px-4 pb-4">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <Skeleton key={i} className="w-full h-28 rounded-md" />
+            ))}
           </div>
         )}
-        {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {error && <div className="px-4 text-red-600 text-sm mb-2">{error}</div>}
+        <div className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto">
           {results.map((img) => (
             <button
               key={img.id}
               type="button"
-              className="focus:outline-none border-2 border-transparent hover:border-pink-500 rounded overflow-hidden"
+              className="group focus:outline-none border border-transparent hover:border-pink-500 rounded-md overflow-hidden relative"
               onClick={() => {
                 onSelect(img.src.large);
                 onClose();
@@ -104,13 +172,22 @@ export function PexelsImageModal({
               <img
                 src={img.src.medium}
                 alt={img.alt}
-                className="w-full h-32 object-cover"
+                className="w-full h-28 object-cover transition-transform duration-200 group-hover:scale-105"
               />
+              <div className="absolute bottom-0 left-0 right-0 h-6 bg-black/40 text-white text-[10px] px-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity truncate">
+                {img.alt}
+              </div>
             </button>
           ))}
         </div>
-        <div className="text-xs text-gray-500 mt-2">
-          Powered by{" "}
+        <div className="px-4 pb-4 flex items-center justify-between text-xs text-gray-500">
+          <div>
+            {total != null && (
+              <span>
+                Page {page} {total ? `of ${Math.ceil(total / perPage)}` : ""}
+              </span>
+            )}
+          </div>
           <a
             href="https://pexels.com"
             target="_blank"
