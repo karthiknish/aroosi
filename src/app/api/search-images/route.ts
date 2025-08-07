@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
@@ -8,10 +8,7 @@ const PEXELS_API_URL = "https://api.pexels.com/v1/search";
 
 export async function GET(request: NextRequest) {
   try {
-    // Enhanced authentication (cookie-based)
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) return authCheck.errorResponse;
-    const userId = authCheck.userId;
+    const { userId } = await requireAuth(request);
 
     // Rate limiting
     const rateLimitResult = checkApiRateLimit(`search_images_${userId}`, 50, 60000); // 50 searches per minute

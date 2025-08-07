@@ -24,15 +24,7 @@ export async function GET(req: NextRequest) {
   try {
     log("Processing request", { path: url.pathname });
 
-    // Use the token from the Authorization header
-    const token = getTokenFromRequest(req);
-    if (!token) {
-      log("No valid token found");
-      return NextResponse.json(
-        { error: "Authorization token is required", requestId },
-        { status: 401 },
-      );
-    }
+    await requireAuth(req);
 
     // Get the ID from the URL
     const segments = url.pathname.split("/").filter(Boolean);
@@ -65,15 +57,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    log("Initializing Convex client");
-    const convex = getConvexClient();
-    if (!convex) {
-      const error = "Convex client not configured";
-      log(error);
-      return NextResponse.json({ error, requestId }, { status: 500 });
-    }
-    convex.setAuth(token);
-
     log("Fetching profile details", { profileId: id });
 
     let userId: Id<"users"> | null = null;
@@ -85,9 +68,9 @@ export async function GET(req: NextRequest) {
       if (id && id.length === 24) {
         // Convex profile IDs are usually 24 chars, adjust as needed
         try {
-          const profile = await convex.query(api.users.getProfileById, {
+          const profile = await fetchQuery(api.users.getProfileById, {
             id: id as Id<"profiles">,
-          });
+          } as any);
           if (profile) {
             userId = profile.userId;
             log("Found profile by ID", {
@@ -105,9 +88,9 @@ export async function GET(req: NextRequest) {
       // If no profile found by ID, try to get user by ID
       if (!userId) {
         try {
-          const user = await convex.query(api.users.getUserPublicProfile, {
+          const user = await fetchQuery(api.users.getUserPublicProfile, {
             userId: id as Id<"users">,
-          });
+          } as any);
 
           if (user) {
             userId = id as Id<"users">;
@@ -133,7 +116,7 @@ export async function GET(req: NextRequest) {
 
       // Get profile images using the resolved user ID
       try {
-        images = await convex.query(api.images.getProfileImages, { userId });
+        images = await fetchQuery(api.images.getProfileImages, { userId } as any);
         if (!Array.isArray(images)) {
           throw new Error("Invalid response format from getProfileImages");
         }

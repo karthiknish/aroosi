@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { fetchMutation } from "convex/nextjs";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 
@@ -21,25 +21,7 @@ export async function POST(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Auth: cookie-only session
-    const authCheck = await requireUserToken(request);
-    if ("errorResponse" in authCheck) {
-      // Attempt to extract body from errorResponse (if present)
-      const res = authCheck.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let err = "Unauthorized";
-      try {
-        const txt = await res.text();
-        if (txt) {
-          const parsed = JSON.parse(txt);
-          if (parsed?.error) err = parsed.error;
-        }
-      } catch {
-        // ignore
-      }
-      return json({ success: false, error: `${err}` }, status);
-    }
-    const { userId } = authCheck;
+    const { userId } = await requireAuth(request);
 
     // Rate limit: messages send
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -179,36 +161,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Convex client
-    let client = getConvexClient();
-    if (!client) {
-      return json({ success: false, error: "Database connection failed" }, 500);
-    }
-    try {
-      // cookie-only: do not set token on Convex client
-      // client.setAuth?.(undefined as unknown as string);
-    } catch {
-      // ignore
-    }
-
-    // Send via Convex
-    const message = await client
-      .mutation(api.messages.sendMessage, {
-        conversationId,
-        fromUserId: fromUserId as Id<"users">,
-        toUserId: toUserId as Id<"users">,
-        text: finalText,
-        type: resolvedType,
-        audioStorageId,
-        duration,
-        fileSize,
-        mimeType,
-      })
-      .catch((e: unknown) => {
-        const msg =
-          e instanceof Error ? e.message : typeof e === "string" ? e : "Send failed";
-        throw new Error(String(msg));
-      });
+    const message = await fetchMutation(api.messages.sendMessage, {
+      conversationId,
+      fromUserId: fromUserId as Id<"users">,
+      toUserId: toUserId as Id<"users">,
+      text: finalText,
+      type: resolvedType,
+      audioStorageId,
+      duration,
+      fileSize,
+      mimeType,
+    } as any).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : typeof e === "string" ? e : "Send failed";
+      throw new Error(String(msg));
+    });
 
     // Broadcast SSE event mirroring voice upload behavior
     try {

@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
-import { requireUserToken } from "@/app/api/_utils/auth";
+import { fetchMutation } from "convex/nextjs";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-
-// Initialize Convex client
-const convexClient = getConvexClient();
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);

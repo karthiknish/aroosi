@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { requireSession } from "@/app/api/_utils/auth";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 // GET /api/profile-images -> get user's profile images
 // POST /api/profile-images -> upload profile image metadata
@@ -12,72 +12,26 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Profile images GET auth failed", {
-        scope: "profile_images.get",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
+    const { userId } = await requireAuth(request);
 
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Profile images GET convex not configured", {
+    const images = await fetchQuery(api.images.getProfileImages, {
+      userId: userId as Id<"users">,
+    } as any).catch((e: unknown) => {
+      console.error("Profile images GET query error", {
         scope: "profile_images.get",
-        type: "convex_not_configured",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
         correlationId,
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(
-        { error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-    // Cookie-only model: do not set bearer tokens
-    try {
-      // @ts-ignore permissive no-op
-      convex.setAuth?.(undefined);
-    } catch {}
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID not found", correlationId },
-        { status: 401 }
-      );
-    }
-
-    const images = await convex
-      .query(api.images.getProfileImages, {
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Profile images GET query error", {
-          scope: "profile_images.get",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return [];
-      });
+      return [];
+    });
     const response = NextResponse.json(
       { images, correlationId, success: true },
       { status: 200 }
     );
+
     console.info("Profile images GET success", {
       scope: "profile_images.get",
       type: "success",
@@ -108,38 +62,7 @@ export async function DELETE(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Profile images DELETE auth failed", {
-        scope: "profile_images.delete",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
-
-    const convex = getConvexClient();
-    if (!convex) {
-      return NextResponse.json(
-        { error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-    // Cookie-only: no tokens
-    try {
-      // @ts-ignore
-      convex.setAuth?.(undefined);
-    } catch {}
+    const { userId } = await requireAuth(req);
 
     let body: { imageId?: string } = {};
     try {
@@ -153,25 +76,23 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const result = await convex
-      .mutation(api.images.deleteProfileImage, {
-        userId: userId as Id<"users">,
-        imageId: imageId as Id<"_storage">,
-      })
-      .catch((e: unknown) => {
-        console.error("Profile images DELETE mutation error", {
-          scope: "profile_images.delete",
-          type: "convex_mutation_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return { success: false, message: "Delete failed" } as {
-          success: boolean;
-          message?: string;
-        };
+    const result = await fetchMutation(api.images.deleteProfileImage, {
+      userId: userId as Id<"users">,
+      imageId: imageId as Id<"_storage">,
+    } as any).catch((e: unknown) => {
+      console.error("Profile images DELETE mutation error", {
+        scope: "profile_images.delete",
+        type: "convex_mutation_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return { success: false, message: "Delete failed" } as {
+        success: boolean;
+        message?: string;
+      };
+    });
     if (result && (result as { success?: boolean }).success) {
       const response = NextResponse.json(
         { success: true, correlationId },
@@ -216,38 +137,7 @@ export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const session = await requireSession(req);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Profile images POST auth failed", {
-        scope: "profile_images.post",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
-
-    const convex = getConvexClient();
-    if (!convex) {
-      return NextResponse.json(
-        { error: "Convex client not configured", correlationId },
-        { status: 500 }
-      );
-    }
-    // Cookie-only: no token set on client
-    try {
-      // @ts-ignore
-      convex.setAuth?.(undefined);
-    } catch {}
+    const { userId } = await requireAuth(req);
 
     let body: {
       storageId?: string;
@@ -289,21 +179,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existingImages = await convex
-      .query(api.images.getProfileImages, {
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Profile images POST getProfileImages error", {
-          scope: "profile_images.post",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return [] as unknown[];
+    const existingImages = await fetchQuery(api.images.getProfileImages, {
+      userId: userId as Id<"users">,
+    } as any).catch((e: unknown) => {
+      console.error("Profile images POST getProfileImages error", {
+        scope: "profile_images.post",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return [] as unknown[];
+    });
     if (
       Array.isArray(existingImages) &&
       existingImages.length >= MAX_IMAGES_PER_USER
@@ -317,25 +205,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await convex
-      .mutation(api.images.uploadProfileImage, {
-        userId: userId as Id<"users">,
-        storageId: storageId as Id<"_storage">,
-        fileName,
-        contentType,
-        fileSize,
-      })
-      .catch((e: unknown) => {
-        console.error("Profile images POST upload error", {
-          scope: "profile_images.post",
-          type: "convex_mutation_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const result = await fetchMutation(api.images.uploadProfileImage, {
+      userId: userId as Id<"users">,
+      storageId: storageId as Id<"_storage">,
+      fileName,
+      contentType,
+      fileSize,
+    } as any).catch((e: unknown) => {
+      console.error("Profile images POST upload error", {
+        scope: "profile_images.post",
+        type: "convex_mutation_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null;
+    });
     if (
       !result ||
       typeof result !== "object" ||
