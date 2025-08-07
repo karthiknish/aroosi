@@ -21,7 +21,7 @@ export async function sendPushNotification(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        // Cookie-based session; no Authorization header
       },
       body: JSON.stringify(payload),
     });

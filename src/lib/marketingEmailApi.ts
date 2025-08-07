@@ -19,7 +19,7 @@ export async function sendMarketingEmail(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        // Cookie-based session; no Authorization header
       },
       body: JSON.stringify(payload),
     });

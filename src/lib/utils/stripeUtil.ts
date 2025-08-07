@@ -37,7 +37,7 @@ export async function createCheckoutSession(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        // Cookie-based session; no Authorization header
       },
       credentials: "include",
       body: JSON.stringify(request),

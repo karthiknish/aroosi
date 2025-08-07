@@ -13,7 +13,7 @@ export async function fetchAllContactsAdmin(token: string): Promise<Contact[]> {
   // Fetch all contacts for admin users
   const res = await fetch("/api/contact", {
     headers: {
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
       "Content-Type": "application/json",
     },
   });

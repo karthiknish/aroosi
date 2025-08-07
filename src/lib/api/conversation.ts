@@ -34,7 +34,7 @@ export async function markConversationRead({
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        // Cookie-based session; no Authorization header
         "Content-Type": "application/json",
       },
     }
@@ -54,7 +54,7 @@ export async function markConversationRead({
 export async function getConversations({ token }: { token: string }) {
   const res = await fetch("/api/conversations", {
     headers: {
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
       "Content-Type": "application/json",
     },
   });

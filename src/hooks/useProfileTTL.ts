@@ -24,7 +24,7 @@ export const useProfileTTL = (userId: string) => {
       // Fetch from API if not cached
       const response = await fetch(`/api/user/me`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          // Cookie-based session; no Authorization header
         },
       });
 
@@ -64,7 +64,7 @@ export const useUpdateProfileTTL = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          // Cookie-based session; no Authorization header
         },
         body: JSON.stringify(updates),
       });
@@ -109,7 +109,7 @@ export const useProfileImagesTTL = (userId: string) => {
       // Fetch from API if not cached
       const response = await fetch(`/api/profile-detail/${userId}/images`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          // Cookie-based session; no Authorization header
         },
       });
 

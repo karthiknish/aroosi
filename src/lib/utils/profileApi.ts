@@ -39,7 +39,7 @@ export async function boostProfileCookieAuth(): Promise<{ boostsRemaining: numbe
 export async function deleteProfile(token: string): Promise<void> {
   const res = await fetch("/api/profile/delete", {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {},
   });
   if (!res.ok) throw new Error("Failed to delete profile");
 }
@@ -55,10 +55,7 @@ export async function recordProfileView({
   if (!token) return;
   await fetch("/api/profile/view", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: {},
     body: JSON.stringify({ profileId }),
   }).catch(() => {}); // swallow any network errors
 }
@@ -72,7 +69,7 @@ export async function fetchProfileViewers({
   profileId: string;
 }): Promise<unknown[]> {
   const res = await fetch(`/api/profile/view?profileId=${profileId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {},
   });
   const json = await res.json();
   if (!res.ok || json.success === false) {

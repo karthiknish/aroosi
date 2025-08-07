@@ -48,7 +48,7 @@ export function useDeliveryReceipts({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            // Cookie-based session; no Authorization header
           },
           body: JSON.stringify({
             messageId,
@@ -78,7 +78,7 @@ export function useDeliveryReceipts({
         `/api/delivery-receipts?conversationId=${encodeURIComponent(conversationId)}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            // Cookie-based session; no Authorization header
           },
         },
       );
@@ -170,7 +170,7 @@ export function useDeliveryReceipts({
         await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/mark-read`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            // Cookie-based session; no Authorization header
             "Content-Type": "application/json",
           },
         });

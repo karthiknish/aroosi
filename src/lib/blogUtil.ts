@@ -80,7 +80,7 @@ export async function createBlogPost(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify(post),
   });
@@ -103,7 +103,7 @@ export async function deleteBlogPost(
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify({ _id }),
   });
@@ -126,7 +126,7 @@ export async function editBlogPost(
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify({ _id, ...updates }),
   });
@@ -195,7 +195,7 @@ export async function uploadBlogImageMeta({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify({ storageId, fileName, contentType, fileSize }),
   });
@@ -228,7 +228,7 @@ export async function convertAiTextToHtml({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify({ text, type }),
     cache: "no-store",
@@ -261,7 +261,7 @@ export async function convertTextToMarkdown({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify({ text, prompt }),
   });
