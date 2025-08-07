@@ -448,34 +448,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create user", correlationId }, { status: 500 });
     }
 
-    // Issue tokens
+    // Issue tokens (embed Convex userId for subject-based Convex auth)
+    const convexUserId = result.userId.toString();
     const accessToken = await signAccessJWT({
-      userId: result.userId.toString(),
+      userId: convexUserId,
       email: normalizedEmail,
       role: "user",
     });
     const refreshToken = await signRefreshJWT({
-      userId: result.userId.toString(),
+      userId: convexUserId,
       email: normalizedEmail,
       role: "user",
     });
 
-    // PURE TOKEN MODEL: return tokens in body, no Set-Cookie
-    const response = NextResponse.json({
-      status: "success",
-      message: "Account created successfully",
-      accessToken,
-      refreshToken,
-      user: {
-        id: result.userId,
-        email: normalizedEmail,
-        role: "user",
+    // Return tokens in body and set cookies using centralized helper for multi-domain support
+    const response = NextResponse.json(
+      {
+        status: "success",
+        message: "Account created successfully",
+        token: accessToken, // backward compatibility field
+        accessToken,
+        refreshToken,
+        user: {
+          id: result.userId,
+          email: normalizedEmail,
+          role: "user",
+        },
+        isNewUser: true,
+        redirectTo: "/success",
+        refreshed: false,
+        correlationId,
       },
-      isNewUser: true,
-      redirectTo: "/success",
-      refreshed: false,
-      correlationId,
-    });
+      { headers: { "Cache-Control": "no-store" } }
+    );
+
+    // Set cookies using centralized helper
+    try {
+      const { getAuthCookieAttrs, getPublicCookieAttrs } = await import("@/lib/auth/cookies");
+      // Access token cookie (15 minutes)
+      response.headers.append("Set-Cookie", `auth-token=${accessToken}; ${getAuthCookieAttrs(60 * 15)}`);
+      // Refresh token cookie (7 days)
+      response.headers.append("Set-Cookie", `refresh-token=${refreshToken}; ${getAuthCookieAttrs(60 * 60 * 24 * 7)}`);
+      // Optional short-lived public token for legacy, gated by SHORT_PUBLIC_TOKEN=1
+      if (process.env.SHORT_PUBLIC_TOKEN === "1") {
+        response.headers.append("Set-Cookie", `authTokenPublic=${accessToken}; ${getPublicCookieAttrs(60)}`);
+      }
+    } catch (e) {
+      console.warn("Signup cookie helper import failed; continuing without cookies", {
+        scope: "auth.signup",
+        correlationId,
+        type: "cookie_helper_warning",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
 
     console.info("Signup success", {
       scope: "auth.signup",

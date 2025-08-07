@@ -1,33 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
+import { fetchQuery } from "convex/nextjs";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 // Add debug logging
 const debug = process.env.NODE_ENV === "development";
-
-function getTokenFromRequest(req: NextRequest): string | null {
-  try {
-    const auth = req.headers.get("authorization");
-    if (!auth) {
-      if (debug) {
-        console.log("[API] No authorization header found");
-      }
-      return null;
-    }
-    const [type, token] = auth.split(" ");
-    if (type !== "Bearer" || !token) {
-      if (debug) {
-        console.log("[API] Invalid authorization format or missing token");
-      }
-      return null;
-    }
-    return token;
-  } catch (error) {
-    console.error("[API] Error in getTokenFromRequest:", error);
-    return null;
-  }
-}
 
 export async function GET(req: NextRequest) {
   const startTime = Date.now();

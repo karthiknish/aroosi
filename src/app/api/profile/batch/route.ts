@@ -1,50 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
 import { Id } from "@convex/_generated/dataModel";
-import { errorResponse } from "@/lib/apiResponse";
+import { fetchQuery } from "convex/nextjs";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 export async function POST(req: NextRequest) {
-  const { userIds } = await req.json();
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  try {
+    await requireAuth(req);
+    const { userIds } = await req.json();
 
-  if (!Array.isArray(userIds) || userIds.length === 0) {
-    return NextResponse.json([], { status: 200 });
-  }
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return NextResponse.json([], { status: 200 });
+    }
 
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || null;
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    return NextResponse.json(
-      { error: "Server configuration error" },
-      { status: 500 }
-    );
-  }
-
-  const convex = getConvexClient();
-    if (!convex) return errorResponse("Convex client not configured", 500);
-  convex.setAuth(token);
-
-  // Fetch all profiles in parallel
-  const results = await Promise.all(
-    userIds.map(async (userId: string) => {
-      try {
-        const res = await convex.query(api.users.getUserPublicProfile, {
-          userId: userId as Id<"users">,
-        });
-        if (res && res.profile) {
-          return { userId, profile: res.profile };
+    const results = await Promise.all(
+      userIds.map(async (userId: string) => {
+        try {
+          const res = await fetchQuery(api.users.getUserPublicProfile, {
+            userId: userId as Id<"users">,
+          } as any);
+          if (res && res.profile) {
+            return { userId, profile: res.profile };
+          }
+        } catch (e) {
+          console.error(`Error fetching profile for userId ${userId}:`, e);
         }
-      } catch (e) {
-       console.error(`Error fetching profile for userId ${userId}:`, e);
-      }
-      return null;
-    })
-  );
+        return null;
+      })
+    );
 
-  // Filter out nulls
-  return NextResponse.json(results.filter(Boolean), { status: 200 });
+    return NextResponse.json(results.filter(Boolean), { status: 200 });
+  } catch (err: any) {
+    const status = err instanceof AuthError ? err.status : 400;
+    const error = err instanceof AuthError ? err.message : (err?.message || "Failed to fetch profiles");
+    const code = err instanceof AuthError ? err.code : err?.code;
+    return NextResponse.json({ success: false, error, code, correlationId }, { status });
+  }
 }

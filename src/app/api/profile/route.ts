@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireSession } from "@/app/api/_utils/auth";
 import { Notifications } from "@/lib/notify";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import {
   validateProfileData,
   sanitizeProfileInput,
@@ -25,22 +24,7 @@ export async function GET(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Centralized cookie session (auto-refresh + forwarding)
-    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) {
-      const res = session.errorResponse!;
-      const status = (res as unknown as { status?: number }).status || 401;
-      console.warn("Profile GET auth failed", {
-        scope: "profile.get",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return res;
-    }
-    const userId = session.userId!;
+    const { userId } = await requireAuth(request);
     if (!userId) {
       console.warn("Profile GET missing userId", {
         scope: "profile.get",
@@ -122,9 +106,6 @@ export async function GET(request: NextRequest) {
       JSON.stringify({ profile, correlationId, success: true }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-    for (const c of session.setCookiesToForward) {
-      response.headers.append("Set-Cookie", c);
-    }
     console.info("Profile GET success", {
       scope: "profile.get",
       type: "success",
@@ -157,22 +138,7 @@ export async function PUT(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Centralized cookie session (auto-refresh + forwarding)
-    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) {
-      const res = session.errorResponse!;
-      const status = (res as unknown as { status?: number }).status || 401;
-      console.warn("Profile PUT auth failed", {
-        scope: "profile.update",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return res;
-    }
-    const userId = session.userId!;
+    const { userId } = await requireAuth(request);
     if (!userId) {
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -367,22 +333,7 @@ export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Centralized cookie session (auto-refresh + forwarding)
-    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
-    const session = await getSessionFromRequest(req);
-    if (!session.ok) {
-      const res = session.errorResponse!;
-      const status = (res as unknown as { status?: number }).status || 401;
-      console.warn("Profile POST auth failed", {
-        scope: "profile.create",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return res;
-    }
-    const userId = session.userId!;
+    const { userId } = await requireAuth(req);
     if (!userId)
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),
@@ -644,22 +595,8 @@ export async function DELETE(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    // Centralized cookie session (auto-refresh + forwarding)
-    const { getSessionFromRequest } = await import("@/app/api/_utils/authSession");
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) {
-      const res = session.errorResponse!;
-      const status = (res as unknown as { status?: number }).status || 401;
-      console.warn("Profile DELETE auth failed", {
-        scope: "profile.delete",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return res;
-    }
-    const userId = session.userId!;
+    const { userId } = await requireAuth(request);
+
     if (!userId)
       return new Response(
         JSON.stringify({ error: "User ID not found in token", correlationId }),

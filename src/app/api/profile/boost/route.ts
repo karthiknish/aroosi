@@ -1,37 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { convexClientFromRequest } from "@/lib/convexClient";
+import { fetchMutation } from "convex/nextjs";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 export async function POST(request: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
   try {
-    const convexClient = await convexClientFromRequest(request);
-    if (!convexClient) {
-      return NextResponse.json(
-        { success: false, error: "Convex backend not configured" },
-        { status: 500 }
-      );
-    }
-
-    const result = await convexClient.mutation(api.users.boostProfile, {});
-    return NextResponse.json({ success: true, ...result });
-  } catch (error: unknown) {
-    console.error("Boost error", error);
-    let message = "Boost failed";
-    if (isErrorWithMessage(error)) {
-      message = error.message;
-    }
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 400 }
-    );
+    await requireAuth(request);
+    const result = await fetchMutation(api.users.boostProfile, {} as any);
+    return NextResponse.json({ success: true, ...result, correlationId });
+  } catch (err: any) {
+    const status = err instanceof AuthError ? err.status : 400;
+    const error = err instanceof AuthError ? err.message : (err?.message || "Boost failed");
+    const code = err instanceof AuthError ? err.code : err?.code;
+    return NextResponse.json({ success: false, error, code, correlationId }, { status });
   }
-}
-
-function isErrorWithMessage(error: unknown): error is { message: string } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof (error as { message: unknown }).message === "string"
-  );
 }
