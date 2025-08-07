@@ -153,22 +153,27 @@ export const setRateLimitWindow = mutation({
     count: v.number(),
   },
   handler: async (ctx, { key, windowStart, count }) => {
-    // Upsert window for key
+    // Store values as bigint to match table schema types
+    const windowStartBig = BigInt(windowStart);
+    const countBig = BigInt(count);
+
     const existing = await ctx.db
       .query("rateLimits")
       .withIndex("by_key", (q) => q.eq("key", key))
       .first();
+
     if (existing) {
       await ctx.db.patch(existing._id as Id<"rateLimits">, {
-        windowStart,
-        count,
-      });
+        windowStart: windowStartBig,
+        count: countBig,
+      } as any);
       return existing._id as Id<"rateLimits">;
     }
+
     const id = await ctx.db.insert("rateLimits", {
       key,
-      windowStart,
-      count,
+      windowStart: windowStartBig,
+      count: countBig,
     } as any);
     return id as Id<"rateLimits">;
   },
