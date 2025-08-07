@@ -458,7 +458,7 @@ export async function boostProfile(
   try {
     const data = await postJson<any>(url, {});
     return {
-      success: true,
+      success: Boolean(data?.success ?? true),
       boostsRemaining: data?.boostsRemaining,
       boostedUntil: data?.boostedUntil,
       message: data?.message,

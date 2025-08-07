@@ -66,9 +66,24 @@ const ProfileBoostButton = () => {
     setLoading(true);
     try {
       const result = await boostProfile();
-      showSuccessToast(
-        `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`
-      );
+      if (result.success) {
+        showSuccessToast(
+          `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`
+        );
+      } else {
+        // Show granular server message if present
+        const message = result.message || "Boost failed";
+        // If out of boosts, surface next reset date (1st of next month UTC)
+        let extra = "";
+        if (message.toLowerCase().includes("no boosts")) {
+          const now = new Date();
+          const nextReset = new Date(
+            Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0)
+          );
+          extra = ` Next reset on ${nextReset.toUTCString()}.`;
+        }
+        showErrorToast(`${message}.${extra}`);
+      }
       await refetchProfileStatus?.();
     } catch (error: unknown) {
       showErrorToast(error, "Boost failed");
