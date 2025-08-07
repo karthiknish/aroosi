@@ -37,8 +37,8 @@ export default function MatchChatPage() {
     queryKey: ["markRead", conversationId, userId],
     queryFn: async () => {
       if (!userId) return true;
-      // markConversationRead expects (conversationId: string, userId: string)
-      await markConversationRead(conversationId, userId);
+      // markConversationRead now cookie-based; only conversationId is required
+      await markConversationRead(conversationId);
       return true;
     },
     enabled: !!userId && !!conversationId,
@@ -65,7 +65,6 @@ export default function MatchChatPage() {
         conversationId={conversationId}
         currentUserId={userId}
         matchUserId={otherUserId}
-        token={""}
         matchUserName={matchProfile?.fullName || ""}
         matchUserAvatarUrl={matchAvatar || ""}
       />

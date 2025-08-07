@@ -9,11 +9,9 @@ export interface PushNotificationPayload {
 
 /**
  * Send a push notification to all subscribed users via OneSignal.
- * @param token Admin JWT token
  * @param payload Notification payload
  */
 export async function sendPushNotification(
-  token: string,
   payload: PushNotificationPayload
 ): Promise<ApiResponse<null>> {
   try {

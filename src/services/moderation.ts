@@ -7,7 +7,6 @@ import { handleErrorUtil, blockUserUtil, reportUserUtil, ReportReason } from "@/
 
 export async function blockUserService(params: {
   matchUserId: string;
-  token: string;
   setIsBlocked: (v: boolean) => void;
   setShowReportModal: (v: boolean) => void;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -24,7 +23,6 @@ export async function reportUserService(params: {
   matchUserId: string;
   reason: ReportReason;
   description: string;
-  token: string;
   setShowReportModal: (v: boolean) => void;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {

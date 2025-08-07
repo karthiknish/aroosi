@@ -66,7 +66,7 @@ describe("/api/profile API Routes", () => {
 
       const { req } = createMocks({
         method: "GET",
-        headers: { authorization: "Bearer valid-token" },
+        // cookie-session; no auth header
       });
       await GET(req);
 
@@ -103,7 +103,7 @@ describe("/api/profile API Routes", () => {
 
       const { req } = createMocks({
         method: "GET",
-        headers: { authorization: "Bearer valid-token" },
+        // cookie-session; no auth header
       });
       const response = await GET(req);
 
@@ -127,7 +127,7 @@ describe("/api/profile API Routes", () => {
 
       const { req } = createMocks({
         method: "GET",
-        headers: { authorization: "Bearer valid-token" },
+        // cookie-session; no auth header
       });
 
       const response = await GET(req);
@@ -169,7 +169,7 @@ describe("/api/profile API Routes", () => {
         body: profileData,
         headers: {
           "content-type": "application/json",
-          authorization: "Bearer valid-token",
+          /* cookie-session; no auth header */
         },
       });
 

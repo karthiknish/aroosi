@@ -49,7 +49,7 @@ export function useTypingIndicators({
         }
       }
     },
-    [conversationId, token],
+    [conversationId]
   );
 
   // Fetch current typing users
@@ -61,7 +61,7 @@ export function useTypingIndicators({
           headers: {
             // Cookie-based session; no Authorization header
           },
-        },
+        }
       );
 
       if (response.ok) {
@@ -76,7 +76,7 @@ export function useTypingIndicators({
           otherTypingUsers = (
             data as { typingUsers: TypingUser[] }
           ).typingUsers.filter(
-            (user: TypingUser) => user.userId !== currentUserId,
+            (user: TypingUser) => user.userId !== currentUserId
           );
         }
         setTypingUsers(otherTypingUsers);
@@ -88,7 +88,7 @@ export function useTypingIndicators({
         console.error("Error fetching typing users:", error);
       }
     }
-  }, [conversationId, currentUserId, token]);
+  }, [conversationId, currentUserId]);
 
   // Start typing
   const startTyping = useCallback(() => {

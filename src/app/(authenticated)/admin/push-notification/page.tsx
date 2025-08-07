@@ -21,7 +21,7 @@ export default function PushNotificationAdminPage() {
     setSending(true);
     try {
       // Server reads HttpOnly cookies for admin authorization
-      await sendPushNotification("", {
+      await sendPushNotification({
         title,
         message,
         url: url || undefined,

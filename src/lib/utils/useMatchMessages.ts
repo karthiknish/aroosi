@@ -81,7 +81,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
     } finally {
       setLoadingOlder(false);
     }
-  }, [hasMore, loadingOlder, messages, conversationId, token]);
+  }, [hasMore, loadingOlder, messages, conversationId]);
 
   const sendMessage = useCallback(
     async ({
@@ -101,7 +101,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
             fromUserId,
             toUserId,
             text: text.substring(0, 50) + (text.length > 50 ? "..." : ""),
-            token: token ? "<present>" : "<missing>",
+            auth: "cookies",
           });
         }
 
@@ -150,7 +150,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
         /* no-op */
       }
     },
-    [conversationId, token]
+    [conversationId]
   );
 
   // Initial fetch on mount or when conversation changes
@@ -208,7 +208,10 @@ export function useMatchMessages(conversationId: string, _token: string) {
             return;
           }
 
-          if (payload?.type === "typing_start" || payload?.type === "typing_stop") {
+          if (
+            payload?.type === "typing_start" ||
+            payload?.type === "typing_stop"
+          ) {
             const { userId, conversationId: cid, at } = payload;
             if (!cid || cid !== conversationId || !userId) return;
             setTypingUsers((prev) => {
@@ -263,7 +266,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
         es.close();
       }
     };
-  }, [conversationId, token]);
+  }, [conversationId]);
 
   return {
     messages,

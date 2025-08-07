@@ -193,7 +193,6 @@ export default function ChatPage({
                   matchUserId={selectedConversation.otherUserId}
                   matchUserName={selectedConversation.otherUserName}
                   matchUserAvatarUrl={selectedAvatar || ""}
-                  token=""
                   className="h-full"
                 />
               </div>
