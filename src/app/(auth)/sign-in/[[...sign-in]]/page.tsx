@@ -41,32 +41,21 @@ export default function SignInPage() {
   React.useEffect(() => {
     let cancelled = false;
     const go = async () => {
-      if (!isLoaded) return;
-      if (!isTrulyAuthenticated) return;
+      // Guard: only attempt server verification after auth is hydrated and authenticated
+      if (!isLoaded || !isTrulyAuthenticated) return;
 
-      // Force a server truth check that also forwards Set-Cookie if refresh was needed.
-      // This ensures cookie auth is the source of truth and avoids relying on any legacy public token.
       try {
         // Use token-aware client so Authorization is attached and refresh is handled
-        const resp = await getJson<Response>("/api/auth/me", {
+        await getJson("/api/auth/me", {
           cache: "no-store",
-        }).catch((e) => {
-          // Normalize to a faux Response-like object for existing logic
-          return { ok: false } as unknown as Response;
+          // Explicitly avoid any caching layer
+          headers: { "x-client-check": "signin-verify" },
         });
-
-        if (!resp.ok) {
-          // If session is invalid or refresh was reused, route to sign-in (we are already here) and reset state
-          // The AuthProvider should observe cookie changes; we just avoid redirecting forward.
-          return;
-        }
-
-        // Proceed to final redirect once server confirms valid session
         if (!cancelled) {
           router.push(finalRedirect);
         }
       } catch {
-        // Ignore network errors; stay on sign-in page
+        // Stay on sign-in page if verification fails; AuthProvider will reconcile state
       }
     };
     void go();
@@ -75,9 +64,7 @@ export default function SignInPage() {
     };
   }, [
     isLoaded,
-    isAuthenticated,
-    isProfileComplete,
-    isOnboardingComplete,
+    isTrulyAuthenticated,
     finalRedirect,
     router,
   ]);
@@ -130,19 +117,17 @@ export default function SignInPage() {
              If a valid session exists, the effect above will redirect quickly. */}
           <CustomSignInForm
             onComplete={async () => {
-              // After successful sign-in, rely on cookies. Call /api/auth/me to ensure
-              // any Set-Cookie from refresh or issuance is fully applied, then redirect.
+              // After successful sign-in, ensure server truth and then redirect
               try {
-                // Ensure server/me sees Authorization via centralized client
                 await getJson("/api/auth/me", {
                   cache: "no-store",
+                  headers: { "x-client-check": "signin-complete" },
                 }).catch(() => {});
               } catch {
                 // ignore
               }
               // Clear any prior error on success
               try {
-                // no-op if state not present yet
                 (window as any).__signin_setErr?.(null);
               } catch {}
               router.push("/search");
