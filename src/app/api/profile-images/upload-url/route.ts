@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { errorResponse } from "@/lib/apiResponse";
-import {
-  requireAuth,
-  AuthError,
-  authErrorResponse,
-} from "@/lib/auth/requireAuth";
-import { fetchMutation } from "convex/nextjs";
+import { AuthError, authErrorResponse, requireAuth } from "@/lib/auth/requireAuth";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,7 +15,12 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const uploadUrl = await fetchMutation(api.images.generateUploadUrl, {} as any);
+  const uploadUrl = await convexMutationWithAuth(
+    req,
+    (await import("@convex/_generated/api")).api.images.generateUploadUrl,
+    {}
+  );
+
   if (!uploadUrl || typeof uploadUrl !== "string") {
     return NextResponse.json(
       { error: "Failed to generate upload URL" },

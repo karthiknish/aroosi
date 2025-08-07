@@ -240,10 +240,25 @@ export async function PUT(request: NextRequest) {
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
 
-    // No explicit update mutation exposed in generated API; update supported fields inline here if needed.
-    // For now, rely on client to send full valid values and keep server-side validation above.
-    // If an update mutation is added later (e.g., profiles.updateProfileFields), wire it here.
-    // Since there is no server mutation, short-circuit success with current profile shape.
+    // Apply update via Convex mutation profiles.updateProfileFields
+    await convexMutationWithAuth(
+      request,
+      (await import("@convex/_generated/api")).api.profiles.updateProfileFields,
+      {
+        userId: userId as Id<"users">,
+        updates: {
+          ...updates,
+          // Ensure array types for partnerPreferenceCity when present
+          ...(updates.partnerPreferenceCity
+            ? {
+                partnerPreferenceCity: Array.isArray(updates.partnerPreferenceCity)
+                  ? (updates.partnerPreferenceCity as string[])
+                  : [String(updates.partnerPreferenceCity)],
+              }
+            : {}),
+        } as Record<string, unknown>,
+      } as any
+    );
     const updatedProfile = await convexQueryWithAuth(
       request,
       (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
@@ -597,8 +612,12 @@ export async function DELETE(request: NextRequest) {
         JSON.stringify({ error: "Unauthorized", correlationId }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
-    // No delete mutation exposed; emulate logical delete by clearing profile fields or rely on admin tooling.
-    // Here, we simply return success to avoid breaking client flows.
+    // Delete profile via Convex mutation profiles.deleteProfile
+    await convexMutationWithAuth(
+      request,
+      (await import("@convex/_generated/api")).api.profiles.deleteProfile,
+      { userId: userId as Id<"users"> } as any
+    );
     const response = new Response(
       JSON.stringify({
         message: "User and profile deleted successfully",

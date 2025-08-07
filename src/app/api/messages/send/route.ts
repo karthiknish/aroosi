@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { fetchMutation } from "convex/nextjs";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { requireAuth } from "@/lib/auth/requireAuth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { validateConversationId } from "@/lib/utils/messageValidation";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 
 // ApiResponse envelope type
 type ApiResponse<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-// Shared helpers
 function json<T>(body: ApiResponse<T>, status = 200) {
   return NextResponse.json(body, { status });
 }
@@ -23,10 +21,9 @@ export async function POST(request: NextRequest) {
   try {
     const { userId } = await requireAuth(request);
 
-    // Rate limit: messages send
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      "" as unknown as string, // cookie-only: no token string (pending limiter signature cleanup)
+      "" as unknown as string,
       userId || "unknown",
       "message_send",
       60_000
@@ -41,7 +38,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse JSON body
     let body: unknown;
     try {
       body = await request.json();
@@ -49,7 +45,6 @@ export async function POST(request: NextRequest) {
       return json({ success: false, error: "Invalid JSON body" }, 400);
     }
 
-    // Expected fields (text or voice/image)
     const {
       conversationId,
       fromUserId,
@@ -72,7 +67,6 @@ export async function POST(request: NextRequest) {
       mimeType?: string;
     };
 
-    // Basic validation
     if (!conversationId || !fromUserId || !toUserId) {
       return json(
         {
@@ -91,7 +85,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure authenticated user participates in conversation
     if (!userId) {
       return json({ success: false, error: "User ID not found" }, 401);
     }
@@ -103,14 +96,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Default to text if not provided
     const resolvedType: "text" | "voice" | "image" = type || "text";
-
-    // Strong validation & sanitation per type (mirror Convex rules)
     let finalText: string | undefined = text;
 
     if (resolvedType === "text") {
-      // Use shared validation + sanitation (trimming, XSS, prohibited content redaction)
       const { validateMessagePayload } = await import("@/lib/utils/messageValidation");
       const v = validateMessagePayload({
         conversationId,
@@ -144,39 +133,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Optional pre-check: ensure users are matched to fail fast (Convex also enforces)
-    try {
-      const { validateUserCanMessage } = await import("@/lib/utils/messageValidation");
-      // Cookie-only path: do not pass token
-      const canMessage = await validateUserCanMessage(fromUserId, toUserId, undefined as unknown as string);
-      if (!canMessage) {
-        return json({ success: false, error: "You can only message users you are matched with." }, 403);
-      }
-    } catch (e) {
-      // Log but do not block; Convex enforces as a second line of defense
-      console.warn("messages.send match pre-check failed (continuing to Convex)", {
+    // Use cookie-aware Convex mutation
+    const message = await convexMutationWithAuth(
+      request,
+      (await import("@convex/_generated/api")).api.messages.sendMessage,
+      {
         conversationId,
-        fromUserId,
-        toUserId,
-      });
-    }
-
-    const message = await fetchMutation(api.messages.sendMessage, {
-      conversationId,
-      fromUserId: fromUserId as Id<"users">,
-      toUserId: toUserId as Id<"users">,
-      text: finalText,
-      type: resolvedType,
-      audioStorageId,
-      duration,
-      fileSize,
-      mimeType,
-    } as any).catch((e: unknown) => {
+        fromUserId: fromUserId as Id<"users">,
+        toUserId: toUserId as Id<"users">,
+        text: finalText,
+        type: resolvedType,
+        audioStorageId,
+        duration,
+        fileSize,
+        mimeType,
+      } as any
+    ).catch((e: unknown) => {
       const msg = e instanceof Error ? e.message : typeof e === "string" ? e : "Send failed";
       throw new Error(String(msg));
     });
 
-    // Broadcast SSE event mirroring voice upload behavior
     try {
       const { eventBus } = await import("@/lib/eventBus");
       eventBus.emit(conversationId, {
@@ -195,10 +171,8 @@ export async function POST(request: NextRequest) {
     return json({ success: true, data: message }, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // Avoid leaking internals
     return json({ success: false, error: message || "Failed to send message" }, 500);
   } finally {
-    // optional: structured logging hook could be placed here if desired
     // console.info("messages.send", { correlationId, durationMs: Date.now() - startedAt });
   }
 }

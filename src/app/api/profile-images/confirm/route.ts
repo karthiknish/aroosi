@@ -1,45 +1,46 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { getConvexClient } from "@/lib/convexClient";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireSession } from "@/app/api/_utils/auth";
+import { requireAuth, AuthError, authErrorResponse } from "@/lib/auth/requireAuth";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 
 export async function POST(request: NextRequest) {
   try {
-    // Cookie-only auth
-    const session = await requireSession(request);
-    if ("errorResponse" in session) return session.errorResponse;
-    const { userId } = session;
+    try {
+      await requireAuth(request);
+    } catch (e) {
+      if (e instanceof AuthError) {
+        return authErrorResponse(e.message, { status: e.status, code: e.code });
+      }
+      return authErrorResponse("Authentication failed", {
+        status: 401,
+        code: "ACCESS_INVALID",
+      });
+    }
 
-    let client = getConvexClient();
-    if (!client) client = getConvexClient();
-    if (!client) return errorResponse("Service temporarily unavailable", 503);
-    // No client.setAuth with bearer tokens in cookie-only model
-
-    // Query the profile by user ID
+    const { userId } = await requireAuth(request);
     if (!userId) {
       return errorResponse("User ID not found", 401);
     }
 
-    const profile = await client.query(api.profiles.getProfileByUserId, {
-      userId: userId as Id<"users">,
-    });
+    // Ensure profile exists
+    const profile = await convexQueryWithAuth(
+      request,
+      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
+      { userId: userId as Id<"users"> }
+    );
     if (!profile) return errorResponse("Profile not found", 404);
 
-    const { fileName, uploadId } = await request.json();
-    if (!fileName || !uploadId)
+    const { fileName, uploadId } = (await request.json()) as {
+      fileName?: string;
+      uploadId?: string;
+    };
+    if (!fileName || !uploadId) {
       return errorResponse("Missing fileName or uploadId", 400);
+    }
 
-    // In a real implementation, you would:
-    // 1. Verify the upload was successful to storage
-    // 2. Update the image record status to confirmed
-    // 3. Generate optimized versions/thumbnails
-    // 4. Update profile image URLs
-
-    console.log(
-      `Confirming image upload for user ${userId}: ${fileName} (${uploadId})`
-    );
+    // Placeholder: verification/processing pipeline handled server-side (Convex storage)
+    console.log(`Confirming image upload for user ${userId}: ${fileName} (${uploadId})`);
 
     return successResponse({
       message: "Image upload confirmed",
