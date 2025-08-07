@@ -13,6 +13,18 @@ export const updateTypingStatus = mutation({
       throw new Error("Not authenticated");
     }
 
+    // Soft cleanup of stale indicators for this conversation (older than 10s)
+    const now = Date.now();
+    const stale = await ctx.db
+      .query("typingIndicators")
+      .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+      .collect();
+    await Promise.all(
+      stale
+        .filter((ind) => now - ind.lastUpdated > 10000)
+        .map((ind) => ctx.db.patch(ind._id, { isTyping: false, lastUpdated: now })),
+    );
+
     // Check if a typing indicator already exists for this user and conversation
     const existingIndicator = await ctx.db
       .query("typingIndicators")

@@ -3,14 +3,18 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      return session.errorResponse;
+    }
+    const { userId } = session;
 
     // Rate limit typing updates (cheap but potentially noisy)
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -21,10 +25,7 @@ export async function POST(request: NextRequest) {
       60000
     );
     if (!rate.allowed) {
-      return errorResponse(
-        rate.error || "Rate limit exceeded",
-        429
-      );
+      return errorResponse(rate.error || "Rate limit exceeded", 429);
     }
 
     const { conversationId, action } = await request.json();
@@ -73,7 +74,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) {
+      return session.errorResponse;
+    }
 
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get("conversationId");
