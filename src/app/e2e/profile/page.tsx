@@ -1,6 +1,6 @@
 "use client";
 import { useState, Suspense } from "react";
-import { sendInterestCookie, removeInterestCookie } from "@/lib/interestUtils";
+import { sendInterest, removeInterest } from "@/lib/interestUtils";
 import { Heart, HeartOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
@@ -16,10 +16,10 @@ function InterestE2ETestPageInner() {
     setStatus("loading");
     try {
       if (sent) {
-        await removeInterestCookie(toUserId);
+        await removeInterest(toUserId);
         setSent(false);
       } else {
-        await sendInterestCookie(toUserId);
+        await sendInterest(toUserId);
         setSent(true);
       }
       setStatus("success");
