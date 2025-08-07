@@ -40,7 +40,7 @@ interface MatchType {
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { isLoaded: authIsLoaded, isSignedIn, isAdmin } = useAuthContext();
+  const { isLoaded: authIsLoaded, isSignedIn, isAdmin, isAuthenticated } = useAuthContext();
 
   // All hooks must be called unconditionally
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -93,7 +93,8 @@ export default function AdminProfileDetailPage() {
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
     },
-    enabled: !!id && isSignedIn && isAdmin,
+    // Strict guard: only run after auth is hydrated and admin is authenticated
+    enabled: !!id && authIsLoaded && isAuthenticated && isSignedIn && isAdmin,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,
@@ -134,7 +135,7 @@ export default function AdminProfileDetailPage() {
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
     },
-    enabled: !!userId && isSignedIn && isAdmin,
+    enabled: !!userId && authIsLoaded && isAuthenticated && isSignedIn && isAdmin,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,
@@ -173,7 +174,7 @@ export default function AdminProfileDetailPage() {
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
     },
-    enabled: !!id && isSignedIn && isAdmin,
+    enabled: !!id && authIsLoaded && isAuthenticated && isSignedIn && isAdmin,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,
