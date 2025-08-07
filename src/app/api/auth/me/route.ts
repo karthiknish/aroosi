@@ -98,12 +98,36 @@ export async function GET(request: NextRequest) {
       const duration = Date.now() - startedAt;
       // Soften log level for very-fast misses which are often hydration/propagation races
       const level: "info" | "warn" = duration < 300 ? "info" : "warn";
+      // Detailed diagnostics for transient "user not found"
+      // Capture token presence (not the token itself), referer, and request headers subset for debugging
+      let hasAuthHeader = false;
+      let authHeaderLen = 0;
+      try {
+        const authHeader = request.headers.get("authorization") || "";
+        hasAuthHeader = authHeader.startsWith("Bearer ");
+        authHeaderLen = authHeader.length;
+      } catch {}
+      const referer = request.headers.get("referer") || undefined;
+      // Identify if this call likely comes from a client verification after signin
+      const xClientCheck = request.headers.get("x-client-check") || undefined;
+
       log(scope, level, "User not found", {
         correlationId,
         type: "user_not_found",
         statusCode: 404,
         durationMs: duration,
         fromPage,
+        hints: {
+          // Hints for triage without exposing secrets
+          hasAuthHeader,
+          authHeaderLen, // length only, not contents
+          xClientCheck,
+          referer,
+          // Categorize race vs. genuine miss by latency
+          likelyRace: duration < 300,
+          // Note: backend user/profile creation may still be pending immediately post-signin
+          advisory: "If immediately post-signin, this is likely a propagation race. Client should tolerate a brief 404 or avoid verification.",
+        },
       });
       // Ensure consistent structured error for frontend toasts
       return withNoStore(
@@ -162,6 +186,7 @@ export async function GET(request: NextRequest) {
           : null,
       },
       correlationId,
+      fromPage,
     });
     // No Set-Cookie usage in pure token model; ensure no-store
 
