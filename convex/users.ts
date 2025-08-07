@@ -103,6 +103,7 @@ export const getCurrentUserWithProfile = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
+    console.log("[getCurrentUserWithProfile] identity:", identity);
     if (!identity) {
       return null;
     }
@@ -110,11 +111,16 @@ export const getCurrentUserWithProfile = query({
     // Prefer subject as Convex user id if present and shaped like an Id<"users">
     let user: any | null = null;
     const subject = (identity as any).subject as string | undefined;
+    console.log("[getCurrentUserWithProfile] subject:", subject);
     if (subject) {
       try {
         // Attempt direct fetch by id if subject looks like an Id (Convex will validate)
         user = await ctx.db.get(subject as unknown as Id<"users">);
-      } catch {
+      } catch (e) {
+        console.warn(
+          "[getCurrentUserWithProfile] Failed to fetch user by subject",
+          { subject, error: e instanceof Error ? e.message : String(e) }
+        );
         user = null;
       }
     }
