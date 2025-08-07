@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAuthContext } from "@/components/AuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
 import { useRouter } from "next/navigation";
-import { getJson } from "@/lib/http/client";
+import { getJson, tokenStorage } from "@/lib/http/client";
 
 export default function SignInPage() {
   const {
@@ -41,14 +41,15 @@ export default function SignInPage() {
   React.useEffect(() => {
     let cancelled = false;
     const go = async () => {
-      // Guard: only attempt server verification after auth is hydrated and authenticated
+      // Guard: only attempt verification when auth is hydrated and a token exists
       if (!isLoaded || !isTrulyAuthenticated) return;
+      const access = tokenStorage.access;
+      if (!access) return;
 
       try {
-        // Use token-aware client so Authorization is attached and refresh is handled
+        // Centralized client attaches Authorization header from tokenStorage
         await getJson("/api/auth/me", {
           cache: "no-store",
-          // Explicitly avoid any caching layer
           headers: { "x-client-check": "signin-verify" },
         });
         if (!cancelled) {
@@ -62,12 +63,7 @@ export default function SignInPage() {
     return () => {
       cancelled = true;
     };
-  }, [
-    isLoaded,
-    isTrulyAuthenticated,
-    finalRedirect,
-    router,
-  ]);
+  }, [isLoaded, isTrulyAuthenticated, finalRedirect, router]);
 
   return (
     <div className="min-h-screen w-full overflow-y-hidden py-12 bg-base-light flex items-center justify-center relative overflow-x-hidden">
@@ -117,14 +113,19 @@ export default function SignInPage() {
              If a valid session exists, the effect above will redirect quickly. */}
           <CustomSignInForm
             onComplete={async () => {
-              // After successful sign-in, ensure server truth and then redirect
+              // After successful sign-in:
+              // 1) tokenStorage should have access/refresh tokens set by the sign-in flow
+              // 2) Verify session using token-based client, then redirect
               try {
-                await getJson("/api/auth/me", {
-                  cache: "no-store",
-                  headers: { "x-client-check": "signin-complete" },
-                }).catch(() => {});
+                const access = tokenStorage.access;
+                if (access) {
+                  await getJson("/api/auth/me", {
+                    cache: "no-store",
+                    headers: { "x-client-check": "signin-complete" },
+                  }).catch(() => {});
+                }
               } catch {
-                // ignore
+                // ignore network/transient errors; proceed with redirect
               }
               // Clear any prior error on success
               try {

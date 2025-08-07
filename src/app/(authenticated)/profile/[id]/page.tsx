@@ -70,7 +70,7 @@ type Interest = {
 export default function ProfileDetailPage() {
   const params = useParams();
   // Cookie-auth only; remove token from context
-  const { profile: rawCurrentUserProfile } = useAuthContext();
+  const { profile: rawCurrentUserProfile, isLoaded, isAuthenticated } = useAuthContext();
   const currentUserProfile = rawCurrentUserProfile as {
     _id?: string;
     userId?: string;
@@ -96,7 +96,8 @@ export default function ProfileDetailPage() {
       const result = await fetchUserProfile(userId);
       return result;
     },
-    enabled: !!userId,
+    // Strict guard: only after auth hydration to avoid early /me and cookie races
+    enabled: !!userId && isLoaded && isAuthenticated,
     retry: false,
   });
 
@@ -127,7 +128,7 @@ export default function ProfileDetailPage() {
       }
       return [];
     },
-    enabled: !!userId && !skipImagesQuery,
+    enabled: !!userId && !skipImagesQuery && isLoaded && isAuthenticated,
   });
 
   const isOwnProfile = Boolean(

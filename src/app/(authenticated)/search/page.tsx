@@ -215,7 +215,7 @@ export default function SearchProfilesPage() {
         motherTongue,
         language,
       }),
-    // Strict guard: only run when auth is hydrated and authenticated
+    // Token-based guard: only run when auth has hydrated and user is authenticated
     enabled: isLoaded && isAuthenticated,
   });
 
