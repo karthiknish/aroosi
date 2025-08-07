@@ -8,7 +8,7 @@ import {
   sanitizeProfileInput,
 } from "@/lib/utils/profileValidation";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { getConvexClient } from "@/lib/convexClient";
+import { fetchQuery, fetchMutation } from "convex/nextjs";
 
 function isProfileWithEmail(
   profile: unknown
@@ -56,29 +56,16 @@ export async function GET(request: NextRequest) {
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
     }
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Profile GET convex not configured", {
-        scope: "profile.get",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
       return new Response(
-        JSON.stringify({
-          error: "Convex client not configured",
-          correlationId,
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Service temporarily unavailable", correlationId }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
       );
     }
-    // Cookie-auth only: never set a bearer on Convex client
-    const profile = await convex
-      .query(api.profiles.getProfileByUserId, {
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
+    const profile = await fetchQuery(
+      api.profiles.getProfileByUserId,
+      { userId: userId as Id<"users"> } as any
+    ).catch((e: unknown) => {
         console.error("Profile GET query error", {
           scope: "profile.get",
           type: "convex_query_error",
@@ -163,24 +150,12 @@ export async function PUT(request: NextRequest) {
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
     }
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Profile PUT convex not configured", {
-        scope: "profile.update",
-        type: "convex_not_configured",
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
       return new Response(
-        JSON.stringify({
-          error: "Convex client not configured",
-          correlationId,
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Service temporarily unavailable", correlationId }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
       );
     }
-    // Cookie-auth only: never set a bearer on Convex client
 
     let body;
     try {
