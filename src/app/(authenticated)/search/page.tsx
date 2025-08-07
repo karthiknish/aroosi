@@ -167,6 +167,22 @@ export default function SearchProfilesPage() {
     }
   }, [isSignedIn, isAuthenticated, isLoaded]);
 
+  // Proactively call /api/auth/me with credentials and log correlation/debug headers
+  React.useEffect(() => {
+    async function pingMe() {
+      try {
+        const { authFetch } = await import("@/lib/api/authClient");
+        await authFetch("/api/auth/me", { method: "GET" });
+      } catch {
+        // ignore debug failures
+      }
+    }
+    // Only when we have a user-affecting auth signal changing
+    if (isLoaded) {
+      void pingMe();
+    }
+  }, [isLoaded]);
+
   // Defensive: if client-side code tries to route away, log it explicitly
   const originalPush = router.push.bind(router);
   const originalReplace = router.replace.bind(router);

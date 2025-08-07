@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import GoogleAuthButton from "./GoogleAuthButton";
 import { showErrorToast } from "@/lib/ui/toast";
+import { authFetch } from "@/lib/api/authClient";
 
 interface CustomSignInFormProps {
   onComplete?: () => void;
@@ -41,13 +42,20 @@ export default function CustomSignInForm({
     setIsLoading(true);
 
     try {
+      // Invoke existing auth flow (which hits /api/auth/signin under the hood)
       const result = await signIn(email, password);
+
+      // Explicitly call /api/auth/me to log correlation/debug headers for visibility
+      try {
+        await authFetch("/api/auth/me", { method: "GET" });
+      } catch {
+        // ignore logging failures; UI behavior below still applies
+      }
+
       if (result.success) {
         // Check for profile existence
-        // user is updated after signIn
-        // Wait for user to be set
         setTimeout(() => {
-          const hasProfile = user && user.profile && user.profile.id;
+          const hasProfile = user && user.profile && (user.profile as any).id;
           if (!hasProfile) {
             showErrorToast(
               "No profile found for this account. Please create a profile first."
