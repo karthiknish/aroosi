@@ -43,6 +43,17 @@ export async function GET(request: NextRequest) {
     Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
+  // Debug: Log all incoming headers for troubleshooting
+  try {
+    const headersObj: Record<string, string> = {};
+    for (const [k, v] of request.headers.entries()) {
+      headersObj[k] = v;
+    }
+    console.info("[auth.me] Incoming request headers", { correlationId, headers: headersObj });
+  } catch (e) {
+    console.warn("[auth.me] Failed to log headers", { correlationId, error: e instanceof Error ? e.message : String(e) });
+  }
+
   // Capture caller hint (page/route) if provided by clients
   const fromPage =
     request.headers.get("x-page") ||
