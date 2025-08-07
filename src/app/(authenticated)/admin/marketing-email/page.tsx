@@ -5,6 +5,9 @@ import { sendMarketingEmail } from "@/lib/marketingEmailApi";
 import { useAuthContext } from "@/components/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import {
   Select,
   SelectContent,
@@ -22,6 +25,10 @@ const TEMPLATE_OPTIONS = [
     key: "premiumPromo",
     label: "Premium Promo (30% off)",
   },
+  {
+    key: "recommendedProfiles",
+    label: "Recommended Profiles Digest",
+  },
 ];
 
 export default function MarketingEmailAdminPage() {
@@ -31,12 +38,17 @@ export default function MarketingEmailAdminPage() {
     TEMPLATE_OPTIONS[0].key
   );
   const [sending, setSending] = useState(false);
+  const [dryRun, setDryRun] = useState(true);
+  const [maxAudience, setMaxAudience] = useState<number>(500);
+  const [preview, setPreview] = useState<string>("");
 
   const handleSend = async () => {
     setSending(true);
     try {
-      // Server reads HttpOnly cookies; pass confirm flag for live send
-      await sendMarketingEmail("", { templateKey, confirm: true });
+      const res = await sendMarketingEmail("", { templateKey, confirm: !dryRun, dryRun, maxAudience });
+      if (res.success) {
+        showSuccessToast(dryRun ? "Preview generated" : "Campaign started");
+      }
     } finally {
       setSending(false);
     }
@@ -65,8 +77,18 @@ export default function MarketingEmailAdminPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
+            Dry run (no emails sent)
+          </label>
+          <div>
+            <label className="block text-sm mb-1">Max audience</label>
+            <Input type="number" min={1} max={10000} value={maxAudience} onChange={(e) => setMaxAudience(parseInt(e.target.value || "0", 10))} />
+          </div>
+        </div>
         <Button onClick={handleSend} disabled={sending}>
-          {sending ? "Sending..." : "Send Email to All Users"}
+          {sending ? (dryRun ? "Generating preview..." : "Sending...") : (dryRun ? "Preview" : "Send Email to Users")}
         </Button>
       </CardContent>
     </Card>

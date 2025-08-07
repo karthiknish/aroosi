@@ -46,39 +46,68 @@ export async function deleteProfile(token: string): Promise<void> {
 
 // Record that current user viewed a profile (no error if unauthenticated)
 export async function recordProfileView({
-  token,
   profileId,
 }: {
-  token?: string | null;
   profileId: string;
 }): Promise<void> {
-  if (!token) return;
+  if (!profileId) return;
   await fetch("/api/profile/view", {
     method: "POST",
-    headers: {},
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ profileId }),
-  }).catch(() => {}); // swallow any network errors
+  }).catch(() => {});
 }
 
 // Fetch list of viewers for the given profile (Premium Plus only)
+export type ProfileViewer = {
+  userId: string;
+  fullName?: string | null;
+  profileImageUrls?: string[] | null;
+  viewedAt: number;
+};
+
 export async function fetchProfileViewers({
-  token,
   profileId,
+  limit,
+  offset,
 }: {
-  token: string;
   profileId: string;
-}): Promise<unknown[]> {
-  const res = await fetch(`/api/profile/view?profileId=${profileId}`, {
-    headers: {},
+  limit?: number;
+  offset?: number;
+}): Promise<{ viewers: ProfileViewer[]; total?: number }> {
+  const params = new URLSearchParams({ profileId });
+  if (typeof limit === "number") params.set("limit", String(limit));
+  if (typeof offset === "number") params.set("offset", String(offset));
+  const res = await fetch(`/api/profile/view?${params.toString()}`, {
+    credentials: "include",
   });
-  const json = await res.json();
-  if (!res.ok || json.success === false) {
-    throw new Error(json.error || "Failed to fetch viewers");
+  const json = await res.json().catch(() => ({} as any));
+  if (!res.ok || json?.success === false) {
+    throw new Error(json?.error || "Failed to fetch viewers");
   }
-  // viewers may be nested under data or viewers key
-  return (
-    json.viewers ??
-    (json.data && (json.data as { viewers?: unknown[] }).viewers) ??
-    []
-  );
+  const raw = (json?.viewers ?? json?.data?.viewers ?? []) as any[];
+  const mapped: ProfileViewer[] = raw.map((v) => ({
+    userId: (v?.viewerId ?? v?.userId ?? v?._id ?? "") as string,
+    fullName: (v?.fullName ?? null) as string | null,
+    profileImageUrls: (v?.profileImageUrls ?? null) as string[] | null,
+    viewedAt: Number(v?.viewedAt ?? v?.createdAt ?? Date.now()),
+  }));
+  const total = typeof json?.total === "number" ? (json.total as number) : undefined;
+  return { viewers: mapped, total };
+}
+
+export async function fetchProfileViewersCount(profileId: string): Promise<number> {
+  if (!profileId) return 0;
+  const params = new URLSearchParams({ profileId, mode: "count" });
+  const res = await fetch(`/api/profile/view?${params.toString()}`, {
+    credentials: "include",
+  });
+  const json = await res.json().catch(() => ({} as any));
+  if (!res.ok || json?.success === false) {
+    throw new Error(json?.error || "Failed to fetch viewers count");
+  }
+  return Number(json?.count ?? 0);
 }

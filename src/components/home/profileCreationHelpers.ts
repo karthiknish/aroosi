@@ -3,7 +3,10 @@
  * and keep the component lean/testable.
  */
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
-import { updateImageOrder } from "@/lib/utils/imageUtil";
+import {
+  updateImageOrder,
+  uploadProfileImageWithProgress,
+} from "@/lib/utils/imageUtil";
 import { validateImageMeta } from "@/lib/utils/imageMeta";
 import type { ImageType } from "@/types/image";
 
@@ -665,38 +668,38 @@ export async function uploadPendingImages(params: {
       // Build File object
       const file = fileFromBlob(blob, img.fileName || "photo.jpg");
 
-      // Local-only: send multipart directly to API
-      const fd = new FormData();
-      fd.append("image", file, file.name);
-      const uploadResp = await fetch("/api/profile-images/upload", {
-        method: "POST",
-        body: fd,
-      });
-      if (!uploadResp.ok) {
-        const errText = await uploadResp.text().catch(() => "");
+      try {
+        const result = await uploadProfileImageWithProgress(
+          file,
+          (loaded, total) => {
+            if (typeof mgr.onProgress === "function") {
+              try {
+                mgr.onProgress(img.id, loaded, total);
+              } catch {}
+            }
+          }
+        );
+        if (!result?.imageId) {
+          failedImages.push({
+            index,
+            id: img.id,
+            name: file.name,
+            reason: "No imageId returned",
+          });
+          continue;
+        }
+        createdImageIds.push(result.imageId);
+        safeRevokeObjectURL(img.url);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Upload failed";
         failedImages.push({
           index,
           id: img.id,
           name: file.name,
-          reason: `Upload failed (${uploadResp.status})${errText ? `: ${errText}` : ""}`,
+          reason: message,
         });
         continue;
       }
-
-      const json = (await uploadResp.json().catch(() => ({}))) as {
-        imageId?: string;
-      };
-      if (!json?.imageId) {
-        failedImages.push({
-          index,
-          id: img.id,
-          name: file.name,
-          reason: "No imageId returned",
-        });
-        continue;
-      }
-      createdImageIds.push(json.imageId);
-      safeRevokeObjectURL(img.url);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unknown image upload error";

@@ -26,12 +26,14 @@ import {
   Target,
   Award,
   Building2,
+  Eye,
 } from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
 import { Id } from "@convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/components/AuthProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -51,6 +53,7 @@ import { SafetyActionButton } from "@/components/safety/SafetyActionButton";
 import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
 import { useBlockStatus } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
+import { useSubscriptionGuard } from "@/hooks/useSubscription";
 import {
   calculateAge,
   formatHeight,
@@ -70,7 +73,11 @@ type Interest = {
 export default function ProfileDetailPage() {
   const params = useParams();
   // Cookie-auth only; remove token from context
-  const { profile: rawCurrentUserProfile, isLoaded, isAuthenticated } = useAuthContext();
+  const {
+    profile: rawCurrentUserProfile,
+    isLoaded,
+    isAuthenticated,
+  } = useAuthContext();
   const currentUserProfile = rawCurrentUserProfile as {
     _id?: string;
     userId?: string;
@@ -79,6 +86,7 @@ export default function ProfileDetailPage() {
   const { trackUsage } = useUsageTracking(undefined);
   // Ensure a single declaration of queryClient
   const queryClient = useQueryClient();
+  const { isPremiumPlus } = useSubscriptionGuard();
 
   const id = params?.id as string;
   const userId = id as Id<"users">;
@@ -201,7 +209,9 @@ export default function ProfileDetailPage() {
       if (!fromUserId || !toUserId) return null;
       const url = `/api/interests/status?targetUserId=${encodeURIComponent(String(toUserId))}`;
       try {
-        const data = await (await import("@/lib/http/client")).getJson<any>(url, {
+        const data = await (
+          await import("@/lib/http/client")
+        ).getJson<any>(url, {
           cache: "no-store",
           headers: { "x-client-check": "interest-status" },
         });
@@ -224,9 +234,10 @@ export default function ProfileDetailPage() {
     queryFn: async () => {
       if (!fromUserId) return [];
       const res = await getSentInterests();
-      const payload: unknown = res && typeof res === "object" && "data" in (res as any)
-        ? (res as { data: unknown }).data
-        : res;
+      const payload: unknown =
+        res && typeof res === "object" && "data" in (res as any)
+          ? (res as { data: unknown }).data
+          : res;
       return Array.isArray(payload) ? (payload as Interest[]) : [];
     },
     enabled: !!fromUserId,
@@ -284,6 +295,23 @@ export default function ProfileDetailPage() {
   const imagesKey = imagesToShow.join(",");
 
   const [interestError, setInterestError] = useState<string | null>(null);
+  const interestLoading = loadingInterests || loadingInterestStatus;
+
+  // Viewers count (Premium Plus + own profile)
+  const { data: viewersCount } = useQuery({
+    queryKey: ["profileViewersCount", profile?._id],
+    queryFn: async () => {
+      if (!isOwnProfile || !profile?._id) return 0;
+      const mod = await import("@/lib/utils/profileApi");
+      const arr = await mod.fetchProfileViewers({
+        token: "",
+        profileId: String(profile._id),
+      });
+      return Array.isArray(arr) ? arr.length : 0;
+    },
+    enabled: Boolean(profile?._id) && isOwnProfile && isPremiumPlus,
+    staleTime: 60_000,
+  });
 
   // Record profile view when this component mounts (only if viewing someone else's profile)
   useEffect(() => {
@@ -657,11 +685,41 @@ export default function ProfileDetailPage() {
                 className="flex flex-col items-center mb-8"
               >
                 <div
-                  className="flex items-center gap-2 text-4xl font-serif font-bold text-primary mb-1"
+                  className="flex items-center gap-2 text-4xl font-serif font-bold text-primary mb-1 flex-wrap"
                   style={{ fontFamily: "var(--font-serif)" }}
                 >
                   <UserCircle className="w-8 h-8 text-primary" />
                   {profile?.fullName ?? "-"}
+                  {/* Inline interest status chip (only when viewing others) */}
+                  {!isOwnProfile &&
+                    (interestStatusData?.status === "pending" ||
+                      interestStatusData?.status === "accepted") && (
+                      <Badge
+                        variant="secondary"
+                        className={
+                          (interestStatusData?.status === "accepted"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700") +
+                          " text-xs px-2 py-0.5 rounded-full"
+                        }
+                      >
+                        {interestStatusData?.status === "accepted"
+                          ? "Mutual interest"
+                          : "Interest sent"}
+                      </Badge>
+                    )}
+                  {/* Profile viewers count (own profile + Premium Plus) */}
+                  {isOwnProfile &&
+                    isPremiumPlus &&
+                    typeof viewersCount === "number" && (
+                      <Badge
+                        variant="outline"
+                        className="text-gray-700 border-gray-300 text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" />
+                        {viewersCount}
+                      </Badge>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
                   <MapPin className="w-5 h-5 text-accent" />
@@ -901,57 +959,63 @@ export default function ProfileDetailPage() {
 
               <div className="flex justify-center gap-8 mt-8 mb-2 relative">
                 <AnimatePresence>
-                  {!isOwnProfile && canInteract && (
-                    <motion.button
-                      key={
-                        alreadySentInterest
-                          ? "withdraw-interest"
-                          : "express-interest"
-                      }
-                      className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 font-nunito text-lg font-semibold ${
-                        alreadySentInterest
-                          ? "bg-accent-100 hover:bg-accent-200 text-primary border border-accent-200"
-                          : "bg-primary hover:bg-primary-dark text-white"
-                      }`}
-                      variants={buttonVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="hidden"
-                      whileTap="tap"
-                      onClick={handleInterestClick}
-                      title={
-                        alreadySentInterest
-                          ? "Withdraw Interest"
-                          : "Express Interest"
-                      }
-                      aria-label={
-                        alreadySentInterest
-                          ? "Withdraw Interest"
-                          : "Express Interest"
-                      }
-                      type="button"
-                      disabled={loadingInterests}
-                    >
-                      <motion.span
-                        initial={{ scale: 0.8, opacity: 0.7 }}
-                        animate={{
-                          scale: 1,
-                          opacity: 1,
-                          transition: { duration: 0.3 },
-                        }}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.92 }}
+                  {!isOwnProfile &&
+                    canInteract &&
+                    (interestLoading ? (
+                      <div className="flex items-center justify-center">
+                        <Skeleton className="w-16 h-16 rounded-full" />
+                      </div>
+                    ) : (
+                      <motion.button
+                        key={
+                          alreadySentInterest
+                            ? "withdraw-interest"
+                            : "express-interest"
+                        }
+                        className={`flex items-center justify-center rounded-full p-4 shadow-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 font-nunito text-lg font-semibold ${
+                          alreadySentInterest
+                            ? "bg-accent-100 hover:bg-accent-200 text-primary border border-accent-200"
+                            : "bg-primary hover:bg-primary-dark text-white"
+                        }`}
+                        variants={buttonVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                        whileTap="tap"
+                        onClick={handleInterestClick}
+                        title={
+                          alreadySentInterest
+                            ? "Withdraw Interest"
+                            : "Express Interest"
+                        }
+                        aria-label={
+                          alreadySentInterest
+                            ? "Withdraw Interest"
+                            : "Express Interest"
+                        }
+                        type="button"
+                        disabled={loadingInterests}
                       >
-                        {alreadySentInterest ? (
-                          <div className="relative">
-                            <HeartOff className="w-10 h-10 fill-primary text-primary" />
-                          </div>
-                        ) : (
-                          <Heart className="w-10 h-10 text-white" />
-                        )}
-                      </motion.span>
-                    </motion.button>
-                  )}
+                        <motion.span
+                          initial={{ scale: 0.8, opacity: 0.7 }}
+                          animate={{
+                            scale: 1,
+                            opacity: 1,
+                            transition: { duration: 0.3 },
+                          }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.92 }}
+                        >
+                          {alreadySentInterest ? (
+                            <div className="relative">
+                              <HeartOff className="w-10 h-10 fill-primary text-primary" />
+                            </div>
+                          ) : (
+                            <Heart className="w-10 h-10 text-white" />
+                          )}
+                        </motion.span>
+                      </motion.button>
+                    ))}
                 </AnimatePresence>
                 {/* Heart pop animation overlay */}
                 <AnimatePresence>
