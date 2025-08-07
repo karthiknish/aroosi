@@ -32,7 +32,7 @@ type ImageType = {
 };
 
 const ProfilePage: React.FC = (): React.ReactElement => {
-  const { isLoading: authLoading } = useAuthContext();
+  const { isLoading: authLoading, isLoaded, isAuthenticated } = useAuthContext();
   const router = useRouter();
 
   // Fetch profile data
@@ -65,7 +65,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
       return profileObj ?? undefined;
     },
-    enabled: true,
+    enabled: isLoaded && isAuthenticated,
   });
 
   // Fetch images
@@ -110,7 +110,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
 
         return [];
       },
-      enabled: !!profile?.userId,
+      enabled: isLoaded && isAuthenticated && !!profile?.userId,
     }
   );
 

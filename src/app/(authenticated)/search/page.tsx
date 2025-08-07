@@ -167,28 +167,8 @@ export default function SearchProfilesPage() {
     }
   }, [isSignedIn, isAuthenticated, isLoaded]);
 
-  // Proactively call /api/auth/me (no authClient; pure fetch)
-  const { user } = useAuthContext();
-  const accessToken =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  React.useEffect(() => {
-    async function pingMe() {
-      try {
-        await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-        });
-      } catch {
-        // ignore debug failures
-      }
-    }
-    if (isLoaded && accessToken) {
-      void pingMe();
-    }
-  }, [isLoaded, accessToken]);
+  // Remove proactive raw fetch to /api/auth/me to avoid MISSING_ACCESS during hydration
+  // Centralized client + query guards will load user context safely.
 
   // Defensive: if client-side code tries to route away, log it explicitly
   const originalPush = router.push.bind(router);
@@ -200,10 +180,11 @@ export default function SearchProfilesPage() {
   React.useEffect(() => {
     // eslint-disable-next-line no-console
     console.info("[Search] query enabled?", {
-      enabled: isSignedIn,
-      isSignedIn,
+      enabled: isLoaded && isAuthenticated,
+      isLoaded,
+      isAuthenticated,
     });
-  }, [isSignedIn]);
+  }, [isLoaded, isAuthenticated]);
   const {
     data: searchResults,
     isLoading: loadingProfiles,
@@ -234,7 +215,8 @@ export default function SearchProfilesPage() {
         motherTongue,
         language,
       }),
-    enabled: isSignedIn,
+    // Strict guard: only run when auth is hydrated and authenticated
+    enabled: isLoaded && isAuthenticated,
   });
 
   // Extract profiles and total from search results
