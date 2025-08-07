@@ -46,20 +46,29 @@ export function authErrorResponse(
 
 /**
  * Extract and verify access token from Authorization header.
+ * - Accepts only "Authorization: Bearer <token>"
+ * - Distinguishes missing/malformed header vs invalid/expired token
  */
 export async function requireAuth(req: NextRequest): Promise<AuthPayload> {
-  const header =
-    req.headers.get("authorization") || req.headers.get("Authorization");
-  if (!header || !header.toLowerCase().startsWith("bearer ")) {
-    throw new AuthError("Missing Authorization header", 401, "ACCESS_INVALID");
+  const raw =
+    req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
+  const header = raw.trim();
+
+  // Parse scheme and token robustly (tolerate extra spaces)
+  const [schemeRaw, ...rest] = header.split(/\s+/);
+  const scheme = schemeRaw?.toLowerCase();
+  const token = rest.join(" ").trim();
+
+  if (!header || scheme !== "bearer" || !token) {
+    // Parity with /api/auth/me which uses MISSING_ACCESS for missing header
+    throw new AuthError("Missing Authorization header", 401, "MISSING_ACCESS");
   }
-  const token = header.slice(7).trim();
-  if (!token) throw new AuthError("Missing token", 401, "ACCESS_INVALID");
+
   try {
     const payload = await verifyAccessJWT(token);
     if (!payload?.userId) throw new Error("Invalid token payload");
     return payload as AuthPayload;
-  } catch (e) {
+  } catch {
     throw new AuthError(
       "Invalid or expired access token",
       401,

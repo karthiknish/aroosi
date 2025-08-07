@@ -44,11 +44,16 @@ export async function GET(request: NextRequest) {
       })();
 
     // Authentication via centralized Authorization: Bearer <accessToken>
-    // Fallback to requireAuth which should support Bearer; otherwise extend requireAuth accordingly.
-    const authHeader = request.headers.get("authorization") || request.headers.get("Authorization") || "";
+    // Keep local bearer extraction for subscription limiter usage below.
+    const authHeader =
+      request.headers.get("authorization") ||
+      request.headers.get("Authorization") ||
+      "";
     const bearerToken = (() => {
-      const [scheme, token] = authHeader.split(" ");
-      return scheme?.toLowerCase() === "bearer" && token ? token.trim() : null;
+      const parts = authHeader.trim().split(/\s+/);
+      const scheme = parts[0]?.toLowerCase();
+      const token = parts.slice(1).join(" ").trim();
+      return scheme === "bearer" && token ? token : null;
     })();
 
     const { userId } = await requireAuth(request);
@@ -79,7 +84,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-
     // Parse and validate with Zod
     const { searchParams } = new URL(request.url);
     const paramsObj = Object.fromEntries(searchParams.entries());
@@ -107,8 +111,15 @@ export async function GET(request: NextRequest) {
     } = parsed.data;
 
     // Cross-field validation: ageMin <= ageMax
-    if (typeof ageMin === "number" && typeof ageMax === "number" && ageMin > ageMax) {
-      return errorResponse("Minimum age cannot be greater than maximum age", 400);
+    if (
+      typeof ageMin === "number" &&
+      typeof ageMax === "number" &&
+      ageMin > ageMax
+    ) {
+      return errorResponse(
+        "Minimum age cannot be greater than maximum age",
+        400
+      );
     }
 
     const t0 = Date.now();
@@ -182,6 +193,17 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in search API route:", error);
+
+    // Standardize auth failures from requireAuth
+    const { AuthError, authErrorResponse } = await import(
+      "@/lib/auth/requireAuth"
+    );
+    if (error instanceof AuthError) {
+      return authErrorResponse(error.message, {
+        status: error.status,
+        code: error.code,
+      });
+    }
 
     if (
       error instanceof Error &&

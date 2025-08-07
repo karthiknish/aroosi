@@ -4,7 +4,6 @@
  */
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 import { saveImageMeta, updateImageOrder, getImageUploadUrl } from "@/lib/utils/imageUtil";
-import { tokenStorage } from "@/lib/http/client";
 
 /* ======================
  * Upload manager accessor
@@ -409,10 +408,8 @@ export async function persistServerImageOrder(params: {
     (id) => typeof id === "string" && !id.startsWith("local-") && id.trim().length > 0
   );
   if (filtered.length > 1) {
-    // The imageUtil helper should read Authorization from centralized client or accept token.
-    // Preserve compatibility by passing current access token if the util still needs it.
-    const accessToken = tokenStorage.access || "";
-    await updateImageOrder({ token: accessToken, userId, imageIds: filtered });
+    // Centralized client auto-attaches Authorization; no token bridging necessary.
+    await updateImageOrder({ userId, imageIds: filtered });
   }
 }
 
@@ -424,9 +421,7 @@ export async function persistServerImageOrder(params: {
  * Create upload URL for a new image.
  */
 export async function requestImageUploadUrl(): Promise<string> {
-  // If getImageUploadUrl still expects a token, supply current access token.
-  const accessToken = tokenStorage.access || "";
-  const url = await getImageUploadUrl(accessToken);
+  const url = await getImageUploadUrl();
   if (!url) throw new Error("Failed to get upload URL");
   return url;
 }
@@ -441,8 +436,7 @@ export async function confirmImageMetadata(args: {
   contentType: string;
   fileSize: number;
 }) {
-  const accessToken = tokenStorage.access || "";
-  return saveImageMeta({ token: accessToken, ...args });
+  return saveImageMeta(args);
 }
 
 /**

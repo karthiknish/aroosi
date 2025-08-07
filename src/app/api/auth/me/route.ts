@@ -36,62 +36,37 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Authorization: Bearer <accessToken>
-    const authz = request.headers.get("authorization") || "";
-    const accessToken = authz.toLowerCase().startsWith("bearer ")
-      ? authz.slice(7).trim()
-      : "";
-
-    if (!accessToken) {
-      log(scope, "warn", "Missing Authorization header", {
-        correlationId,
-        type: "no_authorization_header",
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-      });
-      return withNoStore(
-        NextResponse.json(
-          {
-            error: "Missing Authorization header",
-            code: "MISSING_ACCESS",
-            correlationId,
-          },
-          { status: 401 }
-        )
-      );
-    }
-
-    // Verify access token
-    let tokenPayload: { userId: string; email?: string; role?: string } | null =
-      null;
+    // Prefer centralized Bearer parsing + verification for consistency
+    const { requireAuth, AuthError, authErrorResponse } = await import("@/lib/auth/requireAuth");
+    let tokenPayload: { userId: string; email?: string; role?: string };
     try {
-      const { verifyAccessJWT } = await import("@/lib/auth/jwt");
-      tokenPayload = await verifyAccessJWT(accessToken);
+      tokenPayload = (await requireAuth(request)) as any;
     } catch (e) {
-      log(scope, "warn", "Access verification failed", {
+      if (e instanceof AuthError) {
+        log(scope, "warn", "AuthError in /api/auth/me", {
+          correlationId,
+          type: e.code,
+          statusCode: e.status,
+          durationMs: Date.now() - startedAt,
+        });
+        return withNoStore(
+          authErrorResponse(e.message, { status: e.status, code: e.code, correlationId })
+        );
+      }
+      log(scope, "warn", "Unexpected auth failure in /api/auth/me", {
         correlationId,
-        type: "verify_failed",
-        message: e instanceof Error ? e.message : String(e),
+        type: "unexpected_auth_failure",
         statusCode: 401,
         durationMs: Date.now() - startedAt,
       });
       return withNoStore(
-        NextResponse.json(
-          {
-            error: "Invalid or expired access token",
-            code: "ACCESS_INVALID",
-            correlationId,
-          },
-          { status: 401 }
-        )
+        authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId })
       );
     }
 
     // Resolve current user (by Convex; no reliance on cookies)
-    const current = await fetchQuery(
-      api.users.getCurrentUserWithProfile,
-      {}
-    ).catch((e: unknown) => {
+    // If Convex requires server identity rather than user bearer, we still rely on server-side auth result (tokenPayload)
+    const current = await fetchQuery(api.users.getCurrentUserWithProfile, {} as any).catch((e: unknown) => {
       log(scope, "error", "Convex getCurrentUserWithProfile failed", {
         correlationId,
         message: e instanceof Error ? e.message : String(e),
@@ -164,6 +139,7 @@ export async function GET(request: NextRequest) {
       },
       correlationId,
     });
+    // No Set-Cookie usage in pure token model; ensure no-store
 
     log(scope, "info", "Success", {
       correlationId,
@@ -175,14 +151,14 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     log(scope, "error", "Unhandled error", {
       correlationId,
-      statusCode: 401,
+      statusCode: 500,
       message,
       durationMs: Date.now() - startedAt,
     });
     return withNoStore(
       NextResponse.json(
-        { error: "Invalid or expired session", correlationId },
-        { status: 401 }
+        { error: "Server error", correlationId },
+        { status: 500 }
       )
     );
   }
