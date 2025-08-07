@@ -64,9 +64,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Resolve current user explicitly by verified userId to avoid auth-context ambiguity in Convex
-    const current = await fetchQuery(api.users.getUserByIdWithProfile, { userId: tokenPayload.userId as unknown as Id<"users"> }).catch((e: unknown) => {
-      log(scope, "error", "Convex getUserByIdWithProfile failed", {
+    // Fallback to existing Convex query until explicit-by-id variant is available
+    const current = await fetchQuery(api.users.getCurrentUserWithProfile, {} as any).catch((e: unknown) => {
+      log(scope, "error", "Convex getCurrentUserWithProfile failed", {
         correlationId,
         message: e instanceof Error ? e.message : String(e),
         durationMs: Date.now() - startedAt,
