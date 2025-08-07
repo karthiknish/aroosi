@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
     let tokenPayload: { userId: string; email?: string; role?: string };
     try {
       tokenPayload = (await requireAuth(request)) as any;
+      log(scope, "info", "Decoded token payload", {
+        correlationId,
+        tokenPayload,
+      });
     } catch (e) {
       if (e instanceof AuthError) {
         log(scope, "warn", "AuthError in /api/auth/me", {
@@ -65,8 +69,6 @@ export async function GET(request: NextRequest) {
           durationMs: Date.now() - startedAt,
           fromPage,
         });
-        // Return structured error payload for frontend toast consumption
-        // Note: fromPage is included in logs and JSON responses below, but not a supported field of authErrorResponse meta
         const res = authErrorResponse(e.message, { status: e.status, code: e.code, correlationId });
         return withNoStore(res);
       }
@@ -77,7 +79,6 @@ export async function GET(request: NextRequest) {
         durationMs: Date.now() - startedAt,
         fromPage,
       });
-      // Note: fromPage is included in logs and JSON responses below, but not a supported field of authErrorResponse meta
       const res = authErrorResponse("Invalid or expired access token", { status: 401, code: "ACCESS_INVALID", correlationId });
       return withNoStore(res);
     }
@@ -93,6 +94,13 @@ export async function GET(request: NextRequest) {
     });
 
     const user = (current as any)?.user ?? current ?? null;
+    log(scope, "info", "User lookup result", {
+      correlationId,
+      tokenUserId: tokenPayload?.userId,
+      userFound: !!user,
+      userId: user?._id,
+      userEmail: user?.email,
+    });
 
     if (!user) {
       const duration = Date.now() - startedAt;
