@@ -68,13 +68,9 @@ export async function GET(req: NextRequest) {
       if (id && id.length === 24) {
         // Convex profile IDs are usually 24 chars, adjust as needed
         try {
-          const profile = await convexQueryWithAuth(
-            req,
-            api.users.getProfileById,
-            {
-              id: id as Id<"profiles">,
-            } as any
-          );
+          const profile = await convexQueryWithAuth(req, api.users.getProfileOwnerById, {
+            id: id as Id<"profiles">,
+          } as any);
           if (profile) {
             userId = profile.userId;
             log("Found profile by ID", {
@@ -92,13 +88,9 @@ export async function GET(req: NextRequest) {
       // If no profile found by ID, try to get user by ID
       if (!userId) {
         try {
-          const user = await convexQueryWithAuth(
-            req,
-            api.users.getUserPublicProfile,
-            {
-              userId: id as Id<"users">,
-            } as any
-          );
+          const user = await convexQueryWithAuth(req, api.users.getProfileByUserIdPublic, {
+            userId: id as Id<"users">,
+          } as any);
 
           if (user) {
             userId = id as Id<"users">;

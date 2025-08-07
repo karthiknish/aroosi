@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { getConvexClient } from "@/lib/convexClient";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import type { Id } from "@convex/_generated/dataModel";
 
 export async function GET(req: NextRequest) {
@@ -23,62 +23,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.split(" ")[1] || null;
-    if (!token) {
-      console.warn("Public profile GET auth failed", {
+    const res = await convexQueryWithAuth(req, api.users.getProfileByUserIdPublic, {
+      userId: userId as Id<"users">,
+    }).catch((e: unknown) => {
+      console.error("Public profile GET query error", {
         scope: "public_profile.get",
-        type: "auth_failed",
-        correlationId,
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(
-        { success: false, error: "Unauthorized", correlationId },
-        { status: 401 }
-      );
-    }
-
-    const convex = getConvexClient();
-    if (!convex) {
-      console.error("Public profile GET convex not configured", {
-        scope: "public_profile.get",
-        type: "convex_not_configured",
+        type: "convex_query_error",
+        message: e instanceof Error ? e.message : String(e),
         correlationId,
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Convex client not configured",
-          correlationId,
-        },
-        { status: 500 }
-      );
-    }
-    try {
-      // @ts-ignore legacy
-      convex.setAuth?.(token);
-    } catch {}
+      return null as any;
+    });
 
-    const res = await convex
-      .query(api.users.getUserPublicProfile, {
-        userId: userId as Id<"users">,
-      })
-      .catch((e: unknown) => {
-        console.error("Public profile GET query error", {
-          scope: "public_profile.get",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
-      });
-
-    if (!res || !res.profile) {
+    if (!res) {
       console.info("Public profile GET not found", {
         scope: "public_profile.get",
         type: "not_found",
@@ -101,7 +60,7 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json({
       success: true,
-      data: { ...res.profile, userId },
+      data: { ...res, userId },
       correlationId,
     });
   } catch (e) {

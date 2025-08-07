@@ -97,6 +97,23 @@ export const getProfileByUserIdPublic = query({
 });
 
 /**
+ * Fetch a profile by its profile _id, returning the owning userId if found.
+ * Note: a more detailed admin-oriented `getProfileById` exists later; keep this
+ * lightweight variant for general callers to avoid leaking private fields.
+ */
+export const getProfileOwnerById = query({
+  args: { id: v.id("profiles") },
+  handler: async (ctx, { id }) => {
+    const profile = await ctx.db.get(id);
+    if (!profile) return null;
+    return {
+      _id: (profile as any)._id as Id<"profiles">,
+      userId: (profile as any).userId as Id<"users">,
+    } as const;
+  },
+});
+
+/**
  * Current user with public profile, resolved via Convex Auth cookie session.
  * Uses ctx.auth.getUserIdentity() to derive the authenticated identity, then
  * looks up the user by email and returns a minimal shape along with profile.

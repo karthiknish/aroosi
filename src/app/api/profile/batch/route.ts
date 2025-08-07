@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { fetchQuery } from "convex/nextjs";
+import { convexQueryWithAuth } from "@/lib/convexServer";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 export async function POST(req: NextRequest) {
@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
     const results = await Promise.all(
       userIds.map(async (userId: string) => {
         try {
-          const res = await fetchQuery(api.users.getUserPublicProfile, {
+          const res = await convexQueryWithAuth(req, api.users.getProfileByUserIdPublic, {
             userId: userId as Id<"users">,
           } as any);
-          if (res && res.profile) {
-            return { userId, profile: res.profile };
+          if (res) {
+            return { userId, profile: res };
           }
         } catch (e) {
           console.error(`Error fetching profile for userId ${userId}:`, e);
