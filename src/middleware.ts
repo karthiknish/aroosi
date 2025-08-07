@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-// Cookie-only model: remove JWT header parsing entirely
 
-// Define public routes that don't require authentication
+// Token-based approach (Authorization: Bearer <token>):
+// - Do not rely on cookies at all.
+// - Middleware only performs lightweight gating for known authenticated client routes.
+// - Actual auth is enforced in API route handlers using Authorization headers.
+
+// Public pages that never require auth
 const publicRoutes = [
   "/",
   "/sign-in",
@@ -16,13 +20,12 @@ const publicRoutes = [
   "/contact",
   "/forgot-password",
   "/reset-password",
-  "/verify-otp",
   "/oauth",
 ];
 
-// Define API routes that don't require authentication
+// Public API route prefixes (auth handled per-handler)
 const publicApiRoutes = [
-  "/api/auth",
+  "/api/auth", // sign-in, sign-up, refresh, logout, etc.
   "/api/contact",
   "/api/blog",
   "/api/stripe/webhook",
@@ -31,15 +34,16 @@ const publicApiRoutes = [
 function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some((route) => {
     if (route === "/blog" && pathname.startsWith("/blog")) return true;
-    // auth API routes are handled separately; do not mix here
     return pathname === route;
   });
 }
 
-// Single definition: only these are protected. Unknown paths should fall through (404).
-function isKnownProtectedRoute(pathname: string): boolean {
-  // Canonical single definition: only these are protected.
-  // Unknown paths should NOT be treated as protected (let App Router render 404).
+function isPublicApiRoute(pathname: string): boolean {
+  return publicApiRoutes.some((route) => pathname.startsWith(route));
+}
+
+// Known authenticated client routes (pages). Unknown routes fall through to 404.
+function isAuthenticatedClientRoute(pathname: string): boolean {
   return (
     pathname === "/search" ||
     pathname.startsWith("/matches") ||
@@ -52,18 +56,10 @@ function isKnownProtectedRoute(pathname: string): boolean {
   );
 }
 
-// Only these routes are considered protected; unknown paths should fall through (404)
-
-// Treat unknown, non-protected paths as public so App Router can render 404
-
-function isPublicApiRoute(pathname: string): boolean {
-  return publicApiRoutes.some((route) => pathname.startsWith(route));
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Single system path guard
+  // Bypass for system/static paths
   const isSystemPath =
     pathname === "/404" ||
     pathname === "/500" ||
@@ -71,14 +67,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/favicon") ||
     pathname.includes("__next_static") ||
     pathname.includes("__next_data");
-  if (isSystemPath) {
-    return NextResponse.next();
-  }
+  if (isSystemPath) return NextResponse.next();
 
-  // Minimal structured trace (kept lightweight)
+  // Minimal trace
   console.info("MW pass-through", { scope: "auth.middleware", path: pathname });
 
-  // Skip middleware for static files, _next, and favicon (dot files/assets)
+  // Skip middleware for static files and assets
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -87,39 +81,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Public routes
-  if (isPublicRoute(pathname)) {
+  // Always allow public pages and public API routes
+  if (isPublicRoute(pathname) || isPublicApiRoute(pathname)) {
     return NextResponse.next();
   }
 
-  // Public API routes
-  if (isPublicApiRoute(pathname)) {
-    return NextResponse.next();
-  }
-
-  // Pure token model: do not read cookies. Do not enforce auth here.
-  // Let pages hit /api/auth/me (with Authorization header) to resolve session.
-  // Keep optional guard by Authorization header heuristic on known authenticated routes.
-  const isAuthenticatedClientRoute =
-    pathname === "/search" ||
-    pathname.startsWith("/matches") ||
-    pathname.startsWith("/profile") ||
-    pathname.startsWith("/usage") ||
-    pathname.startsWith("/premium-settings") ||
-    pathname.startsWith("/plans") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/(authenticated)");
-
-  if (isAuthenticatedClientRoute) {
+  // For authenticated client routes, allow if Authorization header exists, otherwise redirect to sign-in
+  if (isAuthenticatedClientRoute(pathname)) {
     const authz = request.headers.get("authorization") || "";
     if (authz.toLowerCase().startsWith("bearer ")) {
       return NextResponse.next();
     }
-    // No Authorization header: allow through. The page will call /api/auth/me and handle 401.
-    return NextResponse.next();
+    // No token present: redirect to sign-in with callback for return
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-in";
+    url.searchParams.set("callbackUrl", request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.redirect(url);
   }
 
-  // For API and other routes, pass through. Auth is enforced in the handlers.
+  // For all other routes, pass through; API handlers enforce auth via headers
   return NextResponse.next();
 }
 
