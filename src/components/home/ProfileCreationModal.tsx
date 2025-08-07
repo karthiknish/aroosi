@@ -996,6 +996,7 @@ export function ProfileCreationModal({
                         String(formData.maritalStatus).trim() === "";
                       if (precheckMissing) {
                         // Trigger validation to surface inline errors
+                        showErrorToast(null, "Please complete location and physical details");
                         await handleNext();
                         return;
                       }

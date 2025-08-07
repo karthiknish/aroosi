@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card";
 
 import Link from "next/link";
 import { ArrowRight, Users, Shield, Star, CalendarIcon } from "lucide-react";
-import { showErrorToast } from "@/lib/ui/toast";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -70,6 +70,15 @@ function HeroOnboardingInner() {
   const heroData = formData as unknown as OnboardingData;
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [heroErrors, setHeroErrors] = useState<Record<string, string>>({});
+
+  const fieldLabels: Record<keyof OnboardingData, string> = {
+    profileFor: "This profile is for",
+    gender: "Gender",
+    fullName: "Full Name",
+    dateOfBirth: "Date of Birth",
+    phoneNumber: "Phone Number",
+  };
 
   const handleInputChange = (field: keyof OnboardingData, value: string) => {
     updateFormData({ [field]: value });
@@ -91,14 +100,35 @@ function HeroOnboardingInner() {
   const validateOnboardingStep = (): boolean => {
     const schema = onboardingStepSchemas[step - 1];
     const res = schema.safeParse(heroData);
-    if (!res.success) {
-      showErrorToast(
-        null,
-        res.error.errors[0]?.message || "Please fill in all fields",
-      );
-      return false;
+    if (res.success) {
+      setHeroErrors({});
+      return true;
     }
-    return true;
+    // Build errors map for inline feedback and toast message with field name
+    const nextErrors: Record<string, string> = {};
+    const firstIssue = res.error.errors[0];
+    res.error.errors.forEach((e) => {
+      const key = String(e.path?.[0] || "");
+      if (key && !nextErrors[key]) nextErrors[key] = e.message;
+    });
+    setHeroErrors(nextErrors);
+
+    const firstKey = String(firstIssue?.path?.[0] || "");
+    const label = (fieldLabels as any)[firstKey] || firstKey || "Field";
+    const message = firstIssue?.message || "Please fill in this field";
+    showErrorToast(null, `${label}: ${message}`);
+    // Focus the first invalid field if possible
+    try {
+      const focusId =
+        firstKey === "gender"
+          ? "gender-male"
+          : firstKey === "profileFor"
+            ? "profileFor"
+            : firstKey;
+      const el = document.getElementById(focusId);
+      if (el) (el as HTMLElement).focus();
+    } catch {}
+    return false;
   };
 
   const handleNext = () => {
@@ -137,11 +167,18 @@ function HeroOnboardingInner() {
         (k) => !heroData[k] || String(heroData[k] ?? "").trim() === ""
       );
       if (missing.length > 0) {
-        showErrorToast(null, "Please complete all required fields first.");
+        const pretty = missing
+          .map((k) => fieldLabels[k])
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(", ");
+        const more = missing.length > 3 ? " and more" : "";
+        showErrorToast(null, `Missing: ${pretty}${more}.`);
         return;
       }
       // Open the profile creation modal with the collected data
       setShowProfileModal(true);
+      showSuccessToast("Great! Let’s complete your profile.");
       try {
         if (typeof window !== "undefined") {
           // Fire-and-forget signal for belt-and-braces clearing listeners
@@ -275,6 +312,11 @@ function HeroOnboardingInner() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    {heroErrors.profileFor && (
+                      <p className="text-xs text-red-600 mt-1" id="profileFor-error">
+                        {heroErrors.profileFor}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -294,6 +336,7 @@ function HeroOnboardingInner() {
                             ? "bg-pink-600 hover:bg-pink-700"
                             : ""
                         }`}
+                        id="gender-male"
                         onClick={() => handleInputChange("gender", "male")}
                       >
                         Male
@@ -315,6 +358,11 @@ function HeroOnboardingInner() {
                         Female
                       </Button>
                     </div>
+                    {heroErrors.gender && (
+                      <p className="text-xs text-red-600 mt-1" id="gender-error">
+                        {heroErrors.gender}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -338,7 +386,14 @@ function HeroOnboardingInner() {
                         handleInputChange("fullName", e.target.value)
                       }
                       className="w-full bg-white"
+                      aria-invalid={!!heroErrors.fullName}
+                      aria-describedby={heroErrors.fullName ? "fullName-error" : undefined}
                     />
+                    {heroErrors.fullName && (
+                      <p className="text-xs text-red-600 mt-1" id="fullName-error">
+                        {heroErrors.fullName}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -403,7 +458,12 @@ function HeroOnboardingInner() {
                         />
                       </PopoverContent>
                     </Popover>
-                    {/* Optional friendly message without duplicating validation logic */}
+                    {/* Inline helper and friendly message */}
+                    {heroErrors.dateOfBirth && (
+                      <p className="text-xs text-red-600 mt-1" id="dateOfBirth-error">
+                        {heroErrors.dateOfBirth}
+                      </p>
+                    )}
                     {heroData.dateOfBirth && (
                       <p className="text-sm text-gray-500 mt-1">
                         Date selected: {format(new Date(heroData.dateOfBirth), "PPP")}
@@ -434,7 +494,14 @@ function HeroOnboardingInner() {
                       }}
                       placeholder="7XXX XXXXXX"
                       className="w-full"
+                      aria-invalid={!!heroErrors.phoneNumber}
+                      aria-describedby={heroErrors.phoneNumber ? "phoneNumber-error" : undefined}
                     />
+                    {heroErrors.phoneNumber && (
+                      <p className="text-xs text-red-600 mt-1" id="phoneNumber-error">
+                        {heroErrors.phoneNumber}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

@@ -95,8 +95,8 @@ async function getCroppedImg(
 export function ImageUploader({
   userId,
   orderedImages,
-  generateUploadUrl,
-  uploadImage,
+  generateUploadUrl: _generateUploadUrl,
+  uploadImage: _uploadImage,
   setIsUploading,
   disabled = false,
   isUploading = false,
@@ -297,8 +297,6 @@ export function ImageUploader({
     [
       userId,
       orderedImages,
-      generateUploadUrl,
-      uploadImage,
       setIsUploading,
       onStartUpload,
       customUploadFile,
@@ -413,13 +411,50 @@ export function ImageUploader({
                 </div>
                 <div className="flex flex-wrap items-center gap-2 justify-between">
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant={aspect === 1 ? "default" : "outline"} onClick={() => setAspect(1)} size="sm">1:1</Button>
-                    <Button type="button" variant={aspect === 0.8 ? "default" : "outline"} onClick={() => setAspect(0.8)} size="sm">4:5</Button>
-                    <Button type="button" variant={aspect === 0.75 ? "default" : "outline"} onClick={() => setAspect(0.75)} size="sm">3:4</Button>
+                    <Button
+                      type="button"
+                      variant={aspect === 1 ? "default" : "outline"}
+                      onClick={() => setAspect(1)}
+                      size="sm"
+                    >
+                      1:1
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={aspect === 0.8 ? "default" : "outline"}
+                      onClick={() => setAspect(0.8)}
+                      size="sm"
+                    >
+                      4:5
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={aspect === 0.75 ? "default" : "outline"}
+                      onClick={() => setAspect(0.75)}
+                      size="sm"
+                    >
+                      3:4
+                    </Button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r - 90 + 360) % 360)}><RotateCcw className="w-3 h-3 mr-1" />Rotate</Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setRotate((r) => (r + 90) % 360)}><RotateCw className="w-3 h-3 mr-1" />Rotate</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRotate((r) => (r - 90 + 360) % 360)}
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" />
+                      Rotate
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRotate((r) => (r + 90) % 360)}
+                    >
+                      <RotateCw className="w-3 h-3 mr-1" />
+                      Rotate
+                    </Button>
                   </div>
                 </div>
               </>
