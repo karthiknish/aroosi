@@ -4,12 +4,7 @@ import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   ...authTables,
-  otps: defineTable({
-    email: v.string(),
-    code: v.string(),
-    expiresAt: v.number(),
-    attempts: v.number(),
-  }).index("by_email", ["email"]),
+  // OTP functionality removed
   users: defineTable({
     email: v.string(),
     hashedPassword: v.optional(v.string()),
