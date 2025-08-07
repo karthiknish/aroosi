@@ -1,26 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { fetchMutation } from "convex/nextjs";
 import { Id } from "@convex/_generated/dataModel";
+import { AuthError, authErrorResponse, requireAuth } from "@/lib/auth/requireAuth";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 
 export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.split(" ")[1] || null;
-    if (!token) {
-      console.warn("Profile images ORDER auth failed", {
-        scope: "profile_images.order",
-        type: "auth_failed",
-        correlationId,
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
+    try {
+      await requireAuth(req);
+    } catch (e) {
+      if (e instanceof AuthError) {
+        return authErrorResponse(e.message, { status: e.status, code: e.code });
+      }
+      return authErrorResponse("Authentication failed", {
+        status: 401,
+        code: "ACCESS_INVALID",
       });
-      return NextResponse.json(
-        { error: "Unauthorized", correlationId },
-        { status: 401 }
-      );
     }
 
     let body: { profileId?: string; imageIds?: string[] } = {};
@@ -36,23 +32,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await fetchMutation(
-      api.images.updateProfileImageOrder,
+    const result = await convexMutationWithAuth(
+      req,
+      (await import("@convex/_generated/api")).api.images.updateProfileImageOrder,
       {
         userId: profileId as Id<"users">,
         imageIds: imageIds as Id<"_storage">[],
       } as any
     ).catch((e: unknown) => {
-        console.error("Profile images ORDER mutation error", {
-          scope: "profile_images.order",
-          type: "convex_mutation_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+      console.error("Profile images ORDER mutation error", {
+        scope: "profile_images.order",
+        type: "convex_mutation_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null;
+    });
 
     if (!result) {
       return NextResponse.json(
@@ -61,7 +58,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (result.success) {
+    if ((result as any).success) {
       const response = NextResponse.json(
         { success: true, correlationId },
         { status: 200 }
@@ -77,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: result.message || "Failed to update order", correlationId },
+      { error: (result as any).message || "Failed to update order", correlationId },
       { status: 400 }
     );
   } catch (err) {

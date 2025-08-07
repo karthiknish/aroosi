@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
-import { signAccessJWT, signRefreshJWT } from "@/lib/auth/jwt";
 import { sendWelcomeEmail } from "@/lib/auth/email";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { convexQueryWithAuth, convexMutationWithAuth } from "@/lib/convexServer";
 
 type RateLimitRecord = { count: number; windowStart: number };
 
@@ -78,13 +77,13 @@ export async function POST(request: NextRequest) {
     try {
       // Fetch record
       const now = Date.now();
-      const existing = (await fetchQuery(api.users.getRateLimitByKey, {
+      const existing = (await convexQueryWithAuth(request, api.users.getRateLimitByKey, {
         key: endpointKey,
       }).catch(() => null)) as RateLimitRecord | null;
 
       if (!existing || now - existing.windowStart > WINDOW_MS) {
         // Reset window
-        await fetchMutation(api.users.setRateLimitWindow, {
+        await convexMutationWithAuth(request, api.users.setRateLimitWindow, {
           key: endpointKey,
           windowStart: now,
           count: 1,
@@ -98,7 +97,7 @@ export async function POST(request: NextRequest) {
             Math.ceil((existing.windowStart + WINDOW_MS - now) / 1000)
           );
         } else {
-          await fetchMutation(api.users.incrementRateLimit, {
+          await convexMutationWithAuth(request, api.users.incrementRateLimit, {
             key: endpointKey,
           });
         }
@@ -187,7 +186,7 @@ export async function POST(request: NextRequest) {
     const replayKey = `google_replay:${credHash}`;
 
     try {
-      const existingReplay = (await fetchQuery(api.users.getRateLimitByKey, { key: replayKey }).catch(() => null)) as RateLimitRecord | null;
+      const existingReplay = (await convexQueryWithAuth(request, api.users.getRateLimitByKey, { key: replayKey }).catch(() => null)) as RateLimitRecord | null;
       const now = Date.now();
       if (existingReplay && now - existingReplay.windowStart <= REPLAY_TTL_MS) {
         // Already seen recently -> block as replay
@@ -203,14 +202,14 @@ export async function POST(request: NextRequest) {
       }
       // Record first-seen (or refresh window) using rate limit table as a lightweight TTL store
       if (!existingReplay || now - existingReplay.windowStart > REPLAY_TTL_MS) {
-        await fetchMutation(api.users.setRateLimitWindow, {
+        await convexMutationWithAuth(request, api.users.setRateLimitWindow, {
           key: replayKey,
           windowStart: now,
           count: 1,
         });
       } else {
         // Update count to keep an audit trail; not strictly necessary for enforcement
-        await fetchMutation(api.users.incrementRateLimit, { key: replayKey });
+        await convexMutationWithAuth(request, api.users.incrementRateLimit, { key: replayKey });
       }
     } catch {
       // If Convex is unavailable, skip replay enforcement to avoid false positives
@@ -370,9 +369,9 @@ export async function POST(request: NextRequest) {
       // Throttle by googleId
       if (googleId) {
         const keyG = `google_oauth_gid:${googleId}`;
-        const existingG = (await fetchQuery(api.users.getRateLimitByKey, { key: keyG }).catch(() => null)) as RateLimitRecord | null;
+        const existingG = (await convexQueryWithAuth(request, api.users.getRateLimitByKey, { key: keyG }).catch(() => null)) as RateLimitRecord | null;
         if (!existingG || now - existingG.windowStart > WINDOW_MS_ID) {
-          await fetchMutation(api.users.setRateLimitWindow, { key: keyG, windowStart: now, count: 1 });
+          await convexMutationWithAuth(request, api.users.setRateLimitWindow, { key: keyG, windowStart: now, count: 1 });
         } else {
           const nextG = (existingG.count as number) + 1;
           if (nextG > MAX_ATTEMPTS_ID) {
@@ -386,7 +385,7 @@ export async function POST(request: NextRequest) {
               { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
             );
           } else {
-            await fetchMutation(api.users.incrementRateLimit, { key: keyG });
+            await convexMutationWithAuth(request, api.users.incrementRateLimit, { key: keyG });
           }
         }
       }
@@ -394,9 +393,9 @@ export async function POST(request: NextRequest) {
       // Throttle by normalized comparison email
       if (normalizedForCompare) {
         const keyE = `google_oauth_email:${normalizedForCompare}`;
-        const existingE = (await fetchQuery(api.users.getRateLimitByKey, { key: keyE }).catch(() => null)) as RateLimitRecord | null;
+        const existingE = (await convexQueryWithAuth(request, api.users.getRateLimitByKey, { key: keyE }).catch(() => null)) as RateLimitRecord | null;
         if (!existingE || now - existingE.windowStart > WINDOW_MS_ID) {
-          await fetchMutation(api.users.setRateLimitWindow, { key: keyE, windowStart: now, count: 1 });
+          await convexMutationWithAuth(request, api.users.setRateLimitWindow, { key: keyE, windowStart: now, count: 1 });
         } else {
           const nextE = (existingE.count as number) + 1;
           if (nextE > MAX_ATTEMPTS_ID) {
@@ -410,7 +409,7 @@ export async function POST(request: NextRequest) {
               { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
             );
           } else {
-            await fetchMutation(api.users.incrementRateLimit, { key: keyE });
+            await convexMutationWithAuth(request, api.users.incrementRateLimit, { key: keyE });
           }
         }
       }
@@ -418,181 +417,91 @@ export async function POST(request: NextRequest) {
       // Best effort; if Convex unavailable, skip per-identifier throttling
     }
 
-    // Prefer lookup by googleId when available, then fall back to email.
-    // This block is hardened to avoid duplicate accounts by googleId under races.
-    user = await fetchQuery(api.users.getUserByGoogleId, { googleId }).catch(
-      () => null
-    );
+    // Prefer lookup by email as canonical identifier (getUserByGoogleId not available)
+    user = (await convexQueryWithAuth(request, api.users.getUserByEmail, {
+      email: normalizedEmail,
+    }).catch(() => null)) as UserLite | null;
 
+    if (!user) {
+      // No googleId match → check by email (redundant, but kept for clarity)
+      user = await convexQueryWithAuth(request, api.users.getUserByEmail, {
+        email: normalizedEmail,
+      }) as UserLite | null;
+
+      if (!user) {
+        // Before creating, re-check for races on both googleId and email
+        // Race checks by googleId not available; fallback to email-only race check
+        const raceEmail = (await convexQueryWithAuth(request, api.users.getUserByEmail, {
+          email: normalizedEmail,
+        }).catch(() => null)) as UserLite | null;
+
+        if (raceEmail) {
+          // If email user already has a different googleId, do not overwrite; choose 409
+          if (raceEmail.googleId && raceEmail.googleId !== googleId) {
+            // Enumeration-resistant generic response for linking conflict
+            return NextResponse.json(
+              {
+                status: "ok",
+                message: "Unable to complete sign-in for this account. Please use the original sign-in method.",
+                code: "ACCOUNT_LINK_CONFLICT",
+              },
+              { status: 200 }
+            );
+          }
+          // Link googleId to the email user
+          user = raceEmail;
+        } else {
+          isNewUser = true;
+          try {
+            await convexMutationWithAuth(request, api.users.createUserAndProfile, {
+              email: normalizedEmail,
+              firstName: given_name || "",
+              lastName: family_name || "",
+              name: name || "",
+              // googleId may be ignored server-side if not supported
+              googleId,
+            });
+          } catch (e) {
+            console.warn("createUserAndProfile failed, will attempt to fetch existing:", e);
+          }
+
+          // Get (or re-fetch) the created user from database
+          user = (await convexQueryWithAuth(request, api.users.getUserByEmail, {
+            email: normalizedEmail,
+          })) as UserLite | null;
+
+          if (!user) {
+            // Enumeration-resistant generic response
+            return NextResponse.json(
+              {
+                status: "error",
+                message: "Unable to complete sign-in at this time. Please try again.",
+                code: "GOOGLE_USER_CREATE_FAILED",
+              },
+              { status: 400 }
+            );
+          }
+
+          // Send welcome email for new users (best effort)
+          try {
+            await sendWelcomeEmail(normalizedEmail, name || "User");
+          } catch (emailError) {
+            console.warn("Failed to send welcome email:", emailError);
+            // Don't fail the auth flow for email issues
+          }
+        }
+      }
+    }
+    // If Google reports a different email:
+    // - Do NOT overwrite primary email if difference is only a Gmail dot/plus alias normalization.
+    // - Otherwise, keep user's chosen primary email (store googleEmail separately if schema supports it).
     if (user) {
-      // If Google reports a different email:
-      // - Do NOT overwrite primary email if difference is only a Gmail dot/plus alias normalization.
-      // - Otherwise, keep user's chosen primary email (store googleEmail separately if schema supports it).
       const userEmailLc = (user.email || "").toLowerCase().trim();
       const userForCompare = normalizeGmailForCompare(userEmailLc);
       if (normalizedForCompare !== userForCompare && userEmailLc !== normalizedEmail) {
         // Non-alias difference (e.g., changed Google primary or different domain)
         // Intentionally not overwriting user.email here; proceed without sync.
         // If you add a googleEmail field later, set it via a dedicated mutation here.
-      }
-    } else {
-      // No googleId match → check by email
-      user = await fetchQuery(api.users.getUserByEmail, {
-        email: normalizedEmail,
-      });
-
-      if (user) {
-        // Before linking, ensure googleId is not already attached to another account
-        const existingByGoogle = await fetchQuery(api.users.getUserByGoogleId, {
-          googleId,
-        }).catch(() => null);
-        if (existingByGoogle && existingByGoogle._id !== user._id) {
-          // Another account already owns this googleId → prefer that canonical account
-          user = existingByGoogle;
-          // Do not overwrite primary email based on Gmail alias differences
-          // If non-alias email differs, consider storing googleEmail separately (no-op here)
-        } else {
-          // Safe to link Google account to email-matched user
-          if (!user.googleId) {
-            // Use guarded link to enforce uniqueness of googleId
-            try {
-              await fetchMutation(api.users.linkGoogleAccountGuarded, {
-                userId: user._id,
-                googleId,
-              });
-              user = { ...user, googleId };
-            } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : String(e);
-              if (
-                msg.includes("GOOGLE_ID_ALREADY_LINKED")
-              ) {
-                // Another account claimed this googleId; prefer that canonical account
-                const existingByGoogle = await fetchQuery(
-                  api.users.getUserByGoogleId,
-                  { googleId }
-                ).catch(() => null);
-                if (existingByGoogle) {
-                  user = existingByGoogle;
-                } else {
-                  return NextResponse.json(
-                    {
-                      error: "Google account already linked to another user",
-                      code: "GOOGLE_ID_CONFLICT",
-                    },
-                    { status: 409 }
-                  );
-                }
-              } else {
-                throw e;
-              }
-            }
-          }
-        }
-      } else {
-        // Before creating, re-check for races on both googleId and email
-        const raceGoogle = await fetchQuery(api.users.getUserByGoogleId, {
-          googleId,
-        }).catch(() => null);
-        if (raceGoogle) {
-          user = raceGoogle;
-          if (user.email?.toLowerCase() !== normalizedEmail) {
-            try {
-              await fetchMutation(api.users.updateUserAndProfileEmail, {
-                userId: user._id,
-                email: normalizedEmail,
-              });
-              user = { ...user, email: normalizedEmail };
-            } catch (syncErr) {
-              console.warn(
-                "Failed to sync user/profile email after race-google:",
-                syncErr
-              );
-            }
-          }
-        } else {
-          const raceEmail = await fetchQuery(api.users.getUserByEmail, {
-            email: normalizedEmail,
-          }).catch(() => null);
-
-          if (raceEmail) {
-            // If email user already has a different googleId, do not overwrite; choose 409
-            if (raceEmail.googleId && raceEmail.googleId !== googleId) {
-              // Enumeration-resistant generic response for linking conflict
-              return NextResponse.json(
-                {
-                  status: "ok",
-                  message: "Unable to complete sign-in for this account. Please use the original sign-in method.",
-                  code: "ACCOUNT_LINK_CONFLICT",
-                },
-                { status: 200 }
-              );
-            }
-            // Link googleId to the email user
-            user = raceEmail;
-            if (!user.googleId) {
-              await fetchMutation(api.auth.linkGoogleAccount, {
-                userId: user._id,
-                googleId,
-              });
-              user = { ...user, googleId };
-            }
-            // Do not overwrite primary email; if schema supports, record googleEmail separately (no-op here)
-          } else {
-            // Create new user with Google account
-            isNewUser = true;
-            try {
-              await fetchMutation(api.auth.createGoogleUser, {
-                email: normalizedEmail,
-                googleId,
-                firstName: given_name || "",
-                lastName: family_name || "",
-                name: name || "",
-              });
-            } catch (e) {
-              // If a race created the user meanwhile, continue
-              console.warn(
-                "createGoogleUser failed, will attempt to fetch existing:",
-                e
-              );
-            }
-
-            // Get (or re-fetch) the created user from database
-            user = await fetchQuery(api.users.getUserByEmail, {
-              email: normalizedEmail,
-            });
-
-            if (!user) {
-              // As a last attempt, try by googleId in case creation attached it
-              const maybeGoogleUser = await fetchQuery(
-                api.users.getUserByGoogleId,
-                { googleId }
-              ).catch(() => null);
-              if (maybeGoogleUser) {
-                user = maybeGoogleUser;
-              }
-            }
-
-            if (!user) {
-              // Enumeration-resistant generic response
-              return NextResponse.json(
-                {
-                  status: "error",
-                  message: "Unable to complete sign-in at this time. Please try again.",
-                  code: "GOOGLE_USER_CREATE_FAILED",
-                },
-                { status: 400 }
-              );
-            }
-
-            // Send welcome email for new users (best effort)
-            try {
-              await sendWelcomeEmail(normalizedEmail, name || "User");
-            } catch (emailError) {
-              console.warn("Failed to send welcome email:", emailError);
-              // Don't fail the auth flow for email issues
-            }
-          }
-        }
       }
     }
 
@@ -608,20 +517,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Account is banned" }, { status: 403 });
     }
 
-    // Generate access & refresh tokens (same as signin/signup)
-    const accessToken = await signAccessJWT({
-      userId: user._id.toString(),
-      email: user.email,
-      role: user.role || "user",
-    });
-    const refreshToken = await signRefreshJWT({
-      userId: user._id.toString(),
-      email: user.email,
-      role: user.role || "user",
-    });
+    // Cookie-based Convex auth: establish session via server action if applicable
+    // In this codebase, session cookies are managed by Convex middleware; the API calls above are already cookie-scoped.
+    // No JWTs are issued to the client for Google auth in cookie model.
 
     // After issuing tokens, fetch profile explicitly by userId (avoid Convex ctx.auth timing)
-    const profile = (await fetchQuery(api.users.getProfileByUserIdPublic, {
+    const profile = (await convexQueryWithAuth(request, api.users.getProfileByUserIdPublic, {
       userId: user._id,
     })) as ProfileLite | null;
 
@@ -641,12 +542,10 @@ export async function POST(request: NextRequest) {
         ? "/search"
         : "/profile/create";
 
-    // PURE TOKEN MODEL: return tokens in body, no Set-Cookie
+    // Cookie session model: do not return JWTs; return normalized user payload and redirect hint
     return NextResponse.json({
       status: isNewUser ? "success" : "ok",
       message: isNewUser ? "Account created successfully" : "Signed in successfully",
-      accessToken,
-      refreshToken,
       user: {
         id: user._id,
         email: user.email,
