@@ -14,10 +14,12 @@ import { showErrorToast } from "@/lib/ui/toast";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
+  onError?: (message: string) => void;
 }
 
 export default function CustomSignupForm({
   onComplete,
+  onError,
 }: CustomSignupFormProps) {
   const [formData, setFormData] = useState({
     email: "",
@@ -91,7 +93,10 @@ export default function CustomSignupForm({
       // Also show a compact toast for visibility
       const first =
         nextErrors.email || nextErrors.password || nextErrors.confirmPassword;
-      if (first) showErrorToast(first);
+      if (first) {
+        showErrorToast(first);
+        onError?.(first);
+      }
       return false;
     }
     return true;
@@ -227,6 +232,7 @@ export default function CustomSignupForm({
           }));
           showErrorToast(msg);
           setIsLoading(false);
+          onError?.(msg);
           return;
         }
       }
@@ -238,6 +244,7 @@ export default function CustomSignupForm({
           (data as any)?.message ||
           "An account with this email already exists";
         showErrorToast(msg);
+        onError?.(msg);
         setIsLoading(false);
         return;
       }
@@ -268,6 +275,7 @@ export default function CustomSignupForm({
           }));
           showErrorToast(userMsg);
           setIsLoading(false);
+          onError?.(userMsg);
           return;
         }
 
@@ -287,6 +295,7 @@ export default function CustomSignupForm({
           }
           showErrorToast(userMsg);
           setIsLoading(false);
+          onError?.(userMsg);
           return;
         }
 
@@ -311,6 +320,7 @@ export default function CustomSignupForm({
           }
           showErrorToast(userMsg);
           setIsLoading(false);
+          onError?.(userMsg);
           return;
         }
 
@@ -318,6 +328,7 @@ export default function CustomSignupForm({
         if (typeof raw?.message === "string") {
           showErrorToast(raw.message);
           setIsLoading(false);
+          onError?.(raw?.message);
           return;
         }
 
@@ -325,10 +336,11 @@ export default function CustomSignupForm({
         if (typeof raw?.correlationId === "string") {
           userMsg += ` [Ref: ${raw.correlationId}]`;
         }
-        showErrorToast(
+        const finalMsg =
           userMsg ||
-            "We couldn't create your account. Please review your details and try again."
-        );
+          "We couldn't create your account. Please review your details and try again.";
+        showErrorToast(finalMsg);
+        onError?.(finalMsg);
         setIsLoading(false);
         return;
       }
@@ -341,6 +353,7 @@ export default function CustomSignupForm({
           (typeof raw === "string" ? raw : null) ||
           "Failed to create account";
         showErrorToast(msg);
+        onError?.(msg);
         setIsLoading(false);
         return;
       }
@@ -399,6 +412,7 @@ export default function CustomSignupForm({
     } catch (err) {
       console.error("Signup request failed", err);
       showErrorToast("An unexpected error occurred");
+      onError?.("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }

@@ -17,6 +17,18 @@ export default function SignInPage() {
 
   const router = useRouter();
 
+  // UI-local error message injected into the form container
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  // Expose setter so child can report errors without prop drilling deeper wrappers
+  React.useEffect(() => {
+    (window as any).__signin_setErr = setErrorMessage;
+    return () => {
+      try {
+        delete (window as any).__signin_setErr;
+      } catch {}
+    };
+  }, []);
+
   // Compute redirect only after auth state is loaded and authenticated
   // Redirect to /search after sign-in; do NOT send to "/" (home) anymore
   const isTrulyAuthenticated = isAuthenticated;
@@ -111,6 +123,9 @@ export default function SignInPage() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
+          {/* Inline server error display */}
+          {/* Error message will be injected via state managed here */}
+          {/* See state hook added below */}
           {/* Always show sign-in form for maximum safety.
              If a valid session exists, the effect above will redirect quickly. */}
           <CustomSignInForm
@@ -129,7 +144,17 @@ export default function SignInPage() {
               } catch {
                 // ignore
               }
+              // Clear any prior error on success
+              try {
+                // no-op if state not present yet
+                (window as any).__signin_setErr?.(null);
+              } catch {}
               router.push("/search");
+            }}
+            onError={(msg) => {
+              try {
+                (window as any).__signin_setErr?.(msg || "Sign in failed");
+              } catch {}
             }}
           />
           <p className="text-center text-sm mt-4">

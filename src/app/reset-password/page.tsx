@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { postJson } from "@/lib/http/client";
 
-export default function ResetPasswordPage() {
+function ResetPasswordInner() {
   const params = useSearchParams();
   const router = useRouter();
   const emailFromQuery = useMemo(() => params.get("email") || "", [params]);
@@ -168,5 +168,14 @@ export default function ResetPasswordPage() {
         </motion.form>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  // Wrap client navigation/searchParams usage with Suspense per Next.js guidance.
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+      <ResetPasswordInner />
+    </Suspense>
   );
 }

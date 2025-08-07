@@ -1467,8 +1467,18 @@ export function ProfileCreationModal({
                         // After signup completes, we rely on the existing auto-submit effect
                         // to create the profile and navigate. Keep a lightweight guard here.
                         try {
-                          showSuccessToast("Account created. Finalizing your profile...");
+                          showSuccessToast(
+                            "Account created. Finalizing your profile..."
+                          );
                         } catch {}
+                      }}
+                      onError={(msg) => {
+                        const m =
+                          typeof msg === "string" && msg.trim().length > 0
+                            ? msg
+                            : "Sign up failed";
+                        // Surface inline via toast; Step 7 does not have a dedicated inline error area yet.
+                        showErrorToast(m);
                       }}
                     />
                   </div>

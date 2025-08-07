@@ -13,10 +13,12 @@ import { showErrorToast } from "@/lib/ui/toast";
 
 interface CustomSignInFormProps {
   onComplete?: () => void;
+  onError?: (message: string) => void;
 }
 
 export default function CustomSignInForm({
   onComplete,
+  onError,
 }: CustomSignInFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,20 +59,25 @@ export default function CustomSignInForm({
         setTimeout(() => {
           const hasProfile = user && user.profile && (user.profile as any).id;
           if (!hasProfile) {
-            showErrorToast(
-              "No profile found for this account. Please create a profile first."
-            );
+            const msg =
+              "No profile found for this account. Please create a profile first.";
+            onError?.(msg);
+            showErrorToast(msg);
             setIsLoading(false);
             return;
           }
           handleOnboardingComplete();
         }, 100);
       } else {
-        showErrorToast(result.error || "Sign in failed");
+        const msg = result.error || "Sign in failed";
+        onError?.(msg);
+        showErrorToast(msg);
         setIsLoading(false);
       }
     } catch (err) {
-      showErrorToast("An unexpected error occurred");
+      const msg = "An unexpected error occurred";
+      onError?.(msg);
+      showErrorToast(msg);
       setIsLoading(false);
     }
   };
