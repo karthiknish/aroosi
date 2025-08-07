@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import GoogleAuthButton from "./GoogleAuthButton";
 import { showErrorToast } from "@/lib/ui/toast";
-import { authFetch } from "@/lib/api/authClient";
+
 
 interface CustomSignInFormProps {
   onComplete?: () => void;
@@ -47,7 +47,7 @@ export default function CustomSignInForm({
 
       // Explicitly call /api/auth/me to log correlation/debug headers for visibility
       try {
-        await authFetch("/api/auth/me", { method: "GET" });
+        await fetch("/api/auth/me", { method: "GET", headers: { accept: "application/json" } });
       } catch {
         // ignore logging failures; UI behavior below still applies
       }

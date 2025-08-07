@@ -97,39 +97,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Cookie-only model: do not gate with JWT tokens in middleware.
-  // Let route handlers enforce auth using cookies and Convex identity.
-  // We only optionally redirect known protected app pages if no session cookies are present.
-
-  const refreshCookie = request.cookies.get("refresh-token")?.value;
-  const hasSessionCookie =
-    request.cookies.get("__Secure-next-auth.session-token")?.value ||
-    request.cookies.get("next-auth.session-token")?.value ||
-    request.cookies.get("__Secure-session-token")?.value ||
-    request.cookies.get("session-token")?.value;
-
+  // Pure token model: do not read cookies. Do not enforce auth here.
+  // Let pages hit /api/auth/me (with Authorization header) to resolve session.
+  // Keep optional guard by Authorization header heuristic on known authenticated routes.
   const isAuthenticatedClientRoute =
     pathname === "/search" ||
     pathname.startsWith("/matches") ||
     pathname.startsWith("/profile") ||
     pathname.startsWith("/usage") ||
     pathname.startsWith("/premium-settings") ||
-    pathname.startsWith("/plans");
+    pathname.startsWith("/plans") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/(authenticated)");
 
-  // Allow navigation to app; client/pages will call /api/auth/me to resolve session.
   if (isAuthenticatedClientRoute) {
-    if (hasSessionCookie || refreshCookie) {
+    const authz = request.headers.get("authorization") || "";
+    if (authz.toLowerCase().startsWith("bearer ")) {
       return NextResponse.next();
     }
-    // No session at all -> redirect to sign-in for app pages
-    const signInUrl = new URL("/sign-in", request.url);
-    signInUrl.searchParams.set("redirect_url", pathname);
-    console.warn("MW redirect missing session", {
-      scope: "auth.middleware",
-      decision: "redirect_missing_session",
-      path: pathname,
-    });
-    return NextResponse.redirect(signInUrl);
+    // No Authorization header: allow through. The page will call /api/auth/me and handle 401.
+    return NextResponse.next();
   }
 
   // For API and other routes, pass through. Auth is enforced in the handlers.

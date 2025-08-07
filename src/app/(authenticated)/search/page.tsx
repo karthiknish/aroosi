@@ -167,17 +167,15 @@ export default function SearchProfilesPage() {
     }
   }, [isSignedIn, isAuthenticated, isLoaded]);
 
-  // Proactively call /api/auth/me with credentials and log correlation/debug headers
+  // Proactively call /api/auth/me (no authClient; pure fetch)
   React.useEffect(() => {
     async function pingMe() {
       try {
-        const { authFetch } = await import("@/lib/api/authClient");
-        await authFetch("/api/auth/me", { method: "GET" });
+        await fetch("/api/auth/me", { method: "GET", headers: { accept: "application/json" } });
       } catch {
         // ignore debug failures
       }
     }
-    // Only when we have a user-affecting auth signal changing
     if (isLoaded) {
       void pingMe();
     }
