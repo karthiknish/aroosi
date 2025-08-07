@@ -155,12 +155,7 @@ function HeroOnboardingInner() {
     }
   };
 
-  // Helper to show * for required fields (can be extracted into a tiny component)
-  const RequiredLabel = ({ children }: { children: React.ReactNode }) => (
-    <span>
-      {children} <span className="text-red-500">*</span>
-    </span>
-  );
+  // Use shared RequiredLabel component
   const required = (label: string) => <RequiredLabel>{label}</RequiredLabel>;
 
   return (

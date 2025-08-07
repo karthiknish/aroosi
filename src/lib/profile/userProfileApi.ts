@@ -75,7 +75,6 @@ function validateToken(_token: string): string | null {
  * @returns Promise with profile data or error
  */
 export async function fetchUserProfile(
-  _token: string,
   userId: string,
   retries = 2
 ): Promise<ProfileResponse> {
@@ -102,7 +101,7 @@ export async function fetchUserProfile(
       console.warn(
         `[ProfileAPI] Retrying fetchUserProfile (${retries} attempts left)...`
       );
-      return fetchUserProfile("", userId, retries - 1);
+      return fetchUserProfile(userId, retries - 1);
     }
     return handleApiError(error, "fetchUserProfile");
   }
@@ -116,7 +115,6 @@ export async function fetchUserProfile(
  * @returns Promise with profile images or error
  */
 export async function fetchUserProfileImages(
-  _token: string,
   userId: string,
   retries = 2
 ): Promise<ApiResponse<{ url: string; storageId: string }[]>> {
@@ -159,7 +157,7 @@ export async function fetchUserProfileImages(
       console.warn(
         `[ProfileAPI] Retrying fetchUserProfileImages (${retries} attempts left)...`
       );
-      return fetchUserProfileImages("", userId, retries - 1);
+      return fetchUserProfileImages(userId, retries - 1);
     }
     const apiError = handleApiError(error, "fetchUserProfileImages");
     return { success: false, data: [], error: apiError.error };
@@ -174,7 +172,6 @@ export async function fetchUserProfileImages(
  * @returns Promise with updated profile or error
  */
 export async function updateUserProfile(
-  _token: string,
   updates: Partial<Profile>,
   retries = 2
 ): Promise<ProfileResponse> {
@@ -197,7 +194,7 @@ export async function updateUserProfile(
       console.warn(
         `[ProfileAPI] Retrying updateUserProfile (${retries} attempts left)...`
       );
-      return updateUserProfile("", updates, retries - 1);
+      return updateUserProfile(updates, retries - 1);
     }
     return handleApiError(error, "updateUserProfile");
   }
@@ -212,7 +209,6 @@ export async function updateUserProfile(
  * @returns Promise with operation result and profile data
  */
 export async function submitProfile(
-  _token: string,
   values: Partial<ProfileFormValues>,
   mode: "create" | "edit",
   retries = 2
@@ -288,7 +284,7 @@ export async function submitProfile(
       console.warn(
         `[ProfileAPI] Retrying submitProfile (${retries} attempts left)...`
       );
-      return submitProfile("", values, mode, retries - 1);
+      return submitProfile(values, mode, retries - 1);
     }
     return handleApiError(error, "submitProfile");
   }
@@ -301,7 +297,6 @@ export async function submitProfile(
  * @returns Promise with user profile or error
  */
 export async function getCurrentUserWithProfile(
-  _token: string,
   retries = 2
 ): Promise<ProfileResponse> {
   const url = "/api/user/me";
@@ -371,7 +366,7 @@ export async function getCurrentUserWithProfile(
       console.warn(
         `[ProfileAPI] Retrying getCurrentUserWithProfile (${retries} attempts left)...`
       );
-      return getCurrentUserWithProfile("", retries - 1);
+      return getCurrentUserWithProfile(retries - 1);
     }
     return handleApiError(error, "getCurrentUserWithProfile");
   }
@@ -384,7 +379,6 @@ export async function getCurrentUserWithProfile(
  * @returns Promise with user profile or error
  */
 export async function fetchMyProfile(
-  _token: string,
   retries = 2
 ): Promise<Profile | null> {
   const url = "/api/user/me";
@@ -404,7 +398,7 @@ export async function fetchMyProfile(
           (error.message.includes("Failed to fetch") ||
             error.message.includes("timed out"))))
     ) {
-      return fetchMyProfile("", retries - 1);
+      return fetchMyProfile(retries - 1);
     }
     if (status === 404) return null;
     console.error("[fetchMyProfile] Error:", error);
@@ -419,7 +413,6 @@ export async function fetchMyProfile(
  * @returns Promise with operation result
  */
 export async function deleteUserProfile(
-  _token: string,
   retries = 2
 ): Promise<ApiResponse<null>> {
   const url = "/api/profile";
@@ -441,7 +434,7 @@ export async function deleteUserProfile(
       console.warn(
         `[ProfileAPI] Retrying deleteUserProfile (${retries} attempts left)...`
       );
-      return deleteUserProfile("", retries - 1);
+      return deleteUserProfile(retries - 1);
     }
     return handleApiError(error, "deleteUserProfile");
   }
@@ -459,7 +452,6 @@ export async function deleteUserProfile(
  *  - return JSON: { success: boolean, boostsRemaining?: number, boostedUntil?: number, message?: string }
  */
 export async function boostProfile(
-  _token: string,
   retries = 1
 ): Promise<{ success: boolean; boostsRemaining?: number; boostedUntil?: number; message?: string }> {
   const url = "/api/profile/boost";
@@ -479,7 +471,7 @@ export async function boostProfile(
           (err.message.includes("Failed to fetch") ||
             err.message.includes("timed out"))))
     ) {
-      return boostProfile("", retries - 1);
+      return boostProfile(retries - 1);
     }
     const handled = handleApiError(err, "boostProfile");
     return { success: false, message: handled.error };

@@ -506,9 +506,7 @@ export function ProfileCreationModal({
 
       try {
         // Server-check guard: if a profile already exists (created during signup), skip client submission and redirect
-        const existing = await getCurrentUserWithProfile(
-          undefined as unknown as string
-        );
+        const existing = await getCurrentUserWithProfile();
         if (existing.success && existing.data) {
           console.log(
             "Profile exists after signup; skipping client submission and redirecting to success."
@@ -645,12 +643,7 @@ export function ProfileCreationModal({
         );
 
         console.log("Submitting profile with payload:", payload);
-        // pass undefined for token, server reads HttpOnly cookies
-        const profileRes = await submitProfile(
-          undefined as unknown as string,
-          payload,
-          "create"
-        );
+        const profileRes = await submitProfile(payload, "create");
         if (!profileRes.success) {
           console.error("Profile submission failed:", profileRes.error);
           showErrorToast(profileRes.error, "Failed to create profile");
@@ -967,155 +960,6 @@ export function ProfileCreationModal({
                 }
               }
 
-              // Create file with derived safe MIME type (central helper fileFromBlob)
-              const file = (() => {
-                try {
-                  const { fileFromBlob } = require("./profileCreationHelpers");
-                  return fileFromBlob(blob, img.fileName || "photo.jpg");
-                } catch {
-                  const safeTypeLocal = deriveSafeImageMimeType(blob.type);
-                  return new File([blob], img.fileName || "photo.jpg", {
-                    type: safeTypeLocal,
-                  });
-                }
-              })();
-
-              // 1) Generate upload URL
-              let uploadUrl: string | null = null;
-              try {
-                uploadUrl = await requestImageUploadUrl();
-              } catch (e) {
-                const reason =
-                  e instanceof Error ? e.message : "Failed to get upload URL";
-                console.error(`[upload:${index}] getImageUploadUrl error:`, e);
-                failedImages.push({
-                  index,
-                  id: img.id,
-                  name: file.name,
-                  reason,
-                });
-                continue;
-              }
-              if (!uploadUrl) {
-                const reason = "Failed to get upload URL";
-                console.error(`[upload:${index}] ${reason}`);
-                failedImages.push({
-                  index,
-                  id: img.id,
-                  name: file.name,
-                  reason,
-                });
-                continue;
-              }
-
-              // 2) Upload binary via POST with progress and cancel support to get { storageId }
-              const mgr = createOrGetUploadManager(createUploadManager);
-              const uploadResp = await uploadWithProgress(
-                uploadUrl as string,
-                file,
-                mgr,
-                img.id
-              );
-
-              if (!uploadResp.ok) {
-                let errText = uploadResp.statusText;
-                try {
-                  errText = await uploadResp.text();
-                } catch {}
-                const reason = `Upload failed (${uploadResp.status})${errText ? `: ${errText}` : ""}`;
-                console.error(
-                  `[upload:${index}] Upload failed`,
-                  uploadResp.status,
-                  errText
-                );
-                failedImages.push({
-                  index,
-                  id: img.id,
-                  name: file.name,
-                  reason,
-                });
-                continue;
-              }
-
-              // Convex returns JSON containing { storageId } (or string)
-              let storageJson: unknown;
-              try {
-                storageJson = await uploadResp.json();
-              } catch (e) {
-                const reason = "Failed to parse upload response";
-                console.error(`[upload:${index}] ${reason}`, e);
-                failedImages.push({
-                  index,
-                  id: img.id,
-                  name: file.name,
-                  reason,
-                });
-                continue;
-              }
-              const storageId =
-                typeof storageJson === "object" &&
-                storageJson !== null &&
-                "storageId" in storageJson
-                  ? (storageJson as { storageId?: string }).storageId
-                  : typeof storageJson === "string"
-                    ? storageJson
-                    : null;
-
-              if (!storageId) {
-                const reason = "No storageId returned from upload";
-                console.error(`[upload:${index}] ${reason}`);
-                failedImages.push({
-                  index,
-                  id: img.id,
-                  name: file.name,
-                  reason,
-                });
-                continue;
-              }
-
-              // 3) Confirm metadata and capture imageId for ordering
-              try {
-                const meta = await confirmImageMetadata({
-                  userId,
-                  storageId,
-                  fileName: file.name,
-                  contentType: file.type,
-                  fileSize: file.size,
-                });
-
-                if (meta?.imageId) {
-                  createdImageIds.push(meta.imageId);
-                  // Successful upload & metadata saved: revoke the object URL to free memory
-                  safeRevokeObjectURL(img.url);
-                } else {
-                  const reason = "Server did not return imageId";
-                  console.error(`[upload:${index}] ${reason}`);
-                  failedImages.push({
-                    index,
-                    id: img.id,
-                    name: file.name,
-                    reason,
-                  });
-                  // Best-effort revoke even on failure
-                  safeRevokeObjectURL(img.url);
-                  continue;
-                }
-              } catch (e) {
-                const message =
-                  e instanceof Error
-                    ? e.message
-                    : "Failed to save image metadata";
-                console.error(`[upload:${index}] saveImageMeta error:`, e);
-                failedImages.push({
-                  index,
-                  id: img.id,
-                  name: file.name,
-                  reason: message,
-                });
-                // Revoke object URL on failure as well
-                safeRevokeObjectURL(img.url);
-                continue;
-              }
 
               uploadedCount++;
               console.log(

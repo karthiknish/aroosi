@@ -38,7 +38,8 @@ export async function signInWithProfileCheck(
 
   if (!token) return { success: false, error: "Authentication failed" };
 
-  const profileRes = await getCurrentUserWithProfile(token);
+  // getCurrentUserWithProfile now uses the centralized client and takes no token arg
+  const profileRes = await getCurrentUserWithProfile();
   if (!profileRes.success || !profileRes.data) {
     return {
       success: false,
