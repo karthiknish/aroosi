@@ -17,10 +17,6 @@ export async function updateSpotlightBadge(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   const response = await fetch(`/api/admin/profiles/${profileId}/spotlight`, {
     method: "PUT",
@@ -33,7 +29,12 @@ export async function updateSpotlightBadge(
     throw new Error(`Failed to update spotlight badge: ${errorText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  // Support wrapped success shape
+  if (data && typeof data === "object" && data.success && data.data) {
+    return data.data as SpotlightBadgeResponse;
+  }
+  return data as SpotlightBadgeResponse;
 }
 
 export async function grantSpotlightBadge(

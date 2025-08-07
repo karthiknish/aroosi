@@ -378,6 +378,30 @@ export const adminUpdateProfile = mutation({
 });
 
 /**
+ * Admin: update spotlight badge status and expiration for a profile.
+ */
+export const adminUpdateSpotlightBadge = mutation({
+  args: {
+    profileId: v.id("profiles"),
+    hasSpotlightBadge: v.boolean(),
+    durationDays: v.optional(v.number()),
+  },
+  handler: async (ctx, { profileId, hasSpotlightBadge, durationDays }) => {
+    let expiresAt: number | undefined = undefined;
+    if (hasSpotlightBadge) {
+      const days = Number.isFinite(durationDays) ? (durationDays as number) : 30;
+      expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
+    }
+    await ctx.db.patch(profileId as Id<"profiles">, {
+      hasSpotlightBadge,
+      spotlightBadgeExpiresAt: expiresAt,
+      updatedAt: Date.now(),
+    } as any);
+    return { hasSpotlightBadge, spotlightBadgeExpiresAt: expiresAt } as const;
+  },
+});
+
+/**
  * Admin: delete a profile by id.
  */
 export const deleteProfile = mutation({
