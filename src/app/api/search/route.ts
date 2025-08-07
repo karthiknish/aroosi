@@ -43,7 +43,14 @@ export async function GET(request: NextRequest) {
         }
       })();
 
-    // Authentication via centralized cookie session helper (auto-refresh + forwarding)
+    // Authentication via centralized Authorization: Bearer <accessToken>
+    // Fallback to requireAuth which should support Bearer; otherwise extend requireAuth accordingly.
+    const authHeader = request.headers.get("authorization") || request.headers.get("Authorization") || "";
+    const bearerToken = (() => {
+      const [scheme, token] = authHeader.split(" ");
+      return scheme?.toLowerCase() === "bearer" && token ? token.trim() : null;
+    })();
+
     const { userId } = await requireAuth(request);
 
     if (!userId) {
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         request,
-        "" as unknown as string, // cookie-only: no token
+        bearerToken || "", // pass actual Bearer access token if limiter expects token; otherwise can be ignored internally
         userId,
         "search_performed"
       );

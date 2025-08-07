@@ -1,5 +1,6 @@
 import type { ProfileSearchResult } from "@/app/(authenticated)/search/page";
 import { showErrorToast } from "@/lib/ui/toast";
+import { getJson } from "@/lib/http/client";
 
 // Narrow reusable Result type including server pagination truth
 export type ProfileSearchResponse = {
@@ -11,14 +12,12 @@ export type ProfileSearchResponse = {
 };
 
 /**
- * Fetches profile search results from the API.
- * Canonical filters supported by API: city, country, ageMin, ageMax, preferredGender, page, pageSize.
- * Extra filters (ethnicity, motherTongue, language) now supported server-side and sent when provided.
- * NOTE: API uses 0-based page indexing. Keep callers aligned.
+ * Fetches profile search results from the API using the centralized HTTP client.
+ * API supports: city, country, ageMin, ageMax, preferredGender, page, pageSize,
+ * and extended filters: ethnicity, motherTongue, language.
  * NOTE: API uses 0-based page indexing. Keep callers aligned.
  */
 export async function fetchProfileSearchResults({
-  token,
   page,
   pageSize,
   city,
@@ -26,12 +25,10 @@ export async function fetchProfileSearchResults({
   ageMin,
   ageMax,
   preferredGender, // "any" | "male" | "female" | "other"
-  // Additional filters now supported by API:
   ethnicity,
   motherTongue,
   language,
 }: {
-  token: string;
   page: number; // 0-based, matches API
   pageSize: number;
   city?: string;
@@ -39,12 +36,10 @@ export async function fetchProfileSearchResults({
   ageMin?: number | string;
   ageMax?: number | string;
   preferredGender?: "any" | "male" | "female" | "other";
-  ethnicity?: string; // not used by API (yet)
-  motherTongue?: string; // not used by API (yet)
-  language?: string; // not used by API (yet)
+  ethnicity?: string;
+  motherTongue?: string;
+  language?: string;
 }): Promise<ProfileSearchResponse> {
-  if (!token)
-    return { profiles: [], total: 0, page: 0, pageSize: pageSize || 0 };
   try {
     const params = new URLSearchParams({
       page: String(page ?? 0),
@@ -75,7 +70,7 @@ export async function fetchProfileSearchResults({
       params.append("preferredGender", preferredGender);
     }
 
-    // Extended filters (now supported by API)
+    // Extended filters
     if (ethnicity && ethnicity !== "any") params.append("ethnicity", ethnicity);
     if (motherTongue && motherTongue !== "any")
       params.append("motherTongue", motherTongue);
@@ -83,47 +78,14 @@ export async function fetchProfileSearchResults({
 
     const url = `/api/search?${params.toString()}`;
 
-    // Generate or forward a correlation id for tracing
+    // Generate correlation id for tracing; centralized client will forward it
     const correlationId =
       (typeof crypto !== "undefined" && "randomUUID" in crypto && (crypto as any).randomUUID?.()) ||
       `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "x-correlation-id": correlationId,
-      },
-      cache: "no-store",
-    });
+    // Use centralized client to get automatic Authorization and 401 refresh
+    const json = await getJson<any>(url, { correlationId });
 
-    if (!response.ok) {
-      // Specific handling for plan/limit errors
-      if (response.status === 429) {
-        showErrorToast(
-          "Search limit reached for your current plan. Please try later or upgrade."
-        );
-        return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
-      }
-      if (response.status === 401) {
-        showErrorToast("Session expired. Please sign in again.");
-        return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
-      }
-      // Try to parse error response for debugging in dev
-      let msg = `Failed to fetch search results (${response.status})`;
-      try {
-        const errJson = await response.json();
-        const errMsg = errJson?.error || errJson?.message;
-        if (errMsg && process.env.NODE_ENV === "development") {
-          msg += `: ${errMsg}`;
-        }
-      } catch {
-        // ignore json parse errors
-      }
-      throw new Error(msg);
-    }
-
-    const json = await response.json();
     const envelope = json?.data ?? json;
 
     const profiles = Array.isArray(envelope?.profiles) ? envelope.profiles : [];
@@ -153,6 +115,20 @@ export async function fetchProfileSearchResults({
       correlationId: resolvedCorrelationId,
     };
   } catch (error) {
+    // Handle known statuses via client-thrown error with status (attached in client.ts)
+    const status = (error as any)?.status as number | undefined;
+    if (status === 429) {
+      showErrorToast(
+        "Search limit reached for your current plan. Please try later or upgrade."
+      );
+      return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
+    }
+    if (status === 401) {
+      // After centralized client refresh attempt fails, treat as expired session
+      showErrorToast("Session expired. Please sign in again.");
+      return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
+    }
+
     // Provide clearer UX guidance
     showErrorToast(
       error,

@@ -224,7 +224,6 @@ export default function SearchProfilesPage() {
     ],
     queryFn: () =>
       fetchProfileSearchResults({
-        token: "" as unknown as string,
         page,
         pageSize,
         city,
