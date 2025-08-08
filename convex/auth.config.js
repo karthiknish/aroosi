@@ -1,14 +1,9 @@
-// Auth config for native authentication
-// Clerk configuration removed - using native JWT authentication
+// Auth config for Convex Auth
 export default {
-  jwt: {
-    issuer: "aroosi-native-auth",
-    applicationID: "proper-gull-501",
-  },
   providers: [
     {
-      domain: "aroosi.app",
-      applicationID: "proper-gull-501",
+      domain: process.env.CONVEX_SITE_URL,
+      applicationID: "convex",
     },
   ],
 };
