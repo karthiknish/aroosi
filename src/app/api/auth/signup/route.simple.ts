@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "@convex/_generated/api";
 
 // Simple profile schema for validation
 const profileSchema = z.object({
