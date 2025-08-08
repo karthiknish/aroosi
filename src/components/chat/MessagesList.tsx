@@ -33,6 +33,7 @@ type MessagesListProps = {
   showScrollToBottom: boolean;
   lastReadAt?: number;
   otherLastReadAt?: number;
+  onUnblock?: () => void;
 };
 
 export default function MessagesList(props: MessagesListProps) {
@@ -55,6 +56,7 @@ export default function MessagesList(props: MessagesListProps) {
     showScrollToBottom,
     lastReadAt = 0,
     otherLastReadAt = 0,
+    onUnblock,
   } = props;
 
   if (loading) {
@@ -62,7 +64,17 @@ export default function MessagesList(props: MessagesListProps) {
       <div className="flex-1 relative">
         <div className="p-4 space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={cn("flex", i % 2 ? "justify-end" : "justify-start")}>              <div className={cn("h-6 w-40 rounded-xl", i % 2 ? "bg-primary/20" : "bg-gray-200")} />
+            <div
+              key={i}
+              className={cn("flex", i % 2 ? "justify-end" : "justify-start")}
+            >
+              {" "}
+              <div
+                className={cn(
+                  "h-6 w-40 rounded-xl",
+                  i % 2 ? "bg-primary/20" : "bg-gray-200"
+                )}
+              />
             </div>
           ))}
         </div>
@@ -79,9 +91,23 @@ export default function MessagesList(props: MessagesListProps) {
               <Shield className="w-8 h-8 text-red-500" />
             </div>
             <div>
-              <h3 className="font-medium text-gray-900 mb-1">Chat Unavailable</h3>
-              <p className="text-gray-500 text-sm">You cannot message this user</p>
+              <h3 className="font-medium text-gray-900 mb-1">
+                Chat Unavailable
+              </h3>
+              <p className="text-gray-500 text-sm">
+                You cannot message this user
+              </p>
             </div>
+            {typeof onUnblock === "function" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-1"
+                onClick={onUnblock}
+              >
+                Unblock
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -115,7 +141,8 @@ export default function MessagesList(props: MessagesListProps) {
         ref={scrollRef}
         className="h-full overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 bg-[radial-gradient(circle_at_20%_0%,rgba(0,0,0,0.02),transparent_60%)]"
       >
-        {hasMore && !loading && !empty && (          <div className="flex items-center justify-center py-2">
+        {hasMore && !loading && !empty && (
+          <div className="flex items-center justify-center py-2">
             {loadingOlder ? (
               <div className="flex items-center gap-2 text-neutral-light text-sm">
                 <LoadingSpinner size={16} />
@@ -141,8 +168,12 @@ export default function MessagesList(props: MessagesListProps) {
                 <Smile className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <h3 className="font-medium text-neutral mb-1">Start the conversation!</h3>
-                <p className="text-neutral-light text-sm">Send a message to break the ice</p>
+                <h3 className="font-medium text-neutral mb-1">
+                  Start the conversation!
+                </h3>
+                <p className="text-neutral-light text-sm">
+                  Send a message to break the ice
+                </p>
               </div>
             </div>
           </div>
@@ -152,8 +183,20 @@ export default function MessagesList(props: MessagesListProps) {
               {messages.map((msg: MatchMessage, index: number) => {
                 const isCurrentUser = msg.fromUserId === currentUserId;
                 const prevMsg = index > 0 ? messages[index - 1] : undefined;
-                const showTime = !prevMsg || msg.createdAt - (prevMsg?.createdAt || 0) > 7 * 60 * 1000;
+                const showTime =
+                  !prevMsg ||
+                  msg.createdAt - (prevMsg?.createdAt || 0) > 7 * 60 * 1000;
                 const isVoice = msg.type === "voice" && !!msg.audioStorageId;
+                const isNewDay = (() => {
+                  if (!prevMsg) return true;
+                  const d1 = new Date(prevMsg.createdAt);
+                  const d2 = new Date(msg.createdAt);
+                  return (
+                    d1.getFullYear() !== d2.getFullYear() ||
+                    d1.getMonth() !== d2.getMonth() ||
+                    d1.getDate() !== d2.getDate()
+                  );
+                })();
 
                 return (
                   <motion.div
@@ -164,34 +207,58 @@ export default function MessagesList(props: MessagesListProps) {
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     className="space-y-1"
                   >
+                    {isNewDay && (
+                      <div className="flex items-center gap-3 my-2">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                          {new Date(msg.createdAt).toLocaleDateString(
+                            undefined,
+                            {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
+                        </span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                    )}
                     {index === firstUnreadIndex && (
                       <div className="flex items-center gap-3 my-2">
                         <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-[10px] uppercase tracking-wide text-gray-500">Unread</span>
+                        <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                          Unread
+                        </span>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
                     )}
                     {index === lastSeenSeparatorIndex && (
                       <div className="flex items-center gap-3 my-1">
                         <div className="flex-1 h-px bg-blue-200" />
-                        <span className="text-[10px] uppercase tracking-wide text-blue-500">Seen</span>
+                        <span className="text-[10px] uppercase tracking-wide text-blue-500">
+                          Seen
+                        </span>
                         <div className="flex-1 h-px bg-blue-200" />
                       </div>
                     )}
-                        {showTime && (
-                          <div className="text-center py-1">
-                            <span className="text-[10px] text-gray-500 bg-gray-100/80 px-2.5 py-0.5 rounded-full shadow-sm">
-                              {formatMessageTime(msg.createdAt)}
-                            </span>
-                          </div>
-                        )}                                        <div className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
+                    {showTime && (
+                      <div className="text-center py-1">
+                        <span className="text-[10px] text-gray-500 bg-gray-100/80 px-2.5 py-0.5 rounded-full shadow-sm">
+                          {formatMessageTime(msg.createdAt)}
+                        </span>
+                      </div>
+                    )}
+                    <div
+                      className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                    >
                       <div
                         className={cn(
                           "max-w-[280px] px-4 py-3 rounded-2xl shadow-sm text-sm break-words",
                           isCurrentUser
                             ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-md"
                             : "bg-white text-gray-900 rounded-bl-md border border-gray-200"
-                        )}                      >
+                        )}
+                      >
                         {isVoice ? (
                           <VoiceMessageBubble
                             url={`/api/voice-messages/${encodeURIComponent(msg._id)}/url`}
@@ -206,7 +273,9 @@ export default function MessagesList(props: MessagesListProps) {
                         <div
                           className={cn(
                             "text-xs mt-2 flex items-center gap-1",
-                            isCurrentUser ? "text-purple-100 justify-end" : "text-gray-500"
+                            isCurrentUser
+                              ? "text-purple-100 justify-end"
+                              : "text-gray-500"
                           )}
                         >
                           <span className="tabular-nums">
@@ -217,14 +286,46 @@ export default function MessagesList(props: MessagesListProps) {
                           </span>
                           <DeliveryStatus
                             status={(() => {
-                              const base = getMessageDeliveryStatus(msg._id, isCurrentUser);
+                              const base = getMessageDeliveryStatus(
+                                msg._id,
+                                isCurrentUser
+                              );
                               if (!isCurrentUser) return base;
-                              if (otherLastReadAt && msg.createdAt <= otherLastReadAt) return "read" as const;
+                              if (
+                                otherLastReadAt &&
+                                msg.createdAt <= otherLastReadAt
+                              )
+                                return "read" as const;
+                              // If client flagged as pending/failed, override icon to show visual state
+                              const cs = (msg as any).clientStatus as
+                                | "pending"
+                                | "failed"
+                                | "sent"
+                                | undefined;
+                              if (cs === "pending") return "sending" as const;
+                              if (cs === "failed") return "failed" as const;
                               return base;
                             })()}
                             isCurrentUser={isCurrentUser}
                           />
                         </div>
+                        {isCurrentUser &&
+                          (msg as any).clientStatus === "failed" && (
+                            <div className="mt-1 text-right">
+                              <button
+                                className="text-[11px] text-red-500 underline"
+                                onClick={() => {
+                                  // Bubble-level retry will be wired by parent via handlers if needed
+                                  const ev = new CustomEvent("retryMessage", {
+                                    detail: { tempId: msg._id, text: msg.text },
+                                  });
+                                  window.dispatchEvent(ev);
+                                }}
+                              >
+                                Tap to retry
+                              </button>
+                            </div>
+                          )}
                       </div>
                     </div>
                   </motion.div>
@@ -233,13 +334,16 @@ export default function MessagesList(props: MessagesListProps) {
 
               {/* Typing indicator */}
               {Array.isArray(typingUsers) && typingUsers.length > 0 && (
-                <TypingIndicator userName={matchUserName} avatarUrl={matchUserAvatarUrl} key="typing-indicator" />
+                <TypingIndicator
+                  userName={matchUserName}
+                  avatarUrl={matchUserAvatarUrl}
+                  key="typing-indicator"
+                />
               )}
             </AnimatePresence>
           </>
         )}
       </div>
-
       {/* Scroll to bottom button */}
       <AnimatePresence>
         {showScrollToBottom && (
@@ -259,6 +363,7 @@ export default function MessagesList(props: MessagesListProps) {
             </Button>
           </motion.div>
         )}
-      </AnimatePresence>    </div>
+      </AnimatePresence>{" "}
+    </div>
   );
 }

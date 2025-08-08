@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { convexMutationWithAuth } from "@/lib/convexServer";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
@@ -11,7 +11,9 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId } = session;
 
     // Use subscription-aware rate limiter for consistency
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -81,17 +83,7 @@ export async function POST(request: NextRequest) {
     await convexMutationWithAuth(request, api.messages.markConversationRead, {
       conversationId,
       userId: userId as Id<"users">,
-    } as any).catch((e: unknown) => {
-      console.error("Messages read POST mutation error", {
-        scope: "messages.read",
-        type: "convex_mutation_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      throw e;
-    });
+    } as any).catch((e: unknown) => Promise.reject(e));
 
     // Publish SSE event for read receipts
     try {
@@ -102,23 +94,19 @@ export async function POST(request: NextRequest) {
         userId,
         readAt: Date.now(),
       });
-    } catch (eventError) {
-      console.warn("Messages read POST broadcast warn", {
-        scope: "messages.read",
-        type: "broadcast_warn",
-        message:
-          eventError instanceof Error ? eventError.message : String(eventError),
-        correlationId,
-      });
+    } catch {
+      /* ignore */
     }
 
-    console.info("Messages read POST success", {
-      scope: "messages.read",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.info("Messages read POST success", {
+        scope: "messages.read",
+        type: "success",
+        correlationId,
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
+      });
+    }
     return successResponse(
       {
         message: "Conversation marked as read",
@@ -131,16 +119,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("Messages read POST unhandled error", {
-      scope: "messages.read",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
     return errorResponse("Failed to mark conversation as read", 500, {
       correlationId,
+      message,
     });
   }
 }

@@ -66,6 +66,21 @@ export const createUserAndProfile = mutation({
 });
 
 /**
+ * Update a user's hashed password directly by userId.
+ * This is intended to be called from a trusted server route only.
+ */
+export const updateUserPassword = mutation({
+  args: {
+    userId: v.id("users"),
+    hashedPassword: v.string(),
+  },
+  handler: async (ctx, { userId, hashedPassword }) => {
+    await ctx.db.patch(userId as Id<"users">, { hashedPassword } as any);
+    return { ok: true } as const;
+  },
+});
+
+/**
  * Public profile by userId
  * Requires profiles index "by_userId" (profiles.userId)
  */

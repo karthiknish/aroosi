@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Id } from "@convex/_generated/dataModel";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { convexMutationWithAuth } from "@/lib/convexServer";
@@ -19,7 +19,9 @@ export async function POST(request: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse as any;
+    const { userId } = session;
 
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
@@ -100,7 +102,9 @@ export async function POST(request: NextRequest) {
     let finalText: string | undefined = text;
 
     if (resolvedType === "text") {
-      const { validateMessagePayload } = await import("@/lib/utils/messageValidation");
+      const { validateMessagePayload } = await import(
+        "@/lib/utils/messageValidation"
+      );
       const v = validateMessagePayload({
         conversationId,
         fromUserId,
@@ -108,7 +112,10 @@ export async function POST(request: NextRequest) {
         text: text ?? "",
       });
       if (!v.isValid) {
-        return json({ success: false, error: v.error || "Invalid message" }, 400);
+        return json(
+          { success: false, error: v.error || "Invalid message" },
+          400
+        );
       }
       finalText = v.sanitizedText!;
     } else if (resolvedType === "voice") {
@@ -149,7 +156,12 @@ export async function POST(request: NextRequest) {
         mimeType,
       } as any
     ).catch((e: unknown) => {
-      const msg = e instanceof Error ? e.message : typeof e === "string" ? e : "Send failed";
+      const msg =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : "Send failed";
       throw new Error(String(msg));
     });
 
@@ -171,7 +183,10 @@ export async function POST(request: NextRequest) {
     return json({ success: true, data: message }, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return json({ success: false, error: message || "Failed to send message" }, 500);
+    return json(
+      { success: false, error: message || "Failed to send message" },
+      500
+    );
   } finally {
     // console.info("messages.send", { correlationId, durationMs: Date.now() - startedAt });
   }

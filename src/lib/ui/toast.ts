@@ -9,17 +9,33 @@ export function showErrorToast(
   error: unknown,
   fallback = "Something went wrong. Please try again."
 ) {
-  const isDev = process.env.NODE_ENV === "development";
-  let message = fallback;
-  if (isDev) {
-    if (typeof error === "string") {
-      message = error;
-    } else if (error instanceof Error && error.message) {
-      message = error.message;
-    }
+  // Prefer a specific message when provided (string, Error, or ApiFailure shape)
+  let message: string | undefined;
+  if (typeof error === "string" && error.trim()) {
+    message = error.trim();
+  } else if (
+    error &&
+    typeof error === "object" &&
+    "error" in (error as Record<string, unknown>) &&
+    typeof (error as any).error === "string" &&
+    (error as any).error.trim()
+  ) {
+    message = ((error as any).error as string).trim();
+  } else if (error instanceof Error && error.message) {
+    message = error.message.trim();
   }
-  toast.error(message, {
 
+  // Fallback when no specific message available
+  if (!message || message.length === 0) message = fallback;
+
+  // Basic sanitation to avoid multi-line/noisy messages
+  try {
+    message = message.replace(/[\r\n]+/g, " ").slice(0, 300);
+  } catch {
+    // ignore sanitize issues
+  }
+
+  toast.error(message, {
     style: {
       background: "#B45E5E", // brand danger color
       color: "#ffffff",

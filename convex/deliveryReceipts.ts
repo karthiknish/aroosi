@@ -42,7 +42,7 @@ export const recordDeliveryReceipt = mutation({
 
 export const getDeliveryReceipts = query({
   args: {
-    conversationId: v.id("messages"), // This would be the conversation ID
+    conversationId: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -53,7 +53,9 @@ export const getDeliveryReceipts = query({
     // Get all messages in the conversation first
     const messages = await ctx.db
       .query("messages")
-      .filter((q) => q.eq(q.field("conversationId"), args.conversationId))
+      .withIndex("by_conversation", (q) =>
+        q.eq("conversationId", args.conversationId)
+      )
       .collect();
 
     // Get delivery receipts for all messages in the conversation

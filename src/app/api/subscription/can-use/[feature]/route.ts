@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { api } from "@convex/_generated/api";
 import { getSessionFromRequest } from "@/app/api/_utils/authSession";
 import { convexQueryWithAuth } from "@/lib/convexServer";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 /**
  * Prevent 307 domain redirects and enforce JSON-only responses with structured logs.
@@ -47,22 +48,18 @@ export async function GET(
     Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const json = (data: unknown, status = 200) =>
-    new NextResponse(JSON.stringify(data), {
-      status,
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store",
-      },
-    });
+  // All responses use shared success/error helpers for consistent shape
 
   try {
     // Gate with app-layer auth; normalize any helper response into plain JSON
     const session = await getSessionFromRequest(request);
     if (!session.ok) {
-      const res = session.errorResponse as NextResponse;
+      const res = session.errorResponse!;
       const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
+      let body: Record<string, unknown> = {
+        error: "Unauthorized",
+        correlationId,
+      };
       try {
         const txt = await res.text();
         body = txt ? { ...JSON.parse(txt), correlationId } : body;
@@ -74,7 +71,7 @@ export async function GET(
         statusCode: status,
         durationMs: Date.now() - startedAt,
       });
-      return json(body, status);
+      return errorResponse(body?.error || "Unauthorized", status, body);
     }
 
     const params = await context.params;
@@ -89,15 +86,11 @@ export async function GET(
         statusCode: 400,
         durationMs: Date.now() - startedAt,
       });
-      return json(
-        {
-          error: "Invalid feature",
-          reason: `Must be one of: ${validFeatures.join(", ")}`,
-          feature: rawFeature ?? null,
-          correlationId,
-        },
-        400
-      );
+      return errorResponse("Invalid feature", 400, {
+        reason: `Must be one of: ${validFeatures.join(", ")}`,
+        feature: rawFeature ?? null,
+        correlationId,
+      });
     }
 
     const userId = session.userId;
@@ -128,20 +121,19 @@ export async function GET(
         message: e instanceof Error ? e.message : String(e),
         durationMs: Date.now() - startedAt,
       });
-      return json(
-        { error: "Failed to check feature availability", correlationId },
-        500
-      );
+      return errorResponse("Failed to check feature availability", 500, {
+        correlationId,
+      });
     }
 
-    const responseBody = { success: true, data: result, correlationId };
+    const responseBody = { ...result, correlationId };
     log(scope, "info", "Feature check success", {
       correlationId,
       feature,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
-    return json(responseBody, 200);
+    return successResponse(responseBody, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log(scope, "error", "Unhandled error", {
@@ -150,13 +142,9 @@ export async function GET(
       message,
       durationMs: Date.now() - startedAt,
     });
-    return json(
-      {
-        error: "Failed to check feature availability",
-        details: message,
-        correlationId,
-      },
-      500
-    );
+    return errorResponse("Failed to check feature availability", 500, {
+      details: message,
+      correlationId,
+    });
   }
 }

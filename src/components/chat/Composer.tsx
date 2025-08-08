@@ -402,6 +402,17 @@ export default function Composer(props: ComposerProps) {
         )}
       </AnimatePresence>
 
+      {/* Hidden listener to handle bubble-level retry */}
+      <div className="hidden" aria-hidden>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <span
+          tabIndex={-1}
+          id="__retry_listener"
+          onFocus={() => {}}
+          onBlur={() => {}}
+        />
+      </div>
+
       {/* Inline error under composer */}
       <AnimatePresence>
         {error && (

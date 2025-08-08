@@ -66,12 +66,21 @@ export async function GET(req: NextRequest) {
       };
       eventBus.on(conversationId, send);
 
+      // Immediately notify client that stream is open so UI can mark delivered
+      try {
+        controller.enqueue(`event: open\n` + `data: {"type":"sse_open"}\n\n`);
+      } catch {
+        /* ignore */
+      }
+
       heartbeat = setInterval(async () => {
         if (closed) return;
         try {
           // Update presence heartbeat for this user via local API
           try {
-            await fetch(`/api/presence`, { method: "POST" });
+            await fetch(`${req.nextUrl.origin}/api/presence`, {
+              method: "POST",
+            });
           } catch {
             /* ignore */
           }
@@ -93,6 +102,7 @@ export async function GET(req: NextRequest) {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   });
 }

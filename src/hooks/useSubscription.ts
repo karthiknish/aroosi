@@ -114,6 +114,10 @@ export const useSubscriptionActions = () => {
       cancelMutation.isPending ||
       upgradeMutation.isPending ||
       restoreMutation.isPending,
+    // Expose per-action pending flags for finer UI control
+    cancelPending: cancelMutation.isPending,
+    upgradePending: upgradeMutation.isPending,
+    restorePending: restoreMutation.isPending,
   };
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import CustomForgotPasswordForm from "@/components/auth/CustomForgotPasswordForm";
+import { showInfoToast } from "@/lib/ui/toast";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -40,7 +41,10 @@ export default function ForgotPasswordPage() {
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
           <CustomForgotPasswordForm
-            onComplete={() => router.push("/sign-in")}
+            onComplete={() => {
+              showInfoToast("If that email exists, we sent a reset link.");
+              router.push("/sign-in");
+            }}
           />
         </motion.div>
       </div>

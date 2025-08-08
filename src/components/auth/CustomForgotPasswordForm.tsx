@@ -4,17 +4,20 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { postJson } from "@/lib/http/client";
+import { forgotPassword } from "@/lib/auth/client";
 
 interface CustomForgotPasswordFormProps {
   onComplete?: () => void;
 }
 
-export default function CustomForgotPasswordForm({ onComplete }: CustomForgotPasswordFormProps) {
+export default function CustomForgotPasswordForm({
+  onComplete,
+}: CustomForgotPasswordFormProps) {
   const [email, setEmail] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -30,13 +33,10 @@ export default function CustomForgotPasswordForm({ onComplete }: CustomForgotPas
 
       setSubmitting(true);
       try {
-        // Public endpoint
-        await postJson<{ message?: string }>(
-          "/api/auth/forgot-password",
-          { email: safeEmail },
-          { cache: "no-store" }
+        await forgotPassword(safeEmail);
+        setSuccess(
+          "If an account with that email exists, we sent a password reset link."
         );
-        setSuccess("If an account with that email exists, we sent a password reset link.");
         if (onComplete) {
           // Small delay so users can read the message if they stay on page
           setTimeout(() => onComplete(), 800);
@@ -46,7 +46,11 @@ export default function CustomForgotPasswordForm({ onComplete }: CustomForgotPas
           err instanceof Error
             ? err.message
             : "We couldn't process your request right now. Please try again.";
-        setError(msg.includes("429") ? "Too many requests. Please try again later." : msg);
+        setError(
+          msg.includes("429")
+            ? "Too many requests. Please try again later."
+            : msg
+        );
       } finally {
         setSubmitting(false);
       }
@@ -58,7 +62,9 @@ export default function CustomForgotPasswordForm({ onComplete }: CustomForgotPas
     <form onSubmit={handleSubmit} className="w-full">
       <div className="mb-4 text-center">
         <h2 className="text-xl font-semibold">Forgot Password</h2>
-        <p className="text-gray-600 mt-1">Enter your email to receive a reset link.</p>
+        <p className="text-gray-600 mt-1">
+          Enter your email to receive a reset link.
+        </p>
       </div>
 
       {success && (
@@ -73,7 +79,10 @@ export default function CustomForgotPasswordForm({ onComplete }: CustomForgotPas
       )}
 
       <div className="mb-4">
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="email"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Email
         </label>
         <Input
@@ -83,12 +92,14 @@ export default function CustomForgotPasswordForm({ onComplete }: CustomForgotPas
           autoComplete="email"
           placeholder="you@example.com"
           value={email}
+          onBlur={() => setTouched(true)}
           onChange={(e) => setEmail(e.currentTarget.value)}
           required
+          error={touched && !email}
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={submitting}>
+      <Button type="submit" className="w-full" disabled={submitting || !email}>
         {submitting ? "Sending..." : "Send Reset Link"}
       </Button>
     </form>

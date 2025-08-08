@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { convexMutationWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireSession } from "@/app/api/_utils/auth";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 
@@ -10,7 +10,9 @@ export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId } = session;
 
     // Rate limit read operations with subscription-aware limiter
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
@@ -43,7 +45,6 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
     }
-
 
     const url = new URL(request.url);
     const conversationId = url.pathname.split("/").slice(-2, -1)[0];

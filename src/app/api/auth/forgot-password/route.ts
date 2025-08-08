@@ -53,10 +53,8 @@ export async function POST(request: NextRequest) {
         ? `${request.headers.get("x-forwarded-proto")}://${request.headers.get("x-forwarded-host")}`
         : new URL(request.url).origin);
 
-    // We use a one-click link where the front-end will call POST /api/auth/reset-password with token+new password.
-    // The token itself will be generated and emailed here as a signed opaque string (no storage on client).
-    // For simplicity at this step, send a UX link that routes user to /auth/reset and front-end will fetch a token via API.
-    const resetUrl = `${origin}/auth/reset?email=${encodeURIComponent(email)}`;
+    // Build a link to the reset password page. The page reads the email from query params.
+    const resetUrl = `${origin}/reset-password?email=${encodeURIComponent(email)}`;
 
     await sendResetLinkEmail(email, resetUrl);
 

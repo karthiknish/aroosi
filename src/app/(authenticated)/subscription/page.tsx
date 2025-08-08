@@ -11,8 +11,12 @@ import {
   useSubscriptionGuard,
 } from "@/hooks/useSubscription";
 import { useRouter } from "next/navigation";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
-import { createCheckoutSession } from "@/lib/utils/stripeUtil";
+import {
+  createCheckoutSession,
+  openBillingPortal,
+} from "@/lib/utils/stripeUtil";
 import { motion } from "framer-motion";
 import {
   Crown,
@@ -67,7 +71,14 @@ const pricingPlans = [
 
 export default function SubscriptionPage() {
   useAuthContext(); // maintain hook order; no token usage under cookie-auth
-  const { cancel, restore, isLoading } = useSubscriptionActions();
+  const {
+    cancel,
+    restore,
+    isLoading,
+    cancelPending,
+    restorePending,
+    upgradePending,
+  } = useSubscriptionActions();
   const { status, isPremium, isPremiumPlus } = useSubscriptionGuard();
   const router = useRouter();
 
@@ -75,32 +86,68 @@ export default function SubscriptionPage() {
     // Only allow direct upgrade if on free plan (for trial/admin/testing)
     if (status?.plan === "free") {
       // Use Stripe checkout for paid plans; cookie-auth on server side
-      const result = await createCheckoutSession("", {
-        planType: tier,
-        successUrl: window.location.origin + "/plans?checkout=success",
-        cancelUrl: window.location.origin + "/plans?checkout=cancel",
-      } as any);
-      if (result.success && result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
+      try {
+        const result = await createCheckoutSession("", {
+          planType: tier,
+          successUrl: window.location.origin + "/plans?checkout=success",
+          cancelUrl: window.location.origin + "/plans?checkout=cancel",
+        } as any);
+        if (result.success && result.checkoutUrl) {
+          window.location.href = result.checkoutUrl;
+        } else {
+          showErrorToast(result.error || "Checkout failed. Please try again.");
+        }
+      } catch (err) {
+        showErrorToast(err, "Checkout failed. Please try again.");
       }
     } else {
-      // Prevent direct upgrade for paid plans
-      alert("Please use the Stripe portal to manage your subscription.");
+      // Prevent direct upgrade for paid plans; direct users to billing portal
+      showErrorToast(
+        "Please use the Billing Portal to manage your subscription."
+      );
     }
   };
 
   const handleCancel = () => {
     if (
       confirm(
-        "Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.",
+        "Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period."
       )
     ) {
-      cancel();
+      cancel(undefined, {
+        onSuccess: (data) => {
+          showSuccessToast(
+            data.message ||
+              "Cancellation requested. Your plan will remain active until the end of the billing period."
+          );
+        },
+        onError: (error) => {
+          showErrorToast(error, "Failed to request cancellation");
+        },
+      });
     }
   };
 
   const handleRestore = () => {
-    restore();
+    restore(undefined, {
+      onSuccess: (data) => {
+        showSuccessToast(
+          data.message ||
+            "Restore requested. We’ll refresh your subscription shortly."
+        );
+      },
+      onError: (error) => {
+        showErrorToast(error, "Failed to restore purchases");
+      },
+    });
+  };
+
+  const handleManageBilling = async () => {
+    try {
+      await openBillingPortal();
+    } catch (err) {
+      showErrorToast(err, "Failed to open billing portal");
+    }
   };
 
   return (
@@ -172,7 +219,7 @@ export default function SubscriptionPage() {
                   <Button
                     onClick={handleRestore}
                     variant="outline"
-                    disabled={isLoading}
+                    disabled={restorePending}
                     className="border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-colors"
                   >
                     Restore Purchases
@@ -188,10 +235,21 @@ export default function SubscriptionPage() {
 
                   {(isPremium || isPremiumPlus) && (
                     <Button
+                      onClick={handleManageBilling}
+                      variant="outline"
+                      className="border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
+                      disabled={isLoading}
+                    >
+                      Manage Billing
+                    </Button>
+                  )}
+
+                  {(isPremium || isPremiumPlus) && (
+                    <Button
                       onClick={handleCancel}
                       variant="outline"
                       className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors sm:col-span-2"
-                      disabled={isLoading}
+                      disabled={cancelPending}
                     >
                       Cancel Subscription
                     </Button>
@@ -291,11 +349,11 @@ export default function SubscriptionPage() {
                           <Button
                             onClick={() =>
                               handleUpgrade(
-                                plan.id as "premium" | "premiumPlus",
+                                plan.id as "premium" | "premiumPlus"
                               )
                             }
                             className={`w-full ${plan.gradient} text-white hover:opacity-90 transition-opacity`}
-                            disabled={isLoading}
+                            disabled={upgradePending}
                           >
                             Upgrade to {plan.name}
                           </Button>

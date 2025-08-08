@@ -8,8 +8,11 @@ export interface SubscriptionStatusResponse {
   isActive: boolean;
   daysRemaining: number;
   expiresAt: number | null;
+  isTrial?: boolean;
+  trialEndsAt?: number | null;
+  trialDaysRemaining?: number;
 }
- 
+
 // Usage stats response shape aligned with /api/subscription/usage
 export interface SubscriptionUsageResponse {
   plan: string;
@@ -39,7 +42,7 @@ export interface SubscriptionUsageResponse {
     monthlyLimit: number;
   };
 }
- 
+
 class SubscriptionAPI {
   /**
    * Low-level request with token-based auth and no redirect following.
@@ -122,6 +125,9 @@ class SubscriptionAPI {
       subscriptionExpiresAt?: number | null;
       isActive?: boolean;
       daysRemaining?: number;
+      isTrial?: boolean;
+      trialEndsAt?: number | null;
+      trialDaysRemaining?: number;
     };
 
     const plan = (payload.subscriptionPlan ?? "free") || "free";
@@ -148,6 +154,13 @@ class SubscriptionAPI {
           ? payload.daysRemaining
           : fallbackDaysRemaining,
       expiresAt,
+      isTrial: Boolean(payload.isTrial),
+      trialEndsAt:
+        typeof payload.trialEndsAt === "number" ? payload.trialEndsAt : null,
+      trialDaysRemaining:
+        typeof payload.trialDaysRemaining === "number"
+          ? payload.trialDaysRemaining
+          : 0,
     };
   }
 
@@ -288,7 +301,10 @@ class SubscriptionAPI {
    * Track feature usage (optional helper if endpoint exists)
    * POST /api/subscription/track with { feature }
    */
-  async trackUsage(feature: string, token?: string): Promise<{ success: boolean }> {
+  async trackUsage(
+    feature: string,
+    token?: string
+  ): Promise<{ success: boolean }> {
     try {
       const res = (await this.makeRequest(
         "/api/subscription/track",

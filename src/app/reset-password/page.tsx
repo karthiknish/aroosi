@@ -6,7 +6,8 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { postJson } from "@/lib/http/client";
+import { resetPassword } from "@/lib/auth/client";
+import { Eye, EyeOff, Mail } from "lucide-react";
 
 function ResetPasswordInner() {
   const params = useSearchParams();
@@ -17,6 +18,8 @@ function ResetPasswordInner() {
   const [password, setPassword] = useState<string>("");
   const [confirm, setConfirm] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConf, setShowConf] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,12 +48,7 @@ function ResetPasswordInner() {
 
       setSubmitting(true);
       try {
-        // Public endpoint; do not attach Authorization
-        await postJson<{ message?: string }>(
-          "/api/auth/reset-password",
-          { email: safeEmail, password: pwd },
-          { cache: "no-store" }
-        );
+        await resetPassword({ email: safeEmail, password: pwd });
         setSuccess("Password reset successfully. Redirecting to sign-in...");
         setTimeout(() => router.push("/sign-in"), 900);
       } catch (err: unknown) {
@@ -120,7 +118,9 @@ function ResetPasswordInner() {
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
             </label>
-            <Input
+            <div className="relative">
+              <Mail className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
               id="email"
               type="email"
               inputMode="email"
@@ -129,37 +129,61 @@ function ResetPasswordInner() {
               value={email}
               onChange={(e) => setEmail(e.currentTarget.value)}
               required
-            />
+                className="pl-10"
+              />
+            </div>
           </div>
 
           <div className="mb-4">
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               New Password
             </label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.currentTarget.value)}
-              required
-              minLength={8}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPwd ? "text" : "password"}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.currentTarget.value)}
+                required
+                minLength={8}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowPwd((v) => !v)}
+                aria-label={showPwd ? "Hide password" : "Show password"}
+              >
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <div className="mb-6">
             <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 mb-1">
               Confirm New Password
             </label>
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.currentTarget.value)}
-              required
-              minLength={8}
-            />
+            <div className="relative">
+              <Input
+                id="confirm"
+                type={showConf ? "text" : "password"}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.currentTarget.value)}
+                required
+                minLength={8}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowConf((v) => !v)}
+                aria-label={showConf ? "Hide confirm password" : "Show confirm password"}
+              >
+                {showConf ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           <Button type="submit" className="w-full" disabled={submitting}>

@@ -110,6 +110,7 @@ function ModernChat({
         onScrollToBottom={onScrollToBottom}
         showScrollToBottom={showScrollToBottom}
         otherLastReadAt={messagesState.otherLastReadAt}
+        onUnblock={handleBlockUser /* reuse; toggled in dialog elsewhere */}
       />
 
       <Composer

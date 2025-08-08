@@ -92,6 +92,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   
   const config = planConfig[planKey];
   const isExpiringSoon = status.daysRemaining > 0 && status.daysRemaining <= 7;
+  const isTrial = Boolean(status.isTrial);
   const isExpired =
     status.expiresAt && status.expiresAt < Date.now() && status.plan !== "free";
 
@@ -110,12 +111,34 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
               ✨ Spotlight
             </Badge>
           )}
+
+          {/* Trial badge with countdown when available */}
+          {isTrial && (
+            <Badge
+              variant="outline"
+              className="text-emerald-700 border-emerald-600"
+              title={
+                status.trialEndsAt
+                  ? `Ends ${new Date(status.trialEndsAt).toLocaleDateString()}`
+                  : undefined
+              }
+            >
+              Trial {Math.max(0, Number(status.trialDaysRemaining ?? 0))}d left
+            </Badge>
+          )}
         </div>
 
         {"price" in config && config.price && (
           <span className="text-sm text-gray-600">{config.price}</span>
         )}
       </div>
+
+      {/* Small trial end date line below badges */}
+      {isTrial && typeof status.trialEndsAt === "number" && (
+        <div className="mb-3 text-xs text-emerald-700">
+          Trial ends on {new Date(status.trialEndsAt).toLocaleDateString()}
+        </div>
+      )}
 
       {/* Status indicators */}
       {isExpired && (
@@ -126,7 +149,15 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
         </div>
       )}
 
-      {isExpiringSoon && !isExpired && (
+      {isTrial && (
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <p className="text-emerald-800 text-sm font-medium">
+            Trial ends in {status.trialDaysRemaining ?? 0} days
+          </p>
+        </div>
+      )}
+
+      {!isTrial && isExpiringSoon && !isExpired && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-yellow-800 text-sm font-medium">
             Expires in {status.daysRemaining} days

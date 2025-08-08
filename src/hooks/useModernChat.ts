@@ -35,6 +35,7 @@ export function useModernChat({
     hasMore,
     fetchOlder,
     sendMessage,
+    connectionStatus,
     error,
     getLastReadAtForOther,
   } = useMatchMessages(conversationId, "");
@@ -51,6 +52,7 @@ export function useModernChat({
     markMessageAsPending,
     markMessageAsSent,
     markMessageAsRead,
+    markMessageAsDelivered,
   } = useDeliveryReceipts({
     conversationId,
   });
@@ -122,6 +124,16 @@ export function useModernChat({
       }
     })();
   }, [messages, isBlocked, matchUserId, markMessageAsRead]);
+
+  // Optimistic delivered on SSE connect: mark last incoming as delivered
+  useEffect(() => {
+    if (connectionStatus !== "connected") return;
+    const incoming = messages.filter((m) => m.fromUserId === matchUserId);
+    const latest = incoming[incoming.length - 1];
+    if (latest) {
+      markMessageAsDelivered(latest._id);
+    }
+  }, [connectionStatus, messages, matchUserId, markMessageAsDelivered]);
 
   // Auto-scroll to bottom when near bottom and messages change
   const scrollToBottom = useCallback(
@@ -243,6 +255,9 @@ export function useModernChat({
         showErrorToast(null, mapped.message);
         if (mapped.type === "UNAUTHORIZED" || mapped.type === "TOKEN_EXPIRED") {
           console.warn("Auth error; user may need to re-login");
+        }
+        if (mapped.type === "RATE_LIMITED") {
+          showErrorToast(null, "Rate limited. We’ll retry and send shortly.");
         }
       } finally {
         setIsSending(false);

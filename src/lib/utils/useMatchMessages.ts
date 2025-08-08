@@ -2,8 +2,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { matchMessagesAPI, type MatchMessage } from "@/lib/api/matchMessages";
 import { getConversationEventsSSEUrl } from "@/lib/api/conversation";
 
-// Use the MatchMessage type from the API
-type Message = MatchMessage;
+// Extend the API Message locally with client-only fields for optimistic UI
+type Message = MatchMessage & {
+  clientTempId?: string;
+  clientStatus?: "pending" | "failed" | "sent";
+};
 
 type TypingState = Record<string, number>; // userId -> last typing timestamp (ms)
 type ReadState = Record<string, number>;   // userId -> last read timestamp (ms)
@@ -14,6 +17,9 @@ export function useMatchMessages(conversationId: string, _token: string) {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "connecting" | "disconnected"
+  >("connecting");
 
   // New: typing and read receipt state
   const [typingUsers, setTypingUsers] = useState<TypingState>({});
@@ -84,15 +90,18 @@ export function useMatchMessages(conversationId: string, _token: string) {
   }, [hasMore, loadingOlder, messages, conversationId]);
 
   const sendMessage = useCallback(
-    async ({
-      fromUserId,
-      toUserId,
-      text,
-    }: {
-      fromUserId: string;
-      toUserId: string;
-      text: string;
-    }) => {
+    async (
+      {
+        fromUserId,
+        toUserId,
+        text,
+      }: {
+        fromUserId: string;
+        toUserId: string;
+        text: string;
+      },
+      existingTempId?: string
+    ) => {
       setError(null);
       try {
         if (process.env.NODE_ENV === "development") {
@@ -106,16 +115,29 @@ export function useMatchMessages(conversationId: string, _token: string) {
         }
 
         // Optimistic UI update
-        const tmpId = `tmp-${Date.now()}`;
-        const optimisticMsg = {
-          _id: tmpId,
-          conversationId,
-          fromUserId,
-          toUserId,
-          text,
-          createdAt: Date.now(),
-        } as Message;
-        setMessages((prev) => [...prev, optimisticMsg]);
+        const tmpId = existingTempId ?? `tmp-${Date.now()}`;
+        if (existingTempId) {
+          // Reusing a failed bubble: flip it back to pending
+          setMessages((prev) =>
+            prev.map((m) =>
+              m._id === existingTempId
+                ? { ...m, clientStatus: "pending", text }
+                : m
+            )
+          );
+        } else {
+          const optimisticMsg: Message = {
+            _id: tmpId,
+            conversationId,
+            fromUserId,
+            toUserId,
+            text,
+            createdAt: Date.now(),
+            clientTempId: tmpId,
+            clientStatus: "pending",
+          };
+          setMessages((prev) => [...prev, optimisticMsg]);
+        }
 
         matchMessagesAPI
           .sendMessage(null, {
@@ -130,7 +152,9 @@ export function useMatchMessages(conversationId: string, _token: string) {
               const serverMsg = response.data as Message;
               setMessages((prev) => {
                 const replaced = prev.map((m) =>
-                  m._id === tmpId || m._id?.startsWith("tmp-") ? serverMsg : m
+                  m._id === tmpId || m.clientTempId === tmpId
+                    ? { ...serverMsg, clientStatus: "sent" }
+                    : m
                 );
                 // Deduplicate if server also arrives via SSE later
                 const unique = new Map<string, Message>();
@@ -139,12 +163,20 @@ export function useMatchMessages(conversationId: string, _token: string) {
               });
             } else {
               setError(response.error || "Failed to send message");
-              setMessages((prev) => prev.filter((m) => m._id !== tmpId));
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m._id === tmpId ? { ...m, clientStatus: "failed" } : m
+                )
+              );
             }
           })
           .catch((err: Error) => {
             setError(err.message || "Failed to send message");
-            setMessages((prev) => prev.filter((m) => m._id !== tmpId));
+            setMessages((prev) =>
+              prev.map((m) =>
+                m._id === tmpId ? { ...m, clientStatus: "failed" } : m
+              )
+            );
           });
       } finally {
         /* no-op */
@@ -181,6 +213,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
       es.onopen = () => {
         console.log("[SSE] Connection opened");
         reconnectAttempts = 0;
+        setConnectionStatus("connected");
       };
 
       es.onmessage = (event) => {
@@ -241,8 +274,15 @@ export function useMatchMessages(conversationId: string, _token: string) {
         }
       };
 
+      // Some servers send a named event on open; handle it to mark optimistic 'delivered'
+      // Note: EventSource in browsers doesn't expose on 'event' name easily without addEventListener
+      es.addEventListener("open", () => {
+        setConnectionStatus("connected");
+      });
+
       es.onerror = (e) => {
         console.error("[SSE] Connection error:", e);
+        setConnectionStatus("disconnected");
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = reconnectDelay * Math.pow(2, reconnectAttempts);
           setTimeout(() => {
@@ -274,6 +314,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
     loadingOlder,
     hasMore,
     error,
+    connectionStatus,
     fetchMessages,
     fetchOlder,
     sendMessage,

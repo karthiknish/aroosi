@@ -17,13 +17,14 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResult = checkApiRateLimit(`mark_read_${userId}`, 50, 60000);
     if (!rateLimitResult.allowed) {
-      console.warn("Messages mark-read POST rate limited", {
-        scope: "messages.mark_read",
-        type: "rate_limit",
-        correlationId,
-        statusCode: 429,
-        durationMs: Date.now() - startedAt,
-      });
+      if (process.env.NODE_ENV !== "production")
+        console.warn("Messages mark-read POST rate limited", {
+          scope: "messages.mark_read",
+          type: "rate_limit",
+          correlationId,
+          statusCode: 429,
+          durationMs: Date.now() - startedAt,
+        });
       return NextResponse.json(
         { error: "Rate limit exceeded", correlationId },
         { status: 429 }
@@ -88,14 +89,15 @@ export async function POST(request: NextRequest) {
       throw e;
     });
 
-    console.info("Messages mark-read POST success", {
-      scope: "messages.mark_read",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      updatedCount: messageIds.length,
-    });
+    if (process.env.NODE_ENV !== "production")
+      console.info("Messages mark-read POST success", {
+        scope: "messages.mark_read",
+        type: "success",
+        correlationId,
+        statusCode: 200,
+        durationMs: Date.now() - startedAt,
+        updatedCount: messageIds.length,
+      });
     return NextResponse.json(
       {
         success: true,
@@ -109,14 +111,15 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("Messages mark-read POST unhandled error", {
-      scope: "messages.mark_read",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
+    if (process.env.NODE_ENV !== "production")
+      console.error("Messages mark-read POST unhandled error", {
+        scope: "messages.mark_read",
+        type: "unhandled_error",
+        message,
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
     return NextResponse.json(
       { error: "Failed to mark messages as read", correlationId },
       { status: 500 }

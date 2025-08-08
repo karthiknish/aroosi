@@ -81,11 +81,20 @@ export function createTypingHandlers() {
 // ========== ERROR / RETRY ==========
 
 export function handleErrorUtil(error: unknown): {
-  type: "UNAUTHORIZED" | "TOKEN_EXPIRED" | "NETWORK_ERROR" | "UNKNOWN";
+  type:
+    | "UNAUTHORIZED"
+    | "TOKEN_EXPIRED"
+    | "NETWORK_ERROR"
+    | "RATE_LIMITED"
+    | "UNKNOWN";
   message: string;
 } {
-  let type: "UNAUTHORIZED" | "TOKEN_EXPIRED" | "NETWORK_ERROR" | "UNKNOWN" =
-    "UNKNOWN";
+  let type:
+    | "UNAUTHORIZED"
+    | "TOKEN_EXPIRED"
+    | "NETWORK_ERROR"
+    | "RATE_LIMITED"
+    | "UNKNOWN" = "UNKNOWN";
   let message = "An error occurred";
   if (error instanceof Error) {
     message = error.message;
@@ -93,8 +102,12 @@ export function handleErrorUtil(error: unknown): {
       type = "UNAUTHORIZED";
     else if (message.includes("Token expired") || message.includes("403"))
       type = "TOKEN_EXPIRED";
-    else if (message.toLowerCase().includes("network"))
-      type = "NETWORK_ERROR";
+    else if (message.toLowerCase().includes("network")) type = "NETWORK_ERROR";
+    else if (
+      message.toLowerCase().includes("rate limit") ||
+      message.includes("429")
+    )
+      type = "RATE_LIMITED";
   }
   return { type, message };
 }

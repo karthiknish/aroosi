@@ -1,7 +1,8 @@
 // This is a custom password reset endpoint for mobile/web compatibility.
 // Convex Auth handles all other authentication flows.
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
+import { errorResponse, successResponse } from "@/lib/apiResponse";
 import { z } from "zod";
 import {
   convexQueryWithAuth,
@@ -37,32 +38,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const parsed = ResetSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid email or password", correlationId },
-        { status: 400 }
-      );
+      return errorResponse("Invalid email or password", 400, { correlationId });
     }
     const { email, password } = parsed.data;
 
     const user = await convexQueryWithAuth(request, api.users.getUserByEmail, {
       email,
     }).catch(() => null);
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found", correlationId },
-        { status: 404 }
-      );
-    }
-    if ((user as { banned?: boolean }).banned) {
-      return NextResponse.json(
-        { error: "Account is banned", correlationId },
-        { status: 403 }
-      );
-    }
+    if (!user) return errorResponse("User not found", 404, { correlationId });
+    if ((user as { banned?: boolean }).banned)
+      return errorResponse("Account is banned", 403, { correlationId });
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    await convexMutationWithAuth(request, (api as any).auth?.updatePassword ?? (api as any).users?.updateProfile, {
+    await convexMutationWithAuth(request, (api as any).auth?.updatePassword ?? (api as any).users?.updateUserPassword, {
       userId: (user as { _id: Id<"users"> })._id as Id<"users">,
       // For fallback path, pass as update to profile if auth.updatePassword is not available.
       hashedPassword,
@@ -75,10 +64,7 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
 
-    return NextResponse.json(
-      { message: "Password reset successfully", correlationId },
-      { status: 200 }
-    );
+    return successResponse({ message: "Password reset successfully", correlationId }, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("reset-password POST error", {
@@ -89,14 +75,8 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Invalid input data", details: error.errors, correlationId },
-        { status: 400 }
-      );
+      return errorResponse("Invalid input data", 400, { details: error.errors, correlationId });
     }
-    return NextResponse.json(
-      { error: "Internal server error", correlationId },
-      { status: 500 }
-    );
+    return errorResponse("Internal server error", 500, { correlationId });
   }
 }

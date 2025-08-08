@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSubscriptionGuard } from '@/hooks/useSubscription';
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRouter } from 'next/navigation';
 
 interface SubscriptionWidgetProps {
@@ -19,7 +20,18 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
   const router = useRouter();
   const { status, isActive } = useSubscriptionGuard();
 
-  if (!status) return null;
+  if (!status) {
+    return (
+      <div
+        className={`flex items-center justify-between p-3 rounded-lg border ${className}`}
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <LoadingSpinner size={16} />
+      </div>
+    );
+  }
 
   const handleUpgrade = () => {
     router.push('/subscription');
@@ -68,34 +80,54 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
 
   const config = getPlanConfig();
   const isExpiringSoon = status.daysRemaining > 0 && status.daysRemaining <= 7;
+  const isTrial = Boolean(status.isTrial);
 
   if (compact) {
     return (
-      <div className={`flex items-center justify-between p-3 rounded-lg ${config.bgColor} ${config.borderColor} border ${className}`}>
+      <div
+        className={`flex items-center justify-between p-3 rounded-lg ${config.bgColor} ${config.borderColor} border ${className}`}
+      >
         <div className="flex items-center gap-2">
           <Badge className={`${config.color} text-white text-xs`}>
             {config.name}
           </Badge>
+          {isTrial && (
+            <Badge
+              variant="outline"
+              className="text-emerald-600 border-emerald-600 text-xs"
+            >
+              Trial
+            </Badge>
+          )}
           {/* Spotlight badge presence is not part of SubscriptionStatusResponse; show for Plus by convention */}
-          {status.plan === 'premiumPlus' && (
-            <Badge variant="outline" className="text-yellow-600 border-yellow-600 text-xs">
+          {status.plan === "premiumPlus" && (
+            <Badge
+              variant="outline"
+              className="text-yellow-600 border-yellow-600 text-xs"
+            >
               ✨
             </Badge>
           )}
-          {isExpiringSoon && (
-            <span className="text-xs text-yellow-600 font-medium">
-              Expires in {status.daysRemaining} days
+          {isTrial ? (
+            <span className="text-xs text-emerald-600 font-medium">
+              Trial ends in {status.trialDaysRemaining ?? 0} days
             </span>
+          ) : (
+            isExpiringSoon && (
+              <span className="text-xs text-yellow-600 font-medium">
+                Expires in {status.daysRemaining} days
+              </span>
+            )
           )}
         </div>
-        
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={status.plan === 'free' ? handleUpgrade : handleManage}
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={status.plan === "free" ? handleUpgrade : handleManage}
           className={`text-xs ${config.textColor} border-current hover:bg-current hover:text-white`}
         >
-          {status.plan === 'free' ? 'Upgrade' : 'Manage'}
+          {status.plan === "free" ? "Upgrade" : "Manage"}
         </Button>
       </div>
     );

@@ -3,6 +3,7 @@ import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import { convexQueryWithAuth } from "@/lib/convexServer";
 import { getSessionFromRequest } from "@/app/api/_utils/authSession";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 /**
  * Normalize subscription status response and avoid wrappers that might cause 404/rewrites.
@@ -25,9 +26,13 @@ export async function GET(request: NextRequest) {
 
     let profile: unknown = null;
     if (userIdParam) {
-      profile = await convexQueryWithAuth(request, api.profiles.getProfileByUserId, {
-        userId: userIdParam as Id<"users">,
-      }).catch((e: unknown) => {
+      profile = await convexQueryWithAuth(
+        request,
+        api.profiles.getProfileByUserId,
+        {
+          userId: userIdParam as Id<"users">,
+        }
+      ).catch((e: unknown) => {
         console.error("Subscription status getProfileByUserId error", {
           scope: "subscription.status",
           type: "convex_query_error",
@@ -46,14 +51,17 @@ export async function GET(request: NextRequest) {
         api.profiles.getProfileByUserId,
         { userId: session.userId as unknown as Id<"users"> }
       ).catch((e: unknown) => {
-        console.error("Subscription status getProfileByUserId (session) error", {
-          scope: "subscription.status",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
+        console.error(
+          "Subscription status getProfileByUserId (session) error",
+          {
+            scope: "subscription.status",
+            type: "convex_query_error",
+            message: e instanceof Error ? e.message : String(e),
+            correlationId,
+            statusCode: 500,
+            durationMs: Date.now() - startedAt,
+          }
+        );
         return null;
       });
     }
@@ -66,7 +74,7 @@ export async function GET(request: NextRequest) {
         statusCode: 404,
         durationMs: Date.now() - startedAt,
       });
-      return json({ success: false, error: "User profile not found", correlationId }, 404);
+      return errorResponse("User profile not found", 404, { correlationId });
     }
 
     // Narrow profile fields safely
@@ -90,13 +98,25 @@ export async function GET(request: NextRequest) {
       daysRemaining = Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000));
     }
 
-    const response = json(
+    // Optional: trial fields (derive or extend when available)
+    // For now, infer trial as active free plan with a future expiresAtTrial
+    const trialEndsAt = null as number | null; // placeholder until supported server-side
+    const isTrial =
+      plan === "free" && Boolean(trialEndsAt && trialEndsAt > now);
+    const trialDaysRemaining =
+      isTrial && trialEndsAt
+        ? Math.ceil((trialEndsAt - now) / (24 * 60 * 60 * 1000))
+        : 0;
+
+    const response = successResponse(
       {
-        success: true,
         plan,
         isActive,
         expiresAt,
         daysRemaining,
+        isTrial,
+        trialEndsAt,
+        trialDaysRemaining,
         boostsRemaining:
           typeof p.boostsRemaining === "number" ? p.boostsRemaining : 0,
         hasSpotlightBadge: !!p.hasSpotlightBadge,
@@ -128,14 +148,9 @@ export async function GET(request: NextRequest) {
       statusCode: 500,
       durationMs: Date.now() - startedAt,
     });
-    return json(
-      {
-        success: false,
-        error: "Failed to fetch subscription status",
-        details: message,
-        correlationId,
-      },
-      500
-    );
+    return errorResponse("Failed to fetch subscription status", 500, {
+      details: message,
+      correlationId,
+    });
   }
 }
