@@ -34,7 +34,7 @@ export default function GoogleAuthButton({
     try {
       setIsLoading(true);
 
-      // Open our custom Google OAuth initiation endpoint in a popup
+      // Open Convex Auth Google OAuth flow in a popup
       const oauthUrl = "/api/auth/google";
       const popup = openOAuthPopup(oauthUrl, "Continue with Google", {
         onError: (err) => onError?.(err),

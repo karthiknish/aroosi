@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   images: {
     domains: [
       "quirky-akita-969.convex.cloud",
+      "proper-gull-501.convex.cloud",
       "images.pexels.com",
       "images.squarespace-cdn.com",
     ],

@@ -344,23 +344,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign in with Google (cookie-session)
   const signInWithGoogle = useCallback(
-    async (credential: string, state?: string) => {
+    async () => {
       try {
         setError(null);
-        const response = await fetch("/api/auth/google", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ credential, state }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          const errorMessage = data.error || "Google sign in failed";
-          setError(errorMessage);
-          return { success: false, error: errorMessage };
-        }
-        await refreshUser();
+        
+        // For Google OAuth, we redirect to our custom endpoint which will
+        // redirect to Convex Auth
+        window.location.href = "/api/auth/google";
+        
         return { success: true };
       } catch {
         if (process.env.NODE_ENV !== "production") {
@@ -371,7 +362,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [refreshUser]
+    []
   );
 
   // Sign out
