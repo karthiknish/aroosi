@@ -4,6 +4,7 @@ import Head from "next/head";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { fadeInUp, fadeIn, scaleIn } from "@/components/animation/motion";
 import { getPlans, type NormalizedPlan } from "@/lib/utils/stripeUtil";
 import {
   Heart,

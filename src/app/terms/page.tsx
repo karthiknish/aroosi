@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { fadeInUp } from "@/components/animation/motion";
 import React from "react";
 import Head from "next/head";
 

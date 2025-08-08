@@ -27,12 +27,22 @@ type ComposerProps = {
   onSendVoice: (blob: Blob, duration: number) => Promise<void> | void;
   onVoiceUpgradeRequired: () => void;
   onVoiceError: (error: any) => void;
-  messageFeedback: { type: "success" | "error" | "warning" | "loading"; message: string; isVisible: boolean };
-  setMessageFeedback: (v: { type: "success" | "error" | "warning" | "loading"; message: string; isVisible: boolean }) => void;
+  messageFeedback: {
+    type: "success" | "error" | "warning" | "loading";
+    message: string;
+    isVisible: boolean;
+  };
+  setMessageFeedback: (v: {
+    type: "success" | "error" | "warning" | "loading";
+    message: string;
+    isVisible: boolean;
+  }) => void;
   error?: string | null;
   // New: conversation context for upload
   conversationId?: string;
   toUserId?: string;
+  // New: show subtle typing hint under composer
+  isOtherTyping?: boolean;
 };
 
 export default function Composer(props: ComposerProps) {
@@ -57,6 +67,7 @@ export default function Composer(props: ComposerProps) {
     error,
     conversationId,
     toUserId,
+    isOtherTyping = false,
   } = props;
 
   // Recorder hook
@@ -251,7 +262,9 @@ export default function Composer(props: ComposerProps) {
         type={messageFeedback.type}
         message={messageFeedback.message}
         isVisible={messageFeedback.isVisible}
-        onClose={() => setMessageFeedback({ ...messageFeedback, isVisible: false })}
+        onClose={() =>
+          setMessageFeedback({ ...messageFeedback, isVisible: false })
+        }
       />
 
       {/* Recording / Upload banner */}
@@ -270,7 +283,9 @@ export default function Composer(props: ComposerProps) {
             value={text}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyPress={onKeyPress}
-            placeholder={isBlocked ? "Cannot send messages" : "Type your message…"}
+            placeholder={
+              isBlocked ? "Cannot send messages" : "Type your message…"
+            }
             disabled={isSending || isBlocked}
             className={cn(
               "w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 transition-all",
@@ -290,7 +305,7 @@ export default function Composer(props: ComposerProps) {
             <Smile className="w-4 h-4" />
           </Button>
         </div>
-      
+
         {/* Action buttons */}
         <div className="flex gap-2 items-center">
           <Button
@@ -304,7 +319,7 @@ export default function Composer(props: ComposerProps) {
           >
             <Mic className="w-4 h-4" />
           </Button>
-      
+
           <Button
             type="button"
             variant="ghost"
@@ -317,13 +332,13 @@ export default function Composer(props: ComposerProps) {
           </Button>
 
           {/* Inline upgrade hint when voice is unavailable */}
-          {(!canUseVoice) && (
+          {!canUseVoice && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="h-8 text-xs"
-              onClick={() => (window.location.href = '/plans')}
+              onClick={() => (window.location.href = "/plans")}
               title="Upgrade to send voice messages"
             >
               Upgrade to send voice
@@ -337,10 +352,15 @@ export default function Composer(props: ComposerProps) {
           disabled={!text.trim() || isSending || isBlocked}
           className={cn(
             "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl",
-            (!text.trim() || isSending || isBlocked) && "opacity-50 cursor-not-allowed transform-none shadow-none"
+            (!text.trim() || isSending || isBlocked) &&
+              "opacity-50 cursor-not-allowed transform-none shadow-none"
           )}
         >
-          {isSending ? <LoadingSpinner size={16} className="text-white" /> : <Send className="w-4 h-4" />}
+          {isSending ? (
+            <LoadingSpinner size={16} className="text-white" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
         </Button>
 
         {/* Emoji picker */}
@@ -366,6 +386,21 @@ export default function Composer(props: ComposerProps) {
           )}
         </AnimatePresence>
       </form>
+
+      {/* Tiny typing hint below composer */}
+      <AnimatePresence>
+        {isOtherTyping && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.2 }}
+            className="mt-1 text-xs text-gray-400 pl-2"
+          >
+            typing…
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Inline error under composer */}
       <AnimatePresence>

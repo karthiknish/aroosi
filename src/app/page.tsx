@@ -6,35 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Users, Shield, Star, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { fadeInUp, fadeIn } from "@/components/animation/motion";
 import Link from "next/link";
 import { HeroOnboarding } from "@/components/home/HeroOnboarding";
 // Use the test-friendly wrapper hook so tests can mock it easily
 import { useAuth } from "@/hooks/useAuth";
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.15,
-      duration: 0.7,
-      ease: [0.25, 0.1, 0.25, 1] as const,
-    },
-  }),
-} as const;
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    transition: {
-      delay: i * 0.15,
-      duration: 0.7,
-      ease: [0.25, 0.1, 0.25, 1] as const,
-    },
-  }),
-} as const;
+// Using shared animation presets
 
 function OnboardingSlot() {
   const { isLoaded, isAuthenticated } = useAuth();

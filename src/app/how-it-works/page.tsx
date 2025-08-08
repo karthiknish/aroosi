@@ -18,6 +18,7 @@ import {
   Heart,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { fadeInUp, fadeIn } from "@/components/animation/motion";
 
 export default function HowItWorksPage() {
   return (

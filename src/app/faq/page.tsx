@@ -3,6 +3,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { fadeInUp, fadeIn } from "@/components/animation/motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {

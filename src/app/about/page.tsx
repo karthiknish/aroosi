@@ -3,6 +3,7 @@ import Head from "next/head";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { fadeInUp, fadeIn } from "@/components/animation/motion";
 import { Users, Heart, Shield, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -10,30 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { ArrowRight, Calendar, Award, Smile } from "lucide-react";
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.15,
-      duration: 0.7,
-      ease: [0.25, 0.1, 0.25, 1] as const,
-    },
-  }),
-};
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: (i = 0) => ({
-    opacity: 1,
-    transition: {
-      delay: i * 0.15,
-      duration: 0.7,
-      ease: [0.25, 0.1, 0.25, 1] as const,
-    },
-  }),
-};
+// Using shared animation presets
 
 export default function AboutPage() {
   return (

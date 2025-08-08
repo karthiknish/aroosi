@@ -133,8 +133,10 @@ function ModernChat({
         setMessageFeedback={() => {}}
         error={error}
         // tiny typing hint inline below composer
-        // @ts-expect-error: allow passing unknown prop; Composer ignores extras
-        isOtherTyping={Array.isArray(typingUsers) && typingUsers.length > 0}
+        isOtherTyping={
+          (Array.isArray(typingUsers) &&
+            typingUsers.length > 0) as unknown as boolean
+        }
       />
 
       <ReportModal

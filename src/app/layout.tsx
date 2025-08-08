@@ -4,6 +4,7 @@ import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
+import RouteTransition from "@/components/RouteTransition";
 
 // Removed Next.js Metadata/Viewport exports; using explicit <head> tags instead.
 
@@ -87,7 +88,9 @@ export default function RootLayout({
 
         <ReactQueryProvider>
           <AuthProvider>
-            <ClientRoot>{children}</ClientRoot>
+            <ClientRoot>
+              <RouteTransition>{children}</RouteTransition>
+            </ClientRoot>
           </AuthProvider>
         </ReactQueryProvider>
 

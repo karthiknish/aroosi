@@ -26,22 +26,22 @@ describe('Validation Utilities', () => {
 
   describe('validatePassword', () => {
     test('validates strong passwords', () => {
-      expect(validatePassword('MyPassword123!')).toBe(true);
-      expect(validatePassword('SecurePass1@')).toBe(true);
-      expect(validatePassword('Complex123$Pass')).toBe(true);
+      expect(validatePassword("MyPassword123!").isValid).toBe(true);
+      expect(validatePassword("SecurePass1@").isValid).toBe(true);
+      expect(validatePassword("Complex123$Pass").isValid).toBe(true);
     });
 
     test('rejects weak passwords', () => {
-      expect(validatePassword('password')).toBe(false); // no uppercase, numbers, symbols
-      expect(validatePassword('PASSWORD')).toBe(false); // no lowercase, numbers, symbols
-      expect(validatePassword('Password')).toBe(false); // no numbers, symbols
-      expect(validatePassword('Pass1')).toBe(false); // too short
-      expect(validatePassword('')).toBe(false); // empty
+      expect(validatePassword("password").isValid).toBe(false); // no uppercase, numbers, symbols
+      expect(validatePassword("PASSWORD").isValid).toBe(false); // no lowercase, numbers, symbols
+      expect(validatePassword("Password").isValid).toBe(false); // no numbers, symbols
+      expect(validatePassword("Pass1").isValid).toBe(false); // too short
+      expect(validatePassword("").isValid).toBe(false); // empty
     });
 
     test('requires minimum length', () => {
-      expect(validatePassword('Aa1!')).toBe(false); // too short
-      expect(validatePassword('MyPass1!')).toBe(true); // minimum length met
+      expect(validatePassword("Aa1!").isValid).toBe(false); // too short
+      expect(validatePassword("MyPass1!").isValid).toBe(true); // minimum length met
     });
   });
 
@@ -115,10 +115,10 @@ describe('Validation Utilities', () => {
     });
 
     test('rejects invalid URLs', () => {
-      expect(isValidUrl('not-a-url')).toBe(false);
-      expect(isValidUrl('ftp://example.com')).toBe(false); // if only http/https allowed
-      expect(isValidUrl('')).toBe(false);
-      expect(isValidUrl('javascript:alert(1)')).toBe(false);
+      expect(isValidUrl("not-a-url")).toBe(false);
+      expect(isValidUrl("ftp://example.com")).toBe(false); // only http/https allowed
+      expect(isValidUrl("")).toBe(false);
+      expect(isValidUrl("javascript:alert(1)")).toBe(false);
     });
   });
 });

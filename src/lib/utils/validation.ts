@@ -1,24 +1,32 @@
 export function validateEmail(email: string): boolean {
+  // Basic email pattern
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  if (!emailRegex.test(email)) return false;
+  // Disallow consecutive dots in the local part
+  const [local] = email.split("@");
+  if (local.includes("..")) return false;
+  return true;
 }
 
-export function validatePassword(password: string): { isValid: boolean; errors: string[] } {
+export function validatePassword(password: string): {
+  isValid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
-  
+
   if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
+    errors.push("Password must be at least 8 characters long");
   }
   if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
+    errors.push("Password must contain at least one uppercase letter");
   }
   if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
+    errors.push("Password must contain at least one lowercase letter");
   }
   if (!/\d/.test(password)) {
-    errors.push('Password must contain at least one number');
+    errors.push("Password must contain at least one number");
   }
-  
+
   return { isValid: errors.length === 0, errors };
 }
 
@@ -52,10 +60,9 @@ export function validatePhone(phone: string): boolean {
 export function sanitizeInput(input: string): string {
   // Remove angle brackets and ampersands which are risky in HTML contexts
   let output = input.replace(/[<>&]/g, "");
-  // Remove quotes when they appear as standalone punctuation around words (e.g. Test "quoted" text)
-  // Keep quotes that are inside parentheses like alert("xss")
-  output = output.replace(/(\s)"(\s)/g, "$1$2");
-  output = output.replace(/^"(\s)/, "$1").replace(/(\s)"$/, "$1");
+  // Remove quotes around standalone quoted words or phrases e.g. "quoted" -> quoted
+  // Keep quotes inside parentheses like alert("xss")
+  output = output.replace(/(^|\s)"([^"\n]+)"(?=\s|$)/g, "$1$2");
   return output;
 }
 

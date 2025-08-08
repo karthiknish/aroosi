@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { fadeInUp } from "@/components/animation/motion";
 import Head from "next/head";
 
 export default function PrivacyPage() {

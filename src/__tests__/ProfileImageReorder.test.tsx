@@ -11,6 +11,7 @@ import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
+import { DndContext } from "@dnd-kit/core";
 import * as imageUtil from "@/lib/utils/imageUtil";
 
 // Provide a minimal AuthProvider stub to satisfy useAuthContext()
@@ -47,12 +48,14 @@ function renderReorder(options: {
 }) {
   const { images, preUpload = false, onReorder, userId = "user_123" } = options;
   return render(
-    <ProfileImageReorder
-      images={images as any}
-      userId={userId}
-      preUpload={preUpload}
-      onReorder={onReorder as any}
-    />
+    <DndContext>
+      <ProfileImageReorder
+        images={images as any}
+        userId={userId}
+        preUpload={preUpload}
+        onReorder={onReorder as any}
+      />
+    </DndContext>
   );
 }
 
