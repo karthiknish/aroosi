@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as blog from "../blog.js";
 import type * as contact from "../contact.js";
 import type * as deliveryReceipts from "../deliveryReceipts.js";
+import type * as engagement from "../engagement.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as interests from "../interests.js";
@@ -25,6 +26,7 @@ import type * as migration from "../migration.js";
 import type * as presence from "../presence.js";
 import type * as profiles from "../profiles.js";
 import type * as pushNotifications from "../pushNotifications.js";
+import type * as quickPicks from "../quickPicks.js";
 import type * as safety from "../safety.js";
 import type * as storage from "../storage.js";
 import type * as subscriptions from "../subscriptions.js";
@@ -33,6 +35,7 @@ import type * as usageTracking from "../usageTracking.js";
 import type * as users from "../users.js";
 import type * as utils_rateLimit from "../utils/rateLimit.js";
 import type * as utils_requireAdmin from "../utils/requireAdmin.js";
+import type * as utils_sanitize from "../utils/sanitize.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -47,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   blog: typeof blog;
   contact: typeof contact;
   deliveryReceipts: typeof deliveryReceipts;
+  engagement: typeof engagement;
   http: typeof http;
   images: typeof images;
   interests: typeof interests;
@@ -55,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   profiles: typeof profiles;
   pushNotifications: typeof pushNotifications;
+  quickPicks: typeof quickPicks;
   safety: typeof safety;
   storage: typeof storage;
   subscriptions: typeof subscriptions;
@@ -63,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   "utils/rateLimit": typeof utils_rateLimit;
   "utils/requireAdmin": typeof utils_requireAdmin;
+  "utils/sanitize": typeof utils_sanitize;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

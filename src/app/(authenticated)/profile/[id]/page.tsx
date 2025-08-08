@@ -53,6 +53,7 @@ import { SafetyActionButton } from "@/components/safety/SafetyActionButton";
 import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
 import { useBlockStatus } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
+import { Button } from "@/components/ui/button";
 import { useSubscriptionGuard } from "@/hooks/useSubscription";
 import {
   calculateAge,
@@ -61,6 +62,9 @@ import {
   formatArrayToString,
   formatBoolean,
 } from "@/lib/utils/profileFormatting";
+import { ProfileActions } from "@/components/profile/ProfileActions";
+import { SimilarProfiles } from "./SimilarProfiles";
+import { IcebreakersPanel } from "./IcebreakersPanel";
 
 type Interest = {
   id: string;
@@ -296,6 +300,23 @@ export default function ProfileDetailPage() {
 
   const [interestError, setInterestError] = useState<string | null>(null);
   const interestLoading = loadingInterests || loadingInterestStatus;
+
+  // Keyboard navigation for image gallery (Left/Right arrows)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setCurrentImageIdx((idx) => Math.max(0, idx - 1));
+      } else if (e.key === "ArrowRight") {
+        setCurrentImageIdx((idx) =>
+          Math.min(Math.max(imagesToShow.length - 1, 0), idx + 1)
+        );
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // Only depend on imagesToShow length to avoid re-adding listeners on every idx change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imagesToShow.length]);
 
   // Viewers count (Premium Plus + own profile)
   const { data: viewersCount } = useQuery({
@@ -664,6 +685,48 @@ export default function ProfileDetailPage() {
               </AnimatePresence>
             </CardHeader>
             <CardContent className="p-10 font-nunito bg-transparent">
+              {/* Mini photo strip */}
+              {imagesToShow.length > 1 && (
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  {imagesToShow.map((url, i) => (
+                    <button
+                      key={`${url}-${i}`}
+                      type="button"
+                      className={`w-12 h-12 rounded-md overflow-hidden border ${i === currentImageIdx ? "ring-2 ring-primary" : ""}`}
+                      onClick={() => setCurrentImageIdx(i)}
+                    >
+                      <Image
+                        src={url}
+                        alt="thumb"
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Mini photo strip */}
+              {imagesToShow.length > 1 && (
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  {imagesToShow.map((url, i) => (
+                    <button
+                      key={`${url}-${i}`}
+                      type="button"
+                      className={`w-12 h-12 rounded-md overflow-hidden border ${i === currentImageIdx ? "ring-2 ring-primary" : ""}`}
+                      onClick={() => setCurrentImageIdx(i)}
+                    >
+                      <Image
+                        src={url}
+                        alt="thumb"
+                        width={48}
+                        height={48}
+                        className="w-12 h-12 object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Blocked User Banner */}
               {!isOwnProfile && (isBlocked || isBlockedBy) && (
                 <BlockedUserBanner
@@ -672,6 +735,68 @@ export default function ProfileDetailPage() {
                   userName={profile?.fullName}
                   className="mb-6"
                 />
+              )}
+              {/* Inline CTA chips near name for quick access */}
+              {!isOwnProfile && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      document
+                        .getElementById("profile-actions-section")
+                        ?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    Add to Shortlist
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      document
+                        .getElementById("profile-actions-section")
+                        ?.scrollIntoView({ behavior: "smooth" })
+                    }
+                  >
+                    Add Note
+                  </Button>
+                </div>
+              )}
+
+              {/* Engagement actions: shortlist + private note */}
+              {!isOwnProfile && (
+                <div id="profile-actions-section" className="mb-6">
+                  <ProfileActions toUserId={String(userId)} />
+                </div>
+              )}
+
+              {/* Quick actions: Previous/Next image buttons */}
+              {imagesToShow.length > 1 && (
+                <div className="flex gap-2 mb-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentImageIdx((idx) => Math.max(0, idx - 1))
+                    }
+                    disabled={currentImageIdx === 0}
+                  >
+                    Previous Photo
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentImageIdx((idx) =>
+                        Math.min(imagesToShow.length - 1, idx + 1)
+                      )
+                    }
+                    disabled={currentImageIdx >= imagesToShow.length - 1}
+                  >
+                    Next Photo
+                  </Button>
+                </div>
               )}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -688,6 +813,10 @@ export default function ProfileDetailPage() {
                 >
                   <UserCircle className="w-8 h-8 text-primary" />
                   {profile?.fullName ?? "-"}
+                  {/* Compatibility placeholder */}
+                  <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                    Compatibility: Coming soon
+                  </span>
                   {/* Inline interest status chip (only when viewing others) */}
                   {!isOwnProfile &&
                     (interestStatusData?.status === "pending" ||
@@ -737,6 +866,17 @@ export default function ProfileDetailPage() {
                   </span>
                 </div>
               </motion.div>
+
+              {/* Similar profiles */}
+              <div className="mt-8 w-full">
+                <h3 className="text-lg font-semibold mb-3">Similar profiles</h3>
+                <SimilarProfiles
+                  baseCity={profile.city || undefined}
+                  baseCountry={profile.country || undefined}
+                  baseMotherTongue={profile.motherTongue || undefined}
+                  excludeUserId={String(userId)}
+                />
+              </div>
 
               {imagesLoading && skeletonCount > 0 && (
                 <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
@@ -954,6 +1094,9 @@ export default function ProfileDetailPage() {
                   <span>{profile?.aboutMe ?? "-"}</span>
                 </div>
               </div>
+
+              {/* Icebreakers (own profile) */}
+              {isOwnProfile && <IcebreakersPanel />}
 
               <div className="flex justify-center gap-8 mt-8 mb-2 relative">
                 <AnimatePresence>

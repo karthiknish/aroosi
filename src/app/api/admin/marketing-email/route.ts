@@ -6,6 +6,10 @@ import {
   profileCompletionReminderTemplate,
   premiumPromoTemplate,
   recommendedProfilesTemplate,
+  reEngagementTemplate,
+  successStoryTemplate,
+  weeklyMatchesDigestTemplate,
+  welcomeDay1Template,
 } from "@/lib/marketingEmailTemplates";
 import { convexQueryWithAuth } from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
@@ -18,11 +22,18 @@ const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
   premiumPromo: premiumPromoTemplate as unknown as MarketingEmailTemplateFn,
   recommendedProfiles:
     recommendedProfilesTemplate as unknown as MarketingEmailTemplateFn,
+  reEngagement: reEngagementTemplate as unknown as MarketingEmailTemplateFn,
+  successStory: successStoryTemplate as unknown as MarketingEmailTemplateFn,
+  weeklyDigest:
+    weeklyMatchesDigestTemplate as unknown as MarketingEmailTemplateFn,
+  welcomeDay1: welcomeDay1Template as unknown as MarketingEmailTemplateFn,
 };
 
 export async function POST(request: Request) {
   try {
-    const adminCheck = await requireAdminSession(request as unknown as NextRequest);
+    const adminCheck = await requireAdminSession(
+      request as unknown as NextRequest
+    );
     if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
     const { userId } = adminCheck;
 
@@ -33,16 +44,28 @@ export async function POST(request: Request) {
       return errorResponse("Invalid JSON body", 400);
     }
 
-    const { templateKey, params, dryRun, confirm, maxAudience } = (body ||
-      {}) as {
+    const {
+      templateKey,
+      params,
+      dryRun,
+      confirm,
+      maxAudience,
+      subject,
+      body: customBody,
+    } = (body || {}) as {
       templateKey?: string;
       params?: Record<string, unknown>;
       dryRun?: boolean;
       confirm?: boolean;
       maxAudience?: number;
+      subject?: string;
+      body?: string;
     };
 
-    if (!templateKey || !(templateKey in TEMPLATE_MAP)) {
+    if (!templateKey && !subject) {
+      return errorResponse("Provide a templateKey or custom subject/body", 400);
+    }
+    if (templateKey && !(templateKey in TEMPLATE_MAP)) {
       return errorResponse("Invalid template", 400, { field: "templateKey" });
     }
 
@@ -87,7 +110,7 @@ export async function POST(request: Request) {
       }
     >;
 
-    const templateFn = TEMPLATE_MAP[templateKey];
+    const templateFn = templateKey ? TEMPLATE_MAP[templateKey] : null;
 
     // If dryRun, return preview count and first few preview payloads
     if (dryRun) {
@@ -101,8 +124,8 @@ export async function POST(request: Request) {
           fullName: (p as Profile).fullName || "",
         } as Profile;
 
-        const payload =
-          templateKey === "profileCompletionReminder"
+        const payload = templateFn
+          ? templateKey === "profileCompletionReminder"
             ? templateFn(baseProfile, p.isProfileComplete ? 100 : 70, "")
             : templateKey === "premiumPromo"
               ? templateFn(baseProfile, 30, "")
@@ -112,7 +135,8 @@ export async function POST(request: Request) {
                     baseProfile,
                     ...((params?.args || []) as unknown[]),
                     ""
-                  );
+                  )
+          : { subject: subject || "(no subject)", html: customBody || "" };
 
         previews.push({ email: p.email, subject: payload.subject });
       }
@@ -136,24 +160,35 @@ export async function POST(request: Request) {
           fullName: (p as Profile).fullName || "",
         } as Profile;
 
-        let emailPayload;
-        if (templateKey === "profileCompletionReminder") {
-          emailPayload = templateFn(
-            baseProfile,
-            p.isProfileComplete ? 100 : 70,
-            ""
-          );
-        } else if (templateKey === "premiumPromo") {
-          emailPayload = templateFn(baseProfile, 30, "");
-        } else if (templateKey === "recommendedProfiles") {
-          // Optional: enrichment omitted in live send for safety; can be added behind a smaller cap
-          emailPayload = templateFn(baseProfile, [], "");
+        let emailPayload: { subject: string; html: string } | null = null;
+        if (templateFn) {
+          if (templateKey === "profileCompletionReminder") {
+            emailPayload = templateFn(
+              baseProfile,
+              p.isProfileComplete ? 100 : 70,
+              ""
+            );
+          } else if (templateKey === "premiumPromo") {
+            emailPayload = templateFn(
+              baseProfile,
+              (params?.args?.[0] as number) || 30,
+              ""
+            );
+          } else if (templateKey === "recommendedProfiles") {
+            // Optional: enrichment omitted in live send for safety; can be added behind a smaller cap
+            emailPayload = templateFn(baseProfile, [], "");
+          } else {
+            emailPayload = templateFn(
+              baseProfile,
+              ...((params?.args || []) as unknown[]),
+              ""
+            );
+          }
         } else {
-          emailPayload = templateFn(
-            baseProfile,
-            ...((params?.args || []) as unknown[]),
-            ""
-          );
+          emailPayload = {
+            subject: subject || "(no subject)",
+            html: customBody || "",
+          };
         }
         if (p.email) {
           await sendUserNotification(
@@ -164,7 +199,9 @@ export async function POST(request: Request) {
           sent += 1;
         }
       } catch {
-        devLog("warn", "admin.marketing-email", "send_error", { email: p.email });
+        devLog("warn", "admin.marketing-email", "send_error", {
+          email: p.email,
+        });
       }
     }
 
@@ -176,7 +213,9 @@ export async function POST(request: Request) {
       actorId: userId,
     });
   } catch (error) {
-    devLog("error", "admin.marketing-email", "unhandled_error", { message: error instanceof Error ? error.message : String(error) });
+    devLog("error", "admin.marketing-email", "unhandled_error", {
+      message: error instanceof Error ? error.message : String(error),
+    });
     return errorResponse("Unexpected error", 500);
   }
 }

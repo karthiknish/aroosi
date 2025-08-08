@@ -335,6 +335,74 @@ export default defineSchema({
     createdAt: v.float64(),
   }).index("by_profileId_createdAt", ["profileId", "createdAt"]),
 
+  shortlists: defineTable({
+    userId: v.id("users"),
+    toUserId: v.id("users"),
+    createdAt: v.float64(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_to", ["userId", "toUserId"]),
+
+  notes: defineTable({
+    userId: v.id("users"),
+    toUserId: v.id("users"),
+    note: v.string(),
+    updatedAt: v.float64(),
+  }).index("by_user_to", ["userId", "toUserId"]),
+
+  userDailyQuickPicks: defineTable({
+    userId: v.id("users"),
+    dayKey: v.string(), // YYYYMMDD UTC
+    picks: v.array(v.id("users")),
+    createdAt: v.float64(),
+  }).index("by_user_day", ["userId", "dayKey"]),
+
+  userLikesSkips: defineTable({
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    action: v.union(v.literal("like"), v.literal("skip")),
+    source: v.union(v.literal("quickpick"), v.literal("browse")),
+    createdAt: v.float64(),
+  })
+    .index("by_from_to", ["fromUserId", "toUserId"])
+    .index("by_from_createdAt", ["fromUserId", "createdAt"]),
+
+  icebreakerQuestions: defineTable({
+    text: v.string(),
+    category: v.optional(v.string()),
+    active: v.boolean(),
+    weight: v.optional(v.number()),
+    createdAt: v.float64(),
+  }).index("by_active", ["active"]),
+
+  userIcebreakerAnswers: defineTable({
+    userId: v.id("users"),
+    questionId: v.string(),
+    answer: v.string(),
+    createdAt: v.float64(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_question", ["userId", "questionId"]),
+
+  userQuizResults: defineTable({
+    userId: v.id("users"),
+    version: v.optional(v.string()),
+    traits: v.optional(v.object({})), // reserved for future use
+    createdAt: v.float64(),
+    updatedAt: v.optional(v.float64()),
+  }).index("by_userId", ["userId"]),
+
+  // Cached recommendation lists (per user/day or ad-hoc keys)
+  recommendationCache: defineTable({
+    userId: v.id("users"),
+    key: v.string(), // e.g., dayKey or segment key
+    rankedUserIds: v.array(v.id("users")),
+    createdAt: v.float64(),
+    expiresAt: v.optional(v.float64()),
+  })
+    .index("by_user_key", ["userId", "key"]) 
+    .index("by_userId", ["userId"]),
+
   // Push notification registrations
   pushNotifications: defineTable({
     userId: v.id("users"),
@@ -376,8 +444,7 @@ export default defineSchema({
     userId: v.id("users"),
     lastSeen: v.float64(),
     isOnline: v.boolean(),
-  })
-    .index("by_userId", ["userId"]),
+  }).index("by_userId", ["userId"]),
 
   // Biometric authentication audit logs
   biometricAuditLogs: defineTable({
