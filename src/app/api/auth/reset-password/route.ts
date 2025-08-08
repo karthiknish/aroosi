@@ -51,11 +51,16 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    await convexMutationWithAuth(request, (api as any).auth?.updatePassword ?? (api as any).users?.updateUserPassword, {
-      userId: (user as { _id: Id<"users"> })._id as Id<"users">,
-      // For fallback path, pass as update to profile if auth.updatePassword is not available.
-      hashedPassword,
-    });
+    await convexMutationWithAuth(
+      request,
+      (api as any).auth?.updatePassword ??
+        (api as any).users?.updateUserPassword,
+      {
+        userId: (user as { _id: Id<"users"> })._id as Id<"users">,
+        // For fallback path, pass as update to profile if auth.updatePassword is not available.
+        hashedPassword,
+      }
+    );
 
     console.info("reset-password success", {
       scope: "auth.reset_password",
@@ -64,7 +69,10 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
 
-    return successResponse({ message: "Password reset successfully", correlationId }, 200);
+    return successResponse(
+      { message: "Password reset successfully", correlationId },
+      200
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("reset-password POST error", {
@@ -75,7 +83,10 @@ export async function POST(request: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     if (error instanceof z.ZodError) {
-      return errorResponse("Invalid input data", 400, { details: error.errors, correlationId });
+      return errorResponse("Invalid input data", 400, {
+        details: error.errors,
+        correlationId,
+      });
     }
     return errorResponse("Internal server error", 500, { correlationId });
   }
