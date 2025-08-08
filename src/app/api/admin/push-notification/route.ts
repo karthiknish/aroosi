@@ -61,6 +61,10 @@ export async function POST(request: Request) {
     "Subscribed Users",
     "Active Users",
     "Engaged Last 30d",
+    // Future allow-list entries can be appended here when configured in OneSignal:
+    // "Churn Risk",
+    // "Premium Users",
+    // "Trial Users",
   ]);
   const segments = (
     requestedSegments.length ? requestedSegments : ["Subscribed Users"]

@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 interface DeviceRow {
   userId: string;
@@ -24,14 +25,23 @@ export default function AdminDevicesPage() {
   const [rows, setRows] = useState<DeviceRow[]>([]);
   const [total, setTotal] = useState(0);
 
-  const fetchDevices = async () => {
+  const fetchDevices = async (override?: {
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search.trim()) params.set("search", search.trim());
-      params.set("page", String(page));
-      params.set("pageSize", String(pageSize));
-      const res = await fetch(`/api/admin/push-notification/devices?${params.toString()}`);
+      const s = override?.search ?? search;
+      const p = override?.page ?? page;
+      const ps = override?.pageSize ?? pageSize;
+      if (s.trim()) params.set("search", s.trim());
+      params.set("page", String(p));
+      params.set("pageSize", String(ps));
+      const res = await fetch(
+        `/api/admin/push-notification/devices?${params.toString()}`
+      );
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setRows(data?.data?.items ?? []);
@@ -48,21 +58,27 @@ export default function AdminDevicesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(total / pageSize)),
+    [total, pageSize]
+  );
 
   const testSend = async (playerId: string) => {
     try {
       const res = await fetch("/api/admin/push-notification/test-send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, title: "Test", message: "Test notification" }),
+        body: JSON.stringify({
+          playerId,
+          title: "Test",
+          message: "Test notification",
+        }),
       });
       if (!res.ok) throw new Error("Failed");
-      // A simple optimistic hint
-+      // NOTE: toast could be used here if your UI lib is available
-      console.log("Queued test notification for", playerId);
+      showSuccessToast("Queued test notification.");
     } catch (e) {
       console.error("test send failed", e);
+      showErrorToast(null, "Failed to queue test notification");
     }
   };
 
@@ -81,7 +97,15 @@ export default function AdminDevicesPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter by email, playerId, deviceType"
           />
-          <Button onClick={() => { setPage(1); fetchDevices(); }} disabled={loading}>Search</Button>
+          <Button
+            onClick={() => {
+              setPage(1);
+              fetchDevices();
+            }}
+            disabled={loading}
+          >
+            Search
+          </Button>
         </div>
 
         <div className="overflow-x-auto border rounded-md">
@@ -99,15 +123,48 @@ export default function AdminDevicesPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.playerId} className="border-t">
-                  <td className="p-2">{r.email || "—"}</td>
+                  <td className="p-2">
+                    {r.email ? (
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 text-pink-600 hover:text-pink-700"
+                        onClick={() => {
+                          setSearch(r.email!);
+                          setPage(1);
+                          fetchDevices({ search: r.email!, page: 1 });
+                        }}
+                        title={`Filter by ${r.email}`}
+                      >
+                        {r.email}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="p-2">
                     <code className="text-[11px] break-all">{r.playerId}</code>
                   </td>
                   <td className="p-2">{r.deviceType || "web"}</td>
-                  <td className="p-2">{r.registeredAt ? new Date(r.registeredAt).toLocaleString() : "—"}</td>
-                  <td className="p-2">{r.isActive ? <Badge>Active</Badge> : <Badge variant="outline">Inactive</Badge>}</td>
                   <td className="p-2">
-                    <Button size="sm" variant="outline" onClick={() => testSend(r.playerId)}>Test</Button>
+                    {r.registeredAt
+                      ? new Date(r.registeredAt).toLocaleString()
+                      : "—"}
+                  </td>
+                  <td className="p-2">
+                    {r.isActive ? (
+                      <Badge>Active</Badge>
+                    ) : (
+                      <Badge variant="outline">Inactive</Badge>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => testSend(r.playerId)}
+                    >
+                      Test
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -125,13 +182,23 @@ export default function AdminDevicesPage() {
         <div className="flex items-center justify-between">
           <div className="text-xs text-gray-500">Total: {total}</div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
               Prev
             </Button>
             <div className="text-sm">
               Page {page} / {totalPages}
             </div>
-            <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
               Next
             </Button>
           </div>
