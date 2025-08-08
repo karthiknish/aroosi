@@ -86,6 +86,13 @@ export function AdminSidebar({
       href: "/admin/push-notification",
       isActive: currentPath.startsWith("/admin/push-notification"),
     },
+    {
+      id: "devices",
+      label: "Devices",
+      icon: Mail,
+      href: "/admin/push-notification/devices",
+      isActive: currentPath.startsWith("/admin/push-notification/devices"),
+    },
   ];
 
   return (

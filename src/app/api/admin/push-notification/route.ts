@@ -51,13 +51,25 @@ export async function POST(request: Request) {
     });
   }
 
-  // Normalize audience; default to Subscribed Users
-  const segments = (Array.isArray(audience)
-    ? audience
-    : audience
-      ? [audience]
-      : []
-  )?.filter(Boolean) || ["Subscribed Users"];
+  // Normalize audience; default to Subscribed Users, with guardrails
+  const requestedSegments = (
+    Array.isArray(audience) ? audience : audience ? [audience] : []
+  )
+    .filter(Boolean)
+    .map((s) => String(s).trim());
+  const ALLOWED_SEGMENTS = new Set([
+    "Subscribed Users",
+    "Active Users",
+    "Engaged Last 30d",
+  ]);
+  const segments = (
+    requestedSegments.length ? requestedSegments : ["Subscribed Users"]
+  ).filter((s) => ALLOWED_SEGMENTS.has(s));
+  if (segments.length === 0) {
+    return errorResponse("Invalid audience segment(s)", 400, {
+      allowed: Array.from(ALLOWED_SEGMENTS),
+    });
+  }
 
   // We cannot hard-cap audience via API without advanced OneSignal filters; expose info only
   const effectiveMax =
