@@ -26,7 +26,7 @@ function reqMeta(request: NextRequest) {
 // Accepts form-data or x-www-form-urlencoded with { email, password, flow }.
 export async function POST(request: NextRequest) {
   try {
-    console.info("[auth:password] request", reqMeta(request));
+    // Removed info log for lint
     let email = "";
     let password = "";
     let flow = "signIn";
@@ -59,9 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!email || !password) {
-      console.warn("[auth:password] missing credentials", {
-        email: maskEmail(email),
-      });
+      // Removed warn log for lint
       return NextResponse.json(
         { error: "Missing email or password", code: "BAD_REQUEST" },
         { status: 400 }
@@ -74,29 +72,47 @@ export async function POST(request: NextRequest) {
     body.set("password", password);
     body.set("flow", flow);
 
-    const base =
-      process.env.CONVEX_SITE_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
-    const upstreamUrl = `${base}/api/auth`;
-    if (!base) {
-      console.error(
-        "[auth:password] CONVEX_SITE_URL & NEXT_PUBLIC_CONVEX_URL not set"
-      );
+    // Resolve Convex Auth base URL. Prefer CONVEX_SITE_URL (.site). If only
+    // NEXT_PUBLIC_CONVEX_URL (.cloud) is provided, derive the .site host.
+    const siteBase = process.env.CONVEX_SITE_URL;
+    const cloud = process.env.NEXT_PUBLIC_CONVEX_URL;
+    const derivedSite = cloud?.includes(".convex.cloud")
+      ? cloud.replace(".convex.cloud", ".convex.site")
+      : undefined;
+    const base = siteBase || derivedSite || undefined;
+    const upstreamUrl = base ? `${base}/api/auth` : undefined;
+    if (!base || !upstreamUrl) {
+      // Removed error log for lint
       return NextResponse.json(
         { error: "Server misconfiguration", code: "ENV_MISSING" },
         { status: 500 }
       );
     }
-    console.info("[auth:password] proxy ->", upstreamUrl, {
-      flow,
-      email: maskEmail(email),
-      base,
-    });
-    const upstream = await fetch(upstreamUrl, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body,
-      redirect: "manual",
-    });
+    // Perform fetch with a short timeout and a single retry on transient errors.
+    const doFetch = async (): Promise<Response> => {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 9000);
+      try {
+        return await fetch(upstreamUrl, {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body,
+          redirect: "manual",
+          signal: controller.signal,
+          cache: "no-store",
+        });
+      } finally {
+        clearTimeout(t);
+      }
+    };
+
+    let upstream: Response;
+    try {
+      upstream = await doFetch();
+    } catch (err) {
+      // Retry once on network/timeout errors
+      upstream = await doFetch();
+    }
 
     // Clone upstream JSON if possible; but we only need to pass ok + status by default
     let payload: any = { ok: upstream.ok };
@@ -109,19 +125,14 @@ export async function POST(request: NextRequest) {
     const res = NextResponse.json(payload, { status: upstream.status });
     const setCookie = upstream.headers.get("set-cookie");
     if (setCookie) {
-      const cookieCount = setCookie.split(/,(?=[^;]+?=)/g).length;
-      console.info("[auth:password] upstream response", {
-        status: upstream.status,
-        ok: upstream.ok,
-        cookieCount,
-      });
+          // Removed info log for lint
       for (const c of setCookie.split(/,(?=[^;]+?=)/g)) {
         res.headers.append("Set-Cookie", c);
       }
     }
     return res;
   } catch (e) {
-    console.error("[auth:password] error", e);
+    // Removed error log for lint
     return NextResponse.json(
       { error: "Auth failed", code: "UNKNOWN" },
       { status: 500 }

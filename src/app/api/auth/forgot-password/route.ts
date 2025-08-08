@@ -31,13 +31,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Always respond 200 to avoid user enumeration; still attempt email if user exists and is not banned
-    if (!user || (user as { banned?: boolean }).banned) {
-      console.info("forgot-password request handled", {
-        scope: "auth.forgot_password",
-        type: "noop_or_banned",
-        correlationId,
-        durationMs: Date.now() - startedAt,
-      });
+  if (!user || (user as { banned?: boolean }).banned) {
       return NextResponse.json({
         message:
           "If an account with that email exists, we sent a password reset link.",
@@ -58,12 +52,7 @@ export async function POST(request: NextRequest) {
 
     await sendResetLinkEmail(email, resetUrl);
 
-    console.info("forgot-password email dispatched", {
-      scope: "auth.forgot_password",
-      type: "email_sent",
-      correlationId,
-      durationMs: Date.now() - startedAt,
-    });
+    
 
     return NextResponse.json({
       message:
@@ -71,14 +60,7 @@ export async function POST(request: NextRequest) {
       correlationId,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("forgot-password POST error", {
-      scope: "auth.forgot_password",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      durationMs: Date.now() - startedAt,
-    });
+    
     return NextResponse.json(
       { error: "Internal server error", correlationId },
       { status: 500 }

@@ -238,16 +238,6 @@ export async function POST(request: NextRequest) {
         await fetchMutation(api.users.incrementRateLimit, { key: ipKey });
       }
     } catch (e) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("Rate limit store unavailable (best-effort only)", {
-          scope: "auth.signup",
-          correlationId,
-          type: "ratelimit_warning",
-          message: e instanceof Error ? e.message : String(e),
-          statusCode: 200,
-          durationMs: Date.now() - startedAt,
-        });
-      }
       // best-effort: do not block if rate limit store is unavailable
     }
 
@@ -255,16 +245,6 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (e) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("Signup invalid JSON body", {
-          scope: "auth.signup",
-          correlationId,
-          type: "parse_error",
-          message: e instanceof Error ? e.message : String(e),
-          statusCode: 400,
-          durationMs: Date.now() - startedAt,
-        });
-      }
       return NextResponse.json(
         { error: "Invalid JSON body", correlationId },
         { status: 400 }
@@ -281,31 +261,10 @@ export async function POST(request: NextRequest) {
           message: e.message,
           code: e.code,
         }));
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("Signup validation failed", {
-            scope: "auth.signup",
-            correlationId,
-            type: "validation_error",
-            issueCount: issues.length,
-            issues,
-            statusCode: 400,
-            durationMs: Date.now() - startedAt,
-          });
-        }
         return NextResponse.json(
           { error: "Invalid input data", issues, correlationId },
           { status: 400 }
         );
-      }
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Signup parsing failure", {
-          scope: "auth.signup",
-          correlationId,
-          type: "parse_unhandled",
-          message: error instanceof Error ? error.message : String(error),
-          statusCode: 400,
-          durationMs: Date.now() - startedAt,
-        });
       }
       return NextResponse.json(
         { error: "Invalid input", correlationId },
@@ -354,16 +313,6 @@ export async function POST(request: NextRequest) {
         await fetchMutation(api.users.incrementRateLimit, { key });
       }
     } catch (e) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("Email key rate limit warning", {
-          scope: "auth.signup",
-          correlationId,
-          type: "ratelimit_warning",
-          message: e instanceof Error ? e.message : String(e),
-          statusCode: 200,
-          durationMs: Date.now() - startedAt,
-        });
-      }
       // continue on failure
     }
 
@@ -375,16 +324,6 @@ export async function POST(request: NextRequest) {
       /\d/.test(password) &&
       /[^A-Za-z0-9]/.test(password);
     if (!strongPolicy) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("Password policy failed", {
-          scope: "auth.signup",
-          correlationId,
-          type: "password_policy",
-          reason: "weak_password",
-          statusCode: 400,
-          durationMs: Date.now() - startedAt,
-        });
-      }
       return NextResponse.json(
         {
           error: "Password does not meet security requirements",
@@ -401,15 +340,6 @@ export async function POST(request: NextRequest) {
 
     if (existingByEmail) {
       if (existingByEmail.googleId && !existingByEmail.hashedPassword) {
-        // if (process.env.NODE_ENV !== "production") {
-        //   console.info("Existing Google-linked account for email", {
-        //     scope: "auth.signup",
-        //     correlationId,
-        //     type: "account_exists_google",
-        //     statusCode: 200,
-        //     durationMs: Date.now() - startedAt,
-        //   });
-        // }
         return NextResponse.json(
           {
             status: "ok",
@@ -421,18 +351,7 @@ export async function POST(request: NextRequest) {
           { status: 200 }
         );
       }
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          "Signup attempt for existing email (generic client response)",
-          {
-            scope: "auth.signup",
-            correlationId,
-            type: "account_exists_native_or_unknown",
-            statusCode: 200,
-            durationMs: Date.now() - startedAt,
-          }
-        );
-      }
+
       return NextResponse.json(
         {
           status: "ok",
@@ -504,8 +423,14 @@ export async function POST(request: NextRequest) {
       form.set("password", password);
       form.set("flow", "signUp");
 
-      const base =
-        process.env.CONVEX_SITE_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+      // Resolve Convex Auth base URL. Prefer CONVEX_SITE_URL (.site). If only
+      // NEXT_PUBLIC_CONVEX_URL (.cloud) is provided, derive the .site host.
+      const siteBase = process.env.CONVEX_SITE_URL;
+      const cloud = process.env.NEXT_PUBLIC_CONVEX_URL;
+      const derivedSite = cloud?.includes(".convex.cloud")
+        ? cloud.replace(".convex.cloud", ".convex.site")
+        : undefined;
+      const base = siteBase || derivedSite || undefined;
       if (!base) {
         return NextResponse.json(
           {
@@ -517,15 +442,28 @@ export async function POST(request: NextRequest) {
         );
       }
       const upstreamUrl = `${base}/api/auth`;
-      if (process.env.NODE_ENV !== "production") {
-        console.info("[auth:signup] proxy ->", upstreamUrl, { base });
+      const doFetch = async (): Promise<Response> => {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 9000);
+        try {
+          return await fetch(upstreamUrl, {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: form,
+            redirect: "manual",
+            signal: controller.signal,
+            cache: "no-store",
+          });
+        } finally {
+          clearTimeout(t);
+        }
+      };
+      let upstream: Response;
+      try {
+        upstream = await doFetch();
+      } catch {
+        upstream = await doFetch();
       }
-      const upstream = await fetch(upstreamUrl, {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: form,
-        redirect: "manual",
-      });
 
       if (!upstream.ok) {
         let errMsg = "Sign up failed";
@@ -560,16 +498,7 @@ export async function POST(request: NextRequest) {
         } else {
           createdUserId = String(existing._id);
         }
-      } catch (e) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("Post-auth user creation failed (continuing)", {
-            scope: "auth.signup",
-            correlationId,
-            type: "post_create_warning",
-            message: e instanceof Error ? e.message : String(e),
-          });
-        }
-      }
+      } catch (e) {}
 
       const res = NextResponse.json(
         {
@@ -591,45 +520,14 @@ export async function POST(request: NextRequest) {
           res.headers.append("Set-Cookie", c);
         }
       }
-      if (process.env.NODE_ENV !== "production") {
-        console.info("Signup success via Convex Auth", {
-          scope: "auth.signup",
-          correlationId,
-          type: "success",
-          statusCode: 200,
-          durationMs: Date.now() - startedAt,
-          userId: createdUserId,
-        });
-      }
       return res;
     } catch (e) {
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Signup upstream error", {
-          scope: "auth.signup",
-          correlationId,
-          type: "upstream_error",
-          message: e instanceof Error ? e.message : String(e),
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-      }
       return NextResponse.json(
         { error: "Sign up failed", correlationId },
         { status: 500 }
       );
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    if (process.env.NODE_ENV !== "production") {
-      console.error("Signup failure", {
-        scope: "auth.signup",
-        correlationId,
-        type: "unhandled_error",
-        message: errMsg,
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
-    }
     return NextResponse.json(
       { error: "Unable to complete signup at this time", correlationId },
       { status: 400 }

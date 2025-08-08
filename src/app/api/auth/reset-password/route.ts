@@ -62,26 +62,12 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    console.info("reset-password success", {
-      scope: "auth.reset_password",
-      type: "success",
-      correlationId,
-      durationMs: Date.now() - startedAt,
-    });
-
     return successResponse(
       { message: "Password reset successfully", correlationId },
       200
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("reset-password POST error", {
-      scope: "auth.reset_password",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      durationMs: Date.now() - startedAt,
-    });
     if (error instanceof z.ZodError) {
       return errorResponse("Invalid input data", 400, {
         details: error.errors,

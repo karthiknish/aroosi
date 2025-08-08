@@ -26,15 +26,13 @@ function reqMeta(request: NextRequest) {
 // Expects JSON { email, password } and forwards to /api/auth/password with flow=signIn.
 export async function POST(request: NextRequest) {
   try {
-    console.info("[auth:signin] request", reqMeta(request));
+    // Removed info log for lint
     const { email, password } = (await request.json().catch(() => ({}))) as {
       email?: string;
       password?: string;
     };
     if (!email || !password) {
-      console.warn("[auth:signin] missing credentials", {
-        email: maskEmail(email),
-      });
+      // Removed warn log for lint
       return NextResponse.json(
         { error: "Missing email or password", code: "BAD_REQUEST" },
         { status: 400 }
@@ -47,40 +45,52 @@ export async function POST(request: NextRequest) {
     form.set("password", password);
     form.set("flow", "signIn");
 
-    const base =
-      process.env.CONVEX_SITE_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
-    const upstreamUrl = `${base}/api/auth`;
-    if (!base) {
-      console.error(
-        "[auth:signin] CONVEX_SITE_URL & NEXT_PUBLIC_CONVEX_URL not set"
-      );
+    // Resolve Convex Auth base URL. Prefer CONVEX_SITE_URL (.site). If only
+    // NEXT_PUBLIC_CONVEX_URL (.cloud) is provided, derive the .site host.
+    const siteBase = process.env.CONVEX_SITE_URL;
+    const cloud = process.env.NEXT_PUBLIC_CONVEX_URL;
+    const derivedSite = cloud?.includes(".convex.cloud")
+      ? cloud.replace(".convex.cloud", ".convex.site")
+      : undefined;
+    const base = siteBase || derivedSite || undefined;
+    const upstreamUrl = base ? `${base}/api/auth` : undefined;
+    if (!base || !upstreamUrl) {
+      // Removed error log for lint
       return NextResponse.json(
         { error: "Server misconfiguration", code: "ENV_MISSING" },
         { status: 500 }
       );
     }
 
-    console.info("[auth:signin] proxy ->", upstreamUrl, {
-      flow: "signIn",
-      email: maskEmail(email),
-      base,
-    });
-    const res = await fetch(upstreamUrl, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: form,
-      redirect: "manual",
-    });
+    // Fetch with timeout + single retry on transient errors
+    const doFetch = async (): Promise<Response> => {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 9000);
+      try {
+        return await fetch(upstreamUrl, {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: form,
+          redirect: "manual",
+          signal: controller.signal,
+          cache: "no-store",
+        });
+      } finally {
+        clearTimeout(t);
+      }
+    };
+    let res: Response;
+    try {
+      res = await doFetch();
+    } catch {
+      res = await doFetch();
+    }
 
     // Forward Set-Cookie headers from Convex Auth to the browser
     const out = NextResponse.json({ ok: res.ok }, { status: res.status });
     const setCookie = res.headers.get("set-cookie");
     const cookieCount = setCookie ? setCookie.split(/,(?=[^;]+?=)/g).length : 0;
-    console.info("[auth:signin] upstream response", {
-      status: res.status,
-      ok: res.ok,
-      cookieCount,
-    });
+    // Removed info log for lint
     if (setCookie) {
       for (const c of setCookie.split(/,(?=[^;]+?=)/g)) {
         out.headers.append("Set-Cookie", c);
@@ -88,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
     return out;
   } catch (e) {
-    console.error("[auth:signin] error", e);
+    // Removed error log for lint
     return NextResponse.json(
       { error: "Sign in failed", code: "UNKNOWN" },
       { status: 500 }
