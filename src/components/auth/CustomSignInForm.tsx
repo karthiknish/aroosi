@@ -56,6 +56,14 @@ export default function CustomSignInForm({
         return;
       }
   
+      // Show success message
+      import("@/lib/ui/toast").then(({ showSuccessToast }) => {
+        showSuccessToast("Welcome back! You have been successfully signed in.");
+      }).catch(() => {
+        // Fallback if toast can't be imported
+        console.log("Signed in successfully");
+      });
+  
       // 2) Hydration retry loop to cover propagation delay after sign-in
       const backoffs = [0, 150, 300, 750];
       let hydratedUser: any = null;

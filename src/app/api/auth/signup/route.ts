@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
+import { ConvexHttpClient } from "convex/browser";
 
 /**
  * Utility: normalize Gmail for comparison-only throttling
@@ -209,7 +210,7 @@ export async function POST(request: NextRequest) {
       const now = Date.now();
       const existing = (await fetchQuery(api.users.getRateLimitByKey, {
         key: ipKey,
-      }).catch(() => null)) as any;
+      }).catch(() => null)) as { windowStart?: number | bigint; count?: number | bigint } | null;
       const toNum = (v: unknown) =>
         typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0;
       if (!existing || now - toNum(existing.windowStart) > WINDOW_MS) {
@@ -283,7 +284,7 @@ export async function POST(request: NextRequest) {
       const key = `signup_email_cmp:${emailCompare}`;
       const existing = (await fetchQuery(api.users.getRateLimitByKey, {
         key,
-      }).catch(() => null)) as any;
+      }).catch(() => null)) as { windowStart?: number | bigint; count?: number | bigint } | null;
       const toNum = (v: unknown) =>
         typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0;
       if (!existing || now - toNum(existing.windowStart) > WINDOW_MS) {
@@ -334,9 +335,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 2) Existing account policy
-    const existingByEmail = await fetchQuery(api.users.getUserByEmail, {
+    const existingByEmail = (await fetchQuery(api.users.getUserByEmail, {
       email: normalizedEmail,
-    }).catch(() => null);
+    }).catch(() => null)) as { googleId?: string; hashedPassword?: string; _id?: string } | null;
 
     if (existingByEmail) {
       if (existingByEmail.googleId && !existingByEmail.hashedPassword) {
@@ -423,19 +424,41 @@ export async function POST(request: NextRequest) {
       );
 
       // Call the signIn action directly for signup
-      const result = await convex.action("auth:signIn", {
-        provider: "password",
-        params: {
-          email: normalizedEmail,
-          password,
-          flow: "signUp",
-        },
-      });
+      let result: { tokens?: { token: string } | null; } | undefined;
+      try {
+        result = await convex.action(api.auth.signIn, {
+          provider: "password",
+          params: {
+            email: normalizedEmail,
+            password,
+            flow: "signUp",
+          },
+        });
+      } catch (error: any) {
+        console.error("SignUp error:", error);
+        // Provide user-friendly error messages for common cases
+        let errorMessage = "Unable to create account. Please try again.";
+        let errorCode = "SIGNUP_FAILED";
+        
+        // Check if it's a specific Convex Auth error
+        if (error?.message?.includes("AccountExists")) {
+          errorMessage = "An account with this email already exists. Please sign in instead.";
+          errorCode = "ACCOUNT_EXISTS";
+        } else if (error?.message?.includes("InvalidPassword")) {
+          errorMessage = "Password does not meet security requirements. Please use a stronger password.";
+          errorCode = "WEAK_PASSWORD";
+        }
+        
+        return NextResponse.json(
+          { error: errorMessage, code: errorCode, correlationId },
+          { status: 400 }
+        );
+      }
 
       // Check if the sign up was successful
       if (!result?.tokens?.token) {
         return NextResponse.json(
-          { error: "Sign up failed", correlationId },
+          { error: "Failed to create account. Please try again.", correlationId },
           { status: 500 }
         );
       }
@@ -443,9 +466,9 @@ export async function POST(request: NextRequest) {
       // Ensure a user+profile exists in our domain data
       let createdUserId: string | null = null;
       try {
-        const existing = await fetchQuery(api.users.getUserByEmail, {
+        const existing = (await fetchQuery(api.users.getUserByEmail, {
           email: normalizedEmail,
-        }).catch(() => null);
+        }).catch(() => null)) as { _id?: string } | null;
         if (!existing) {
           createdUserId = (await fetchMutation(api.users.createUserAndProfile, {
             email: normalizedEmail,
@@ -487,8 +510,13 @@ export async function POST(request: NextRequest) {
       return res;
     } catch (e: any) {
       console.error("Sign up error:", e);
+      // Provide more detailed error information in development
+      const errorMessage = process.env.NODE_ENV === "development" 
+        ? `Sign up failed: ${e.message || "Unknown error"}`
+        : "Unable to create account. Please try again.";
+      
       return NextResponse.json(
-        { error: "Sign up failed", correlationId },
+        { error: errorMessage, code: "SIGNUP_FAILED", correlationId },
         { status: 500 }
       );
     }

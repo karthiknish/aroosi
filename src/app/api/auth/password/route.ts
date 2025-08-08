@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { convex } from "../../../../lib/convexClient";
+import { api } from "@convex/_generated/api";
 
 function maskEmail(email?: string) {
   if (!email) return "";
@@ -91,9 +92,9 @@ export async function POST(request: NextRequest) {
     console.log("Calling signIn action with:", { email, flow });
     
     // Call the signIn action directly
-    let result;
+    let result: { tokens?: { token: string } | null; } | undefined;
     try {
-      result = await convex.action("auth:signIn", {
+      result = await convex.action(api.auth.signIn, {
         provider: "password",
         params: {
           email,

@@ -194,7 +194,19 @@ export default function CustomSignupForm({
       }
 
       // Signup disabled
-      const res = new Response(JSON.stringify({ error: "Signup disabled" }), { status: 410 }) as any;
+      // const res = new Response(JSON.stringify({ error: "Signup disabled" }), { status: 410 }) as any;
+      
+      // Make actual signup API call
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password,
+          fullName,
+          profile: normalizedProfile,
+        }),
+      });
 
       const data = await res.json().catch(() => ({}) as unknown);
       // Handle explicit password policy error payloads eagerly

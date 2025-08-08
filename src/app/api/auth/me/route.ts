@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     convex.setAuth(sessionToken);
 
     // Check if user is authenticated
-    const isAuthenticated = await convex.query("auth:isAuthenticated", {});
+    const isAuthenticated = await convex.query(api.auth.isAuthenticated, {});
     if (!isAuthenticated) {
       return NextResponse.json({ user: null }, { status: 200 });
     }

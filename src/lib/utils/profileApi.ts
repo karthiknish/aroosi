@@ -1,8 +1,6 @@
 export async function updateProfile({
-  token,
   updates,
 }: {
-  token: string;
   updates: Record<string, unknown>;
 }): Promise<void> {
   const res = await fetch("/api/profile", {
@@ -12,6 +10,7 @@ export async function updateProfile({
       // Cookie-based session; no Authorization header
     },
     body: JSON.stringify(updates),
+    credentials: "include", // Include cookies in the request
   });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
@@ -36,10 +35,11 @@ export async function boostProfileCookieAuth(): Promise<{ boostsRemaining: numbe
   return { boostsRemaining: (json && json.boostsRemaining) ?? 0 };
 }
 
-export async function deleteProfile(token: string): Promise<void> {
+export async function deleteProfile(): Promise<void> {
   const res = await fetch("/api/profile/delete", {
     method: "DELETE",
     headers: {},
+    credentials: "include", // Include cookies in the request
   });
   if (!res.ok) throw new Error("Failed to delete profile");
 }

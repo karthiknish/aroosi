@@ -295,11 +295,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
           } catch {}
         }
         return { success: true };
-      } catch {
-        if (process.env.NODE_ENV !== "production") {
-          console.error("Sign up error");
+      } catch (error: any) {
+        // Include message/code if server provided in text
+        let errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
+        try {
+          if (typeof error?.message === "string") {
+            const parsed = JSON.parse(error.message);
+            if (parsed?.error) {
+              // Use the server-provided error message
+              errorMessage = parsed.error;
+              // Provide more user-friendly messages for common error codes
+              if (parsed.code === "ACCOUNT_EXISTS") {
+                errorMessage = "An account with this email already exists. Please sign in instead.";
+              } else if (parsed.code === "WEAK_PASSWORD") {
+                errorMessage = "Password does not meet security requirements. Please use a stronger password.";
+              } else if (parsed.code === "BAD_REQUEST") {
+                errorMessage = "Please fill in all required fields correctly.";
+              }
+            }
+          }
+        } catch {
+          // If we can't parse the error, keep the default network error message
         }
-        const errorMessage = "Network error";
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Sign up error", error);
+        }
         setError(errorMessage);
         return { success: false, error: errorMessage };
       }
@@ -344,11 +364,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logoutVersionRef.current += 1;
     try {
       // Prefer Convex Auth sign out endpoint
-      await fetch("/api/auth/signout", { method: "POST", cache: "no-store" }).catch(() => {});
+      const response = await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
+      if (!response.ok) {
+        // Log error but continue with local signout
+        console.error("Sign out API call failed");
+      }
+    } catch (error) {
+      // Log error but continue with local signout
+      console.error("Sign out failed:", error);
     } finally {
       removeLocalMarkers();
       setUser(null);
       setError(null);
+      // Show a success message
+      if (typeof window !== "undefined") {
+        // Dynamically import toast to avoid SSR issues
+        import("@/lib/ui/toast").then(({ showSuccessToast }) => {
+          showSuccessToast("You have been successfully signed out.");
+        }).catch(() => {
+          // Fallback if toast can't be imported
+          console.log("Signed out successfully");
+        });
+      }
       router.push("/sign-in");
     }
   }, [removeLocalMarkers, router]);
