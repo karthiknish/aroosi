@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  convexAuthNextjsMiddleware,
+  nextjsMiddlewareRedirect,
+} from "@convex-dev/auth/nextjs/server";
 
 // Token-based approach (Authorization: Bearer <token>):
 // - Do not rely on cookies at all.
@@ -56,7 +60,7 @@ function isAuthenticatedClientRoute(pathname: string): boolean {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export default convexAuthNextjsMiddleware(async (request) => {
   const { pathname } = request.nextUrl;
 
   // Bypass for system/static paths
@@ -82,37 +86,28 @@ export async function middleware(request: NextRequest) {
   }
 
   // Always allow public pages and public API routes
-  if (isPublicRoute(pathname) || isPublicApiRoute(pathname)) {
-    return NextResponse.next();
-  }
+  // Always allow public pages; Convex Auth handles /api/auth
+  if (isPublicRoute(pathname)) return NextResponse.next();
 
   // For authenticated client routes, allow if Authorization header OR auth cookies exist, otherwise redirect to sign-in
   if (isAuthenticatedClientRoute(pathname)) {
-    const authz = request.headers.get("authorization") || "";
-    const hasAuthHeader = authz.toLowerCase().startsWith("bearer ");
+    // Let Convex Auth determine auth state via cookies
+    // If not authenticated, redirect to sign-in with callback
+    // We can't call convexAuthNextjsToken here without context; rely on cookies being handled
     const cookies = request.cookies;
     const hasAuthCookie = Boolean(
-      cookies.get("__Secure-auth-token")?.value ||
-        cookies.get("auth-token")?.value ||
-        cookies.get("__Secure-next-auth.session-token")?.value ||
-        cookies.get("next-auth.session-token")?.value ||
-        cookies.get("__Secure-session-token")?.value ||
-        cookies.get("session-token")?.value ||
-        cookies.get("jwt")?.value
+      cookies.get("cvx-auth")?.value ||
+      cookies.get("cvx-refresh")?.value
     );
-    if (hasAuthHeader || hasAuthCookie) {
-      return NextResponse.next();
+    if (!hasAuthCookie) {
+      return nextjsMiddlewareRedirect(request, "/sign-in");
     }
-    // No token present: redirect to sign-in with callback for return
-    const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    url.searchParams.set("callbackUrl", request.nextUrl.pathname + request.nextUrl.search);
-    return NextResponse.redirect(url);
+    return NextResponse.next();
   }
 
   // For all other routes, pass through; API handlers enforce auth via headers
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [

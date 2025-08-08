@@ -162,24 +162,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
         removeLocalMarkers();
         setUser(null);
 
-        const response = await fetch("/api/auth/signin", {
+        // Call Convex Auth Password provider via Next middleware proxy
+        const form = new FormData();
+        form.set("email", email);
+        form.set("password", password);
+        form.set("flow", "signIn");
+        const response = await fetch("/api/auth/password", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: form,
+          // Let middleware handle redirects/cookies
+          redirect: "follow",
         });
 
-        const data = await response.json().catch(() => ({}));
-
         if (!response.ok) {
-          // Improve error message with server code if present
-          const serverMsg =
-            (data && (data.error as string)) || "Sign in failed";
-          const code = (data && (data.code as string)) || undefined;
-          const composed = code ? `${serverMsg} (${code})` : serverMsg;
-          setError(composed);
+          let serverMsg = "Sign in failed";
+          try {
+            const data = await response.json();
+            serverMsg = (data?.error as string) || serverMsg;
+            const code = (data?.code as string) || undefined;
+            serverMsg = code ? `${serverMsg} (${code})` : serverMsg;
+          } catch {}
+          setError(serverMsg);
           removeLocalMarkers();
           setUser(null);
-          return { success: false, error: composed };
+          return { success: false, error: serverMsg };
         }
 
         // Hydration retry loop to centralize reliability across callers
@@ -196,7 +202,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
 
-        return { success: true };
+  return { success: true };
       } catch (error: any) {
         // Include message/code if server provided in text
         let errorMessage = "Network error";
@@ -318,10 +324,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signOut = useCallback(async () => {
     logoutVersionRef.current += 1;
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        cache: "no-store",
-      }).catch(() => {});
+      // Prefer Convex Auth sign out endpoint
+      await fetch("/api/auth/signout", { method: "POST", cache: "no-store" }).catch(() => {});
     } finally {
       removeLocalMarkers();
       setUser(null);

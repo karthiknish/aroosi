@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-// Deprecated: handled by Convex Auth. This stub exists to keep mobile apps from breaking.
+// Deprecated: Google OAuth is handled by Convex Auth configuration at /api/auth/*.
+// This stub remains only for backward compatibility.
 export async function POST() {
   return NextResponse.json(
     {

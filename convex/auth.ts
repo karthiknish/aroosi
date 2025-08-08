@@ -1,17 +1,22 @@
 /* convex/auth.ts
- * Convex Auth bootstrap (manual setup), following https://labs.convex.dev/auth/setup/manual
- * - Configures session-based authentication with cookie sessions
- * - Exposes helpers to retrieve the authenticated identity in Convex functions
+ * Convex Auth bootstrap + helpers.
+ * - Initializes Convex Auth with the Password provider so /api/auth flows work.
+ * - Exposes helpers to retrieve the authenticated identity in Convex functions.
  *
- * Note:
- * - Providers (email/password, OAuth) are wired on the server side. Client initiates flows via server endpoints.
- * - Update the provider setup below to match your actual strategies.
+ * Docs: https://labs.convex.dev/auth/setup/manual and https://labs.convex.dev/auth/config/passwords
  */
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { api } from "@convex/_generated/api";
+import { convexAuth } from "@convex-dev/auth/server";
+import { Password } from "@convex-dev/auth/providers/Password";
+
+// Initialize Convex Auth (add more providers later if needed)
+export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
+  providers: [Password],
+});
 
 // Minimal identity shape we expect after authentication
 export const identitySchema = v.object({
