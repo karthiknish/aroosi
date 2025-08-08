@@ -116,6 +116,9 @@ export async function POST(request: NextRequest) {
       } else if (error?.message?.includes("InvalidPassword")) {
         errorMessage = "Invalid password. Please check your password and try again.";
         errorCode = "INVALID_PASSWORD";
+      } else if (error?.message?.includes("InvalidCredentials")) {
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        errorCode = "INVALID_CREDENTIALS";
       }
       
       return NextResponse.json(

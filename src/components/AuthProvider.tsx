@@ -180,6 +180,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const data = await response.json();
             serverMsg = (data?.error as string) || serverMsg;
             const code = (data?.code as string) || undefined;
+            // Provide more user-friendly messages for common error codes
+            if (code === "ACCOUNT_NOT_FOUND") {
+              serverMsg = "No account found with this email address. Please check your email or sign up for a new account.";
+            } else if (code === "INVALID_PASSWORD") {
+              serverMsg = "Invalid password. Please check your password and try again.";
+            } else if (code === "INVALID_CREDENTIALS") {
+              serverMsg = "Invalid email or password. Please check your credentials and try again.";
+            } else if (code === "BAD_REQUEST") {
+              serverMsg = "Please fill in all required fields.";
+            } else if (code === "UNKNOWN") {
+              serverMsg = "Something went wrong on our end. Please try again in a few minutes.";
+            }
             serverMsg = code ? `${serverMsg} (${code})` : serverMsg;
           } catch {}
           setError(serverMsg);
@@ -227,7 +239,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
           }
         } catch {
-          // If we can't parse the error, keep the default network error message
+          // If we can't parse the error, check if it's an InvalidAccountId error
+          if (error?.message?.includes("InvalidAccountId")) {
+            errorMessage = "No account found with this email address. Please check your email or sign up for a new account.";
+          }
         }
         if (process.env.NODE_ENV !== "production") {
           console.error("Sign in error", error);
