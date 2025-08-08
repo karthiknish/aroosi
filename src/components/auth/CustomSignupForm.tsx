@@ -331,11 +331,21 @@ export default function CustomSignupForm({
 
       if (!res.ok) {
         const raw = data as any;
-        const msg =
+        let msg =
           raw?.error ||
           raw?.message ||
           (typeof raw === "string" ? raw : null) ||
           "Failed to create account";
+        
+        // Provide more specific error messages for common cases
+        if (res.status === 500) {
+          msg = "Something went wrong on our end. Please try again in a few minutes.";
+        } else if (res.status === 429) {
+          msg = "Too many signup attempts. Please wait and try again.";
+        } else if (res.status >= 500) {
+          msg = "Server error. Please try again later.";
+        }
+        
         showErrorToast(msg);
         onError?.(msg);
         setIsLoading(false);

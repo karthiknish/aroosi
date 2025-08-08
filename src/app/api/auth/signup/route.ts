@@ -456,6 +456,9 @@ export async function POST(request: NextRequest) {
         } else if (error?.message?.includes("InvalidPassword")) {
           errorMessage = "Password does not meet security requirements. Please use a stronger password.";
           errorCode = "WEAK_PASSWORD";
+        } else if (error?.message?.includes("InvalidAccountId")) {
+          errorMessage = "No account found with this email address. Please check your email or sign up for a new account.";
+          errorCode = "ACCOUNT_NOT_FOUND";
         }
         
         return NextResponse.json(
@@ -533,9 +536,10 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
+    console.error("Unexpected signup error:", error);
     return NextResponse.json(
-      { error: "Unable to complete signup at this time", correlationId },
-      { status: 400 }
+      { error: "Unable to complete signup at this time. Please try again later.", correlationId },
+      { status: 500 }
     );
   }
 }
