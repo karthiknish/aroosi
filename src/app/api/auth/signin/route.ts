@@ -47,14 +47,18 @@ export async function POST(request: NextRequest) {
 
     // Resolve Convex Auth base URL. Prefer CONVEX_SITE_URL (.site). If only
     // NEXT_PUBLIC_CONVEX_URL (.cloud) is provided, derive the .site host.
-    const siteBase = process.env.CONVEX_SITE_URL;
-    const cloud = process.env.NEXT_PUBLIC_CONVEX_URL;
-    const derivedSite = cloud?.includes(".convex.cloud")
-      ? cloud.replace(".convex.cloud", ".convex.site")
+    const siteBaseRaw = process.env.CONVEX_SITE_URL || undefined;
+    const cloud = process.env.NEXT_PUBLIC_CONVEX_URL || undefined;
+    const raw = siteBaseRaw || cloud;
+    const normalized = raw ? raw.replace(/\/+$/, "") : undefined;
+    const base = normalized
+      ? normalized.includes(".convex.cloud")
+        ? normalized.replace(".convex.cloud", ".convex.site")
+        : normalized
       : undefined;
-    const base = siteBase || derivedSite || undefined;
-    const upstreamUrl = base ? `${base}/api/auth` : undefined;
-    if (!base || !upstreamUrl) {
+    const upstreamUrlApi = base ? `${base}/api/auth` : undefined;
+    const upstreamUrlAlt = base ? `${base}/auth` : undefined;
+    if (!base || !upstreamUrlApi) {
       // Removed error log for lint
       return NextResponse.json(
         { error: "Server misconfiguration", code: "ENV_MISSING" },
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 9000);
       try {
-        return await fetch(upstreamUrl, {
+        return await fetch(upstreamUrlApi, {
           method: "POST",
           headers: { "content-type": "application/x-www-form-urlencoded" },
           body: form,
@@ -79,15 +83,42 @@ export async function POST(request: NextRequest) {
         clearTimeout(t);
       }
     };
-    let res: Response;
+  let res: Response;
+  try {
+    res = await doFetch();
+  } catch {
+    res = await doFetch();
+  }
+  if (res.status === 404 || res.status === 405) {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 9000);
     try {
-      res = await doFetch();
-    } catch {
-      res = await doFetch();
+      res = await fetch(upstreamUrlAlt!, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: form,
+        redirect: "manual",
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } finally {
+      clearTimeout(t);
     }
+  }
 
-    // Forward Set-Cookie headers from Convex Auth to the browser
-    const out = NextResponse.json({ ok: res.ok }, { status: res.status });
+  // Forward Set-Cookie headers from Convex Auth to the browser
+  let payload: any = { ok: res.ok };
+  if (process.env.NODE_ENV !== "production" && res.status >= 400) {
+    payload = {
+      ...payload,
+      debug: {
+        base,
+        tried: [upstreamUrlApi, upstreamUrlAlt].filter(Boolean),
+        status: res.status,
+      },
+    };
+  }
+  const out = NextResponse.json(payload, { status: res.status });
     const setCookie = res.headers.get("set-cookie");
     const cookieCount = setCookie ? setCookie.split(/,(?=[^;]+?=)/g).length : 0;
     // Removed info log for lint

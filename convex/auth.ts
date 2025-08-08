@@ -70,6 +70,20 @@ export const consolidateUserAfterAuth = action({
       throw new Error("EMAIL_REQUIRED");
     }
 
+    const mask = (e?: string) => {
+      if (!e) return "";
+      const [n, d] = e.split("@");
+      const first = (n?.[0] ?? "*") + "***";
+      return d ? `${first}@${d}` : first;
+    };
+    // eslint-disable-next-line no-console
+    console.info("convex.auth.consolidate:start", {
+      email: mask(email),
+      hasName: Boolean(args.name ?? (identity as any).name),
+      hasPicture: Boolean(args.picture ?? (identity as any).picture),
+      hasGoogleId: Boolean(args.googleId ?? (identity as any).googleId),
+    });
+
     // Look up existing user via email (server-side query reference)
     const existing = await ctx.runQuery(api.users.findUserByEmail, { email });
     if (existing) {
@@ -84,6 +98,11 @@ export const consolidateUserAfterAuth = action({
       googleId: args.googleId ?? (identity as any).googleId,
     });
 
+    // eslint-disable-next-line no-console
+    console.info("convex.auth.consolidate:done", {
+      email: mask(email),
+      userId: String(userDocId),
+    });
     return { ok: true, userId: userDocId as Id<"users"> };
   },
 });

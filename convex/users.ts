@@ -8,16 +8,29 @@ import { v } from "convex/values";
 import { query, mutation, action } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
+function maskEmail(e?: string) {
+  if (!e) return "";
+  const [name, domain] = e.split("@");
+  const first = (name?.[0] ?? "*") + "***";
+  return domain ? `${first}@${domain}` : first;
+}
+
 /**
  * Query helper: find user by email (uses index 'by_email' on users.email)
  */
 export const findUserByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) => {
-    return await ctx.db
+    const res = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
+    // eslint-disable-next-line no-console
+    console.info("convex.users.findUserByEmail", {
+      email: maskEmail(email),
+      found: Boolean(res),
+    });
+    return res;
   },
 });
 
@@ -27,10 +40,16 @@ export const findUserByEmail = query({
 export const getUserByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, { email }) => {
-    return await ctx.db
+    const res = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
+    // eslint-disable-next-line no-console
+    console.info("convex.users.getUserByEmail", {
+      email: maskEmail(email),
+      found: Boolean(res),
+    });
+    return res;
   },
 });
 
@@ -45,6 +64,11 @@ export const createUserAndProfile = mutation({
     googleId: v.optional(v.string()),
   },
   handler: async (ctx, { email, name, picture, googleId }) => {
+    // eslint-disable-next-line no-console
+    console.info("convex.users.createUserAndProfile:start", {
+      email: maskEmail(email),
+      hasGoogleId: Boolean(googleId),
+    });
     const userId = await ctx.db.insert("users", {
       email,
       name: name ?? "",
@@ -61,6 +85,11 @@ export const createUserAndProfile = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     } as any);
+    // eslint-disable-next-line no-console
+    console.info("convex.users.createUserAndProfile:done", {
+      email: maskEmail(email),
+      userId: String(userId),
+    });
     return userId as Id<"users">;
   },
 });
@@ -76,6 +105,11 @@ export const updateUserPassword = mutation({
   },
   handler: async (ctx, { userId, hashedPassword }) => {
     await ctx.db.patch(userId as Id<"users">, { hashedPassword } as any);
+    // eslint-disable-next-line no-console
+    console.info("convex.users.updateUserPassword", {
+      userId: String(userId),
+      hashed: typeof hashedPassword === "string",
+    });
     return { ok: true } as const;
   },
 });
@@ -173,12 +207,13 @@ export const getMyMatches = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [] as Array<{
-      userId: Id<"users">;
-      fullName?: string | null;
-      profileImageUrls?: string[] | null;
-      createdAt?: number | null;
-    }>;
+    if (!identity)
+      return [] as Array<{
+        userId: Id<"users">;
+        fullName?: string | null;
+        profileImageUrls?: string[] | null;
+        createdAt?: number | null;
+      }>;
 
     // Resolve current user record via email
     const email = (identity as any).email as string | undefined;
@@ -203,7 +238,9 @@ export const getMyMatches = query({
       .withIndex("by_user2", (q) => q.eq("user2Id", myId))
       .collect();
 
-    const rows = [...asUser1, ...asUser2].filter((m: any) => m?.status === "matched");
+    const rows = [...asUser1, ...asUser2].filter(
+      (m: any) => m?.status === "matched"
+    );
 
     // Map to the other participant and enrich with profile basics
     const results: Array<{
@@ -214,7 +251,9 @@ export const getMyMatches = query({
     }> = [];
 
     for (const m of rows) {
-      const otherUserId = (m.user1Id === myId ? m.user2Id : m.user1Id) as Id<"users">;
+      const otherUserId = (
+        m.user1Id === myId ? m.user2Id : m.user1Id
+      ) as Id<"users">;
       let fullName: string | null = null;
       let profileImageUrls: string[] | null = null;
       try {
@@ -224,7 +263,9 @@ export const getMyMatches = query({
           .first();
         if (profile) {
           fullName = (profile as any).fullName ?? null;
-          profileImageUrls = ((profile as any).profileImageUrls ?? null) as string[] | null;
+          profileImageUrls = ((profile as any).profileImageUrls ?? null) as
+            | string[]
+            | null;
         }
       } catch {}
 
@@ -256,7 +297,7 @@ export const recordProfileView = mutation({
       .first();
     if (!me) throw new Error("User not found");
     await ctx.db.insert("profileViews", {
-      viewerId: (me._id as Id<"users">),
+      viewerId: me._id as Id<"users">,
       profileId,
       createdAt: Date.now(),
     } as any);
@@ -292,7 +333,9 @@ export const getProfileViewers = query({
           .first();
         if (profile) {
           fullName = (profile as any).fullName ?? null;
-          profileImageUrls = ((profile as any).profileImageUrls ?? null) as string[] | null;
+          profileImageUrls = ((profile as any).profileImageUrls ?? null) as
+            | string[]
+            | null;
         }
       } catch {}
       results.push({
@@ -315,12 +358,22 @@ export const boostProfile = mutation({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      return { success: false, status: 401, code: "UNAUTHENTICATED", message: "Sign in required" } as const;
+      return {
+        success: false,
+        status: 401,
+        code: "UNAUTHENTICATED",
+        message: "Sign in required",
+      } as const;
     }
 
     const email = (identity as any).email as string | undefined;
     if (!email) {
-      return { success: false, status: 401, code: "UNAUTHENTICATED", message: "Missing identity email" } as const;
+      return {
+        success: false,
+        status: 401,
+        code: "UNAUTHENTICATED",
+        message: "Missing identity email",
+      } as const;
     }
 
     // Resolve user and profile
@@ -329,23 +382,39 @@ export const boostProfile = mutation({
       .withIndex("by_email", (q) => q.eq("email", email.trim().toLowerCase()))
       .first();
     if (!user) {
-      return { success: false, status: 404, code: "USER_NOT_FOUND", message: "User not found" } as const;
+      return {
+        success: false,
+        status: 404,
+        code: "USER_NOT_FOUND",
+        message: "User not found",
+      } as const;
     }
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", user._id as Id<"users">))
       .first();
     if (!profile) {
-      return { success: false, status: 404, code: "PROFILE_NOT_FOUND", message: "Profile not found" } as const;
+      return {
+        success: false,
+        status: 404,
+        code: "PROFILE_NOT_FOUND",
+        message: "Profile not found",
+      } as const;
     }
 
     const now = Date.now();
-    const currentMonthKey = new Date(now).getUTCFullYear() * 100 + (new Date(now).getUTCMonth() + 1);
+    const currentMonthKey =
+      new Date(now).getUTCFullYear() * 100 + (new Date(now).getUTCMonth() + 1);
     const monthlyQuota = 5;
 
     const plan = (profile as any).subscriptionPlan as string | undefined;
-    const expiresAt = (profile as any).subscriptionExpiresAt as number | undefined;
-    if (plan !== "premiumPlus" || (typeof expiresAt === "number" && expiresAt <= now)) {
+    const expiresAt = (profile as any).subscriptionExpiresAt as
+      | number
+      | undefined;
+    if (
+      plan !== "premiumPlus" ||
+      (typeof expiresAt === "number" && expiresAt <= now)
+    ) {
       return {
         success: false,
         status: 402,
@@ -367,7 +436,9 @@ export const boostProfile = mutation({
     }
 
     let boostsMonth = (profile as any).boostsMonth as number | undefined;
-    let boostsRemaining = (profile as any).boostsRemaining as number | undefined;
+    let boostsRemaining = (profile as any).boostsRemaining as
+      | number
+      | undefined;
     if (boostsMonth !== currentMonthKey) {
       boostsMonth = currentMonthKey;
       boostsRemaining = monthlyQuota;
@@ -385,12 +456,15 @@ export const boostProfile = mutation({
     const newBoostedUntil = now + 24 * 60 * 60 * 1000;
     const newRemaining = Math.max((boostsRemaining ?? monthlyQuota) - 1, 0);
 
-    await ctx.db.patch((profile as any)._id as Id<"profiles">, {
-      boostedUntil: newBoostedUntil,
-      boostsRemaining: newRemaining,
-      boostsMonth: currentMonthKey,
-      updatedAt: now,
-    } as any);
+    await ctx.db.patch(
+      (profile as any)._id as Id<"profiles">,
+      {
+        boostedUntil: newBoostedUntil,
+        boostsRemaining: newRemaining,
+        boostsMonth: currentMonthKey,
+        updatedAt: now,
+      } as any
+    );
 
     return {
       success: true,
@@ -460,7 +534,11 @@ export const updateProfile = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", user._id as Id<"users">))
       .first();
     if (!profile) {
-      return { success: false, status: 404, code: "PROFILE_NOT_FOUND" } as const;
+      return {
+        success: false,
+        status: 404,
+        code: "PROFILE_NOT_FOUND",
+      } as const;
     }
     const patch: any = { ...updates, updatedAt: Date.now() };
     await ctx.db.patch((profile as any)._id as Id<"profiles">, patch);
@@ -488,23 +566,36 @@ export const adminListProfiles = query({
     let profiles = all as any[];
     const term = (args.search ?? "").toLowerCase().trim();
     if (term) {
-      profiles = profiles.filter((p) =>
-        String(p.fullName ?? "").toLowerCase().includes(term) ||
-        String(p.aboutMe ?? "").toLowerCase().includes(term)
+      profiles = profiles.filter(
+        (p) =>
+          String(p.fullName ?? "")
+            .toLowerCase()
+            .includes(term) ||
+          String(p.aboutMe ?? "")
+            .toLowerCase()
+            .includes(term)
       );
     }
     // Enrich banned flag by joining users
     const enriched = await Promise.all(
       profiles.map(async (p) => {
         const user = await ctx.db.get(p.userId as Id<"users">);
-        return { ...p, banned: Boolean((user as any)?.banned), subscriptionPlan: (user as any)?.subscriptionPlan };
+        return {
+          ...p,
+          banned: Boolean((user as any)?.banned),
+          subscriptionPlan: (user as any)?.subscriptionPlan,
+        };
       })
     );
     let filtered = enriched;
-    if (args.banned === "true") filtered = filtered.filter((p) => p.banned === true);
-    if (args.banned === "false") filtered = filtered.filter((p) => p.banned !== true);
-    if (args.isProfileComplete === "true") filtered = filtered.filter((p) => p.isProfileComplete === true);
-    if (args.isProfileComplete === "false") filtered = filtered.filter((p) => p.isProfileComplete !== true);
+    if (args.banned === "true")
+      filtered = filtered.filter((p) => p.banned === true);
+    if (args.banned === "false")
+      filtered = filtered.filter((p) => p.banned !== true);
+    if (args.isProfileComplete === "true")
+      filtered = filtered.filter((p) => p.isProfileComplete === true);
+    if (args.isProfileComplete === "false")
+      filtered = filtered.filter((p) => p.isProfileComplete !== true);
     // simple sort by createdAt or subscriptionPlan or banned
     const sortBy = (args.sortBy as string) || "createdAt";
     const dir = (args.sortDir as string) === "asc" ? 1 : -1;
@@ -517,7 +608,12 @@ export const adminListProfiles = query({
     const page = Math.max(args.page ?? 1, 1);
     const start = (page - 1) * pageSize;
     const pageItems = filtered.slice(start, start + pageSize);
-    return { profiles: pageItems, total: filtered.length, page, pageSize } as const;
+    return {
+      profiles: pageItems,
+      total: filtered.length,
+      page,
+      pageSize,
+    } as const;
   },
 });
 
@@ -550,7 +646,10 @@ export const adminUpdateProfile = mutation({
     }),
   },
   handler: async (ctx, { id, updates }) => {
-    await ctx.db.patch(id as Id<"profiles">, { ...(updates as any), updatedAt: Date.now() } as any);
+    await ctx.db.patch(
+      id as Id<"profiles">,
+      { ...(updates as any), updatedAt: Date.now() } as any
+    );
     return { ok: true } as const;
   },
 });
@@ -567,14 +666,19 @@ export const adminUpdateSpotlightBadge = mutation({
   handler: async (ctx, { profileId, hasSpotlightBadge, durationDays }) => {
     let expiresAt: number | undefined = undefined;
     if (hasSpotlightBadge) {
-      const days = Number.isFinite(durationDays) ? (durationDays as number) : 30;
+      const days = Number.isFinite(durationDays)
+        ? (durationDays as number)
+        : 30;
       expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
     }
-    await ctx.db.patch(profileId as Id<"profiles">, {
-      hasSpotlightBadge,
-      spotlightBadgeExpiresAt: expiresAt,
-      updatedAt: Date.now(),
-    } as any);
+    await ctx.db.patch(
+      profileId as Id<"profiles">,
+      {
+        hasSpotlightBadge,
+        spotlightBadgeExpiresAt: expiresAt,
+        updatedAt: Date.now(),
+      } as any
+    );
     return { hasSpotlightBadge, spotlightBadgeExpiresAt: expiresAt } as const;
   },
 });
@@ -601,7 +705,10 @@ export const adminUpdateProfileImageOrder = mutation({
     imageIds: v.array(v.id("_storage")),
   },
   handler: async (ctx, { profileId, imageIds }) => {
-    await ctx.db.patch(profileId as Id<"profiles">, { profileImageIds: imageIds as any, updatedAt: Date.now() } as any);
+    await ctx.db.patch(
+      profileId as Id<"profiles">,
+      { profileImageIds: imageIds as any, updatedAt: Date.now() } as any
+    );
     return { ok: true } as const;
   },
 });
@@ -836,10 +943,16 @@ export const searchPublicProfiles = query({
 export const getRateLimitByKey = query({
   args: { key: v.string() },
   handler: async (ctx, { key }) => {
-    return await ctx.db
+    const res = await ctx.db
       .query("rateLimits")
       .withIndex("by_key", (q) => q.eq("key", key))
       .first();
+    // eslint-disable-next-line no-console
+    console.info("convex.users.getRateLimitByKey", {
+      key,
+      found: Boolean(res),
+    });
+    return res;
   },
 });
 
@@ -867,6 +980,12 @@ export const setRateLimitWindow = mutation({
           count: countBig,
         } as any
       );
+      // eslint-disable-next-line no-console
+      console.info("convex.users.setRateLimitWindow:update", {
+        key,
+        windowStart,
+        count,
+      });
       return existing._id as Id<"rateLimits">;
     }
 
@@ -875,6 +994,12 @@ export const setRateLimitWindow = mutation({
       windowStart: windowStartBig,
       count: countBig,
     } as any);
+    // eslint-disable-next-line no-console
+    console.info("convex.users.setRateLimitWindow:insert", {
+      key,
+      windowStart,
+      count,
+    });
     return id as Id<"rateLimits">;
   },
 });
@@ -892,6 +1017,8 @@ export const incrementRateLimit = mutation({
         windowStart: BigInt(Date.now()),
         count: BigInt(1),
       } as any);
+      // eslint-disable-next-line no-console
+      console.info("convex.users.incrementRateLimit:insert", { key });
       return id as Id<"rateLimits">;
     }
     const currentCount = (existing as any).count ?? BigInt(0);
@@ -904,6 +1031,8 @@ export const incrementRateLimit = mutation({
             : BigInt(Number(currentCount))) + BigInt(1),
       } as any
     );
+    // eslint-disable-next-line no-console
+    console.info("convex.users.incrementRateLimit:update", { key });
     return existing._id as Id<"rateLimits">;
   },
 });
