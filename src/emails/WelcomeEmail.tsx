@@ -2,25 +2,86 @@ import React from "react";
 
 export function EmailContainer({ children }: { children: React.ReactNode }) {
   return (
-    <html>
-      <body style={{ margin: 0, padding: 0, background: "#ffffff", fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif", color: "#111" }}>
-        <table role="presentation" width="100%" cellPadding={0} cellSpacing={0} style={{ padding: "24px 0", background: "#f5f5f5" }}>
+    <html lang="en">
+      <body
+        style={{
+          margin: 0,
+          padding: 0,
+          background: "#ffffff",
+          fontFamily:
+            "system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif",
+          color: "#111",
+        }}
+      >
+        <table
+          role="presentation"
+          width="100%"
+          cellPadding={0}
+          cellSpacing={0}
+          style={{ padding: "24px 0", background: "#f5f5f5" }}
+        >
           <tbody>
             <tr>
               <td align="center">
-                <table role="presentation" width={560} cellPadding={0} cellSpacing={0} style={{ width: 560, maxWidth: 560, background: "#ffffff", borderRadius: 12, border: "1px solid #eee", overflow: "hidden" }}>
+                <table
+                  role="presentation"
+                  width={560}
+                  cellPadding={0}
+                  cellSpacing={0}
+                  style={{
+                    width: 560,
+                    maxWidth: 560,
+                    background: "#ffffff",
+                    borderRadius: 12,
+                    border: "1px solid #eee",
+                    overflow: "hidden",
+                  }}
+                >
                   <tbody>
                     <tr>
-                      <td style={{ padding: "20px 24px", textAlign: "center", borderBottom: "1px solid #f0f0f0" }}>
-                        <img src="https://aroosi.app/logo.png" alt="Aroosi" width={96} style={{ display: "block", margin: "0 auto 4px auto" }} />
-                        <div style={{ fontWeight: 600, letterSpacing: ".3px", color: "#555", fontSize: 13 }}>Aroosi</div>
+                      <td
+                        style={{
+                          padding: "20px 24px",
+                          textAlign: "center",
+                          borderBottom: "1px solid #f0f0f0",
+                        }}
+                      >
+                        {/* Email clients require <img>; Next.js Image is not applicable in emails */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="https://aroosi.app/logo.png"
+                          alt="Aroosi"
+                          width={96}
+                          style={{
+                            display: "block",
+                            margin: "0 auto 4px auto",
+                          }}
+                        />
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            letterSpacing: ".3px",
+                            color: "#555",
+                            fontSize: 13,
+                          }}
+                        >
+                          Aroosi
+                        </div>
                       </td>
                     </tr>
                     <tr>
                       <td style={{ padding: "28px 24px" }}>{children}</td>
                     </tr>
                     <tr>
-                      <td style={{ padding: "20px 24px", textAlign: "center", borderTop: "1px solid #f0f0f0", fontSize: 11, color: "#777" }}>
+                      <td
+                        style={{
+                          padding: "20px 24px",
+                          textAlign: "center",
+                          borderTop: "1px solid #f0f0f0",
+                          fontSize: 11,
+                          color: "#777",
+                        }}
+                      >
                         © {new Date().getFullYear()} Aroosi
                       </td>
                     </tr>

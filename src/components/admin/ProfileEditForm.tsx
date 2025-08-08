@@ -7,7 +7,6 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { ProfileFormValues } from "@/types/profile";
-import { planDisplayName } from "@/lib/utils/plan";
 import type { ImageType } from "@/types/image";
 import type { Profile } from "@/types/profile";
 import {
@@ -103,7 +102,7 @@ export default function ProfileEditForm({
   serverError,
   onCancel,
   profileId,
-  token,
+  token: _token,
   images,
   setImages,
   imagesLoading,
@@ -167,7 +166,7 @@ export default function ProfileEditForm({
       setImages((prev) => [...prev, img]);
     } catch (err: unknown) {
       setImageError(
-        isErrorWithMessage(err) ? err.message : "Failed to upload image",
+        isErrorWithMessage(err) ? err.message : "Failed to upload image"
       );
     } finally {
       setUploading(false);
@@ -181,18 +180,17 @@ export default function ProfileEditForm({
     try {
       await deleteAdminProfileImageById({ profileId, imageId } as any);
       setImages((prev) =>
-        prev.filter((img) => (img.id ?? img.storageId) !== imageId),
+        prev.filter((img) => (img.id ?? img.storageId) !== imageId)
       );
     } catch (err: unknown) {
       setImageError(
-        isErrorWithMessage(err) ? err.message : "Failed to delete image",
+        isErrorWithMessage(err) ? err.message : "Failed to delete image"
       );
     }
   };
 
   const handleCreateMatch = async () => {
-    if (!profileId || (!manualMatchName.trim() && !selectedProfile))
-      return;
+    if (!profileId || (!manualMatchName.trim() && !selectedProfile)) return;
     setCreatingMatch(true);
     setMatchError(null);
     try {
@@ -205,7 +203,7 @@ export default function ProfileEditForm({
         target = profiles.find((p) =>
           p.fullName
             .toLowerCase()
-            .includes(manualMatchName.trim().toLowerCase()),
+            .includes(manualMatchName.trim().toLowerCase())
         );
       }
       if (!target) throw new Error("No matching profile found");
@@ -295,8 +293,11 @@ export default function ProfileEditForm({
         </div>
 
         <div>
-          <label className="block font-medium">Full Name</label>
+          <label className="block font-medium" htmlFor="fullName">
+            Full Name
+          </label>
           <input
+            id="fullName"
             {...register("fullName")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Full name"
@@ -306,8 +307,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Date of Birth</label>
+          <label className="block font-medium" htmlFor="dateOfBirth">
+            Date of Birth
+          </label>
           <input
+            id="dateOfBirth"
             type="date"
             {...register("dateOfBirth")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
@@ -318,8 +322,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Gender</label>
+          <label className="block font-medium" htmlFor="gender">
+            Gender
+          </label>
           <select
+            id="gender"
             {...register("gender")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -334,8 +341,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">City</label>
+          <label className="block font-medium" htmlFor="city">
+            City
+          </label>
           <input
+            id="city"
             {...register("city")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="City"
@@ -345,8 +355,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Country</label>
+          <label className="block font-medium" htmlFor="country">
+            Country
+          </label>
           <input
+            id="country"
             {...register("country")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Country"
@@ -356,18 +369,22 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Phone Number</label>
+          <label className="block font-medium" id="phoneNumberLabel">
+            Phone Number
+          </label>
           <Controller
             name="phoneNumber"
             control={control}
             render={({ field }) => (
-              <PhoneInput
-                value={field.value}
-                onChange={field.onChange}
-                placeholder="Phone number"
-                className="w-full"
-                error={!!errors.phoneNumber}
-              />
+              <div role="group" aria-labelledby="phoneNumberLabel">
+                <PhoneInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Phone number"
+                  className="w-full"
+                  error={!!errors.phoneNumber}
+                />
+              </div>
             )}
           />
           {errors.phoneNumber && (
@@ -375,8 +392,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div className="md:col-span-2">
-          <label className="block font-medium">About Me</label>
+          <label className="block font-medium" htmlFor="aboutMe">
+            About Me
+          </label>
           <textarea
+            id="aboutMe"
             {...register("aboutMe")}
             className="form-textarea w-full min-h-[80px] rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Tell us about yourself..."
@@ -386,8 +406,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Height</label>
+          <label className="block font-medium" htmlFor="height">
+            Height
+          </label>
           <input
+            id="height"
             {...register("height")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Height"
@@ -397,8 +420,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Marital Status</label>
+          <label className="block font-medium" htmlFor="maritalStatus">
+            Marital Status
+          </label>
           <select
+            id="maritalStatus"
             {...register("maritalStatus")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -414,8 +440,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Education</label>
+          <label className="block font-medium" htmlFor="education">
+            Education
+          </label>
           <input
+            id="education"
             {...register("education")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Education"
@@ -425,8 +454,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Occupation</label>
+          <label className="block font-medium" htmlFor="occupation">
+            Occupation
+          </label>
           <input
+            id="occupation"
             {...register("occupation")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Occupation"
@@ -436,8 +468,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Annual Income</label>
+          <label className="block font-medium" htmlFor="annualIncome">
+            Annual Income
+          </label>
           <input
+            id="annualIncome"
             type="number"
             {...register("annualIncome")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
@@ -450,8 +485,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Diet</label>
+          <label className="block font-medium" htmlFor="diet">
+            Diet
+          </label>
           <input
+            id="diet"
             {...register("diet")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Diet"
@@ -461,8 +499,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Smoking</label>
+          <label className="block font-medium" htmlFor="smoking">
+            Smoking
+          </label>
           <input
+            id="smoking"
             {...register("smoking")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Smoking"
@@ -472,8 +513,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Drinking</label>
+          <label className="block font-medium" htmlFor="drinking">
+            Drinking
+          </label>
           <input
+            id="drinking"
             {...register("drinking")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Drinking"
@@ -483,8 +527,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Physical Status</label>
+          <label className="block font-medium" htmlFor="physicalStatus">
+            Physical Status
+          </label>
           <input
+            id="physicalStatus"
             {...register("physicalStatus")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Physical status"
@@ -496,10 +543,14 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">
+          <label
+            className="block font-medium"
+            htmlFor="partnerPreferenceAgeMin"
+          >
             Partner Preference Age Min
           </label>
           <input
+            id="partnerPreferenceAgeMin"
             type="number"
             {...register("partnerPreferenceAgeMin")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
@@ -512,10 +563,14 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">
+          <label
+            className="block font-medium"
+            htmlFor="partnerPreferenceAgeMax"
+          >
             Partner Preference Age Max
           </label>
           <input
+            id="partnerPreferenceAgeMax"
             type="number"
             {...register("partnerPreferenceAgeMax")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
@@ -528,10 +583,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">
+          <label className="block font-medium" htmlFor="partnerPreferenceCity">
             Partner Preference City/Cities
           </label>
           <input
+            id="partnerPreferenceCity"
             {...register("partnerPreferenceCity")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
             placeholder="Partner Preference City/Cities"
@@ -543,8 +599,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Preferred Gender</label>
+          <label className="block font-medium" htmlFor="preferredGender">
+            Preferred Gender
+          </label>
           <select
+            id="preferredGender"
             {...register("preferredGender")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -561,8 +620,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium">Profile For</label>
+          <label className="block font-medium" htmlFor="profileFor">
+            Profile For
+          </label>
           <select
+            id="profileFor"
             {...register("profileFor")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -575,8 +637,11 @@ export default function ProfileEditForm({
           )}
         </div>
         <div className="md:col-span-1">
-          <label className="block font-medium">Subscription Plan</label>
+          <label className="block font-medium" htmlFor="subscriptionPlan">
+            Subscription Plan
+          </label>
           <select
+            id="subscriptionPlan"
             {...register("subscriptionPlan")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -591,14 +656,18 @@ export default function ProfileEditForm({
             </p>
           )}
           <p className="text-xs text-muted-foreground mt-1">
-            Labels mirror server SUBSCRIPTION_PLANS; changing plan here does not create Stripe billing.
+            Labels mirror server SUBSCRIPTION_PLANS; changing plan here does not
+            create Stripe billing.
           </p>
         </div>
 
         {/* Subscription admin fields */}
         <div className="md:col-span-1">
-          <label className="block font-medium">Subscription Expires At</label>
+          <label className="block font-medium" htmlFor="subscriptionExpiresAt">
+            Subscription Expires At
+          </label>
           <input
+            id="subscriptionExpiresAt"
             type="number"
             {...register("subscriptionExpiresAt")}
             className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
@@ -626,10 +695,14 @@ export default function ProfileEditForm({
 
         {/* Cultural Information */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            className="block text-sm font-medium text-gray-700 mb-1"
+            htmlFor="motherTongue"
+          >
             Mother Tongue
           </label>
           <select
+            id="motherTongue"
             {...register("motherTongue")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -651,10 +724,14 @@ export default function ProfileEditForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            className="block text-sm font-medium text-gray-700 mb-1"
+            htmlFor="religion"
+          >
             Religion
           </label>
           <select
+            id="religion"
             {...register("religion")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -669,10 +746,14 @@ export default function ProfileEditForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            className="block text-sm font-medium text-gray-700 mb-1"
+            htmlFor="ethnicity"
+          >
             Ethnicity
           </label>
           <select
+            id="ethnicity"
             {...register("ethnicity")}
             className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
           >
@@ -731,9 +812,10 @@ export default function ProfileEditForm({
           {suggestions.length > 0 && (
             <div className="border mt-2 rounded-md bg-white shadow max-h-60 overflow-auto z-50">
               {suggestions.map((sug) => (
-                <div
+                <button
                   key={sug._id}
-                  className="px-3 py-2 hover:bg-pink-50 cursor-pointer text-foreground"
+                  type="button"
+                  className="w-full text-left px-3 py-2 hover:bg-pink-50 cursor-pointer text-foreground"
                   onClick={() => {
                     setSelectedProfile(sug);
                     setManualMatchName(sug.fullName);
@@ -741,7 +823,7 @@ export default function ProfileEditForm({
                   }}
                 >
                   {sug.fullName} – {sug.city}
-                </div>
+                </button>
               ))}
             </div>
           )}

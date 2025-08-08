@@ -174,8 +174,8 @@ function AdminEditBlogPageInner() {
               content={content ?? ""}
               disabled={saving}
             />
-            <div className="mt-6">
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <div className="mt-6" role="group" aria-labelledby="blog-content-label">
+              <label id="blog-content-label" className="text-sm font-medium text-gray-700 mb-2 block">
                 Content
               </label>
               <BlogEditor value={content ?? ""} onChange={setContent} />

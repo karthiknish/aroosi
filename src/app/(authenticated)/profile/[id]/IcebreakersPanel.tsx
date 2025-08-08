@@ -49,8 +49,17 @@ export function IcebreakersPanel() {
   if (isError) {
     return (
       <div className="mt-8">
-        <div className="text-sm text-red-600">Failed to load today's icebreakers.</div>
-        <Button variant="outline" size="sm" className="mt-2" onClick={() => refetch()}>Retry</Button>
+        <div className="text-sm text-red-600">
+          Failed to load today&apos;s icebreakers.
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => refetch()}
+        >
+          Retry
+        </Button>
       </div>
     );
   }
@@ -77,7 +86,7 @@ export function IcebreakersPanel() {
   return (
     <section className="mt-8">
       <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-        Today's icebreakers
+        Today&apos;s icebreakers
       </h3>
       <div className="space-y-6">
         {questions.map((q) => (

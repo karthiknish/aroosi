@@ -434,7 +434,7 @@ export default function AdminProfileDetailPage() {
                       if (orderedImages[currentImageIdx]?.storageId) {
                         openDeleteModal(
                           orderedImages[currentImageIdx].storageId,
-                          currentImageIdx === 0,
+                          currentImageIdx === 0
                         );
                       }
                       return false;
@@ -499,13 +499,25 @@ export default function AdminProfileDetailPage() {
                             : "border-transparent hover:border-gray-300"
                         }`}
                         onClick={() => setCurrentImageIdx(idx)}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Select image ${idx + 1}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            setCurrentImageIdx(idx);
+                          }
+                        }}
                       >
                         <img
                           src={
                             (img.url ?? undefined) ||
                             `/api/storage/${img.storageId}`
                           }
-                          alt={`Thumbnail ${idx + 1}`}
+                          alt={
+                            typeof profile?.fullName === "string"
+                              ? `${profile.fullName} profile photo ${idx + 1}`
+                              : `Profile photo ${idx + 1}`
+                          }
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;

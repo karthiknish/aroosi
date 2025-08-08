@@ -50,8 +50,10 @@ export async function uploadImageToStorage(
   const client = getConvexClientOrThrow();
   try {
     // Optional auth if Convex requires it
-    // @ts-ignore setAuth may be optional depending on Convex version
-    if (token) client.setAuth?.(token);
+    if (token) {
+      const maybeSetAuth = (client as any).setAuth;
+      if (typeof maybeSetAuth === "function") maybeSetAuth(token);
+    }
   } catch {
     // ignore
   }
@@ -59,12 +61,14 @@ export async function uploadImageToStorage(
   // Call your Convex action for uploading bytes.
   // Update api.storage.uploadBytes to match your actual exported action name.
   try {
-    // @ts-ignore The path must exist in your generated API
-    const storageId: string = await client.action(api.storage.uploadBytes, {
+  const storageId: string = await (client as any).action(
+    (api as any).storage.uploadBytes,
+    {
       bytes,
       fileName,
       contentType,
-    });
+    }
+  );
     return storageId;
   } catch (e: any) {
     const message = e?.message || "Failed to upload bytes to Convex";

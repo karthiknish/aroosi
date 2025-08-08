@@ -49,8 +49,14 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium text-gray-700">Title</label>
+          <label
+            htmlFor="blog-title"
+            className="text-sm font-medium text-gray-700"
+          >
+            Title
+          </label>
           <Input
+            id="blog-title"
             placeholder="Enter post title"
             value={title}
             onChange={(e) => {
@@ -64,8 +70,14 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-700">Slug</label>
+          <label
+            htmlFor="blog-slug"
+            className="text-sm font-medium text-gray-700"
+          >
+            Slug
+          </label>
           <Input
+            id="blog-slug"
             placeholder="my-first-post"
             value={slug}
             onChange={(e) => {
@@ -79,11 +91,15 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700">
+        <label
+          htmlFor="blog-excerpt"
+          className="text-sm font-medium text-gray-700"
+        >
           Excerpt <span className="text-primary">*</span>
         </label>
         <div className="flex gap-2 items-center">
           <Input
+            id="blog-excerpt"
             placeholder="Short summary of the post"
             value={excerpt}
             onChange={(e) => setExcerpt(e.target.value)}
@@ -109,11 +125,15 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700">
+        <label
+          htmlFor="blog-categories"
+          className="text-sm font-medium text-gray-700"
+        >
           Categories <span className="text-primary">*</span>
         </label>
         <div className="flex gap-2 items-center">
           <Input
+            id="blog-categories"
             placeholder="Categories (comma separated)"
             value={categories.join(", ")}
             onChange={(e) =>
@@ -154,11 +174,15 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
       </div>
 
       <div>
-        <label className="text-sm font-medium text-gray-700">
+        <label
+          htmlFor="blog-image-url"
+          className="text-sm font-medium text-gray-700"
+        >
           Featured Image <span className="text-primary">*</span>
         </label>
         <div className="mt-1 flex gap-2">
           <Input
+            id="blog-image-url"
             placeholder="Image URL"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}

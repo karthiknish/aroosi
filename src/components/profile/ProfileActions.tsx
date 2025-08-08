@@ -70,13 +70,21 @@ export function ProfileActions({ toUserId }: { toUserId: string }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={onToggleShortlist} disabled={loading}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onToggleShortlist}
+          disabled={loading}
+        >
           {isShortlisted ? "Remove from shortlist" : "Add to shortlist"}
         </Button>
       </div>
       <div className="flex flex-col gap-2">
-        <label className="text-sm text-gray-600">Private note</label>
+        <label htmlFor="privateNote" className="text-sm text-gray-600">
+          Private note
+        </label>
         <Textarea
+          id="privateNote"
           value={note}
           onChange={(e) => setNoteText(e.target.value)}
           rows={3}

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { showSuccessToast } from "@/lib/ui/toast";
 import {
   Select,
   SelectContent,
@@ -41,7 +41,7 @@ export default function MarketingEmailAdminPage() {
   const [sending, setSending] = useState(false);
   const [dryRun, setDryRun] = useState(true);
   const [maxAudience, setMaxAudience] = useState<number>(500);
-  const [preview, setPreview] = useState<string>("");
+  // const [preview, setPreview] = useState<string>("");
   const [mode, setMode] = useState<"template" | "custom">("template");
   // Template params
   const [discountPct, setDiscountPct] = useState<number>(30);
@@ -90,11 +90,11 @@ export default function MarketingEmailAdminPage() {
 
           <TabsContent value="template" className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label htmlFor="template-select" className="block text-sm font-medium mb-1">
                 Select Template
               </label>
               <Select value={templateKey} onValueChange={setTemplateKey}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="template-select" className="w-full">
                   <SelectValue placeholder="Choose template" />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,8 +110,9 @@ export default function MarketingEmailAdminPage() {
             {/* Per-template params */}
             {templateKey === "premiumPromo" && (
               <div>
-                <label className="block text-sm mb-1">Discount %</label>
+                <label htmlFor="discount-pct" className="block text-sm mb-1">Discount %</label>
                 <Input
+                  id="discount-pct"
                   type="number"
                   min={5}
                   max={90}
@@ -124,8 +125,9 @@ export default function MarketingEmailAdminPage() {
             )}
             {templateKey === "profileCompletionReminder" && (
               <div>
-                <label className="block text-sm mb-1">Completion %</label>
+                <label htmlFor="completion-pct" className="block text-sm mb-1">Completion %</label>
                 <Input
+                  id="completion-pct"
                   type="number"
                   min={0}
                   max={100}
@@ -138,10 +140,11 @@ export default function MarketingEmailAdminPage() {
             )}
             {templateKey === "reEngagement" && (
               <div>
-                <label className="block text-sm mb-1">
+                <label htmlFor="days-since-login" className="block text-sm mb-1">
                   Days since last login
                 </label>
                 <Input
+                  id="days-since-login"
                   type="number"
                   min={1}
                   max={365}
@@ -156,16 +159,18 @@ export default function MarketingEmailAdminPage() {
 
           <TabsContent value="custom" className="space-y-4">
             <div>
-              <label className="block text-sm mb-1">Subject</label>
+              <label htmlFor="custom-subject" className="block text-sm mb-1">Subject</label>
               <Input
+                id="custom-subject"
                 value={customSubject}
                 onChange={(e) => setCustomSubject(e.target.value)}
                 placeholder="Your subject line"
               />
             </div>
             <div>
-              <label className="block text-sm mb-1">HTML Body</label>
+              <label htmlFor="custom-body" className="block text-sm mb-1">HTML Body</label>
               <Textarea
+                id="custom-body"
                 value={customBody}
                 onChange={(e) => setCustomBody(e.target.value)}
                 rows={10}
@@ -176,8 +181,9 @@ export default function MarketingEmailAdminPage() {
         </Tabs>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="flex items-center gap-2 text-sm">
+          <label htmlFor="dry-run" className="flex items-center gap-2 text-sm">
             <input
+              id="dry-run"
               type="checkbox"
               checked={dryRun}
               onChange={(e) => setDryRun(e.target.checked)}
@@ -185,8 +191,9 @@ export default function MarketingEmailAdminPage() {
             Dry run (no emails sent)
           </label>
           <div>
-            <label className="block text-sm mb-1">Max audience</label>
+            <label htmlFor="max-audience" className="block text-sm mb-1">Max audience</label>
             <Input
+              id="max-audience"
               type="number"
               min={1}
               max={10000}

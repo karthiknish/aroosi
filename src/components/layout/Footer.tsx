@@ -30,33 +30,41 @@ export default function Footer() {
               <h3 className="font-serif text-white">Aroosi</h3>
             </Link>
             <p className="mt-2 text-sm text-white/80 text-center md:text-left max-w-xs">
-              Connecting hearts, building futures. Find your life
-              partner worldwide.
+              Connecting hearts, building futures. Find your life partner
+              worldwide.
             </p>
             <div className="flex space-x-4 mt-6">
               <a
-                href="#"
+                href="https://facebook.com/aroosiapp"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-primary-light text-white transition-colors"
                 aria-label="Facebook"
               >
                 <Facebook size={20} />
               </a>
               <a
-                href="#"
+                href="https://twitter.com/aroosiapp"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-base-light text-white transition-colors"
                 aria-label="Twitter"
               >
                 <Twitter size={20} />
               </a>
               <a
-                href="#"
+                href="https://instagram.com/aroosiapp"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-primary-light text-white transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram size={20} />
               </a>
               <a
-                href="#"
+                href="https://linkedin.com/company/aroosi"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="hover:text-base-light text-white transition-colors"
                 aria-label="LinkedIn"
               >
@@ -155,8 +163,8 @@ export default function Footer() {
         </div>
         <div className="mt-10">
           <p className="text-xs text-white/90 text-center">
-            Aroosi is a global matrimonial platform for Afghans worldwide. Please ensure you
-            review our terms and safety guidelines.
+            Aroosi is a global matrimonial platform for Afghans worldwide.
+            Please ensure you review our terms and safety guidelines.
           </p>
           <p className="text-sm text-center mt-6 text-white/90">
             &copy; {currentYear} Aroosi . All rights reserved.

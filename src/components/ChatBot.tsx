@@ -113,18 +113,31 @@ const ChatBot: React.FC = () => {
               className="flex flex-col gap-3 p-6 bg-muted"
               onSubmit={handleEmailSubmit}
             >
-              <label className="text-sm font-semibold text-foreground">
+              <label
+                htmlFor="chatbot-email"
+                className="text-sm font-semibold text-foreground"
+              >
                 Enter your email to start chatting:
               </label>
               <input
+                id="chatbot-email"
                 className="rounded-md border border-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all bg-background text-foreground"
                 placeholder="you@example.com"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 autoFocus
+                aria-invalid={!!emailError}
+                aria-describedby={
+                  emailError ? "chatbot-email-error" : undefined
+                }
               />
               {emailError && (
-                <div className="text-destructive text-xs">{emailError}</div>
+                <div
+                  id="chatbot-email-error"
+                  className="text-destructive text-xs"
+                >
+                  {emailError}
+                </div>
               )}
               <button
                 type="submit"

@@ -1,9 +1,16 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ValidatedInput } from "@/components/ui/ValidatedInput";
 import { ValidatedSelect } from "@/components/ui/ValidatedSelect";
@@ -11,9 +18,13 @@ import { ValidatedTextarea } from "@/components/ui/ValidatedTextarea";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import type { ImageType } from "@/types/image";
 import { cmToFeetInches } from "@/lib/utils/height";
-import { MOTHER_TONGUE_OPTIONS, RELIGION_OPTIONS, ETHNICITY_OPTIONS } from "@/lib/constants/languages";
+import {
+  MOTHER_TONGUE_OPTIONS,
+  RELIGION_OPTIONS,
+  ETHNICITY_OPTIONS,
+} from "@/lib/constants/languages";
 // Image guards for Step 6
-import { loadImageMeta, validateImageMeta } from "@/lib/utils/imageMeta";
+import { validateImageMeta } from "@/lib/utils/imageMeta";
 // Local uploader for Step 6
 import { LocalImageUpload } from "@/components/LocalImageUpload";
 import { Pause, Play, X } from "lucide-react";
@@ -544,21 +555,32 @@ export function Step6Photos(props: {
     setPausedIds((p) => ({ ...p, [id]: val }));
 
   // Local client-side guards prior to upload request (optional early feedback)
-  const preflightValidate = React.useCallback(async (img: ImageType) => {
+  const _preflightValidate = React.useCallback(async (img: ImageType) => {
     try {
       if (!img?.url || !img.url.startsWith("blob:")) {
         return { ok: false, reason: "Invalid local image URL" };
       }
       // Load meta using the existing blob URL
-      const meta = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        const imgEl = new Image();
-        imgEl.onload = () => resolve({ width: imgEl.naturalWidth || imgEl.width, height: imgEl.naturalHeight || imgEl.height });
-        imgEl.onerror = () => reject(new Error("Failed to decode image for metadata"));
-        imgEl.src = img.url;
+      const meta = await new Promise<{ width: number; height: number }>(
+        (resolve, reject) => {
+          const imgEl = new Image();
+          imgEl.onload = () =>
+            resolve({
+              width: imgEl.naturalWidth || imgEl.width,
+              height: imgEl.naturalHeight || imgEl.height,
+            });
+          imgEl.onerror = () =>
+            reject(new Error("Failed to decode image for metadata"));
+          imgEl.src = img.url;
+        }
+      );
+      const { ok, reason } = validateImageMeta(meta, {
+        minDim: 512,
+        minAspect: 0.5,
+        maxAspect: 2.0,
       });
-      const { ok, reason } = validateImageMeta(meta, { minDim: 512, minAspect: 0.5, maxAspect: 2.0 });
       return { ok, reason };
-    } catch (e) {
+    } catch {
       return { ok: true }; // do not block on unexpected meta errors
     }
   }, []);
@@ -695,7 +717,7 @@ export function Step7AccountCreation(props: {
   onComplete?: () => void;
   onError?: (msg?: string) => void;
 }) {
-  const { formData, setStep, router, onComplete, onError } = props;
+  const { formData, setStep, router: _router, onComplete, onError } = props;
   const requiredFields = [
     "fullName",
     "dateOfBirth",
@@ -722,15 +744,22 @@ export function Step7AccountCreation(props: {
       <div className="space-y-4">
         {missingFields.length > 0 ? (
           <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-            <p className="text-red-600 font-semibold mb-2">⚠️ Cannot create account - Profile incomplete</p>
+            <p className="text-red-600 font-semibold mb-2">
+              ⚠️ Cannot create account - Profile incomplete
+            </p>
             <p className="text-sm text-red-500 mb-4">
               You must complete all profile sections before creating an account.
             </p>
             <p className="text-xs text-red-400 mb-4">
               Missing: {missingFields.slice(0, 5).join(", ")}
-              {missingFields.length > 5 && ` and ${missingFields.length - 5} more fields`}
+              {missingFields.length > 5 &&
+                ` and ${missingFields.length - 5} more fields`}
             </p>
-            <Button variant="outline" onClick={() => setStep(1)} className="border-red-300 text-red-600 hover:bg-red-50">
+            <Button
+              variant="outline"
+              onClick={() => setStep(1)}
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
               Go back to complete profile
             </Button>
           </div>
@@ -738,7 +767,10 @@ export function Step7AccountCreation(props: {
           <div className="space-y-4">
             {/* Lazy import to avoid SSR issues */}
             {(() => {
-              const CustomSignupForm = require("@/components/auth/CustomSignupForm").default;
+              const CustomSignupForm = dynamic(
+                () => import("@/components/auth/CustomSignupForm"),
+                { ssr: false }
+              );
               return (
                 <CustomSignupForm onComplete={onComplete} onError={onError} />
               );

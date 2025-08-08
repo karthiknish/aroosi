@@ -55,16 +55,22 @@ export default function PushNotificationAdminPage() {
           sending.
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Title *</label>
+          <label htmlFor="push-title" className="block text-sm font-medium">
+            Title *
+          </label>
           <Input
+            id="push-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Notification title"
           />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Message *</label>
+          <label htmlFor="push-message" className="block text-sm font-medium">
+            Message *
+          </label>
           <Textarea
+            id="push-message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={4}
@@ -72,8 +78,11 @@ export default function PushNotificationAdminPage() {
           />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Optional URL</label>
+          <label htmlFor="push-url" className="block text-sm font-medium">
+            Optional URL
+          </label>
           <Input
+            id="push-url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."

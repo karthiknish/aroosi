@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useFeatureUsage } from "@/hooks/useSubscription";
 
 interface FeatureUsageTrackerProps {
@@ -16,13 +16,13 @@ export const FeatureUsageTracker: React.FC<FeatureUsageTrackerProps> = ({
 }) => {
   const { trackUsage } = useFeatureUsage();
 
-  const handleTrackUsage = async () => {
+  const handleTrackUsage = useCallback(async () => {
     try {
       const result = await trackUsage(feature);
 
       // Align with trackUsage return shape ({ success: boolean }) and cached usage shape
       // Attempt to read cached usage details if present; otherwise fall back to success flag
-      const typed = (result as unknown) as {
+      const typed = result as unknown as {
         success?: boolean;
         remainingQuota?: number;
         isUnlimited?: boolean;
@@ -41,7 +41,7 @@ export const FeatureUsageTracker: React.FC<FeatureUsageTrackerProps> = ({
     } catch (error) {
       console.error("Failed to track feature usage:", error);
     }
-  };
+  }, [feature, onLimitReached, trackUsage]);
 
   // Auto-track usage when component is rendered (for passive tracking)
   // Include stable callback in deps to satisfy exhaustive-deps.
@@ -138,5 +138,19 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
   }
 
   // Wrap children with usage tracking
-  return <div onClick={handleFeatureUse}>{children}</div>;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleFeatureUse}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleFeatureUse();
+        }
+      }}
+    >
+      {children}
+    </div>
+  );
 };

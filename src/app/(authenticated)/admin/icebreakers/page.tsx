@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,16 +81,16 @@ export default function AdminIcebreakersPage() {
       <Card>
         <CardContent className="p-4 flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-sm text-gray-700">Question</label>
-            <Input value={newText} onChange={(e) => setNewText(e.target.value)} placeholder="e.g., What's your ideal weekend?" />
+            <label htmlFor="icebreaker-question" className="text-sm text-gray-700">Question</label>
+            <Input id="icebreaker-question" value={newText} onChange={(e) => setNewText(e.target.value)} placeholder="e.g., What's your ideal weekend?" />
           </div>
           <div className="w-48">
-            <label className="text-sm text-gray-700">Category</label>
-            <Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="optional" />
+            <label htmlFor="icebreaker-category" className="text-sm text-gray-700">Category</label>
+            <Input id="icebreaker-category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="optional" />
           </div>
           <div className="w-28">
-            <label className="text-sm text-gray-700">Weight</label>
-            <Input type="number" value={newWeight as any} onChange={(e) => setNewWeight(e.target.value === "" ? "" : Number(e.target.value))} placeholder="0-100" />
+            <label htmlFor="icebreaker-weight" className="text-sm text-gray-700">Weight</label>
+            <Input id="icebreaker-weight" type="number" value={newWeight as any} onChange={(e) => setNewWeight(e.target.value === "" ? "" : Number(e.target.value))} placeholder="0-100" />
           </div>
           <Button
             onClick={() => {

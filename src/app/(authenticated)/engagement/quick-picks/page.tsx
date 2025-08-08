@@ -163,7 +163,9 @@ export default function QuickPicksPage() {
               </div>
             </div>
           ) : (
-            <div className="text-sm text-gray-700">You're all caught up!</div>
+            <div className="text-sm text-gray-700">
+              You&apos;re all caught up!
+            </div>
           )}
         </CardContent>
       </Card>

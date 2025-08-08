@@ -17,12 +17,13 @@ export const getMessages = async (
     ...(typeof before === "number" ? { before } : {}),
   }) as unknown as ApiResponse<Message[]>;
   // matchMessagesAPI returns ApiResponse in some methods; support both shapes
-  const data = (res && typeof res === "object" && "success" in res)
-    ? ((res as ApiResponse<Message[]>).data ?? [])
-    : (res as unknown as { messages?: Message[]; data?: Message[] });
-  // Fallback extraction
-  // @ts-ignore
-  return data?.messages || data?.data || (res as unknown as Message[]);
+  if (res && typeof res === "object" && "success" in (res as any)) {
+    return ((res as ApiResponse<Message[]>).data ?? []) as Message[];
+  }
+  const asObj = res as unknown as { messages?: Message[]; data?: Message[] };
+  return (
+    asObj?.messages || asObj?.data || ((res as unknown as Message[]) ?? [])
+  );
 };
 
 export const sendMessage = async (message: {

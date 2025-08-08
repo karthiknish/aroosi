@@ -24,7 +24,6 @@ import {
   Accessibility,
   Users,
   Target,
-  Award,
   Building2,
   Eye,
 } from "lucide-react";

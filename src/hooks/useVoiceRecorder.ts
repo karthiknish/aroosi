@@ -161,17 +161,20 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
       ];
       const supported: string[] = [];
       for (const cand of candidates) {
-        // @ts-ignore
-        if (window.MediaRecorder.isTypeSupported?.(cand)) supported.push(cand.split(";")[0]);
+        const isSupported = (window as any).MediaRecorder?.isTypeSupported?.(
+          cand
+        );
+        if (isSupported) supported.push(cand.split(";")[0]);
       }
       const preferred = pickPreferredMime(supported);
       setMimeType(preferred);
 
       // Use the most specific supported type if available
-      const recorderType = candidates.find((c) => {
-        // @ts-ignore
-        return window.MediaRecorder.isTypeSupported?.(c) && c.startsWith(preferred);
-      }) || preferred;
+      const recorderType =
+        candidates.find((c) => {
+          const sup = (window as any).MediaRecorder?.isTypeSupported?.(c);
+          return sup && c.startsWith(preferred);
+        }) || preferred;
 
       const recorder = new MediaRecorder(stream, { mimeType: recorderType });
       chunksRef.current = [];

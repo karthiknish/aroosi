@@ -134,7 +134,11 @@ const SortableImageBase = ({
               try {
                 const imgEl = new Image();
                 const cacheBust = (url: string) =>
-                  url ? (url.includes("?") ? `${url}&r=${Date.now()}` : `${url}?r=${Date.now()}`) : url;
+                  url
+                    ? url.includes("?")
+                      ? `${url}&r=${Date.now()}`
+                      : `${url}?r=${Date.now()}`
+                    : url;
                 imgEl.src = cacheBust(img.url);
               } catch {}
             }}
@@ -146,18 +150,24 @@ const SortableImageBase = ({
           <div className="w-10 h-10 bg-gray-200 rounded" aria-hidden="true" />
         </div>
       ) : (
-        <img
-          src={img.url}
-          alt="Profile"
-          loading="lazy"
+        <button
+          type="button"
           className={
-            "w-full h-full object-cover rounded-lg border border-gray-200 cursor-pointer " +
+            "w-full h-full rounded-lg border border-gray-200 overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 " +
             (loaded ? "opacity-100" : "opacity-0")
           }
-          onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
+          aria-label={`View image ${imageIndex + 1}`}
           onClick={() => setModalState({ open: true, index: imageIndex })}
-        />
+        >
+          <img
+            src={img.url}
+            alt="Profile"
+            loading="lazy"
+            className={"w-full h-full object-cover"}
+            onLoad={() => setLoaded(true)}
+            onError={() => setError(true)}
+          />
+        </button>
       )}
       {/* Disable drag handles during server persistence by omitting listeners */}
       {!isDragging && (
@@ -216,7 +226,9 @@ export function ProfileImageReorder({
 
   // Controlled/uncontrolled mode fallback to avoid drift when parent doesn't reconcile promptly.
   // If onReorder is not provided, maintain an internal copy of images for rendering.
-  const [internalImages, setInternalImages] = useState<ImageType[] | null>(null);
+  const [internalImages, setInternalImages] = useState<ImageType[] | null>(
+    null
+  );
 
   // Keep internal images in sync with prop updates when not actively reordering.
   React.useEffect(() => {
@@ -342,8 +354,11 @@ export function ProfileImageReorder({
 
       // If modal is open, keep it anchored to the same image by id, recompute index
       if (modalState?.open) {
-        const anchorId =
-          String(currentImages[oldIndex]?.id ?? currentImages[oldIndex]?.storageId ?? "");
+        const anchorId = String(
+          currentImages[oldIndex]?.id ??
+            currentImages[oldIndex]?.storageId ??
+            ""
+        );
         const newIdxForAnchor = newOrdered.findIndex(
           (im) => String(im.id ?? im.storageId ?? "") === anchorId
         );
@@ -361,10 +376,15 @@ export function ProfileImageReorder({
         // Enforce storageId-only ordering for server persistence. If any are missing, skip and rollback.
         const storageIds = newOrdered
           .map((img) => img.storageId)
-          .filter((sid): sid is string => typeof sid === "string" && sid.length > 0);
+          .filter(
+            (sid): sid is string => typeof sid === "string" && sid.length > 0
+          );
 
         if (storageIds.length !== newOrdered.length) {
-          showErrorToast(null, "Cannot update order yet. Some images are still pending upload.");
+          showErrorToast(
+            null,
+            "Cannot update order yet. Some images are still pending upload."
+          );
           // Roll back optimistic update since we didn't persist
           if (onReorder) {
             onReorder(snapshotForRollback);
@@ -433,7 +453,11 @@ export function ProfileImageReorder({
   }));
 
   return (
-    <div className="space-y-2" aria-roledescription="sortable" aria-label="Reorder profile images">
+    <div
+      className="space-y-2"
+      aria-roledescription="sortable"
+      aria-label="Reorder profile images"
+    >
       {/* Live region for reorder announcements */}
       <div
         ref={liveRef}
@@ -464,7 +488,7 @@ export function ProfileImageReorder({
                       "w-full h-full rounded-lg " +
                       // simple drop placeholder effect via outline when a drag is active
                       (activeId && activeId !== dndId
-                        ? "outline outline-1 outline-dashed outline-gray-300"
+                        ? "outline-1 outline-dashed outline-gray-300"
                         : "")
                     }
                   >
@@ -491,10 +515,16 @@ export function ProfileImageReorder({
                               const newOrderIds = reordered.map((im) =>
                                 im.storageId ? im.storageId : String(im.id)
                               );
-                              await updateImageOrder({ userId, imageIds: newOrderIds });
+                              await updateImageOrder({
+                                userId,
+                                imageIds: newOrderIds,
+                              });
                               showSuccessToast("Set as main");
                             } catch (e) {
-                              const msg = e instanceof Error ? e.message : "Failed to set main";
+                              const msg =
+                                e instanceof Error
+                                  ? e.message
+                                  : "Failed to set main";
                               showErrorToast(null, msg);
                               // rollback
                               if (onReorder) {
@@ -516,25 +546,25 @@ export function ProfileImageReorder({
 
         {/* Drag overlay preview to reduce layout jitter */}
         <DragOverlay adjustScale={true}>
-          {activeId ? (
-            (() => {
-              const idx = dndIds.findIndex((x) => x === activeId);
-              const img = currentImages[idx];
-              if (!img) return null;
-              return (
-                <div
-                  style={{ width: 100, height: 100 }}
-                  className="rounded-lg overflow-hidden shadow-lg"
-                >
-                  <img
-                    src={img.url}
-                    alt="Dragging"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              );
-            })()
-          ) : null}
+          {activeId
+            ? (() => {
+                const idx = dndIds.findIndex((x) => x === activeId);
+                const img = currentImages[idx];
+                if (!img) return null;
+                return (
+                  <div
+                    style={{ width: 100, height: 100 }}
+                    className="rounded-lg overflow-hidden shadow-lg"
+                  >
+                    <img
+                      src={img.url}
+                      alt="Dragging"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                );
+              })()
+            : null}
         </DragOverlay>
       </DndContext>
       <ProfileImageModal
