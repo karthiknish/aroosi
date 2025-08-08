@@ -1,13 +1,15 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
+// import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { z } from "zod";
 import { convexQueryWithAuth } from "@/lib/convexServer";
+import { api as convexApi } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 
-type Gender = "any" | "male" | "female" | "other";
+// type Gender = "any" | "male" | "female" | "other";
 
 // Sanitized bounded string: trims, strips risky chars, 2..50
 const SanStr = z
@@ -68,7 +70,32 @@ export async function GET(request: NextRequest) {
       return errorResponse("Rate limit exceeded. Please slow down.", 429);
     }
 
-    // 2) Subscription-aware limiter for plan entitlements
+    // 2) Plan enforcement: premium filters require Premium (or higher)
+    try {
+      const meProfile = await convexQueryWithAuth(
+        request,
+        convexApi.profiles.getProfileByUserId,
+        { userId: userId as Id<"users"> }
+      );
+      const plan = (meProfile as any)?.subscriptionPlan ?? "free";
+      const hasAdvancedFilters = plan === "premium" || plan === "premiumPlus";
+      const url = new URL(request.url);
+      const hasPremiumParams =
+        url.searchParams.has("ethnicity") ||
+        url.searchParams.has("motherTongue") ||
+        url.searchParams.has("language");
+      if (hasPremiumParams && !hasAdvancedFilters) {
+        return errorResponse(
+          "Advanced filters require a Premium subscription",
+          403
+        );
+      }
+    } catch {
+      // If the profile cannot be loaded, fail closed to avoid leaking feature access
+      return errorResponse("Authorization failed", 403);
+    }
+
+    // 3) Subscription-aware limiter for plan entitlements
     const subscriptionRateLimit =
       await subscriptionRateLimiter.checkSubscriptionRateLimit(
         request,
@@ -83,7 +110,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse and validate with Zod
+    // 4) Parse and validate with Zod
     const { searchParams } = new URL(request.url);
     const paramsObj = Object.fromEntries(searchParams.entries());
     const parsed = QuerySchema.safeParse(paramsObj);
@@ -122,23 +149,6 @@ export async function GET(request: NextRequest) {
     }
 
     const t0 = Date.now();
-    console.info("search.api query", {
-      scope: "search",
-      correlationId: cid,
-      userId,
-      page,
-      pageSize,
-      filters: {
-        hasCity: !!city,
-        hasCountry: !!country,
-        preferredGender: preferredGender ?? "any",
-        ageMin,
-        ageMax,
-        hasEthnicity: !!ethnicity,
-        hasMotherTongue: !!motherTongue,
-        hasLanguage: !!language,
-      },
-    });
 
     // Convex query via cookie-aware server helper
     const result = await convexQueryWithAuth(
@@ -155,6 +165,7 @@ export async function GET(request: NextRequest) {
         ethnicity,
         motherTongue,
         language,
+        viewerUserId: userId as Id<"users">,
         correlationId: cid,
       }
     ).catch((e: unknown) => {
@@ -174,16 +185,7 @@ export async function GET(request: NextRequest) {
       return errorResponse("Search service error", 500);
     }
 
-    const latencyMs = Date.now() - t0;
-    console.info("search.api result", {
-      scope: "search",
-      correlationId: cid,
-      userId,
-      total: (result as any)?.total ?? 0,
-      page,
-      pageSize,
-      latencyMs,
-    });
+    const _latencyMs = Date.now() - t0;
 
     // Forward any cookies updated during session refresh
     return successResponse({

@@ -1,24 +1,29 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   createBlogPost,
   convertAiTextToHtml,
   convertTextToMarkdown,
 } from "@/lib/blogUtil";
 import { CreatePost } from "@/components/admin/CreatePost";
-import { showErrorToast } from "@/lib/ui/toast";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/AuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
+import { api } from "@convex/_generated/api";
+import { fetchQuery } from "convex/nextjs";
 
 export default function CreateBlogPage() {
   useAuthContext(); // maintain hook order; no token usage in cookie-auth
+  const router = useRouter();
   const [title, setTitle] = useState<string>("");
   const [slug, setSlug] = useState<string>("");
   const [excerpt, setExcerpt] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [categories, setCategories] = useState<string[]>([]);
   const [creating, setCreating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(false);
@@ -132,18 +137,44 @@ export default function CreateBlogPage() {
     setCreating(true);
     setError(null);
     try {
+      // Basic client validation
+      if (
+        !title.trim() ||
+        !slug.trim() ||
+        !excerpt.trim() ||
+        !content.trim() ||
+        !imageUrl.trim()
+      ) {
+        throw new Error("Please fill in all required fields.");
+      }
+      // Slug uniqueness check via Convex
+      const existing = await fetchQuery(api.blog.getBlogPostBySlug, { slug });
+      if (existing) {
+        throw new Error("Slug already exists. Please choose a different slug.");
+      }
+      const categoriesArray: string[] = categories;
       await createBlogPost("", {
         title,
         slug,
         excerpt,
         content,
         imageUrl,
-        categories: [],
+        categories: categoriesArray,
       } as any);
-      // Optionally reset form or redirect
+      showSuccessToast("Post created successfully");
+      // reset
+      setTitle("");
+      setSlug("");
+      setExcerpt("");
+      setContent("");
+      setImageUrl("");
+      setCategories([]);
+      // navigate optimistically to the new post page
+      router.push(`/blog/${encodeURIComponent(slug)}`);
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message || "Failed to create post");
+      showErrorToast(error);
     } finally {
       setCreating(false);
     }
@@ -187,8 +218,8 @@ export default function CreateBlogPage() {
             contentRef={contentRef}
             convertToMarkdownWithGemini={convertToMarkdownWithGemini}
             slugify={slugify}
-            categories={[]}
-            setCategories={() => {}}
+            categories={categories}
+            setCategories={setCategories}
             aiLoading={{}}
             aiText={aiText}
             previewHtml={previewHtml}

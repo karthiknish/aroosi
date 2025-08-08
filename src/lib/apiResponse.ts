@@ -5,6 +5,8 @@ export type ApiFailure = { success: false; error: string } & Record<
 >;
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
+import { SECURITY_HEADERS } from "@/lib/utils/securityHeaders";
+
 export const successResponse = <T = unknown>(data?: T, status = 200) =>
   new Response(
     JSON.stringify({
@@ -13,7 +15,7 @@ export const successResponse = <T = unknown>(data?: T, status = 200) =>
     } satisfies ApiSuccess<T>),
     {
       status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...SECURITY_HEADERS },
     }
   );
 
@@ -40,7 +42,7 @@ export const errorResponse = (
     } satisfies ApiFailure),
     {
       status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...SECURITY_HEADERS },
     }
   );
 };

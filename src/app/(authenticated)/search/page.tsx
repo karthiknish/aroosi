@@ -15,7 +15,7 @@ import { UserCircle, Rocket, BadgeCheck } from "lucide-react";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/AuthProvider";
 import { motion } from "framer-motion";
@@ -25,6 +25,9 @@ import { useOffline } from "@/hooks/useOffline";
 import { useBlockedUsers } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { SearchableSelect, Option } from "@/components/ui/searchable-select";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
 const commonCountries = [
   "United Kingdom",
@@ -133,6 +136,7 @@ export default function SearchProfilesPage() {
   } = useAuthContext();
   const profile = rawProfile as { subscriptionPlan?: string } | null;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { trackUsage } = useUsageTracking(undefined);
 
   // All hooks must be declared before any conditional returns
@@ -150,6 +154,58 @@ export default function SearchProfilesPage() {
   const [ethnicity, setEthnicity] = useState("any");
   const [motherTongue, setMotherTongue] = useState("any");
   const [language, setLanguage] = useState("any");
+
+  // Initialize from URL on first mount
+  useEffect(() => {
+    const params = searchParams;
+    if (!params) return;
+    setCity(params.get("city") ?? "");
+    setCountry(params.get("country") ?? "any");
+    setAgeMin(params.get("ageMin") ?? "");
+    setAgeMax(params.get("ageMax") ?? "");
+    setEthnicity(params.get("ethnicity") ?? "any");
+    setMotherTongue(params.get("motherTongue") ?? "any");
+    setLanguage(params.get("language") ?? "any");
+    const pageParam = params.get("page");
+    setPage(pageParam ? Math.max(0, Number(pageParam) || 0) : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // React to browser back/forward updating the URL
+  useEffect(() => {
+    if (!searchParams) return;
+    const nextCity = searchParams.get("city") ?? "";
+    const nextCountry = searchParams.get("country") ?? "any";
+    const nextAgeMin = searchParams.get("ageMin") ?? "";
+    const nextAgeMax = searchParams.get("ageMax") ?? "";
+    const nextEthnicity = searchParams.get("ethnicity") ?? "any";
+    const nextMotherTongue = searchParams.get("motherTongue") ?? "any";
+    const nextLanguage = searchParams.get("language") ?? "any";
+    const nextPage = (() => {
+      const p = searchParams.get("page");
+      return p ? Math.max(0, Number(p) || 0) : 0;
+    })();
+
+    // Only update if different to avoid extra renders
+    if (city !== nextCity) setCity(nextCity);
+    if (country !== nextCountry) setCountry(nextCountry);
+    if (ageMin !== nextAgeMin) setAgeMin(nextAgeMin);
+    if (ageMax !== nextAgeMax) setAgeMax(nextAgeMax);
+    if (ethnicity !== nextEthnicity) setEthnicity(nextEthnicity);
+    if (motherTongue !== nextMotherTongue) setMotherTongue(nextMotherTongue);
+    if (language !== nextLanguage) setLanguage(nextLanguage);
+    if (page !== nextPage) setPage(nextPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Debounced filter values
+  const debouncedCity = useDebouncedValue(city);
+  const debouncedCountry = useDebouncedValue(country);
+  const debouncedAgeMin = useDebouncedValue(ageMin);
+  const debouncedAgeMax = useDebouncedValue(ageMax);
+  const debouncedEthnicity = useDebouncedValue(ethnicity);
+  const debouncedMotherTongue = useDebouncedValue(motherTongue);
+  const debouncedLanguage = useDebouncedValue(language);
 
   // Debug logging only in development
   React.useEffect(() => {
@@ -193,27 +249,27 @@ export default function SearchProfilesPage() {
   } = useQuery({
     queryKey: [
       "profiles",
-      city,
-      country,
-      ageMin,
-      ageMax,
+      debouncedCity,
+      debouncedCountry,
+      debouncedAgeMin,
+      debouncedAgeMax,
       page,
       pageSize,
-      ethnicity,
-      motherTongue,
-      language,
+      debouncedEthnicity,
+      debouncedMotherTongue,
+      debouncedLanguage,
     ],
     queryFn: () =>
       fetchProfileSearchResults({
         page,
         pageSize,
-        city,
-        country,
-        ageMin,
-        ageMax,
-        ethnicity,
-        motherTongue,
-        language,
+        city: debouncedCity,
+        country: debouncedCountry,
+        ageMin: debouncedAgeMin,
+        ageMax: debouncedAgeMax,
+        ethnicity: debouncedEthnicity,
+        motherTongue: debouncedMotherTongue,
+        language: debouncedLanguage,
       }),
     // Token-based guard: only run when auth has hydrated and user is authenticated
     enabled: isLoaded && isAuthenticated,
@@ -253,6 +309,119 @@ export default function SearchProfilesPage() {
   useEffect(() => {
     setHasTrackedSearch(false);
   }, [city, country, ageMin, ageMax]);
+
+  // Keep URL in sync with filters and page (shallow replace)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (city) params.set("city", city);
+    if (country && country !== "any") params.set("country", country);
+    if (ageMin) params.set("ageMin", String(ageMin));
+    if (ageMax) params.set("ageMax", String(ageMax));
+    if (isPremium(profile?.subscriptionPlan)) {
+      if (ethnicity && ethnicity !== "any") params.set("ethnicity", ethnicity);
+      if (motherTongue && motherTongue !== "any")
+        params.set("motherTongue", motherTongue);
+      if (language && language !== "any") params.set("language", language);
+    }
+    if (page > 0) params.set("page", String(page));
+    const qs = params.toString();
+    const url = qs ? `/search?${qs}` : `/search`;
+    router.replace(url);
+  }, [
+    city,
+    country,
+    ageMin,
+    ageMax,
+    ethnicity,
+    motherTongue,
+    language,
+    page,
+    profile?.subscriptionPlan,
+    router,
+  ]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    debouncedCity,
+    debouncedCountry,
+    debouncedAgeMin,
+    debouncedAgeMax,
+    debouncedEthnicity,
+    debouncedMotherTongue,
+    debouncedLanguage,
+  ]);
+
+  const clearAllFilters = () => {
+    setCity("");
+    setCountry("any");
+    setAgeMin("");
+    setAgeMax("");
+    setEthnicity("any");
+    setMotherTongue("any");
+    setLanguage("any");
+    setPage(0);
+  };
+
+  const activeFilterPills = useMemo(() => {
+    const pills: { key: string; label: string; onClear: () => void }[] = [];
+    if (city)
+      pills.push({
+        key: "city",
+        label: `City: ${city}`,
+        onClear: () => setCity(""),
+      });
+    if (country !== "any")
+      pills.push({
+        key: "country",
+        label: `Country: ${country}`,
+        onClear: () => setCountry("any"),
+      });
+    if (ageMin)
+      pills.push({
+        key: "ageMin",
+        label: `Min Age: ${ageMin}`,
+        onClear: () => setAgeMin(""),
+      });
+    if (ageMax)
+      pills.push({
+        key: "ageMax",
+        label: `Max Age: ${ageMax}`,
+        onClear: () => setAgeMax(""),
+      });
+    if (isPremium(profile?.subscriptionPlan)) {
+      if (ethnicity !== "any")
+        pills.push({
+          key: "ethnicity",
+          label: `Ethnicity: ${ethnicity}`,
+          onClear: () => setEthnicity("any"),
+        });
+      if (motherTongue !== "any")
+        pills.push({
+          key: "motherTongue",
+          label: `Mother tongue: ${motherTongue}`,
+          onClear: () => setMotherTongue("any"),
+        });
+      if (language !== "any")
+        pills.push({
+          key: "language",
+          label: `Language: ${language}`,
+          onClear: () => setLanguage("any"),
+        });
+    }
+    return pills;
+  }, [
+    city,
+    country,
+    ageMin,
+    ageMax,
+    ethnicity,
+    motherTongue,
+    language,
+    profile?.subscriptionPlan,
+  ]);
 
   // React Query for user images
   const {
@@ -360,7 +529,8 @@ export default function SearchProfilesPage() {
           fontSize: 12,
         }}
       >
-        [Search] mounted • isSignedIn={String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} • isLoaded={String(isLoaded)}
+        [Search] mounted • isSignedIn={String(isSignedIn)} • isAuthenticated=
+        {String(isAuthenticated)} • isLoaded={String(isLoaded)}
       </div>
       {content}
     </>
@@ -479,7 +649,7 @@ export default function SearchProfilesPage() {
                 className="w-24 bg-white rounded-lg shadow-sm font-nunito"
               />
               {/* Premium-only filters */}
-              {isPremium(profile?.subscriptionPlan) && (
+              {isPremium(profile?.subscriptionPlan) ? (
                 <>
                   <Select value={ethnicity} onValueChange={setEthnicity}>
                     <SelectTrigger className="w-44 bg-white rounded-lg shadow-sm font-nunito">
@@ -532,8 +702,43 @@ export default function SearchProfilesPage() {
                     </SelectContent>
                   </Select>
                 </>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-neutral-light">
+                  <span>Upgrade to Premium for advanced search filters</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => (window.location.href = "/subscription")}
+                  >
+                    Upgrade
+                  </Button>
+                </div>
               )}
             </motion.div>
+
+            {/* Active filter pills & clear-all row */}
+            <div className="flex flex-wrap gap-2 justify-center mb-8">
+              {activeFilterPills.map((pill) => (
+                <Badge key={pill.key} variant="outline" className="pr-1">
+                  <span>{pill.label}</span>
+                  <button
+                    aria-label={`Clear ${pill.key}`}
+                    className="ml-1 inline-flex items-center justify-center rounded hover:bg-muted/60"
+                    onClick={() => {
+                      pill.onClear();
+                      setPage(0);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {activeFilterPills.length > 0 && (
+                <Button size="sm" variant="ghost" onClick={clearAllFilters}>
+                  Clear all filters
+                </Button>
+              )}
+            </div>
           </section>
           {!isSignedIn ? (
             <div className="text-center py-20">
@@ -583,17 +788,33 @@ export default function SearchProfilesPage() {
                 No profiles found
               </h3>
               <p className="text-gray-500 max-w-md mx-auto">
-                {city !== "any" || country !== "any" || ageMin || ageMax
+                {city ||
+                country !== "any" ||
+                ageMin ||
+                ageMax ||
+                ethnicity !== "any" ||
+                motherTongue !== "any" ||
+                language !== "any"
                   ? "Try adjusting your search criteria to see more results."
                   : "There are currently no profiles available. Please check back later."}
               </p>
-              {(city !== "any" || country !== "any" || ageMin || ageMax) && (
+              {(city ||
+                country !== "any" ||
+                ageMin ||
+                ageMax ||
+                ethnicity !== "any" ||
+                motherTongue !== "any" ||
+                language !== "any") && (
                 <button
                   onClick={() => {
                     setCity("");
                     setCountry("any");
                     setAgeMin("");
                     setAgeMax("");
+                    setEthnicity("any");
+                    setMotherTongue("any");
+                    setLanguage("any");
+                    setPage(0);
                   }}
                   className="mt-4 px-4 py-2 bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition-colors"
                 >
@@ -666,9 +887,10 @@ export default function SearchProfilesPage() {
                               <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
                             )}
                             {isPremium(p.subscriptionPlan) &&
-                              p.hasSpotlightBadge &&
-                              p.spotlightBadgeExpiresAt &&
-                              (p.spotlightBadgeExpiresAt as number) > Date.now() ? (
+                            p.hasSpotlightBadge &&
+                            p.spotlightBadgeExpiresAt &&
+                            (p.spotlightBadgeExpiresAt as number) >
+                              Date.now() ? (
                               <SpotlightIcon className="w-4 h-4" />
                             ) : null}
                           </div>

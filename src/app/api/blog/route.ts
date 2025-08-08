@@ -56,7 +56,14 @@ export async function POST(req: NextRequest) {
         content: string;
       }
     );
-    return successResponse(result);
+    // result from convex returns { success, _id, post } or { success: false, error }
+    if ((result as any)?.success) {
+      return successResponse((result as any).post || result);
+    }
+    return errorResponse(
+      (result as any)?.error || "Failed to create blog post",
+      400
+    );
   } catch (err: unknown) {
     return errorResponse(
       (err as Error)?.message || "Failed to create blog post",

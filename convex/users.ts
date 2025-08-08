@@ -647,37 +647,184 @@ export const getMatchesForProfile = query({
 });
 
 /**
- * Minimal viable public profile search
- * This is a naive scan; for production use, add appropriate indexes/filters.
+ * Public profile search with filter support and pagination.
+ * NOTE: Filtering uses one indexed query when possible, then refines in memory.
  */
 export const searchPublicProfiles = query({
   args: {
-    term: v.optional(v.string()),
-    limit: v.optional(v.number()),
+    city: v.optional(v.string()),
+    country: v.optional(v.string()),
+    ethnicity: v.optional(v.string()),
+    motherTongue: v.optional(v.string()),
+    language: v.optional(v.string()), // not currently stored; accepted and ignored
+    preferredGender: v.optional(
+      v.union(
+        v.literal("any"),
+        v.literal("male"),
+        v.literal("female"),
+        v.literal("other")
+      )
+    ),
+    ageMin: v.optional(v.number()),
+    ageMax: v.optional(v.number()),
+    page: v.number(),
+    pageSize: v.number(),
+    viewerUserId: v.optional(v.id("users")),
+    correlationId: v.optional(v.string()),
   },
-  handler: async (ctx, { term, limit }) => {
-    const max = Math.min(Math.max(limit ?? 20, 1), 100);
-    const t = (term ?? "").toLowerCase();
-    // naive filter: scan profiles and join with user email/name if needed
-    const results: any[] = [];
-    const iter = ctx.db.query("profiles"); // add indexes for better perf when needed
-
-    // Convex iterator API: use .collect() in latest versions; else loop over .take()
-    const all = (await iter.collect?.()) ?? []; // optional chaining for compatibility
-    for (const p of all as any[]) {
-      if (!p) continue;
-      // Basic text match on fields
-      if (!t || `${p.aboutMe ?? ""}`.toLowerCase().includes(t)) {
-        results.push({
-          _id: p._id,
-          userId: p.userId,
-          isProfileComplete: !!p.isProfileComplete,
-          isOnboardingComplete: !!p.isOnboardingComplete,
-        });
-        if (results.length >= max) break;
-      }
+  handler: async (
+    ctx,
+    {
+      city,
+      country,
+      ethnicity,
+      motherTongue,
+      // language,
+      preferredGender,
+      ageMin,
+      ageMax,
+      page,
+      pageSize,
+      viewerUserId,
     }
-    return results;
+  ) => {
+    const safePage = Math.max(0, page ?? 0);
+    const safeSize = Math.min(Math.max(pageSize ?? 12, 1), 50);
+
+    // Choose a primary index and collect rows (avoid type mismatches between QueryInitializer and Query)
+    let all: any[] = [];
+    if (country) {
+      all =
+        (await ctx.db
+          .query("profiles")
+          .withIndex("by_country", (ix) => ix.eq("country", country))
+          .collect?.()) ?? [];
+    } else if (city) {
+      all =
+        (await ctx.db
+          .query("profiles")
+          .withIndex("by_city", (ix) => ix.eq("city", city))
+          .collect?.()) ?? [];
+    } else if (ethnicity) {
+      all =
+        (await ctx.db
+          .query("profiles")
+          // Cast value to schema union type at compile time
+          .withIndex("by_ethnicity", (ix) =>
+            ix.eq("ethnicity", ethnicity as any)
+          )
+          .collect?.()) ?? [];
+    } else if (motherTongue) {
+      all =
+        (await ctx.db
+          .query("profiles")
+          .withIndex("by_motherTongue", (ix) =>
+            ix.eq("motherTongue", motherTongue as any)
+          )
+          .collect?.()) ?? [];
+    } else {
+      all =
+        (await ctx.db
+          .query("profiles")
+          .withIndex("by_createdAt")
+          .collect?.()) ?? [];
+    }
+
+    // Resolve block lists for viewer and filter in memory
+    const blockedUserIds = new Set<string>();
+    if (viewerUserId) {
+      const blocked = await ctx.db
+        .query("blocks")
+        .withIndex("by_blocker", (ix) => ix.eq("blockerUserId", viewerUserId))
+        .collect();
+      const blockedBy = await ctx.db
+        .query("blocks")
+        .withIndex("by_blocked", (ix) => ix.eq("blockedUserId", viewerUserId))
+        .collect();
+      for (const b of blocked as any[])
+        blockedUserIds.add(String(b.blockedUserId));
+      for (const b of blockedBy as any[])
+        blockedUserIds.add(String(b.blockerUserId));
+    }
+
+    // Filter in memory for remaining predicates
+    const filtered = (all as any[]).filter((p) => {
+      if (!p) return false;
+      if (!p.isProfileComplete) return false;
+      if (p.banned) return false;
+
+      if (viewerUserId && blockedUserIds.size > 0) {
+        if (blockedUserIds.has(String(p.userId))) return false;
+      }
+
+      // Optional city/country refinement when primary index differs
+      if (country && p.country !== country) return false;
+      if (city && p.city !== city) return false;
+
+      if (preferredGender && preferredGender !== "any") {
+        if (p.gender !== preferredGender) return false;
+      }
+
+      if (ethnicity && p.ethnicity !== ethnicity) return false;
+      if (motherTongue && p.motherTongue !== motherTongue) return false;
+
+      // Age calculation from dateOfBirth (stored as string ISO or yyyy-mm-dd)
+      if (
+        (ageMin !== undefined && ageMin !== null) ||
+        (ageMax !== undefined && ageMax !== null)
+      ) {
+        const dobStr = p.dateOfBirth as string | undefined;
+        if (!dobStr) return false;
+        const dob = new Date(dobStr);
+        if (Number.isNaN(dob.getTime())) return false;
+        const age = Math.floor(
+          (Date.now() - dob.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+        );
+        if (ageMin !== undefined && ageMin !== null && age < ageMin)
+          return false;
+        if (ageMax !== undefined && ageMax !== null && age > ageMax)
+          return false;
+      }
+
+      return true;
+    });
+
+    const total = filtered.length;
+    const start = safePage * safeSize;
+    const pageItems = filtered.slice(start, start + safeSize);
+
+    // Map to client shape; include minimal profile fields required by UI
+    const profiles = await Promise.all(
+      pageItems.map(async (p: any) => {
+        const u = await ctx.db.get(p.userId as Id<"users">);
+        return {
+          userId: String(p.userId),
+          email: (u as any)?.email,
+          profile: {
+            fullName: p.fullName,
+            city: p.city,
+            dateOfBirth: p.dateOfBirth,
+            isProfileComplete: !!p.isProfileComplete,
+            hiddenFromSearch: !!p.hiddenFromSearch,
+            boostedUntil: p.boostedUntil,
+            subscriptionPlan: p.subscriptionPlan,
+            hideFromFreeUsers: !!p.hideFromFreeUsers,
+            profileImageUrls: Array.isArray(p.profileImageUrls)
+              ? p.profileImageUrls
+              : [],
+            hasSpotlightBadge: !!p.hasSpotlightBadge,
+            spotlightBadgeExpiresAt: p.spotlightBadgeExpiresAt,
+          },
+        } as any;
+      })
+    );
+
+    return {
+      profiles,
+      total,
+      page: safePage,
+      pageSize: safeSize,
+    } as any;
   },
 });
 
@@ -713,10 +860,13 @@ export const setRateLimitWindow = mutation({
       .first();
 
     if (existing) {
-      await ctx.db.patch(existing._id as Id<"rateLimits">, {
-        windowStart: windowStartBig,
-        count: countBig,
-      } as any);
+      await ctx.db.patch(
+        existing._id as Id<"rateLimits">,
+        {
+          windowStart: windowStartBig,
+          count: countBig,
+        } as any
+      );
       return existing._id as Id<"rateLimits">;
     }
 
@@ -782,5 +932,43 @@ export const createUserAndProfileViaSignup = action({
       googleId,
     });
     return { ok: true, userId: userId as Id<"users"> };
+  },
+});
+
+/**
+ * Update a user's subscription by email (webhook-safe: no ctx.auth required).
+ * Patches the user's profile with plan and optional expiration.
+ */
+export const setSubscriptionByEmail = mutation({
+  args: {
+    email: v.string(),
+    plan: v.union(
+      v.literal("free"),
+      v.literal("premium"),
+      v.literal("premiumPlus")
+    ),
+    subscriptionExpiresAt: v.optional(v.number()),
+  },
+  handler: async (ctx, { email, plan, subscriptionExpiresAt }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email.trim().toLowerCase()))
+      .first();
+    if (!user) {
+      return { ok: false, status: 404, code: "USER_NOT_FOUND" } as const;
+    }
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id as Id<"users">))
+      .first();
+    if (!profile) {
+      return { ok: false, status: 404, code: "PROFILE_NOT_FOUND" } as const;
+    }
+    const patch: any = { subscriptionPlan: plan, updatedAt: Date.now() };
+    if (typeof subscriptionExpiresAt === "number") {
+      patch.subscriptionExpiresAt = subscriptionExpiresAt;
+    }
+    await ctx.db.patch((profile as any)._id as Id<"profiles">, patch);
+    return { ok: true } as const;
   },
 });

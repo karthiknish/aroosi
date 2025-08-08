@@ -20,6 +20,7 @@ import {
   Globe,
 } from "lucide-react";
 import type { ImageType } from "@/types/image";
+import { isPremium } from "@/lib/utils/subscriptionPlan";
 
 interface ProfileViewProps {
   profiledata: Profile;
@@ -96,18 +97,15 @@ export default function ProfileView({
         <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white relative flex items-center justify-center">
           {profileImage ? (
             <>
-              <img
+              <Image
                 src={profileImage.url}
                 alt={profiledata.fullName || "Profile image"}
                 width={128}
                 height={128}
                 className="w-full h-full object-cover"
-                onLoad={() => setImageLoaded(true)}
-                onError={(e) => {
+                onLoadingComplete={() => setImageLoaded(true)}
+                onError={() => {
                   setImageError(true);
-                  const target = e.target as HTMLImageElement;
-                  target.onerror = null;
-                  target.src = "/placeholder-user.jpg";
                 }}
               />
               {!imageLoaded && !imageError && (
@@ -172,18 +170,15 @@ export default function ProfileView({
         <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border-2 border-primary/20 bg-white relative flex items-center justify-center">
           {profileImage ? (
             <>
-              <img
+              <Image
                 src={profileImage.url}
                 alt={profiledata.fullName || "Profile image"}
                 width={128}
                 height={128}
                 className="w-full h-full object-cover"
-                onLoad={() => setImageLoaded(true)}
-                onError={(e) => {
+                onLoadingComplete={() => setImageLoaded(true)}
+                onError={() => {
                   setImageError(true);
-                  const target = e.target as HTMLImageElement;
-                  target.onerror = null;
-                  target.src = "/placeholder-user.jpg";
                 }}
               />
               {!imageLoaded && !imageError && (
@@ -203,23 +198,9 @@ export default function ProfileView({
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-1">
             {profiledata.fullName || "No Name"}
             {/* Premium badge via centralized helper */}
-            {(() => {
-              try {
-                // Lazy import to avoid admin bundle coupling; safe in client.
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                const { isPremium } = require("@/lib/utils/subscriptionPlan");
-                return isPremium(profiledata.subscriptionPlan) ? (
-                  <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
-                ) : null;
-              } catch {
-                // Fallback to prior behavior if helper unavailable
-                return (profiledata.subscriptionPlan === "premium" ||
-                  profiledata.subscriptionPlan === "premiumPlus") ? (
-                  <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
-                ) : null;
-              }
-            })()}
+            {isPremium(profiledata.subscriptionPlan) ? (
+              <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
+            ) : null}
           </h2>
           {profiledata.aboutMe && (
             <p className="mt-1 text-gray-600">{profiledata.aboutMe}</p>
@@ -327,8 +308,9 @@ export default function ProfileView({
           <span className="text-md text-gray-500 flex items-center gap-1">
             <Languages className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profiledata.motherTongue ? 
-                profiledata.motherTongue.charAt(0).toUpperCase() + profiledata.motherTongue.slice(1).replace('-', ' ') 
+              {profiledata.motherTongue
+                ? profiledata.motherTongue.charAt(0).toUpperCase() +
+                  profiledata.motherTongue.slice(1).replace("-", " ")
                 : "-"}
             </span>
           </span>
@@ -337,8 +319,9 @@ export default function ProfileView({
           <span className="text-md text-gray-500 flex items-center gap-1">
             <Heart className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profiledata.religion ? 
-                profiledata.religion.charAt(0).toUpperCase() + profiledata.religion.slice(1) 
+              {profiledata.religion
+                ? profiledata.religion.charAt(0).toUpperCase() +
+                  profiledata.religion.slice(1)
                 : "-"}
             </span>
           </span>
@@ -347,8 +330,9 @@ export default function ProfileView({
           <span className="text-md text-gray-500 flex items-center gap-1">
             <Globe className="w-3.5 h-3.5 text-gray-400" />
             <span className="font-medium text-gray-700">
-              {profiledata.ethnicity ? 
-                profiledata.ethnicity.charAt(0).toUpperCase() + profiledata.ethnicity.slice(1) 
+              {profiledata.ethnicity
+                ? profiledata.ethnicity.charAt(0).toUpperCase() +
+                  profiledata.ethnicity.slice(1)
                 : "-"}
             </span>
           </span>

@@ -1,6 +1,11 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./utils/requireAdmin";
+import {
+  sanitizeHtml,
+  sanitizePlainText,
+  sanitizeSlug,
+} from "./utils/sanitize";
 import { checkRateLimit } from "./utils/rateLimit";
 
 export const createBlogPost = mutation({
@@ -23,13 +28,24 @@ export const createBlogPost = mutation({
       };
     }
     const now = Date.now();
-    await ctx.db.insert("blogPosts", {
-      ...args,
+    // Sanitize inputs
+    const safeTitle = sanitizePlainText(args.title, 300);
+    const safeSlug = sanitizeSlug(args.slug);
+    const safeExcerpt = sanitizePlainText(args.excerpt, 2000);
+    const safeContent = sanitizeHtml(args.content);
+    const safeImageUrl = args.imageUrl ? String(args.imageUrl) : undefined;
+    const _id = await ctx.db.insert("blogPosts", {
+      title: safeTitle,
+      slug: safeSlug,
+      excerpt: safeExcerpt,
+      content: safeContent,
+      imageUrl: safeImageUrl,
       categories: args.categories || [],
       createdAt: now,
       updatedAt: now,
     });
-    return { success: true };
+    const post = await ctx.db.get(_id);
+    return { success: true, _id, post };
   },
 });
 
@@ -74,12 +90,19 @@ export const updateBlogPost = mutation({
       };
     }
     requireAdmin(identity);
+    // Sanitize inputs before update
+    const safeTitle = sanitizePlainText(args.title, 300);
+    const safeSlug = sanitizeSlug(args.slug);
+    const safeExcerpt = sanitizePlainText(args.excerpt, 2000);
+    const safeContent = sanitizeHtml(args.content);
+    const safeImageUrl = args.imageUrl ? String(args.imageUrl) : undefined;
+
     await ctx.db.patch(args._id, {
-      title: args.title,
-      slug: args.slug,
-      excerpt: args.excerpt,
-      content: args.content,
-      imageUrl: args.imageUrl,
+      title: safeTitle,
+      slug: safeSlug,
+      excerpt: safeExcerpt,
+      content: safeContent,
+      imageUrl: safeImageUrl,
       categories: args.categories || [],
       updatedAt: Date.now(),
     });

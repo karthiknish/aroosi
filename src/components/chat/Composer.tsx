@@ -338,10 +338,10 @@ export default function Composer(props: ComposerProps) {
               variant="outline"
               size="sm"
               className="h-8 text-xs"
-              onClick={() => (window.location.href = "/plans")}
-              title="Upgrade to send voice messages"
+              onClick={() => (window.location.href = "/subscription")}
+              title="Upgrade to Premium to send voice messages"
             >
-              Upgrade to send voice
+              Upgrade to Premium
             </Button>
           )}
         </div>

@@ -320,7 +320,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             <h2 className="text-lg font-bold mb-4">Insert Table</h2>
             <div className="flex gap-4 mb-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label
+                  htmlFor="tableRows"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
                   Rows
                 </label>
                 <input
@@ -333,7 +336,10 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label
+                  htmlFor="tableCols"
+                  className="block text-xs font-medium text-gray-600 mb-1"
+                >
                   Columns
                 </label>
                 <input

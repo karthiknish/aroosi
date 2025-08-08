@@ -51,6 +51,21 @@ const UsageItem: React.FC<UsageItemProps> = ({
           className={`h-2 ${isAtLimit ? "bg-red-100" : isNearLimit ? "bg-yellow-100" : ""}`}
         />
       )}
+
+      {!isUnlimited && (isNearLimit || isAtLimit) && (
+        <div className="flex items-center justify-between text-xs mt-1">
+          <p className={isAtLimit ? "text-red-600" : "text-yellow-700"}>
+            {isAtLimit ? "Limit reached" : "Approaching limit"}
+          </p>
+          <button
+            type="button"
+            className="h-6 px-2 rounded bg-pink-600 hover:bg-pink-700 text-white"
+            onClick={() => (window.location.href = "/subscription")}
+          >
+            Upgrade for higher limits
+          </button>
+        </div>
+      )}
     </div>
   );
 };

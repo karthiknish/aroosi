@@ -158,11 +158,20 @@ export function UsageTracker() {
                 />
               )}
               {!feature.unlimited && feature.percentageUsed >= 90 && (
-                <p className="text-xs text-red-600">
-                  {feature.remaining === 0
-                    ? "Limit reached"
-                    : `Only ${feature.remaining} remaining`}
-                </p>
+                <div className="flex items-center justify-between text-xs mt-1">
+                  <p className="text-red-600">
+                    {feature.remaining === 0
+                      ? "Limit reached"
+                      : `Only ${feature.remaining} remaining`}
+                  </p>
+                  <Button
+                    size="xs"
+                    className="h-6 px-2 bg-pink-600 hover:bg-pink-700 text-white"
+                    onClick={() => (window.location.href = "/subscription")}
+                  >
+                    Upgrade for higher limits
+                  </Button>
+                </div>
               )}
             </div>
           ))}

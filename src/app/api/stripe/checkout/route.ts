@@ -67,8 +67,10 @@ export async function POST(req: NextRequest) {
     // Validate Stripe configuration (price IDs sourced from env for each allowed plan)
     const priceId =
       planId === "premium"
-        ? process.env.NEXT_PUBLIC_PREMIUM_PRICE_ID || process.env.STRIPE_PRICE_ID_PREMIUM
-        : process.env.NEXT_PUBLIC_PREMIUM_PLUS_PRICE_ID || process.env.STRIPE_PRICE_ID_PREMIUM_PLUS;
+        ? process.env.STRIPE_PRICE_ID_PREMIUM ||
+          process.env.NEXT_PUBLIC_PREMIUM_PRICE_ID
+        : process.env.STRIPE_PRICE_ID_PREMIUM_PLUS ||
+          process.env.NEXT_PUBLIC_PREMIUM_PLUS_PRICE_ID;
     if (!priceId) {
       console.error("Missing Stripe price ID env var for plan", planId);
       return errorResponse("Payment service configuration error", 503);
@@ -133,7 +135,7 @@ export async function POST(req: NextRequest) {
       success_url: `${baseUrl}/plans?checkout=success`,
       cancel_url: `${baseUrl}/plans?checkout=cancel`,
       billing_address_collection: "required",
-      payment_intent_data: {
+      subscription_data: {
         metadata: {
           planId,
           email: profile.email,

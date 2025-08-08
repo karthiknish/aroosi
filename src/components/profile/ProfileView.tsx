@@ -311,22 +311,30 @@ const ProfileView: FC<ProfileViewProps> = ({
                         return;
                       }
                       // Lazy import cookie-auth variant to avoid adding to initial bundle
-                      const { boostProfileCookieAuth } = await import("@/lib/utils/profileApi");
+                      const { boostProfileCookieAuth } = await import(
+                        "@/lib/utils/profileApi"
+                      );
                       const result = await boostProfileCookieAuth();
                       // Use established toast utility if available; otherwise log
                       try {
-                        const { showSuccessToast } = await import("@/lib/ui/toast");
+                        const { showSuccessToast } = await import(
+                          "@/lib/ui/toast"
+                        );
                         showSuccessToast(
                           `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
                         );
                       } catch {
-                        console.info("Profile boosted for 24 hours.", { remaining: result.boostsRemaining });
+                        console.info("Profile boosted for 24 hours.", {
+                          remaining: result.boostsRemaining,
+                        });
                       }
                       // Refresh to reflect boosted state ribbon/badges
                       router.refresh?.();
                     } catch (e) {
                       try {
-                        const { showErrorToast } = await import("@/lib/ui/toast");
+                        const { showErrorToast } = await import(
+                          "@/lib/ui/toast"
+                        );
                         showErrorToast(e as Error, "Boost failed");
                       } catch {
                         console.warn("Boost failed", e);
@@ -339,7 +347,17 @@ const ProfileView: FC<ProfileViewProps> = ({
                 >
                   Boost Profile
                 </Button>
-              ) : null}
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-amber-700 border-amber-400"
+                  onClick={() => router.push("/subscription")}
+                  title="Upgrade to Premium Plus to boost your profile"
+                >
+                  Upgrade to Premium Plus to boost
+                </Button>
+              )}
               <Button
                 onClick={() => {
                   refreshProfileLocalStorage();
@@ -470,6 +488,18 @@ const ProfileView: FC<ProfileViewProps> = ({
                         profileData.spotlightBadgeExpiresAt > Date.now() && (
                           <SpotlightIcon className="w-4 h-4" />
                         )}
+                      {!isPremiumPlus(profileData.subscriptionPlan) && (
+                        <button
+                          type="button"
+                          className="ml-2 text-[11px] text-amber-700 underline"
+                          onClick={() =>
+                            (window.location.href = "/subscription")
+                          }
+                          title="Upgrade to Premium Plus for a spotlight badge"
+                        >
+                          Get Spotlight
+                        </button>
+                      )}
                     </dd>
                   </div>
                   <ProfileDetailView
@@ -664,26 +694,27 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </Button>
                     )}
 
-                    {isPremium(profileData.subscriptionPlan) && !isPremiumPlus(profileData.subscriptionPlan) && (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-pink-600 border-pink-600"
-                          onClick={() => router.push("/plans")}
-                        >
-                          Upgrade to Plus
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleOpenBillingPortal}
-                          title="Open Stripe Billing Portal"
-                        >
-                          Manage
-                        </Button>
-                      </div>
-                    )}
+                    {isPremium(profileData.subscriptionPlan) &&
+                      !isPremiumPlus(profileData.subscriptionPlan) && (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-pink-600 border-pink-600"
+                            onClick={() => router.push("/plans")}
+                          >
+                            Upgrade to Plus
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleOpenBillingPortal}
+                            title="Open Stripe Billing Portal"
+                          >
+                            Manage
+                          </Button>
+                        </div>
+                      )}
 
                     {isPremiumPlus(profileData.subscriptionPlan) && (
                       <Button
@@ -696,6 +727,21 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </Button>
                     )}
                   </div>
+
+                  {/* Spotlight upsell hint for non-Plus plans */}
+                  {!isPremiumPlus(profileData.subscriptionPlan) && (
+                    <div className="mt-2 text-xs text-amber-700">
+                      Want a spotlight badge?{" "}
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => (window.location.href = "/subscription")}
+                        title="Upgrade to Premium Plus to get Spotlight"
+                      >
+                        Get Spotlight
+                      </button>
+                    </div>
+                  )}
                 </DisplaySection>
               </>
             ) : (

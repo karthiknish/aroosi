@@ -257,12 +257,14 @@ const VoiceRecorderButton: React.FC<VoiceRecorderButtonProps> = ({
       )}
 
       {!canSendVoice && (
-        <div
-          className="text-xs text-blue-600 ml-2 cursor-pointer"
+        <button
+          type="button"
+          className="text-xs text-blue-600 ml-2 underline"
           onClick={onUpgradeRequired}
+          aria-label="Upgrade to Premium to send voice messages"
         >
-          Upgrade to Premium for voice messages
-        </div>
+          Upgrade to Premium
+        </button>
       )}
     </div>
   );

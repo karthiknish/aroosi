@@ -209,7 +209,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                           if (url) {
                             window.location.assign(url);
                           }
-                        } catch (e) {
+                        } catch {
                           // swallow; toast handled inside util if thrown
                         }
                       }}
@@ -219,6 +219,22 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     </Button>
                   </motion.div>
                 </>
+              )}
+
+              {/* Upgrade CTA for free plan */}
+              {profile && !isPremium(profile.subscriptionPlan) && (
+                <motion.div
+                  custom={1.7}
+                  variants={navItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  <Link href="/subscription" onClick={onClick} className="block">
+                    <Button className="w-full justify-start bg-pink-600 hover:bg-pink-700 text-white">
+                      <span>Upgrade</span>
+                    </Button>
+                  </Link>
+                </motion.div>
               )}
 
               <motion.div

@@ -171,20 +171,22 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          await convexMutationWithAuth(req, (api as any).users?.stripeUpdateSubscription ?? (api as any).users?.updateProfile, { 
-            updates: { subscriptionPlan: planId, updatedAt: Date.now() },
-            email,
-          } as any).catch((e: unknown) => {
-              console.error("Stripe webhook convex action error", {
-                scope: "stripe.webhook",
-                type: "convex_action_error",
-                message: e instanceof Error ? e.message : String(e),
-                correlationId,
-                statusCode: 500,
-                durationMs: Date.now() - startedAt,
-              });
-              throw e;
+          await convexMutationWithAuth(
+            req,
+            (api as any).users?.setSubscriptionByEmail ??
+              (api as any).users?.updateProfile,
+            { email, plan: planId } as any
+          ).catch((e: unknown) => {
+            console.error("Stripe webhook convex action error", {
+              scope: "stripe.webhook",
+              type: "convex_action_error",
+              message: e instanceof Error ? e.message : String(e),
+              correlationId,
+              statusCode: 500,
+              durationMs: Date.now() - startedAt,
             });
+            throw e;
+          });
 
           console.info("Stripe webhook subscription updated", {
             scope: "stripe.webhook",
@@ -280,20 +282,22 @@ export async function POST(req: NextRequest) {
             throw new Error("NEXT_PUBLIC_CONVEX_URL not configured");
           }
 
-          await convexMutationWithAuth(req, (api as any).users?.stripeUpdateSubscription ?? (api as any).users?.updateProfile, { 
-            updates: { subscriptionPlan: "free", updatedAt: Date.now() },
-            email,
-          } as any).catch((e: unknown) => {
-              console.error("Stripe webhook convex action downgrade error", {
-                scope: "stripe.webhook",
-                type: "convex_action_error",
-                message: e instanceof Error ? e.message : String(e),
-                correlationId,
-                statusCode: 500,
-                durationMs: Date.now() - startedAt,
-              });
-              throw e;
+          await convexMutationWithAuth(
+            req,
+            (api as any).users?.setSubscriptionByEmail ??
+              (api as any).users?.updateProfile,
+            { email, plan: "free" } as any
+          ).catch((e: unknown) => {
+            console.error("Stripe webhook convex action downgrade error", {
+              scope: "stripe.webhook",
+              type: "convex_action_error",
+              message: e instanceof Error ? e.message : String(e),
+              correlationId,
+              statusCode: 500,
+              durationMs: Date.now() - startedAt,
             });
+            throw e;
+          });
 
           console.info("Stripe webhook subscription downgraded", {
             scope: "stripe.webhook",

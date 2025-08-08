@@ -108,12 +108,25 @@ export function CreatePost({
             disabled={creating}
           />
           <div>
-            <label className="text-sm font-medium text-gray-700">Content</label>
+            <label
+              htmlFor="blog-content"
+              className="text-sm font-medium text-gray-700"
+            >
+              Content
+            </label>
             <div className="mt-1">
               <BlogEditor
                 key={editorResetKey}
                 value={content}
                 onChange={setContent}
+              />
+              {/* Associate label via aria-labelledby since BlogEditor isn't a native control */}
+              <textarea
+                id="blog-content"
+                aria-labelledby="blog-content-label"
+                className="hidden"
+                readOnly
+                value={content}
               />
             </div>
           </div>

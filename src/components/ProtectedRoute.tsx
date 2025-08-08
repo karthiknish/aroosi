@@ -28,17 +28,19 @@ function ProtectedRouteInner({
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
 
-  console.log("🔧 DEBUG: ProtectedRoute render started", {
-    pathname,
-    requireAuth,
-    requireProfileComplete,
-    requireOnboardingComplete,
-    redirectTo,
-  });
+  if (process.env.NODE_ENV === "development")
+    console.log("🔧 DEBUG: ProtectedRoute render started", {
+      pathname,
+      requireAuth,
+      requireProfileComplete,
+      requireOnboardingComplete,
+      redirectTo,
+    });
 
   // Set isClient to true after component mounts (client-side only)
   useEffect(() => {
-    console.log("🔧 DEBUG: Setting isClient to true");
+    if (process.env.NODE_ENV === "development")
+      console.log("🔧 DEBUG: Setting isClient to true");
     setIsClient(true);
   }, []);
 
@@ -52,15 +54,16 @@ function ProtectedRouteInner({
     error: authError,
   } = useAuthContext();
 
-  console.log("🔧 DEBUG: Auth context values", {
-    isLoaded,
-    isSignedIn,
-    isProfileComplete,
-    isOnboardingComplete,
-    isAuthLoading,
-    profile: rawProfile ? "exists" : "null",
-    authError: authError ? "exists" : "null",
-  });
+  if (process.env.NODE_ENV === "development")
+    console.log("🔧 DEBUG: Auth context values", {
+      isLoaded,
+      isSignedIn,
+      isProfileComplete,
+      isOnboardingComplete,
+      isAuthLoading,
+      profile: rawProfile ? "exists" : "null",
+      authError: authError ? "exists" : "null",
+    });
 
   // Directly use context values; undefined indicates still loading
   const profile = rawProfile as { subscriptionPlan?: string } | null;
@@ -68,11 +71,12 @@ function ProtectedRouteInner({
   const onboardingComplete = isOnboardingComplete;
   const userPlan = profile?.subscriptionPlan || "free";
 
-  console.log("🔧 DEBUG: Processed auth values", {
-    profileComplete,
-    onboardingComplete,
-    userPlan,
-  });
+  if (process.env.NODE_ENV === "development")
+    console.log("🔧 DEBUG: Processed auth values", {
+      profileComplete,
+      onboardingComplete,
+      userPlan,
+    });
 
   // Memoized route checks to prevent unnecessary recalculations
   const {
@@ -102,7 +106,8 @@ function ProtectedRouteInner({
       isCreateProfileRoute: false,
     };
 
-    console.log("🔧 DEBUG: Route checks", routeChecks);
+    if (process.env.NODE_ENV === "development")
+      console.log("🔧 DEBUG: Route checks", routeChecks);
     return routeChecks;
   }, [pathname]);
 
@@ -115,12 +120,13 @@ function ProtectedRouteInner({
   const chatRestrictedRoutes = ["/chat"];
   // const advancedSearchRoutes = ["/search"] // Will check for premium plus filters in search
 
-  console.log("🔧 DEBUG: Route restrictions", {
-    premiumAnyPlanRoutes,
-    premiumPlusRoutes,
-    chatRestrictedRoutes,
-    planManagementRoute,
-  });
+  if (process.env.NODE_ENV === "development")
+    console.log("🔧 DEBUG: Route restrictions", {
+      premiumAnyPlanRoutes,
+      premiumPlusRoutes,
+      chatRestrictedRoutes,
+      planManagementRoute,
+    });
 
   // Quick bypass for E2E tests or demo environments (constant after build)
   if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
@@ -147,54 +153,60 @@ function ProtectedRouteInner({
 
   // Handle all redirections with improved error handling
   useEffect(() => {
-    console.log("🔥 PRODUCTION DEBUG:", {
-      pathname,
-      isSignedIn,
-      profileComplete,
-      onboardingComplete,
-      isLoaded,
-      isAuthLoading,
-      profile: profile ? "exists" : "null",
-      userPlan,
-      isPublicRoute,
-      requireAuth,
-      requireProfileComplete,
-      requireOnboardingComplete,
-    });
+    if (process.env.NODE_ENV === "development")
+      console.log("🔥 PRODUCTION DEBUG:", {
+        pathname,
+        isSignedIn,
+        profileComplete,
+        onboardingComplete,
+        isLoaded,
+        isAuthLoading,
+        profile: profile ? "exists" : "null",
+        userPlan,
+        isPublicRoute,
+        requireAuth,
+        requireProfileComplete,
+        requireOnboardingComplete,
+      });
 
-    console.log("🔧 DEBUG: useEffect triggered", {
-      isClient,
-      windowDefined: typeof window !== "undefined",
-    });
+    if (process.env.NODE_ENV === "development")
+      console.log("🔧 DEBUG: useEffect triggered", {
+        isClient,
+        windowDefined: typeof window !== "undefined",
+      });
 
     // Don't do anything until we're on the client
     if (typeof window === "undefined") {
-      console.log("🔧 DEBUG: Server side, skipping logic");
+      if (process.env.NODE_ENV === "development")
+        console.log("🔧 DEBUG: Server side, skipping logic");
       return;
     }
 
     // Don't do anything until we've loaded the auth state
     if (!isLoaded || isAuthLoading) {
-      console.log("🔧 DEBUG: Auth still loading, waiting...", {
-        isLoaded,
-        isAuthLoading,
-      });
+      if (process.env.NODE_ENV === "development")
+        console.log("🔧 DEBUG: Auth still loading, waiting...", {
+          isLoaded,
+          isAuthLoading,
+        });
       return;
     }
 
     // Handle auth errors
     if (authError && !isPublicRoute) {
-      console.error("🔧 DEBUG: Auth error detected:", authError);
+      if (process.env.NODE_ENV === "development")
+        console.error("🔧 DEBUG: Auth error detected:", authError);
       handleNavigation("/sign-in", "Session expired. Please sign in again.");
       return;
     }
 
     // Handle unauthenticated users
     if (isSignedIn === false) {
-      console.log("🔧 DEBUG: User not signed in", {
-        requireAuth,
-        isPublicRoute,
-      });
+      if (process.env.NODE_ENV === "development")
+        console.log("🔧 DEBUG: User not signed in", {
+          requireAuth,
+          isPublicRoute,
+        });
       if (requireAuth && !isPublicRoute) {
         // Only show toast if we're not already on the sign-in page
         if (!pathname.startsWith("/sign-in")) {
@@ -203,7 +215,8 @@ function ProtectedRouteInner({
             params.set("redirect_url", pathname);
             return `/sign-in?${params.toString()}`;
           };
-          console.log("🔧 DEBUG: Redirecting to sign-in");
+          if (process.env.NODE_ENV === "development")
+            console.log("🔧 DEBUG: Redirecting to sign-in");
           handleNavigation(
             redirectTo || getSignInUrl(),
             "Please sign in to continue"
@@ -215,27 +228,36 @@ function ProtectedRouteInner({
 
     // If we're still checking auth state, don't proceed
     if (isSignedIn === undefined) {
-      console.log("🔧 DEBUG: Auth state undefined, waiting...");
+      if (process.env.NODE_ENV === "development")
+        console.log("🔧 DEBUG: Auth state undefined, waiting...");
       return;
     }
 
     // Handle authenticated users
     if (isSignedIn === true) {
-      console.log("🔧 DEBUG: User is signed in, checking restrictions");
+      if (process.env.NODE_ENV === "development")
+        console.log("🔧 DEBUG: User is signed in, checking restrictions");
 
       // If we're still loading profile data, wait
       if (profileComplete === undefined) {
-        console.log("🔧 DEBUG: Profile complete status undefined, waiting...");
+        if (process.env.NODE_ENV === "development")
+          console.log(
+            "🔧 DEBUG: Profile complete status undefined, waiting..."
+          );
         return;
       }
 
       // Restrict premium-only routes based on subscription
       if (premiumAnyPlanRoutes.some((p) => pathname.startsWith(p))) {
-        console.log("🔧 DEBUG: Checking premium any plan route", { userPlan });
+        if (process.env.NODE_ENV === "development")
+          console.log("🔧 DEBUG: Checking premium any plan route", {
+            userPlan,
+          });
         if (userPlan === "free") {
-          console.log(
-            "🔧 DEBUG: Free user accessing premium route, redirecting"
-          );
+          if (process.env.NODE_ENV === "development")
+            console.log(
+              "🔧 DEBUG: Free user accessing premium route, redirecting"
+            );
           handleNavigation(
             planManagementRoute,
             "Upgrade to Premium to access this feature."
@@ -245,11 +267,13 @@ function ProtectedRouteInner({
       }
 
       if (premiumPlusRoutes.some((p) => pathname.startsWith(p))) {
-        console.log("🔧 DEBUG: Checking premium plus route", { userPlan });
+        if (process.env.NODE_ENV === "development")
+          console.log("🔧 DEBUG: Checking premium plus route", { userPlan });
         if (userPlan !== "premiumPlus") {
-          console.log(
-            "🔧 DEBUG: Non-premium plus user accessing premium plus route"
-          );
+          if (process.env.NODE_ENV === "development")
+            console.log(
+              "🔧 DEBUG: Non-premium plus user accessing premium plus route"
+            );
           handleNavigation(planManagementRoute, "Requires Premium Plus plan.");
           return;
         }
@@ -257,9 +281,13 @@ function ProtectedRouteInner({
 
       // Handle chat/messaging restrictions for free users
       if (chatRestrictedRoutes.some((p) => pathname.startsWith(p))) {
-        console.log("🔧 DEBUG: Checking chat route restriction", { userPlan });
+        if (process.env.NODE_ENV === "development")
+          console.log("🔧 DEBUG: Checking chat route restriction", {
+            userPlan,
+          });
         if (userPlan === "free") {
-          console.log("🔧 DEBUG: Free user accessing chat, redirecting");
+          if (process.env.NODE_ENV === "development")
+            console.log("🔧 DEBUG: Free user accessing chat, redirecting");
           handleNavigation(
             planManagementRoute,
             "Upgrade to Premium to chat with your matches."
@@ -294,9 +322,10 @@ function ProtectedRouteInner({
       }
       */
 
-      console.log(
-        "🔧 DEBUG: Profile/onboarding checks COMMENTED OUT - allowing access"
-      );
+      if (process.env.NODE_ENV === "development")
+        console.log(
+          "🔧 DEBUG: Profile/onboarding checks COMMENTED OUT - allowing access"
+        );
     }
   }, [
     isLoaded,
@@ -330,26 +359,29 @@ function ProtectedRouteInner({
       (isSignedIn === undefined ||
         (isSignedIn && profileComplete === undefined)));
 
-  console.log("🔧 DEBUG: Loading states", {
-    baseLoading,
-    isLoaded,
-    isAuthLoading,
-    isClient,
-    isSignedIn,
-    profileComplete,
-  });
+  if (process.env.NODE_ENV === "development")
+    console.log("🔧 DEBUG: Loading states", {
+      baseLoading,
+      isLoaded,
+      isAuthLoading,
+      isClient,
+      isSignedIn,
+      profileComplete,
+    });
 
   // Allow the create-profile wizard to render even while profile flags load.
   const isLoading = isCreateProfileRoute ? false : baseLoading;
 
-  console.log("🔧 DEBUG: Final isLoading state", {
-    isLoading,
-    isCreateProfileRoute,
-  });
+  if (process.env.NODE_ENV === "development")
+    console.log("🔧 DEBUG: Final isLoading state", {
+      isLoading,
+      isCreateProfileRoute,
+    });
 
   // On server render or initial client render, return null to prevent hydration mismatch
   if (!isClient) {
-    console.log("🔧 DEBUG: Not client side, returning null");
+    if (process.env.NODE_ENV === "development")
+      console.log("🔧 DEBUG: Not client side, returning null");
     return null;
   }
 
@@ -380,7 +412,8 @@ function ProtectedRouteInner({
 
   // Show loading state or nothing (for server render)
   if (shouldShowLoader) {
-    console.log("🔧 DEBUG: Showing loader");
+    if (process.env.NODE_ENV === "development")
+      console.log("🔧 DEBUG: Showing loader");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size={32} />
@@ -390,7 +423,8 @@ function ProtectedRouteInner({
 
   // If not signed in and route requires auth, show nothing (will redirect)
   if (!isSignedIn && requireAuth) {
-    console.log("🔧 DEBUG: Not signed in and requires auth, returning null");
+    if (process.env.NODE_ENV === "development")
+      console.log("🔧 DEBUG: Not signed in and requires auth, returning null");
     return null;
   }
 
@@ -421,7 +455,8 @@ function ProtectedRouteInner({
   }
   */
 
-  console.log("🔧 DEBUG: All checks passed, rendering children");
+  if (process.env.NODE_ENV === "development")
+    console.log("🔧 DEBUG: All checks passed, rendering children");
 
   // Return children wrapped in a fragment to maintain consistent structure
   return <>{children}</>;

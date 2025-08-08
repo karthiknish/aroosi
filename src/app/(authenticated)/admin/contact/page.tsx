@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Contact } from "@/lib/contactUtil";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 
 // Simple Modal component
 function Modal({
@@ -67,6 +68,8 @@ export default function AdminContactPage() {
   useAuthContext();
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
   const {
     data: contacts,
@@ -76,8 +79,8 @@ export default function AdminContactPage() {
     refetch,
   } = useQuery({
     // Remove token from query key and rely on server HttpOnly cookies
-    queryKey: ["admin-contacts"],
-    queryFn: () => fetchAllContactsAdmin(""),
+    queryKey: ["admin-contacts", { page, pageSize }],
+    queryFn: () => fetchAllContactsAdmin("", { page, pageSize }),
     enabled: true,
   });
 
@@ -142,6 +145,29 @@ export default function AdminContactPage() {
               ))}
             </TableBody>
           </Table>
+          {/* Pagination controls */}
+          <div className="flex items-center justify-between gap-4 py-3">
+            <span className="text-sm text-gray-600">Page {page}</span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!contacts || contacts.length < pageSize}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+
           <Modal
             open={modalOpen}
             onClose={handleCloseModal}
