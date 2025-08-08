@@ -1,8 +1,7 @@
-name: CD
+name: CD (disabled auto triggers)
 
 on:
-  push:
-    branches: [ main ]
+  # Disable auto triggers to prevent duplicate builds; run manually when required
   workflow_dispatch:
 
 jobs:

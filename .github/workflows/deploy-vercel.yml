@@ -1,9 +1,7 @@
-name: Deploy to Vercel
+name: Deploy to Vercel (disabled auto triggers)
 
 on:
-  push:
-    branches:
-      - main
+  # Disabled automatic triggers to avoid double builds; run manually if needed
   workflow_dispatch:
 
 concurrency:

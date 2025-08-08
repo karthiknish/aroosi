@@ -1,12 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
-  "installCommand": "npm install --force",
+  "installCommand": "npm ci --include=dev",
   "framework": "nextjs",
-  "build": {
-    "env": {
-      "NEXT_TELEMETRY_DISABLED": "1"
-    }
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1"
   },
   "headers": [
     {
