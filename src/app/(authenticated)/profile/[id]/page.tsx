@@ -76,8 +76,8 @@ type Interest = {
 };
 
 export default function ProfileDetailPage() {
+  // --- All hooks must be called before any early return ---
   const params = useParams();
-  // Cookie-auth only; remove token from context
   const {
     profile: rawCurrentUserProfile,
     isLoaded,
@@ -89,12 +89,15 @@ export default function ProfileDetailPage() {
   } | null;
   const offline = useOffline();
   const { trackUsage } = useUsageTracking(undefined);
-  // Ensure a single declaration of queryClient
   const queryClient = useQueryClient();
   const { isPremiumPlus } = useSubscriptionGuard();
 
   const id = params?.id as string;
   const userId = id as Id<"users">;
+
+  // Use Convex user IDs for interest actions
+  const fromUserId = currentUserProfile?.userId;
+  const toUserId = userId;
 
   // Fetch profile data
   const {
@@ -105,11 +108,9 @@ export default function ProfileDetailPage() {
     queryKey: ["profileData", userId],
     queryFn: async () => {
       if (!userId) return null;
-      // Server reads HttpOnly cookies; token not required
       const result = await fetchUserProfile(userId);
       return result;
     },
-    // Strict guard: only after auth hydration to avoid early /me and cookie races
     enabled: !!userId && isLoaded && isAuthenticated,
     retry: false,
   });
@@ -162,12 +163,9 @@ export default function ProfileDetailPage() {
   }, [isOwnProfile, profile]);
 
   const imagesToShow: string[] = useMemo(() => {
-    // Prefer profileImageUrls if present
     if (profile?.profileImageUrls && profile.profileImageUrls.length > 0) {
       return profile.profileImageUrls;
     }
-
-    // Fallback to previously fetched images (legacy path)
     if (
       isOwnProfile &&
       localCurrentUserImageOrder.length > 0 &&
@@ -187,7 +185,6 @@ export default function ProfileDetailPage() {
     userProfileImagesResponse,
   ]);
 
-  // Determine if image data still loading
   const imagesLoading =
     (profile &&
       (profile.profileImageUrls?.length ?? 0) > 0 &&
@@ -196,19 +193,13 @@ export default function ProfileDetailPage() {
 
   const skeletonCount = profile?.profileImageUrls?.length ?? 0;
 
-  // Daily icebreakers to surface tiny prompt chips inline
   const { data: iceQs } = useQuery({
     queryKey: ["icebreakers", "today"],
     queryFn: fetchIcebreakers,
     enabled: isLoaded && isAuthenticated,
   });
 
-  // Use Convex user IDs for interest actions
-  const fromUserId = currentUserProfile?.userId;
-  const toUserId = userId;
-
   // --- BEGIN: Interest status (lightweight) and sent list ---
-  // Lightweight interest status for the viewed user (cookie-auth)
   const {
     data: interestStatusData,
     isLoading: loadingInterestStatus,
@@ -236,7 +227,6 @@ export default function ProfileDetailPage() {
     staleTime: 30000,
   });
 
-  // Full sent list (cookie-auth) for reconciliation/fallback
   const {
     data: sentInterests,
     isLoading: loadingInterests,
