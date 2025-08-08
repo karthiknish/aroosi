@@ -43,6 +43,14 @@ Session lifecycle:
 2) AuthProvider fetches /api/auth/me; on 401, transparently attempts /api/auth/refresh and rehydrates.
 3) Edge middleware allows hydration paths when a refresh-token exists, blocking protected routes otherwise.
 
+## Recent Features & Changes (2025)
+
+- **ProtectedRoute Gating**: All protected pages now use a unified `ProtectedRoute` component that enforces authentication, premium plan gating, onboarding completion, and profile completeness. Gating is fully declarative via props (`requireAuth`, `requireOnboardingComplete`, `requireProfileComplete`).
+- **Error Toasts for Access Denials**: All redirects due to missing auth, plan, onboarding, or profile completion now show clear error toasts (debounced to avoid duplicates).
+- **Onboarding/Profile Gating**: If onboarding is required but incomplete, users are redirected to the home page with an error toast. If profile completion is required, users are redirected to `/profile/edit`.
+- **Header Navigation Logic**: The header automatically hides navigation links for users who are signed in but have not completed onboarding and profile steps, using a single `hideLinks` prop.
+- **Removed Create Profile Page**: The legacy `/create-profile` page and flow have been removed; onboarding gating now routes to home.
+
 ## Notable Implementation Details
 
 - Structured Logging
