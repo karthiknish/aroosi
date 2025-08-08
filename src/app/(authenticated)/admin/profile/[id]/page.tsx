@@ -355,9 +355,11 @@ export default function AdminProfileDetailPage() {
               className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border hover:shadow transition"
             >
               {matchImageUrl ? (
-                <img
+                <Image
                   src={matchImageUrl}
                   alt={fullName}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 rounded-full object-cover border"
                 />
               ) : (

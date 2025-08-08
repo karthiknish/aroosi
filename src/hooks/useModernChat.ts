@@ -73,7 +73,10 @@ export function useModernChat({
     message: string;
     isVisible: boolean;
   }>({ type: "success", message: "", isVisible: false });
-  const [otherPresence, setOtherPresence] = useState<{ isOnline: boolean; lastSeen: number }>({ isOnline: false, lastSeen: 0 });
+  const [otherPresence, setOtherPresence] = useState<{
+    isOnline: boolean;
+    lastSeen: number;
+  }>({ isOnline: false, lastSeen: 0 });
 
   // Refs for UI elements
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -86,21 +89,21 @@ export function useModernChat({
 
   // Presence: poll other user's presence + heartbeat self
   useEffect(() => {
-  let mounted = true;
-  const interval = setInterval(async () => {
-    try {
-      await heartbeat();
-      const p = await getPresence(matchUserId);
-      if (mounted) setOtherPresence(p);
-    } catch {}
-  }, 15000);
-  (async () => {
-    try {
-      await heartbeat();
-      const p = await getPresence(matchUserId);
-      if (mounted) setOtherPresence(p);
-    } catch {}
-  })();
+    let mounted = true;
+    const interval = setInterval(async () => {
+      try {
+        await heartbeat();
+        const p = await getPresence(matchUserId);
+        if (mounted) setOtherPresence(p);
+      } catch {}
+    }, 15000);
+    (async () => {
+      try {
+        await heartbeat();
+        const p = await getPresence(matchUserId);
+        if (mounted) setOtherPresence(p);
+      } catch {}
+    })();
     return () => {
       mounted = false;
       clearInterval(interval);
@@ -294,6 +297,7 @@ export function useModernChat({
   );
 
   // Voice is disabled; keep placeholder for future enablement
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _sendVoiceMessage = useCallback(
     async (_blob: Blob, _toUserId: string, _duration: number) => {
       // Intentionally no-op; voice disabled in this layer

@@ -684,8 +684,12 @@ export default function ProfileEditForm({
         </div>
 
         <div className="md:col-span-1">
-          <label className="inline-flex items-center gap-2 font-medium">
+          <label
+            htmlFor="hideFromFreeUsers"
+            className="inline-flex items-center gap-2 font-medium"
+          >
             <input
+              id="hideFromFreeUsers"
               type="checkbox"
               {...register("hideFromFreeUsers")}
               className="rounded border-gray-300"

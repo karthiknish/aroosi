@@ -182,13 +182,14 @@ function AdminEditBlogPageInner() {
               <label
                 id="blog-content-label"
                 className="text-sm font-medium text-gray-700 mb-2 block"
+                htmlFor="blog-content-editor"
               >
                 Content
               </label>
               <BlogEditor
                 value={content ?? ""}
                 onChange={setContent}
-                aria-label="Content"
+                aria-labelledby="blog-content-label"
               />
             </div>
             <div className="flex gap-2 mt-8">

@@ -2,7 +2,14 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
-import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  Suspense,
+  useRef,
+} from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { showInfoToast, showErrorToast } from "@/lib/ui/toast";
 
@@ -25,9 +32,16 @@ function ProtectedRouteInner({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+  const lastToastRef = useRef<{ msg: string; ts: number } | null>(null);
 
   // Auth context (only use fields known to exist across the app)
-  const { isLoaded, isSignedIn, profile: rawProfile } = useAuthContext();
+  const {
+    isLoaded,
+    isSignedIn,
+    isProfileComplete,
+    isOnboardingComplete,
+    profile: rawProfile,
+  } = useAuthContext();
   const profile = (rawProfile as { subscriptionPlan?: string } | null) || null;
   const userPlan =
     (profile?.subscriptionPlan as
@@ -75,10 +89,24 @@ function ProtectedRouteInner({
   const chatRestrictedRoutes = ["/chat"]; // chat for paid only
   const planManagementRoute = "/plans";
 
+  // Debounced toast + navigation helper
   const handleNavigation = useCallback(
-    async (to: string, message?: string) => {
+    async (
+      to: string,
+      message?: string,
+      severity: "info" | "error" = "info"
+    ) => {
       try {
-        if (message) showInfoToast(message);
+        if (message) {
+          const now = Date.now();
+          const last = lastToastRef.current;
+          if (!last || last.msg !== message || now - last.ts > 1500) {
+            severity === "error"
+              ? showErrorToast(null, message)
+              : showInfoToast(message);
+            lastToastRef.current = { msg: message, ts: now };
+          }
+        }
         router.replace(to);
       } catch (e) {
         showErrorToast("Navigation failed. Please refresh and try again.");
@@ -105,7 +133,11 @@ function ProtectedRouteInner({
               const current = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
               return `/sign-in?redirect_url=${encodeURIComponent(current)}`;
             })();
-        void handleNavigation(redirectTarget, "Please sign in to continue");
+        void handleNavigation(
+          redirectTarget,
+          "Please sign in to continue",
+          "error"
+        );
       }
       return;
     }
@@ -116,7 +148,8 @@ function ProtectedRouteInner({
         if (userPlan === "free") {
           void handleNavigation(
             planManagementRoute,
-            "Upgrade to Premium to access this feature."
+            "Upgrade to Premium to access this feature.",
+            "error"
           );
           return;
         }
@@ -125,7 +158,8 @@ function ProtectedRouteInner({
         if (userPlan !== "premiumPlus") {
           void handleNavigation(
             planManagementRoute,
-            "Requires Premium Plus plan."
+            "Requires Premium Plus plan.",
+            "error"
           );
           return;
         }
@@ -134,7 +168,34 @@ function ProtectedRouteInner({
         if (userPlan === "free") {
           void handleNavigation(
             planManagementRoute,
-            "Upgrade to Premium to chat with your matches."
+            "Upgrade to Premium to chat with your matches.",
+            "error"
+          );
+          return;
+        }
+      }
+
+      // Enforce onboarding/profile completeness when requested
+      if (requireOnboardingComplete && !isOnboardingComplete) {
+        // Allow access if already on onboarding or create-profile routes
+        if (!isOnboardingRoute && !isCreateProfileRoute) {
+          void handleNavigation("/", "Please finish onboarding to continue.");
+          return;
+        }
+      }
+      if (requireProfileComplete && !isProfileComplete) {
+        // Allow access if on onboarding/create-profile or profile edit routes
+        if (
+          !isOnboardingRoute &&
+          !isCreateProfileRoute &&
+          !isProfileEditRoute
+        ) {
+          // Prefer edit route if profile exists; fallback to create-profile
+          const target = "/profile/edit";
+          void handleNavigation(
+            target,
+            "Complete your profile to access this page.",
+            "error"
           );
           return;
         }
@@ -144,10 +205,17 @@ function ProtectedRouteInner({
     authDisabled,
     isLoaded,
     isSignedIn,
+    isProfileComplete,
+    isOnboardingComplete,
     pathname,
     searchParams,
     isPublicRoute,
     requireAuth,
+    requireOnboardingComplete,
+    requireProfileComplete,
+    isOnboardingRoute,
+    isCreateProfileRoute,
+    isProfileEditRoute,
     redirectTo,
     userPlan,
     handleNavigation,
