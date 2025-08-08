@@ -87,21 +87,20 @@ export function useModernChat({
   // Presence: poll other user's presence + heartbeat self
   useEffect(() => {
   let mounted = true;
-  let interval: any;
-    (async () => {
-      try {
-        await heartbeat();
-        const p = await getPresence(matchUserId);
-        if (mounted) setOtherPresence(p);
-      } catch {}
-    })();
-    interval = setInterval(async () => {
-      try {
-        await heartbeat();
-        const p = await getPresence(matchUserId);
-        if (mounted) setOtherPresence(p);
-      } catch {}
-    }, 15000);
+  const interval = setInterval(async () => {
+    try {
+      await heartbeat();
+      const p = await getPresence(matchUserId);
+      if (mounted) setOtherPresence(p);
+    } catch {}
+  }, 15000);
+  (async () => {
+    try {
+      await heartbeat();
+      const p = await getPresence(matchUserId);
+      if (mounted) setOtherPresence(p);
+    } catch {}
+  })();
     return () => {
       mounted = false;
       clearInterval(interval);
@@ -295,7 +294,7 @@ export function useModernChat({
   );
 
   // Voice is disabled; keep placeholder for future enablement
-  const sendVoiceMessage = useCallback(
+  const _sendVoiceMessage = useCallback(
     async (_blob: Blob, _toUserId: string, _duration: number) => {
       // Intentionally no-op; voice disabled in this layer
       return;

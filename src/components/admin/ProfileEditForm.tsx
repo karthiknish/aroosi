@@ -263,16 +263,17 @@ export default function ProfileEditForm({
             />
           )}
           <div className="flex items-center gap-4 mt-2">
-            <label className="block">
+            <label htmlFor="profile-image-upload" className="block">
               <span className="sr-only">Upload image</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
-                disabled={uploading}
-              />
             </label>
+            <input
+              id="profile-image-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+              disabled={uploading}
+            />
             {uploading && <LoadingSpinner size={16} />}
             {imageError && (
               <span className="text-red-600 text-sm">{imageError}</span>
