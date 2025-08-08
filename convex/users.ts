@@ -53,17 +53,46 @@ export const getUserByEmail = query({
   },
 });
 
-/**
- * Mutation helper: create user and default profile
- */
+/**\n * Mutation helper: create user and default profile\n */
 export const createUserAndProfile = mutation({
   args: {
     email: v.string(),
     name: v.optional(v.string()),
     picture: v.optional(v.string()),
     googleId: v.optional(v.string()),
+    profileData: v.optional(v.object({
+      fullName: v.optional(v.string()),
+      aboutMe: v.optional(v.string()),
+      isProfileComplete: v.optional(v.boolean()),
+      motherTongue: v.optional(v.string()),
+      religion: v.optional(v.string()),
+      ethnicity: v.optional(v.string()),
+      hideFromFreeUsers: v.optional(v.boolean()),
+      subscriptionPlan: v.optional(v.string()),
+      subscriptionExpiresAt: v.optional(v.number()),
+      profileImageIds: v.optional(v.array(v.id("_storage"))),
+      profileImageUrls: v.optional(v.array(v.string())),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      height: v.optional(v.string()),
+      maritalStatus: v.optional(v.string()),
+      physicalStatus: v.optional(v.string()),
+      diet: v.optional(v.string()),
+      smoking: v.optional(v.string()),
+      drinking: v.optional(v.string()),
+      education: v.optional(v.string()),
+      occupation: v.optional(v.string()),
+      annualIncome: v.optional(v.number()),
+      partnerPreferenceAgeMin: v.optional(v.union(v.number(), v.string())),
+      partnerPreferenceAgeMax: v.optional(v.union(v.number(), v.string())),
+      partnerPreferenceCity: v.optional(v.array(v.string())),
+      preferredGender: v.optional(v.string()),
+      phoneNumber: v.optional(v.string()),
+      email: v.optional(v.string()),
+      dateOfBirth: v.optional(v.string()),
+    })),
   },
-  handler: async (ctx, { email, name, picture, googleId }) => {
+  handler: async (ctx, { email, name, picture, googleId, profileData }) => {
     // eslint-disable-next-line no-console
     console.info("convex.users.createUserAndProfile:start", {
       email: maskEmail(email),
@@ -75,14 +104,22 @@ export const createUserAndProfile = mutation({
       createdAt: Date.now(),
       emailVerified: true,
       googleId: googleId ?? undefined,
+      name: name ?? undefined,
+      picture: picture ?? undefined,
     } as any);
-    await ctx.db.insert("profiles", {
+    
+    // Merge profileData with default values
+    const hasFullProfileData = profileData && Object.keys(profileData).length > 0;
+    const profileToCreate = {
       userId: userId as Id<"users">,
-      isProfileComplete: false,
-      isOnboardingComplete: false,
+      isProfileComplete: hasFullProfileData,
+      isOnboardingComplete: hasFullProfileData,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    } as any);
+      ...(profileData || {}),
+    };
+    
+    await ctx.db.insert("profiles", profileToCreate as any);
     // eslint-disable-next-line no-console
     console.info("convex.users.createUserAndProfile:done", {
       email: maskEmail(email),

@@ -243,7 +243,7 @@ const ProfileView: FC<ProfileViewProps> = ({
     setDeleteLoading(true);
     try {
       // Cookie-auth: server reads session from cookies
-      await deleteProfile("");
+      await deleteProfile();
       router.push("/");
     } catch (err: unknown) {
       if (err instanceof Error) {

@@ -475,11 +475,14 @@ export async function POST(request: NextRequest) {
             name: fullName,
             picture: undefined,
             googleId: undefined,
+            profileData: normalizedProfile,
           })) as unknown as string;
         } else {
           createdUserId = String(existing._id);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("Error creating user:", e);
+      }
 
       // Create response with session cookie
       const res = NextResponse.json(
