@@ -243,29 +243,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
         removeLocalMarkers();
         setUser(null);
 
-        const response = await fetch("/api/auth/signin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            password,
-            fullName: `${firstName} ${lastName}`.trim(),
-            profile: {
-              fullName: `${firstName} ${lastName}`.trim(),
-              email,
-              dateOfBirth: "1990-01-01",
-              gender: "other",
-              city: "Not specified",
-              aboutMe: "Hello!",
-              occupation: "Not specified",
-              education: "Not specified",
-              height: "170 cm",
-              maritalStatus: "single",
-              phoneNumber: "+10000000000",
-              isProfileComplete: false,
-            },
-          }),
-        });
+        const response = await fetch("/api/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      password,
+      fullName: `${firstName} ${lastName}`.trim(),
+      profile: {
+        fullName: `${firstName} ${lastName}`.trim(),
+        email,
+        dateOfBirth: "1990-01-01",
+        gender: "other",
+        city: "Not specified",
+        aboutMe: "Hello!",
+        occupation: "Not specified",
+        education: "Not specified",
+        height: "170 cm",
+        maritalStatus: "single",
+        phoneNumber: "+10000000000",
+        isProfileComplete: false,
+      },
+    }),
+  });
 
         const data = await response.json();
 
@@ -274,7 +274,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setError(errorMessage);
           return { success: false, error: errorMessage };
         }
-        await refreshUser();
+        // Hydration retry similar to sign-in
+        const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+        const backoffs = [0, 150, 300, 750];
+        for (let i = 0; i < backoffs.length; i++) {
+          if (backoffs[i] > 0) await sleep(backoffs[i]);
+          try {
+            await refreshUser();
+          } catch {}
+        }
         return { success: true };
       } catch {
         if (process.env.NODE_ENV !== "production") {

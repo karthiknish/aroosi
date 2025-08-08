@@ -25,6 +25,7 @@ const publicRoutes = [
   "/forgot-password",
   "/reset-password",
   "/oauth",
+  "/oauth/callback",
 ];
 
 // Public API route prefixes (auth handled per-handler)

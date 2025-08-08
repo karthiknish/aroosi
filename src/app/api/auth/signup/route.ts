@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
@@ -368,7 +367,7 @@ export async function POST(request: NextRequest) {
       // continue on failure
     }
 
-    // 1) Password policy & optional breach checks
+    // 1) Password policy checks (local enforcement)
     const strongPolicy =
       password.length >= 12 &&
       /[a-z]/.test(password) &&
@@ -394,8 +393,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const _hashedPassword = await bcrypt.hash(password, 12);
 
     // 2) Existing account policy
     const existingByEmail = await fetchQuery(api.users.getUserByEmail, {
@@ -499,57 +496,114 @@ export async function POST(request: NextRequest) {
       ),
     };
 
-    // Create user and profile atomically via mutation
-    const createdUserId = await fetchMutation(api.users.createUserAndProfile, {
-      email: normalizedEmail,
-      name: fullName,
-      picture: undefined,
-      googleId: undefined,
-    });
+    // 2) Create account via Convex Auth Password provider (sets session cookies)
+    try {
+      const form = new URLSearchParams();
+      form.set("email", normalizedEmail);
+      form.set("password", password);
+      form.set("flow", "signUp");
 
-    const userIdOk = !!createdUserId;
-    if (!userIdOk) {
+      const upstream = await fetch(
+        `${process.env.NEXT_PUBLIC_CONVEX_URL}/api/auth/password`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: form,
+          redirect: "manual",
+        }
+      );
+
+      if (!upstream.ok) {
+        let errMsg = "Sign up failed";
+        let code: string | undefined;
+        try {
+          const data = await upstream.json();
+          errMsg = (data?.error as string) || errMsg;
+          code = (data?.code as string) || undefined;
+        } catch {}
+        return NextResponse.json(
+          { error: errMsg, code, correlationId },
+          { status: upstream.status }
+        );
+      }
+
+      // Forward Set-Cookie from Convex Auth to establish session
+      const setCookie = upstream.headers.get("set-cookie");
+
+      // Ensure a user+profile exists in our domain data
+      let createdUserId: string | null = null;
+      try {
+        const existing = await fetchQuery(api.users.getUserByEmail, {
+          email: normalizedEmail,
+        }).catch(() => null);
+        if (!existing) {
+          createdUserId = (await fetchMutation(api.users.createUserAndProfile, {
+            email: normalizedEmail,
+            name: fullName,
+            picture: undefined,
+            googleId: undefined,
+          })) as unknown as string;
+        } else {
+          createdUserId = String(existing._id);
+        }
+      } catch (e) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Post-auth user creation failed (continuing)", {
+            scope: "auth.signup",
+            correlationId,
+            type: "post_create_warning",
+            message: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+
+      const res = NextResponse.json(
+        {
+          status: "success",
+          message: "Account created successfully",
+          user: {
+            id: createdUserId,
+            email: normalizedEmail,
+            role: "user",
+          },
+          isNewUser: true,
+          redirectTo: "/success",
+          correlationId,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+      if (setCookie) {
+        for (const c of setCookie.split(/,(?=[^;]+?=)/g)) {
+          res.headers.append("Set-Cookie", c);
+        }
+      }
       if (process.env.NODE_ENV !== "production") {
-        console.error("Signup failure", {
+        console.info("Signup success via Convex Auth", {
           scope: "auth.signup",
           correlationId,
-          type: "create_user_failed",
+          type: "success",
+          statusCode: 200,
+          durationMs: Date.now() - startedAt,
+          userId: createdUserId,
+        });
+      }
+      return res;
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Signup upstream error", {
+          scope: "auth.signup",
+          correlationId,
+          type: "upstream_error",
+          message: e instanceof Error ? e.message : String(e),
           statusCode: 500,
           durationMs: Date.now() - startedAt,
         });
       }
       return NextResponse.json(
-        { error: "Failed to create user", correlationId },
+        { error: "Sign up failed", correlationId },
         { status: 500 }
       );
     }
-
-    // Cookie-session model: do not issue tokens here.
-    if (process.env.NODE_ENV !== "production") {
-      console.info("Signup success", {
-        scope: "auth.signup",
-        correlationId,
-        type: "success",
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-        userId: String(createdUserId),
-      });
-    }
-    return NextResponse.json(
-      {
-        status: "success",
-        message: "Account created successfully",
-        user: {
-          id: createdUserId,
-          email: normalizedEmail,
-          role: "user",
-        },
-        isNewUser: true,
-        redirectTo: "/success",
-        correlationId,
-      },
-      { headers: { "Cache-Control": "no-store" } }
-    );
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     if (process.env.NODE_ENV !== "production") {
