@@ -1,8 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  convexAuthNextjsMiddleware,
-  nextjsMiddlewareRedirect,
-} from "@convex-dev/auth/nextjs/server";
 
 // Token-based approach (Authorization: Bearer <token>):
 // - Do not rely on cookies at all.
@@ -61,7 +57,7 @@ function isAuthenticatedClientRoute(pathname: string): boolean {
   );
 }
 
-export default convexAuthNextjsMiddleware(async (request) => {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Bypass for system/static paths
@@ -98,17 +94,20 @@ export default convexAuthNextjsMiddleware(async (request) => {
     const cookies = request.cookies;
     const hasAuthCookie = Boolean(
       cookies.get("cvx-auth")?.value ||
-      cookies.get("cvx-refresh")?.value
+      cookies.get("cvx-refresh")?.value ||
+      cookies.get("convex-session")?.value
     );
     if (!hasAuthCookie) {
-      return nextjsMiddlewareRedirect(request, "/sign-in");
+      const url = request.nextUrl.clone();
+      url.pathname = "/sign-in";
+      return NextResponse.redirect(url);
     }
     return NextResponse.next();
   }
 
   // For all other routes, pass through; API handlers enforce auth via headers
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: [

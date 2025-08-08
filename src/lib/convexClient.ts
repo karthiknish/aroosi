@@ -1,3 +1,6 @@
-// Client-side ConvexReactClient is intentionally not exported.
-// Frontend must call Next.js API routes, which use Convex server-side.
-export const convex = null as unknown as never;
+import { ConvexHttpClient } from "convex/browser";
+
+// Create a Convex HTTP client for server-side usage
+export const convex = new ConvexHttpClient(
+  process.env.NEXT_PUBLIC_CONVEX_URL!
+);

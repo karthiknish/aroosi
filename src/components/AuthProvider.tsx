@@ -205,21 +205,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return { success: true };
       } catch (error: any) {
         // Include message/code if server provided in text
-        let errorMessage = "Network error";
+        let errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
         try {
           if (typeof error?.message === "string") {
             const parsed = JSON.parse(error.message);
             if (parsed?.error) {
-              errorMessage = parsed?.code
-                ? `${parsed.error} (${parsed.code})`
-                : parsed.error;
+              // Use the server-provided error message
+              errorMessage = parsed.error;
+              // Provide more user-friendly messages for common error codes
+              if (parsed.code === "INVALID_CREDENTIALS") {
+                errorMessage = "Invalid email or password. Please check your credentials and try again.";
+              } else if (parsed.code === "ACCOUNT_NOT_FOUND") {
+                errorMessage = "No account found with this email address. Please check your email or sign up for a new account.";
+              } else if (parsed.code === "INVALID_PASSWORD") {
+                errorMessage = "Invalid password. Please check your password and try again.";
+              } else if (parsed.code === "BAD_REQUEST") {
+                errorMessage = "Please fill in all required fields.";
+              } else if (parsed.code === "UNKNOWN") {
+                errorMessage = "Something went wrong on our end. Please try again in a few minutes.";
+              }
             }
           }
         } catch {
-          // keep default
+          // If we can't parse the error, keep the default network error message
         }
         if (process.env.NODE_ENV !== "production") {
-          console.error("Sign in error");
+          console.error("Sign in error", error);
         }
         removeLocalMarkers();
         setUser(null);

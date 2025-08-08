@@ -71,8 +71,6 @@ export const createUserAndProfile = mutation({
     });
     const userId = await ctx.db.insert("users", {
       email,
-      name: name ?? "",
-      picture: picture ?? "",
       role: "user",
       createdAt: Date.now(),
       emailVerified: true,

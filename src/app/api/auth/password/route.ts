@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { convex } from "../../../../lib/convexClient";
 
 function maskEmail(email?: string) {
   if (!email) return "";
@@ -38,11 +39,6 @@ export async function POST(request: NextRequest) {
       email = (params.get("email") || "").toString();
       password = (params.get("password") || "").toString();
       flow = (params.get("flow") || flow).toString();
-    } else if (contentType.includes("multipart/form-data")) {
-      const form = await request.formData();
-      email = String(form.get("email") || "");
-      password = String(form.get("password") || "");
-      flow = String(form.get("flow") || flow);
     } else if (contentType.includes("application/json")) {
       const {
         email: e,
@@ -56,6 +52,32 @@ export async function POST(request: NextRequest) {
       email = e || "";
       password = p || "";
       flow = f || flow;
+    } else {
+      // Handle FormData (multipart/form-data) and other content types
+      try {
+        const formData = await request.formData();
+        email = String(formData.get("email") || "");
+        password = String(formData.get("password") || "");
+        flow = String(formData.get("flow") || flow);
+      } catch (formDataError) {
+        // If formData parsing fails, try to parse as JSON
+        try {
+          const {
+            email: e,
+            password: p,
+            flow: f,
+          } = (await request.json().catch(() => ({}))) as {
+            email?: string;
+            password?: string;
+            flow?: string;
+          };
+          email = e || "";
+          password = p || "";
+          flow = f || flow;
+        } catch (jsonError) {
+          // If both fail, we'll use the default empty values
+        }
+      }
     }
 
     if (!email || !password) {
@@ -66,105 +88,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = new URLSearchParams();
-    body.set("provider", "password");
-    body.set("email", email);
-    body.set("password", password);
-    body.set("flow", flow);
-
-    // Resolve Convex Auth base URL. Prefer CONVEX_SITE_URL (.site). If only
-    // NEXT_PUBLIC_CONVEX_URL (.cloud) is provided, derive the .site host.
-    const siteBaseRaw = process.env.CONVEX_SITE_URL || undefined;
-    const cloud = process.env.NEXT_PUBLIC_CONVEX_URL || undefined;
-    const raw = siteBaseRaw || cloud;
-    const normalized = raw ? raw.replace(/\/+$/, "") : undefined;
-    const base = normalized
-      ? normalized.includes(".convex.cloud")
-        ? normalized.replace(".convex.cloud", ".convex.site")
-        : normalized
-      : undefined;
-    const upstreamUrlApi = base ? `${base}/api/auth` : undefined;
-    const upstreamUrlAlt = base ? `${base}/auth` : undefined;
-    if (!base || !upstreamUrlApi) {
-      // Removed error log for lint
+    console.log("Calling signIn action with:", { email, flow });
+    
+    // Call the signIn action directly
+    let result;
+    try {
+      result = await convex.action("auth:signIn", {
+        provider: "password",
+        params: {
+          email,
+          password,
+          flow,
+        },
+      });
+      console.log("SignIn result:", result);
+    } catch (error: any) {
+      console.error("SignIn error:", error);
+      // Provide user-friendly error messages for common cases
+      let errorMessage = "Authentication failed. Please try again.";
+      let errorCode = "AUTH_FAILED";
+      
+      // Check if it's a specific Convex Auth error
+      if (error?.message?.includes("InvalidAccountId")) {
+        errorMessage = "No account found with this email address. Please check your email or sign up for a new account.";
+        errorCode = "ACCOUNT_NOT_FOUND";
+      } else if (error?.message?.includes("InvalidPassword")) {
+        errorMessage = "Invalid password. Please check your password and try again.";
+        errorCode = "INVALID_PASSWORD";
+      }
+      
       return NextResponse.json(
-        { error: "Server misconfiguration", code: "ENV_MISSING" },
-        { status: 500 }
+        { error: errorMessage, code: errorCode },
+        { status: 401 }
       );
     }
-    // Perform fetch with a short timeout and a single retry on transient errors.
-    const doFetch = async (): Promise<Response> => {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 9000);
-      try {
-        return await fetch(upstreamUrlApi, {
-          method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
-          body,
-          redirect: "manual",
-          signal: controller.signal,
-          cache: "no-store",
-        });
-      } finally {
-        clearTimeout(t);
-      }
-    };
 
-    let upstream: Response;
-    try {
-      upstream = await doFetch();
-    } catch (err) {
-      // Retry once on network/timeout errors
-      upstream = await doFetch();
-    }
-    // If the endpoint isn't mounted at /api/auth (returns 404/405), try /auth once.
-    if (upstream.status === 404 || upstream.status === 405) {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 9000);
-      try {
-        upstream = await fetch(upstreamUrlAlt!, {
-          method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
-          body,
-          redirect: "manual",
-          signal: controller.signal,
-          cache: "no-store",
-        });
-      } finally {
-        clearTimeout(t);
-      }
+    // Check if the sign in was successful
+    if (!result?.tokens?.token) {
+      console.log("No tokens in result");
+      return NextResponse.json(
+        { error: "Invalid email or password. Please check your credentials and try again.", code: "INVALID_CREDENTIALS" },
+        { status: 401 }
+      );
     }
 
-    // Clone upstream JSON if possible; but we only need to pass ok + status by default
-    let payload: any = { ok: upstream.ok };
-    try {
-      payload = await upstream.json();
-    } catch {
-      // keep default payload
+    // Create response
+    const res = NextResponse.json({ ok: true }, { status: 200 });
+    
+    // Set the session cookie if tokens are provided
+    if (result?.tokens?.token) {
+      res.cookies.set("convex-session", result.tokens.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        path: "/",
+        sameSite: "lax",
+      });
     }
 
-    // In development, include minimal diagnostics to debug 404/405s
-    if (process.env.NODE_ENV !== "production" && upstream.status >= 400) {
-      payload = {
-        ...payload,
-        debug: {
-          base,
-          tried: [upstreamUrlApi, upstreamUrlAlt].filter(Boolean),
-          status: upstream.status,
-        },
-      };
-    }
-
-    const res = NextResponse.json(payload, { status: upstream.status });
-    const setCookie = upstream.headers.get("set-cookie");
-    if (setCookie) {
-          // Removed info log for lint
-      for (const c of setCookie.split(/,(?=[^;]+?=)/g)) {
-        res.headers.append("Set-Cookie", c);
-      }
-    }
     return res;
-  } catch (e) {
+  } catch (e: any) {
+    console.error("Sign in error:", e);
     // Removed error log for lint
     return NextResponse.json(
       { error: "Auth failed", code: "UNKNOWN" },

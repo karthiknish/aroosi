@@ -356,8 +356,8 @@ export async function POST(request: NextRequest) {
         {
           status: "ok",
           message:
-            "If an account exists for this email, follow the sign-in or password recovery flow.",
-          code: "ACCOUNT_EXISTS_MAYBE",
+            "An account with this email already exists. Please sign in instead.",
+          code: "ACCOUNT_EXISTS",
           correlationId,
         },
         { status: 200 }
@@ -417,70 +417,28 @@ export async function POST(request: NextRequest) {
 
     // 2) Create account via Convex Auth Password provider (sets session cookies)
     try {
-      const form = new URLSearchParams();
-      form.set("provider", "password");
-      form.set("email", normalizedEmail);
-      form.set("password", password);
-      form.set("flow", "signUp");
+      // Create Convex client
+      const convex = new ConvexHttpClient(
+        process.env.NEXT_PUBLIC_CONVEX_URL!
+      );
 
-      // Resolve Convex Auth base URL. Prefer CONVEX_SITE_URL (.site). If only
-      // NEXT_PUBLIC_CONVEX_URL (.cloud) is provided, derive the .site host.
-      const siteBase = process.env.CONVEX_SITE_URL;
-      const cloud = process.env.NEXT_PUBLIC_CONVEX_URL;
-      const derivedSite = cloud?.includes(".convex.cloud")
-        ? cloud.replace(".convex.cloud", ".convex.site")
-        : undefined;
-      const base = siteBase || derivedSite || undefined;
-      if (!base) {
+      // Call the signIn action directly for signup
+      const result = await convex.action("auth:signIn", {
+        provider: "password",
+        params: {
+          email: normalizedEmail,
+          password,
+          flow: "signUp",
+        },
+      });
+
+      // Check if the sign up was successful
+      if (!result?.tokens?.token) {
         return NextResponse.json(
-          {
-            error: "Server misconfiguration",
-            code: "ENV_MISSING",
-            correlationId,
-          },
+          { error: "Sign up failed", correlationId },
           { status: 500 }
         );
       }
-      const upstreamUrl = `${base}/api/auth`;
-      const doFetch = async (): Promise<Response> => {
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), 9000);
-        try {
-          return await fetch(upstreamUrl, {
-            method: "POST",
-            headers: { "content-type": "application/x-www-form-urlencoded" },
-            body: form,
-            redirect: "manual",
-            signal: controller.signal,
-            cache: "no-store",
-          });
-        } finally {
-          clearTimeout(t);
-        }
-      };
-      let upstream: Response;
-      try {
-        upstream = await doFetch();
-      } catch {
-        upstream = await doFetch();
-      }
-
-      if (!upstream.ok) {
-        let errMsg = "Sign up failed";
-        let code: string | undefined;
-        try {
-          const data = await upstream.json();
-          errMsg = (data?.error as string) || errMsg;
-          code = (data?.code as string) || undefined;
-        } catch {}
-        return NextResponse.json(
-          { error: errMsg, code, correlationId },
-          { status: upstream.status }
-        );
-      }
-
-      // Forward Set-Cookie from Convex Auth to establish session
-      const setCookie = upstream.headers.get("set-cookie");
 
       // Ensure a user+profile exists in our domain data
       let createdUserId: string | null = null;
@@ -500,6 +458,7 @@ export async function POST(request: NextRequest) {
         }
       } catch (e) {}
 
+      // Create response with session cookie
       const res = NextResponse.json(
         {
           status: "success",
@@ -515,13 +474,19 @@ export async function POST(request: NextRequest) {
         },
         { headers: { "Cache-Control": "no-store" } }
       );
-      if (setCookie) {
-        for (const c of setCookie.split(/,(?=[^;]+?=)/g)) {
-          res.headers.append("Set-Cookie", c);
-        }
-      }
+      
+      // Set the session cookie
+      res.cookies.set("convex-session", result.tokens.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        path: "/",
+        sameSite: "lax",
+      });
+
       return res;
-    } catch (e) {
+    } catch (e: any) {
+      console.error("Sign up error:", e);
       return NextResponse.json(
         { error: "Sign up failed", correlationId },
         { status: 500 }

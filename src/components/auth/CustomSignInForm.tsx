@@ -49,7 +49,7 @@ export default function CustomSignInForm({
       // 1) Perform sign in (cookie-based session)
       const result = await signIn(email, password);
       if (!result.success) {
-        const msg = result.error || "Sign in failed";
+        const msg = result.error || "Sign in failed. Please try again.";
         onError?.(msg);
         showErrorToast(msg);
         setIsLoading(false);
@@ -91,7 +91,7 @@ export default function CustomSignInForm({
       handleOnboardingComplete();
       setIsLoading(false);
     } catch (err) {
-      const msg = "An unexpected error occurred";
+      const msg = "An unexpected error occurred. Please try again in a few minutes.";
       onError?.(msg);
       showErrorToast(msg);
       setIsLoading(false);
