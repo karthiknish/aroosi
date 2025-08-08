@@ -106,6 +106,12 @@ export async function POST(request: NextRequest) {
       : undefined;
     const upstreamUrlApi = base ? `${base}/api/auth` : undefined;
 
+    // Log the URL we're trying to call for debugging
+    console.log("Calling Convex Auth at:", upstreamUrlApi);
+    console.log("Base URL:", base);
+    console.log("Site Base Raw:", siteBaseRaw);
+    console.log("Cloud URL:", cloud);
+
     if (!base || !upstreamUrlApi) {
       return NextResponse.json(
         { error: "Server misconfiguration", code: "ENV_MISSING" },
@@ -125,6 +131,10 @@ export async function POST(request: NextRequest) {
         signal: controller.signal,
         cache: "no-store",
       });
+
+      // Log the response for debugging
+      console.log("Convex Auth response status:", res.status);
+      console.log("Convex Auth response headers:", [...res.headers.entries()]);
 
       // Forward Set-Cookie headers from Convex Auth to the browser
       const out = NextResponse.json({ ok: res.ok }, { status: res.status });

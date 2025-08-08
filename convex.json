@@ -1,4 +1,7 @@
 {
+  "project": "aroosi",
+  "team": "karthik-nishanth",
+  "prodUrl": "https://proper-gull-501.convex.cloud",
   "auth": {
     "providers": [
       {
