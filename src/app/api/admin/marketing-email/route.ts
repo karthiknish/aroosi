@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       body: customBody,
     } = (body || {}) as {
       templateKey?: string;
-      params?: Record<string, unknown>;
+      params?: { args?: unknown[] };
       dryRun?: boolean;
       confirm?: boolean;
       maxAudience?: number;
@@ -169,11 +169,12 @@ export async function POST(request: Request) {
               ""
             );
           } else if (templateKey === "premiumPromo") {
-            emailPayload = templateFn(
-              baseProfile,
-              (params?.args?.[0] as number) || 30,
-              ""
-            );
+            const promoDays =
+              Array.isArray(params?.args) &&
+              typeof params!.args![0] === "number"
+                ? (params!.args![0] as number)
+                : 30;
+            emailPayload = templateFn(baseProfile, promoDays, "");
           } else if (templateKey === "recommendedProfiles") {
             // Optional: enrichment omitted in live send for safety; can be added behind a smaller cap
             emailPayload = templateFn(baseProfile, [], "");

@@ -165,7 +165,7 @@ export function UsageTracker() {
                       : `Only ${feature.remaining} remaining`}
                   </p>
                   <Button
-                    size="xs"
+                    size="sm"
                     className="h-6 px-2 bg-pink-600 hover:bg-pink-700 text-white"
                     onClick={() => (window.location.href = "/subscription")}
                   >

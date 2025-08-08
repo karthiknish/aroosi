@@ -55,7 +55,9 @@ export function IcebreakersPanel() {
     );
   }
 
-  const questions = Array.isArray(data) ? (data as Array<{ id: string; text: string }>) : [];
+  const questions = Array.isArray(data)
+    ? (data as Array<{ id: string; text: string; answered?: boolean }>)
+    : [];
   if (questions.length === 0) return null;
 
   const handleSubmit = async (qid: string) => {
@@ -74,29 +76,47 @@ export function IcebreakersPanel() {
 
   return (
     <section className="mt-8">
-      <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">Today's icebreakers</h3>
+      <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
+        Today's icebreakers
+      </h3>
       <div className="space-y-6">
         {questions.map((q) => (
-          <div key={q.id} className="rounded-lg border border-gray-200 bg-white/70 p-4">
+          <div
+            key={q.id}
+            className="rounded-lg border border-gray-200 bg-white/70 p-4"
+          >
             <p className="text-sm text-gray-800 mb-2">{q.text}</p>
             <Textarea
               value={answers[q.id] || ""}
-              onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+              onChange={(e) =>
+                setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
+              }
               placeholder="Your answer..."
               maxLength={500}
               className="min-h-[80px]"
-              disabled={submitted[q.id]}
+              disabled={submitted[q.id] || q.answered}
             />
             <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-              <span>{(answers[q.id]?.length || 0)}/500</span>
+              <span>{answers[q.id]?.length || 0}/500</span>
               <div className="flex items-center gap-2">
-                {submitted[q.id] && <span className="text-green-600">Saved</span>}
+                {(submitted[q.id] || q.answered) && (
+                  <span className="text-green-600">Saved</span>
+                )}
                 <Button
                   size="sm"
                   onClick={() => handleSubmit(q.id)}
-                  disabled={mutationPending || submitted[q.id] || !(answers[q.id] || "").trim()}
+                  disabled={
+                    mutationPending ||
+                    submitted[q.id] ||
+                    q.answered ||
+                    !(answers[q.id] || "").trim()
+                  }
                 >
-                  {submitted[q.id] ? "Saved" : mutationPending ? "Saving..." : "Save"}
+                  {submitted[q.id] || q.answered
+                    ? "Saved"
+                    : mutationPending
+                      ? "Saving..."
+                      : "Save"}
                 </Button>
               </div>
             </div>

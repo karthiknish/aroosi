@@ -13,13 +13,18 @@ export function getConvexPrivateKey(): string {
       "CONVEX_AUTH_PRIVATE_KEY is missing. Configure it in your environment to enable Convex Auth."
     );
   }
+  // Support one-line .env with escaped newlines ("\n")
+  const normalized = key.replace(/\\n/g, "\n");
   // Minimal sanity check to avoid accidental misconfiguration
-  if (!key.includes("BEGIN") || !key.toUpperCase().includes("PRIVATE KEY")) {
+  if (
+    !normalized.includes("BEGIN") ||
+    !normalized.toUpperCase().includes("PRIVATE KEY")
+  ) {
     throw new Error(
       "CONVEX_AUTH_PRIVATE_KEY appears invalid. It should contain a PEM-formatted private key."
     );
   }
-  return key;
+  return normalized;
 }
 
 /**

@@ -251,7 +251,9 @@ export async function PUT(request: NextRequest) {
           // Ensure array types for partnerPreferenceCity when present
           ...(updates.partnerPreferenceCity
             ? {
-                partnerPreferenceCity: Array.isArray(updates.partnerPreferenceCity)
+                partnerPreferenceCity: Array.isArray(
+                  updates.partnerPreferenceCity
+                )
                   ? (updates.partnerPreferenceCity as string[])
                   : [String(updates.partnerPreferenceCity)],
               }
@@ -264,6 +266,17 @@ export async function PUT(request: NextRequest) {
       (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
       { userId: userId as Id<"users"> }
     );
+
+    // Invalidate recommendation cache for this user (best-effort)
+    try {
+      // Best-effort: invalidate recommendation cache for this user
+      const { api } = await import("@convex/_generated/api");
+      await convexMutationWithAuth(
+        request,
+        api.recommendations.invalidateRecommendations,
+        { userId: userId as Id<"users"> }
+      );
+    } catch {}
 
     if (isProfileWithEmail(updatedProfile)) {
       try {

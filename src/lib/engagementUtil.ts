@@ -58,12 +58,17 @@ export async function enrichProfiles(userIds: string[]): Promise<QuickPickProfil
   return postJson("/api/engagement/profiles", { userIds });
 }
 
-export async function fetchIcebreakers(): Promise<Array<{ id: string; text: string }>> {
-  return getJson("/api/engagement/icebreakers");
+export async function fetchIcebreakers(): Promise<
+  Array<{ id: string; text: string; answered?: boolean }>
+> {
+  return getJson("/api/icebreakers");
 }
 
-export async function answerIcebreaker(questionId: string, answer: string): Promise<{ success: boolean }> {
-  return postJson("/api/engagement/icebreakers", { questionId, answer });
+export async function answerIcebreaker(
+  questionId: string,
+  answer: string
+): Promise<{ success: boolean }> {
+  return postJson("/api/icebreakers/answer", { questionId, answer });
 }
 
 

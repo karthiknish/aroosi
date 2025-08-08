@@ -72,6 +72,13 @@ export function AdminSidebar({
       href: "/admin/analytics",
       isActive: currentPath.startsWith("/admin/analytics"),
     },
+    {
+      id: "icebreakers",
+      label: "Icebreakers",
+      icon: FileText,
+      href: "/admin/icebreakers",
+      isActive: currentPath.startsWith("/admin/icebreakers"),
+    },
   ];
 
   return (

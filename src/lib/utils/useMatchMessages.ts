@@ -132,6 +132,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
             fromUserId,
             toUserId,
             text,
+            type: "text",
             createdAt: Date.now(),
             clientTempId: tmpId,
             clientStatus: "pending",
@@ -153,19 +154,21 @@ export function useMatchMessages(conversationId: string, _token: string) {
               setMessages((prev) => {
                 const replaced = prev.map((m) =>
                   m._id === tmpId || m.clientTempId === tmpId
-                    ? { ...serverMsg, clientStatus: "sent" }
+                    ? { ...serverMsg, clientStatus: "sent" as const }
                     : m
                 );
                 // Deduplicate if server also arrives via SSE later
                 const unique = new Map<string, Message>();
-                for (const m of replaced) unique.set(m._id, m);
+                for (const m of replaced) unique.set(m._id, m as Message);
                 return Array.from(unique.values());
               });
             } else {
               setError(response.error || "Failed to send message");
               setMessages((prev) =>
                 prev.map((m) =>
-                  m._id === tmpId ? { ...m, clientStatus: "failed" } : m
+                  m._id === tmpId
+                    ? { ...m, clientStatus: "failed" as const }
+                    : m
                 )
               );
             }
@@ -174,7 +177,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
             setError(err.message || "Failed to send message");
             setMessages((prev) =>
               prev.map((m) =>
-                m._id === tmpId ? { ...m, clientStatus: "failed" } : m
+                m._id === tmpId ? { ...m, clientStatus: "failed" as const } : m
               )
             );
           });

@@ -101,7 +101,9 @@ export async function GET(
         statusCode: 404,
         durationMs: Date.now() - startedAt,
       });
-      return json({ error: "User not found in database", correlationId }, 404);
+      return errorResponse("User not found in database", 404, {
+        correlationId,
+      });
     }
 
     let result: any = null;

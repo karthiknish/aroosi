@@ -65,6 +65,8 @@ import {
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { SimilarProfiles } from "./SimilarProfiles";
 import { IcebreakersPanel } from "./IcebreakersPanel";
+import { fetchIcebreakers } from "@/lib/engagementUtil";
+import { getJson } from "@/lib/http/client";
 
 type Interest = {
   id: string;
@@ -194,6 +196,13 @@ export default function ProfileDetailPage() {
     (!skipImagesQuery && userProfileImagesResponse === undefined);
 
   const skeletonCount = profile?.profileImageUrls?.length ?? 0;
+
+  // Daily icebreakers to surface tiny prompt chips inline
+  const { data: iceQs } = useQuery({
+    queryKey: ["icebreakers", "today"],
+    queryFn: fetchIcebreakers,
+    enabled: isLoaded && isAuthenticated,
+  });
 
   // Use Convex user IDs for interest actions
   const fromUserId = currentUserProfile?.userId;
@@ -563,6 +572,22 @@ export default function ProfileDetailPage() {
     tap: { scale: 0.92 },
   };
 
+  // Compatibility score for viewed profile (not your own)
+  const { data: compatData } = useQuery<{
+    score: number | null;
+    reasons: string[];
+  } | null>({
+    queryKey: ["compatibility", userId],
+    queryFn: async () => {
+      if (!userId || isOwnProfile) return null;
+      return await getJson(
+        `/api/compatibility/${encodeURIComponent(String(userId))}`
+      );
+    },
+    enabled: !!userId && !isOwnProfile && isLoaded && isAuthenticated,
+    staleTime: 60_000,
+  });
+
   return (
     <>
       <Head>
@@ -813,10 +838,7 @@ export default function ProfileDetailPage() {
                 >
                   <UserCircle className="w-8 h-8 text-primary" />
                   {profile?.fullName ?? "-"}
-                  {/* Compatibility placeholder */}
-                  <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                    Compatibility: Coming soon
-                  </span>
+                  {/* Compatibility badge is displayed below near location when available */}
                   {/* Inline interest status chip (only when viewing others) */}
                   {!isOwnProfile &&
                     (interestStatusData?.status === "pending" ||
@@ -851,7 +873,25 @@ export default function ProfileDetailPage() {
                 <div className="flex items-center gap-2 text-lg text-neutral mb-1 font-nunito">
                   <MapPin className="w-5 h-5 text-accent" />
                   {profile?.city ?? "-"}, {profile?.country ?? "-"}
+                  {compatData?.score != null && (
+                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                      Compatibility: {compatData.score}%
+                    </span>
+                  )}
                 </div>
+                {/* Prompt chips using today's icebreakers */}
+                {Array.isArray(iceQs) && iceQs.length > 0 && (
+                  <div className="flex items-center gap-2 mb-2 flex-wrap justify-center">
+                    {iceQs.slice(0, 2).map((q) => (
+                      <span
+                        key={q.id}
+                        className="text-[10px] px-2 py-1 rounded-full bg-pink-50 text-pink-700 border border-pink-200"
+                      >
+                        {q.text}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-sm text-accent-600 mb-2 font-nunito">
                   <Calendar className="w-4 h-4 text-accent-200" />
                   <span>

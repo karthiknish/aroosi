@@ -73,10 +73,6 @@ export function useModernChat({
     message: string;
     isVisible: boolean;
   }>({ type: "success", message: "", isVisible: false });
-
-  const [connectionStatus, setConnectionStatus] = useState<
-    "connected" | "connecting" | "disconnected"
-  >("connecting");
   const [otherPresence, setOtherPresence] = useState<{ isOnline: boolean; lastSeen: number }>({ isOnline: false, lastSeen: 0 });
 
   // Refs for UI elements
