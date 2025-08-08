@@ -21,6 +21,12 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
+// Plan-gated routes (module scope to keep useEffect deps stable)
+const premiumAnyPlanRoutes = ["/premium-settings"] as const;
+const premiumPlusRoutes = ["/profile/viewers"] as const;
+const chatRestrictedRoutes = ["/chat"] as const; // chat for paid only
+const planManagementRoute = "/plans" as const;
+
 function ProtectedRouteInner({
   children,
   requireAuth = true,
@@ -83,11 +89,7 @@ function ProtectedRouteInner({
     };
   }, [pathname]);
 
-  // Plan-gated routes
-  const premiumAnyPlanRoutes = ["/premium-settings"];
-  const premiumPlusRoutes = ["/profile/viewers"];
-  const chatRestrictedRoutes = ["/chat"]; // chat for paid only
-  const planManagementRoute = "/plans";
+  // Plan-gated routes moved to module scope
 
   // Debounced toast + navigation helper
   const handleNavigation = useCallback(
@@ -101,14 +103,16 @@ function ProtectedRouteInner({
           const now = Date.now();
           const last = lastToastRef.current;
           if (!last || last.msg !== message || now - last.ts > 1500) {
-            severity === "error"
-              ? showErrorToast(null, message)
-              : showInfoToast(message);
+            if (severity === "error") {
+              showErrorToast(null, message);
+            } else {
+              showInfoToast(message);
+            }
             lastToastRef.current = { msg: message, ts: now };
           }
         }
-        router.replace(to);
-      } catch (e) {
+        void router.replace(to);
+      } catch {
         showErrorToast("Navigation failed. Please refresh and try again.");
       }
     },

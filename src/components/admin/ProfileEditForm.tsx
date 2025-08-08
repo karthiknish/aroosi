@@ -370,15 +370,16 @@ export default function ProfileEditForm({
           )}
         </div>
         <div>
-          <label className="block font-medium" id="phoneNumberLabel">
+          <label className="block font-medium" htmlFor="phoneNumber">
             Phone Number
           </label>
           <Controller
             name="phoneNumber"
             control={control}
             render={({ field }) => (
-              <div role="group" aria-labelledby="phoneNumberLabel">
+              <div>
                 <PhoneInput
+                  inputId="phoneNumber"
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="Phone number"

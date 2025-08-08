@@ -16,6 +16,7 @@ interface PhoneInputProps {
   className?: string;
   disabled?: boolean;
   error?: boolean;
+  inputId?: string; // id for the underlying <Input> to associate with a label
 }
 
 export function PhoneInput({
@@ -25,6 +26,7 @@ export function PhoneInput({
   className,
   disabled = false,
   error = false,
+  inputId,
 }: PhoneInputProps) {
   // Parse the initial value to separate country code and number
   const parsed = parsePhoneNumber(value);
@@ -98,6 +100,7 @@ export function PhoneInput({
       </div>
 
       <Input
+        id={inputId}
         type="tel"
         value={phoneNumber}
         onChange={handlePhoneNumberChange}

@@ -477,6 +477,23 @@ export default function ProfileDetailPage() {
     },
   };
 
+  // Compatibility score for viewed profile (not your own)
+  // Must be called before any early return!
+  const { data: compatData } = useQuery<{
+    score: number | null;
+    reasons: string[];
+  } | null>({
+    queryKey: ["compatibility", userId],
+    queryFn: async () => {
+      if (!userId || isOwnProfile) return null;
+      return await getJson(
+        `/api/compatibility/${encodeURIComponent(String(userId))}`
+      );
+    },
+    enabled: !!userId && !isOwnProfile && isLoaded && isAuthenticated,
+    staleTime: 60_000,
+  });
+
   if (offline) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -560,22 +577,6 @@ export default function ProfileDetailPage() {
     },
     tap: { scale: 0.92 },
   };
-
-  // Compatibility score for viewed profile (not your own)
-  const { data: compatData } = useQuery<{
-    score: number | null;
-    reasons: string[];
-  } | null>({
-    queryKey: ["compatibility", userId],
-    queryFn: async () => {
-      if (!userId || isOwnProfile) return null;
-      return await getJson(
-        `/api/compatibility/${encodeURIComponent(String(userId))}`
-      );
-    },
-    enabled: !!userId && !isOwnProfile && isLoaded && isAuthenticated,
-    staleTime: 60_000,
-  });
 
   return (
     <>

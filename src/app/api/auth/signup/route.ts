@@ -49,7 +49,7 @@ const isValidHeight = (heightString: string): boolean => {
   return cmPattern.test(heightString) || digitsOnly.test(heightString);
 };
 
-const isValidPhone = (phone: string): boolean => {
+const _isValidPhone = (phone: string): boolean => {
   if (!phone) return false;
   const digitsOnly = phone.replace(/\D/g, "");
   return digitsOnly.length >= 10 && digitsOnly.length <= 15;
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
-      // @ts-ignore Next runtime fallback
+      // Next runtime fallback
       (request as unknown as { ip?: string }).ip ||
       "unknown";
     const ipKey = `signup_ip:${ip}`;
@@ -395,7 +395,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const _hashedPassword = await bcrypt.hash(password, 12);
 
     // 2) Existing account policy
     const existingByEmail = await fetchQuery(api.users.getUserByEmail, {
@@ -404,15 +404,15 @@ export async function POST(request: NextRequest) {
 
     if (existingByEmail) {
       if (existingByEmail.googleId && !existingByEmail.hashedPassword) {
-        if (process.env.NODE_ENV !== "production") {
-          console.info("Existing Google-linked account for email", {
-            scope: "auth.signup",
-            correlationId,
-            type: "account_exists_google",
-            statusCode: 200,
-            durationMs: Date.now() - startedAt,
-          });
-        }
+        // if (process.env.NODE_ENV !== "production") {
+        //   console.info("Existing Google-linked account for email", {
+        //     scope: "auth.signup",
+        //     correlationId,
+        //     type: "account_exists_google",
+        //     statusCode: 200,
+        //     durationMs: Date.now() - startedAt,
+        //   });
+        // }
         return NextResponse.json(
           {
             status: "ok",
