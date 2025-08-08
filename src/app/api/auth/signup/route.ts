@@ -499,19 +499,33 @@ export async function POST(request: NextRequest) {
     // 2) Create account via Convex Auth Password provider (sets session cookies)
     try {
       const form = new URLSearchParams();
+      form.set("provider", "password");
       form.set("email", normalizedEmail);
       form.set("password", password);
       form.set("flow", "signUp");
 
-      const upstream = await fetch(
-        `${process.env.NEXT_PUBLIC_CONVEX_URL}/api/auth/password`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
-          body: form,
-          redirect: "manual",
-        }
-      );
+      const base =
+        process.env.CONVEX_SITE_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+      if (!base) {
+        return NextResponse.json(
+          {
+            error: "Server misconfiguration",
+            code: "ENV_MISSING",
+            correlationId,
+          },
+          { status: 500 }
+        );
+      }
+      const upstreamUrl = `${base}/api/auth`;
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[auth:signup] proxy ->", upstreamUrl, { base });
+      }
+      const upstream = await fetch(upstreamUrl, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: form,
+        redirect: "manual",
+      });
 
       if (!upstream.ok) {
         let errMsg = "Sign up failed";
