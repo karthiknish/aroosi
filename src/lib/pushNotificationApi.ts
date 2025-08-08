@@ -5,6 +5,10 @@ export interface PushNotificationPayload {
   title: string;
   message: string;
   url?: string;
+  dryRun?: boolean;
+  confirm?: boolean;
+  audience?: string[] | string;
+  maxAudience?: number;
 }
 
 /**
@@ -29,7 +33,11 @@ export async function sendPushNotification(
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    showSuccessToast("Push notification queued for delivery.");
+    showSuccessToast(
+      payload?.dryRun
+        ? "Preview generated."
+        : "Push notification queued for delivery."
+    );
     return { success: true, data: null };
   } catch (error) {
     const errMsg =

@@ -79,6 +79,13 @@ export function AdminSidebar({
       href: "/admin/icebreakers",
       isActive: currentPath.startsWith("/admin/icebreakers"),
     },
+    {
+      id: "notifications",
+      label: "Notifications",
+      icon: Mail,
+      href: "/admin/push-notification",
+      isActive: currentPath.startsWith("/admin/push-notification"),
+    },
   ];
 
   return (

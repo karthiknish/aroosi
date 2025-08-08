@@ -28,7 +28,7 @@
       "@convex/*": ["./convex/*"]
     },
     "typeRoots": ["./types", "./node_modules/@types"],
-    "types": ["jest", "node", "@testing-library/jest-dom"]
+    "types": ["jest", "node", "testing-library__jest-dom"]
   },
   "include": [
     "next-env.d.ts",

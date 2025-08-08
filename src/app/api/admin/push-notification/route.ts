@@ -12,7 +12,8 @@ import { requireAuth } from "@/lib/auth/requireAuth";
  */
 export async function POST(request: Request) {
   const { role } = await requireAuth(request as unknown as NextRequest);
-  if ((role || "user") !== "admin") return errorResponse("Admin privileges required", 403);
+  if ((role || "user") !== "admin")
+    return errorResponse("Admin privileges required", 403);
 
   let body: unknown;
   try {
@@ -21,23 +22,16 @@ export async function POST(request: Request) {
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const {
-    title,
-    message,
-    url,
-    dryRun,
-    confirm,
-    audience,
-    maxAudience,
-  } = (body || {}) as {
-    title?: string;
-    message?: string;
-    url?: string;
-    dryRun?: boolean;
-    confirm?: boolean;
-    audience?: string[] | string; // e.g., ["Subscribed Users"]
-    maxAudience?: number; // informational; OneSignal segmentation/capping is provider-side
-  };
+  const { title, message, url, dryRun, confirm, audience, maxAudience } =
+    (body || {}) as {
+      title?: string;
+      message?: string;
+      url?: string;
+      dryRun?: boolean;
+      confirm?: boolean;
+      audience?: string[] | string; // e.g., ["Subscribed Users"]
+      maxAudience?: number; // informational; OneSignal segmentation/capping is provider-side
+    };
 
   if (!title || !message) {
     return errorResponse("Title and message are required", 400, {
@@ -45,6 +39,7 @@ export async function POST(request: Request) {
     });
   }
 
+  // Expect ONESIGNAL_APP_ID and ONESIGNAL_API_KEY at the web layer env
   if (!process.env.ONESIGNAL_APP_ID || !process.env.ONESIGNAL_API_KEY) {
     return errorResponse("OneSignal not configured", 500);
   }
@@ -57,13 +52,18 @@ export async function POST(request: Request) {
   }
 
   // Normalize audience; default to Subscribed Users
-  const segments =
-    (Array.isArray(audience) ? audience : audience ? [audience] : []) ||
-    ["Subscribed Users"];
+  const segments = (Array.isArray(audience)
+    ? audience
+    : audience
+      ? [audience]
+      : []
+  )?.filter(Boolean) || ["Subscribed Users"];
 
   // We cannot hard-cap audience via API without advanced OneSignal filters; expose info only
   const effectiveMax =
-    Number.isFinite(maxAudience) && maxAudience ? Math.max(1, Math.min(100000, maxAudience)) : 100000;
+    Number.isFinite(maxAudience) && maxAudience
+      ? Math.max(1, Math.min(100000, maxAudience))
+      : 100000;
 
   // Dry run: return payload preview only
   if (dryRun) {
