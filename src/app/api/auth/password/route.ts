@@ -28,7 +28,6 @@ function reqMeta(request: NextRequest) {
 // Accepts form-data or x-www-form-urlencoded with { email, password, flow }.
 export async function POST(request: NextRequest) {
   try {
-    // Removed info log for lint
     let email = "";
     let password = "";
     let flow = "signIn";
@@ -82,78 +81,65 @@ export async function POST(request: NextRequest) {
     }
 
     if (!email || !password) {
-      // Removed warn log for lint
       return NextResponse.json(
         { error: "Missing email or password", code: "BAD_REQUEST" },
         { status: 400 }
       );
     }
 
-    console.log("Calling signIn action with:", { email, flow });
-    
-    // Call the signIn action directly
-    let result: { tokens?: { token: string } | null; } | undefined;
+    // Forward to Convex Auth Password provider
+    const form = new URLSearchParams();
+    form.set("provider", "password");
+    form.set("email", email);
+    form.set("password", password);
+    form.set("flow", flow);
+
+    // Resolve Convex Auth base URL
+    const siteBaseRaw = process.env.CONVEX_SITE_URL || undefined;
+    const cloud = process.env.NEXT_PUBLIC_CONVEX_URL || undefined;
+    const raw = siteBaseRaw || cloud;
+    const normalized = raw ? raw.replace(/\/+$/, "") : undefined;
+    const base = normalized
+      ? normalized.includes(".convex.cloud")
+        ? normalized.replace(".convex.cloud", ".convex.site")
+        : normalized
+      : undefined;
+    const upstreamUrlApi = base ? `${base}/api/auth` : undefined;
+
+    if (!base || !upstreamUrlApi) {
+      return NextResponse.json(
+        { error: "Server misconfiguration", code: "ENV_MISSING" },
+        { status: 500 }
+      );
+    }
+
+    // Make request to Convex Auth
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 9000);
     try {
-      result = await convex.action(api.auth.signIn, {
-        provider: "password",
-        params: {
-          email,
-          password,
-          flow,
-        },
+      const res = await fetch(upstreamUrlApi, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: form,
+        redirect: "manual",
+        signal: controller.signal,
+        cache: "no-store",
       });
-      console.log("SignIn result:", result);
-    } catch (error: any) {
-      console.error("SignIn error:", error);
-      // Provide user-friendly error messages for common cases
-      let errorMessage = "Authentication failed. Please try again.";
-      let errorCode = "AUTH_FAILED";
-      
-      // Check if it's a specific Convex Auth error
-      if (error?.message?.includes("InvalidAccountId")) {
-        errorMessage = "No account found with this email address. Please check your email or sign up for a new account.";
-        errorCode = "ACCOUNT_NOT_FOUND";
-      } else if (error?.message?.includes("InvalidPassword")) {
-        errorMessage = "Invalid password. Please check your password and try again.";
-        errorCode = "INVALID_PASSWORD";
-      } else if (error?.message?.includes("InvalidCredentials")) {
-        errorMessage = "Invalid email or password. Please check your credentials and try again.";
-        errorCode = "INVALID_CREDENTIALS";
+
+      // Forward Set-Cookie headers from Convex Auth to the browser
+      const out = NextResponse.json({ ok: res.ok }, { status: res.status });
+      const setCookie = res.headers.get("set-cookie");
+      if (setCookie) {
+        for (const c of setCookie.split(/,(?=[^;]+?=)/g)) {
+          out.headers.append("Set-Cookie", c);
+        }
       }
-      
-      return NextResponse.json(
-        { error: errorMessage, code: errorCode },
-        { status: 401 }
-      );
+      return out;
+    } finally {
+      clearTimeout(t);
     }
-
-    // Check if the sign in was successful
-    if (!result?.tokens?.token) {
-      console.log("No tokens in result");
-      return NextResponse.json(
-        { error: "Invalid email or password. Please check your credentials and try again.", code: "INVALID_CREDENTIALS" },
-        { status: 401 }
-      );
-    }
-
-    // Create response
-    const res = NextResponse.json({ ok: true }, { status: 200 });
-    
-    // Set the session cookie if tokens are provided
-    if (result?.tokens?.token) {
-      res.cookies.set("convex-session", result.tokens.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        path: "/",
-        sameSite: "lax",
-      });
-    }
-
-    return res;
   } catch (e: any) {
     console.error("Sign in error:", e);
-    // Removed error log for lint
     return NextResponse.json(
       { error: "Auth failed", code: "UNKNOWN" },
       { status: 500 }
