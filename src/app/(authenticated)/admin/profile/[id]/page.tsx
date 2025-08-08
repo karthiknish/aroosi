@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
@@ -402,14 +403,18 @@ export default function AdminProfileDetailPage() {
 
                 <div className="w-full mt-8 h-full flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden relative group">
                   <div className="w-full h-full flex items-center justify-center">
-                    <img
+                    <Image
                       src={
                         (orderedImages[currentImageIdx]?.url ?? undefined) ||
                         (orderedImages[currentImageIdx]?.storageId
                           ? `/api/storage/${orderedImages[currentImageIdx].storageId}`
                           : "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png")
                       }
-                      alt={`Profile image ${currentImageIdx + 1}`}
+                      alt={typeof profile?.fullName === "string"
+                        ? `${profile.fullName} profile photo ${currentImageIdx + 1}`
+                        : `Profile photo ${currentImageIdx + 1}`}
+                      width={256}
+                      height={256}
                       className="max-h-full  max-w-full object-contain"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -508,7 +513,7 @@ export default function AdminProfileDetailPage() {
                           }
                         }}
                       >
-                        <img
+                        <Image
                           src={
                             (img.url ?? undefined) ||
                             `/api/storage/${img.storageId}`
@@ -518,6 +523,8 @@ export default function AdminProfileDetailPage() {
                               ? `${profile.fullName} profile photo ${idx + 1}`
                               : `Profile photo ${idx + 1}`
                           }
+                          width={128}
+                          height={128}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;

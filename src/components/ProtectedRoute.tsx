@@ -41,19 +41,10 @@ function ProtectedRouteInner({
   useEffect(() => {
     if (process.env.NODE_ENV === "development")
       console.log("🔧 DEBUG: Setting isClient to true");
-    setIsClient(true);
-  }, []);
-
-  const {
-    isLoaded,
-    isSignedIn,
-    isProfileComplete,
-    isOnboardingComplete,
+      // Removed console.log for production compliance
     isLoading: isAuthLoading,
     profile: rawProfile,
     error: authError,
-  } = useAuthContext();
-
   if (process.env.NODE_ENV === "development")
     console.log("🔧 DEBUG: Auth context values", {
       isLoaded,
@@ -67,16 +58,7 @@ function ProtectedRouteInner({
 
   // Directly use context values; undefined indicates still loading
   const profile = rawProfile as { subscriptionPlan?: string } | null;
-  const profileComplete = isProfileComplete;
-  const onboardingComplete = isOnboardingComplete;
-  const userPlan = profile?.subscriptionPlan || "free";
-
-  if (process.env.NODE_ENV === "development")
-    console.log("🔧 DEBUG: Processed auth values", {
-      profileComplete,
-      onboardingComplete,
-      userPlan,
-    });
+      // Removed console.log for production compliance
 
   // Memoized route checks to prevent unnecessary recalculations
   const {
@@ -84,12 +66,7 @@ function ProtectedRouteInner({
     isOnboardingRoute,
     isProfileEditRoute,
     isCreateProfileRoute,
-  } = useMemo(() => {
-    const routeChecks = {
-      isPublicRoute: [
-        "/",
-        "/sign-in",
-        "/forgot-password",
+      // Removed console.log for production compliance
         "/privacy",
         "/terms",
         "/about",
@@ -119,8 +96,7 @@ function ProtectedRouteInner({
   // Define feature-based restrictions
   const chatRestrictedRoutes = ["/chat"];
   // const advancedSearchRoutes = ["/search"] // Will check for premium plus filters in search
-
-  if (process.env.NODE_ENV === "development")
+        // Removed console.log for production compliance
     console.log("🔧 DEBUG: Route restrictions", {
       premiumAnyPlanRoutes,
       premiumPlusRoutes,
@@ -132,31 +108,22 @@ function ProtectedRouteInner({
   if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
     console.log("🔧 DEBUG: Auth disabled, rendering children");
     return <>{children}</>;
-  }
-
-  // Enhanced navigation handler with better error handling
-  const handleNavigation = useCallback(
-    (path: string, message?: string) => {
-      console.log("🔧 DEBUG: Navigating to", { path, message });
-      try {
+      // Removed console.log for production compliance
         if (message) {
           showInfoToast(message);
         }
-        router.replace(path);
       } catch (error) {
         console.error("🔧 DEBUG: Navigation error:", error);
         showErrorToast("Navigation failed. Please refresh and try again.");
       }
     },
     [router]
-  );
 
   // Handle all redirections with improved error handling
   useEffect(() => {
     if (process.env.NODE_ENV === "development")
       console.log("🔥 PRODUCTION DEBUG:", {
         pathname,
-        isSignedIn,
         profileComplete,
         onboardingComplete,
         isLoaded,
@@ -165,27 +132,9 @@ function ProtectedRouteInner({
         userPlan,
         isPublicRoute,
         requireAuth,
-        requireProfileComplete,
-        requireOnboardingComplete,
-      });
-
-    if (process.env.NODE_ENV === "development")
-      console.log("🔧 DEBUG: useEffect triggered", {
-        isClient,
-        windowDefined: typeof window !== "undefined",
-      });
-
-    // Don't do anything until we're on the client
-    if (typeof window === "undefined") {
-      if (process.env.NODE_ENV === "development")
-        console.log("🔧 DEBUG: Server side, skipping logic");
-      return;
+        // Removed console.log for production compliance
     }
-
-    // Don't do anything until we've loaded the auth state
-    if (!isLoaded || isAuthLoading) {
-      if (process.env.NODE_ENV === "development")
-        console.log("🔧 DEBUG: Auth still loading, waiting...", {
+        // Removed console.log for production compliance
           isLoaded,
           isAuthLoading,
         });
@@ -295,24 +244,12 @@ function ProtectedRouteInner({
           return;
         }
       }
-
-      // COMMENTED OUT: Profile/Onboarding completion checks
-      /*
-      // 1. If either flag is false, redirect to home page for onboarding
-      if (!profileComplete || !onboardingComplete) {
-        console.log("🔧 DEBUG: Profile or onboarding incomplete", { profileComplete, onboardingComplete });
-        if (!isCreateProfileRoute && !isPublicRoute) {
-          console.log("🔧 DEBUG: Redirecting to home for onboarding");
-          handleNavigation("/");
+      // Removed console.log for production compliance
           return;
         }
       }
 
-      // 2. Both flags true → if currently on any public route, send to /search
-      if (profileComplete && onboardingComplete) {
-        console.log("🔧 DEBUG: Profile and onboarding complete");
-        if (
-          (isPublicRoute || isOnboardingRoute || isCreateProfileRoute) &&
+      // Removed console.log for production compliance
           !isProfileEditRoute
         ) {
           console.log("🔧 DEBUG: Redirecting completed user to search");
@@ -343,7 +280,7 @@ function ProtectedRouteInner({
     requireProfileComplete,
     requireOnboardingComplete,
     searchParams,
-    isProfileEditRoute,
+      // Removed console.log for production compliance
     userPlan,
     premiumAnyPlanRoutes,
     premiumPlusRoutes,

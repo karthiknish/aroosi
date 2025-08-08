@@ -111,7 +111,6 @@ export const useDeleteImage = (profileId: string) => {
       await deleteJson(`/api/profile-images`, {
         headers: { "Content-Type": "application/json", "x-client-check": "image-delete" },
         // fetchJson supports body in options for DELETE
-        // @ts-ignore
         body: JSON.stringify({ userId: profile?.userId || profileId, imageId }),
         cache: "no-store",
       } as any);

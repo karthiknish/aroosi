@@ -86,8 +86,8 @@ export function useModernChat({
 
   // Presence: poll other user's presence + heartbeat self
   useEffect(() => {
-    let mounted = true;
-    let interval: any;
+  let mounted = true;
+  let interval: any;
     (async () => {
       try {
         await heartbeat();
@@ -196,7 +196,7 @@ export function useModernChat({
   // Derived flags
   const hasSentMessage = messages.some((m) => m.fromUserId === currentUserId);
   const hasReceivedMessage = messages.some((m) => m.fromUserId === matchUserId);
-  const isInitiating = !hasSentMessage && !hasReceivedMessage;
+  const _isInitiating = !hasSentMessage && !hasReceivedMessage;
 
   // Messaging permissions are expected to be done higher-level; keep minimal gating here
   const canSendText = () => ({ allowed: true, reason: "" });

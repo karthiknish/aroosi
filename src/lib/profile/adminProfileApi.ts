@@ -4,7 +4,7 @@ import type { ImageType } from "@/types/image";
 type AdminProfile = Profile & { _id: string; userId: string };
 
 export async function fetchAdminProfiles({
-  token,
+  token: _token,
   search,
   page,
   pageSize = 10,
@@ -25,13 +25,12 @@ export async function fetchAdminProfiles({
       throw new Error(`Failed to fetch profiles: ${errorText}`);
     }
     const response = await res.json();
-    console.log("data:", response);
-    
+
     // Handle the wrapped response format {success: true, data: {...}}
     if (response.success && response.data) {
       return response.data;
     }
-    
+
     // Fallback for direct data format
     return response;
   } catch (error) {
@@ -42,7 +41,7 @@ export async function fetchAdminProfiles({
 }
 
 export async function fetchAdminProfileImages({
-  token,
+  token: _token,
   userId,
 }: {
   token: string;
@@ -50,34 +49,23 @@ export async function fetchAdminProfileImages({
 }): Promise<{ userProfileImages: ImageType[] }> {
   const headers: Record<string, string> = {};
   try {
-    console.log(
-      "[fetchAdminProfileImages] Fetching images for userId:",
-      userId
-    );
     const res = await fetch(`/api/profile-detail/${userId}/images`, {
       headers,
     });
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("[fetchAdminProfileImages] Error response:", errorText);
       throw new Error(`Failed to fetch profile images: ${errorText}`);
     }
     const response = await res.json();
-    console.log("[fetchAdminProfileImages] Response for", userId, response);
-    
+
     // Handle the wrapped response format {success: true, data: {...}}
     if (response.success && response.data) {
       return response.data;
     }
-    
+
     // Fallback for direct data format
     return response;
   } catch (error) {
-    console.error(
-      "[fetchAdminProfileImages] Error fetching profile images for",
-      userId,
-      error
-    );
     throw new Error(
       `Error fetching profile images: ${(error as Error).message}`
     );
@@ -85,7 +73,7 @@ export async function fetchAdminProfileImages({
 }
 
 export async function updateAdminProfile({
-  token,
+  token: _token,
   id,
   updates,
 }: {
@@ -116,7 +104,7 @@ export async function updateAdminProfile({
 }
 
 export async function deleteAdminProfile({
-  token,
+  token: _token,
   id,
 }: {
   token: string;
@@ -141,7 +129,7 @@ export async function deleteAdminProfile({
 }
 
 export async function banAdminProfile({
-  token,
+  token: _token,
   id,
   banned,
 }: {
@@ -170,7 +158,7 @@ export async function banAdminProfile({
 }
 
 export async function fetchAllAdminProfileImages({
-  token,
+  token: _token,
   profiles,
 }: {
   token: string;
@@ -180,53 +168,30 @@ export async function fetchAllAdminProfileImages({
   await Promise.all(
     profiles.map(async (profile) => {
       if (!profile.userId) {
-        console.warn(
-          "[fetchAllAdminProfileImages] Missing userId for profile",
-          profile
-        );
         return;
       }
       try {
-        console.log(
-          "[fetchAllAdminProfileImages] Fetching images for",
-          profile.userId
-        );
         const data = await fetchAdminProfileImages({
-          token,
+          token: _token,
           userId: profile.userId,
         });
-        console.log(
-          "[fetchAllAdminProfileImages] Data for",
-          profile.userId,
-          data
-        );
         if (Array.isArray(data)) {
           newImages[profile._id] = data;
         } else if (Array.isArray(data.userProfileImages)) {
           newImages[profile._id] = data.userProfileImages;
         } else {
-          console.warn(
-            "[fetchAllAdminProfileImages] No images array for",
-            profile.userId,
-            data
-          );
         }
       } catch (error) {
-        console.error(
-          `[fetchAllAdminProfileImages] Error fetching images for userId ${profile.userId}:`,
-          error
-        );
         // Optionally log error for each profile, but don't throw to allow others to continue
       }
     })
   );
-  console.log("[fetchAllAdminProfileImages] Final newImages:", newImages);
   return newImages;
 }
 
 // Create a new admin profile
 export async function createAdminProfile({
-  token,
+  token: _token,
   profile,
 }: {
   token: string;
@@ -294,7 +259,7 @@ export type AdminProfileMatchesResult = {
 }[];
 
 export async function fetchAdminAllMatches({
-  token,
+  token: _token,
 }: {
   token: string;
 }): Promise<AdminProfileMatchesResult> {
@@ -306,13 +271,12 @@ export async function fetchAdminAllMatches({
       throw new Error(`Failed to fetch all matches: ${errorText}`);
     }
     const response = await res.json();
-    console.log("Admin matches response:", response);
-    
+
     // Handle the wrapped response format {success: true, matches: [...]}
     if (response.success && response.matches) {
       return response.matches;
     }
-    
+
     // Fallback for direct data format
     return response.matches || response || [];
   } catch (error) {
@@ -322,7 +286,7 @@ export async function fetchAdminAllMatches({
 
 // Fetch a single admin profile by ID
 export async function fetchAdminProfileById({
-  token,
+  token: _token,
   id,
 }: {
   token: string;
@@ -345,7 +309,7 @@ export async function fetchAdminProfileById({
 
 // Update a single admin profile by ID
 export async function updateAdminProfileById({
-  token,
+  token: _token,
   id,
   updates,
 }: {
@@ -377,7 +341,7 @@ export async function updateAdminProfileById({
 
 // Fetch images for a given profileId with admin token
 export async function fetchAdminProfileImagesById({
-  token,
+  token: _token,
   profileId,
 }: {
   token: string;
@@ -388,13 +352,11 @@ export async function fetchAdminProfileImagesById({
     const res = await fetch(`/api/profile-detail/${profileId}/images`, {
       headers,
     });
-    console.log("res", res);
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch profile images: ${errorText}`);
     }
     const data = await res.json();
-    console.log("data", data);
     return Array.isArray(data)
       ? data
       : Array.isArray(data.images)
@@ -409,7 +371,7 @@ export async function fetchAdminProfileImagesById({
 
 // Update a profile image by imageId for a given profileId (admin)
 export async function updateAdminProfileImageById({
-  token,
+  token: _token,
   profileId,
   imageId,
   updates,
@@ -446,7 +408,7 @@ export async function updateAdminProfileImageById({
 
 // Delete a profile image by imageId for a given profileId (admin)
 export async function deleteAdminProfileImageById({
-  token,
+  token: _token,
   profileId,
   imageId,
 }: {
@@ -568,7 +530,7 @@ export async function updateAdminProfileImageOrder({
 }
 
 export async function createManualMatch({
-  token,
+  token: _token,
   fromProfileId,
   toProfileId,
 }: {
@@ -593,7 +555,7 @@ export async function createManualMatch({
 }
 
 export async function fetchAdminProfileMatches({
-  token,
+  token: _token,
   profileId,
 }: {
   token: string;
@@ -609,16 +571,17 @@ export async function fetchAdminProfileMatches({
       throw new Error(`Failed to fetch profile matches: ${errorText}`);
     }
     const response = await res.json();
-    console.log("Admin profile matches response:", response);
-    
+
     // Handle the wrapped response format {success: true, matches: [...]}
     if (response.success && response.matches) {
       return response.matches;
     }
-    
+
     // Fallback for direct data format
     return response.matches || response || [];
   } catch (error) {
-    throw new Error(`Error fetching profile matches: ${(error as Error).message}`);
+    throw new Error(
+      `Error fetching profile matches: ${(error as Error).message}`
+    );
   }
 }
