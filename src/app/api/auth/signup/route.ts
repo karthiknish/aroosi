@@ -400,10 +400,21 @@ export async function POST(request: NextRequest) {
           : String(profile.height ?? ""),
       annualIncome:
         typeof (profile as Record<string, unknown>).annualIncome === "number"
-          ? (profile as Record<string, unknown>).annualIncome
-          : typeof (profile as Record<string, unknown>).annualIncome ===
-              "string"
-            ? (profile as Record<string, unknown>).annualIncome
+          ? (profile as Record<string, unknown>).annualIncome as number
+          : typeof (profile as Record<string, unknown>).annualIncome === "string"
+            ? (Number((profile as Record<string, unknown>).annualIncome) || undefined)
+            : undefined,
+      partnerPreferenceAgeMin: 
+        typeof (profile as Record<string, unknown>).partnerPreferenceAgeMin === "number"
+          ? (profile as Record<string, unknown>).partnerPreferenceAgeMin as number
+          : typeof (profile as Record<string, unknown>).partnerPreferenceAgeMin === "string"
+            ? (Number((profile as Record<string, unknown>).partnerPreferenceAgeMin) || undefined)
+            : undefined,
+      partnerPreferenceAgeMax: 
+        typeof (profile as Record<string, unknown>).partnerPreferenceAgeMax === "number"
+          ? (profile as Record<string, unknown>).partnerPreferenceAgeMax as number
+          : typeof (profile as Record<string, unknown>).partnerPreferenceAgeMax === "string"
+            ? (Number((profile as Record<string, unknown>).partnerPreferenceAgeMax) || undefined)
             : undefined,
       partnerPreferenceCity: Array.isArray(
         (profile as Record<string, unknown>).partnerPreferenceCity
@@ -411,9 +422,7 @@ export async function POST(request: NextRequest) {
         ? ((profile as Record<string, unknown>)
             .partnerPreferenceCity as string[])
         : [],
-      profileImageIds: scrubLocalStorageIds(
-        (profile as Record<string, unknown>).profileImageIds
-      ),
+      profileImageIds: undefined,
     };
 
     // 2) Create account via Convex Auth Password provider (sets session cookies)
