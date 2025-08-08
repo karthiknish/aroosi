@@ -35,6 +35,12 @@
     "node_modules",
     ".next",
     "dist",
-    "build"
+    "build",
+    // exclude tests from app type-check (handled by tsconfig.test.json)
+    "src/setupTests.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/__tests__/**",
+    "tests/**"
   ]
 }
