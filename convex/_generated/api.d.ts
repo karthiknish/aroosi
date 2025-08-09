@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as _root from "../_root.js";
 import type * as auth from "../auth.js";
 import type * as blog from "../blog.js";
 import type * as compatibility from "../compatibility.js";
@@ -37,6 +38,7 @@ import type * as recommendations from "../recommendations.js";
 import type * as safety from "../safety.js";
 import type * as storage from "../storage.js";
 import type * as subscriptions from "../subscriptions.js";
+import type * as testAuth from "../testAuth.js";
 import type * as typingIndicators from "../typingIndicators.js";
 import type * as usageTracking from "../usageTracking.js";
 import type * as users from "../users.js";
@@ -53,6 +55,7 @@ import type * as utils_sanitize from "../utils/sanitize.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  _root: typeof _root;
   auth: typeof auth;
   blog: typeof blog;
   compatibility: typeof compatibility;
@@ -77,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   safety: typeof safety;
   storage: typeof storage;
   subscriptions: typeof subscriptions;
+  testAuth: typeof testAuth;
   typingIndicators: typeof typingIndicators;
   usageTracking: typeof usageTracking;
   users: typeof users;

@@ -1,17 +1,1 @@
-{
-  "project": "aroosi",
-  "team": "karthik-nishanth",
-  "prodUrl": "https://proper-gull-501.convex.cloud",
-  "auth": {
-    "providers": [
-      {
-        "type": "password"
-      },
-      {
-        "type": "google",
-        "clientId": "{{GOOGLE_CLIENT_ID}}",
-        "clientSecret": "{{GOOGLE_CLIENT_SECRET}}"
-      }
-    ]
-  }
-}
+{}
