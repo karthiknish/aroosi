@@ -164,6 +164,7 @@ export default function CustomSignInForm({
       </div>
 
       <GoogleAuthButton
+        redirectUrlComplete="/search"
         onSuccess={handleOnboardingComplete}
         onError={(error: string) => showErrorToast(error)}
       />

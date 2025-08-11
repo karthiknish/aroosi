@@ -8,6 +8,7 @@ import { Loader2, Chrome } from "lucide-react";
 interface GoogleAuthButtonProps {
   text?: string;
   className?: string;
+  redirectUrlComplete?: string;
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -15,6 +16,7 @@ interface GoogleAuthButtonProps {
 export function GoogleAuthButton({
   text = "Continue with Google",
   className,
+  redirectUrlComplete,
   onSuccess,
   onError,
 }: GoogleAuthButtonProps) {
@@ -24,7 +26,7 @@ export function GoogleAuthButton({
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const result = await signInWithOAuth("google");
+      const result = await signInWithOAuth("google", redirectUrlComplete);
       
       if (result.success) {
         onSuccess?.();

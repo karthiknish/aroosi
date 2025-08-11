@@ -136,7 +136,7 @@ export function useClerkAuthApi() {
   /**
    * Sign in with OAuth provider
    */
-  const signInWithOAuth = useCallback(async (provider: "google" | "github" | "facebook" | "linkedin") => {
+  const signInWithOAuth = useCallback(async (provider: "google" | "github" | "facebook" | "linkedin", redirectUrlComplete?: string) => {
     if (!signIn) {
       throw new Error("Sign in not available");
     }
@@ -145,7 +145,7 @@ export function useClerkAuthApi() {
       await signIn.authenticateWithRedirect({
         strategy: `oauth_${provider}` as any,
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
+        redirectUrlComplete: redirectUrlComplete || "/search",
       });
       
       return {

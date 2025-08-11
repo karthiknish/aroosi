@@ -2,7 +2,7 @@
 
 import { useSignUp, useSignIn } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useClerkAuth } from "@/components/ClerkAuthProvider";
 
 export default function SSOCallback() {
@@ -10,6 +10,7 @@ export default function SSOCallback() {
   const { signIn } = useSignIn();
   const { refreshUser } = useClerkAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,8 +24,8 @@ export default function SSOCallback() {
           await setActive?.({ session: signUp.createdSessionId });
           // Refresh user data in our context
           await refreshUser();
-          // Redirect to home or dashboard
-          router.push("/");
+          // Redirect to success page for new signups
+          router.push("/success");
           return;
         }
 
@@ -34,19 +35,21 @@ export default function SSOCallback() {
           await setActive?.({ session: signIn.createdSessionId });
           // Refresh user data in our context
           await refreshUser();
-          // Redirect to home or dashboard
-          router.push("/");
+          // Redirect to search for existing users
+          router.push("/search");
           return;
         }
 
-        // Handle the OAuth callback
-        const redirectUrl = new URL(window.location.href).searchParams.get("redirect_url");
+        // Get redirect URL from query params or use defaults
+        const redirectUrl = searchParams.get("redirect_url");
+        const defaultRedirectForSignUp = "/success";
+        const defaultRedirectForSignIn = "/search";
         
         // Try to complete the sign in flow
         await signIn?.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
-          redirectUrlComplete: redirectUrl || "/",
+          redirectUrlComplete: redirectUrl || defaultRedirectForSignIn,
         });
 
         // The redirect will happen automatically, so we don't need to check the result
@@ -56,7 +59,7 @@ export default function SSOCallback() {
         await signUp?.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
-          redirectUrlComplete: redirectUrl || "/",
+          redirectUrlComplete: redirectUrl || defaultRedirectForSignUp,
         });
 
         // The redirect will happen automatically, so we don't need to check the result
@@ -68,7 +71,7 @@ export default function SSOCallback() {
     };
 
     handleSSOCallback();
-  }, [isLoaded, signUp, signIn, setActive, router, refreshUser]);
+  }, [isLoaded, signUp, signIn, setActive, router, refreshUser, searchParams]);
 
   if (error) {
     return (

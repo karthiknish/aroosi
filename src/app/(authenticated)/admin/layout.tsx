@@ -20,7 +20,7 @@ export default function AdminLayout({
   // Redirect if not admin
   useEffect(() => {
     if (isLoaded && (!isSignedIn || !isAdmin)) {
-      router.push("/");
+      router.push("/search");
     }
   }, [isLoaded, isSignedIn, isAdmin, router]);
 

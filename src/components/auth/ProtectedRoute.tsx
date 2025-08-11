@@ -34,7 +34,7 @@ export default function ProtectedRoute({
 
     // Admin only routes
     if (adminOnly && user.role !== "admin") {
-      router.push("/");
+      router.push("/search");
       return;
     }
 

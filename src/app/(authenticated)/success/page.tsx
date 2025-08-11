@@ -79,44 +79,44 @@ export default function ProfileCreationSuccessPage() {
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 260, 
+          transition={{
+            type: "spring",
+            stiffness: 260,
             damping: 20,
-            delay: 0.2
+            delay: 0.2,
           }}
           className="relative mx-auto mb-8"
         >
           <div className="w-32 h-32 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-xl">
             <UserCheck className="text-white" size={64} />
           </div>
-          
+
           {/* Floating sparkles */}
           <motion.div
-            animate={{ 
+            animate={{
               y: [-10, 10, -10],
-              rotate: [0, 10, 0]
+              rotate: [0, 10, 0],
             }}
-            transition={{ 
+            transition={{
               duration: 3,
               repeat: Infinity,
-              ease: "easeInOut"
+              ease: "easeInOut",
             }}
             className="absolute -top-4 -right-4 text-yellow-400"
           >
             <Sparkles size={24} />
           </motion.div>
-          
+
           <motion.div
-            animate={{ 
+            animate={{
               y: [10, -10, 10],
-              rotate: [0, -10, 0]
+              rotate: [0, -10, 0],
             }}
-            transition={{ 
+            transition={{
               duration: 4,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 0.5
+              delay: 0.5,
             }}
             className="absolute -bottom-4 -left-4 text-yellow-400"
           >
@@ -125,7 +125,7 @@ export default function ProfileCreationSuccessPage() {
         </motion.div>
 
         {/* Heading with gradient text */}
-        <motion.h1 
+        <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -133,9 +133,9 @@ export default function ProfileCreationSuccessPage() {
         >
           Welcome to Aroosi!
         </motion.h1>
-        
+
         {/* Subtitle */}
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
@@ -145,14 +145,15 @@ export default function ProfileCreationSuccessPage() {
         </motion.p>
 
         {/* Success message */}
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
           className="text-gray-500 mb-10 leading-relaxed max-w-md mx-auto"
         >
-          You're now part of our community of like-minded individuals. 
-          Start exploring profiles and connecting with others who share your values.
+          You&apos;re now part of our community of like-minded individuals.
+          Start exploring profiles and connecting with others who share your
+          values.
         </motion.p>
 
         {/* CTA Button with hover effect */}
@@ -172,7 +173,7 @@ export default function ProfileCreationSuccessPage() {
         </motion.div>
 
         {/* Stats or benefits preview */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}

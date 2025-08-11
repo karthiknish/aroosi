@@ -54,7 +54,7 @@ export default function AdminProfileDetailPage() {
   // Redirect if not admin or not loaded yet
   useEffect(() => {
     if (authIsLoaded && (!isSignedIn || !isAdmin)) {
-      router.push("/");
+      router.push("/search");
     }
   }, [authIsLoaded, isSignedIn, isAdmin, router]);
 
