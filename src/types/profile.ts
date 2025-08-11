@@ -1,8 +1,7 @@
 // Generic fallback Id type so shared types compile both in frontend (Next.js) and Convex.
 // When compiling inside Convex, the generated Id type will shadow this one via module resolution.
 // On the frontend side we don't need the exact branded type, so a simple string alias is sufficient.
-// eslint-disable-next-line no-unused-vars
-export type Id<TableName extends string> = string;
+export type Id<_TableName extends string> = string;
 
 // Type definitions matching mobile version exactly
 export type Gender = "male" | "female" | "other";

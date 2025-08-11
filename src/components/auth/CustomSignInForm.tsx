@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { GoogleAuthButton } from "./GoogleAuthButton";
 import { showErrorToast } from "@/lib/ui/toast";
+import { signInWithProfileCheck } from "./signInWithProfileCheck";
 
 
 interface CustomSignInFormProps {
@@ -46,8 +47,8 @@ export default function CustomSignInForm({
     setIsLoading(true);
 
     try {
-      // 1) Perform sign in (cookie-based session)
-      const result = await signIn(email, password);
+      // 1) Perform sign in with profile check
+      const result = await signInWithProfileCheck(email, password, { signIn });
       if (!result.success) {
         const msg = result.error || "Sign in failed. Please try again.";
         onError?.(msg);

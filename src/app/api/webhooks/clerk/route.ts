@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { api } from "@convex/_generated/api";
-import { convex } from "@/lib/convexClient";
+import { convexMutationWithAuth } from "@/lib/convexServer";
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     switch (type) {
       case "user.created":
         // Create user in Convex when Clerk user is created
-        await convex.mutation(api.users.createUserAndProfile, {
+        await convexMutationWithAuth(request, api.users.createUserAndProfile, {
           clerkId: data.id,
           email: data.email_addresses[0]?.email_address || "",
           profileData: {

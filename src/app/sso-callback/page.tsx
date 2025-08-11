@@ -4,6 +4,9 @@ import { useSignUp, useSignIn } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useClerkAuth } from "@/components/ClerkAuthProvider";
+import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+
+export const dynamic = 'force-dynamic';
 
 export default function SSOCallback() {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -35,6 +38,14 @@ export default function SSOCallback() {
           await setActive?.({ session: signIn.createdSessionId });
           // Refresh user data in our context
           await refreshUser();
+          
+          // Check if user has a profile
+          const profileResponse = await getCurrentUserWithProfile();
+          if (!profileResponse.success || !profileResponse.data) {
+            setError("No profile found for this account. Please create a profile first.");
+            return;
+          }
+          
           // Redirect to search for existing users
           router.push("/search");
           return;
@@ -45,22 +56,21 @@ export default function SSOCallback() {
         const defaultRedirectForSignUp = "/success";
         const defaultRedirectForSignIn = "/search";
         
-        // Try to complete the sign in flow
-        await signIn?.authenticateWithRedirect({
-          strategy: "oauth_google",
-          redirectUrl: "/sso-callback",
-          redirectUrlComplete: redirectUrl || defaultRedirectForSignIn,
-        });
-
-        // The redirect will happen automatically, so we don't need to check the result
-        return;
-
-        // Try to complete the sign up flow
-        await signUp?.authenticateWithRedirect({
-          strategy: "oauth_google",
-          redirectUrl: "/sso-callback",
-          redirectUrlComplete: redirectUrl || defaultRedirectForSignUp,
-        });
+        // Try to complete the sign in flow first
+        try {
+          await signIn?.authenticateWithRedirect({
+            strategy: "oauth_google",
+            redirectUrl: "/sso-callback",
+            redirectUrlComplete: redirectUrl || defaultRedirectForSignIn,
+          });
+        } catch (signInError) {
+          // If sign in fails, try sign up
+          await signUp?.authenticateWithRedirect({
+            strategy: "oauth_google",
+            redirectUrl: "/sso-callback",
+            redirectUrlComplete: redirectUrl || defaultRedirectForSignUp,
+          });
+        }
 
         // The redirect will happen automatically, so we don't need to check the result
         return;
