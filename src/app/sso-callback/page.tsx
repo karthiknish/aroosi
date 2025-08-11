@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useClerkAuth } from "@/components/ClerkAuthProvider";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { Suspense } from 'react';
+import Loading from './loading';
 
 export const dynamic = 'force-dynamic';
 
-export default function SSOCallback() {
+function SSOCallbackContent() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const { signIn } = useSignIn();
   const { refreshUser } = useClerkAuth();
@@ -108,5 +110,13 @@ export default function SSOCallback() {
         <p className="text-gray-600 mt-4">Please wait while we complete your authentication...</p>
       </div>
     </div>
+  );
+}
+
+export default function SSOCallback() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <SSOCallbackContent />
+    </Suspense>
   );
 }
