@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuthContext as useAuth } from "@/components/AuthProvider";
+import { useAuthContext as useAuth } from "@/components/ClerkAuthProvider";
 import { useSubscriptionStatus } from "./useSubscription";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { matchMessages } from "@/lib/api/matchMessages";

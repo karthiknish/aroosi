@@ -7,7 +7,7 @@ import {
   type ReportReason,
 } from "@/lib/api/safety";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 
 // Hook for reporting users
 export const useReportUser = () => {

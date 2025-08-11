@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { useAuth } from "@/hooks/useAuth";
-import type { AuthContextType } from "@/components/AuthProvider";
+import type { AuthContextType } from "@/components/ClerkAuthProvider";
 import HomePage from "@/app/page";
 
 // Mock the useAuth hook

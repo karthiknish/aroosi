@@ -12,7 +12,7 @@ import {
 } from "@/hooks/useSubscription";
 import { useRouter } from "next/navigation";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import {
   createCheckoutSession,
   openBillingPortal,

@@ -11,7 +11,7 @@ import type {
   PhysicalStatus,
 } from "@/types/profile";
 import ProfileEditSimpleForm from "@/components/profile/ProfileEditSimpleForm";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { Button } from "@/components/ui/button";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Id } from "@convex/_generated/dataModel";

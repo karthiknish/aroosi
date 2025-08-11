@@ -24,7 +24,7 @@ import {
   Step7AccountCreation,
 } from "./steps/StepComponents";
 
-import { useAuth } from "@/components/AuthProvider";
+import { useClerkAuth as useAuth } from "@/components/ClerkAuthProvider";
 
 import { COUNTRIES } from "@/lib/constants/countries";
 

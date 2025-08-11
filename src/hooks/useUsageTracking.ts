@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import {
   showErrorToast,

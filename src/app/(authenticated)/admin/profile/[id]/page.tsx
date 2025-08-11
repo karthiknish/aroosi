@@ -20,7 +20,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";

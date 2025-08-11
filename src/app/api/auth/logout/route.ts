@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export async function POST(request: Request) {
+  try {
+    // Get the current session from Clerk
+    const { sessionId } = await auth();
+    
+    if (sessionId) {
+      // Revoke the session in Clerk
+      await (await clerkClient()).sessions.revokeSession(sessionId);
+    }
+  } catch (error) {
+    console.error("Error revoking Clerk session:", error);
+    // Continue with cookie clearing even if Clerk revocation fails
+  }
+
   // Clear all auth-related cookies
   const isProd = process.env.NODE_ENV === "production";
   const prefix = isProd ? "__Secure-" : "";

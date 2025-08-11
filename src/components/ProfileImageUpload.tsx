@@ -13,7 +13,7 @@ import { ProfileImageReorder } from "./ProfileImageReorder";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
 import { Id } from "@convex/_generated/dataModel";
-import { useAuthContext } from "./AuthProvider";
+import { useAuthContext } from "./ClerkAuthProvider";
 import type { ImageType } from "@/types/image";
 import {
   fetchAdminProfileImagesById,

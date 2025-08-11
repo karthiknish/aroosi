@@ -1,6 +1,6 @@
-import { ConvexHttpClient } from "convex/browser";
+import { ConvexReactClient } from "convex/react";
 
-// Create a Convex HTTP client for server-side usage
-export const convex = new ConvexHttpClient(
+// Create Convex client instance
+export const convex = new ConvexReactClient(
   process.env.NEXT_PUBLIC_CONVEX_URL!
 );

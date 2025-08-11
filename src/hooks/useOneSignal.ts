@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 
 // Minimal OneSignal type definition supporting v15 and v16
 type AnyOS = any;

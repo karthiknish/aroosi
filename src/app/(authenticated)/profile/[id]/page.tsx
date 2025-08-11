@@ -33,7 +33,7 @@ import { Id } from "@convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchUserProfileImages,

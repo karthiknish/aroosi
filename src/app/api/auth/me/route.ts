@@ -2,56 +2,78 @@ import { NextResponse } from "next/server";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { getUserEmailServer, getUserFullNameServer } from "@/lib/clerkServerApi";
 
-// Return current user with profile using Convex Auth session
+// Return current user with profile using Clerk authentication
 export async function GET(request: Request) {
   try {
-    // Get the session token from cookies
-    const cookieHeader = request.headers.get("cookie");
-    const cookies = cookieHeader?.split(";").reduce(
-      (acc, cookie) => {
-        const [name, value] = cookie.trim().split("=");
-        acc[name] = value;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
-    
-    const sessionToken = cookies?.["convex-session"];
-    if (!sessionToken) {
-      return NextResponse.json({ user: null }, { status: 200 });
+    // Get the session token from Clerk
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Create Convex client with session token
+    // Get full user data from Clerk
+    const clerkUser = await currentUser();
+    if (!clerkUser) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
+
+    // Create Convex client
     const convex = new ConvexHttpClient(
       process.env.NEXT_PUBLIC_CONVEX_URL!
     );
+
+    // Get the user data from Convex using Clerk user ID
+    const convexUser = await fetchQuery(api.users.getUserByClerkId, { clerkId: userId });
     
-    // Set the session token for authenticated requests
-    convex.setAuth(sessionToken);
-
-    // Check if user is authenticated
-    const isAuthenticated = await convex.query(api.auth.isAuthenticated, {});
-    if (!isAuthenticated) {
-      return NextResponse.json({ user: null }, { status: 200 });
+    // If user doesn't exist in Convex, we can still return Clerk data
+    if (!convexUser) {
+      // Enhance user data with Clerk information
+      const userEmail = await getUserEmailServer();
+      const userFullName = await getUserFullNameServer();
+      
+      return NextResponse.json(
+        {
+          user: {
+            id: userId,
+            email: userEmail || clerkUser.emailAddresses[0]?.emailAddress || "",
+            role: "user",
+            emailVerified: clerkUser.emailAddresses.some(e => e.verification?.status === "verified"),
+            createdAt: clerkUser.createdAt,
+            fullName: userFullName || clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined,
+            profile: null,
+          },
+        },
+        { status: 200 }
+      );
     }
-
-    const data = await fetchQuery(api.users.getCurrentUserWithProfile, {});
+    
+    // If user exists in Convex, get their profile
+    // @ts-expect-error
+    const data = await fetchQuery(api.users.getCurrentUserWithProfile, { userId: convexUser._id });
     if (!data) return NextResponse.json({ user: null }, { status: 200 });
-    const user = data.user as any;
-    const profile = data.profile as any;
+    const user = data.user;
+    const profile = data.profile;
+    
+    // Enhance user data with Clerk information
+    const userEmail = await getUserEmailServer();
+    const userFullName = await getUserFullNameServer();
+    
     return NextResponse.json(
       {
         user: {
-          id: String(user?._id ?? ""),
-          email: String(user?.email ?? ""),
+          id: String(user?._id ?? userId),
+          email: String(user?.email ?? userEmail ?? clerkUser.emailAddresses[0]?.emailAddress ?? ""),
           role: String(user?.role ?? "user"),
-          emailVerified: Boolean(user?.emailVerified ?? false),
-          createdAt: Number(user?.createdAt ?? 0),
+          emailVerified: Boolean(user?.emailVerified ?? clerkUser.emailAddresses.some(e => e.verification?.status === "verified")),
+          createdAt: Number(user?.createdAt ?? clerkUser.createdAt),
+          fullName: userFullName || clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined,
           profile: profile
             ? {
                 id: String(profile?._id ?? ""),
-                fullName: profile?.fullName ?? undefined,
+                fullName: profile?.fullName ?? userFullName ?? undefined,
                 isProfileComplete: Boolean(profile?.isProfileComplete ?? false),
                 isOnboardingComplete: Boolean(profile?.isOnboardingComplete ?? false),
               }
@@ -60,7 +82,8 @@ export async function GET(request: Request) {
       },
       { status: 200 }
     );
-  } catch {
+  } catch (error) {
+    console.error("Error in /api/auth/me:", error);
     return NextResponse.json({ user: null }, { status: 200 });
   }
 }

@@ -1,17 +1,9 @@
 import { convexAuth } from "@convex-dev/auth/server";
-import { Password } from "@convex-dev/auth/providers/Password";
-import Google from "@auth/core/providers/google";
 import { action } from "./_generated/server";
 
-// Convex Auth setup with Password and Google providers
+// Convex Auth setup with Clerk
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [
-    Password,
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-    }),
-  ],
+  providers: [],
 });
 
 // Action to get current user identity - used by auth utilities

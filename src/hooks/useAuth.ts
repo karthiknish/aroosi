@@ -1,5 +1,5 @@
-// Re-export useAuth from AuthProvider for backward compatibility
-export { useAuth, useAuthContext } from "@/components/AuthProvider";
+// Re-export useAuth from ClerkAuthProvider for backward compatibility
+export { useClerkAuth as useAuth, useAuthContext } from "@/components/ClerkAuthProvider";
 
 // Legacy types for backward compatibility
 export interface AuthUser {

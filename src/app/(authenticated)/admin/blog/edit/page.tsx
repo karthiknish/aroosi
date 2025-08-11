@@ -6,7 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
 import BlogEditor from "@/components/admin/BlogEditor";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { fetchBlogPostBySlug, editBlogPost } from "@/lib/blogUtil";
 import type { BlogPost } from "@/types/blog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";

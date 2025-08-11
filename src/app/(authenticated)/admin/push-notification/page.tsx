@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { sendPushNotification } from "@/lib/pushNotificationApi";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

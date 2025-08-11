@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { getConversationEventsSSEUrl, markConversationRead } from "@/lib/api/conversation";
 import { MessageData, MessageEvent } from "@/lib/utils/messageUtils";
 import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";

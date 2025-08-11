@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "./AuthProvider";
+import { useAuthContext } from "./ClerkAuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Trash2, Grip } from "lucide-react";

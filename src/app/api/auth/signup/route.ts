@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fetchQuery, fetchMutation } from "convex/nextjs";
 import { api } from "@convex/_generated/api";
 import { ConvexHttpClient } from "convex/browser";
+import { clerkClient } from "@clerk/nextjs/server";
 
 /**
  * Utility: normalize Gmail for comparison-only throttling
@@ -334,35 +335,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2) Existing account policy
-    const existingByEmail = (await fetchQuery(api.users.getUserByEmail, {
-      email: normalizedEmail,
-    }).catch(() => null)) as { googleId?: string; hashedPassword?: string; _id?: string } | null;
-
-    if (existingByEmail) {
-      if (existingByEmail.googleId && !existingByEmail.hashedPassword) {
+    // 2) Check if user already exists in Clerk
+    try {
+      const clerkUser = await (await clerkClient()).users.getUserList({
+        emailAddress: [normalizedEmail],
+      });
+      
+      if (clerkUser && clerkUser.data.length > 0) {
         return NextResponse.json(
           {
             status: "ok",
             message:
-              "An account exists for this email. Please continue with Google sign-in.",
-            code: "USE_GOOGLE_SIGNIN",
+              "An account with this email already exists. Please sign in instead.",
+            code: "ACCOUNT_EXISTS",
             correlationId,
           },
           { status: 200 }
         );
       }
-
-      return NextResponse.json(
-        {
-          status: "ok",
-          message:
-            "An account with this email already exists. Please sign in instead.",
-          code: "ACCOUNT_EXISTS",
-          correlationId,
-        },
-        { status: 200 }
-      );
+    } catch (e) {
+      // Continue if Clerk lookup fails
+      console.warn("Clerk user lookup failed:", e);
     }
 
     // Normalize profile payload
@@ -425,55 +418,20 @@ export async function POST(request: NextRequest) {
       profileImageIds: undefined,
     };
 
-    // 2) Create account via Convex Auth Password provider (sets session cookies)
+    // 2) Create account via Clerk
     try {
+      // Create user in Clerk
+      const clerkUser = await (await clerkClient()).users.createUser({
+        emailAddress: [normalizedEmail],
+        password,
+        firstName: fullName.split(" ")[0],
+        lastName: fullName.split(" ").slice(1).join(" ") || undefined,
+      });
+
       // Create Convex client
       const convex = new ConvexHttpClient(
         process.env.NEXT_PUBLIC_CONVEX_URL!
       );
-
-      // Call the signIn action directly for signup
-      let result: { tokens?: { token: string } | null; } | undefined;
-      try {
-        result = await convex.action(api.auth.signIn, {
-          provider: "password",
-          params: {
-            email: normalizedEmail,
-            password,
-            flow: "signUp",
-          },
-        });
-      } catch (error: any) {
-        console.error("SignUp error:", error);
-        // Provide user-friendly error messages for common cases
-        let errorMessage = "Unable to create account. Please try again.";
-        let errorCode = "SIGNUP_FAILED";
-        
-        // Check if it's a specific Convex Auth error
-        if (error?.message?.includes("AccountExists")) {
-          errorMessage = "An account with this email already exists. Please sign in instead.";
-          errorCode = "ACCOUNT_EXISTS";
-        } else if (error?.message?.includes("InvalidPassword")) {
-          errorMessage = "Password does not meet security requirements. Please use a stronger password.";
-          errorCode = "WEAK_PASSWORD";
-        } else if (error?.message?.includes("InvalidAccountId")) {
-          errorMessage = "No account found with this email address. Please check your email or sign up for a new account.";
-          errorCode = "ACCOUNT_NOT_FOUND";
-        }
-        
-        return NextResponse.json(
-          { error: errorMessage, code: errorCode, correlationId },
-          { status: 400 }
-        );
-      }
-
-      // Check if the sign up was successful
-      if (!result?.tokens?.token) {
-        return NextResponse.json(
-          { error: "Failed to create account. Please try again.", correlationId },
-          { status: 500 }
-        );
-      }
 
       // Ensure a user+profile exists in our domain data
       let createdUserId: string | null = null;
@@ -488,6 +446,7 @@ export async function POST(request: NextRequest) {
             picture: undefined,
             googleId: undefined,
             profileData: normalizedProfile,
+            clerkId: clerkUser.id, // Add Clerk user ID
           })) as unknown as string;
         } else {
           createdUserId = String(existing._id);
@@ -496,7 +455,7 @@ export async function POST(request: NextRequest) {
         console.error("Error creating user:", e);
       }
 
-      // Create response with session cookie
+      // Create response
       const res = NextResponse.json(
         {
           status: "success",
@@ -505,6 +464,7 @@ export async function POST(request: NextRequest) {
             id: createdUserId,
             email: normalizedEmail,
             role: "user",
+            clerkId: clerkUser.id, // Include Clerk user ID in response
           },
           isNewUser: true,
           redirectTo: "/success",
@@ -512,15 +472,6 @@ export async function POST(request: NextRequest) {
         },
         { headers: { "Cache-Control": "no-store" } }
       );
-      
-      // Set the session cookie
-      res.cookies.set("convex-session", result.tokens.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        path: "/",
-        sameSite: "lax",
-      });
 
       return res;
     } catch (e: any) {
@@ -529,6 +480,36 @@ export async function POST(request: NextRequest) {
       const errorMessage = process.env.NODE_ENV === "development" 
         ? `Sign up failed: ${e.message || "Unknown error"}`
         : "Unable to create account. Please try again.";
+      
+      // Handle specific Clerk errors
+      if (e?.errors?.[0]?.code === "form_identifier_exists") {
+        return NextResponse.json(
+          { 
+            error: "An account with this email already exists. Please sign in instead.", 
+            code: "ACCOUNT_EXISTS", 
+            correlationId 
+          },
+          { status: 409 }
+        );
+      } else if (e?.errors?.[0]?.code === "form_password_pwned") {
+        return NextResponse.json(
+          { 
+            error: "This password has been compromised in a data breach. Please choose a different password.", 
+            code: "WEAK_PASSWORD", 
+            correlationId 
+          },
+          { status: 400 }
+        );
+      } else if (e?.errors?.[0]?.code === "form_password_size") {
+        return NextResponse.json(
+          { 
+            error: "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol.", 
+            code: "WEAK_PASSWORD", 
+            correlationId 
+          },
+          { status: 400 }
+        );
+      }
       
       return NextResponse.json(
         { error: errorMessage, code: "SIGNUP_FAILED", correlationId },

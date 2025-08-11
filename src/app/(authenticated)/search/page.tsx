@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { motion } from "framer-motion";
 import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
 import { ErrorState } from "@/components/ui/error-state";

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";

@@ -9,7 +9,7 @@ import {
 } from "@/lib/blogUtil";
 import { CreatePost } from "@/components/admin/CreatePost";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
 import { api } from "@convex/_generated/api";

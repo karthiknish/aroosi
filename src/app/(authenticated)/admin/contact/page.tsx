@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { fetchAllContactsAdmin } from "@/lib/contactUtil";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import {
   Table,

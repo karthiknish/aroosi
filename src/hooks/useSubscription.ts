@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { subscriptionAPI } from "@/lib/api/subscription";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import {
   SubscriptionErrorHandler,
 } from "@/lib/utils/subscriptionErrorHandler";

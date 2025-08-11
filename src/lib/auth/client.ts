@@ -1,10 +1,11 @@
 /**
- * Auth client utilities (cookie/session model)
+ * Auth client utilities using Clerk API
  * - Provides helpers to call API endpoints and normalize responses
  * - Exposes logout for server-side session invalidation
  */
 
 import { postJson } from "../http/client";
+import { SignOutCallback } from "@clerk/types";
 
 type SigninResponse = {
   status?: string;
@@ -16,7 +17,10 @@ type SigninResponse = {
 };
 
 export async function signin(params: { email: string; password: string }) {
-  const res = await postJson<SigninResponse>("/api/auth/signin", params, { cache: "no-store" });
+  // For Clerk integration, we'll use the existing API route but enhance it
+  const res = await postJson<SigninResponse>("/api/auth/signin", params, {
+    cache: "no-store",
+  });
   return res;
 }
 
@@ -26,17 +30,42 @@ export async function signin(params: { email: string; password: string }) {
  * For Google, the server expects either an ID token or user info JSON in "credential",
  * and a CSRF/state string in "state".
  */
-export async function googleAuth(params: { credential: string; state: string }) {
-  const res = await postJson<SigninResponse>("/api/auth/google", params, { cache: "no-store" });
+export async function googleAuth(params: {
+  credential: string;
+  state: string;
+}) {
+  const res = await postJson<SigninResponse>("/api/auth/google", params, {
+    cache: "no-store",
+  });
   return res;
 }
 
-export async function logout() {
-  // Best-effort notify server (idempotent endpoint)
+export async function logout(callback?: SignOutCallback) {
+  // Sign out from Clerk and notify server (idempotent endpoint)
   try {
-    await postJson<{ message: string }>("/api/auth/logout", undefined, { cache: "no-store" });
-  } catch {
-    // ignore network errors
+    // Dynamic import to avoid SSR issues; signOut exists on the module
+    const clerkModule: any = await import("@clerk/nextjs");
+    const signOutFunc: any =
+      clerkModule.signOut || clerkModule?.default?.signOut;
+    if (typeof signOutFunc === "function") {
+      await signOutFunc({ redirectUrl: "/sign-in" });
+    } else {
+      // Fallback to window.location for client-side redirect
+      if (typeof window !== "undefined") {
+        window.location.href = "/sign-in";
+      }
+    }
+
+    // Best-effort notify server
+    await postJson<{ message: string }>("/api/auth/logout", undefined, {
+      cache: "no-store",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Even if Clerk sign out fails, still call the callback if provided
+    if (callback) {
+      callback();
+    }
   }
 }
 
@@ -54,20 +83,25 @@ export async function forgotPassword(email: string) {
 /**
  * Public: reset password
  */
-export async function resetPassword(params: { email: string; password: string }) {
-  return postJson<{ message?: string }>(
-    "/api/auth/reset-password",
-    params,
-    { cache: "no-store" }
-  );
+export async function resetPassword(params: {
+  email: string;
+  password: string;
+}) {
+  return postJson<{ message?: string }>("/api/auth/reset-password", params, {
+    cache: "no-store",
+  });
 }
 
 /**
- * Accessors for current tokens (for diagnostics/UI)
+ * Accessors for current tokens using Clerk
  */
-export function getAccessToken(): string | null {
+export async function getAccessToken(): Promise<string | null> {
+  // Client-side function should not import server modules
+  // Return null or implement client-side token retrieval
   return null;
 }
-export function getRefreshToken(): string | null {
+
+export async function getRefreshToken(): Promise<string | null> {
+  // Clerk handles token refresh automatically, so we don't expose refresh tokens directly
   return null;
 }

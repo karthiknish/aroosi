@@ -1,7 +1,8 @@
 import "./globals.css";
 
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
-import { AuthProvider } from "@/components/AuthProvider";
+import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkAuthProvider } from "@/components/ClerkAuthProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
 import RouteTransition from "@/components/RouteTransition";
@@ -86,13 +87,15 @@ export default function RootLayout({
           Skip to main content
         </a>
 
-        <ReactQueryProvider>
-          <AuthProvider>
-            <ClientRoot>
-              <RouteTransition>{children}</RouteTransition>
-            </ClientRoot>
-          </AuthProvider>
-        </ReactQueryProvider>
+        <ClerkProvider>
+          <ReactQueryProvider>
+            <ClerkAuthProvider>
+              <ClientRoot>
+                <RouteTransition>{children}</RouteTransition>
+              </ClientRoot>
+            </ClerkAuthProvider>
+          </ReactQueryProvider>
+        </ClerkProvider>
 
         {/* OneSignal SDK v16 */}
         <Script

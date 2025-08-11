@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useRouter } from "next/navigation";
 import { updateUserProfile, boostProfile } from "@/lib/profile/userProfileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ConversationList from "./ConversationList";
 import ModernChat from "./ModernChat";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
 // import { createConversationId } from '@/lib/utils/messageUtils';
 

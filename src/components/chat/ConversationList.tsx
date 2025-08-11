@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { formatMessageTime, ConversationData } from "@/lib/utils/messageUtils";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { getConversations } from "@/lib/api/conversation";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 
 // Type for conversation from API
 interface ApiConversation {

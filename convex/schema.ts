@@ -11,13 +11,15 @@ export default defineSchema({
     banned: v.optional(v.boolean()),
     role: v.optional(v.string()),
     googleId: v.optional(v.string()), // For Google OAuth users
+    clerkId: v.optional(v.string()), // For Clerk users
     emailVerified: v.optional(v.boolean()),
     createdAt: v.optional(v.number()),
     // Session management: single-use refresh token rotation counter
     refreshVersion: v.optional(v.number()),
   })
     .index("by_email", ["email"])
-    .index("by_googleId", ["googleId"]),
+    .index("by_googleId", ["googleId"])
+    .index("by_clerkId", ["clerkId"]),
 
   profiles: defineTable({
     userId: v.id("users"), // Links to the user record

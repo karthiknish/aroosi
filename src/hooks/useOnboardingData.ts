@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useRouter } from "next/navigation";
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 

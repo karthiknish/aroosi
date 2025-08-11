@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { sendMarketingEmail } from "@/lib/marketingEmailApi";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

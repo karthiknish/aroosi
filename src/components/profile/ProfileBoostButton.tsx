@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Rocket, Zap, Clock } from "lucide-react";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 import { FeatureUsageTracker } from "@/components/subscription/FeatureUsageTracker";

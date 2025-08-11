@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 // import { useUser } from "@clerk/nextjs"; // Removed for native auth
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 
 export default function OAuthCallbackPage() {
   const router = useRouter();

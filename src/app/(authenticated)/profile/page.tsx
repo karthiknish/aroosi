@@ -2,7 +2,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { ProfileView } from "@/components/profile/ProfileView";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";

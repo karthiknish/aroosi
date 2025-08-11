@@ -16,7 +16,7 @@ function maskEmail(e?: string) {
 }
 
 /**
- * Query helper: find user by email (uses index 'by_email' on users.email)
+ * Query helper: find user by email (uses index 'by_email' on users.email in your Convex schema)
  */
 export const findUserByEmail = query({
   args: { email: v.string() },
@@ -28,6 +28,44 @@ export const findUserByEmail = query({
     // eslint-disable-next-line no-console
     console.info("convex.users.findUserByEmail", {
       email: maskEmail(email),
+      found: Boolean(res),
+    });
+    return res;
+  },
+});
+
+/**
+ * Query helper: find user by Clerk ID (uses index 'by_clerkId' on users.clerkId in your Convex schema)
+ */
+export const findUserByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, { clerkId }) => {
+    const res = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
+      .first();
+    // eslint-disable-next-line no-console
+    console.info("convex.users.findUserByClerkId", {
+      clerkId: clerkId.substring(0, 10) + "...",
+      found: Boolean(res),
+    });
+    return res;
+  },
+});
+
+/**
+ * Alias: getUserByClerkId -> delegates to findUserByClerkId
+ */
+export const getUserByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, { clerkId }) => {
+    const res = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
+      .first();
+    // eslint-disable-next-line no-console
+    console.info("convex.users.getUserByClerkId", {
+      clerkId: clerkId.substring(0, 10) + "...",
       found: Boolean(res),
     });
     return res;
@@ -53,13 +91,16 @@ export const getUserByEmail = query({
   },
 });
 
-/**\n * Mutation helper: create user and default profile\n */
+/**
+ * Mutation helper: create user and default profile
+ */
 export const createUserAndProfile = mutation({
   args: {
     email: v.string(),
     name: v.optional(v.string()),
     picture: v.optional(v.string()),
     googleId: v.optional(v.string()),
+    clerkId: v.optional(v.string()),
     profileData: v.optional(v.object({
       fullName: v.optional(v.string()),
       aboutMe: v.optional(v.string()),
@@ -92,11 +133,12 @@ export const createUserAndProfile = mutation({
       dateOfBirth: v.optional(v.string()),
     })),
   },
-  handler: async (ctx, { email, name, picture, googleId, profileData }) => {
+  handler: async (ctx, { email, name, picture, googleId, clerkId, profileData }) => {
     // eslint-disable-next-line no-console
     console.info("convex.users.createUserAndProfile:start", {
       email: maskEmail(email),
       hasGoogleId: Boolean(googleId),
+      hasClerkId: Boolean(clerkId),
     });
     const userId = await ctx.db.insert("users", {
       email,
@@ -104,6 +146,7 @@ export const createUserAndProfile = mutation({
       createdAt: Date.now(),
       emailVerified: true,
       googleId: googleId ?? undefined,
+      clerkId: clerkId ?? undefined,
       name: name ?? undefined,
       picture: picture ?? undefined,
     } as any);

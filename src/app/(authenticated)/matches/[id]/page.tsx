@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useParams } from "next/navigation";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import ModernChat from "@/components/chat/ModernChat";
 import { getConversationId } from "@/lib/utils/conversation";
 import { useQuery } from "@tanstack/react-query";

@@ -43,7 +43,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { deleteProfile } from "@/lib/utils/profileApi";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 // Re-export types for backward compatibility
 type ApiImage = unknown;
 type MappedImage = unknown;

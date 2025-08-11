@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-
-// Token-based approach (Authorization: Bearer <token>):
-// - Do not rely on cookies at all.
-// - Middleware only performs lightweight gating for known authenticated client routes.
-// - Actual auth is enforced in API route handlers using Authorization headers.
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Public pages that never require auth
 const publicRoutes = [
   "/",
-  "/sign-in",
-  // removed sign-up
+  "/sign-in(.*)",
+  "/sign-up(.*)",
   "/about",
   "/how-it-works",
   "/privacy",
@@ -22,6 +17,7 @@ const publicRoutes = [
   "/reset-password",
   "/oauth",
   "/oauth/callback",
+  "/sso-callback",
 ];
 
 // Public API route prefixes (auth handled per-handler)
@@ -32,16 +28,8 @@ const publicApiRoutes = [
   "/api/stripe/webhook",
 ];
 
-function isPublicRoute(pathname: string): boolean {
-  return publicRoutes.some((route) => {
-    if (route === "/blog" && pathname.startsWith("/blog")) return true;
-    return pathname === route;
-  });
-}
-
-function isPublicApiRoute(pathname: string): boolean {
-  return publicApiRoutes.some((route) => pathname.startsWith(route));
-}
+const isPublicRoute = createRouteMatcher(publicRoutes);
+const isPublicApiRoute = createRouteMatcher(publicApiRoutes);
 
 // Known authenticated client routes (pages). Unknown routes fall through to 404.
 function isAuthenticatedClientRoute(pathname: string): boolean {
@@ -57,57 +45,20 @@ function isAuthenticatedClientRoute(pathname: string): boolean {
   );
 }
 
-export default async function middleware(request: NextRequest) {
+export default clerkMiddleware((auth, request) => {
   const { pathname } = request.nextUrl;
 
-  // Bypass for system/static paths
-  const isSystemPath =
-    pathname === "/404" ||
-    pathname === "/500" ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.includes("__next_static") ||
-    pathname.includes("__next_data");
-  if (isSystemPath) return NextResponse.next();
-
-  // Minimal trace
-  console.info("MW pass-through", { scope: "auth.middleware", path: pathname });
-
-  // Skip middleware for static files and assets
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.includes(".")
-  ) {
-    return NextResponse.next();
-  }
-
   // Always allow public pages and public API routes
-  // Always allow public pages; Convex Auth handles /api/auth
-  if (isPublicRoute(pathname)) return NextResponse.next();
-
-  // For authenticated client routes, allow if Authorization header OR auth cookies exist, otherwise redirect to sign-in
-  if (isAuthenticatedClientRoute(pathname)) {
-    // Let Convex Auth determine auth state via cookies
-    // If not authenticated, redirect to sign-in with callback
-    // We can't call convexAuthNextjsToken here without context; rely on cookies being handled
-    const cookies = request.cookies;
-    const hasAuthCookie = Boolean(
-      cookies.get("cvx-auth")?.value ||
-      cookies.get("cvx-refresh")?.value ||
-      cookies.get("convex-session")?.value
-    );
-    if (!hasAuthCookie) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/sign-in";
-      return NextResponse.redirect(url);
-    }
-    return NextResponse.next();
+  if (isPublicRoute(request) || isPublicApiRoute(request)) {
+    return;
   }
 
-  // For all other routes, pass through; API handlers enforce auth via headers
-  return NextResponse.next();
-}
+  // For authenticated client routes, protect with Clerk
+  if (isAuthenticatedClientRoute(pathname)) {
+    auth.protect();
+    return;
+  }
+});
 
 export const config = {
   matcher: [

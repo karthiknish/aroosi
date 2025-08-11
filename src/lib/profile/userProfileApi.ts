@@ -499,3 +499,6 @@ export async function checkEmailHasProfile(
     return { exists: false, hasProfile: false };
   }
 }
+
+// Export types
+export type { Profile } from "@/types/profile";

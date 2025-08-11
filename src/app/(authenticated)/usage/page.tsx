@@ -4,7 +4,7 @@ import React from "react";
 import { UsageTracker } from "@/components/usage/UsageTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { format } from "date-fns";
 import {
   BarChart,

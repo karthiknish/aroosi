@@ -3,7 +3,7 @@
 import React, { useCallback, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import {
   fetchUserProfileImages,
   getCurrentUserWithProfile,

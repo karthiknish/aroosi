@@ -1,5 +1,5 @@
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { updateAdminProfileImageOrder } from "@/lib/profile/adminProfileApi";

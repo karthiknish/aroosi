@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import RouteTransition from "@/components/RouteTransition";

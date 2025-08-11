@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import ProfileCreateWizard from "@/components/profile/ProfileCreateWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";

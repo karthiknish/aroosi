@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/components/AuthProvider";
+import { useClerkAuth } from "@/components/ClerkAuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import GoogleAuthButton from "./GoogleAuthButton";
+import { GoogleAuthButton } from "./GoogleAuthButton";
 import { showErrorToast } from "@/lib/ui/toast";
 
 
@@ -24,7 +24,7 @@ export default function CustomSignInForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signIn, refreshUser, user } = useAuth();
+  const { signIn, refreshUser, user } = useClerkAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuthContext } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/ClerkAuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { ErrorState } from "@/components/ui/error-state";

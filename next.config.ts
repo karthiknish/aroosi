@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
       "proper-gull-501.convex.cloud",
       "images.pexels.com",
       "images.squarespace-cdn.com",
+      "img.clerk.com",
+      "images.clerk.dev",
     ],
   },
   webpack: (config) => {
