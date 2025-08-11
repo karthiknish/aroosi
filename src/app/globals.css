@@ -571,37 +571,48 @@
 /* Custom Toast Styling */
 [data-sonner-toast] {
   transform-origin: bottom right;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.4s cubic-bezier(0.21, 1.02, 0.73, 1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
 [data-sonner-toast][data-mounted="true"] {
-  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slide-in-right 0.4s cubic-bezier(0.21, 1.02, 0.73, 1);
 }
 
 [data-sonner-toast][data-removed="true"] {
-  animation: slide-out-right 0.2s cubic-bezier(0.4, 0, 1, 1);
+  animation: slide-out-right 0.3s cubic-bezier(0.4, 0, 1, 1);
 }
 
 [data-sonner-toast] [data-icon] {
-  margin-right: 8px;
+  margin-right: 12px;
   margin-top: 2px;
   flex-shrink: 0;
+  width: 20px;
+  height: 20px;
 }
 
 [data-sonner-toast] [data-close-button] {
   background: transparent;
   border: none;
   color: inherit;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  opacity: 0.7;
+  transition: all 0.2s ease;
   cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
+  padding: 4px;
+  border-radius: 6px;
+  margin-left: 8px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 [data-sonner-toast] [data-close-button]:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
 }
 
 [data-sonner-toast][data-type="success"] [data-icon] {
@@ -622,7 +633,7 @@
 
 @keyframes slide-in-right {
   from {
-    transform: translateX(100%) scale(0.95);
+    transform: translateX(100%) scale(0.9);
     opacity: 0;
   }
   to {
@@ -637,7 +648,7 @@
     opacity: 1;
   }
   to {
-    transform: translateX(100%) scale(0.95);
+    transform: translateX(100%) scale(0.9);
     opacity: 0;
   }
 }

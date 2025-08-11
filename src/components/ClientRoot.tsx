@@ -36,15 +36,16 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
         position="bottom-right"
         toastOptions={{
           style: {
-            background: "#fff",
-            border: "1px solid #E7E3DF",
+            background: "rgba(255, 255, 255, 0.95)",
+            border: "1px solid rgba(231, 227, 223, 0.8)",
             color: "#4A4A4A",
-            borderRadius: "0.5rem",
+            borderRadius: "0.75rem",
             fontSize: "14px",
             fontWeight: "500",
-            padding: "12px 16px",
+            padding: "16px 20px",
             fontFamily: "var(--font-family-sans)",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
+            backdropFilter: "blur(10px)",
           },
         }}
         theme="light"

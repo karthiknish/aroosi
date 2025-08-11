@@ -37,14 +37,14 @@ export function showErrorToast(
 
   toast.error(message, {
     style: {
-      background: "#B45E5E", // brand danger color
+      background: "linear-gradient(135deg, #B45E5E 0%, #BE185D 100%)",
       color: "#ffffff",
-      border: "1px solid #BE185D",
-      borderRadius: "0.5rem",
+      border: "1px solid #F9A8D4",
+      borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
-      padding: "12px 16px",
-      boxShadow: "0 4px 12px rgba(180, 94, 94, 0.15)",
+      padding: "16px 20px",
+      boxShadow: "0 6px 16px rgba(190, 24, 93, 0.25)",
     },
     duration: 5000,
   });
@@ -56,16 +56,15 @@ export function showErrorToast(
 
 export function showSuccessToast(message: string) {
   toast.success(message, {
-
     style: {
-      background: "#7BA17D", // brand success color
+      background: "linear-gradient(135deg, #7BA17D 0%, #059669 100%)",
       color: "#ffffff",
-      border: "1px solid #059669",
-      borderRadius: "0.5rem",
+      border: "1px solid #A7F3D0",
+      borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
-      padding: "12px 16px",
-      boxShadow: "0 4px 12px rgba(123, 161, 125, 0.15)",
+      padding: "16px 20px",
+      boxShadow: "0 6px 16px rgba(5, 150, 105, 0.25)",
     },
     duration: 4000,
   });
@@ -74,16 +73,15 @@ export function showSuccessToast(message: string) {
 // Informational toast (e.g., prompts or neutral messages)
 export function showInfoToast(message: string) {
   toast.info(message, {
-
     style: {
-      background: "#5F92AC", // brand secondary color
+      background: "linear-gradient(135deg, #5F92AC 0%, #3E647A 100%)",
       color: "#ffffff",
-      border: "1px solid #3E647A",
-      borderRadius: "0.5rem",
+      border: "1px solid #BFDBFE",
+      borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
-      padding: "12px 16px",
-      boxShadow: "0 4px 12px rgba(95, 146, 172, 0.15)",
+      padding: "16px 20px",
+      boxShadow: "0 6px 16px rgba(62, 100, 122, 0.25)",
     },
     duration: 4000,
   });
@@ -92,16 +90,15 @@ export function showInfoToast(message: string) {
 // Warning toast for important notifications
 export function showWarningToast(message: string) {
   toast.warning(message, {
-
     style: {
-      background: "#D6B27C", // brand accent color
+      background: "linear-gradient(135deg, #D6B27C 0%, #B28E5F 100%)",
       color: "#ffffff",
-      border: "1px solid #B28E5F",
-      borderRadius: "0.5rem",
+      border: "1px solid #FDE68A",
+      borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
-      padding: "12px 16px",
-      boxShadow: "0 4px 12px rgba(214, 178, 124, 0.15)",
+      padding: "16px 20px",
+      boxShadow: "0 6px 16px rgba(178, 142, 95, 0.25)",
     },
     duration: 5000,
   });
@@ -110,16 +107,15 @@ export function showWarningToast(message: string) {
 // Primary branded toast for special announcements
 export function showPrimaryToast(message: string) {
   toast(message, {
-
     style: {
-      background: "linear-gradient(135deg, #EC4899 0%, #BE185D 100%)", // brand primary gradient
+      background: "linear-gradient(135deg, #EC4899 0%, #BE185D 100%)",
       color: "#ffffff",
-      border: "1px solid #F9A8D4",
-      borderRadius: "0.5rem",
+      border: "1px solid #FBCFE8",
+      borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "600",
-      padding: "12px 16px",
-      boxShadow: "0 4px 12px rgba(236, 72, 153, 0.25)",
+      padding: "16px 20px",
+      boxShadow: "0 6px 16px rgba(236, 72, 153, 0.3)",
     },
     duration: 6000,
   });
