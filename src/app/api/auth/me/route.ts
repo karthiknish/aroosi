@@ -6,7 +6,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { getUserEmailServer, getUserFullNameServer } from "@/lib/clerkServerApi";
 
 // Return current user with profile using Clerk authentication
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     // Get the session token from Clerk
     const { userId } = await auth();
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     }
 
     // Create Convex client
-    const convex = new ConvexHttpClient(
+    const _convex = new ConvexHttpClient(
       process.env.NEXT_PUBLIC_CONVEX_URL!
     );
 
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     }
     
     // If user exists in Convex, get their profile
-    // @ts-expect-error
+    // @ts-expect-error - Type mismatch between generated types and runtime response
     const data = await fetchQuery(api.users.getCurrentUserWithProfile, { userId: convexUser._id });
     if (!data) return NextResponse.json({ user: null }, { status: 200 });
     const user = data.user;

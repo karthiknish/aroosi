@@ -16,7 +16,7 @@ const Confetti = dynamic(() => import("react-confetti"), {
 
 export default function ProfileCreationSuccessPage() {
   const router = useRouter();
-  const { isAuthenticated, user, isLoading, isLoaded } = useAuth();
+  const { isAuthenticated, isLoading, isLoaded } = useAuth();
 
   // Track viewport size for confetti dimensions
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
