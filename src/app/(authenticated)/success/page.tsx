@@ -62,6 +62,9 @@ export default function ProfileCreationSuccessPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center relative overflow-hidden bg-gradient-to-br from-pink-50 via-white to-rose-50">
+      {/* Decorative elements matching sign-in page */}
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
       {/* Confetti */}
       {showConfetti && dimensions.width > 0 && dimensions.height > 0 && (
         <Confetti
@@ -85,7 +88,7 @@ export default function ProfileCreationSuccessPage() {
             damping: 20,
             delay: 0.2,
           }}
-          className="relative mx-auto mb-8"
+          className="relative mx-auto mb-8 flex items-center justify-center"
         >
           <div className="w-32 h-32 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-xl">
             <UserCheck className="text-white" size={64} />
@@ -129,7 +132,7 @@ export default function ProfileCreationSuccessPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent"
+          className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent leading-[1.7]"
         >
           Welcome to Aroosi!
         </motion.h1>
@@ -180,8 +183,8 @@ export default function ProfileCreationSuccessPage() {
           className="mt-12 grid grid-cols-3 gap-4 max-w-md mx-auto"
         >
           <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
-            <div className="text-2xl font-bold text-pink-600">10K+</div>
-            <div className="text-xs text-gray-500">Profiles</div>
+            <div className="text-2xl font-bold text-pink-600">New</div>
+            <div className="text-xs text-gray-500">Just launched</div>
           </div>
           <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 shadow-sm">
             <div className="text-2xl font-bold text-pink-600">95%</div>

@@ -7,11 +7,11 @@ import {
   useSensors,
   KeyboardSensor,
   DragOverlay,
-  useDndMonitor,
   type DragEndEvent,
   type DragStartEvent,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import {
   arrayMove,
   SortableContext,
@@ -23,7 +23,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useAuthContext } from "./ClerkAuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Trash2, Grip } from "lucide-react";
+import { X as CloseIcon, Grip } from "lucide-react";
 // Use the correct import for the modal
 import ImageDeleteConfirmation from "@/components/ImageDeleteConfirmation";
 import ProfileImageModal from "@/components/ProfileImageModal";
@@ -97,11 +97,14 @@ const SortableImageBase = ({
       style={style}
       className="relative group"
       aria-grabbed={isDragging || dndDragging ? "true" : "false"}
-      // Disable drag interactions while parent is persisting reorder
-      {...(typeof (attributes as any)?.role !== "undefined" ? attributes : {})}
-      {...(isDragging ? {} : {})}
+      {...attributes}
+      {...listeners}
     >
-      <div className="absolute -left-2 -top-2 p-2 cursor-grab active:cursor-grabbing z-10 opacity-100 group-hover:opacity-100 transition-opacity">
+      <div
+        className="absolute -left-2 -top-2 p-2 cursor-grab active:cursor-grabbing z-10 opacity-100 group-hover:opacity-100 transition-opacity"
+        role="presentation"
+        aria-hidden="true"
+      >
         <Grip className="w-4 h-4 text-gray-400" />
       </div>
       {/* Set as main (move to index 0) */}
@@ -169,27 +172,19 @@ const SortableImageBase = ({
           />
         </button>
       )}
-      {/* Disable drag handles during server persistence by omitting listeners */}
-      {!isDragging && (
-        <div
-          // Provide the drag listeners here conditionally; parent passes a prop via context using isReordering
-          {...listeners}
-          className="absolute inset-0 z-0 pointer-events-none"
-        />
-      )}
+      {/* Drag listeners are bound to the handle above */}
       {onDeleteImage && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             setShowDeleteConfirmation(true);
           }}
-          // Make the delete button always visible by removing group-hover and opacity classes
-          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 text-xs hover:opacity-75 transition-opacity z-30"
+          className="absolute top-1 right-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full p-1.5 text-xs transition-colors z-30 shadow-sm"
           aria-label="Remove image"
           tabIndex={0}
           type="button"
         >
-          <Trash2 className="w-3 h-3" />
+          <CloseIcon className="w-3.5 h-3.5" />
         </button>
       )}
       {/* Use the correct modal import and props */}
@@ -258,26 +253,17 @@ export function ProfileImageReorder({
   // Accessibility: add KeyboardSensor and improve touch activation constraints
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        // Slightly higher distance to prevent accidental drags
-        distance: 8,
-        // Add press delay for touch to reduce accidental drags
-        delay: 150,
-        tolerance: 5,
-      },
+      activationConstraint: { distance: 6 },
     }),
     useSensor(KeyboardSensor)
   );
 
-  // Track drag start to render DragOverlay thumbnail
-  useDndMonitor({
-    onDragStart: (evt: DragStartEvent) => {
-      if (!evt.active?.id) return;
-      setActiveId(String(evt.active.id));
-    },
-    onDragEnd: () => setActiveId(null),
-    onDragCancel: () => setActiveId(null),
-  });
+  // Track drag start/cancel to render DragOverlay thumbnail
+  const handleDragStart = useCallback((evt: DragStartEvent) => {
+    if (!evt.active?.id) return;
+    setActiveId(String(evt.active.id));
+  }, []);
+  const handleDragCancel = useCallback(() => setActiveId(null), []);
 
   // Build a stable dnd-id per image with collision handling
   const dndIds: string[] = useMemo(() => {
@@ -306,7 +292,7 @@ export function ProfileImageReorder({
       seen.set(base, count + 1);
       return count === 0 ? base : `${base}__${count}`;
     });
-  }, [images]);
+  }, [currentImages]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -415,7 +401,16 @@ export function ProfileImageReorder({
         setIsReordering(false);
       }
     },
-    [loading, isReordering, currentImages, onReorder, userId, preUpload, dndIds]
+    [
+      loading,
+      isReordering,
+      currentImages,
+      onReorder,
+      userId,
+      preUpload,
+      dndIds,
+      modalState?.open,
+    ]
   );
 
   // ARIA live region for announcing reorder
@@ -468,13 +463,16 @@ export function ProfileImageReorder({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        modifiers={[restrictToHorizontalAxis]}
+        onDragStart={handleDragStart}
+        onDragCancel={handleDragCancel}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
           items={dndIds}
           strategy={horizontalListSortingStrategy}
         >
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-row flex-nowrap gap-4 overflow-x-auto overflow-y-hidden">
             {currentImages.map((img, idx) => {
               const dndId = dndIds[idx] ?? `idx-${idx}`;
               return (
@@ -483,15 +481,7 @@ export function ProfileImageReorder({
                   style={{ width: 100, height: 100 }}
                   className="rounded-lg"
                 >
-                  <div
-                    className={
-                      "w-full h-full rounded-lg " +
-                      // simple drop placeholder effect via outline when a drag is active
-                      (activeId && activeId !== dndId
-                        ? "outline-1 outline-dashed outline-gray-300"
-                        : "")
-                    }
-                  >
+                  <div className="w-full h-full rounded-lg">
                     <SortableImageBase
                       img={img}
                       dndId={dndId}
@@ -545,7 +535,7 @@ export function ProfileImageReorder({
         </SortableContext>
 
         {/* Drag overlay preview to reduce layout jitter */}
-        <DragOverlay adjustScale={true}>
+        <DragOverlay adjustScale={true} dropAnimation={null}>
           {activeId
             ? (() => {
                 const idx = dndIds.findIndex((x) => x === activeId);

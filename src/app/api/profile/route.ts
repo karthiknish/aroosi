@@ -524,14 +524,52 @@ export async function POST(req: NextRequest) {
     };
 
     // Use generated mutation present in API: users.createUserAndProfile
+    // Filter to Convex-validated profileData keys to avoid validator errors
+    const allowedKeys = new Set([
+      "fullName",
+      "aboutMe",
+      "isProfileComplete",
+      "motherTongue",
+      "religion",
+      "ethnicity",
+      "hideFromFreeUsers",
+      "subscriptionPlan",
+      "subscriptionExpiresAt",
+      "profileImageIds",
+      "profileImageUrls",
+      "city",
+      "country",
+      "height",
+      "maritalStatus",
+      "physicalStatus",
+      "diet",
+      "smoking",
+      "drinking",
+      "education",
+      "occupation",
+      "annualIncome",
+      "partnerPreferenceAgeMin",
+      "partnerPreferenceAgeMax",
+      "partnerPreferenceCity",
+      "preferredGender",
+      "phoneNumber",
+      "email",
+      "dateOfBirth",
+    ] as const);
+    const convexProfileData = Object.fromEntries(
+      Object.entries(profileData).filter(([k]) => allowedKeys.has(k as any))
+    );
+
     await convexMutationWithAuth(
       req,
-      (await import("@convex/_generated/api")).api.users.createUserAndProfile as any,
+      (await import("@convex/_generated/api")).api.users
+        .createUserAndProfile as any,
       {
         email: String(profileData.email ?? ""),
         name: String(profileData.fullName ?? ""),
         picture: undefined,
         googleId: undefined,
+        profileData: convexProfileData,
       } as any
     );
     const newProfile = await convexQueryWithAuth(

@@ -143,8 +143,8 @@ export async function GET(_request: NextRequest) {
               clerkId: clerk.id,
               profileData: {
                 fullName: clerk.fullName || clerk.firstName || undefined,
+                email,
                 isProfileComplete: false,
-                isOnboardingComplete: false,
               },
             }
           );

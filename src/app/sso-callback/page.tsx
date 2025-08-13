@@ -29,7 +29,14 @@ function SSOCallbackContent() {
           await setActive?.({ session: signUp.createdSessionId });
           // Refresh user data in our context
           await refreshUser();
-          // Redirect to success page for new signups
+          // Ensure Convex user/profile exists before redirecting
+          try {
+            for (let i = 0; i < 8; i++) {
+              const r = await getCurrentUserWithProfile();
+              if (r?.success && r?.data) break;
+              await new Promise((res) => setTimeout(res, 250 * (i + 1)));
+            }
+          } catch {}
           router.push("/success");
           return;
         }

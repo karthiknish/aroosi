@@ -173,11 +173,53 @@ export function Step6Photos(props: {
     <div className="space-y-6">
       <div className="text-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Profile Photos</h3>
-        <p className="text-sm text-gray-600">Add photos to your profile (optional)</p>
+        <p className="text-sm text-gray-600">
+          Add photos to your profile (optional)
+        </p>
       </div>
       <div className="mb-6">
         <Label className="text-gray-700 mb-2 block">Profile Photos</Label>
-        <div className="mb-4">
+        {pendingImages.length > 0 && (
+          <div className="mt-2">
+            {/* Reorder strip (placed above uploader). Also provides delete X on each image. */}
+            <ProfileImageReorder
+              preUpload
+              images={pendingImages as ImageType[]}
+              userId={userId || ""}
+              loading={false}
+              onReorder={async (ordered: ImageType[]) => {
+                setPendingImages(ordered);
+                try {
+                  const ids = ordered.map((img) => img.id);
+                  const { persistPendingImageOrderToLocal } = await import(
+                    "../profileCreation/step6"
+                  );
+                  persistPendingImageOrderToLocal(ids);
+                } catch {}
+              }}
+              onOptimisticDelete={(imageId: string) => {
+                const next = pendingImages.filter((im) => im.id !== imageId);
+                setPendingImages(next);
+                onImagesChanged(next);
+              }}
+              onDeleteImage={async (imageId: string) => {
+                // No server persistence in pre-upload mode; ensure local state is clean
+                const next = pendingImages.filter((im) => im.id !== imageId);
+                setPendingImages(next);
+                onImagesChanged(next);
+                try {
+                  const ids = next.map((img) => img.id);
+                  const { persistPendingImageOrderToLocal } = await import(
+                    "../profileCreation/step6"
+                  );
+                  persistPendingImageOrderToLocal(ids);
+                } catch {}
+              }}
+            />
+          </div>
+        )}
+
+        <div className="mt-4">
           <imported.ImageUploader
             mode="local"
             userId={userId}
@@ -194,46 +236,10 @@ export function Step6Photos(props: {
               } catch {}
             }}
           />
-          <p className="mt-2 text-xs text-gray-500">Max 5 images. JPG, PNG, WebP up to 5MB, minimum 512x512.</p>
+          <p className="mt-2 text-xs text-gray-500">
+            Max 5 images. JPG, PNG, WebP up to 5MB, minimum 512x512.
+          </p>
         </div>
-
-        {pendingImages.length > 0 && (
-          <div className="mt-4">
-            <div className="grid grid-cols-3 gap-3">
-              {pendingImages.map((img: ImageType) => {
-                const s = itemState[img.id] || { status: "idle", progress: 0 as number };
-                return (
-                  <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                    {img.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={img.url} alt={img.fileName || "photo"} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No preview</div>
-                    )}
-                    {renderTileOverlay(s, () => handleRetry(img), img.id)}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4">
-              <ProfileImageReorder
-                preUpload
-                images={pendingImages as ImageType[]}
-                userId={userId || ""}
-                loading={false}
-                onReorder={async (ordered: ImageType[]) => {
-                  setPendingImages(ordered);
-                  try {
-                    const ids = ordered.map((img) => img.id);
-                    const { persistPendingImageOrderToLocal } = await import("../profileCreation/step6");
-                    persistPendingImageOrderToLocal(ids);
-                  } catch {}
-                }}
-              />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

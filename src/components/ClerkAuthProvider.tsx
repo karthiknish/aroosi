@@ -79,21 +79,18 @@ interface ClerkAuthProviderProps {
 
 export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
-  const {
-    getToken,
-    isSignedIn: clerkIsSignedIn = false,
-    userId: clerkUserId,
-  } = useAuth();
+  const { isSignedIn: clerkIsSignedIn = false, userId: clerkUserId } =
+    useAuth();
   const { signOut: clerkSignOut, setActive } = useClerk();
   const { signIn: clerkSignIn } = useSignIn();
   const { signUp: clerkSignUp } = useSignUp();
-  const router = useRouter();
+  const _router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Track a pending first name we want to apply once the Clerk user object exists
-  const pendingFirstNameRef = React.useRef<string | null>(null);
+  const _pendingFirstNameRef = React.useRef<string | null>(null);
 
   // Guard against late async state overwrites during logout
   const logoutVersionRef = React.useRef(0);
@@ -182,25 +179,7 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
     }
   }, [clerkLoaded, clerkIsSignedIn, clerkUserId, user]);
 
-  // If we have a pending first name (user signed up but user object not yet populated), apply it when clerkUser becomes available
-  useEffect(() => {
-    const applyPendingName = async () => {
-      if (!clerkUser || !pendingFirstNameRef.current) return;
-      try {
-        const desired = pendingFirstNameRef.current;
-        if (!clerkUser.firstName || clerkUser.firstName !== desired) {
-          await clerkUser.update({ firstName: desired });
-        }
-        pendingFirstNameRef.current = null;
-        await refreshUser();
-      } catch (e) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn("Deferred firstName update failed", e);
-        }
-      }
-    };
-    void applyPendingName();
-  }, [clerkUser, refreshUser]);
+  // Removed deferred firstName update to avoid invalid parameter errors
 
   // Sign in with email/password using Clerk
   const signIn = useCallback(
@@ -278,12 +257,11 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
 
   // Sign up with email/password using Clerk
   const signUp = useCallback(
-    async (email: string, password: string, fullName: string) => {
+    async (email: string, password: string, _fullName: string) => {
       try {
         setError(null);
         setUser(null);
-        // Stash desired name so we can apply once user is created
-        pendingFirstNameRef.current = fullName || null;
+        // Names are kept in Convex profile; skip Clerk user firstName updates
 
         if (!clerkSignUp) {
           throw new Error("Sign up not available");
@@ -296,29 +274,13 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
             password,
           });
 
-          console.log("Clerk signUpResponse:", signUpResponse);
+          /* dev: signUpResponse available */
 
           // Check if sign up was successful
           if (signUpResponse.status === "complete") {
             // Refresh user data after successful sign up
             await refreshUser();
-            // Attempt to set firstName on the freshly created Clerk user (ignore failures silently)
-            try {
-              if (pendingFirstNameRef.current && clerkUser) {
-                const desired = pendingFirstNameRef.current;
-                if (!clerkUser.firstName || clerkUser.firstName !== desired) {
-                  await clerkUser.update({ firstName: desired });
-                }
-                // Clear after applying
-                pendingFirstNameRef.current = null;
-                // Re-refresh to pull updated data
-                await refreshUser();
-              }
-            } catch (nameErr) {
-              if (process.env.NODE_ENV !== "production") {
-                console.warn("Failed to set firstName after signup", nameErr);
-              }
-            }
+            // Skip Clerk name update
             return { success: true };
           }
 
@@ -329,24 +291,6 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
             (signUpResponse.unverifiedFields || []).includes("email_address");
 
           if (needsEmailVerification) {
-            // Try to attach firstName before sending code so template personalization works
-            try {
-              if (
-                pendingFirstNameRef.current &&
-                (signUpResponse as any).update
-              ) {
-                await (signUpResponse as any).update({
-                  firstName: pendingFirstNameRef.current,
-                });
-              }
-            } catch (preNameErr) {
-              if (process.env.NODE_ENV !== "production") {
-                console.warn(
-                  "Pre-verification firstName update failed",
-                  preNameErr
-                );
-              }
-            }
             try {
               await signUpResponse.prepareEmailAddressVerification({
                 strategy: "email_code",
@@ -413,12 +357,12 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [clerkSignUp, refreshUser, clerkUser]
+    [clerkSignUp, refreshUser]
   );
 
   // Verify email code (OTP) for pending sign up
   const verifyEmailCode = useCallback(
-    async (code: string, signUpAttemptId: string) => {
+    async (code: string, _signUpAttemptId: string) => {
       try {
         if (!clerkSignUp) throw new Error("Sign up not available");
         // Ensure we have the same sign up attempt loaded; if IDs differ we can't swap easily, rely on current instance
@@ -443,16 +387,7 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
               await setActive({ session: attemptResult.createdSessionId });
             }
           } catch {}
-          // Apply pending first name
-          try {
-            if (pendingFirstNameRef.current && clerkUser) {
-              const desired = pendingFirstNameRef.current;
-              if (!clerkUser.firstName || clerkUser.firstName !== desired) {
-                await clerkUser.update({ firstName: desired });
-              }
-              pendingFirstNameRef.current = null;
-            }
-          } catch {}
+          // Skip Clerk name update
           // Trigger auto-heal creation by refetching via util
           try {
             await getCurrentUserWithProfile();
@@ -474,7 +409,7 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
         return { success: false, error: msg };
       }
     },
-    [clerkSignUp, clerkUser, refreshUser]
+    [clerkSignUp, refreshUser, setActive]
   );
 
   const resendEmailVerification = useCallback(
@@ -526,6 +461,10 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
       }
     } catch (error) {
       if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        // eslint-disable-next-line no-console
+        // eslint-disable-next-line no-console
+        // eslint-disable-next-line no-console
         console.error("Google sign in error", error);
       }
       const errorMessage = "Network error";
@@ -542,6 +481,7 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
       await clerkSignOut({ redirectUrl: "/sign-in" });
     } catch (error) {
       // Log error but continue with local signout
+      // eslint-disable-next-line no-console
       console.error("Sign out failed:", error);
     } finally {
       setUser(null);

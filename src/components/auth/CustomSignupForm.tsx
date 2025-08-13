@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useClerkAuth as useAuth } from "@/components/ClerkAuthProvider"; // Add
 import { Eye, EyeOff } from "lucide-react";
 import { showErrorToast } from "@/lib/ui/toast";
 import { OtpInput } from "@/components/ui/otp-input";
+import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 
 interface CustomSignupFormProps {
   onComplete?: () => void;
@@ -139,6 +140,36 @@ export default function CustomSignupForm({
 
   const router = useRouter();
 
+  // Ensure Convex profile is created before redirecting
+  const ensureConvexProfileReady = useCallback(async (maxAttempts = 8) => {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const resp = await getCurrentUserWithProfile();
+        if (resp?.success && resp?.data) return true;
+      } catch {}
+      await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+    }
+    return false;
+  }, []);
+
+  const finalizeToSuccess = useCallback(async () => {
+    const ok = await ensureConvexProfileReady();
+    if (!ok) {
+      showErrorToast(
+        "We are finalizing your account. Please try again shortly."
+      );
+      setIsLoading(false);
+      return false;
+    }
+    const redirectTo = "/success";
+    try {
+      router.push(redirectTo);
+    } catch {
+      window.location.href = redirectTo;
+    }
+    return true;
+  }, [ensureConvexProfileReady, router]);
+
   // Auto-submit when full 6-digit code entered
   const autoSubmittingRef = useRef(false);
   useEffect(() => {
@@ -170,12 +201,9 @@ export default function CustomSignupForm({
         try {
           if (onComplete) onComplete();
         } catch {}
-        const redirectTo = "/success";
-        try {
-          router.push(redirectTo);
-        } catch {
-          window.location.href = redirectTo;
-        }
+        // Keep loader visible briefly to avoid flicker, then finalize to success
+        await new Promise((r) => setTimeout(r, 400));
+        await finalizeToSuccess();
       } catch (err: any) {
         const msg =
           err?.message || "Invalid verification code. Please try again.";
@@ -196,6 +224,8 @@ export default function CustomSignupForm({
     onError,
     router,
     formData.email,
+    verifyEmailCode,
+    finalizeToSuccess,
   ]);
 
   const handleInputChange = (field: string, value: string) => {
@@ -311,12 +341,8 @@ export default function CustomSignupForm({
           try {
             if (onComplete) onComplete();
           } catch {}
-          const redirectTo = "/success";
-          try {
-            router.push(redirectTo);
-          } catch {
-            window.location.href = redirectTo;
-          }
+          const done = await finalizeToSuccess();
+          if (done) return;
           return;
         } catch (verifyError: any) {
           const errorMsg =
@@ -345,7 +371,7 @@ export default function CustomSignupForm({
 
       // Add debugging logs
       if (process.env.NODE_ENV !== "production") {
-        console.log("SignUp result:", result);
+        /* dev: SignUp result available */
       }
 
       if (!result.success) {
@@ -368,6 +394,8 @@ export default function CustomSignupForm({
               );
             }
           } catch {}
+          // Keep loader briefly so user sees feedback before OTP UI
+          await new Promise((r) => setTimeout(r, 600));
           setIsLoading(false);
           return;
         }
@@ -425,20 +453,11 @@ export default function CustomSignupForm({
       try {
         if (onComplete) onComplete();
       } catch (err) {
-        console.warn("onComplete callback threw, continuing navigation", err);
+        console.warn("onComplete callback threw, continuing", err);
       }
 
-      // Navigate to success page
-      const redirectTo = "/success";
-
-      if (process.env.NODE_ENV !== "production") {
-        /* dev: navigating */
-      }
-      try {
-        router.push(redirectTo);
-      } catch {
-        window.location.href = redirectTo;
-      }
+      // Wait for Convex profile then navigate
+      await finalizeToSuccess();
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
         console.error("Signup request failed", err);
@@ -451,7 +470,19 @@ export default function CustomSignupForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-md">
+          <div className="flex flex-col items-center gap-3 px-6 py-4 text-center">
+            <LoadingSpinner className="h-5 w-5" />
+            <div className="text-sm text-gray-700">
+              {needsVerification
+                ? "Verifying code..."
+                : "Creating account & sending verification code..."}
+            </div>
+          </div>
+        </div>
+      )}
       {process.env.NODE_ENV !== "production" && (
         <div>needsVerification: {needsVerification ? "true" : "false"}</div>
       )}
@@ -481,7 +512,6 @@ export default function CustomSignupForm({
                   }
                 }}
                 length={6}
-                disabled={isLoading}
                 autoFocus
               />
               {fieldErrors.verificationCode ? (

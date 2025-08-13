@@ -106,7 +106,15 @@ export default function CustomSignInForm({
   };
 
   return (
-    <div className="space-y-6" data-testid="custom-sign-in-form">
+    <div className="space-y-6 relative" data-testid="custom-sign-in-form">
+      {isLoading && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-md">
+          <div className="flex flex-col items-center gap-3 px-6 py-4 text-center">
+            <LoadingSpinner className="h-5 w-5" />
+            <div className="text-sm text-gray-700">Signing in...</div>
+          </div>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
