@@ -47,7 +47,6 @@ export const normalizeToE164 = (phone: string): string | null => {
   if (!phone) return null;
   // Keep leading +, strip all other non-digits
   const cleaned = phone.replace(/[^\d+]/g, "");
-  const startsWithPlus = cleaned.startsWith("+");
   const digits = cleaned.replace(/\D/g, "");
   if (digits.length < 10 || digits.length > 15) return null;
   return `+${digits}`;

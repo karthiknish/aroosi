@@ -7,11 +7,7 @@ import { z } from "zod";
 import {
   BaseProfileData,
   OnboardingStep,
-  ONBOARDING_STEPS,
-  STEP_VALIDATION_REQUIREMENTS,
   StepValidationSchemas,
-  OnboardingError,
-  OnboardingValidationError,
   ProfileData,
 } from "../../types/onboarding";
 

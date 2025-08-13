@@ -61,12 +61,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Short per-target cooldown: 60s per reporter-target pair
+    const key = `${userId}_${reportedUserId}`;
+    const now = Date.now();
+    (globalThis as any).__reportCooldownMap =
+      (globalThis as any).__reportCooldownMap || new Map<string, number>();
+    const map: Map<string, number> = (globalThis as any).__reportCooldownMap;
+    const last = map.get(key) || 0;
+    if (now - last < 60_000) {
+      return errorResponse("Please wait before reporting this user again", 429);
+    }
+
     const result = await fetchMutation(api.safety.reportUser, {
       reporterUserId: userId as Id<"users">,
       reportedUserId,
       reason,
       description: description?.trim() || undefined,
     } as any);
+
+    map.set(key, now);
 
     return successResponse({
       message: "User reported successfully. Our team will review this report.",

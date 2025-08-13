@@ -5,7 +5,7 @@
  *
  * NOTE: This runs in browser contexts. Do not use on server components.
  */
-type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+// HttpMethod type removed (unused)
 
 export interface FetchJsonOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;

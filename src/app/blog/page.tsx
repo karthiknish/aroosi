@@ -57,8 +57,11 @@ export default function BlogPage() {
     queryFn: () => fetchBlogPostsAPI(page, pageSize, category),
   });
 
-  const posts: BlogPost[] = blogData?.posts || [];
-  const total: number = blogData?.total || 0;
+  const posts: BlogPost[] = React.useMemo(
+    () => blogData?.posts || [],
+    [blogData]
+  );
+  const total: number = React.useMemo(() => blogData?.total || 0, [blogData]);
 
   const categories = React.useMemo(() => {
     const set = new Set<string>();

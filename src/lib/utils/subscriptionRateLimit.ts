@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { errorResponse } from "@/lib/apiResponse";
 
 export interface RateLimitConfig {
   free: number;
@@ -30,8 +29,7 @@ export class SubscriptionRateLimiter {
    * Get subscription status from existing API
    */
   async getSubscriptionStatus(
-    request: NextRequest,
-    token: string
+    request: NextRequest
   ): Promise<{ plan: string; canUseFeature: boolean }> {
     try {
       const cookieHeader = request.headers.get("cookie") || "";
@@ -75,7 +73,7 @@ export class SubscriptionRateLimiter {
    */
   async checkFeatureAccess(
     request: NextRequest,
-    token: string,
+    _token: string,
     feature: string
   ): Promise<{ canUse: boolean; plan: string; error?: string }> {
     try {
@@ -102,7 +100,11 @@ export class SubscriptionRateLimiter {
           bodyPreview: text.slice(0, 200),
         });
         // Avoid JSON.parse on HTML, return explicit failure to prevent throws
-        return { canUse: false, plan: "free", error: "Failed to check feature access" };
+        return {
+          canUse: false,
+          plan: "free",
+          error: "Failed to check feature access",
+        };
       }
 
       const data = (await response.json()) as { canUse: boolean; plan: string };
@@ -110,7 +112,11 @@ export class SubscriptionRateLimiter {
     } catch (error) {
       console.error("Error checking feature access:", error);
       // Fail closed to avoid overuse when feature check fails
-      return { canUse: false, plan: "free", error: "Feature access check error" };
+      return {
+        canUse: false,
+        plan: "free",
+        error: "Feature access check error",
+      };
     }
   }
 
@@ -120,9 +126,11 @@ export class SubscriptionRateLimiter {
   private getRateLimitForPlan(plan: string, feature: string): number {
     // Canonicalize feature aliases
     const normalized =
-      feature === "message_send" ? "message_sent" :
-      feature === "voice_send" ? "voice_message_sent" :
-      feature;
+      feature === "message_send"
+        ? "message_sent"
+        : feature === "voice_send"
+          ? "voice_message_sent"
+          : feature;
 
     const limits = {
       message_sent: {

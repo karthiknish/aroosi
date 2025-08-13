@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { cookies, headers } from "next/headers";
-import { convexQueryWithAuth, convexMutationWithAuth } from "@/lib/convexServer";
+import { cookies } from "next/headers";
+import {
+  convexQueryWithAuth,
+  convexMutationWithAuth,
+} from "@/lib/convexServer";
 import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { currentUser } from "@clerk/nextjs/server";
@@ -21,10 +24,16 @@ function log(
     ts: new Date().toISOString(),
     ...(extra && Object.keys(extra).length > 0 ? { extra } : {}),
   };
-  // eslint-disable-next-line no-console
-  if (level === "error") console.error(payload);
-  else if (level === "warn") console.warn(payload);
-  else console.log(payload);
+  if (level === "error") {
+    // eslint-disable-next-line no-console
+    console.error(payload);
+  } else if (level === "warn") {
+    // eslint-disable-next-line no-console
+    console.warn(payload);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(payload);
+  }
 }
 
 /**

@@ -3,7 +3,7 @@
  * Integrates TTL caching with profile data fetching and management
  */
 
-import { Profile, ProfileFormValues } from "@/types/profile";
+import { Profile } from "@/types/profile";
 import { profileTTLManager } from "./ttl-manager";
 
 // TTL configurations for different profile data types

@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
 export function useUnreadCounts(
-  userId: string | undefined,
-  token: string | undefined
+  _userId: string | undefined,
+  _token: string | undefined
 ) {
   return useQuery<Record<string, number>>({
     // Cookie-auth; user inferred server-side. Include 'self' key to avoid churn.
@@ -12,8 +12,13 @@ export function useUnreadCounts(
         // credentials removed; use token-based auth
       });
       if (!res.ok) return {};
-      const data = await res.json().catch(() => ({} as any));
-      if (data && typeof data === "object" && data.counts && typeof data.counts === "object") {
+      const data = await res.json().catch(() => ({}) as any);
+      if (
+        data &&
+        typeof data === "object" &&
+        data.counts &&
+        typeof data.counts === "object"
+      ) {
         return data.counts as Record<string, number>;
       }
       return {};

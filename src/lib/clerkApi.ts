@@ -9,8 +9,7 @@ export async function getCurrentUser(): Promise<User | null> {
   try {
     const user = await currentUser();
     return user;
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting current user:", error);
+  } catch {
     return null;
   }
 }
@@ -26,23 +25,22 @@ export async function getCurrentSession(): Promise<{
 } | null> {
   try {
     const { userId, sessionId, orgId } = await auth();
-    
+
     if (!userId || !sessionId) {
       return null;
     }
-    
+
     const user = await currentUser();
-    
+
     // Note: Organization data would need to be fetched separately if needed
     // This is a simplified version that returns basic session info
-    
+
     return {
       user,
       session: null, // Session object not directly available in server context
       organization: null, // Organization object not directly available in server context
     };
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting current session:", error);
+  } catch {
     return null;
   }
 }
@@ -55,8 +53,7 @@ export async function isAuthenticated(): Promise<boolean> {
   try {
     const user = await currentUser();
     return !!user;
-  } catch (error) {
-    console.error("[ClerkAPI] Error checking authentication status:", error);
+  } catch {
     return false;
   }
 }
@@ -69,15 +66,16 @@ export async function getUserEmail(): Promise<string | null> {
   try {
     const user = await currentUser();
     if (!user) return null;
-    
+
     // Get primary email address
     const primaryEmail = user.emailAddresses.find(
       (email) => email.id === user.primaryEmailAddressId
     );
-    
-    return primaryEmail?.emailAddress || user.emailAddresses[0]?.emailAddress || null;
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user email:", error);
+
+    return (
+      primaryEmail?.emailAddress || user.emailAddresses[0]?.emailAddress || null
+    );
+  } catch {
     return null;
   }
 }
@@ -90,10 +88,9 @@ export async function getUserFullName(): Promise<string | null> {
   try {
     const user = await currentUser();
     if (!user) return null;
-    
+
     return user.fullName || user.firstName || null;
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user full name:", error);
+  } catch {
     return null;
   }
 }
@@ -106,10 +103,9 @@ export async function getUserProfileImageUrl(): Promise<string | null> {
   try {
     const user = await currentUser();
     if (!user) return null;
-    
+
     return user.imageUrl || null;
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user profile image URL:", error);
+  } catch {
     return null;
   }
 }
@@ -122,15 +118,14 @@ export async function getUserPhoneNumber(): Promise<string | null> {
   try {
     const user = await currentUser();
     if (!user) return null;
-    
+
     // Get primary phone number
     const primaryPhone = user.phoneNumbers.find(
       (phone) => phone.id === user.primaryPhoneNumberId
     );
-    
+
     return primaryPhone?.phoneNumber || null;
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user phone number:", error);
+  } catch {
     return null;
   }
 }
@@ -143,10 +138,9 @@ export async function getUserExternalAccounts(): Promise<any[]> {
   try {
     const user = await currentUser();
     if (!user) return [];
-    
+
     return user.externalAccounts || [];
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user external accounts:", error);
+  } catch {
     return [];
   }
 }
@@ -159,10 +153,9 @@ export async function getUserUnsafeMetadata(): Promise<any> {
   try {
     const user = await currentUser();
     if (!user) return null;
-    
+
     return user.unsafeMetadata || {};
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user unsafe metadata:", error);
+  } catch {
     return {};
   }
 }
@@ -175,10 +168,9 @@ export async function getUserPublicMetadata(): Promise<any> {
   try {
     const user = await currentUser();
     if (!user) return null;
-    
+
     return user.publicMetadata || {};
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user public metadata:", error);
+  } catch {
     return {};
   }
 }
@@ -191,10 +183,9 @@ export async function getUserPrivateMetadata(): Promise<any> {
   try {
     const user = await currentUser();
     if (!user) return null;
-    
+
     return user.privateMetadata || {};
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user private metadata:", error);
+  } catch {
     return {};
   }
 }

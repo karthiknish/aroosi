@@ -2,14 +2,21 @@
  * Helpers extracted from ProfileCreationModal to centralize side-effectful calls
  * and keep the component lean/testable.
  */
-import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
-import {
-  updateImageOrder,
-  uploadProfileImageWithProgress,
-} from "@/lib/utils/imageUtil";
-import { validateImageMeta } from "@/lib/utils/imageMeta";
+// onboarding storage keys are used in utils
+// image order utility now used within step6 module
 import type { ImageType } from "@/types/image";
 import { showErrorToast } from "@/lib/ui/toast";
+
+// Import step-specific helpers
+import {
+  normalizeStepData as step2_normalizeStepData,
+  normalizeHeightInput as step2_normalizeHeightInput,
+} from "./profileCreation/step2";
+import {
+  getGlobalRequiredFields as step7_getGlobalRequiredFields,
+  computeMissingRequiredFields as step7_computeMissingRequiredFields,
+} from "./profileCreation/step7";
+// Re-exported directly further below; no need to import here
 
 /* ======================
  * Upload manager accessor
@@ -19,13 +26,7 @@ import { showErrorToast } from "@/lib/ui/toast";
  * Returns a stable, memoized upload manager stored on window to manage progress/cancel.
  * The manager is created lazily via the provided factory.
  */
-export function createOrGetUploadManager<T>(factory: () => T): T {
-  const w = window as any;
-  if (w.__profileUploadMgr) return w.__profileUploadMgr as T;
-  const mgr = factory();
-  w.__profileUploadMgr = mgr;
-  return mgr;
-}
+import { persistPendingImageOrderToLocal } from "./profileCreation/step6";
 
 /**
  * Minimal UploadManager type used by uploadWithProgress. Concrete manager may
@@ -53,9 +54,7 @@ export type UploadProgressHandler = (
 
 export interface UploadManager {
   abortController?: AbortController;
-  // Progress callback following UploadProgressHandler signature above
   onProgress?: UploadProgressHandler;
-  // Optional cleanup to clear any observers
   cleanup?: () => void;
 }
 
@@ -64,94 +63,13 @@ export interface UploadManager {
  * Kept simple: one AbortController reused per upload call; callers may
  * replace with a richer implementation if needed.
  */
-export function createUploadManager(): UploadManager {
-  return {
-    abortController: undefined,
-    onProgress: undefined,
-    cleanup: undefined,
-  };
-}
+export { persistPendingImageOrderToLocal } from "./profileCreation/step6";
 
 /**
  * Upload a file to a pre-signed URL with progress, using the provided manager.
  * Returns the raw Response so callers can parse JSON or read text.
  */
-export async function uploadWithProgress(
-  uploadUrl: string,
-  file: File,
-  manager: UploadManager,
-  localId?: string
-): Promise<Response> {
-  // Use fetch with AbortController; progress requires XHR. If you need granular progress,
-  // replace with XHR implementation. Here we keep fetch for simplicity and portability.
-  const controller = new AbortController();
-  manager.abortController = controller;
-
-  // If progress is required, use XHR path:
-  if (
-    typeof XMLHttpRequest !== "undefined" &&
-    typeof FormData !== "undefined"
-  ) {
-    const resp = await new Promise<Response>((resolve, reject) => {
-      try {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", uploadUrl, true);
-        xhr.responseType = "text";
-        // Content-Type must match the file.type for signed URLs
-        if (file.type) xhr.setRequestHeader("Content-Type", file.type);
-
-        xhr.upload.onprogress = (evt) => {
-          if (
-            evt.lengthComputable &&
-            typeof manager.onProgress === "function" &&
-            localId
-          ) {
-            // Strictly adhere to documented signature (localId, loaded, total)
-            manager.onProgress(localId, evt.loaded, evt.total);
-          }
-        };
-        xhr.onerror = () => reject(new Error("Network error during upload"));
-        xhr.onabort = () => reject(new Error("Upload aborted"));
-        xhr.onload = () => {
-          // Construct a fetch-like Response object
-          const headers = new Headers();
-          headers.set(
-            "Content-Type",
-            xhr.getResponseHeader("Content-Type") || "text/plain"
-          );
-          const body = xhr.response ?? "";
-          resolve(
-            new Response(body, {
-              status: xhr.status,
-              statusText: xhr.statusText,
-              headers,
-            })
-          );
-        };
-        // Wire abort
-        manager.abortController = controller;
-        controller.signal.addEventListener("abort", () => {
-          try {
-            xhr.abort();
-          } catch {}
-        });
-
-        xhr.send(file);
-      } catch (e) {
-        reject(e);
-      }
-    });
-    return resp;
-  }
-
-  // Fallback to fetch without progress
-  return fetch(uploadUrl, {
-    method: "PUT",
-    body: file,
-    headers: file.type ? { "Content-Type": file.type } : undefined,
-    signal: controller.signal,
-  });
-}
+// imported above
 
 /* ======================
  * Required fields helpers
@@ -160,38 +78,13 @@ export async function uploadWithProgress(
 /**
  * Global required fields for final submission
  */
-export function getGlobalRequiredFields(): string[] {
-  return [
-    "fullName",
-    "dateOfBirth",
-    "gender",
-    "preferredGender",
-    "city",
-    "aboutMe",
-    "occupation",
-    "education",
-    "height",
-    "maritalStatus",
-    "phoneNumber",
-  ];
-}
+export const getGlobalRequiredFields = step7_getGlobalRequiredFields;
 
 /**
  * Step-specific required field mapping.
  * Expand when step forms evolve.
  */
-export function getRequiredFieldsForStep(step: number): string[] {
-  switch (step) {
-    case 2:
-      return ["city", "height", "maritalStatus"];
-    case 4:
-      return ["education", "occupation", "aboutMe"];
-    case 5:
-      return ["preferredGender"];
-    default:
-      return [];
-  }
-}
+export { getRequiredFieldsForStep } from "./profileCreation/flow";
 
 /* ======================
  * Step navigation / flow helpers (C)
@@ -201,85 +94,26 @@ export function getRequiredFieldsForStep(step: number): string[] {
  * Clamp and compute next step given current step and whether basic data exists.
  * - totalSteps represents visual progress bar slices; actionable steps end at 7.
  */
-export function computeNextStep(params: {
-  step: number;
-  hasBasicData: boolean;
-  direction: "next" | "back";
-  min?: number;
-  max?: number;
-}) {
-  const { step, hasBasicData, direction } = params;
-  const min = params.min ?? 1;
-  const max = params.max ?? 7;
-  if (!Number.isFinite(step)) return hasBasicData ? 2 : 1;
-  let s = Math.floor(step);
-  if (direction === "next") {
-    if (hasBasicData && s === 1) s = 2;
-    else s = Math.min(max, s + 1);
-  } else {
-    s = Math.max(min, s - 1);
-  }
-  return s;
-}
+export { computeNextStep, normalizeStartStep } from "./profileCreation/flow";
 
 /**
  * Normalize initial step on open:
  * - if hasBasicData from Hero, always show Location step (2)
  * - else start at step 1
  */
-export function normalizeStartStep(hasBasicData: boolean) {
-  return hasBasicData ? 2 : 1;
-}
+// moved to flow
 
 /* ======================
  * Submission orchestration (D)
  * ====================== */
 
-export interface RequiredFieldCheck {
-  required: string[];
-  missing: string[];
-}
-
-/**
- * Determine required fields and which ones are missing from a record
- */
-export function computeMissingRequiredFields(
-  data: Record<string, unknown>,
-  required: string[]
-): RequiredFieldCheck {
-  const missing = required.filter((k) => {
-    const v = (data as any)[k];
-    return (
-      v === undefined ||
-      v === null ||
-      (typeof v === "string" && v.trim() === "") ||
-      (Array.isArray(v) && v.length === 0)
-    );
-  });
-  return { required, missing };
-}
+export type { RequiredFieldCheck } from "./profileCreation/step7";
+export const computeMissingRequiredFields = step7_computeMissingRequiredFields;
 
 /**
  * Build Profile payload from cleaned data and known mappings
  */
-export function buildProfilePayload(
-  cleanedData: Record<string, unknown>,
-  normalizedPhone?: string
-): Partial<import("@/types/profile").ProfileFormValues> {
-  return {
-    ...(cleanedData as unknown as import("@/types/profile").ProfileFormValues),
-    profileFor: (cleanedData.profileFor ?? "self") as
-      | "self"
-      | "friend"
-      | "family",
-    dateOfBirth: String(cleanedData.dateOfBirth ?? ""),
-    partnerPreferenceCity: Array.isArray(cleanedData.partnerPreferenceCity)
-      ? (cleanedData.partnerPreferenceCity as string[])
-      : [],
-    email: (cleanedData.email as string) || "",
-    phoneNumber: normalizedPhone,
-  };
-}
+export { buildProfilePayload } from "./profileCreation/step7";
 
 /**
  * Safe router push with fallback to window.location
@@ -300,73 +134,23 @@ export function safeNavigate(
  * Validation / Normalization
  * ====================== */
 
-/**
- * Format height strings to normalized display/store variants
- * - input could be "170", "170 cm", or already formatted
- */
-export function normalizeHeightInput(height: unknown): string {
-  if (typeof height !== "string") return String(height ?? "");
-  const raw = height.trim();
-  if (/^\d{2,3}$/.test(raw)) return `${raw} cm`;
-  return raw;
-}
-
-/**
- * Normalize step data snapshot (non-mutating)
- */
-export function normalizeStepData(step: number, data: Record<string, unknown>) {
-  if (step === 2) {
-    const height = data.height;
-    const normalizedHeight =
-      typeof height === "string" && /^\d{2,3}$/.test(height.trim())
-        ? `${height.trim()} cm`
-        : height;
-    const city = data.city;
-    const trimmedCity = typeof city === "string" ? city.trim() : city;
-    return { ...data, height: normalizedHeight, city: trimmedCity };
-  }
-  return { ...data };
-}
+export const normalizeHeightInput = step2_normalizeHeightInput;
+export const normalizeStepData = step2_normalizeStepData;
 
 /**
  * Parse comma separated city list -> string[] trimmed
  */
-export function parsePreferredCities(input: unknown): string[] {
-  if (typeof input !== "string") return [];
-  return input
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+export { parsePreferredCities } from "./profileCreation/step5";
 
 /**
  * Filter an object, dropping null/undefined/empty-string/empty-array values
  */
-export function filterEmptyValues<T extends Record<string, unknown>>(
-  obj: T
-): Partial<T> {
-  const result: Partial<T> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    const keep =
-      v !== undefined &&
-      v !== null &&
-      !(typeof v === "string" && v.trim() === "") &&
-      !(Array.isArray(v) && v.length === 0);
-    if (keep) (result as any)[k] = v;
-  }
-  return result;
-}
+export { filterEmptyValues } from "./profileCreation/step7";
 
 /**
  * Normalize phone number to naive E.164-like (+digits) if possible. Otherwise return original string.
  */
-export function normalizePhoneE164Like(phone: unknown): string | null {
-  if (typeof phone !== "string") return null;
-  const cleaned = phone.replace(/[^\d+]/g, "");
-  const digits = cleaned.replace(/\D/g, "");
-  if (digits.length >= 10 && digits.length <= 15) return `+${digits}`;
-  return null;
-}
+export { normalizePhoneE164Like } from "./profileCreation/step7";
 
 /**
  * Price formatting helper for minor units and currency (defaults to GBP)
@@ -420,13 +204,7 @@ export function focusFirstErrorField(
  * Persist the locally reordered pending image ids into localStorage.
  * Used in pre-upload mode.
  */
-export function persistPendingImageOrderToLocal(ids: string[]) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.PENDING_IMAGES, JSON.stringify(ids));
-  } catch {
-    // ignore storage issues
-  }
-}
+// imported above
 
 /**
  * Create a generic field change handler for the profile creation wizard.
@@ -478,33 +256,13 @@ export function createOnProfileImagesChangeHandler(
  * After images are uploaded and server returns image ids, persist the order server-side.
  * Filters out local placeholders defensively.
  */
-export async function persistServerImageOrder(params: {
-  userId: string;
-  imageIds: string[];
-}) {
-  const { userId, imageIds } = params;
-  const filtered = imageIds.filter(
-    (id) =>
-      typeof id === "string" && !id.startsWith("local-") && id.trim().length > 0
-  );
-  if (filtered.length > 1) {
-    // Centralized client auto-attaches Authorization; no token bridging necessary.
-    await updateImageOrder({ userId, imageIds: filtered });
-  }
-}
+export { persistServerImageOrder } from "./profileCreation/step6";
 
 /* ======================
  * Image upload orchestration
  * ====================== */
 
-/**
- * Create upload URL for a new image.
- */
-export async function requestImageUploadUrl(): Promise<string> {
-  throw new Error(
-    "Deprecated: use /api/profile-images/upload with multipart FormData"
-  );
-}
+// requestImageUploadUrl() removed: multipart /api/profile-images/upload is used instead
 
 /**
  * Confirm image metadata after successful binary upload.
@@ -518,93 +276,548 @@ export async function confirmImageMetadata(_: any) {
 /**
  * Guard: ensure blob is within size limit and return either ok or error reason
  */
-export function validateBlobSize(
-  blob: Blob,
-  maxBytes: number
-): { ok: true } | { ok: false; reason: string } {
-  if (blob.size > maxBytes) {
-    return {
-      ok: false,
-      reason: `Image exceeds ${(maxBytes / (1024 * 1024)).toFixed(0)}MB`,
-    };
-  }
-  return { ok: true };
-}
+// imported above
 
 /**
  * Try to revoke an object URL and swallow errors
  */
-export function safeRevokeObjectURL(url?: string | null) {
-  try {
-    if (url && typeof url === "string" && url.startsWith("blob:")) {
-      URL.revokeObjectURL(url);
-    }
-  } catch {
-    // swallow
-  }
-}
+// imported above
 
 /**
  * Derive a safe file type from a blob (fallback to image/jpeg)
  */
-export function deriveSafeImageMimeType(
-  type: string | null | undefined
-): string {
-  const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-  if (typeof type === "string" && allowed.includes(type.toLowerCase()))
-    return type;
-  return "image/jpeg";
-}
+// imported above
 
 /**
  * Fetch a Blob from a blob: URL with error handling
  */
-export async function fetchBlobFromObjectURL(url: string): Promise<Blob> {
-  const resp = await fetch(url);
-  if (!resp.ok) {
-    throw new Error(`Failed to read local image (${resp.status})`);
-  }
-  return resp.blob();
-}
+// imported above
 
 /**
  * Create a File from a Blob, with a safe mime type
  */
-export function fileFromBlob(blob: Blob, fileName = "photo.jpg"): File {
-  const type = deriveSafeImageMimeType(blob.type);
-  return new File([blob], fileName, { type });
-}
+// imported above
 
 /**
  * Clear all onboarding-related local storage keys
  */
-export function clearAllOnboardingData() {
-  try {
-    localStorage.removeItem(STORAGE_KEYS.PENDING_IMAGES);
-    localStorage.removeItem(STORAGE_KEYS.HERO_ONBOARDING);
-    localStorage.removeItem("PROFILE_CREATION");
-  } catch {
-    // ignore
-  }
-}
+export { clearAllOnboardingData } from "./profileCreation/utils";
 
 /**
  * Summarize upload errors for toast UX
  */
-export function summarizeImageUploadErrors(
-  failed: { name: string; reason: string }[],
-  sampleCount = 3
-) {
-  if (failed.length === 0) return "";
-  const sample = failed
-    .slice(0, sampleCount)
-    .map((f) => `${f.name}: ${f.reason}`)
-    .join("; ");
-  const extra =
-    failed.length > sampleCount
-      ? `, and ${failed.length - sampleCount} more`
+export { summarizeImageUploadErrors } from "./profileCreation/step6";
+
+/**
+ * Controller hook extracted from ProfileCreationModal.
+ * Keeps ProfileCreationModal UI-only by providing all state and handlers.
+ */
+export { useProfileCreationController } from "./profileCreation/controller";
+
+/*
+  const __isProd = process.env.NODE_ENV === "production";
+  const __devLog = React.useCallback(
+    (...args: unknown[]) => {
+      if (!__isProd) {
+        // eslint-disable-next-line no-console
+        console.log(...args);
+      }
+    },
+    [__isProd]
+  );
+  const __devInfo = React.useCallback(
+    (...args: unknown[]) => {
+      if (!__isProd) {
+        // eslint-disable-next-line no-console
+        console.info(...args);
+      }
+    },
+    [__isProd]
+  );
+
+  const {
+    formData: contextData,
+    updateFormData: updateContextData,
+    step: contextStep,
+    setStep: setContextStep,
+    reset: resetWizard,
+  } = useProfileWizard();
+
+  const hasBasicData = Boolean(
+    contextData?.profileFor &&
+      contextData?.gender &&
+      contextData?.fullName &&
+      contextData?.dateOfBirth &&
+      contextData?.phoneNumber
+  );
+
+  const totalSteps = 8;
+
+  const formData = ((): Record<string, unknown> => ({
+    profileFor: (contextData?.profileFor as string) || "",
+    gender: (contextData?.gender as string) || "",
+    fullName: (contextData?.fullName as string) || "",
+    dateOfBirth: (contextData?.dateOfBirth as string) || "",
+    email: (contextData?.email as string) || "",
+    phoneNumber: (contextData?.phoneNumber as string) || "",
+    country: (contextData?.country as string) || "",
+    city: (contextData?.city as string) || "",
+    height: (contextData?.height as string) || "",
+    maritalStatus: (contextData?.maritalStatus as string) || "",
+    physicalStatus: (contextData?.physicalStatus as string) || "",
+    motherTongue: (contextData?.motherTongue as string) || "",
+    religion: (contextData?.religion as string) || "",
+    ethnicity: (contextData?.ethnicity as string) || "",
+    diet: (contextData?.diet as string) || "",
+    smoking: (contextData?.smoking as string) || "",
+    drinking: (contextData?.drinking as string) || "",
+    education: (contextData?.education as string) || "",
+    occupation: (contextData?.occupation as string) || "",
+    annualIncome: (contextData?.annualIncome as string) || "",
+    aboutMe: (contextData?.aboutMe as string) || "",
+    preferredGender: (contextData?.preferredGender as string) || "",
+    partnerPreferenceAgeMin:
+      (contextData?.partnerPreferenceAgeMin as number) || 18,
+    partnerPreferenceAgeMax: contextData?.partnerPreferenceAgeMax as number,
+    partnerPreferenceCity:
+      (contextData?.partnerPreferenceCity as string[]) || [],
+    profileImageIds: (contextData?.profileImageIds as string[]) || [],
+  }))();
+
+  const step =
+    Number.isFinite(contextStep) &&
+    (contextStep as number) >= 1 &&
+    (contextStep as number) <= 7
+      ? (contextStep as number)
+      : 1;
+
+  const setStep = React.useCallback(
+    (newStep: number) => {
+      const clamped = Math.max(
+        1,
+        Math.min(7, Math.floor(Number(newStep) || 1))
+      );
+      setContextStep(clamped);
+      try {
+        if (typeof window !== "undefined") {
+          const snapshot = {
+            step: clamped,
+            data: {
+              fullName: (formData as any)?.fullName ?? "",
+              dateOfBirth: (formData as any)?.dateOfBirth ?? "",
+              phoneNumber: (formData as any)?.phoneNumber ?? "",
+              city: (formData as any)?.city ?? "",
+              height: (formData as any)?.height ?? "",
+              maritalStatus: (formData as any)?.maritalStatus ?? "",
+            },
+          };
+          window.localStorage.setItem(
+            "PROFILE_CREATION",
+            JSON.stringify(snapshot)
+          );
+        }
+      } catch {}
+    },
+    [setContextStep, formData]
+  );
+
+  const [preferredCitiesInput, setPreferredCitiesInput] =
+    React.useState<string>(
+      Array.isArray((formData as any).partnerPreferenceCity)
+        ? ((formData as any).partnerPreferenceCity as string[]).join(", ")
+        : ""
+    );
+  const partnerPreferenceCityDep = React.useMemo(
+    () => (formData as any).partnerPreferenceCity,
+    [formData]
+  );
+  React.useEffect(() => {
+    const joined = Array.isArray(partnerPreferenceCityDep)
+      ? (partnerPreferenceCityDep as string[]).join(", ")
       : "";
-  return `Some images failed to upload (${failed.length}). ${sample}${extra}`;
+    setPreferredCitiesInput(joined);
+  }, [partnerPreferenceCityDep]);
+
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [pendingImages, setPendingImages] = React.useState<ImageType[]>([]);
+
+  const validationData = React.useMemo(() => {
+    if (step !== 2) return formData;
+    const height = (formData as any).height;
+    const normalized =
+      typeof height === "string" && /^\d{2,3}$/.test(height.trim())
+        ? `${height.trim()} cm`
+        : height;
+    return { ...(formData as any), height: normalized } as any;
+  }, [formData, step]);
+
+  const stepValidation = useStepValidation({
+    step,
+    data: validationData as any,
+    onValidationChange: (_isValid, validationErrors) => {
+      setErrors(validationErrors);
+    },
+  });
+
+  const { user: authUser, refreshUser, isAuthenticated, signOut } = useAuth();
+  const userId = (authUser as any)?.id as string | undefined;
+
+  const handleClose = React.useCallback(() => {
+    try {
+      const { clearAllOnboardingData } = await import("./profileCreation/utils");
+      try {
+        clearAllOnboardingData();
+      } catch {}
+      resetWizard();
+      __devLog("Profile creation modal closed - data cleared and wizard reset");
+    } catch (error) {
+      console.error("Error on modal close:", error);
+    } finally {
+      onClose();
+    }
+  }, [resetWizard, __devLog, onClose]);
+
+  const [hasSubmittedProfile, setHasSubmittedProfile] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const handleInputChange = (field: string, value: unknown) => {
+    const onChange = createOnChangeHandler(updateContextData as any);
+    onChange(field, value);
+  };
+
+  const handleProfileImagesChange = async (imgs: (string | ImageType)[]) => {
+    const onFieldChange = createOnChangeHandler(updateContextData as any);
+    const handler = createOnProfileImagesChangeHandler(
+      onFieldChange,
+      setPendingImages as any
+    );
+    await handler(imgs);
+  };
+
+  const handleNext = async () => {
+    if (!Number.isFinite(step) || step < 1 || step > 7) {
+      setStep(1);
+      return;
+    }
+    if (hasBasicData && step === 1) {
+      setStep(2);
+      return;
+    }
+    if (step === 2) {
+      const normalized = normalizeStepData(step, formData as any);
+      if ((normalized as any).height !== (formData as any).height) {
+        handleInputChange("height", (normalized as any).height as string);
+      }
+      if ((normalized as any).city !== (formData as any).city) {
+        handleInputChange("city", (normalized as any).city as string);
+      }
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    const result = await stepValidation.validateCurrentStep();
+    if (!result.isValid) {
+      try {
+        focusFirstErrorField(stepValidation.getFieldError, [
+          "city",
+          "height",
+          "maritalStatus",
+        ]);
+      } catch {}
+      const summary = stepValidation.getValidationSummary();
+      showErrorToast(null, summary.summary);
+      return;
+    }
+    if (step < 7) {
+      const next = computeNextStep({
+        step,
+        hasBasicData: !!hasBasicData,
+        direction: "next",
+        min: 1,
+        max: 7,
+      });
+      setStep(next);
+    }
+  };
+
+  const handleBack = async () => {
+    if (step > 1) {
+      const prev = computeNextStep({
+        step,
+        hasBasicData: !!hasBasicData,
+        direction: "back",
+        min: 1,
+        max: 7,
+      });
+      setStep(prev);
+    }
+  };
+
+  React.useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (
+        (event as any).data?.type === "auth-success" &&
+        (event as any).data?.isAuthenticated
+      ) {
+        window.location.reload();
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  React.useEffect(() => {
+    if (isAuthenticated && step === 7) {
+      __devLog("User signed in at step 7, profile will be submitted");
+    }
+  }, [isAuthenticated, step, __devLog]);
+
+  React.useEffect(() => {
+    const submitProfileAndImages = async () => {
+      if (!isAuthenticated) return;
+      if (hasSubmittedProfile) return;
+      if (isSubmitting) return;
+      if (step !== 7) return;
+
+      setIsSubmitting(true);
+      try {
+        const existing = await getCurrentUserWithProfile();
+        if (existing.success && existing.data) {
+          try {
+            await refreshUser();
+          } catch {}
+          try {
+            const { clearAllOnboardingData: __clear } = await import(
+              "./profileCreationHelpers"
+            );
+            __clear();
+          } catch {}
+          showSuccessToast("Account created. Finalizing your profile...");
+          handleClose();
+          safeNavigate(router, "/success");
+          return;
+        }
+
+        setHasSubmittedProfile(true);
+        try {
+          updateContextData({ lastProfileSubmissionAt: Date.now() });
+        } catch {}
+
+        const merged: Record<string, unknown> = { ...contextData };
+        const cleanedData: Record<string, unknown> = {};
+        Object.entries(merged).forEach(([k, v]) => {
+          const isValidValue =
+            v !== undefined &&
+            v !== null &&
+            !(typeof v === "string" && v.trim() === "") &&
+            !(Array.isArray(v) && v.length === 0);
+          if (isValidValue) cleanedData[k] = v;
+        });
+
+        const requiredFields = getGlobalRequiredFields();
+        const { computeMissingRequiredFields } = await import(
+          "./profileCreationHelpers"
+        );
+        const { missing: missingFields } = computeMissingRequiredFields(
+          cleanedData,
+          requiredFields
+        );
+        if (missingFields.length > 0) {
+          showErrorToast(
+            null,
+            `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`
+          );
+          setHasSubmittedProfile(false);
+          setIsSubmitting(false);
+          return;
+        }
+
+        const normalizedPhone =
+          normalizePhoneE164Like(cleanedData.phoneNumber as string) ??
+          (typeof cleanedData.phoneNumber === "string"
+            ? cleanedData.phoneNumber
+            : "");
+        try {
+          if (normalizedPhone)
+            updateContextData({ phoneNumber: normalizedPhone });
+        } catch {}
+
+        const trimmedData = filterEmptyValues(cleanedData);
+        const payload = buildProfilePayload(
+          trimmedData,
+          normalizedPhone || undefined
+        );
+
+        const profileRes = await submitProfile(payload as any, "create");
+        if (!profileRes.success) {
+          showErrorToast(profileRes.error, "Failed to create profile");
+          setHasSubmittedProfile(false);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (pendingImages.length > 0 && userId) {
+          const { createdImageIds, failedImages } = await uploadPendingImages({
+            pendingImages,
+            userId,
+          });
+          if (failedImages.length > 0) {
+            const mapped = failedImages.map((f) => ({
+              name: `#${f.index} ${f.name}`,
+              reason: f.reason,
+            }));
+            const msg = summarizeImageUploadErrors(mapped, 3);
+            showErrorToast(null, msg);
+            __devInfo(
+              "Some images failed to upload. You can retry failed items individually from Step 6."
+            );
+          }
+          if (createdImageIds.length > 0) {
+            try {
+              const orderIds =
+                createdImageIds.length > 0
+                  ? createdImageIds
+                  : Array.isArray((formData as any).profileImageIds)
+                    ? ((formData as any).profileImageIds as string[])
+                    : [];
+              const filteredOrderIds = orderIds.filter(
+                (id) =>
+                  typeof id === "string" &&
+                  !id.startsWith("local-") &&
+                  id.trim().length > 0
+              );
+              if (filteredOrderIds.length > 1) {
+                await persistServerImageOrder({
+                  userId: userId as string,
+                  imageIds: filteredOrderIds,
+                });
+              }
+            } catch {
+              showErrorToast(
+                null,
+                "Unable to save image order. You can reorder later."
+              );
+            }
+          }
+        }
+
+        try {
+          await refreshUser();
+        } catch {}
+        try {
+          const { clearAllOnboardingData: __clear } = await import(
+            "./profileCreationHelpers"
+          );
+          __clear();
+        } catch {}
+        try {
+          if (typeof window !== "undefined")
+            window.localStorage.removeItem("PROFILE_CREATION");
+        } catch {}
+        try {
+          updateContextData({
+            isProfileComplete: true,
+            isOnboardingComplete: true,
+          });
+        } catch {}
+        showSuccessToast("Profile created successfully!");
+        handleClose();
+        safeNavigate(router, "/success");
+      } catch (err: any) {
+        let errorMessage = "Profile submission failed";
+        const msg = String(err?.message || "").toLowerCase();
+        if (msg.includes("network") || msg.includes("fetch"))
+          errorMessage =
+            "Network error. Please check your connection and try again.";
+        else if (msg.includes("timeout"))
+          errorMessage = "Request timed out. Please try again.";
+        else if (msg.includes("401") || msg.includes("unauthorized"))
+          errorMessage = "Authentication expired. Please sign in again.";
+        else if (msg.includes("409") || msg.includes("duplicate"))
+          errorMessage =
+            "Profile already exists. Please use the profile edit feature.";
+        else if (msg.includes("400") || msg.includes("validation"))
+          errorMessage =
+            "Invalid profile data. Please check your information and try again.";
+        else if (msg.includes("500") || msg.includes("server"))
+          errorMessage =
+            "Server error while creating profile. Please try again.";
+        else if (err?.message)
+          errorMessage = `Profile submission failed: ${err.message}`;
+        showErrorToast(null, errorMessage);
+        setHasSubmittedProfile(false);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+    void submitProfileAndImages();
+  }, [
+    isAuthenticated,
+    validationData,
+    pendingImages,
+    userId,
+    step,
+    hasSubmittedProfile,
+    isSubmitting,
+    refreshUser,
+    onClose,
+    router,
+    signOut,
+    __devInfo,
+    updateContextData,
+    handleClose,
+    __devLog,
+    hasBasicData,
+    formData,
+    contextData,
+  ]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleUnload = () => {
+      try {
+        void import("./profileCreation/utils").then((m) => {
+          try { m.clearAllOnboardingData(); } catch {}
+        });
+      } catch {}
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
+    };
+  }, [isOpen]);
+
+  const normalizedOnOpenRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isOpen) {
+      normalizedOnOpenRef.current = false;
+      return;
+    }
+    if (normalizedOnOpenRef.current) return;
+    setStep(normalizeStartStep(!!hasBasicData));
+    normalizedOnOpenRef.current = true;
+  }, [isOpen, hasBasicData, setStep]);
+
+  return {
+    step,
+    setStep,
+    totalSteps,
+    formData: formData as any,
+    hasBasicData,
+    errors,
+    stepValidation,
+    preferredCitiesInput,
+    setPreferredCitiesInput,
+    pendingImages,
+    setPendingImages,
+    userId: userId || "",
+    handleClose,
+    handleNext,
+    handleBack,
+    handleInputChange,
+    handleProfileImagesChange,
+  } as const;
 }
 
 /* ======================
@@ -628,132 +841,12 @@ export interface UploadPendingImagesResult {
  * Handles client-side guards (dimensions, size), obtains upload URLs,
  * uploads with progress, confirms metadata, and returns created imageIds and failures.
  */
+// Delegate to step6 module (keeps public name stable)
 export async function uploadPendingImages(params: {
   pendingImages: ImageType[];
   userId: string;
   onProgress?: UploadProgressHandler;
 }): Promise<UploadPendingImagesResult> {
-  const { pendingImages, onProgress } = params;
-
-  const createdImageIds: string[] = [];
-  const failedImages: UploadPendingImagesResultItem[] = [];
-
-  const mgr = createOrGetUploadManager(createUploadManager);
-  if (onProgress) mgr.onProgress = onProgress;
-
-  for (let index = 0; index < pendingImages.length; index++) {
-    const img = pendingImages[index];
-    try {
-      // Validate url
-      if (!img.url || !img.url.startsWith("blob:")) {
-        failedImages.push({
-          index,
-          id: img.id,
-          name: img.fileName || "photo.jpg",
-          reason: "Invalid local image URL",
-        });
-        continue;
-      }
-
-      // Read blob
-      const blob = await fetchBlobFromObjectURL(img.url);
-
-      // Dimension/aspect ratio guard (best-effort)
-      try {
-        const tmpUrl = URL.createObjectURL(blob);
-        const meta = await new Promise<{ width: number; height: number }>(
-          (resolve, reject) => {
-            const el = new Image();
-            el.onload = () =>
-              resolve({
-                width: el.naturalWidth || el.width,
-                height: el.naturalHeight || el.height,
-              });
-            el.onerror = () =>
-              reject(new Error("Failed to decode image for metadata"));
-            el.src = tmpUrl;
-          }
-        );
-        URL.revokeObjectURL(tmpUrl);
-
-        const { ok, reason } = validateImageMeta(meta, {
-          minDim: 512,
-          minAspect: 0.5,
-          maxAspect: 2.0,
-        });
-        if (!ok) {
-          failedImages.push({
-            index,
-            id: img.id,
-            name: img.fileName || "photo.jpg",
-            reason: reason || "Image does not meet size requirements",
-          });
-          safeRevokeObjectURL(img.url);
-          continue;
-        }
-      } catch {
-        // continue on guard failure
-      }
-
-      // Size guard (5MB)
-      const sizeCheck = validateBlobSize(blob, 5 * 1024 * 1024);
-      if (!sizeCheck.ok) {
-        failedImages.push({
-          index,
-          id: img.id,
-          name: img.fileName || "photo.jpg",
-          reason: sizeCheck.reason,
-        });
-        safeRevokeObjectURL(img.url);
-        continue;
-      }
-
-      // Build File object
-      const file = fileFromBlob(blob, img.fileName || "photo.jpg");
-
-      try {
-        const result = await uploadProfileImageWithProgress(
-          file,
-          (loaded, total) => {
-            if (typeof mgr.onProgress === "function") {
-              try {
-                mgr.onProgress(img.id, loaded, total);
-              } catch {}
-            }
-          }
-        );
-        if (!result?.imageId) {
-          failedImages.push({
-            index,
-            id: img.id,
-            name: file.name,
-            reason: "No imageId returned",
-          });
-          continue;
-        }
-        createdImageIds.push(result.imageId);
-        safeRevokeObjectURL(img.url);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Upload failed";
-        failedImages.push({
-          index,
-          id: img.id,
-          name: file.name,
-          reason: message,
-        });
-        continue;
-      }
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unknown image upload error";
-      failedImages.push({
-        index,
-        id: img.id,
-        name: img.fileName || "photo.jpg",
-        reason: message,
-      });
-    }
-  }
-
-  return { createdImageIds, failedImages };
+  const step6 = await import("./profileCreation/step6");
+  return step6.uploadPendingImages(params as any);
 }

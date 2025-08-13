@@ -43,7 +43,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { deleteProfile } from "@/lib/utils/profileApi";
+import { boostProfile } from "@/lib/profile/userProfileApi";
 import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 // Re-export types for backward compatibility
 type ApiImage = unknown;
 type MappedImage = unknown;
@@ -154,8 +156,7 @@ const ProfileView: FC<ProfileViewProps> = ({
   // Cookie-auth: token is no longer exposed in AuthContext
   useAuthContext();
 
-  // Small mapping utility for plan labels using centralized helper
-  const planLabel = (id?: string | null) => planDisplayName(id);
+  // Small mapping utility for plan labels using centralized helper (inlined where needed)
 
   // Format annual income (GBP by default)
   const formatCurrency = (v?: string | number) => {
@@ -177,7 +178,7 @@ const ProfileView: FC<ProfileViewProps> = ({
   const handleOpenBillingPortal = async () => {
     try {
       await openBillingPortal();
-    } catch (e) {
+    } catch {
       // Fallback to subscription page if portal not available
       router.push("/subscription");
     }
@@ -310,24 +311,18 @@ const ProfileView: FC<ProfileViewProps> = ({
                         router.push("/premium-settings");
                         return;
                       }
-                      // Lazy import cookie-auth variant to avoid adding to initial bundle
-                      const { boostProfileCookieAuth } = await import(
-                        "@/lib/utils/profileApi"
-                      );
-                      const result = await boostProfileCookieAuth();
-                      // Use established toast utility if available; otherwise log
+                      const result = await boostProfile();
                       try {
-                        const { showSuccessToast } = await import(
-                          "@/lib/ui/toast"
-                        );
-                        showSuccessToast(
-                          `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
-                        );
-                      } catch {
-                        console.info("Profile boosted for 24 hours.", {
-                          remaining: result.boostsRemaining,
-                        });
-                      }
+                        const { showSuccessToast, showErrorToast } =
+                          await import("@/lib/ui/toast");
+                        if (result.success) {
+                          showSuccessToast(
+                            `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
+                          );
+                        } else {
+                          showErrorToast(result.message || "Boost failed");
+                        }
+                      } catch {}
                       // Refresh to reflect boosted state ribbon/badges
                       router.refresh?.();
                     } catch (e) {
@@ -488,17 +483,33 @@ const ProfileView: FC<ProfileViewProps> = ({
                         profileData.spotlightBadgeExpiresAt > Date.now() && (
                           <SpotlightIcon className="w-4 h-4" />
                         )}
+                      <PremiumFeatureGuard
+                        feature="spotlight_badge"
+                        requiredTier="premiumPlus"
+                        showUpgradePrompt={false}
+                      >
+                        {/* If user has Plus, show nothing extra here */}
+                        <></>
+                      </PremiumFeatureGuard>
                       {!isPremiumPlus(profileData.subscriptionPlan) && (
-                        <button
-                          type="button"
-                          className="ml-2 text-[11px] text-amber-700 underline"
-                          onClick={() =>
-                            (window.location.href = "/subscription")
+                        <PremiumFeatureGuard
+                          feature="spotlight_badge"
+                          requiredTier="premiumPlus"
+                          fallback={
+                            <button
+                              type="button"
+                              className="ml-2 text-[11px] text-amber-700 underline"
+                              onClick={() =>
+                                (window.location.href = "/subscription")
+                              }
+                              title="Upgrade to Premium Plus for a spotlight badge"
+                            >
+                              Get Spotlight
+                            </button>
                           }
-                          title="Upgrade to Premium Plus for a spotlight badge"
                         >
-                          Get Spotlight
-                        </button>
+                          <></>
+                        </PremiumFeatureGuard>
                       )}
                     </dd>
                   </div>

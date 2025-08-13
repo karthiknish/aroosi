@@ -12,7 +12,7 @@ interface SpotlightBadgeRequest {
 export async function updateSpotlightBadge(
   profileId: string,
   request: SpotlightBadgeRequest,
-  token?: string
+  _token?: string
 ): Promise<SpotlightBadgeResponse> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

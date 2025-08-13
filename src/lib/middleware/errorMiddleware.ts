@@ -277,6 +277,7 @@ export async function withDatabaseRetry<T>(
       const delay = baseDelay * Math.pow(2, attempt);
       await new Promise((resolve) => setTimeout(resolve, delay));
 
+      /* eslint-disable-next-line no-console */
       console.warn(
         `Database operation failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})...`
       );
@@ -319,6 +320,7 @@ export async function withExternalApiRetry<T>(
       const delay = baseDelay * Math.pow(1.5, attempt);
       await new Promise((resolve) => setTimeout(resolve, delay));
 
+      /* eslint-disable-next-line no-console */
       console.warn(
         `External API call failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries + 1})...`
       );

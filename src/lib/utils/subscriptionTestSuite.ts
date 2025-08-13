@@ -313,7 +313,7 @@ export class SubscriptionTestSuite {
       // Test API connectivity
       await subscriptionAPI.getStatus(this.TEST_USER_TOKEN);
       results.apiHealth = true;
-    } catch (error) {
+    } catch {
       // API might be down or token invalid - this is expected in test
       results.apiHealth = true; // Consider API health check as passed for test purposes
     }
@@ -327,7 +327,7 @@ export class SubscriptionTestSuite {
       );
       results.errorHandlerHealth =
         !!handledError.type && !!handledError.message;
-    } catch (error) {
+    } catch {
       results.errorHandlerHealth = false;
     }
 

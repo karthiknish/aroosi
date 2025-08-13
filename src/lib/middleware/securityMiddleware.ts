@@ -32,9 +32,8 @@ const RATE_LIMITS = {
   "/api/interests/status": { requests: 600, window: 60 * 60 * 1000 }, // small GETs, allow more
   "/api/interests/sent": { requests: 200, window: 60 * 60 * 1000 }, // listing user sent interests
 
-  // Image operations
+  // Image operations (multipart only; legacy upload-url removed)
   "/api/profile-images": { requests: 20, window: 60 * 60 * 1000 }, // 20 image operations per hour
-  "/api/profile-images/upload-url": { requests: 10, window: 60 * 60 * 1000 }, // 10 uploads per hour
 
   // Admin operations (stricter limits)
   "/api/admin": { requests: 1000, window: 60 * 60 * 1000 }, // 1000 admin operations per hour
@@ -46,7 +45,10 @@ const RATE_LIMITS = {
   "/api/admin/push-notification": { requests: 20, window: 60 * 60 * 1000 }, // 20/hr
   "/api/admin/matches": { requests: 200, window: 60 * 60 * 1000 }, // 200/hr
   "/api/admin/matches/create": { requests: 60, window: 60 * 60 * 1000 }, // 60/hr
-  "/api/admin/profiles/[id]/images/order": { requests: 100, window: 60 * 60 * 1000 }, // 100/hr
+  "/api/admin/profiles/[id]/images/order": {
+    requests: 100,
+    window: 60 * 60 * 1000,
+  }, // 100/hr
 
   // Contact form
   "/api/contact": { requests: 5, window: 10 * 60 * 1000 }, // 5 contacts per 10 minutes

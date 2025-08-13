@@ -5,13 +5,7 @@
  */
 import { getJson, postJson, deleteJson } from "@/lib/http/client";
 
-function normalizeError<T extends Record<string, unknown>>(
-  json: T | null | undefined,
-  fallbackMsg: string
-): string {
-  if (!json) return fallbackMsg;
-  return (json.error as string) || (json.message as string) || fallbackMsg;
-}
+// normalizeError helper removed (unused)
 
 /**
  * Send interest to a user (token-based)

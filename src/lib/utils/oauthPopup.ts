@@ -63,10 +63,8 @@ export function setupOAuthMessageListener(
 
     // Check message type
     if (event.data?.type === "oauth-success") {
-      console.log("OAuth success message received");
       onSuccess();
     } else if (event.data?.type === "oauth-error") {
-      console.error("OAuth error:", event.data.error);
       onError?.(event.data.error || "OAuth authentication failed");
     }
   };

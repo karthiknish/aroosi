@@ -26,16 +26,11 @@ export async function markConversationRead({
 }: {
   conversationId: string;
 }) {
-  const res = await fetch(
-    `/api/conversations/${encodeURIComponent(conversationId)}/mark-read`,
-    {
-      method: "POST",
-      headers: {
-        // Cookie-based session; no Authorization header
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const res = await fetch(`/api/messages/mark-read`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversationId }),
+  });
   const json = await res.json();
   if (!res.ok || json.success === false) {
     throw new Error(json.error || "Failed to mark conversation as read");

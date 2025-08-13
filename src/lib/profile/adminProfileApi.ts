@@ -4,12 +4,10 @@ import type { ImageType } from "@/types/image";
 type AdminProfile = Profile & { _id: string; userId: string };
 
 export async function fetchAdminProfiles({
-  token: _token,
   search,
   page,
   pageSize = 10,
 }: {
-  token: string;
   search: string;
   page: number;
   pageSize?: number;
@@ -41,10 +39,8 @@ export async function fetchAdminProfiles({
 }
 
 export async function fetchAdminProfileImages({
-  token: _token,
   userId,
 }: {
-  token: string;
   userId: string;
 }): Promise<{ userProfileImages: ImageType[] }> {
   const headers: Record<string, string> = {};
@@ -73,11 +69,9 @@ export async function fetchAdminProfileImages({
 }
 
 export async function updateAdminProfile({
-  token: _token,
   id,
   updates,
 }: {
-  token: string;
   id: string;
   updates: Partial<Profile>;
 }): Promise<AdminProfile> {
@@ -104,10 +98,8 @@ export async function updateAdminProfile({
 }
 
 export async function deleteAdminProfile({
-  token: _token,
   id,
 }: {
-  token: string;
   id: string;
 }): Promise<{ success: boolean; message?: string }> {
   const headers: Record<string, string> = {};
@@ -129,11 +121,9 @@ export async function deleteAdminProfile({
 }
 
 export async function banAdminProfile({
-  token: _token,
   id,
   banned,
 }: {
-  token: string;
   id: string;
   banned: boolean;
 }): Promise<{ success: boolean; message?: string }> {
@@ -158,10 +148,8 @@ export async function banAdminProfile({
 }
 
 export async function fetchAllAdminProfileImages({
-  token: _token,
   profiles,
 }: {
-  token: string;
   profiles: { _id: string; userId: string }[];
 }): Promise<Record<string, ImageType[]>> {
   const newImages: Record<string, ImageType[]> = {};
@@ -171,10 +159,7 @@ export async function fetchAllAdminProfileImages({
         return;
       }
       try {
-        const data = await fetchAdminProfileImages({
-          token: _token,
-          userId: profile.userId,
-        });
+        const data = await fetchAdminProfileImages({ userId: profile.userId });
         if (Array.isArray(data)) {
           newImages[profile._id] = data;
         } else if (Array.isArray(data.userProfileImages)) {
@@ -191,10 +176,8 @@ export async function fetchAllAdminProfileImages({
 
 // Create a new admin profile
 export async function createAdminProfile({
-  token: _token,
   profile,
 }: {
-  token: string;
   profile: Partial<Profile> & { [key: string]: unknown };
 }): Promise<AdminProfile> {
   const headers: Record<string, string> = {
@@ -227,7 +210,6 @@ export async function createAdminProfile({
  * @returns { success: boolean; error?: string }
  */
 export async function setProfileBannedStatus(
-  _token: string,
   profileId: string,
   banned: boolean
 ): Promise<{ success: boolean; error?: string }> {
@@ -258,11 +240,7 @@ export type AdminProfileMatchesResult = {
   error?: string;
 }[];
 
-export async function fetchAdminAllMatches({
-  token: _token,
-}: {
-  token: string;
-}): Promise<AdminProfileMatchesResult> {
+export async function fetchAdminAllMatches(): Promise<AdminProfileMatchesResult> {
   const headers: Record<string, string> = {};
   try {
     const res = await fetch(`/api/admin/matches`, { headers });
@@ -286,10 +264,8 @@ export async function fetchAdminAllMatches({
 
 // Fetch a single admin profile by ID
 export async function fetchAdminProfileById({
-  token: _token,
   id,
 }: {
-  token: string;
   id: string;
 }): Promise<AdminProfile | null> {
   const headers: Record<string, string> = {};
@@ -309,11 +285,9 @@ export async function fetchAdminProfileById({
 
 // Update a single admin profile by ID
 export async function updateAdminProfileById({
-  token: _token,
   id,
   updates,
 }: {
-  token: string;
   id: string;
   updates: Partial<Profile>;
 }): Promise<AdminProfile> {
@@ -341,10 +315,8 @@ export async function updateAdminProfileById({
 
 // Fetch images for a given profileId with admin token
 export async function fetchAdminProfileImagesById({
-  token: _token,
   profileId,
 }: {
-  token: string;
   profileId: string;
 }): Promise<ImageType[]> {
   const headers: Record<string, string> = {};
@@ -371,12 +343,10 @@ export async function fetchAdminProfileImagesById({
 
 // Update a profile image by imageId for a given profileId (admin)
 export async function updateAdminProfileImageById({
-  token: _token,
   profileId,
   imageId,
   updates,
 }: {
-  token: string;
   profileId: string;
   imageId: string;
   updates: Partial<ImageType>;
@@ -408,11 +378,9 @@ export async function updateAdminProfileImageById({
 
 // Delete a profile image by imageId for a given profileId (admin)
 export async function deleteAdminProfileImageById({
-  token: _token,
   profileId,
   imageId,
 }: {
-  token: string;
   profileId: string;
   imageId: string;
 }): Promise<{ success: boolean; message?: string }> {
@@ -449,39 +417,33 @@ export async function adminUploadProfileImage({
   if (!profileId) throw new Error("Profile ID required");
   if (!file) throw new Error("File required");
 
-  // 1) upload URL
-  const uploadUrlRes = await fetch(`/api/profile-images/upload-url`, {
-    headers: {},
+  // Use the same multipart endpoint; server associates the upload with the current admin session
+  // and then saves metadata for the specified profileId.
+  const form = new FormData();
+  form.append("image", file, file.name);
+  const uploadRes = await fetch(`/api/profile-images/upload`, {
+    method: "POST",
+    body: form,
   });
-  if (!uploadUrlRes.ok) {
-    throw new Error("Failed to get upload URL");
+  if (!uploadRes.ok) {
+    const txt = await uploadRes.text().catch(() => "");
+    throw new Error(txt || "Failed to upload image");
   }
-  const { uploadUrl } = (await uploadUrlRes.json()) as { uploadUrl: string };
-  if (!uploadUrl) throw new Error("Upload URL missing");
+  const json = (await uploadRes.json().catch(() => ({}))) as {
+    imageId?: string;
+    url?: string;
+  };
+  if (!json.imageId) throw new Error("Upload response missing imageId");
 
-  // 2) put file
-  const putRes = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file,
-  });
-  if (!putRes.ok) {
-    const txt = await putRes.text();
-    throw new Error(txt || "Failed to upload to storage");
-  }
-  const { storageId } = (await putRes.json()) as { storageId: string };
-  if (!storageId) throw new Error("storageId missing");
-
-  // 3) save meta
+  // If server associates the uploaded image to the current user by default,
+  // call the admin order or metadata association endpoint as needed.
+  // Here we ensure the metadata is saved for the target profile via existing route.
   const metaRes = await fetch(`/api/profile-images`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // Cookie-based session; no Authorization header
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       userId: profileId,
-      storageId,
+      storageId: json.imageId,
       fileName: file.name,
       contentType: file.type,
       fileSize: file.size,
@@ -530,11 +492,9 @@ export async function updateAdminProfileImageOrder({
 }
 
 export async function createManualMatch({
-  token: _token,
   fromProfileId,
   toProfileId,
 }: {
-  token: string;
   fromProfileId: string;
   toProfileId: string;
 }): Promise<{ success: boolean; error?: string }> {
@@ -555,10 +515,8 @@ export async function createManualMatch({
 }
 
 export async function fetchAdminProfileMatches({
-  token: _token,
   profileId,
 }: {
-  token: string;
   profileId: string;
 }): Promise<Profile[]> {
   const headers: Record<string, string> = {};

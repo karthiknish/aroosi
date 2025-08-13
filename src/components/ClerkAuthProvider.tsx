@@ -453,9 +453,9 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
               pendingFirstNameRef.current = null;
             }
           } catch {}
-          // Trigger auto-heal creation of Convex user/profile
+          // Trigger auto-heal creation by refetching via util
           try {
-            fetch("/api/user/me", { cache: "no-store" }).catch(() => {});
+            await getCurrentUserWithProfile();
           } catch {}
           await refreshUser();
           return { success: true };

@@ -12,36 +12,14 @@ type ProfileResponse = ApiResponse<Profile | null> & {
   isProfileComplete?: boolean;
 };
 
-// Default request timeout in milliseconds
-const DEFAULT_TIMEOUT = 10000;
+// Default request timeout in milliseconds (unused)
+const _DEFAULT_TIMEOUT = 10000;
 
-// Helper function to handle fetch with timeout
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeout = DEFAULT_TIMEOUT
-): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`Request timed out after ${timeout}ms`);
-    }
-    throw error;
-  }
-}
+// fetchWithTimeout removed (unused)
 
 // Helper function to handle API errors
 function handleApiError(error: unknown, context: string): ApiResponse<null> {
+  /* eslint-disable-next-line no-console */
   console.error(`[ProfileAPI] Error in ${context}:`, error);
 
   if (error instanceof Error) {
@@ -63,9 +41,7 @@ function handleApiError(error: unknown, context: string): ApiResponse<null> {
 import { getJson, postJson, putJson, deleteJson } from "@/lib/http/client";
 
 // Helper to validate token - deprecated in token-based client usage
-function validateToken(_token: string): string | null {
- return null;
-}
+// validateToken removed (unused)
 
 /**
  * Fetches a user's profile with retry logic and proper error handling
@@ -79,6 +55,7 @@ export async function fetchUserProfile(
   retries = 2
 ): Promise<ProfileResponse> {
   if (!userId) {
+    /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No user ID provided to fetchUserProfile");
     return { success: false, error: "No user ID provided" };
   }
@@ -98,6 +75,7 @@ export async function fetchUserProfile(
       return { success: true, data: null, status: 404 };
     }
     if (retries > 0) {
+      /* eslint-disable-next-line no-console */
       console.warn(
         `[ProfileAPI] Retrying fetchUserProfile (${retries} attempts left)...`
       );
@@ -119,6 +97,7 @@ export async function fetchUserProfileImages(
   retries = 2
 ): Promise<ApiResponse<{ url: string; storageId: string }[]>> {
   if (!userId) {
+    /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No user ID provided to fetchUserProfileImages");
     return { success: false, error: "No user ID provided" };
   }
@@ -154,6 +133,7 @@ export async function fetchUserProfileImages(
       return { success: true, data: [], status: 404 };
     }
     if (retries > 0) {
+      /* eslint-disable-next-line no-console */
       console.warn(
         `[ProfileAPI] Retrying fetchUserProfileImages (${retries} attempts left)...`
       );
@@ -176,6 +156,7 @@ export async function updateUserProfile(
   retries = 2
 ): Promise<ProfileResponse> {
   if (!updates || Object.keys(updates).length === 0) {
+    /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No updates provided to updateUserProfile");
     return { success: false, error: "No updates provided" };
   }
@@ -191,6 +172,7 @@ export async function updateUserProfile(
     };
   } catch (error) {
     if (retries > 0) {
+      /* eslint-disable-next-line no-console */
       console.warn(
         `[ProfileAPI] Retrying updateUserProfile (${retries} attempts left)...`
       );
@@ -214,6 +196,7 @@ export async function submitProfile(
   retries = 2
 ): Promise<ProfileResponse> {
   if (!values) {
+    /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No values provided to submitProfile");
     return { success: false, error: "No profile data provided" };
   }
@@ -281,6 +264,7 @@ export async function submitProfile(
     };
   } catch (error) {
     if (retries > 0) {
+      /* eslint-disable-next-line no-console */
       console.warn(
         `[ProfileAPI] Retrying submitProfile (${retries} attempts left)...`
       );
@@ -313,11 +297,11 @@ export async function getCurrentUserWithProfile(
       throw new Error("Invalid profile data received from server");
     }
 
-    let userId = "unknown";
+    let _userId = "unknown";
     let isProfileComplete: boolean | undefined = undefined;
     if (typeof profile === "object" && profile !== null) {
       if ("userId" in profile && typeof (profile as any).userId === "string") {
-        userId = (profile as any).userId;
+        _userId = (profile as any).userId;
       }
       if (
         "isProfileComplete" in profile &&
@@ -327,10 +311,7 @@ export async function getCurrentUserWithProfile(
       }
     }
 
-    console.log(
-      "[ProfileAPI] Successfully fetched profile data for user:",
-      userId
-    );
+    // fetched profile successfully
     return {
       success: true,
       data: profile,
@@ -340,6 +321,7 @@ export async function getCurrentUserWithProfile(
   } catch (error: unknown) {
     const status = (error as any)?.status as number | undefined;
     if (status === 401) {
+      /* eslint-disable-next-line no-console */
       console.error("[ProfileAPI] Unauthorized - invalid or expired token");
       return {
         success: false,
@@ -348,6 +330,7 @@ export async function getCurrentUserWithProfile(
       };
     }
     if (status === 404) {
+      /* eslint-disable-next-line no-console */
       console.log("[ProfileAPI] Profile not found - returning empty profile");
       return {
         success: true,
@@ -378,9 +361,7 @@ export async function getCurrentUserWithProfile(
  * @param retries - Number of retry attempts (default: 2)
  * @returns Promise with user profile or error
  */
-export async function fetchMyProfile(
-  retries = 2
-): Promise<Profile | null> {
+export async function fetchMyProfile(retries = 2): Promise<Profile | null> {
   const url = "/api/user/me";
   try {
     const data = await getJson<any>(url);
@@ -401,6 +382,7 @@ export async function fetchMyProfile(
       return fetchMyProfile(retries - 1);
     }
     if (status === 404) return null;
+    /* eslint-disable-next-line no-console */
     console.error("[fetchMyProfile] Error:", error);
     return null;
   }
@@ -417,7 +399,7 @@ export async function deleteUserProfile(
 ): Promise<ApiResponse<null>> {
   const url = "/api/profile";
   try {
-    const resp = await deleteJson<string | { success?: boolean }>(url);
+    await deleteJson<string | { success?: boolean }>(url);
     return {
       success: true,
       data: null,
@@ -431,6 +413,7 @@ export async function deleteUserProfile(
           (error.message.includes("Failed to fetch") ||
             error.message.includes("timed out"))))
     ) {
+      /* eslint-disable-next-line no-console */
       console.warn(
         `[ProfileAPI] Retrying deleteUserProfile (${retries} attempts left)...`
       );

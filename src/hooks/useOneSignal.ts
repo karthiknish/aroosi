@@ -25,7 +25,9 @@ async function getPlayerIdCompat(os: AnyOS): Promise<string | undefined> {
       const id = await os.User.PushSubscription.getId();
       if (id) return id as string;
     }
-  } catch (_) {}
+  } catch {
+    // ignore
+  }
   return undefined;
 }
 

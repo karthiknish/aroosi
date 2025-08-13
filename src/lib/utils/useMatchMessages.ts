@@ -104,15 +104,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
     ) => {
       setError(null);
       try {
-        if (process.env.NODE_ENV === "development") {
-          console.log("[sendMatchMessage] payload", {
-            conversationId,
-            fromUserId,
-            toUserId,
-            text: text.substring(0, 50) + (text.length > 50 ? "..." : ""),
-            auth: "cookies",
-          });
-        }
+        // dev log removed to satisfy no-console lint rule
 
         // Optimistic UI update
         const tmpId = existingTempId ?? `tmp-${Date.now()}`;
@@ -199,7 +191,6 @@ export function useMatchMessages(conversationId: string, _token: string) {
 
     const conversationIdPattern = /^[a-zA-Z0-9_-]+$/;
     if (!conversationIdPattern.test(conversationId)) {
-      console.error("[SSE] Invalid conversation ID format");
       return;
     }
 
@@ -214,7 +205,6 @@ export function useMatchMessages(conversationId: string, _token: string) {
       sseRef.current = es;
 
       es.onopen = () => {
-        console.log("[SSE] Connection opened");
         reconnectAttempts = 0;
         setConnectionStatus("connected");
       };
@@ -272,8 +262,8 @@ export function useMatchMessages(conversationId: string, _token: string) {
               return [...withoutTmp, msg];
             });
           }
-        } catch (e) {
-          console.error("[SSE] Failed to parse event:", e);
+        } catch {
+          // ignore parse errors
         }
       };
 
@@ -283,8 +273,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
         setConnectionStatus("connected");
       });
 
-      es.onerror = (e) => {
-        console.error("[SSE] Connection error:", e);
+      es.onerror = () => {
         setConnectionStatus("disconnected");
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = reconnectDelay * Math.pow(2, reconnectAttempts);
@@ -294,7 +283,6 @@ export function useMatchMessages(conversationId: string, _token: string) {
             connect();
           }, delay);
         } else {
-          console.error("[SSE] Max reconnection attempts reached");
           setError("Connection lost. Please refresh the page.");
         }
       };

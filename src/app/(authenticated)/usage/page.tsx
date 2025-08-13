@@ -28,12 +28,16 @@ export default function UsagePage() {
   useAuthContext(); // ensure auth order; no token usage
 
   // Detailed usage history (last 100 events)
-  const { data: history } = useQuery({
+  const {
+    data: history,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["usage-history"],
     queryFn: async () => {
       const { getJson } = await import("@/lib/http/client");
       const json = await getJson<{ data: UsageHistoryItem[] }>(
-        "/api/subscription/usage-history",
+        "/api/subscription/usage-history?days=7&limit=200",
         {
           cache: "no-store",
           headers: { "x-client-check": "usage-history" },
@@ -112,30 +116,38 @@ export default function UsagePage() {
             <CardTitle>Usage Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={chartData.distribution}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent = 0 }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {chartData.distribution.map((_, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={chartColors[index % chartColors.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="h-[300px] bg-gray-100 animate-pulse rounded" />
+            ) : isError ? (
+              <div className="text-sm text-red-600">
+                Failed to load usage data.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData.distribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent = 0 }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.distribution.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={chartColors[index % chartColors.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -145,22 +157,32 @@ export default function UsagePage() {
           <CardTitle>Daily Usage Trends</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={chartData.daily}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              {Object.keys(featureNames).map((feature, index) => (
-                <Bar
-                  key={feature}
-                  dataKey={feature}
-                  fill={chartColors[index % chartColors.length]}
-                  name={featureNames[feature]}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
+          {isLoading ? (
+            <div className="h-[400px] bg-gray-100 animate-pulse rounded" />
+          ) : isError ? (
+            <div className="text-sm text-red-600">
+              Failed to load usage data.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={chartData.daily}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                {Object.keys(featureNames).map((feature, index) => (
+                  <Bar
+                    key={feature}
+                    dataKey={feature}
+                    fill={chartColors[index % chartColors.length]}
+                    name={featureNames[feature]}
+                  />
+                ))}
+                {/* Legend for clarity */}
+                <Tooltip />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
     </div>

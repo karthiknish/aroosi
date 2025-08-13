@@ -1,31 +1,22 @@
-import { getJson, postJson, putJson } from "@/lib/http/client";
+import { postJson } from "@/lib/http/client";
 
 /**
  * Image utilities using the centralized HTTP client.
  * No token parameters are accepted; Authorization is auto-attached via tokenStorage.
  */
 
-// Deprecated: switched to single local multipart endpoint
-export async function getImageUploadUrl(): Promise<string> {
-  throw new Error(
-    "Deprecated: use /api/profile-images/upload with multipart FormData"
-  );
-}
-
-export async function saveImageMeta(_: any): Promise<{ imageId: string }> {
-  throw new Error(
-    "Deprecated: metadata saved server-side in /api/profile-images/upload"
-  );
-}
+// (All prior two-step upload helpers removed; use uploadProfileImage or
+// uploadProfileImageWithProgress which call the canonical multipart endpoint.)
 
 export async function updateImageOrder(args: {
-  userId: string;
+  profileId?: string;
+  userId?: string; // backward-compat: will be mapped to profileId
   imageIds: string[];
 }): Promise<{ ok: true }> {
-  // PUT new order to server
-  // Endpoint present at: /api/profile-images/order
-  await putJson("/api/profile-images/order", {
-    userId: args.userId,
+  // POST new order to server using canonical payload { profileId, imageIds }
+  const profileId = args.profileId || args.userId;
+  await postJson("/api/profile-images/order", {
+    profileId,
     imageIds: args.imageIds,
   });
   return { ok: true };
@@ -105,38 +96,45 @@ export function uploadProfileImageWithProgressCancellable(
   onProgress?: (loaded: number, total: number) => void
 ): { promise: Promise<{ imageId: string; url?: string }>; cancel: () => void } {
   let xhr: XMLHttpRequest | null = null;
-  const promise = new Promise<{ imageId: string; url?: string }>((resolve, reject) => {
-    try {
-      xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/profile-images/upload", true);
-      xhr.responseType = "json";
-      xhr.upload.onprogress = (evt) => {
-        if (evt.lengthComputable && typeof onProgress === "function") {
-          onProgress(evt.loaded, evt.total);
-        }
-      };
-      xhr.onload = () => {
-        const status = xhr!.status;
-        if (status >= 200 && status < 300) {
-          const data = (xhr!.response || {}) as { imageId?: string; url?: string };
-          if (!data.imageId) {
-            reject(new Error("Upload response missing imageId"));
-            return;
+  const promise = new Promise<{ imageId: string; url?: string }>(
+    (resolve, reject) => {
+      try {
+        xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/profile-images/upload", true);
+        xhr.responseType = "json";
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable && typeof onProgress === "function") {
+            onProgress(evt.loaded, evt.total);
           }
-          resolve({ imageId: data.imageId, url: data.url });
-        } else {
-          const body = typeof xhr!.responseText === "string" ? xhr!.responseText : "";
-          reject(new Error(body || `Upload failed (${status})`));
-        }
-      };
-      xhr.onerror = () => reject(new Error("Network error during image upload"));
-      const form = new FormData();
-      form.append("image", file, file.name);
-      xhr.send(form);
-    } catch (e) {
-      reject(e);
+        };
+        xhr.onload = () => {
+          const status = xhr!.status;
+          if (status >= 200 && status < 300) {
+            const data = (xhr!.response || {}) as {
+              imageId?: string;
+              url?: string;
+            };
+            if (!data.imageId) {
+              reject(new Error("Upload response missing imageId"));
+              return;
+            }
+            resolve({ imageId: data.imageId, url: data.url });
+          } else {
+            const body =
+              typeof xhr!.responseText === "string" ? xhr!.responseText : "";
+            reject(new Error(body || `Upload failed (${status})`));
+          }
+        };
+        xhr.onerror = () =>
+          reject(new Error("Network error during image upload"));
+        const form = new FormData();
+        form.append("image", file, file.name);
+        xhr.send(form);
+      } catch (e) {
+        reject(e);
+      }
     }
-  });
+  );
   const cancel = () => {
     try {
       xhr?.abort();

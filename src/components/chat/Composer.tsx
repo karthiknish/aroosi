@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { MessageFeedback } from "@/components/ui/MessageFeedback";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { buildVoiceUploadFormData, validateAudioCaps, MAX_DURATION_SECONDS, MAX_FILE_BYTES, formatTime } from "@/lib/audio";
+import { uploadVoiceMessage } from "@/lib/api/voiceMessages";
 
 type ComposerProps = {
   inputRef: RefObject<HTMLInputElement>;
@@ -87,19 +88,24 @@ export default function Composer(props: ComposerProps) {
     cancel,
     mediaSupported,
     mediaRecorderSupported,
-  } = useVoiceRecorder({ maxDurationSeconds: MAX_DURATION_SECONDS, maxBytes: MAX_FILE_BYTES, bars: 64 });
+  } = useVoiceRecorder({
+    maxDurationSeconds: MAX_DURATION_SECONDS,
+    maxBytes: MAX_FILE_BYTES,
+    bars: 64,
+  });
 
   const [isUploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0); // 0..100
-  const lastUploadRef = React.useRef<{ fd: FormData; attempt: number } | null>(null);
+  const lastUploadRef = React.useRef<{ fd: FormData; attempt: number } | null>(
+    null
+  );
 
-  const canUseVoice = useMemo(() => mediaSupported && mediaRecorderSupported && canSendVoice && !isBlocked, [
-    mediaSupported,
-    mediaRecorderSupported,
-    canSendVoice,
-    isBlocked,
-  ]);
+  const canUseVoice = useMemo(
+    () =>
+      mediaSupported && mediaRecorderSupported && canSendVoice && !isBlocked,
+    [mediaSupported, mediaRecorderSupported, canSendVoice, isBlocked]
+  );
 
   const startRecording = useCallback(async () => {
     setUploadError(null);
@@ -171,18 +177,11 @@ export default function Composer(props: ComposerProps) {
         // non-fatal; continue without peaks
       }
 
-      const res = await fetch("/api/voice-messages/upload", {
-        method: "POST",
-        credentials: "include",
-        body: fd,
-      });
-
-      if (!res.ok) {
-        const msg = await res.json().catch(() => ({}));
-        const errText = msg?.error || msg?.message || "Upload failed";
+      const { success, error: errText } = await uploadVoiceMessage(fd);
+      if (!success) {
         setUploading(false);
-        setUploadError(errText);
-        onVoiceError?.(errText);
+        setUploadError(errText || "Upload failed");
+        onVoiceError?.(errText || "Upload failed");
         return;
       }
 
@@ -190,15 +189,31 @@ export default function Composer(props: ComposerProps) {
       setUploading(false);
       setUploadError(null);
       // Surface a transient feedback
-      setMessageFeedback({ type: "success", message: "Voice message sent", isVisible: true });
-      setTimeout(() => setMessageFeedback({ ...messageFeedback, isVisible: false }), 1500);
+      setMessageFeedback({
+        type: "success",
+        message: "Voice message sent",
+        isVisible: true,
+      });
+      setTimeout(
+        () => setMessageFeedback({ ...messageFeedback, isVisible: false }),
+        1500
+      );
     } catch (e: any) {
       const msg = e?.message || "Upload error";
       setUploading(false);
       setUploadError(msg);
       onVoiceError?.(msg);
     }
-  }, [conversationId, onSendVoice, onVoiceError, setMessageFeedback, messageFeedback, peaks, stop, toUserId]);
+  }, [
+    conversationId,
+    onSendVoice,
+    onVoiceError,
+    setMessageFeedback,
+    messageFeedback,
+    peaks,
+    stop,
+    toUserId,
+  ]);
 
   const recordingBanner = (isRecording || isPaused || isUploading) && (
     <div className="mb-3 p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -206,44 +221,75 @@ export default function Composer(props: ComposerProps) {
         <div className="flex items-center gap-3">
           <div className="h-2 flex items-end gap-1">
             {/* Lightweight bars from peaks */}
-            {peaks.length > 0
-              ? peaks.map((p, i) => (
-                  <div
-                    key={i}
-                    className="w-1 bg-pink-500 rounded-sm"
-                    style={{ height: `${Math.max(10, p * 28)}px` }}
-                    title={`${i}`}
-                  />
-                ))
-              : (
-                <div className="text-xs text-gray-500">Recording…</div>
-              )}
+            {peaks.length > 0 ? (
+              peaks.map((p, i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-pink-500 rounded-sm"
+                  style={{ height: `${Math.max(10, p * 28)}px` }}
+                  title={`${i}`}
+                />
+              ))
+            ) : (
+              <div className="text-xs text-gray-500">Recording…</div>
+            )}
           </div>
-          <div className={cn("text-sm font-medium", isPaused ? "text-orange-600" : "text-pink-600")}>
+          <div
+            className={cn(
+              "text-sm font-medium",
+              isPaused ? "text-orange-600" : "text-pink-600"
+            )}
+          >
             {isUploading ? "Uploading…" : isPaused ? "Paused" : "Recording"}
           </div>
-          <div className="text-xs text-gray-600">• {elapsedLabel} / {formatTime(MAX_DURATION_SECONDS * 1000)}</div>
+          <div className="text-xs text-gray-600">
+            • {elapsedLabel} / {formatTime(MAX_DURATION_SECONDS * 1000)}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {!isUploading && (
             <>
               {isRecording && !isPaused && (
-                <Button type="button" variant="outline" size="sm" onClick={pause} className="h-8">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={pause}
+                  className="h-8"
+                >
                   <Pause className="w-4 h-4 mr-1" /> Pause
                 </Button>
               )}
               {isRecording && isPaused && (
-                <Button type="button" variant="outline" size="sm" onClick={resume} className="h-8">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={resume}
+                  className="h-8"
+                >
                   <Play className="w-4 h-4 mr-1" /> Resume
                 </Button>
               )}
               {isRecording && (
-                <Button type="button" variant="destructive" size="sm" onClick={stopAndUpload} className="h-8">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={stopAndUpload}
+                  className="h-8"
+                >
                   <Square className="w-4 h-4 mr-1" /> Stop & Send
                 </Button>
               )}
               {!isRecording && !isPaused && (
-                <Button type="button" variant="ghost" size="sm" onClick={cancel} className="h-8">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={cancel}
+                  className="h-8"
+                >
                   Cancel
                 </Button>
               )}
@@ -251,7 +297,9 @@ export default function Composer(props: ComposerProps) {
           )}
         </div>
       </div>
-      {uploadError && <div className="mt-2 text-xs text-red-600">{uploadError}</div>}
+      {uploadError && (
+        <div className="mt-2 text-xs text-red-600">{uploadError}</div>
+      )}
     </div>
   );
 

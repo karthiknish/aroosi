@@ -171,12 +171,15 @@ export function logError(appError: AppError): void {
   switch (appError.severity) {
     case ErrorSeverity.CRITICAL:
     case ErrorSeverity.HIGH:
+      /* eslint-disable-next-line no-console */
       console.error("[ERROR]", logData);
       break;
     case ErrorSeverity.MEDIUM:
+      /* eslint-disable-next-line no-console */
       console.warn("[WARNING]", logData);
       break;
     case ErrorSeverity.LOW:
+      /* eslint-disable-next-line no-console */
       console.info("[INFO]", logData);
       break;
   }
@@ -283,6 +286,7 @@ export async function retryWithBackoff<T>(
         maxDelay
       );
 
+      /* eslint-disable-next-line no-console */
       console.warn(
         `Attempt ${attempt + 1} failed, retrying in ${delay}ms...`,
         error
@@ -308,7 +312,9 @@ export function createErrorBoundaryHandler(componentName: string) {
 
     // In development, also log to console for easier debugging
     if (process.env.NODE_ENV === "development") {
+      /* eslint-disable-next-line no-console */
       console.error(`Error in ${componentName}:`, error);
+      /* eslint-disable-next-line no-console */
       console.error("Component stack:", errorInfo.componentStack);
     }
   };

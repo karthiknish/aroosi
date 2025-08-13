@@ -56,19 +56,20 @@ export default function CustomSignInForm({
         setIsLoading(false);
         return;
       }
-  
+
       // Show success message
-      import("@/lib/ui/toast").then(({ showSuccessToast }) => {
-        showSuccessToast("Welcome back! You have been successfully signed in.");
-      }).catch(() => {
-        // Fallback if toast can't be imported
-        console.log("Signed in successfully");
-      });
-  
+      import("@/lib/ui/toast")
+        .then(({ showSuccessToast }) => {
+          showSuccessToast(
+            "Welcome back! You have been successfully signed in."
+          );
+        })
+        .catch(() => {});
+
       // 2) Hydration retry loop to cover propagation delay after sign-in
       const backoffs = [0, 150, 300, 750];
       let hydratedUser: any = null;
-  
+
       for (let i = 0; i < backoffs.length; i++) {
         if (backoffs[i] > 0) {
           await sleep(backoffs[i]);
@@ -78,13 +79,9 @@ export default function CustomSignInForm({
         } catch {
           // ignore, allow next retry
         }
-  
-        // Optional: warm up /api/auth/me (non-blocking, relies on cookies)
-        void fetch("/api/auth/me", {
-          method: "GET",
-          headers: { accept: "application/json", "cache-control": "no-store" },
-        }).catch(() => {});
-  
+
+        // Optional warm-up removed to enforce util-only API access
+
         hydratedUser = (user as any) ?? null;
         if (
           hydratedUser &&
@@ -95,12 +92,13 @@ export default function CustomSignInForm({
           break;
         }
       }
-  
+
       // Proceed regardless; downstream guards handle profile completion
       handleOnboardingComplete();
       setIsLoading(false);
-    } catch (err) {
-      const msg = "An unexpected error occurred. Please try again in a few minutes.";
+    } catch {
+      const msg =
+        "An unexpected error occurred. Please try again in a few minutes.";
       onError?.(msg);
       showErrorToast(msg);
       setIsLoading(false);

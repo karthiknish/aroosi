@@ -16,11 +16,7 @@ export function storeTempUser(
   const normalizedEmail = email.toLowerCase().trim();
   const expiresAt = Date.now() + 30 * 60 * 1000; // 30 minutes
 
-  console.log("Storing temp user:", {
-    originalEmail: email,
-    normalizedEmail,
-    expiresAt: new Date(expiresAt).toISOString(),
-  });
+  // temp user stored in memory with TTL
 
   tempUserStore.set(normalizedEmail, {
     email: normalizedEmail,
@@ -34,44 +30,26 @@ export function getTempUser(email: string): TempUserData | null {
   // Normalize email to lowercase for consistent lookup
   const normalizedEmail = email.toLowerCase().trim();
 
-  console.log("Getting temp user:", {
-    originalEmail: email,
-    normalizedEmail,
-    storeKeys: Array.from(tempUserStore.keys()),
-  });
+  // lookup temp user
 
   const userData = tempUserStore.get(normalizedEmail);
 
   if (!userData) {
-    console.log("No temp user data found for:", normalizedEmail);
     return null;
   }
 
   const now = Date.now();
   if (now > userData.expiresAt) {
-    console.log("Temp user data expired:", {
-      email: normalizedEmail,
-      now: new Date(now).toISOString(),
-      expiresAt: new Date(userData.expiresAt).toISOString(),
-    });
     tempUserStore.delete(normalizedEmail);
     return null;
   }
 
-  console.log("Temp user data retrieved successfully:", {
-    email: normalizedEmail,
-    fullName: userData.fullName,
-  });
   return userData;
 }
 
 export function deleteTempUser(email: string): void {
   // Normalize email to lowercase for consistent deletion
   const normalizedEmail = email.toLowerCase().trim();
-  console.log("Deleting temp user:", {
-    originalEmail: email,
-    normalizedEmail,
-  });
   tempUserStore.delete(normalizedEmail);
 }
 

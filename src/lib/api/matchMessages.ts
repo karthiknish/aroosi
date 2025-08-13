@@ -44,17 +44,7 @@ interface MarkReadParams {
   userId: string;
 }
 
-interface GenerateUploadUrlParams {
-  userId: string;
-  fileName: string;
-  contentType: string;
-  fileSize: number;
-}
-
-interface GenerateUploadUrlResponse {
-  uploadUrl: string;
-  storageId: string;
-}
+// Deprecated upload-url types removed (multipart upload is used instead)
 
 interface GetVoiceMessageUrlParams {
   storageId: string;
@@ -95,8 +85,7 @@ interface ApiResponse<T> {
 class MatchMessagesAPI {
   private async makeRequest<T>(
     endpoint: string,
-    options?: RequestInit,
-    _token?: string | null
+    options?: RequestInit
   ): Promise<T> {
     const baseHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -105,7 +94,6 @@ class MatchMessagesAPI {
       ...baseHeaders,
       ...((options?.headers as Record<string, string>) || {}),
     };
-
 
     const response = await fetch(`/api/messages${endpoint}`, {
       headers,
@@ -128,21 +116,15 @@ class MatchMessagesAPI {
   }
 
   async sendMessage(
-    token: string | null,
     params: SendMessageParams
   ): Promise<ApiResponse<MatchMessage>> {
-    return this.makeRequest<ApiResponse<MatchMessage>>(
-      "/send",
-      {
-        method: "POST",
-        body: JSON.stringify(params),
-      },
-      token
-    );
+    return this.makeRequest<ApiResponse<MatchMessage>>("/send", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
   }
 
   async getMessages(
-    token: string | null,
     params: GetMessagesParams
   ): Promise<ApiResponse<MatchMessage[]>> {
     const queryParams = new URLSearchParams({
@@ -152,109 +134,56 @@ class MatchMessagesAPI {
     });
 
     return this.makeRequest<ApiResponse<MatchMessage[]>>(
-      `/messages?${queryParams.toString()}`,
-      undefined,
-      token
+      `/messages?${queryParams.toString()}`
     );
   }
 
   async markConversationAsRead(
-    token: string | null,
     params: MarkReadParams
   ): Promise<ApiResponse<void>> {
-    return this.makeRequest<ApiResponse<void>>(
-      "/mark-read",
-      {
-        method: "POST",
-        body: JSON.stringify(params),
-      },
-      token
-    );
+    return this.makeRequest<ApiResponse<void>>("/mark-read", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
   }
 
-  async getUnreadCounts(
-    token: string | null,
-    userId: string
-  ): Promise<ApiResponse<number>> {
-    return this.makeRequest<ApiResponse<number>>(
-      `/unread-count/${userId}`,
-      undefined,
-      token
-    );
+  async getUnreadCounts(userId: string): Promise<ApiResponse<number>> {
+    return this.makeRequest<ApiResponse<number>>(`/unread-count/${userId}`);
   }
 
-  async generateUploadUrl(
-    token: string | null,
-    params: GenerateUploadUrlParams
-  ): Promise<ApiResponse<GenerateUploadUrlResponse>> {
-    return this.makeRequest<ApiResponse<GenerateUploadUrlResponse>>(
-      "/upload-url",
-      {
-        method: "POST",
-        body: JSON.stringify(params),
-      },
-      token
-    );
-  }
+  // generateUploadUrl removed: multipart uploads are now used directly via /api/messages/upload-image
 
   async getVoiceMessageUrl(
-    token: string | null,
     params: GetVoiceMessageUrlParams
   ): Promise<ApiResponse<string>> {
     return this.makeRequest<ApiResponse<string>>(
-      `/voice-url/${params.storageId}`,
-      undefined,
-      token
+      `/voice-url/${params.storageId}`
     );
   }
 
-  async uploadImage(
-    token: string | null,
-    params: StorageUploadParams
-  ): Promise<ApiResponse<void>> {
-    return this.makeRequest<ApiResponse<void>>(
-      "/upload-image",
-      {
-        method: "POST",
-        body: JSON.stringify(params),
-      },
-      token
-    );
+  async uploadImage(params: StorageUploadParams): Promise<ApiResponse<void>> {
+    return this.makeRequest<ApiResponse<void>>("/upload-image", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
   }
 
-  async deleteImage(
-    token: string | null,
-    params: StorageDeleteParams
-  ): Promise<ApiResponse<void>> {
-    return this.makeRequest<ApiResponse<void>>(
-      "/delete-image",
-      {
-        method: "POST",
-        body: JSON.stringify(params),
-      },
-      token
-    );
+  async deleteImage(params: StorageDeleteParams): Promise<ApiResponse<void>> {
+    return this.makeRequest<ApiResponse<void>>("/delete-image", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
   }
 
-  async listImages(
-    token: string | null,
-    userId: string
-  ): Promise<ApiResponse<StorageItem[]>> {
+  async listImages(userId: string): Promise<ApiResponse<StorageItem[]>> {
     return this.makeRequest<ApiResponse<StorageItem[]>>(
-      `/list-images/${userId}`,
-      undefined,
-      token
+      `/list-images/${userId}`
     );
   }
 
-  async getConversations(
-    token: string | null,
-    userId: string
-  ): Promise<ApiResponse<Conversation[]>> {
+  async getConversations(userId: string): Promise<ApiResponse<Conversation[]>> {
     return this.makeRequest<ApiResponse<Conversation[]>>(
-      `/conversations/${userId}`,
-      undefined,
-      token
+      `/conversations/${userId}`
     );
   }
 }
@@ -266,8 +195,6 @@ export type {
   SendMessageParams,
   GetMessagesParams,
   MarkReadParams,
-  GenerateUploadUrlParams,
-  GenerateUploadUrlResponse,
   GetVoiceMessageUrlParams,
   StorageUploadParams,
   StorageDeleteParams,
@@ -279,24 +206,21 @@ export type {
 // Backward compatibility exports
 export const matchMessages = {
   sendMessage: (params: SendMessageParams) =>
-    matchMessagesAPI.sendMessage(null, params),
+    matchMessagesAPI.sendMessage(params),
   getMessages: (params: GetMessagesParams) =>
-    matchMessagesAPI.getMessages(null, params),
+    matchMessagesAPI.getMessages(params),
   markConversationAsRead: (params: MarkReadParams) =>
-    matchMessagesAPI.markConversationAsRead(null, params),
-  getUnreadCounts: (userId: string) =>
-    matchMessagesAPI.getUnreadCounts(null, userId),
-  generateUploadUrl: (params: GenerateUploadUrlParams) =>
-    matchMessagesAPI.generateUploadUrl(null, params),
+    matchMessagesAPI.markConversationAsRead(params),
+  getUnreadCounts: (userId: string) => matchMessagesAPI.getUnreadCounts(userId),
   getVoiceMessageUrl: (params: GetVoiceMessageUrlParams) =>
-    matchMessagesAPI.getVoiceMessageUrl(null, params),
+    matchMessagesAPI.getVoiceMessageUrl(params),
   uploadImage: (params: StorageUploadParams) =>
-    matchMessagesAPI.uploadImage(null, params),
+    matchMessagesAPI.uploadImage(params),
   deleteImage: (params: StorageDeleteParams) =>
-    matchMessagesAPI.deleteImage(null, params),
-  listImages: (userId: string) => matchMessagesAPI.listImages(null, userId),
+    matchMessagesAPI.deleteImage(params),
+  listImages: (userId: string) => matchMessagesAPI.listImages(userId),
   getConversations: (userId: string) =>
-    matchMessagesAPI.getConversations(null, userId),
+    matchMessagesAPI.getConversations(userId),
 };
 
 export default matchMessages;

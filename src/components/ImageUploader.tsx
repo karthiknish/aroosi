@@ -16,17 +16,17 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { uploadProfileImage } from "@/lib/utils/imageUtil";
+import {
+  computeFileHash,
+  DuplicateSession,
+} from "@/lib/utils/imageUploadHelpers";
+
+type ImageUploaderMode = "local" | "immediate";
 
 interface ImageUploaderProps {
   userId: string;
   orderedImages: ImageType[];
-  // Deprecated props retained for compatibility; ignored in local-only flow
-  generateUploadUrl: () => Promise<
-    string | { success: boolean; error: string }
-  >;
-  uploadImage: (
-    args: any
-  ) => Promise<{ success: boolean; imageId: string; message: string }>;
   setIsUploading: (val: boolean) => void;
   disabled?: boolean;
   isUploading?: boolean;
@@ -36,6 +36,7 @@ interface ImageUploaderProps {
   onStartUpload?: () => void;
   customUploadFile?: (file: File) => Promise<void>;
   onOptimisticUpdate?: (newImage: ImageType) => void;
+  mode?: ImageUploaderMode;
 }
 
 // Utility: read file as data URL
@@ -76,7 +77,17 @@ async function getCroppedImg(
     ctx.rotate((rotateDeg * Math.PI) / 180);
     ctx.translate(-crop.width / 2, -crop.height / 2);
   }
-  ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+  ctx.drawImage(
+    image,
+    crop.x,
+    crop.y,
+    crop.width,
+    crop.height,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -95,8 +106,6 @@ async function getCroppedImg(
 export function ImageUploader({
   userId,
   orderedImages,
-  generateUploadUrl: _generateUploadUrl,
-  uploadImage: _uploadImage,
   setIsUploading,
   disabled = false,
   isUploading = false,
@@ -106,6 +115,7 @@ export function ImageUploader({
   customUploadFile,
   maxFiles,
   onOptimisticUpdate,
+  mode = "immediate",
 }: ImageUploaderProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pendingUpload, setPendingUpload] = useState<File | null>(null);
@@ -196,11 +206,95 @@ export function ImageUploader({
     disabled: disabled || isUploading,
   });
 
+  const getImageDimensions = useCallback(
+    async (file: File): Promise<{ width: number; height: number } | null> => {
+      let objectUrl: string | null = null;
+      try {
+        objectUrl = URL.createObjectURL(file);
+        if (typeof (globalThis as any).createImageBitmap === "function") {
+          const bitmap: ImageBitmap = await (
+            globalThis as any
+          ).createImageBitmap(file);
+          const dims = { width: bitmap.width, height: bitmap.height };
+          if (typeof (bitmap as any).close === "function") {
+            try {
+              (bitmap as any).close();
+            } catch {}
+          }
+          return dims;
+        }
+        const dims = await new Promise<{ width: number; height: number }>(
+          (resolve, reject) => {
+            const img = document.createElement("img");
+            img.onload = () =>
+              resolve({
+                width:
+                  (img as HTMLImageElement).naturalWidth ||
+                  (img as HTMLImageElement).width,
+                height:
+                  (img as HTMLImageElement).naturalHeight ||
+                  (img as HTMLImageElement).height,
+              });
+            img.onerror = () =>
+              reject(new Error("Failed to load image for dimension check"));
+            img.src = objectUrl as string;
+          }
+        );
+        return dims;
+      } catch {
+        return null;
+      } finally {
+        if (objectUrl && objectUrl.startsWith("blob:")) {
+          try {
+            URL.revokeObjectURL(objectUrl);
+          } catch {}
+        }
+      }
+    },
+    []
+  );
+
   const uploadImageFile = useCallback(
     async (file: File) => {
-      if (!userId || userId === "user-id-placeholder") {
-        // In profile creation (create) mode, just add file locally
-        const tempId = `local-${Date.now()}`;
+      const isLocalMode =
+        mode === "local" || !userId || userId === "user-id-placeholder";
+      const maxProfileImages = maxFiles ?? 5;
+      const currentImages = orderedImages || [];
+      if (currentImages.length >= maxProfileImages) {
+        showErrorToast(
+          null,
+          `You can only display up to ${maxProfileImages} images on your profile`
+        );
+        return;
+      }
+
+      if (isLocalMode) {
+        // Preflight: size and dimension checks, duplicate session detection
+        if (file.size > 5 * 1024 * 1024) {
+          showErrorToast(null, "Image is too large (max 5MB)");
+          return;
+        }
+        try {
+          const hash = await computeFileHash(file);
+          if (DuplicateSession.has(hash)) {
+            showErrorToast(null, "Duplicate image skipped");
+            return;
+          }
+          try {
+            DuplicateSession.add(hash);
+          } catch {}
+        } catch {}
+
+        const dims = await getImageDimensions(file);
+        if (!dims || dims.width < 512 || dims.height < 512) {
+          showErrorToast(
+            null,
+            `Image too small${dims ? ` (${dims.width}x${dims.height})` : ""}. Minimum 512x512px`
+          );
+          return;
+        }
+
+        const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const localImg: ImageType = {
           id: tempId,
           storageId: tempId,
@@ -210,15 +304,6 @@ export function ImageUploader({
         if (onOptimisticUpdate) onOptimisticUpdate(localImg);
         showSuccessToast("Image added");
         return { success: true, imageId: tempId, message: "local" };
-      }
-      const currentImages = orderedImages || [];
-      const maxProfileImages = maxFiles ?? 5;
-      if (currentImages.length >= maxProfileImages) {
-        showErrorToast(
-          null,
-          `You can only display up to ${maxProfileImages} images on your profile`
-        );
-        return;
       }
       try {
         setIsUploading(true);
@@ -236,27 +321,8 @@ export function ImageUploader({
           };
         }
 
-        // Local-only: send multipart form-data to single endpoint
-        const fd = new FormData();
-        fd.append("image", file, file.name);
-        const storageResp = await fetch("/api/profile-images/upload", {
-          method: "POST",
-          body: fd,
-        });
-
-        if (!storageResp.ok) {
-          const msg =
-            storageResp.status === 413
-              ? "Image is too large (max 5MB)."
-              : await storageResp.text();
-          throw new Error(msg || "Failed to upload image");
-        }
-
-        const json = (await storageResp.json().catch(() => ({}))) as {
-          imageId?: string;
-          url?: string;
-          success?: boolean;
-        };
+        // Immediate upload: use canonical utility to upload via multipart endpoint
+        const json = await uploadProfileImage(file);
 
         // Optimistic update
         if (onOptimisticUpdate && json?.imageId) {
@@ -303,6 +369,8 @@ export function ImageUploader({
       maxFiles,
       fetchImages,
       onOptimisticUpdate,
+      mode,
+      getImageDimensions,
     ]
   );
 

@@ -149,7 +149,7 @@ export function useRealTimeMessages({
       if (!userId || !text.trim()) return;
 
       try {
-        const response = await fetch("/api/match-messages", {
+        const response = await fetch("/api/messages/send", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -214,7 +214,7 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId],
+    [userId, conversationId]
   );
 
   // Send voice message
@@ -232,9 +232,10 @@ export function useRealTimeMessages({
         });
 
         // Determine the newest voice message from the returned list
-        const saved = Array.isArray(savedList) && savedList.length > 0
-          ? savedList[savedList.length - 1]
-          : undefined;
+        const saved =
+          Array.isArray(savedList) && savedList.length > 0
+            ? savedList[savedList.length - 1]
+            : undefined;
 
         if (!saved) {
           throw new Error("Voice message not returned from server");
@@ -264,7 +265,7 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId],
+    [userId, conversationId]
   );
 
   // Send typing indicators
@@ -303,16 +304,20 @@ export function useRealTimeMessages({
       if (!userId || messageIds.length === 0) return;
 
       try {
-        // Prefer conversation-based mark read endpoint
-        await markConversationRead({ conversationId });
+        // Use canonical messages mark-read endpoint
+        await fetch(`/api/messages/mark-read`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversationId }),
+        });
 
         // Optimistically update local state
         setMessages((prev) =>
           prev.map((msg) =>
             messageIds.includes(msg._id)
               ? { ...msg, isRead: true, readAt: Date.now() }
-              : msg,
-          ),
+              : msg
+          )
         );
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -324,7 +329,7 @@ export function useRealTimeMessages({
         }
       }
     },
-    [userId, conversationId],
+    [userId, conversationId]
   );
 
   // Refresh messages from server
@@ -333,10 +338,10 @@ export function useRealTimeMessages({
 
     try {
       const response = await fetch(
-        `/api/match-messages?conversationId=${conversationId}&limit=50`,
+        `/api/messages?conversationId=${conversationId}&limit=50`,
         {
           // Cookie-only auth: no Authorization header; server uses cookies
-        },
+        }
       );
 
       if (!response.ok) {
@@ -366,11 +371,11 @@ export function useRealTimeMessages({
         result.data !== null &&
         "messages" in (result as { data: { messages?: unknown } }).data &&
         Array.isArray(
-          (result as { data: { messages?: unknown } }).data.messages,
+          (result as { data: { messages?: unknown } }).data.messages
         )
       ) {
         setMessages(
-          (result as { data: { messages: MessageData[] } }).data.messages || [],
+          (result as { data: { messages: MessageData[] } }).data.messages || []
         );
       }
       // else: do not update if response is malformed

@@ -170,7 +170,7 @@ export function ensureMaxSize(blob: Blob, maxBytes: number): { ok: true } | { ok
 
 /**
  * Additional helpers: file hashing for duplicate detection and UI filename sanitize.
- * Appended non-breaking exports for use by LocalImageUpload and ProfileCreationModal.
+ * Appended non-breaking exports for use by ProfileCreationModal and unified ImageUploader.
  */
 
 /**

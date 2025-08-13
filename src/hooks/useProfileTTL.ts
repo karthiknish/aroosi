@@ -7,6 +7,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
 import { profileTTLManagerInstance, PROFILE_TTL_CONFIG } from "@/lib/storage/profile-ttl-manager";
 import { Profile, ProfileFormValues } from "@/types/profile";
+import {
+  getCurrentUserWithProfile,
+  submitProfile,
+  fetchUserProfileImages,
+} from "@/lib/profile/userProfileApi";
 
 // Hook for fetching and caching profile data
 export const useProfileTTL = (userId: string) => {
@@ -21,19 +26,13 @@ export const useProfileTTL = (userId: string) => {
         return cached;
       }
 
-      // Fetch from API if not cached
-      const response = await fetch(`/api/user/me`, {
-        headers: {
-          // Cookie-based session; no Authorization header
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch profile");
+      // Fetch from API util if not cached
+      const result = await getCurrentUserWithProfile();
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Failed to fetch profile");
       }
-
-      const data = await response.json();
-      const profile = data.profile || data;
+      const envelope = (result.data as any) ?? {};
+      const profile = envelope.profile ?? envelope;
 
       // Cache the result
       profileTTLManagerInstance.cacheProfileData(userId, profile);
@@ -60,21 +59,12 @@ export const useUpdateProfileTTL = () => {
       userId: string;
       updates: Partial<ProfileFormValues>;
     }) => {
-      const response = await fetch("/api/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          // Cookie-based session; no Authorization header
-        },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update profile");
+      const result = await submitProfile(updates as any, "edit");
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Failed to update profile");
       }
-
-      const data = await response.json();
-      return data.profile || data;
+      const envelope = (result.data as any) ?? {};
+      return envelope.profile ?? envelope;
     },
     onSuccess: (data, variables) => {
       // Update cache with new data
@@ -106,19 +96,12 @@ export const useProfileImagesTTL = (userId: string) => {
         return cached;
       }
 
-      // Fetch from API if not cached
-      const response = await fetch(`/api/profile-detail/${userId}/images`, {
-        headers: {
-          // Cookie-based session; no Authorization header
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch profile images");
+      // Fetch from API util if not cached
+      const result = await fetchUserProfileImages(userId);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch profile images");
       }
-
-      const data = await response.json();
-      const images = data.images || data.userProfileImages || data || [];
+      const images = (result.data as any) || [];
 
       // Cache the result
       profileTTLManagerInstance.cacheProfileImages(userId, images);

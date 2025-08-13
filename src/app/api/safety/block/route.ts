@@ -6,6 +6,9 @@ import { requireSession, devLog } from "@/app/api/_utils/auth";
 import { convexMutationWithAuth } from "@/lib/convexServer";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 
+// In-memory short cooldown map per (blocker, target)
+const perTargetCooldown = new Map<string, number>();
+
 export async function POST(request: NextRequest) {
   try {
     // Cookie-only authentication with user ID extraction
@@ -42,11 +45,21 @@ export async function POST(request: NextRequest) {
       return errorResponse("Cannot block yourself", 400);
     }
 
+    // Per-target cooldown: prevent repeated blocks within 60 seconds for same target
+    const key = `${userId}_${blockedUserId}`;
+    const now = Date.now();
+    const last = perTargetCooldown.get(key) || 0;
+    if (now - last < 60_000) {
+      return errorResponse("Please wait before blocking this user again", 429);
+    }
+
     // Block the user via server-side mutation helper
     await convexMutationWithAuth(request, api.safety.blockUser, {
       blockerUserId: userId as Id<"users">,
       blockedUserId: blockedUserId as Id<"users">,
     } as any);
+
+    perTargetCooldown.set(key, now);
 
     return successResponse({
       message: "User blocked successfully",

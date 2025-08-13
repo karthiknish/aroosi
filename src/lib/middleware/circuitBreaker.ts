@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { errorResponse } from "@/lib/apiResponse";
+// Unused imports removed
 
 interface CircuitBreakerConfig {
   failureThreshold: number;

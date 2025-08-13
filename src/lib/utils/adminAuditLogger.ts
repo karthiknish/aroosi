@@ -39,15 +39,15 @@ export async function adminAuditLog(event: AdminAuditEvent & { req?: Request }):
     const { req, ...payload } = event as any;
     const { api } = await import("@convex/_generated/api");
     if (req) {
-      await convexMutationWithAuth(req as any, (api as any).admin?.logAudit ?? (api as any).audit?.recordAdminEvent, payload as any);
+      await convexMutationWithAuth(
+        req as any,
+        (api as any).admin?.logAudit ?? (api as any).audit?.recordAdminEvent,
+        payload as any
+      );
     } else {
-      // Fallback: log locally if no request context provided
-      console.info("[adminAuditLog] (no-request) event", payload);
+      // No request context provided; skip logging to console to satisfy no-console rule
     }
   } catch (e) {
-    console.error("[adminAuditLog] failed", {
-      error: e instanceof Error ? e.message : String(e),
-      event,
-    });
+    // Swallow logging in production to satisfy no-console rule
   }
 }

@@ -8,6 +8,7 @@ import React, {
   useEffect,
 } from "react";
 import type { Profile, ProfileContextType } from "@/types/profile";
+import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
@@ -23,14 +24,12 @@ export const ProfileProvider = ({
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/user/me");
-      const json = await res.json();
-      if (res.ok && json?.success) {
-        // API shape: { success: true, data: { ...user, profile: {...} } }
-        const envelope = json.data ?? {};
-        setProfile(envelope.profile ?? null);
+      const result = await getCurrentUserWithProfile();
+      if (result.success && result.data) {
+        const envelope = result.data ?? {};
+        setProfile((envelope as any).profile ?? null);
       } else {
-        setError(new Error(json.error || "Failed to load profile"));
+        setError(new Error(result.error || "Failed to load profile"));
       }
     } catch (err) {
       setError(err as Error);

@@ -91,6 +91,19 @@ export function useTypingIndicators({
     }
   }, [conversationId, currentUserId]);
 
+  // Stop typing
+  const stopTyping = useCallback(() => {
+    if (isTyping) {
+      setIsTyping(false);
+      void sendTypingStatus("stop");
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, [isTyping, sendTypingStatus]);
+
   // Start typing
   const startTyping = useCallback(() => {
     if (!isTyping) {
@@ -107,26 +120,15 @@ export function useTypingIndicators({
     typingTimeoutRef.current = setTimeout(() => {
       stopTyping();
     }, 3000);
-  }, [isTyping, sendTypingStatus]);
-
-  // Stop typing
-  const stopTyping = useCallback(() => {
-    if (isTyping) {
-      setIsTyping(false);
-      void sendTypingStatus("stop");
-    }
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-  }, [isTyping, sendTypingStatus]);
+  }, [isTyping, sendTypingStatus, stopTyping]);
 
   // Prefer SSE updates if available; fallback to polling
   useEffect(() => {
     // Try SSE from conversation events endpoint
     try {
-      const es = new EventSource(`/api/conversations/${encodeURIComponent(conversationId)}/events`);
+      const es = new EventSource(
+        `/api/conversations/${encodeURIComponent(conversationId)}/events`
+      );
       sseRef.current = es;
       es.onmessage = (evt) => {
         try {
@@ -141,7 +143,13 @@ export function useTypingIndicators({
                 const exists = arr.some((u) => u.userId === data.userId);
                 return exists
                   ? arr
-                  : [...arr, { userId: data.userId as string, lastUpdated: Date.now() }];
+                  : [
+                      ...arr,
+                      {
+                        userId: data.userId as string,
+                        lastUpdated: Date.now(),
+                      },
+                    ];
               } else {
                 return arr.filter((u) => u.userId !== data.userId);
               }
@@ -156,7 +164,10 @@ export function useTypingIndicators({
         es.close();
         sseRef.current = null;
         void fetchTypingUsers();
-        pollIntervalRef.current = setInterval(() => void fetchTypingUsers(), 2000);
+        pollIntervalRef.current = setInterval(
+          () => void fetchTypingUsers(),
+          2000
+        );
       };
       return () => {
         if (sseRef.current) sseRef.current.close();
@@ -165,7 +176,10 @@ export function useTypingIndicators({
     } catch {
       // If EventSource not available, use polling
       void fetchTypingUsers();
-      pollIntervalRef.current = setInterval(() => void fetchTypingUsers(), 2000);
+      pollIntervalRef.current = setInterval(
+        () => void fetchTypingUsers(),
+        2000
+      );
       return () => {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       };

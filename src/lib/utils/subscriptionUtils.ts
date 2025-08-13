@@ -305,7 +305,7 @@ export class FeatureGateManager {
       boostsUsedThisMonth?: number;
       voiceMessagesSentThisMonth?: number;
     } = {},
-    options: FeatureGateOptions = {}
+    _options: FeatureGateOptions = {}
   ): FeatureGateResult {
     const features = getSubscriptionFeatures(currentPlan);
 

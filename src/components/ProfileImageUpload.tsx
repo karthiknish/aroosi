@@ -26,11 +26,7 @@ import {
 } from "@/lib/profile/userProfileApi";
 
 // Types
-type UploadImageResponse = {
-  success: boolean;
-  imageId: Id<"_storage">;
-  message: string;
-};
+// Note: Upload responses are handled internally by ImageUploader and utilities
 
 // Base props that are always available
 type ProfileImageUploadBaseProps = {
@@ -269,44 +265,10 @@ export function ProfileImageUpload({
 
   const handleStartUpload = () => setIsUploadingFile(true);
 
-  const generateUploadUrl = useCallback(async () => "", []);
+  // Legacy shims removed; ImageUploader uses uploadProfileImage internally now
 
   // Move uploadImage definition above uploadImageToUse
-  const uploadImage = useCallback(
-    async (args: {
-      userId: string;
-      storageId: string;
-      fileName: string;
-      contentType: string;
-      fileSize: number;
-    }): Promise<UploadImageResponse> => {
-      if (mode === "create") {
-        // In create mode, create a local image object with a temporary ID
-        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const newImage: ImageType = {
-          id: tempId,
-          url: URL.createObjectURL(new Blob()), // Will be replaced with actual file preview
-          storageId: tempId,
-          fileName: args.fileName,
-        };
-        setLocalImages((prev) => [...prev, newImage]);
-
-        // Return success for create mode
-        return {
-          success: true,
-          imageId: tempId as Id<"_storage">,
-          message: "Image added locally",
-        };
-      }
-
-      return {
-        success: true,
-        imageId: args.storageId as Id<"_storage">,
-        message: "Image uploaded",
-      };
-    },
-    [mode]
-  );
+  // Legacy uploadImage shim removed; uploader handles upload and optimistic state
 
   // For admin, override uploadImageFile in ImageUploader to use adminUploadProfileImage
   const uploadImageFileAdmin = async (file: File) => {
@@ -378,7 +340,7 @@ export function ProfileImageUpload({
         setLocalImages((prev) => prev.filter((img) => img.id !== imageId));
       }
     },
-    [mode],
+    [mode]
   );
 
   const handleOptimisticReorder = useCallback(
@@ -389,7 +351,7 @@ export function ProfileImageUpload({
         setLocalImages(newOrder);
       }
     },
-    [mode],
+    [mode]
   );
 
   // Handle image deletion
@@ -471,16 +433,6 @@ export function ProfileImageUpload({
           <ImageUploader
             userId={userId}
             orderedImages={memoizedOrderedImages}
-            generateUploadUrl={isAdminMode ? async () => "" : generateUploadUrl}
-            uploadImage={
-              isAdminMode
-                ? async () => ({
-                    success: true,
-                    imageId: "dummy" as Id<"_storage">,
-                    message: "noop",
-                  })
-                : uploadImage
-            }
             setIsUploading={setIsUploading}
             isUploading={isUploading}
             fetchImages={refetchImages}

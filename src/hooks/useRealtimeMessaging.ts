@@ -69,7 +69,6 @@ class WebSocketService {
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.onConnectionChange({
@@ -87,13 +86,10 @@ class WebSocketService {
         try {
           const data = JSON.parse(event.data);
           this.onMessage(data);
-        } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
-        }
+        } catch {}
       };
 
       this.ws.onclose = (event) => {
-        console.log("WebSocket disconnected:", event.code, event.reason);
         this.isConnected = false;
         this.onConnectionChange({
           isConnected: false,
@@ -107,16 +103,14 @@ class WebSocketService {
         }
       };
 
-      this.ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+      this.ws.onerror = () => {
         this.onConnectionChange({
           isConnected: false,
           isConnecting: false,
           error: "Connection error",
         });
       };
-    } catch (error) {
-      console.error("Error creating WebSocket:", error);
+    } catch {
       this.onConnectionChange({
         isConnected: false,
         isConnecting: false,
@@ -297,8 +291,7 @@ export function useRealtimeMessaging() {
           ...messageData,
         });
         return true;
-      } catch (error) {
-        console.error("Error sending message:", error);
+      } catch {
         showErrorToast("Failed to send message");
         return false;
       }
@@ -326,8 +319,7 @@ export function useRealtimeMessaging() {
           userId: user?.id || "",
         });
         return true;
-      } catch (error) {
-        console.error("Error marking message as read:", error);
+      } catch {
         return false;
       }
     },

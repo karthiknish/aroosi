@@ -75,11 +75,15 @@ export default function AdminProfilePage() {
 
   // Server-driven params (internal only; no UI controls yet)
   const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(12);
-  const [sortBy] = useState<"createdAt" | "banned" | "subscriptionPlan">("createdAt");
+  const [pageSize, _setPageSize] = useState<number>(12);
+  const [sortBy] = useState<"createdAt" | "banned" | "subscriptionPlan">(
+    "createdAt"
+  );
   const [sortDir] = useState<"asc" | "desc">("desc");
   const [bannedFilter] = useState<"all" | "true" | "false">("all");
-  const [planFilter] = useState<"all" | "free" | "premium" | "premiumPlus">("all");
+  const [planFilter] = useState<"all" | "free" | "premium" | "premiumPlus">(
+    "all"
+  );
   const [isProfileComplete] = useState<"all" | "true" | "false">("all");
 
   const {
@@ -102,7 +106,6 @@ export default function AdminProfilePage() {
     queryFn: async () => {
       // Server reads HttpOnly cookies for admin auth
       const { profiles, total } = await fetchAdminProfiles({
-        token: "",
         search: "", // server-side search not used yet
         page,
         pageSize,
@@ -119,7 +122,6 @@ export default function AdminProfilePage() {
       }));
 
       const profileImages = await fetchAllAdminProfileImages({
-        token: "",
         profiles: profilesForImages,
       });
 
@@ -130,23 +132,22 @@ export default function AdminProfilePage() {
     staleTime: 20000,
   });
 
-  const profiles: AdminProfile[] = (data?.profiles as AdminProfile[]) || [];
+  const profiles: AdminProfile[] = React.useMemo(
+    () => (data?.profiles as AdminProfile[]) || [],
+    [data]
+  );
   const profileImages: Record<string, ImageType[]> =
     (data?.profileImages as Record<string, ImageType[]>) || {};
 
   const total: number = (data?.total as number) || 0;
   const serverPage: number = (data?.page as number) || page;
   const serverPageSize: number = (data?.pageSize as number) || pageSize;
-  const totalPages = Math.max(1, Math.ceil((total || 0) / (serverPageSize || 1)));
+  const totalPages = Math.max(
+    1,
+    Math.ceil((total || 0) / (serverPageSize || 1))
+  );
 
-  // Debug logging
-  console.log("Admin Profile Page State:", {
-    loading,
-    error: (error as Error | undefined)?.message,
-    profileCount: profiles.length,
-    hasData: !!data,
-    pagination: { page: serverPage, pageSize: serverPageSize, total, totalPages },
-  });
+  // Debug logging removed to satisfy no-console lint
 
   // Client-side filtering: search + status only (minimal)
   const filteredProfiles: AdminProfile[] = useMemo((): AdminProfile[] => {
@@ -161,22 +162,24 @@ export default function AdminProfilePage() {
           (p.phoneNumber || "").toLowerCase().includes(s)
       );
     }
-    if (status === "active") filtered = filtered.filter((p: AdminProfile) => !p.banned);
-    if (status === "banned") filtered = filtered.filter((p: AdminProfile) => !!p.banned);
+    if (status === "active")
+      filtered = filtered.filter((p: AdminProfile) => !p.banned);
+    if (status === "banned")
+      filtered = filtered.filter((p: AdminProfile) => !!p.banned);
 
     return filtered;
   }, [profiles, search, status]);
 
   // Handlers
   const onDelete = async (id: string) => {
-    await deleteAdminProfile({ token: "", id });
+    await deleteAdminProfile({ id });
     setConfirmDeleteId(null);
     void loadProfiles();
     showSuccessToast("Profile deleted");
   };
 
   const onToggleBan = async (id: string, isBanned: boolean) => {
-    await setProfileBannedStatus("", id, !isBanned);
+    await setProfileBannedStatus(id, !isBanned);
     setConfirmBanId(null);
     void loadProfiles();
     showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
