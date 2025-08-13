@@ -217,7 +217,27 @@ export function subscriptionPurchasedAdminTemplate(
   return { subject, html: wrapEmailContent(subject, body) };
 }
 
-// 9. Recommended profiles (user)
+// 9. OTP Verification (user)
+export function otpVerificationTemplate(options: {
+  fullName: string;
+  otp: string;
+}): EmailPayload {
+  const { fullName, otp } = options;
+  const subject = "Your Aroosi Verification Code";
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Email Verification</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName},</p>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Thank you for signing up with Aroosi. Please use the following verification code to complete your registration:</p>
+    <div style="background-color: #f5f5f5; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0;">
+      <h3 style="margin: 0; color: #333; font-size: 24px; letter-spacing: 5px;">${otp}</h3>
+    </div>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">This code will expire in 10 minutes.</p>
+    <p style="margin:0 0 0 0;font-size:14px;line-height:1.6;color:#444">If you didn't request this verification, please ignore this email.</p>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+// 10. Recommended profiles (user)
 export function recommendedProfilesTemplate(options: {
   fullName: string;
   profiles: Array<{

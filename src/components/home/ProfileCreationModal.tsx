@@ -831,8 +831,12 @@ export function ProfileCreationModal({
           </div>
 
           <DialogHeader className="p-6 pb-0">
+            {/* Hidden accessible title for lint/a11y while keeping design title visually separate */}
+            <DialogTitle id="profile-modal-title" className="sr-only">
+              Profile creation
+            </DialogTitle>
             <DialogTitle
-              id="profile-modal-title"
+              aria-hidden="true"
               className="text-2xl font-bold text-gray-900"
             >
               Find Your Perfect Match

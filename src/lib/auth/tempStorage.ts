@@ -1,8 +1,7 @@
 interface TempUserData {
   email: string;
   hashedPassword: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   expiresAt: number;
 }
 
@@ -11,8 +10,7 @@ const tempUserStore = new Map<string, TempUserData>();
 export function storeTempUser(
   email: string,
   hashedPassword: string,
-  firstName: string,
-  lastName: string
+  fullName: string
 ): void {
   // Normalize email to lowercase for consistent storage
   const normalizedEmail = email.toLowerCase().trim();
@@ -27,8 +25,7 @@ export function storeTempUser(
   tempUserStore.set(normalizedEmail, {
     email: normalizedEmail,
     hashedPassword,
-    firstName,
-    lastName,
+    fullName,
     expiresAt,
   });
 }
@@ -63,8 +60,7 @@ export function getTempUser(email: string): TempUserData | null {
 
   console.log("Temp user data retrieved successfully:", {
     email: normalizedEmail,
-    firstName: userData.firstName,
-    lastName: userData.lastName,
+    fullName: userData.fullName,
   });
   return userData;
 }

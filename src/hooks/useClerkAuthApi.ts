@@ -39,17 +39,8 @@ export function useClerkAuthApi() {
    */
   const getUserFullName = useCallback(() => {
     if (!user) return null;
-    
-    return user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || null;
-  }, [user]);
 
-  /**
-   * Get user's first name
-   */
-  const getUserFirstName = useCallback(() => {
-    if (!user) return null;
-    
-    return user.firstName || null;
+    return user.fullName || null;
   }, [user]);
 
   /**
@@ -57,7 +48,7 @@ export function useClerkAuthApi() {
    */
   const getUserProfileImageUrl = useCallback(() => {
     if (!user) return null;
-    
+
     return user.imageUrl || null;
   }, [user]);
 
@@ -66,72 +57,76 @@ export function useClerkAuthApi() {
    */
   const getUserPhoneNumber = useCallback(() => {
     if (!user) return null;
-    
+
     // Get primary phone number
     const primaryPhone = user.phoneNumbers.find(
       (phone) => phone.id === user.primaryPhoneNumberId
     );
-    
+
     return primaryPhone?.phoneNumber || null;
   }, [user]);
 
   /**
    * Sign in with email and password
    */
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    if (!signIn) {
-      throw new Error("Sign in not available");
-    }
-    
-    try {
-      const signInAttempt = await signIn.create({
-        identifier: email,
-        password,
-      });
-      
-      return {
-        success: signInAttempt.status === "complete",
-        status: signInAttempt.status,
-        error: null,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        status: null,
-        error: error?.errors?.[0]?.message || "Sign in failed",
-      };
-    }
-  }, [signIn]);
+  const signInWithEmail = useCallback(
+    async (email: string, password: string) => {
+      if (!signIn) {
+        throw new Error("Sign in not available");
+      }
+
+      try {
+        const signInAttempt = await signIn.create({
+          identifier: email,
+          password,
+        });
+
+        return {
+          success: signInAttempt.status === "complete",
+          status: signInAttempt.status,
+          error: null,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          status: null,
+          error: error?.errors?.[0]?.message || "Sign in failed",
+        };
+      }
+    },
+    [signIn]
+  );
 
   /**
    * Sign up with email and password
    */
-  const signUpWithEmail = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
-    if (!signUp) {
-      throw new Error("Sign up not available");
-    }
-    
-    try {
-      const signUpAttempt = await signUp.create({
-        emailAddress: email,
-        password,
-        firstName,
-        lastName,
-      });
-      
-      return {
-        success: signUpAttempt.status === "complete",
-        status: signUpAttempt.status,
-        error: null,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        status: null,
-        error: error?.errors?.[0]?.message || "Sign up failed",
-      };
-    }
-  }, [signUp]);
+  const signUpWithEmail = useCallback(
+    async (email: string, password: string, fullName: string) => {
+      if (!signUp) {
+        throw new Error("Sign up not available");
+      }
+
+      try {
+        const signUpAttempt = await signUp.create({
+          emailAddress: email,
+          password,
+        });
+
+        return {
+          success: signUpAttempt.status === "complete",
+          status: signUpAttempt.status,
+          error: null,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          status: null,
+          error: error?.errors?.[0]?.message || "Sign up failed",
+        };
+      }
+    },
+    [signUp]
+  );
 
   /**
    * Sign in with OAuth provider
@@ -187,17 +182,16 @@ export function useClerkAuthApi() {
     orgId,
     session,
     organization,
-    
+
     // Permission checking
     hasPermission: has,
-    
+
     // User info getters
     getUserEmail,
     getUserFullName,
-    getUserFirstName,
     getUserProfileImageUrl,
     getUserPhoneNumber,
-    
+
     // Auth methods
     signIn: signInWithEmail,
     signUp: signUpWithEmail,

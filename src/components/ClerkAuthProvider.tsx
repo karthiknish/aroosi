@@ -35,8 +35,16 @@ export interface AuthContextType {
   signUp: (
     email: string,
     password: string,
-    firstName: string,
-    lastName: string
+    fullName: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    needsVerification?: boolean;
+    signUpAttemptId?: string;
+  }>;
+  verifyEmailCode: (
+    code: string,
+    signUpAttemptId: string
   ) => Promise<{ success: boolean; error?: string }>;
   signInWithGoogle: (
     credential?: string,
@@ -44,6 +52,9 @@ export interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => void;
   refreshUser: () => Promise<void>;
+  resendEmailVerification: (
+    signUpAttemptId: string
+  ) => Promise<{ success: boolean; error?: string }>;
   // Legacy compatibility methods
   refreshProfile: () => Promise<void>;
 }
@@ -67,16 +78,22 @@ interface ClerkAuthProviderProps {
 
 export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
-  const { getToken, isSignedIn: clerkIsSignedIn = false, userId: clerkUserId } = useAuth();
-  const { signOut: clerkSignOut } = useClerk();
+  const {
+    getToken,
+    isSignedIn: clerkIsSignedIn = false,
+    userId: clerkUserId,
+  } = useAuth();
+  const { signOut: clerkSignOut, setActive } = useClerk();
   const { signIn: clerkSignIn } = useSignIn();
   const { signUp: clerkSignUp } = useSignUp();
   const router = useRouter();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  // Track a pending first name we want to apply once the Clerk user object exists
+  const pendingFirstNameRef = React.useRef<string | null>(null);
+
   // Guard against late async state overwrites during logout
   const logoutVersionRef = React.useRef(0);
 
@@ -85,23 +102,25 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
     try {
       // Use our enhanced profile API that integrates with Clerk
       const profileResponse = await getCurrentUserWithProfile();
-      
+
       if (!profileResponse.success || !profileResponse.data) {
         return null;
       }
-      
+
       const profileData = profileResponse.data;
-      
+
       // Combine profile data with Clerk user data
       const userData: User = {
         id: profileData.userId || clerkUserId || "",
-        email: profileData.email || clerkUser?.emailAddresses[0]?.emailAddress || "",
+        email:
+          profileData.email || clerkUser?.emailAddresses[0]?.emailAddress || "",
         role: profileData.role || "user",
-        emailVerified: clerkUser?.emailAddresses[0]?.verification?.status === "verified",
+        emailVerified:
+          clerkUser?.emailAddresses[0]?.verification?.status === "verified",
         createdAt: profileData.createdAt,
         profile: profileData?._id ? profileData : null,
       };
-      
+
       return userData;
     } catch (error) {
       if (process.env.NODE_ENV !== "production") {
@@ -132,7 +151,7 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
   useEffect(() => {
     const initAuth = async () => {
       if (!clerkLoaded) return;
-      
+
       if (clerkIsSignedIn && clerkUserId) {
         const tokenUser = await fetchUser();
         setUser(tokenUser ?? null);
@@ -144,23 +163,43 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
     void initAuth();
   }, [clerkLoaded, clerkIsSignedIn, clerkUserId, fetchUser]);
 
+  // If we have a pending first name (user signed up but user object not yet populated), apply it when clerkUser becomes available
+  useEffect(() => {
+    const applyPendingName = async () => {
+      if (!clerkUser || !pendingFirstNameRef.current) return;
+      try {
+        const desired = pendingFirstNameRef.current;
+        if (!clerkUser.firstName || clerkUser.firstName !== desired) {
+          await clerkUser.update({ firstName: desired });
+        }
+        pendingFirstNameRef.current = null;
+        await refreshUser();
+      } catch (e) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("Deferred firstName update failed", e);
+        }
+      }
+    };
+    void applyPendingName();
+  }, [clerkUser, refreshUser]);
+
   // Sign in with email/password using Clerk
   const signIn = useCallback(
     async (email: string, password: string) => {
       try {
         setError(null);
-        
+
         if (!clerkSignIn) {
           throw new Error("Sign in not available");
         }
-        
+
         try {
           // Attempt to sign in with Clerk
           const signInResponse = await clerkSignIn.create({
             identifier: email,
             password,
           });
-          
+
           // Check if sign in was successful
           if (signInResponse.status === "complete") {
             // Refresh user data after successful sign in
@@ -168,40 +207,45 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
             return { success: true };
           } else {
             // Handle incomplete sign in (e.g., requires additional verification)
-            const errorMessage = "Sign in requires additional verification. Please check your email.";
+            const errorMessage =
+              "Sign in requires additional verification. Please check your email.";
             setError(errorMessage);
             return { success: false, error: errorMessage };
           }
         } catch (clerkError: any) {
           // Handle Clerk-specific errors
           let errorMessage = "Sign in failed. Please try again.";
-          
+
           if (clerkError.errors) {
             const error = clerkError.errors[0];
             if (error.code === "form_identifier_not_found") {
-              errorMessage = "No account found with this email address. Please check your email or sign up for a new account.";
+              errorMessage =
+                "No account found with this email address. Please check your email or sign up for a new account.";
             } else if (error.code === "form_password_incorrect") {
-              errorMessage = "Invalid password. Please check your password and try again.";
+              errorMessage =
+                "Invalid password. Please check your password and try again.";
             } else if (error.code === "invalid_credentials") {
-              errorMessage = "Invalid email or password. Please check your credentials and try again.";
+              errorMessage =
+                "Invalid email or password. Please check your credentials and try again.";
             } else if (error.code === "too_many_requests") {
               errorMessage = "Too many requests. Please try again later.";
             } else {
               errorMessage = error.longMessage || error.message || errorMessage;
             }
           }
-          
+
           setError(errorMessage);
           setUser(null);
           return { success: false, error: errorMessage };
         }
       } catch (error: any) {
-        let errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
-        
+        let errorMessage =
+          "Unable to connect to the server. Please check your internet connection and try again.";
+
         if (error?.message) {
           errorMessage = error.message;
         }
-        
+
         if (process.env.NODE_ENV !== "production") {
           console.error("Sign in error", error);
         }
@@ -215,69 +259,134 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
 
   // Sign up with email/password using Clerk
   const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      firstName: string,
-      lastName: string
-    ) => {
+    async (email: string, password: string, fullName: string) => {
       try {
         setError(null);
         setUser(null);
+        // Stash desired name so we can apply once user is created
+        pendingFirstNameRef.current = fullName || null;
 
         if (!clerkSignUp) {
           throw new Error("Sign up not available");
         }
-        
+
         try {
-          // Attempt to sign up with Clerk
+          // Attempt to sign up with Clerk (initial attempt)
           const signUpResponse = await clerkSignUp.create({
             emailAddress: email,
             password,
-            firstName,
-            lastName,
           });
-          
+
+          console.log("Clerk signUpResponse:", signUpResponse);
+
           // Check if sign up was successful
           if (signUpResponse.status === "complete") {
             // Refresh user data after successful sign up
             await refreshUser();
+            // Attempt to set firstName on the freshly created Clerk user (ignore failures silently)
+            try {
+              if (pendingFirstNameRef.current && clerkUser) {
+                const desired = pendingFirstNameRef.current;
+                if (!clerkUser.firstName || clerkUser.firstName !== desired) {
+                  await clerkUser.update({ firstName: desired });
+                }
+                // Clear after applying
+                pendingFirstNameRef.current = null;
+                // Re-refresh to pull updated data
+                await refreshUser();
+              }
+            } catch (nameErr) {
+              if (process.env.NODE_ENV !== "production") {
+                console.warn("Failed to set firstName after signup", nameErr);
+              }
+            }
             return { success: true };
-          } else {
-            // Handle incomplete sign up (e.g., requires email verification)
-            const errorMessage = "Sign up requires email verification. Please check your email.";
-            setError(errorMessage);
-            return { success: false, error: errorMessage };
           }
+
+          // For any non-complete status, we check if email verification is required and trigger it
+          const needsEmailVerification =
+            (signUpResponse as any)?.verifications?.emailAddress?.status ===
+              "required" ||
+            (signUpResponse.unverifiedFields || []).includes("email_address");
+
+          if (needsEmailVerification) {
+            // Try to attach firstName before sending code so template personalization works
+            try {
+              if (
+                pendingFirstNameRef.current &&
+                (signUpResponse as any).update
+              ) {
+                await (signUpResponse as any).update({
+                  firstName: pendingFirstNameRef.current,
+                });
+              }
+            } catch (preNameErr) {
+              if (process.env.NODE_ENV !== "production") {
+                console.warn(
+                  "Pre-verification firstName update failed",
+                  preNameErr
+                );
+              }
+            }
+            try {
+              await signUpResponse.prepareEmailAddressVerification({
+                strategy: "email_code",
+              });
+            } catch (prepErr) {
+              if (process.env.NODE_ENV !== "production") {
+                console.warn("prepareEmailAddressVerification failed", prepErr);
+              }
+            }
+            const msg = "We've sent a verification code to your email.";
+            setError(msg);
+            return {
+              success: false,
+              error: msg,
+              needsVerification: true,
+              signUpAttemptId: signUpResponse.id,
+            };
+          }
+
+          // Fallback: treat as needing verification if still not complete
+          return {
+            success: false,
+            error: "Additional verification required.",
+            needsVerification: true,
+            signUpAttemptId: signUpResponse.id,
+          };
         } catch (clerkError: any) {
           // Handle Clerk-specific errors
           let errorMessage = "Sign up failed. Please try again.";
-          
+
           if (clerkError.errors) {
             const error = clerkError.errors[0];
             if (error.code === "form_identifier_exists") {
-              errorMessage = "An account with this email already exists. Please sign in instead.";
+              errorMessage =
+                "An account with this email already exists. Please sign in instead.";
             } else if (error.code === "form_password_size") {
-              errorMessage = "Password does not meet security requirements. Please use a stronger password.";
+              errorMessage =
+                "Password does not meet security requirements. Please use a stronger password.";
             } else if (error.code === "form_password_pwned") {
-              errorMessage = "This password has been compromised in a data breach. Please choose a different password.";
+              errorMessage =
+                "This password has been compromised in a data breach. Please choose a different password.";
             } else if (error.code === "too_many_requests") {
               errorMessage = "Too many requests. Please try again later.";
             } else {
               errorMessage = error.longMessage || error.message || errorMessage;
             }
           }
-          
+
           setError(errorMessage);
           return { success: false, error: errorMessage };
         }
       } catch (error: any) {
-        let errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
-        
+        let errorMessage =
+          "Unable to connect to the server. Please check your internet connection and try again.";
+
         if (error?.message) {
           errorMessage = error.message;
         }
-        
+
         if (process.env.NODE_ENV !== "production") {
           console.error("Sign up error", error);
         }
@@ -285,51 +394,126 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
         return { success: false, error: errorMessage };
       }
     },
-    [clerkSignUp, refreshUser]
+    [clerkSignUp, refreshUser, clerkUser]
+  );
+
+  // Verify email code (OTP) for pending sign up
+  const verifyEmailCode = useCallback(
+    async (code: string, signUpAttemptId: string) => {
+      try {
+        if (!clerkSignUp) throw new Error("Sign up not available");
+        // Ensure we have the same sign up attempt loaded; if IDs differ we can't swap easily, rely on current instance
+        let attemptResult: any;
+        try {
+          attemptResult = await clerkSignUp.attemptEmailAddressVerification({
+            code,
+          });
+        } catch (attemptErr: any) {
+          const msg =
+            attemptErr?.errors?.[0]?.longMessage ||
+            attemptErr?.message ||
+            "Invalid or expired code.";
+          setError(msg);
+          return { success: false, error: msg };
+        }
+
+        if (attemptResult.status === "complete") {
+          // Activate session if provided
+          try {
+            if (attemptResult.createdSessionId && setActive) {
+              await setActive({ session: attemptResult.createdSessionId });
+            }
+          } catch {}
+          // Apply pending first name
+          try {
+            if (pendingFirstNameRef.current && clerkUser) {
+              const desired = pendingFirstNameRef.current;
+              if (!clerkUser.firstName || clerkUser.firstName !== desired) {
+                await clerkUser.update({ firstName: desired });
+              }
+              pendingFirstNameRef.current = null;
+            }
+          } catch {}
+          // Trigger auto-heal creation of Convex user/profile
+          try {
+            fetch("/api/user/me", { cache: "no-store" }).catch(() => {});
+          } catch {}
+          await refreshUser();
+          return { success: true };
+        }
+        // Not complete yet
+        return {
+          success: false,
+          error: "Verification incomplete. Please try again.",
+        };
+      } catch (err: any) {
+        let msg = "Invalid or expired code.";
+        if (err?.message) {
+          msg = err.message;
+        }
+        setError(msg);
+        return { success: false, error: msg };
+      }
+    },
+    [clerkSignUp, clerkUser, refreshUser]
+  );
+
+  const resendEmailVerification = useCallback(
+    async (signUpAttemptId: string) => {
+      try {
+        if (!clerkSignUp) throw new Error("Sign up not available");
+        await clerkSignUp.prepareEmailAddressVerification({
+          strategy: "email_code",
+        });
+        return { success: true };
+      } catch (e: any) {
+        const msg =
+          e?.errors?.[0]?.longMessage || e?.message || "Unable to resend code";
+        return { success: false, error: msg };
+      }
+    },
+    [clerkSignUp]
   );
 
   // Sign in with Google using Clerk OAuth
-  const signInWithGoogle = useCallback(
-    async () => {
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      setError(null);
+
+      if (!clerkSignIn) {
+        throw new Error("Sign in not available");
+      }
+
       try {
-        setError(null);
-        
-        if (!clerkSignIn) {
-          throw new Error("Sign in not available");
+        // Initiate Google OAuth flow with Clerk
+        await clerkSignIn.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/search",
+        });
+
+        return { success: true };
+      } catch (clerkError: any) {
+        // Handle Clerk OAuth errors
+        let errorMessage = "Google sign in failed. Please try again.";
+
+        if (clerkError.errors) {
+          const error = clerkError.errors[0];
+          errorMessage = error.longMessage || error.message || errorMessage;
         }
-        
-        try {
-          // Initiate Google OAuth flow with Clerk
-          await clerkSignIn.authenticateWithRedirect({
-            strategy: "oauth_google",
-            redirectUrl: "/sso-callback",
-            redirectUrlComplete: "/search",
-          });
-          
-          return { success: true };
-        } catch (clerkError: any) {
-          // Handle Clerk OAuth errors
-          let errorMessage = "Google sign in failed. Please try again.";
-          
-          if (clerkError.errors) {
-            const error = clerkError.errors[0];
-            errorMessage = error.longMessage || error.message || errorMessage;
-          }
-          
-          setError(errorMessage);
-          return { success: false, error: errorMessage };
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV !== "production") {
-          console.error("Google sign in error", error);
-        }
-        const errorMessage = "Network error";
+
         setError(errorMessage);
         return { success: false, error: errorMessage };
       }
-    },
-    [clerkSignIn]
-  );
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Google sign in error", error);
+      }
+      const errorMessage = "Network error";
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }, [clerkSignIn]);
 
   // Sign out
   const signOut = useCallback(async () => {
@@ -346,12 +530,14 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
       // Show a success message
       if (typeof window !== "undefined") {
         // Dynamically import toast to avoid SSR issues
-        import("@/lib/ui/toast").then(({ showSuccessToast }) => {
-          showSuccessToast("You have been successfully signed out.");
-        }).catch(() => {
-          // Fallback if toast can't be imported
-          console.log("Signed out successfully");
-        });
+        import("@/lib/ui/toast")
+          .then(({ showSuccessToast }) => {
+            showSuccessToast("You have been successfully signed out.");
+          })
+          .catch(() => {
+            // Fallback if toast can't be imported
+            console.log("Signed out successfully");
+          });
       }
       // Router push is handled by clerkSignOut redirectUrl
     }
@@ -385,7 +571,9 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
     signUp,
     signInWithGoogle,
     signOut,
+    verifyEmailCode,
     refreshUser,
+      resendEmailVerification,
     // Legacy compatibility methods
     refreshProfile,
   };

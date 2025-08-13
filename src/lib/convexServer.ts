@@ -18,14 +18,31 @@ const serverConvex = new ConvexHttpClient(CONVEX_URL);
  * Forward cookie-based session and selected proxy headers to Convex.
  * Keep types relaxed to avoid coupling to framework internals.
  */
-export function buildForwardHeaders(): Record<string, string> {
-  // In some Next.js environments, headers() can be a thenable. Normalize to a Headers-like API.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = headers() as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const h: any = typeof raw?.get === "function" ? raw : (raw?.headers ?? {});
-  const c = cookies();
+export async function buildForwardHeaders(): Promise<Record<string, string>> {
   const forward: Record<string, string> = {};
+
+  // Safely load dynamic header and cookie stores (must be awaited in Next.js 15+)
+  let h: Headers | null = null;
+  try {
+    // headers() can be a thenable in some runtimes
+    const hr = await (headers() as unknown as Promise<Headers>);
+    h = hr ?? null;
+  } catch {
+    h = null;
+  }
+
+  // Build Cookie header manually from cookie store
+  try {
+    const cStore = await (cookies() as unknown as Promise<any>);
+    const all = typeof cStore?.getAll === "function" ? cStore.getAll() : [];
+    const cookieHeader =
+      Array.isArray(all) && all.length
+        ? all.map((x: any) => `${x?.name}=${x?.value}`).join("; ")
+        : "";
+    if (cookieHeader) forward.cookie = cookieHeader;
+  } catch {
+    // ignore cookie extraction errors
+  }
 
   try {
     // Next cookies() supports toString serialization of all cookies
@@ -37,15 +54,16 @@ export function buildForwardHeaders(): Record<string, string> {
   }
 
   try {
-    const xff = h?.get?.("x-forwarded-for");
+    const get = (name: string) => (h ? h.get(name) : null);
+    const xff = get("x-forwarded-for");
     if (xff) forward["x-forwarded-for"] = xff;
-    const xri = h?.get?.("x-real-ip");
+    const xri = get("x-real-ip");
     if (xri) forward["x-real-ip"] = xri;
-    const reqId = h?.get?.("x-request-id");
+    const reqId = get("x-request-id");
     if (reqId) forward["x-request-id"] = reqId;
-    const ua = h?.get?.("user-agent");
+    const ua = get("user-agent");
     if (ua) forward["user-agent"] = ua;
-    const accept = h?.get?.("accept");
+    const accept = get("accept");
     if (accept) forward.accept = accept;
   } catch {
     // ignore header extraction errors
@@ -59,8 +77,12 @@ export function buildForwardHeaders(): Record<string, string> {
  * Usage: await convexQueryWithAuth(request, api.users.getProfileByUserIdPublic, { userId })
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function convexQueryWithAuth(_request: Request, fn: any, args: any = {}) {
-  const forward = buildForwardHeaders();
+export async function convexQueryWithAuth(
+  _request: Request,
+  fn: any,
+  args: any = {}
+) {
+  const forward = await buildForwardHeaders();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (serverConvex as any).query(fn, args, { headers: forward });
 }
@@ -70,8 +92,12 @@ export async function convexQueryWithAuth(_request: Request, fn: any, args: any 
  * Usage: await convexMutationWithAuth(request, api.users.createUserAndProfile, { ... })
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function convexMutationWithAuth(_request: Request, fn: any, args: any = {}) {
-  const forward = buildForwardHeaders();
+export async function convexMutationWithAuth(
+  _request: Request,
+  fn: any,
+  args: any = {}
+) {
+  const forward = await buildForwardHeaders();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (serverConvex as any).mutation(fn, args, { headers: forward });
 }

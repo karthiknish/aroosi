@@ -264,7 +264,7 @@ function HeroOnboardingInner() {
                       >
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
-                      <SelectContent
+                                            <SelectContent
                         className="bg-white border border-gray-200 z-[100]"
                         style={{ backgroundColor: "white" }}
                       >
@@ -275,40 +275,16 @@ function HeroOnboardingInner() {
                           Myself
                         </SelectItem>
                         <SelectItem
-                          value="son"
-                          className="hover:bg-gray-50 focus:bg-gray-100"
-                        >
-                          Son
-                        </SelectItem>
-                        <SelectItem
-                          value="daughter"
-                          className="hover:bg-gray-50 focus:bg-gray-100"
-                        >
-                          Daughter
-                        </SelectItem>
-                        <SelectItem
-                          value="brother"
-                          className="hover:bg-gray-50 focus:bg-gray-100"
-                        >
-                          Brother
-                        </SelectItem>
-                        <SelectItem
-                          value="sister"
-                          className="hover:bg-gray-50 focus:bg-gray-100"
-                        >
-                          Sister
-                        </SelectItem>
-                        <SelectItem
                           value="friend"
                           className="hover:bg-gray-50 focus:bg-gray-100"
                         >
                           Friend
                         </SelectItem>
                         <SelectItem
-                          value="relative"
+                          value="family"
                           className="hover:bg-gray-50 focus:bg-gray-100"
                         >
-                          Relative
+                          Family
                         </SelectItem>
                       </SelectContent>
                     </Select>

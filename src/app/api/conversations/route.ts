@@ -171,11 +171,11 @@ export async function GET(request: NextRequest) {
               participants: [
                 {
                   userId: String(userId),
-                  firstName: "You",
+                  fullName: "You",
                 },
                 {
                   userId: match.userId,
-                  firstName: match.fullName || "Unknown",
+                  fullName: match.fullName || "Unknown",
                   profileImageUrls: match.profileImageUrls || [],
                 },
               ],

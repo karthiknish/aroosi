@@ -19,7 +19,7 @@ interface ApiConversation {
   conversationId: string;
   participants: Array<{
     userId: string;
-    firstName: string;
+    fullName: string;
     profileImageUrls?: string[];
   }>;
   lastMessage?: {
@@ -112,7 +112,7 @@ export default function ConversationList({
             unreadCount: conv.unreadCount,
             otherUser: {
               _id: otherUserId,
-              fullName: otherParticipant?.firstName || "Unknown User",
+              fullName: otherParticipant?.fullName || "Unknown User",
               profileImage: otherParticipant?.profileImageUrls?.[0],
               isOnline: false,
             },

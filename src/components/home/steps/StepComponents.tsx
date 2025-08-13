@@ -55,12 +55,8 @@ export function Step1Basic(props: {
           </SelectTrigger>
           <SelectContent className="bg-white border border-gray-200">
             <SelectItem value="self">Myself</SelectItem>
-            <SelectItem value="son">Son</SelectItem>
-            <SelectItem value="daughter">Daughter</SelectItem>
-            <SelectItem value="brother">Brother</SelectItem>
-            <SelectItem value="sister">Sister</SelectItem>
             <SelectItem value="friend">Friend</SelectItem>
-            <SelectItem value="relative">Relative</SelectItem>
+            <SelectItem value="family">Family</SelectItem>
           </SelectContent>
         </Select>
       </div>

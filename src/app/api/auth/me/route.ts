@@ -42,7 +42,7 @@ export async function GET(_request: Request) {
             role: "user",
             emailVerified: clerkUser.emailAddresses.some(e => e.verification?.status === "verified"),
             createdAt: clerkUser.createdAt,
-            fullName: userFullName || clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined,
+            fullName: userFullName || clerkUser.fullName || undefined,
             profile: null,
           },
         },
@@ -69,7 +69,7 @@ export async function GET(_request: Request) {
           role: String(user?.role ?? "user"),
           emailVerified: Boolean(user?.emailVerified ?? clerkUser.emailAddresses.some(e => e.verification?.status === "verified")),
           createdAt: Number(user?.createdAt ?? clerkUser.createdAt),
-          fullName: userFullName || clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || undefined,
+          fullName: userFullName || clerkUser.fullName || undefined,
           profile: profile
             ? {
                 id: String(profile?._id ?? ""),

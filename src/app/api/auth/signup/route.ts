@@ -421,11 +421,11 @@ export async function POST(request: NextRequest) {
     // 2) Create account via Clerk
     try {
       // Create user in Clerk
-      const clerkUser = await (await clerkClient()).users.createUser({
+      const clerkUser = await (
+        await clerkClient()
+      ).users.createUser({
         emailAddress: [normalizedEmail],
         password,
-        firstName: fullName.split(" ")[0],
-        lastName: fullName.split(" ").slice(1).join(" ") || undefined,
       });
 
       // Create Convex client

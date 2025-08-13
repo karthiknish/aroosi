@@ -211,13 +211,6 @@ export default function EditProfilePage() {
         ...(envelopeWithProfile.profile || {}),
       };
 
-      // Build fullName fallback
-      const first = (combined as Profile & { firstName?: string }).firstName;
-      const last = (combined as Profile & { lastName?: string }).lastName;
-      if (!combined.fullName && (first || last)) {
-        combined.fullName = `${first || ""} ${last || ""}`.trim();
-      }
-
       setProfileDataState(combined as Profile);
     }
   }, [profileApiData]);

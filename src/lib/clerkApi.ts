@@ -91,25 +91,9 @@ export async function getUserFullName(): Promise<string | null> {
     const user = await currentUser();
     if (!user) return null;
     
-    return user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || null;
+    return user.fullName || user.firstName || null;
   } catch (error) {
     console.error("[ClerkAPI] Error getting user full name:", error);
-    return null;
-  }
-}
-
-/**
- * Get user's first name
- * @returns Promise with user's first name or null if not authenticated
- */
-export async function getUserFirstName(): Promise<string | null> {
-  try {
-    const user = await currentUser();
-    if (!user) return null;
-    
-    return user.firstName || null;
-  } catch (error) {
-    console.error("[ClerkAPI] Error getting user first name:", error);
     return null;
   }
 }

@@ -91,6 +91,7 @@ export default function RootLayout({
           <ReactQueryProvider>
             <ClerkAuthProvider>
               <ClientRoot>
+                <div id="clerk-captcha" style={{ display: 'none' }}></div>
                 <RouteTransition>{children}</RouteTransition>
               </ClientRoot>
             </ClerkAuthProvider>

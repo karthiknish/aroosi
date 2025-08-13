@@ -9,6 +9,7 @@ interface OtpInputProps {
   length?: number;
   disabled?: boolean;
   className?: string;
+  autoFocus?: boolean;
 }
 
 export function OtpInput({
@@ -17,8 +18,15 @@ export function OtpInput({
   length = 6,
   disabled = false,
   className,
+  autoFocus = false,
 }: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  React.useEffect(() => {
+    if (autoFocus) {
+      inputRefs.current[0]?.focus();
+    }
+  }, [autoFocus]);
 
   const handleChange = (index: number, digit: string) => {
     if (!/^\d*$/.test(digit)) return;
@@ -49,8 +57,17 @@ export function OtpInput({
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text/plain").trim();
-    if (/^\d+$/.test(pastedData) && pastedData.length <= length) {
+    if (!/^\d+$/.test(pastedData)) return;
+    if (pastedData.length === length) {
       onChange(pastedData);
+      inputRefs.current[length - 1]?.focus();
+    } else if (pastedData.length < length) {
+      const newValue = value.split("");
+      for (let i = 0; i < pastedData.length && i < length; i++) {
+        newValue[i] = pastedData[i];
+      }
+      onChange(newValue.join(""));
+      inputRefs.current[pastedData.length]?.focus();
     }
   };
 

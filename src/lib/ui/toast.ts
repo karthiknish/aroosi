@@ -1,9 +1,13 @@
  
 import { toast } from "sonner";
 
+// Keep track of recent toast messages to prevent duplicates
+const recentToasts = new Map<string, number>();
+
 /**
  * Show an error toast with a generic message in production.
  * In development, if a detailed error is provided, it will be shown to help debugging.
+ * This function prevents duplicate toasts within a 3-second window.
  */
 export function showErrorToast(
   error: unknown,
@@ -33,6 +37,24 @@ export function showErrorToast(
     message = message.replace(/[\r\n]+/g, " ").slice(0, 300);
   } catch {
     // ignore sanitize issues
+  }
+
+  // Prevent duplicate toasts within a 3-second window
+  const now = Date.now();
+  const lastToastTime = recentToasts.get(message);
+  if (lastToastTime && now - lastToastTime < 3000) {
+    // Skip showing duplicate toast
+    return;
+  }
+  
+  // Record this toast
+  recentToasts.set(message, now);
+  
+  // Clean up old entries (older than 5 seconds) to prevent memory leaks
+  for (const [msg, time] of recentToasts.entries()) {
+    if (now - time > 5000) {
+      recentToasts.delete(msg);
+    }
   }
 
   toast.error(message, {

@@ -100,9 +100,11 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          {/* Accessible title (visually hidden to satisfy design while present for a11y / lint) */}
+          <DialogTitle className="sr-only">Report user</DialogTitle>
+          <DialogTitle className="flex items-center gap-2" aria-hidden="true">
             <Flag className="h-5 w-5 text-red-500" />
-            Report User{userName ? ` - ${userName}` : ''}
+            Report User{userName ? ` - ${userName}` : ""}
           </DialogTitle>
         </DialogHeader>
 
@@ -112,7 +114,11 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
               <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-amber-800">
                 <p className="font-medium mb-1">Before reporting</p>
-                <p>Please consider blocking this user if you simply don&apos;t want to interact with them. Reports are for serious violations of our community guidelines.</p>
+                <p>
+                  Please consider blocking this user if you simply don&apos;t
+                  want to interact with them. Reports are for serious violations
+                  of our community guidelines.
+                </p>
               </div>
             </div>
           </div>
@@ -123,7 +129,9 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
             </Label>
             <RadioGroup
               value={selectedReason}
-              onValueChange={(value) => setSelectedReason(value as ReportReason)}
+              onValueChange={(value) =>
+                setSelectedReason(value as ReportReason)
+              }
               className="space-y-3"
             >
               {reportReasons.map((reason) => (
@@ -140,24 +148,28 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
                     >
                       {reason.label}
                     </Label>
-                    <p className="text-xs text-gray-600">{reason.description}</p>
+                    <p className="text-xs text-gray-600">
+                      {reason.description}
+                    </p>
                   </div>
                 </div>
               ))}
             </RadioGroup>
           </div>
 
-          {(selectedReason === 'other' || selectedReason) && (
+          {(selectedReason === "other" || selectedReason) && (
             <div className="space-y-2">
               <Label htmlFor="description" className="text-sm font-medium">
-                {isDescriptionRequired ? 'Please describe the issue *' : 'Additional details (optional)'}
+                {isDescriptionRequired
+                  ? "Please describe the issue *"
+                  : "Additional details (optional)"}
               </Label>
               <Textarea
                 id="description"
                 placeholder={
                   isDescriptionRequired
-                    ? 'Please provide details about the issue...'
-                    : 'Provide any additional context that might help us understand the situation...'
+                    ? "Please provide details about the issue..."
+                    : "Provide any additional context that might help us understand the situation..."
                 }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -175,8 +187,12 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
               <p className="font-medium mb-1">What happens next?</p>
               <ul className="text-xs space-y-1 list-disc list-inside">
                 <li>Our team will review your report within 24-48 hours</li>
-                <li>We may take action including warnings or account suspension</li>
-                <li>You&apos;ll be notified if we need additional information</li>
+                <li>
+                  We may take action including warnings or account suspension
+                </li>
+                <li>
+                  You&apos;ll be notified if we need additional information
+                </li>
                 <li>All reports are kept confidential</li>
               </ul>
             </div>
@@ -192,7 +208,7 @@ export const ReportUserDialog: React.FC<ReportUserDialogProps> = ({
             disabled={!canSubmit || reportUserMutation.isPending}
             className="bg-red-600 hover:bg-red-700"
           >
-            {reportUserMutation.isPending ? 'Submitting...' : 'Submit Report'}
+            {reportUserMutation.isPending ? "Submitting..." : "Submit Report"}
           </Button>
         </DialogFooter>
       </DialogContent>

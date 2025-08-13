@@ -95,7 +95,7 @@ export async function getUserFullNameServer(): Promise<string | null> {
     const user = await currentUser();
     if (!user) return null;
     
-    return user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || null;
+    return user.fullName || user.firstName || null;
   } catch (error) {
     console.error("[ClerkServerAPI] Error getting user full name:", error);
     return null;

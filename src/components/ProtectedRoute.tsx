@@ -102,7 +102,8 @@ function ProtectedRouteInner({
         if (message) {
           const now = Date.now();
           const last = lastToastRef.current;
-          if (!last || last.msg !== message || now - last.ts > 1500) {
+          // Increased debounce time to 3 seconds to better prevent duplicates
+          if (!last || last.msg !== message || now - last.ts > 3000) {
             if (severity === "error") {
               showErrorToast(null, message);
             } else {

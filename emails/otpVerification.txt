@@ -1,0 +1,7 @@
+Hi {{user.full_name || 'there'}},
+
+Your Aroosi verification code is: {{code}}
+
+Enter this 6‑digit code to verify your email. It expires in 10 minutes. If you didn’t request this, you can ignore this message.
+
+— The Aroosi Team

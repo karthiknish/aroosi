@@ -45,7 +45,7 @@ function isAuthenticatedClientRoute(pathname: string): boolean {
   );
 }
 
-export default clerkMiddleware((auth, request) => {
+export default clerkMiddleware(async (auth, request) => {
   const { pathname } = request.nextUrl;
 
   // Always allow public pages and public API routes
@@ -55,7 +55,16 @@ export default clerkMiddleware((auth, request) => {
 
   // For authenticated client routes, protect with Clerk
   if (isAuthenticatedClientRoute(pathname)) {
-    auth.protect();
+    const authObj = await auth();
+    const { userId } = authObj;
+    
+    // If user is not authenticated, redirect to sign-in
+    if (!userId) {
+      return authObj.redirectToSignIn();
+    }
+    
+    // For routes that require profile completion, we could add additional checks here
+    // For now, we'll let the client-side components handle profile completion redirects
     return;
   }
 });
