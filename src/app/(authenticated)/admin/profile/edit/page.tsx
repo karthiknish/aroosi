@@ -35,7 +35,7 @@ function AdminEditProfilePageInner() {
     queryKey: ["adminProfile", id],
     queryFn: async () => {
       if (!id) return null;
-      return await fetchAdminProfileById({ token: "", id });
+      return await fetchAdminProfileById({ id });
     },
     enabled: !!id,
   });
@@ -45,7 +45,7 @@ function AdminEditProfilePageInner() {
     queryKey: ["profileMatches", id],
     queryFn: async () => {
       if (!id) return [];
-      return await fetchAdminProfileMatches({ token: "", profileId: id });
+      return await fetchAdminProfileMatches({ profileId: id });
     },
     enabled: !!id,
   });
@@ -62,7 +62,7 @@ function AdminEditProfilePageInner() {
     const profileId: string = profile?._id || id || "";
     if (!profileId) return;
     setImagesLoading(true);
-    fetchAdminProfileImagesById({ token: "", profileId })
+    fetchAdminProfileImagesById({ profileId })
       .then((imgs) => setImages(imgs.filter((img) => !!img && !!img.url)))
       .catch(() => {
         // Optionally handle error here if you want to show a toast
@@ -171,7 +171,7 @@ function AdminEditProfilePageInner() {
       preferredGender,
     };
     try {
-      await updateAdminProfileById({ token: "", id, updates });
+      await updateAdminProfileById({ id, updates });
       showSuccessToast("Profile updated successfully!");
       router.push(`/admin/profile/[id]?id=${id}`);
     } catch (error) {
@@ -229,7 +229,6 @@ function AdminEditProfilePageInner() {
           initialValues={profile}
           onSubmit={handleAdminProfileUpdate}
           profileId={profile?._id || id || ""}
-          token={""}
           images={images}
           setImages={setImages}
           imagesLoading={imagesLoading}

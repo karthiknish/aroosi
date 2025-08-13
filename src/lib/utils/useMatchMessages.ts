@@ -36,7 +36,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
     setLoading(true);
     setError(null);
     try {
-      const response = await matchMessagesAPI.getMessages(null, {
+      const response = await matchMessagesAPI.getMessages({
         conversationId,
         limit: 20,
       });
@@ -65,7 +65,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
     setError(null);
     try {
       const oldestTimestamp = messages[0].createdAt;
-      const response = await matchMessagesAPI.getMessages(null, {
+      const response = await matchMessagesAPI.getMessages({
         conversationId,
         limit: 20,
         before: oldestTimestamp,
@@ -133,7 +133,7 @@ export function useMatchMessages(conversationId: string, _token: string) {
         }
 
         matchMessagesAPI
-          .sendMessage(null, {
+          .sendMessage({
             fromUserId,
             toUserId,
             text,

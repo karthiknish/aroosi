@@ -97,8 +97,7 @@ export function ProfileImageUpload({
         if (authIsAdmin && profileId) {
           // Use admin util for fetching images (cookie-auth)
           try {
-            // TODO: migrate admin API to cookie-auth; until then pass empty token
-            return await fetchAdminProfileImagesById({ token: "", profileId });
+            return await fetchAdminProfileImagesById({ profileId });
           } catch (error) {
             console.error("Error fetching admin profile images:", error);
             showErrorToast(null, "Failed to load profile images");
@@ -297,7 +296,7 @@ export function ProfileImageUpload({
       if (!userId) throw new Error("Missing userId");
       if (authIsAdmin && profileId) {
         // Use admin util for deleting images (cookie-auth)
-        await deleteAdminProfileImageById({ token: "", profileId, imageId });
+        await deleteAdminProfileImageById({ profileId, imageId });
         return imageId;
       }
       // Default user delete path currently lacks a client util; perform optimistic removal only.

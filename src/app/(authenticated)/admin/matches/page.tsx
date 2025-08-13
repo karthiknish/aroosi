@@ -31,7 +31,7 @@ export default function AdminMatchesPage() {
     setError(null);
 
     try {
-      const matchesData = await fetchAdminAllMatches({ token: "" });
+      const matchesData = await fetchAdminAllMatches();
       setMatches(matchesData);
 
       // Collect all unique profile IDs from matches
@@ -50,7 +50,6 @@ export default function AdminMatchesPage() {
         }));
 
         const imagesData = await fetchAllAdminProfileImages({
-          token: "",
           profiles: profilesForImages,
         });
         setProfileImages(imagesData);
