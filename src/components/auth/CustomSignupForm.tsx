@@ -210,6 +210,12 @@ export default function CustomSignupForm({
 
   const validateForm = () => {
     const nextErrors: typeof fieldErrors = {};
+    const fieldDisplay: Record<string, string> = {
+      email: "Email",
+      password: "Password",
+      confirmPassword: "Confirm Password",
+      verificationCode: "Verification Code",
+    };
 
     // If we're in verification phase, validate the code
     if (needsVerification) {
@@ -255,13 +261,19 @@ export default function CustomSignupForm({
 
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      // Also show a compact toast for visibility
-      const first =
-        nextErrors.email || nextErrors.password || nextErrors.confirmPassword;
-      if (first) {
-        showErrorToast(first);
-        onError?.(first);
-      }
+      // Build concise summary listing all impacted fields
+      const fields = Object.keys(nextErrors)
+        .filter((k) => k !== "form")
+        .map((k) => fieldDisplay[k] || k);
+      const summary =
+        fields.length > 0
+          ? `Please fix: ${fields.join(", ")}.`
+          : "Please correct the highlighted fields.";
+      // Attach summary to form-level error for inline display
+      setFieldErrors((prev) => ({ ...prev, form: summary }));
+      // Also show a toast with the summary for quick visibility
+      showErrorToast(summary);
+      onError?.(summary);
       return false;
     }
     return true;

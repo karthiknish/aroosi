@@ -72,24 +72,17 @@ export async function logout(callback?: SignOutCallback) {
 /**
  * Public: trigger forgot password email
  */
-export async function forgotPassword(email: string) {
-  return postJson<{ message?: string }>(
-    "/api/auth/forgot-password",
-    { email },
-    { cache: "no-store" }
-  );
+// Deprecated: use Clerk's useSignIn().create({ strategy: 'reset_password_email_code' }) in client
+export async function forgotPassword(_email: string) {
+  throw new Error("Use Clerk client reset flow instead of API.");
 }
 
 /**
  * Public: reset password
  */
-export async function resetPassword(params: {
-  email: string;
-  password: string;
-}) {
-  return postJson<{ message?: string }>("/api/auth/reset-password", params, {
-    cache: "no-store",
-  });
+// Deprecated: use Clerk's useSignIn() attemptFirstFactor + resetPassword in client
+export async function resetPassword(_params: { email: string; password: string }) {
+  throw new Error("Use Clerk client reset flow instead of API.");
 }
 
 /**

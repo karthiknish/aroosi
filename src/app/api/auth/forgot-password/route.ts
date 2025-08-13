@@ -1,69 +1,12 @@
-// This is a custom password reset endpoint for mobile/web compatibility.
-// Convex Auth handles all other authentication flows.
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { fetchQuery } from "convex/nextjs";
-import { api } from "@convex/_generated/api";
-import { sendResetLinkEmail } from "@/lib/auth/email";
+// Deprecated: Password reset is handled via Clerk's reset_password_email_code flow on the client.
+import { NextResponse } from "next/server";
 
-// Token will be created by the reset API when consumed, we only craft the link here
-const ForgotSchema = z.object({
-  email: z.string().email(),
-});
-
-export async function POST(request: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
-
-  try {
-    const body = await request.json().catch(() => ({}));
-    const parsed = ForgotSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid email", correlationId },
-        { status: 400 }
-      );
-    }
-    const { email } = parsed.data;
-
-    const user = await fetchQuery(api.users.getUserByEmail, { email }).catch(
-      () => null
-    );
-
-    // Always respond 200 to avoid user enumeration; still attempt email if user exists and is not banned
-  if (!user || (user as { banned?: boolean }).banned) {
-      return NextResponse.json({
-        message:
-          "If an account with that email exists, we sent a password reset link.",
-        correlationId,
-      });
-    }
-
-    // Build reset link with opaque token generated server-side by reset handler
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (request.headers.get("x-forwarded-proto") &&
-      request.headers.get("x-forwarded-host")
-        ? `${request.headers.get("x-forwarded-proto")}://${request.headers.get("x-forwarded-host")}`
-        : new URL(request.url).origin);
-
-    // Build a link to the reset password page. The page reads the email from query params.
-    const resetUrl = `${origin}/reset-password?email=${encodeURIComponent(email)}`;
-
-    await sendResetLinkEmail(email, resetUrl);
-
-    
-
-    return NextResponse.json({
-      message:
-        "If an account with that email exists, we sent a password reset link.",
-      correlationId,
-    });
-  } catch (error) {
-    
-    return NextResponse.json(
-      { error: "Internal server error", correlationId },
-      { status: 500 }
-    );
-  }
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        "This endpoint is deprecated. Use Clerk reset_password_email_code client flow.",
+    },
+    { status: 410 }
+  );
 }

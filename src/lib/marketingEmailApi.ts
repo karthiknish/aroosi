@@ -16,6 +16,7 @@ export async function sendMarketingEmail(
     dryRun?: boolean;
     maxAudience?: number;
     params?: Record<string, unknown>;
+    abTest?: { subjects: [string, string]; ratio?: number };
   }
 ): Promise<
   ApiResponse<null | {
@@ -25,6 +26,7 @@ export async function sendMarketingEmail(
     previews: Array<{ email?: string; subject: string }>;
     maxAudience: number;
     actorId: unknown;
+    abTest?: { subjects: [string, string]; ratio: number };
   }>
 > {
   try {

@@ -43,6 +43,12 @@ export default function MarketingEmailAdminPage() {
   const [maxAudience, setMaxAudience] = useState<number>(500);
   // const [preview, setPreview] = useState<string>("");
   const [mode, setMode] = useState<"template" | "custom">("template");
+  const [useEditor, setUseEditor] = useState<boolean>(true);
+  const [preheader, setPreheader] = useState<string>("");
+  const [abEnabled, setAbEnabled] = useState<boolean>(false);
+  const [abSubjectA, setAbSubjectA] = useState<string>("");
+  const [abSubjectB, setAbSubjectB] = useState<string>("");
+  const [abRatio, setAbRatio] = useState<number>(50);
   // Template params
   const [discountPct, setDiscountPct] = useState<number>(30);
   const [daysSinceLastLogin, setDaysSinceLastLogin] = useState<number>(7);
@@ -68,6 +74,13 @@ export default function MarketingEmailAdminPage() {
         confirm: !dryRun,
         dryRun,
         maxAudience,
+        abTest:
+          abEnabled && abSubjectA && abSubjectB
+            ? {
+                subjects: [abSubjectA, abSubjectB],
+                ratio: Math.max(1, Math.min(99, abRatio)),
+              }
+            : undefined,
       });
       if (res.success)
         showSuccessToast(dryRun ? "Preview generated" : "Campaign started");
@@ -90,7 +103,10 @@ export default function MarketingEmailAdminPage() {
 
           <TabsContent value="template" className="space-y-4">
             <div>
-              <label htmlFor="template-select" className="block text-sm font-medium mb-1">
+              <label
+                htmlFor="template-select"
+                className="block text-sm font-medium mb-1"
+              >
                 Select Template
               </label>
               <Select value={templateKey} onValueChange={setTemplateKey}>
@@ -110,7 +126,9 @@ export default function MarketingEmailAdminPage() {
             {/* Per-template params */}
             {templateKey === "premiumPromo" && (
               <div>
-                <label htmlFor="discount-pct" className="block text-sm mb-1">Discount %</label>
+                <label htmlFor="discount-pct" className="block text-sm mb-1">
+                  Discount %
+                </label>
                 <Input
                   id="discount-pct"
                   type="number"
@@ -125,7 +143,9 @@ export default function MarketingEmailAdminPage() {
             )}
             {templateKey === "profileCompletionReminder" && (
               <div>
-                <label htmlFor="completion-pct" className="block text-sm mb-1">Completion %</label>
+                <label htmlFor="completion-pct" className="block text-sm mb-1">
+                  Completion %
+                </label>
                 <Input
                   id="completion-pct"
                   type="number"
@@ -140,7 +160,10 @@ export default function MarketingEmailAdminPage() {
             )}
             {templateKey === "reEngagement" && (
               <div>
-                <label htmlFor="days-since-login" className="block text-sm mb-1">
+                <label
+                  htmlFor="days-since-login"
+                  className="block text-sm mb-1"
+                >
                   Days since last login
                 </label>
                 <Input
@@ -159,7 +182,9 @@ export default function MarketingEmailAdminPage() {
 
           <TabsContent value="custom" className="space-y-4">
             <div>
-              <label htmlFor="custom-subject" className="block text-sm mb-1">Subject</label>
+              <label htmlFor="custom-subject" className="block text-sm mb-1">
+                Subject
+              </label>
               <Input
                 id="custom-subject"
                 value={customSubject}
@@ -168,14 +193,45 @@ export default function MarketingEmailAdminPage() {
               />
             </div>
             <div>
-              <label htmlFor="custom-body" className="block text-sm mb-1">HTML Body</label>
-              <Textarea
-                id="custom-body"
-                value={customBody}
-                onChange={(e) => setCustomBody(e.target.value)}
-                rows={10}
-                placeholder="HTML content for the email"
+              <label htmlFor="preheader" className="block text-sm mb-1">
+                Preheader
+              </label>
+              <Input
+                id="preheader"
+                value={preheader}
+                onChange={(e) => setPreheader(e.target.value)}
+                placeholder="Short preview text shown in inbox"
               />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={useEditor}
+                onChange={(e) => setUseEditor(e.target.checked)}
+              />
+              Use WYSIWYG editor
+            </label>
+            <div>
+              <label htmlFor="custom-body" className="block text-sm mb-1">
+                HTML Body
+              </label>
+              {useEditor ? (
+                <Textarea
+                  id="custom-body"
+                  value={customBody}
+                  onChange={(e) => setCustomBody(e.target.value)}
+                  rows={10}
+                  placeholder="Write or paste HTML (WYSIWYG integration placeholder)"
+                />
+              ) : (
+                <Textarea
+                  id="custom-body"
+                  value={customBody}
+                  onChange={(e) => setCustomBody(e.target.value)}
+                  rows={10}
+                  placeholder="Raw HTML content"
+                />
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -191,7 +247,9 @@ export default function MarketingEmailAdminPage() {
             Dry run (no emails sent)
           </label>
           <div>
-            <label htmlFor="max-audience" className="block text-sm mb-1">Max audience</label>
+            <label htmlFor="max-audience" className="block text-sm mb-1">
+              Max audience
+            </label>
             <Input
               id="max-audience"
               type="number"
@@ -202,6 +260,57 @@ export default function MarketingEmailAdminPage() {
                 setMaxAudience(parseInt(e.target.value || "0", 10))
               }
             />
+          </div>
+          <div className="col-span-2 border-t pt-3">
+            <label className="flex items-center gap-2 text-sm mb-2">
+              <input
+                type="checkbox"
+                checked={abEnabled}
+                onChange={(e) => setAbEnabled(e.target.checked)}
+              />
+              Enable A/B subject testing
+            </label>
+            {abEnabled && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="ab-a" className="block text-sm mb-1">
+                    Subject A
+                  </label>
+                  <Input
+                    id="ab-a"
+                    value={abSubjectA}
+                    onChange={(e) => setAbSubjectA(e.target.value)}
+                    placeholder="Variant A subject"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ab-b" className="block text-sm mb-1">
+                    Subject B
+                  </label>
+                  <Input
+                    id="ab-b"
+                    value={abSubjectB}
+                    onChange={(e) => setAbSubjectB(e.target.value)}
+                    placeholder="Variant B subject"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label htmlFor="ab-ratio" className="block text-sm mb-1">
+                    Split ratio (A%)
+                  </label>
+                  <Input
+                    id="ab-ratio"
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={abRatio}
+                    onChange={(e) =>
+                      setAbRatio(parseInt(e.target.value || "50", 10))
+                    }
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

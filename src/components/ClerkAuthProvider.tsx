@@ -4,6 +4,7 @@ import { useUser, useAuth, useClerk, useSignIn, useSignUp } from "@clerk/nextjs"
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUserWithProfile, Profile } from "@/lib/profile/userProfileApi";
+import { showErrorToast } from "@/lib/ui/toast";
 
 interface User {
   id: string;
@@ -96,6 +97,8 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
 
   // Guard against late async state overwrites during logout
   const logoutVersionRef = React.useRef(0);
+  // Prevent duplicate toasts when Clerk user exists but Convex profile isn't ready yet
+  const convexSetupToastShownRef = React.useRef(false);
 
   // Fetch current user using Clerk authentication
   const fetchUser = useCallback(async (): Promise<User | null> => {
@@ -162,6 +165,22 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
     };
     void initAuth();
   }, [clerkLoaded, clerkIsSignedIn, clerkUserId, fetchUser]);
+
+  // Show a generic toast if Clerk session exists but Convex user/profile isn't ready yet
+  useEffect(() => {
+    if (!clerkLoaded) return;
+    if (
+      clerkIsSignedIn &&
+      clerkUserId &&
+      !user &&
+      !convexSetupToastShownRef.current
+    ) {
+      convexSetupToastShownRef.current = true;
+      showErrorToast(
+        "We couldn't load your account. Please try again shortly."
+      );
+    }
+  }, [clerkLoaded, clerkIsSignedIn, clerkUserId, user]);
 
   // If we have a pending first name (user signed up but user object not yet populated), apply it when clerkUser becomes available
   useEffect(() => {
@@ -573,7 +592,7 @@ export function ClerkAuthProvider({ children }: ClerkAuthProviderProps) {
     signOut,
     verifyEmailCode,
     refreshUser,
-      resendEmailVerification,
+    resendEmailVerification,
     // Legacy compatibility methods
     refreshProfile,
   };

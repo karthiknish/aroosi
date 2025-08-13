@@ -9,6 +9,7 @@ function wrapMarketingEmailContent(
   title: string,
   body: string,
   unsubscribeToken: string,
+  preheader?: string
 ): string {
   const brandGold = "#BFA67A";
   return `<!DOCTYPE html>
@@ -25,6 +26,7 @@ function wrapMarketingEmailContent(
       </style>
     </head>
     <body style="margin:0; padding:0; background:#faf7f2; font-family:'Nunito Sans',Helvetica,Arial,sans-serif; color:#222;">
+      ${preheader && preheader.trim() ? `<div style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;color:transparent">${preheader.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` : ""}
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#faf7f2; padding:24px 0;">
         <tr>
           <td align="center">
@@ -57,6 +59,7 @@ function wrapMarketingEmailContent(
 export function welcomeDay1Template(
   profile: Profile,
   unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = "Welcome to Aroosi! Here's how to find your perfect match 💕";
   const body = `
@@ -75,7 +78,7 @@ export function welcomeDay1Template(
   `;
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 
@@ -83,6 +86,7 @@ export function profileCompletionReminderTemplate(
   profile: Profile,
   completionPercentage: number,
   unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = `${profile.fullName}, your profile is ${completionPercentage}% complete`;
   const missingItems: string[] = [];
@@ -108,7 +112,7 @@ export function profileCompletionReminderTemplate(
   `;
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 
@@ -116,6 +120,7 @@ export function weeklyMatchesDigestTemplate(
   profile: Profile,
   matchCount: number,
   unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = `${matchCount} new profiles match your preferences this week`;
   const body = `
@@ -134,7 +139,7 @@ export function weeklyMatchesDigestTemplate(
   `;
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 
@@ -142,6 +147,7 @@ export function reEngagementTemplate(
   profile: Profile,
   daysSinceLastLogin: number,
   unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = "We miss you at Aroosi! Come see what's new 👋";
   const body = `
@@ -162,7 +168,7 @@ export function reEngagementTemplate(
   `;
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 
@@ -170,6 +176,7 @@ export function premiumPromoTemplate(
   profile: Profile,
   discountPercentage: number,
   unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = `${profile.fullName}, unlock ${discountPercentage}% off Premium today only! ⭐`;
   const body = `
@@ -198,7 +205,7 @@ export function premiumPromoTemplate(
   `;
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 
@@ -206,6 +213,7 @@ export function successStoryTemplate(
   storyTitle: string,
   storyPreview: string,
   unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = `Love Story: ${storyTitle} 💑`;
   const body = `
@@ -229,7 +237,7 @@ export function successStoryTemplate(
   `;
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 
@@ -237,6 +245,7 @@ export function profileViewsTemplate(
   profile: Profile,
   viewCount: number,
   unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = `${viewCount} people viewed your profile this week! 👀`;
   const body = `
@@ -259,7 +268,7 @@ export function profileViewsTemplate(
   `;
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 
@@ -274,7 +283,8 @@ export function recommendedProfilesTemplate(
     compatibilityScore: number;
     aboutMe: string;
   }>,
-  unsubscribeToken: string
+  unsubscribeToken: string,
+  preheader?: string
 ): MarketingEmailPayload {
   const subject = `New matches for you on Aroosi – ${recommendations.length} recommended profiles`;
 
@@ -314,7 +324,7 @@ export function recommendedProfilesTemplate(
 
   return {
     subject,
-    html: wrapMarketingEmailContent(subject, body, unsubscribeToken),
+    html: wrapMarketingEmailContent(subject, body, unsubscribeToken, preheader),
   };
 }
 

@@ -44,14 +44,7 @@ export async function buildForwardHeaders(): Promise<Record<string, string>> {
     // ignore cookie extraction errors
   }
 
-  try {
-    // Next cookies() supports toString serialization of all cookies
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cookieHeader = (c as any)?.toString ? (c as any).toString() : "";
-    if (cookieHeader) forward.cookie = cookieHeader;
-  } catch {
-    // ignore cookie extraction errors
-  }
+  // Note: earlier Next.js versions exposed a global cookie serializer; not used here
 
   try {
     const get = (name: string) => (h ? h.get(name) : null);

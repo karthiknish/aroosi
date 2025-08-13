@@ -52,6 +52,8 @@ export async function POST(request: Request) {
       maxAudience,
       subject,
       body: customBody,
+      preheader,
+      abTest,
     } = (body || {}) as {
       templateKey?: string;
       params?: { args?: unknown[] };
@@ -60,6 +62,8 @@ export async function POST(request: Request) {
       maxAudience?: number;
       subject?: string;
       body?: string;
+      preheader?: string;
+      abTest?: { subjects: [string, string]; ratio?: number };
     };
 
     if (!templateKey && !subject) {
@@ -114,9 +118,13 @@ export async function POST(request: Request) {
 
     // If dryRun, return preview count and first few preview payloads
     if (dryRun) {
-      const previews: Array<{ email?: string; subject: string }> = [];
-      const sample = profiles.slice(0, Math.min(5, profiles.length));
-      for (const p of sample) {
+      type Preview = { email?: string; subject: string; abVariant?: "A" | "B" };
+      const previews: Preview[] = [];
+      const sample = profiles.slice(0, Math.min(10, profiles.length));
+      const ratio = Math.max(1, Math.min(99, Number(abTest?.ratio ?? 50)));
+      const aCount = Math.round((sample.length * ratio) / 100);
+      for (let i = 0; i < sample.length; i++) {
+        const p = sample[i];
         // Guard missing fields for type safety
         const baseProfile = {
           ...(p as Profile),
@@ -138,7 +146,19 @@ export async function POST(request: Request) {
                   )
           : { subject: subject || "(no subject)", html: customBody || "" };
 
-        previews.push({ email: p.email, subject: payload.subject });
+        let finalSubject = payload.subject;
+        let abVariant: "A" | "B" | undefined;
+        if (
+          abTest &&
+          abTest.subjects &&
+          abTest.subjects[0] &&
+          abTest.subjects[1]
+        ) {
+          const useA = i < aCount;
+          finalSubject = useA ? abTest.subjects[0] : abTest.subjects[1];
+          abVariant = useA ? "A" : "B";
+        }
+        previews.push({ email: p.email, subject: finalSubject, abVariant });
       }
       return successResponse({
         dryRun: true,
@@ -147,12 +167,36 @@ export async function POST(request: Request) {
         previews,
         maxAudience: effectiveMax,
         actorId: userId,
+        abTest:
+          abTest && abTest.subjects
+            ? {
+                subjects: abTest.subjects,
+                ratio: Math.max(1, Math.min(99, Number(abTest.ratio ?? 50))),
+              }
+            : undefined,
       });
     }
 
     // Live send with batching (simple sequential loop retained, can optimize later)
+    // Campaign start log (optional persistence)
+    devLog("info", "admin.marketing-email", "campaign_start", {
+      templateKey,
+      hasCustom: Boolean(subject || customBody),
+      maxAudience: effectiveMax,
+      abTest:
+        abTest && abTest.subjects
+          ? {
+              subjects: abTest.subjects,
+              ratio: Math.max(1, Math.min(99, Number(abTest.ratio ?? 50))),
+            }
+          : undefined,
+    });
+
     let sent = 0;
-    for (const p of profiles) {
+    const ratio = Math.max(1, Math.min(99, Number(abTest?.ratio ?? 50)));
+    const aCount = Math.round((profiles.length * ratio) / 100);
+    for (let i = 0; i < profiles.length; i++) {
+      const p = profiles[i];
       try {
         const baseProfile = {
           ...(p as Profile),
@@ -191,6 +235,32 @@ export async function POST(request: Request) {
             html: customBody || "",
           };
         }
+        // A/B subject override
+        if (
+          abTest &&
+          abTest.subjects &&
+          abTest.subjects[0] &&
+          abTest.subjects[1]
+        ) {
+          const useA = i < aCount;
+          emailPayload.subject = useA ? abTest.subjects[0] : abTest.subjects[1];
+        }
+
+        // Preheader injection (hidden preheader at top of body)
+        if (preheader && preheader.trim()) {
+          const pre = `<div style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;color:transparent">${preheader.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
+          const bodyOpen = emailPayload.html.match(/<body[^>]*>/i);
+          if (bodyOpen && bodyOpen.index != null) {
+            const idx = bodyOpen.index + bodyOpen[0].length;
+            emailPayload.html =
+              emailPayload.html.slice(0, idx) +
+              pre +
+              emailPayload.html.slice(idx);
+          } else {
+            emailPayload.html = pre + emailPayload.html;
+          }
+        }
+
         if (p.email) {
           await sendUserNotification(
             p.email,

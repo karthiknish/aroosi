@@ -4,7 +4,8 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { forgotPassword } from "@/lib/auth/client";
+import { useSignIn } from "@clerk/nextjs";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 interface CustomForgotPasswordFormProps {
   onComplete?: () => void;
@@ -18,6 +19,7 @@ export default function CustomForgotPasswordForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const { isLoaded, signIn } = useSignIn();
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -33,24 +35,32 @@ export default function CustomForgotPasswordForm({
 
       setSubmitting(true);
       try {
-        await forgotPassword(safeEmail);
-        setSuccess(
-          "If an account with that email exists, we sent a password reset link."
-        );
+        if (!isLoaded || !signIn) {
+          throw new Error("Auth not ready. Please try again.");
+        }
+        await signIn.create({
+          identifier: safeEmail,
+          strategy: "reset_password_email_code",
+        });
+        const msg = "If that email exists, we sent a verification code.";
+        setSuccess(msg);
+        showSuccessToast(msg);
         if (onComplete) {
-          // Small delay so users can read the message if they stay on page
           setTimeout(() => onComplete(), 800);
         }
-      } catch (err: unknown) {
+      } catch (err: any) {
+        const clerkErr = err?.errors?.[0];
         const msg =
-          err instanceof Error
-            ? err.message
-            : "We couldn't process your request right now. Please try again.";
-        setError(
-          msg.includes("429")
+          clerkErr?.longMessage ||
+          clerkErr?.message ||
+          err?.message ||
+          "We couldn't process your request right now. Please try again.";
+        const finalMsg =
+          msg.includes("too_many_requests") || msg.includes("429")
             ? "Too many requests. Please try again later."
-            : msg
-        );
+            : msg;
+        setError(finalMsg);
+        showErrorToast(finalMsg);
       } finally {
         setSubmitting(false);
       }

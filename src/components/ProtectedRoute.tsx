@@ -85,7 +85,10 @@ function ProtectedRouteInner({
       isOnboardingRoute: pathname.startsWith("/profile/onboarding"),
       isProfileEditRoute:
         pathname === "/profile/edit" || pathname.startsWith("/profile/edit/"),
-      isCreateProfileRoute: pathname.startsWith("/create-profile"),
+      // Support both legacy and current create profile routes
+      isCreateProfileRoute:
+        pathname.startsWith("/create-profile") ||
+        pathname.startsWith("/profile/create"),
     };
   }, [pathname]);
 
