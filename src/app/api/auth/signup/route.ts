@@ -211,7 +211,10 @@ export async function POST(request: NextRequest) {
       const now = Date.now();
       const existing = (await fetchQuery(api.users.getRateLimitByKey, {
         key: ipKey,
-      }).catch(() => null)) as { windowStart?: number | bigint; count?: number | bigint } | null;
+      }).catch(() => null)) as {
+        windowStart?: number | bigint;
+        count?: number | bigint;
+      } | null;
       const toNum = (v: unknown) =>
         typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0;
       if (!existing || now - toNum(existing.windowStart) > WINDOW_MS) {
@@ -285,7 +288,10 @@ export async function POST(request: NextRequest) {
       const key = `signup_email_cmp:${emailCompare}`;
       const existing = (await fetchQuery(api.users.getRateLimitByKey, {
         key,
-      }).catch(() => null)) as { windowStart?: number | bigint; count?: number | bigint } | null;
+      }).catch(() => null)) as {
+        windowStart?: number | bigint;
+        count?: number | bigint;
+      } | null;
       const toNum = (v: unknown) =>
         typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : 0;
       if (!existing || now - toNum(existing.windowStart) > WINDOW_MS) {
@@ -335,22 +341,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2) Check if user already exists in Clerk
+    // 2) Check if user already exists in Clerk; do not return early. We still want to ensure Convex user.
+    let existingClerkUserId: string | null = null;
     try {
-      const clerkUser = await (await clerkClient()).users.getUserList({
+      const clerkUser = await (
+        await clerkClient()
+      ).users.getUserList({
         emailAddress: [normalizedEmail],
       });
-      
       if (clerkUser && clerkUser.data.length > 0) {
-        return NextResponse.json(
+        existingClerkUserId = clerkUser.data[0].id;
+        // eslint-disable-next-line no-console
+        console.info(
+          "[signup] Existing Clerk user detected; will ensure Convex profile",
           {
-            status: "ok",
-            message:
-              "An account with this email already exists. Please sign in instead.",
-            code: "ACCOUNT_EXISTS",
             correlationId,
-          },
-          { status: 200 }
+          }
         );
       }
     } catch (e) {
@@ -393,21 +399,33 @@ export async function POST(request: NextRequest) {
           : String(profile.height ?? ""),
       annualIncome:
         typeof (profile as Record<string, unknown>).annualIncome === "number"
-          ? (profile as Record<string, unknown>).annualIncome as number
-          : typeof (profile as Record<string, unknown>).annualIncome === "string"
-            ? (Number((profile as Record<string, unknown>).annualIncome) || undefined)
+          ? ((profile as Record<string, unknown>).annualIncome as number)
+          : typeof (profile as Record<string, unknown>).annualIncome ===
+              "string"
+            ? Number((profile as Record<string, unknown>).annualIncome) ||
+              undefined
             : undefined,
-      partnerPreferenceAgeMin: 
-        typeof (profile as Record<string, unknown>).partnerPreferenceAgeMin === "number"
-          ? (profile as Record<string, unknown>).partnerPreferenceAgeMin as number
-          : typeof (profile as Record<string, unknown>).partnerPreferenceAgeMin === "string"
-            ? (Number((profile as Record<string, unknown>).partnerPreferenceAgeMin) || undefined)
+      partnerPreferenceAgeMin:
+        typeof (profile as Record<string, unknown>).partnerPreferenceAgeMin ===
+        "number"
+          ? ((profile as Record<string, unknown>)
+              .partnerPreferenceAgeMin as number)
+          : typeof (profile as Record<string, unknown>)
+                .partnerPreferenceAgeMin === "string"
+            ? Number(
+                (profile as Record<string, unknown>).partnerPreferenceAgeMin
+              ) || undefined
             : undefined,
-      partnerPreferenceAgeMax: 
-        typeof (profile as Record<string, unknown>).partnerPreferenceAgeMax === "number"
-          ? (profile as Record<string, unknown>).partnerPreferenceAgeMax as number
-          : typeof (profile as Record<string, unknown>).partnerPreferenceAgeMax === "string"
-            ? (Number((profile as Record<string, unknown>).partnerPreferenceAgeMax) || undefined)
+      partnerPreferenceAgeMax:
+        typeof (profile as Record<string, unknown>).partnerPreferenceAgeMax ===
+        "number"
+          ? ((profile as Record<string, unknown>)
+              .partnerPreferenceAgeMax as number)
+          : typeof (profile as Record<string, unknown>)
+                .partnerPreferenceAgeMax === "string"
+            ? Number(
+                (profile as Record<string, unknown>).partnerPreferenceAgeMax
+              ) || undefined
             : undefined,
       partnerPreferenceCity: Array.isArray(
         (profile as Record<string, unknown>).partnerPreferenceCity
@@ -418,20 +436,19 @@ export async function POST(request: NextRequest) {
       profileImageIds: undefined,
     };
 
-    // 2) Create account via Clerk
+    // 2) Create account via Clerk (or use existing)
     try {
-      // Create user in Clerk
-      const clerkUser = await (
-        await clerkClient()
-      ).users.createUser({
-        emailAddress: [normalizedEmail],
-        password,
-      });
+      // Create user in Clerk when not already present
+      const clerkSvc = await clerkClient();
+      const clerkUser = existingClerkUserId
+        ? await clerkSvc.users.getUser(existingClerkUserId)
+        : await clerkSvc.users.createUser({
+            emailAddress: [normalizedEmail],
+            password,
+          });
 
       // Create Convex client
-      const convex = new ConvexHttpClient(
-        process.env.NEXT_PUBLIC_CONVEX_URL!
-      );
+      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
       // Ensure a user+profile exists in our domain data
       let createdUserId: string | null = null;
@@ -450,6 +467,9 @@ export async function POST(request: NextRequest) {
           // We extended the action createUserAndProfileViaSignup to accept profileData + clerkId.
           // Since fetchAction helper isn't present, we still call the mutation directly.
           // If later available, replace with: await fetchAction(api.users.createUserAndProfileViaSignup, {...})
+          console.info("[signup] invoking createUserAndProfile", {
+            correlationId,
+          });
           createdUserId = (await fetchMutation(api.users.createUserAndProfile, {
             email: normalizedEmail,
             name: fullName,
@@ -516,40 +536,44 @@ export async function POST(request: NextRequest) {
     } catch (e: any) {
       console.error("Sign up error:", e);
       // Provide more detailed error information in development
-      const errorMessage = process.env.NODE_ENV === "development" 
-        ? `Sign up failed: ${e.message || "Unknown error"}`
-        : "Unable to create account. Please try again.";
-      
+      const errorMessage =
+        process.env.NODE_ENV === "development"
+          ? `Sign up failed: ${e.message || "Unknown error"}`
+          : "Unable to create account. Please try again.";
+
       // Handle specific Clerk errors
       if (e?.errors?.[0]?.code === "form_identifier_exists") {
         return NextResponse.json(
-          { 
-            error: "An account with this email already exists. Please sign in instead.", 
-            code: "ACCOUNT_EXISTS", 
-            correlationId 
+          {
+            error:
+              "An account with this email already exists. Please sign in instead.",
+            code: "ACCOUNT_EXISTS",
+            correlationId,
           },
           { status: 409 }
         );
       } else if (e?.errors?.[0]?.code === "form_password_pwned") {
         return NextResponse.json(
-          { 
-            error: "This password has been compromised in a data breach. Please choose a different password.", 
-            code: "WEAK_PASSWORD", 
-            correlationId 
+          {
+            error:
+              "This password has been compromised in a data breach. Please choose a different password.",
+            code: "WEAK_PASSWORD",
+            correlationId,
           },
           { status: 400 }
         );
       } else if (e?.errors?.[0]?.code === "form_password_size") {
         return NextResponse.json(
-          { 
-            error: "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol.", 
-            code: "WEAK_PASSWORD", 
-            correlationId 
+          {
+            error:
+              "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol.",
+            code: "WEAK_PASSWORD",
+            correlationId,
           },
           { status: 400 }
         );
       }
-      
+
       return NextResponse.json(
         { error: errorMessage, code: "SIGNUP_FAILED", correlationId },
         { status: 500 }

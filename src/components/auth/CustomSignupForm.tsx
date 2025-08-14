@@ -526,6 +526,7 @@ export default function CustomSignupForm({
                 }}
                 length={6}
                 autoFocus
+                disabled={isLoading || resendLoading}
               />
               {fieldErrors.verificationCode ? (
                 <p id="verificationCode-error" className="text-xs text-red-600">
@@ -536,7 +537,7 @@ export default function CustomSignupForm({
                 <button
                   type="button"
                   onClick={handleResend}
-                  disabled={secondsLeft > 0 || resendLoading}
+                  disabled={secondsLeft > 0 || resendLoading || isLoading}
                   className="text-primary disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
                 >
                   {resendLoading
@@ -556,7 +557,11 @@ export default function CustomSignupForm({
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || verificationCode.length !== 6 || autoSubmittingRef.current}
+              disabled={
+                isLoading ||
+                verificationCode.length !== 6 ||
+                autoSubmittingRef.current
+              }
             >
               {isLoading ? (
                 <>
@@ -580,6 +585,7 @@ export default function CustomSignupForm({
                     verificationCode: undefined,
                   }));
                 }}
+                disabled={isLoading}
               >
                 Back to sign up
               </button>
