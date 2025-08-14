@@ -8,6 +8,29 @@ import { v } from "convex/values";
 import { query, mutation, action } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 
+// Lightweight structured logger for Convex functions in this module
+const LOG_SCOPE = "convex.users";
+type LogDetails = Record<string, unknown>;
+
+const logger = {
+  info(event: string, details?: LogDetails) {
+    /* eslint-disable-next-line no-console */
+    console.info(`[${LOG_SCOPE}] ${event}`, details ?? {});
+  },
+  warn(event: string, details?: LogDetails) {
+    /* eslint-disable-next-line no-console */
+    console.warn(`[${LOG_SCOPE}] ${event}`, details ?? {});
+  },
+  error(event: string, details?: LogDetails) {
+    /* eslint-disable-next-line no-console */
+    console.error(`[${LOG_SCOPE}] ${event}`, details ?? {});
+  },
+  debug(event: string, details?: LogDetails) {
+    /* eslint-disable-next-line no-console */
+    console.debug(`[${LOG_SCOPE}] ${event}`, details ?? {});
+  },
+};
+
 function maskEmail(e?: string) {
   if (!e) return "";
   const [name, domain] = e.split("@");
@@ -25,8 +48,7 @@ export const findUserByEmail = query({
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
-    // eslint-disable-next-line no-console
-    console.info("convex.users.findUserByEmail", {
+    logger.info("findUserByEmail", {
       email: maskEmail(email),
       found: Boolean(res),
     });
@@ -44,8 +66,7 @@ export const findUserByClerkId = query({
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
       .first();
-    // eslint-disable-next-line no-console
-    console.info("convex.users.findUserByClerkId", {
+    logger.info("findUserByClerkId", {
       clerkId: clerkId.substring(0, 10) + "...",
       found: Boolean(res),
     });
@@ -63,8 +84,7 @@ export const getUserByClerkId = query({
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", clerkId))
       .first();
-    // eslint-disable-next-line no-console
-    console.info("convex.users.getUserByClerkId", {
+    logger.info("getUserByClerkId", {
       clerkId: clerkId.substring(0, 10) + "...",
       found: Boolean(res),
     });
@@ -82,8 +102,7 @@ export const getUserByEmail = query({
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
-    // eslint-disable-next-line no-console
-    console.info("convex.users.getUserByEmail", {
+    logger.info("getUserByEmail", {
       email: maskEmail(email),
       found: Boolean(res),
     });
@@ -106,6 +125,12 @@ export const createUserAndProfile = mutation({
         fullName: v.optional(v.string()),
         aboutMe: v.optional(v.string()),
         isProfileComplete: v.optional(v.boolean()),
+        // IMPORTANT: gender was missing here which caused it to be stripped
+        // from incoming profileData, making the requiredFilled guard fail.
+        // Adding it to align with profiles schema and requiredFilled check.
+        gender: v.optional(
+          v.union(v.literal("male"), v.literal("female"), v.literal("other"))
+        ),
         motherTongue: v.optional(v.string()),
         religion: v.optional(v.string()),
         ethnicity: v.optional(v.string()),
@@ -139,28 +164,26 @@ export const createUserAndProfile = mutation({
     ctx,
     { email, name: _name, picture: _picture, googleId, clerkId, profileData }
   ) => {
-    // eslint-disable-next-line no-console
-    console.info("convex.users.createUserAndProfile:start", {
+    logger.info("createUserAndProfile:start", {
       email: maskEmail(email),
       hasGoogleId: Boolean(googleId),
       hasClerkId: Boolean(clerkId),
     });
-    
+
     // Guard: Check if user with this email already exists
     const existingUser = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
-      
+
     if (existingUser) {
-      // eslint-disable-next-line no-console
-      console.info("convex.users.createUserAndProfile:blocked_duplicate_email", {
+      logger.warn("createUserAndProfile:blocked_duplicate_email", {
         email: maskEmail(email),
         existingUserId: String(existingUser._id),
       });
       throw new Error("USER_WITH_EMAIL_EXISTS");
     }
-    
+
     // Guard: require a filled profile payload before creating any records
     const pd = (profileData ?? {}) as Partial<Doc<"profiles">>;
     const requiredFilled = Boolean(
@@ -176,14 +199,10 @@ export const createUserAndProfile = mutation({
         pd.phoneNumber
     );
     if (!requiredFilled) {
-      // eslint-disable-next-line no-console
-      console.info(
-        "convex.users.createUserAndProfile:blocked_incomplete_profile",
-        {
-          email: maskEmail(email),
-          hasProfileData: Boolean(profileData),
-        }
-      );
+      logger.warn("createUserAndProfile:blocked_incomplete_profile", {
+        email: maskEmail(email),
+        hasProfileData: Boolean(profileData),
+      });
       throw new Error("INCOMPLETE_PROFILE");
     }
     const userId: Id<"users"> = await ctx.db.insert("users", {
@@ -220,8 +239,7 @@ export const createUserAndProfile = mutation({
     }
 
     await ctx.db.insert("profiles", profileToCreate);
-    // eslint-disable-next-line no-console
-    console.info("convex.users.createUserAndProfile:done", {
+    logger.info("createUserAndProfile:done", {
       email: maskEmail(email),
       userId: String(userId),
     });
@@ -240,8 +258,7 @@ export const updateUserPassword = mutation({
   },
   handler: async (ctx, { userId, hashedPassword }) => {
     await ctx.db.patch(userId as Id<"users">, { hashedPassword });
-    // eslint-disable-next-line no-console
-    console.info("convex.users.updateUserPassword", {
+    logger.info("updateUserPassword", {
       userId: String(userId),
       hashed: typeof hashedPassword === "string",
     });
@@ -1100,8 +1117,7 @@ export const getRateLimitByKey = query({
       .query("rateLimits")
       .withIndex("by_key", (q) => q.eq("key", key))
       .first();
-    // eslint-disable-next-line no-console
-    console.info("convex.users.getRateLimitByKey", {
+    logger.info("getRateLimitByKey", {
       key,
       found: Boolean(res),
     });
@@ -1133,8 +1149,7 @@ export const setRateLimitWindow = mutation({
           count: countBig,
         } as any
       );
-      // eslint-disable-next-line no-console
-      console.info("convex.users.setRateLimitWindow:update", {
+      logger.info("setRateLimitWindow:update", {
         key,
         windowStart,
         count,
@@ -1147,8 +1162,7 @@ export const setRateLimitWindow = mutation({
       windowStart: windowStartBig,
       count: countBig,
     } as any);
-    // eslint-disable-next-line no-console
-    console.info("convex.users.setRateLimitWindow:insert", {
+    logger.info("setRateLimitWindow:insert", {
       key,
       windowStart,
       count,
@@ -1170,8 +1184,7 @@ export const incrementRateLimit = mutation({
         windowStart: BigInt(Date.now()),
         count: BigInt(1),
       } as any);
-      // eslint-disable-next-line no-console
-      console.info("convex.users.incrementRateLimit:insert", { key });
+      logger.info("incrementRateLimit:insert", { key });
       return id as Id<"rateLimits">;
     }
     const currentCount = (existing as any).count ?? BigInt(0);
@@ -1184,8 +1197,7 @@ export const incrementRateLimit = mutation({
             : BigInt(Number(currentCount))) + BigInt(1),
       } as any
     );
-    // eslint-disable-next-line no-console
-    console.info("convex.users.incrementRateLimit:update", { key });
+    logger.info("incrementRateLimit:update", { key });
     return existing._id as Id<"rateLimits">;
   },
 });

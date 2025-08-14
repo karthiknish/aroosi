@@ -132,34 +132,17 @@ export async function GET(_request: NextRequest) {
         log(scope, "warn", "getUserByEmail failed", toErrorDetails(e));
       }
       if (!convexUser) {
-        // Create minimal user + empty profile so downstream calls succeed
-        try {
-          await convexMutationWithAuth(
-            _request,
-            api.users.createUserAndProfile,
-            {
-              email,
-              name: clerk.firstName || undefined,
-              clerkId: clerk.id,
-              profileData: {
-                fullName: clerk.fullName || clerk.firstName || undefined,
-                email,
-                isProfileComplete: false,
-              },
-            }
-          );
-          log(scope, "info", "Created Convex user/profile from Clerk user", {
+        // Skip auto-creation: profile data is incomplete from this context.
+        log(
+          scope,
+          "warn",
+          "Convex user missing; skipping creation due to incomplete profile context",
+          {
             email,
             clerkId: clerk.id,
-          });
-        } catch (createErr) {
-          log(
-            scope,
-            "error",
-            "Failed to create Convex user",
-            toErrorDetails(createErr)
-          );
-        }
+            note: "Create only via signup with full profile payload",
+          }
+        );
       }
       // Re-query after possible creation
       try {
@@ -169,7 +152,12 @@ export async function GET(_request: NextRequest) {
           {}
         );
       } catch (e) {
-        log(scope, "warn", "Re-query after creation failed", toErrorDetails(e));
+        log(
+          scope,
+          "warn",
+          "Re-query after missing-user handling failed",
+          toErrorDetails(e)
+        );
       }
     }
 
