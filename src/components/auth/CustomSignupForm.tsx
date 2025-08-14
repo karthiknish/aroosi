@@ -163,6 +163,8 @@ export default function CustomSignupForm({
     }
     const redirectTo = "/success";
     try {
+      // Show loader during redirect
+      setIsLoading(true);
       router.push(redirectTo);
     } catch {
       window.location.href = redirectTo;
@@ -201,8 +203,7 @@ export default function CustomSignupForm({
         try {
           if (onComplete) onComplete();
         } catch {}
-        // Keep loader visible briefly to avoid flicker, then finalize to success
-        await new Promise((r) => setTimeout(r, 400));
+        // Keep loader visible during redirect to success page
         await finalizeToSuccess();
       } catch (err: any) {
         const msg =
@@ -341,8 +342,8 @@ export default function CustomSignupForm({
           try {
             if (onComplete) onComplete();
           } catch {}
-          const done = await finalizeToSuccess();
-          if (done) return;
+          // Show loader during redirect to success page
+          await finalizeToSuccess();
           return;
         } catch (verifyError: any) {
           const errorMsg =
@@ -456,7 +457,7 @@ export default function CustomSignupForm({
         console.warn("onComplete callback threw, continuing", err);
       }
 
-      // Wait for Convex profile then navigate
+      // Show loader during redirect to success page
       await finalizeToSuccess();
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {

@@ -6,7 +6,7 @@
  */
 import { v } from "convex/values";
 import { query, mutation, action } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 
 function maskEmail(e?: string) {
   if (!e) return "";
@@ -101,68 +101,109 @@ export const createUserAndProfile = mutation({
     picture: v.optional(v.string()),
     googleId: v.optional(v.string()),
     clerkId: v.optional(v.string()),
-    profileData: v.optional(v.object({
-      fullName: v.optional(v.string()),
-      aboutMe: v.optional(v.string()),
-      isProfileComplete: v.optional(v.boolean()),
-      motherTongue: v.optional(v.string()),
-      religion: v.optional(v.string()),
-      ethnicity: v.optional(v.string()),
-      hideFromFreeUsers: v.optional(v.boolean()),
-      subscriptionPlan: v.optional(v.string()),
-      subscriptionExpiresAt: v.optional(v.number()),
-      profileImageIds: v.optional(v.array(v.id("_storage"))),
-      profileImageUrls: v.optional(v.array(v.string())),
-      city: v.optional(v.string()),
-      country: v.optional(v.string()),
-      height: v.optional(v.string()),
-      maritalStatus: v.optional(v.string()),
-      physicalStatus: v.optional(v.string()),
-      diet: v.optional(v.string()),
-      smoking: v.optional(v.string()),
-      drinking: v.optional(v.string()),
-      education: v.optional(v.string()),
-      occupation: v.optional(v.string()),
-      annualIncome: v.optional(v.number()),
-      partnerPreferenceAgeMin: v.optional(v.union(v.number(), v.string())),
-      partnerPreferenceAgeMax: v.optional(v.union(v.number(), v.string())),
-      partnerPreferenceCity: v.optional(v.array(v.string())),
-      preferredGender: v.optional(v.string()),
-      phoneNumber: v.optional(v.string()),
-      email: v.optional(v.string()),
-      dateOfBirth: v.optional(v.string()),
-    })),
+    profileData: v.optional(
+      v.object({
+        fullName: v.optional(v.string()),
+        aboutMe: v.optional(v.string()),
+        isProfileComplete: v.optional(v.boolean()),
+        motherTongue: v.optional(v.string()),
+        religion: v.optional(v.string()),
+        ethnicity: v.optional(v.string()),
+        hideFromFreeUsers: v.optional(v.boolean()),
+        subscriptionPlan: v.optional(v.string()),
+        subscriptionExpiresAt: v.optional(v.number()),
+        profileImageIds: v.optional(v.array(v.id("_storage"))),
+        profileImageUrls: v.optional(v.array(v.string())),
+        city: v.optional(v.string()),
+        country: v.optional(v.string()),
+        height: v.optional(v.string()),
+        maritalStatus: v.optional(v.string()),
+        physicalStatus: v.optional(v.string()),
+        diet: v.optional(v.string()),
+        smoking: v.optional(v.string()),
+        drinking: v.optional(v.string()),
+        education: v.optional(v.string()),
+        occupation: v.optional(v.string()),
+        annualIncome: v.optional(v.number()),
+        partnerPreferenceAgeMin: v.optional(v.union(v.number(), v.string())),
+        partnerPreferenceAgeMax: v.optional(v.union(v.number(), v.string())),
+        partnerPreferenceCity: v.optional(v.array(v.string())),
+        preferredGender: v.optional(v.string()),
+        phoneNumber: v.optional(v.string()),
+        email: v.optional(v.string()),
+        dateOfBirth: v.optional(v.string()),
+      })
+    ),
   },
-  handler: async (ctx, { email, name, picture, googleId, clerkId, profileData }) => {
+  handler: async (
+    ctx,
+    { email, name: _name, picture: _picture, googleId, clerkId, profileData }
+  ) => {
     // eslint-disable-next-line no-console
     console.info("convex.users.createUserAndProfile:start", {
       email: maskEmail(email),
       hasGoogleId: Boolean(googleId),
       hasClerkId: Boolean(clerkId),
     });
-    const userId = await ctx.db.insert("users", {
+    // Guard: require a filled profile payload before creating any records
+    const pd = (profileData ?? {}) as Partial<Doc<"profiles">>;
+    const requiredFilled = Boolean(
+      pd.fullName &&
+        pd.dateOfBirth &&
+        pd.gender &&
+        pd.city &&
+        pd.aboutMe &&
+        pd.occupation &&
+        pd.education &&
+        pd.height &&
+        pd.maritalStatus &&
+        pd.phoneNumber
+    );
+    if (!requiredFilled) {
+      // eslint-disable-next-line no-console
+      console.info(
+        "convex.users.createUserAndProfile:blocked_incomplete_profile",
+        {
+          email: maskEmail(email),
+          hasProfileData: Boolean(profileData),
+        }
+      );
+      throw new Error("INCOMPLETE_PROFILE");
+    }
+    const userId: Id<"users"> = await ctx.db.insert("users", {
       email,
       role: "user",
       createdAt: Date.now(),
       emailVerified: true,
       googleId: googleId ?? undefined,
       clerkId: clerkId ?? undefined,
-      name: name ?? undefined,
-      picture: picture ?? undefined,
-    } as any);
-    
+      // Note: additional fields like name/picture are not in the users schema; store only allowed fields
+    });
+
     // Merge profileData with default values
-    const hasFullProfileData = profileData && Object.keys(profileData).length > 0;
-    const profileToCreate = {
-      userId: userId as Id<"users">,
-      isProfileComplete: hasFullProfileData,
-      isOnboardingComplete: hasFullProfileData,
+    // Respect an explicit isProfileComplete=false from callers (e.g., webhook)
+    const incomingCompleteFlag = pd.isProfileComplete;
+    const resolvedComplete = incomingCompleteFlag === false ? false : true;
+    // Coerce union-constrained fields explicitly to satisfy schema types
+    const profileToCreate: Omit<Doc<"profiles">, "_id" | "_creationTime"> = {
+      userId: userId,
+      isProfileComplete: resolvedComplete,
+      isOnboardingComplete: resolvedComplete,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      ...(profileData || {}),
+      ...(profileData as Partial<Doc<"profiles">> | undefined),
     };
-    
-    await ctx.db.insert("profiles", profileToCreate as any);
+    // Narrow fields with union types
+    if (
+      profileToCreate.preferredGender &&
+      !["any", "male", "female", "other"].includes(
+        profileToCreate.preferredGender as string
+      )
+    ) {
+      profileToCreate.preferredGender = undefined;
+    }
+
+    await ctx.db.insert("profiles", profileToCreate);
     // eslint-disable-next-line no-console
     console.info("convex.users.createUserAndProfile:done", {
       email: maskEmail(email),
@@ -182,7 +223,7 @@ export const updateUserPassword = mutation({
     hashedPassword: v.string(),
   },
   handler: async (ctx, { userId, hashedPassword }) => {
-    await ctx.db.patch(userId as Id<"users">, { hashedPassword } as any);
+    await ctx.db.patch(userId as Id<"users">, { hashedPassword });
     // eslint-disable-next-line no-console
     console.info("convex.users.updateUserPassword", {
       userId: String(userId),
@@ -211,8 +252,7 @@ export const getProfileByUserIdPublic = query({
       isOnboardingComplete,
       createdAt,
       updatedAt,
-      // include other safe fields as needed
-    } = profile as any;
+    } = profile;
     return {
       _id,
       isProfileComplete: !!isProfileComplete,
@@ -234,8 +274,8 @@ export const getProfileOwnerById = query({
     const profile = await ctx.db.get(id);
     if (!profile) return null;
     return {
-      _id: (profile as any)._id as Id<"profiles">,
-      userId: (profile as any).userId as Id<"users">,
+      _id: profile._id as Id<"profiles">,
+      userId: profile.userId as Id<"users">,
     } as const;
   },
 });
@@ -251,8 +291,10 @@ export const getCurrentUserWithProfile = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const email = (identity as any).email as string | undefined;
-    let user: any = null;
+    const email = (identity as { email?: string } | null)?.email as
+      | string
+      | undefined;
+    let user: Doc<"users"> | null = null;
     if (email && email.trim()) {
       user = await ctx.db
         .query("users")
@@ -262,7 +304,7 @@ export const getCurrentUserWithProfile = query({
 
     if (!user) return null;
 
-    let profile: any = null;
+    let profile: Doc<"profiles"> | null = null;
     try {
       profile = await ctx.db
         .query("profiles")
@@ -294,7 +336,9 @@ export const getMyMatches = query({
       }>;
 
     // Resolve current user record via email
-    const email = (identity as any).email as string | undefined;
+    const email = (identity as { email?: string } | null)?.email as
+      | string
+      | undefined;
     let me: any = null;
     if (email && email.trim()) {
       me = await ctx.db
@@ -340,10 +384,9 @@ export const getMyMatches = query({
           .withIndex("by_userId", (q) => q.eq("userId", otherUserId))
           .first();
         if (profile) {
-          fullName = (profile as any).fullName ?? null;
-          profileImageUrls = ((profile as any).profileImageUrls ?? null) as
-            | string[]
-            | null;
+          fullName = (profile as Doc<"profiles">).fullName ?? null;
+          profileImageUrls =
+            (profile as Doc<"profiles">).profileImageUrls ?? null;
         }
       } catch {}
 
@@ -367,7 +410,9 @@ export const recordProfileView = mutation({
   handler: async (ctx, { profileId }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
-    const email = (identity as any).email as string | undefined;
+    const email = (identity as { email?: string } | null)?.email as
+      | string
+      | undefined;
     if (!email) throw new Error("Unauthenticated");
     const me = await ctx.db
       .query("users")
@@ -378,7 +423,7 @@ export const recordProfileView = mutation({
       viewerId: me._id as Id<"users">,
       profileId,
       createdAt: Date.now(),
-    } as any);
+    });
     return { success: true } as const;
   },
 });
@@ -401,7 +446,7 @@ export const getProfileViewers = query({
       viewedAt: number;
     }> = [];
     for (const vrow of views) {
-      const viewerId = (vrow as any).viewerId as Id<"users">;
+      const viewerId = vrow.viewerId as Id<"users">;
       let fullName: string | null = null;
       let profileImageUrls: string[] | null = null;
       try {
@@ -410,17 +455,16 @@ export const getProfileViewers = query({
           .withIndex("by_userId", (q) => q.eq("userId", viewerId))
           .first();
         if (profile) {
-          fullName = (profile as any).fullName ?? null;
-          profileImageUrls = ((profile as any).profileImageUrls ?? null) as
-            | string[]
-            | null;
+          fullName = (profile as Doc<"profiles">).fullName ?? null;
+          profileImageUrls =
+            (profile as Doc<"profiles">).profileImageUrls ?? null;
         }
       } catch {}
       results.push({
         viewerId,
         fullName,
         profileImageUrls,
-        viewedAt: (vrow as any).createdAt ?? Date.now(),
+        viewedAt: vrow.createdAt ?? Date.now(),
       });
     }
     return results;
@@ -444,7 +488,9 @@ export const boostProfile = mutation({
       } as const;
     }
 
-    const email = (identity as any).email as string | undefined;
+    const email = (identity as { email?: string } | null)?.email as
+      | string
+      | undefined;
     if (!email) {
       return {
         success: false,
@@ -485,8 +531,10 @@ export const boostProfile = mutation({
       new Date(now).getUTCFullYear() * 100 + (new Date(now).getUTCMonth() + 1);
     const monthlyQuota = 5;
 
-    const plan = (profile as any).subscriptionPlan as string | undefined;
-    const expiresAt = (profile as any).subscriptionExpiresAt as
+    const plan = (profile as Doc<"profiles">).subscriptionPlan as
+      | string
+      | undefined;
+    const expiresAt = (profile as Doc<"profiles">).subscriptionExpiresAt as
       | number
       | undefined;
     if (
@@ -501,7 +549,9 @@ export const boostProfile = mutation({
       } as const;
     }
 
-    const boostedUntil = (profile as any).boostedUntil as number | undefined;
+    const boostedUntil = (profile as Doc<"profiles">).boostedUntil as
+      | number
+      | undefined;
     if (typeof boostedUntil === "number" && boostedUntil > now) {
       return {
         success: false,
@@ -509,12 +559,14 @@ export const boostProfile = mutation({
         code: "ALREADY_BOOSTED",
         message: "Your profile is already boosted",
         boostedUntil,
-        boostsRemaining: (profile as any).boostsRemaining ?? 0,
+        boostsRemaining: (profile as Doc<"profiles">).boostsRemaining ?? 0,
       } as const;
     }
 
-    let boostsMonth = (profile as any).boostsMonth as number | undefined;
-    let boostsRemaining = (profile as any).boostsRemaining as
+    let boostsMonth = (profile as Doc<"profiles">).boostsMonth as
+      | number
+      | undefined;
+    let boostsRemaining = (profile as Doc<"profiles">).boostsRemaining as
       | number
       | undefined;
     if (boostsMonth !== currentMonthKey) {
@@ -534,15 +586,12 @@ export const boostProfile = mutation({
     const newBoostedUntil = now + 24 * 60 * 60 * 1000;
     const newRemaining = Math.max((boostsRemaining ?? monthlyQuota) - 1, 0);
 
-    await ctx.db.patch(
-      (profile as any)._id as Id<"profiles">,
-      {
-        boostedUntil: newBoostedUntil,
-        boostsRemaining: newRemaining,
-        boostsMonth: currentMonthKey,
-        updatedAt: now,
-      } as any
-    );
+    await ctx.db.patch(profile._id as Id<"profiles">, {
+      boostedUntil: newBoostedUntil,
+      boostsRemaining: newRemaining,
+      boostsMonth: currentMonthKey,
+      updatedAt: now,
+    });
 
     return {
       success: true,
@@ -596,7 +645,9 @@ export const updateProfile = mutation({
     if (!identity) {
       return { success: false, status: 401, code: "UNAUTHENTICATED" } as const;
     }
-    const email = (identity as any).email as string | undefined;
+    const email = (identity as { email?: string } | null)?.email as
+      | string
+      | undefined;
     if (!email) {
       return { success: false, status: 401, code: "UNAUTHENTICATED" } as const;
     }
@@ -618,9 +669,11 @@ export const updateProfile = mutation({
         code: "PROFILE_NOT_FOUND",
       } as const;
     }
-    const patch: any = { ...updates, updatedAt: Date.now() };
-    await ctx.db.patch((profile as any)._id as Id<"profiles">, patch);
-    const updated = await ctx.db.get((profile as any)._id as Id<"profiles">);
+    const patch = { ...updates, updatedAt: Date.now() } as Partial<
+      Doc<"profiles">
+    > & { updatedAt: number };
+    await ctx.db.patch(profile._id as Id<"profiles">, patch as any);
+    const updated = await ctx.db.get(profile._id as Id<"profiles">);
     return { success: true, profile: updated } as const;
   },
 });
@@ -641,7 +694,7 @@ export const adminListProfiles = query({
   },
   handler: async (ctx, args) => {
     const all = await ctx.db.query("profiles").collect();
-    let profiles = all as any[];
+    let profiles = all as Array<Doc<"profiles">>;
     const term = (args.search ?? "").toLowerCase().trim();
     if (term) {
       profiles = profiles.filter(
@@ -660,9 +713,8 @@ export const adminListProfiles = query({
         const user = await ctx.db.get(p.userId as Id<"users">);
         return {
           ...p,
-          banned: Boolean((user as any)?.banned),
-          subscriptionPlan: (user as any)?.subscriptionPlan,
-        };
+          banned: Boolean((user as Doc<"users">)?.banned),
+        } as Doc<"profiles"> & { banned: boolean };
       })
     );
     let filtered = enriched;
@@ -675,9 +727,10 @@ export const adminListProfiles = query({
     if (args.isProfileComplete === "false")
       filtered = filtered.filter((p) => p.isProfileComplete !== true);
     // simple sort by createdAt or subscriptionPlan or banned
-    const sortBy = (args.sortBy as string) || "createdAt";
+    const sortBy =
+      (args.sortBy as "createdAt" | "updatedAt" | "banned") || "createdAt";
     const dir = (args.sortDir as string) === "asc" ? 1 : -1;
-    filtered.sort((a: any, b: any) => {
+    filtered.sort((a, b) => {
       const av = a?.[sortBy] ?? 0;
       const bv = b?.[sortBy] ?? 0;
       return av === bv ? 0 : av > bv ? dir : -dir;
@@ -726,7 +779,10 @@ export const adminUpdateProfile = mutation({
   handler: async (ctx, { id, updates }) => {
     await ctx.db.patch(
       id as Id<"profiles">,
-      { ...(updates as any), updatedAt: Date.now() } as any
+      {
+        ...(updates as Record<string, unknown>),
+        updatedAt: Date.now(),
+      } as any
     );
     return { ok: true } as const;
   },
@@ -785,7 +841,10 @@ export const adminUpdateProfileImageOrder = mutation({
   handler: async (ctx, { profileId, imageIds }) => {
     await ctx.db.patch(
       profileId as Id<"profiles">,
-      { profileImageIds: imageIds as any, updatedAt: Date.now() } as any
+      {
+        profileImageIds: imageIds,
+        updatedAt: Date.now(),
+      } as any
     );
     return { ok: true } as const;
   },

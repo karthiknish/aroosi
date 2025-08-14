@@ -86,6 +86,7 @@ function ResetPasswordInner() {
         }
         const msg = "Password reset successfully. Redirecting to sign-in...";
         setSuccess(msg);
+        setSubmitting(true); // Keep loader visible during redirect
         showSuccessToast(msg);
         setTimeout(() => router.push("/sign-in"), 900);
       } catch (err: unknown) {

@@ -40,34 +40,24 @@ export async function POST(request: Request) {
     }
 
     switch (type) {
-      case "user.created":
-        try {
-          // Create user in Convex when Clerk user is created
-          await convexMutationWithAuth(
-            request,
-            api.users.createUserAndProfile,
-            {
-              clerkId: data.id,
-              email: data.email_addresses[0]?.email_address || "",
-              profileData: {
-                fullName:
-                  `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-                email: data.email_addresses[0]?.email_address || undefined,
-                isProfileComplete: false,
-              },
-            }
-          );
-        } catch (e) {
-          log("error", "Convex createUserAndProfile failed for user.created", {
-            error: e instanceof Error ? e.message : String(e),
-            clerkId: data?.id,
-          });
-          return NextResponse.json(
-            { error: "Convex mutation failed" },
-            { status: 500 }
-          );
-        }
+      case "user.created": {
+        // Guard: do NOT create Convex user/profile on bare Clerk user creation.
+        // We only create once the user submits a filled profile via our /api/profile endpoint.
+        const rawEmail = (data?.email_addresses?.[0]?.email_address as string) || "";
+        const nameCandidate = [
+          (data?.first_name as string) || "",
+          (data?.last_name as string) || "",
+        ]
+          .filter((s) => typeof s === "string" && s.trim().length > 0)
+          .join(" ")
+          .trim();
+        log("info", "user.created received - skipped Convex creation until profile filled", {
+          clerkId: data?.id,
+          hasName: Boolean(nameCandidate),
+          hasEmail: Boolean(rawEmail),
+        });
         break;
+      }
 
       case "user.updated":
         // Update user in Convex when Clerk user is updated

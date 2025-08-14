@@ -18,24 +18,9 @@ export const createUserWithClerk = mutation({
       return existingUser._id;
     }
 
-    // Create new user
-    const userId = await ctx.db.insert("users", {
-      clerkId: args.clerkId,
-      email: args.email,
-      role: "user",
-      emailVerified: false, // Will be updated when email is verified
-      createdAt: Date.now(),
-    });
-
-    // Create profile for the user
-    await ctx.db.insert("profiles", {
-      userId,
-      fullName: args.fullName || "",
-      isProfileComplete: false,
-      isOnboardingComplete: false,
-      createdAt: Date.now(),
-    });
-
-    return userId;
+    // Guard: do not create user/profile without a filled profile
+    throw new Error(
+      "Guarded: createUserWithClerk is disabled without a complete profile payload. Use users.createUserAndProfile via /api/profile."
+    );
   },
 });
