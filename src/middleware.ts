@@ -26,6 +26,7 @@ const publicApiRoutes = [
   "/api/contact",
   "/api/blog",
   "/api/stripe/webhook",
+  "/api/webhooks/clerk",
 ];
 
 const isPublicRoute = createRouteMatcher(publicRoutes);

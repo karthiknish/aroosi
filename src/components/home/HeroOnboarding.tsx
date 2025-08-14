@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,6 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ProfileCreationModal } from "@/components/home/ProfileCreationModal";
 import { PhoneInput } from "@/components/ui/phone-input";
-import * as z from "zod";
 import {
   ProfileWizardProvider,
   useProfileWizard,
@@ -65,12 +64,38 @@ const heroStep3Schema = enhancedValidationSchemas.basicInfo.pick({
 const onboardingStepSchemas = [heroStep1Schema, heroStep2Schema, heroStep3Schema];
 
 function HeroOnboardingInner() {
-  const { step, setStep, formData, updateFormData } = useProfileWizard();
+  const { formData, updateFormData } = useProfileWizard();
+  const [step, setStep] = useState<number>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const raw = window.localStorage.getItem(STORAGE_KEYS.HERO_ONBOARDING);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<OnboardingData>;
+          const haveStep1 = Boolean(parsed.profileFor && parsed.gender);
+          const haveStep2 = Boolean(parsed.fullName && parsed.dateOfBirth);
+          if (!haveStep1) return 1;
+          if (!haveStep2) return 2;
+          return 3;
+        }
+      }
+    } catch {}
+    const haveStep1 = Boolean(
+      (formData.profileFor as string) && (formData.gender as string)
+    );
+    const haveStep2 = Boolean(
+      (formData.fullName as string) && (formData.dateOfBirth as string)
+    );
+    if (!haveStep1) return 1;
+    if (!haveStep2) return 2;
+    return 3;
+  });
 
   const heroData = formData as unknown as OnboardingData;
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [heroErrors, setHeroErrors] = useState<Record<string, string>>({});
+  
+
 
   const fieldLabels: Record<keyof OnboardingData, string> = {
     profileFor: "This profile is for",
