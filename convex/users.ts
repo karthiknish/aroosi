@@ -145,6 +145,22 @@ export const createUserAndProfile = mutation({
       hasGoogleId: Boolean(googleId),
       hasClerkId: Boolean(clerkId),
     });
+    
+    // Guard: Check if user with this email already exists
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+      
+    if (existingUser) {
+      // eslint-disable-next-line no-console
+      console.info("convex.users.createUserAndProfile:blocked_duplicate_email", {
+        email: maskEmail(email),
+        existingUserId: String(existingUser._id),
+      });
+      throw new Error("USER_WITH_EMAIL_EXISTS");
+    }
+    
     // Guard: require a filled profile payload before creating any records
     const pd = (profileData ?? {}) as Partial<Doc<"profiles">>;
     const requiredFilled = Boolean(
