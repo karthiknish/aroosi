@@ -435,24 +435,63 @@ export async function POST(request: NextRequest) {
 
       // Ensure a user+profile exists in our domain data
       let createdUserId: string | null = null;
+      let createUserError: unknown = null;
       try {
         const existing = (await fetchQuery(api.users.getUserByEmail, {
           email: normalizedEmail,
         }).catch(() => null)) as { _id?: string } | null;
-        if (!existing) {
+        if (existing) {
+          createdUserId = String(existing._id);
+          console.info("[signup] existing Convex user found", {
+            correlationId,
+            userId: createdUserId,
+          });
+        } else {
+          // We extended the action createUserAndProfileViaSignup to accept profileData + clerkId.
+          // Since fetchAction helper isn't present, we still call the mutation directly.
+          // If later available, replace with: await fetchAction(api.users.createUserAndProfileViaSignup, {...})
           createdUserId = (await fetchMutation(api.users.createUserAndProfile, {
             email: normalizedEmail,
             name: fullName,
             picture: undefined,
             googleId: undefined,
             profileData: normalizedProfile,
-            clerkId: clerkUser.id, // Add Clerk user ID
+            clerkId: clerkUser.id,
           })) as unknown as string;
-        } else {
-          createdUserId = String(existing._id);
+          console.info("[signup] created Convex user", {
+            correlationId,
+            userId: createdUserId,
+          });
         }
       } catch (e) {
-        console.error("Error creating user:", e);
+        createUserError = e;
+        console.error("[signup] createUserAndProfile failed", {
+          correlationId,
+          error: (e as any)?.message,
+        });
+      }
+
+      if (!createdUserId) {
+        // Roll back Clerk user to avoid orphaned auth record
+        try {
+          await (await clerkClient()).users.deleteUser(clerkUser.id);
+          console.warn("[signup] rolled back Clerk user after Convex failure", {
+            correlationId,
+          });
+        } catch (rollbackErr) {
+          console.error("[signup] failed to roll back Clerk user", {
+            correlationId,
+            error: (rollbackErr as any)?.message,
+          });
+        }
+        const message =
+          process.env.NODE_ENV === "development"
+            ? `Failed creating application user: ${(createUserError as any)?.message || "UNKNOWN"}`
+            : "Unable to complete signup. Please try again.";
+        return NextResponse.json(
+          { error: message, code: "CONVEX_CREATE_FAILED", correlationId },
+          { status: 500 }
+        );
       }
 
       // Create response
