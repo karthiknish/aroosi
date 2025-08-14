@@ -313,6 +313,11 @@ export default function CustomSignupForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prevent manual submission if auto-submit is in progress
+    if (autoSubmittingRef.current) {
+      return;
+    }
+
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -320,6 +325,11 @@ export default function CustomSignupForm({
     try {
       // If we're in verification phase, handle the OTP verification
       if (needsVerification && signUpAttemptId) {
+        // Prevent double submission
+        if (autoSubmittingRef.current) {
+          return;
+        }
+        
         try {
           const result = await verifyEmailCode(
             verificationCode,
@@ -352,6 +362,7 @@ export default function CustomSignupForm({
           showErrorToast(errorMsg);
           onError?.(errorMsg);
           setIsLoading(false);
+          autoSubmittingRef.current = false; // Reset auto-submit flag on error
           return;
         }
       }
@@ -395,9 +406,10 @@ export default function CustomSignupForm({
               );
             }
           } catch {}
-          // Keep loader briefly so user sees feedback before OTP UI
-          await new Promise((r) => setTimeout(r, 600));
-          setIsLoading(false);
+          // Keep loader visible so user sees feedback before OTP UI appears
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 800); // Slightly longer delay for better UX
           return;
         }
 
@@ -544,12 +556,12 @@ export default function CustomSignupForm({
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || verificationCode.length !== 6}
+              disabled={isLoading || verificationCode.length !== 6 || autoSubmittingRef.current}
             >
               {isLoading ? (
                 <>
                   <LoadingSpinner className="mr-2 h-4 w-4" />
-                  Verifying...
+                  {autoSubmittingRef.current ? "Verifying..." : "Verify Email"}
                 </>
               ) : (
                 "Verify Email"

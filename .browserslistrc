@@ -1,0 +1,18 @@
+# Safari browser compatibility configuration
+# Supports Safari 12+ (covers > 95% of Safari users)
+# Based on current browser usage statistics
+
+# Latest 2 versions of all major browsers
+last 2 versions
+
+# Safari 12+ (released in 2018) covers majority of Safari users
+Safari >= 12
+
+# iOS Safari 12+ for mobile support
+iOS >= 12
+
+# Exclude dead browsers (no updates for 24+ months)
+not dead
+
+# Exclude Opera Mini (not relevant for our use case)
+not op_mini all

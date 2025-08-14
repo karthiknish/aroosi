@@ -1,4 +1,5 @@
 import "./globals.css";
+import "@/lib/safari-polyfills";
 
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { ClerkProvider } from "@clerk/nextjs";

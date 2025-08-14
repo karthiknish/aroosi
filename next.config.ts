@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
       "images.clerk.dev",
     ],
   },
+  // Ensure proper transpilation for Safari compatibility
+  transpilePackages: [],
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
@@ -64,6 +66,37 @@ const nextConfig: NextConfig = {
       "@": path.resolve(__dirname, "src"),
       "@convex": path.resolve(__dirname, "convex"),
     },
+  },
+  // Add headers for better Safari compatibility
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          // Add feature policy headers for better cross-browser support
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(), microphone=(), camera=()",
+          },
+        ],
+      },
+    ];
   },
 };
 

@@ -45,7 +45,9 @@ export function OtpInput({
     index: number,
     e: React.KeyboardEvent<HTMLInputElement>
   ) => {
-    if (e.key === "Backspace" && !value[index] && index > 0) {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Prevent form submission on Enter key
+    } else if (e.key === "Backspace" && !value[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     } else if (e.key === "ArrowLeft" && index > 0) {
       inputRefs.current[index - 1]?.focus();
@@ -67,7 +69,7 @@ export function OtpInput({
         newValue[i] = pastedData[i];
       }
       onChange(newValue.join(""));
-      inputRefs.current[pastedData.length]?.focus();
+      inputRefs.current[Math.min(pastedData.length, length - 1)]?.focus();
     }
   };
 

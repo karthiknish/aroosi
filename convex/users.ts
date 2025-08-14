@@ -168,6 +168,11 @@ export const createUserAndProfile = mutation({
       email: maskEmail(email),
       hasGoogleId: Boolean(googleId),
       hasClerkId: Boolean(clerkId),
+      name: _name,
+      picture: _picture,
+      clerkId,
+      googleId,
+      profileData: profileData ?? null,
     });
 
     // Guard: Check if user with this email already exists
@@ -180,12 +185,19 @@ export const createUserAndProfile = mutation({
       logger.warn("createUserAndProfile:blocked_duplicate_email", {
         email: maskEmail(email),
         existingUserId: String(existingUser._id),
+        attemptedProfileData: profileData ?? null,
+      });
+      logger.error("createUserAndProfile:error", {
+        error: "USER_WITH_EMAIL_EXISTS",
+        email: maskEmail(email),
+        existingUser,
       });
       throw new Error("USER_WITH_EMAIL_EXISTS");
     }
 
     // Guard: require a filled profile payload before creating any records
     const pd = (profileData ?? {}) as Partial<Doc<"profiles">>;
+    logger.debug("createUserAndProfile:profileData", pd);
     const requiredFilled = Boolean(
       pd.fullName &&
         pd.dateOfBirth &&
@@ -202,6 +214,24 @@ export const createUserAndProfile = mutation({
       logger.warn("createUserAndProfile:blocked_incomplete_profile", {
         email: maskEmail(email),
         hasProfileData: Boolean(profileData),
+        missingFields: {
+          fullName: !!pd.fullName,
+          dateOfBirth: !!pd.dateOfBirth,
+          gender: !!pd.gender,
+          city: !!pd.city,
+          aboutMe: !!pd.aboutMe,
+          occupation: !!pd.occupation,
+          education: !!pd.education,
+          height: !!pd.height,
+          maritalStatus: !!pd.maritalStatus,
+          phoneNumber: !!pd.phoneNumber,
+        },
+        attemptedProfileData: pd,
+      });
+      logger.error("createUserAndProfile:error", {
+        error: "INCOMPLETE_PROFILE",
+        email: maskEmail(email),
+        profileData: pd,
       });
       throw new Error("INCOMPLETE_PROFILE");
     }
@@ -228,6 +258,7 @@ export const createUserAndProfile = mutation({
       updatedAt: Date.now(),
       ...(profileData as Partial<Doc<"profiles">> | undefined),
     };
+    logger.debug("createUserAndProfile:profileToCreate", profileToCreate);
     // Narrow fields with union types
     if (
       profileToCreate.preferredGender &&
@@ -235,6 +266,10 @@ export const createUserAndProfile = mutation({
         profileToCreate.preferredGender as string
       )
     ) {
+      logger.warn("createUserAndProfile:invalid_preferredGender", {
+        value: profileToCreate.preferredGender,
+        userId: String(userId),
+      });
       profileToCreate.preferredGender = undefined;
     }
 
@@ -242,6 +277,7 @@ export const createUserAndProfile = mutation({
     logger.info("createUserAndProfile:done", {
       email: maskEmail(email),
       userId: String(userId),
+      createdProfile: profileToCreate,
     });
     return userId as Id<"users">;
   },
