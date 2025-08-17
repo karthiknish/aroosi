@@ -1,4 +1,5 @@
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { auth } from "@/lib/firebaseClient";
 
 /**
  * Non-hook util that performs sign-in by calling the provided `signIn` function
@@ -14,21 +15,24 @@ export async function signInWithProfileCheck(
   email: string,
   password: string,
   opts: {
-    signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    signIn: (creds: {
+      email: string;
+      password: string;
+    }) => Promise<{ success: boolean; error?: string }>;
   }
 ) {
   const { signIn } = opts;
-
-  // 1) Perform sign-in using AuthProvider. This will persist tokens via tokenStorage.
-  const result = await signIn(email, password);
+  const result = await signIn({ email, password });
   if (!result.success) return result;
 
-  // 2) Immediately verify profile using centralized client (auto Authorization header).
-  const profileRes = await getCurrentUserWithProfile();
+  const currentUser = auth.currentUser;
+  const userId = currentUser?.uid || "";
+  const profileRes = await getCurrentUserWithProfile(userId);
   if (!profileRes.success || !profileRes.data) {
     return {
       success: false,
-      error: "No profile found for this account. Please create a profile first.",
+      error:
+        "No profile found for this account. Please create a profile first.",
     };
   }
 

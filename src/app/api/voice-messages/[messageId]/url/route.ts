@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
-import { fetchQuery } from "convex/nextjs";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
+import { db, adminStorage } from "@/lib/firebaseAdmin";
+import { COL_VOICE_MESSAGES } from "@/lib/firestoreSchema";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
@@ -41,19 +40,11 @@ export async function GET(
       return errorResponse("User ID not found in token", 401);
     }
 
-    const voiceMessage = await fetchQuery(
-      api.messages.getVoiceMessage as any,
-      {
-        messageId: messageId as Id<"messages">,
-      } as any
-    );
+    const doc = await db.collection(COL_VOICE_MESSAGES).doc(messageId).get();
+    if (!doc.exists) return errorResponse("Voice message not found", 404);
+    const voiceMessage = doc.data() as any;
+    if (!voiceMessage) return errorResponse("Voice message not found", 404);
 
-    if (!voiceMessage) {
-      return errorResponse("Voice message not found", 404);
-    }
-
-    // Verify user has permission to access this voice message
-    // User must be either the sender or receiver
     if (
       voiceMessage.fromUserId !== userId &&
       voiceMessage.toUserId !== userId
@@ -61,12 +52,11 @@ export async function GET(
       return errorResponse("Unauthorized access to voice message", 403);
     }
 
-    const audioUrl = await fetchQuery(
-      api.messages.getVoiceMessageUrl as any,
-      {
-        storageId: voiceMessage.audioStorageId!,
-      } as any
-    );
+    const file = adminStorage.bucket().file(voiceMessage.storagePath);
+    const [audioUrl] = await file.getSignedUrl({
+      action: "read",
+      expires: Date.now() + 60 * 60 * 1000,
+    });
 
     if (!audioUrl) {
       return errorResponse("Failed to generate audio URL", 500);

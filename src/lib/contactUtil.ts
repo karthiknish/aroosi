@@ -23,11 +23,15 @@ export async function fetchAllContactsAdmin(
   if ([...params.keys()].length > 0) url += `?${params.toString()}`;
 
   // Fetch all contacts for admin users
-  const data = await getJson<Contact[]>(url, {
+  const raw = await getJson<any>(url, {
     headers: { "Content-Type": "application/json" },
   });
-  // Map to ensure each has id field for React keys
-  return (data as Contact[]).map((c) => ({ ...c, id: c.id || c._id || "" }));
+  const arr: Contact[] = Array.isArray(raw?.data)
+    ? raw.data
+    : Array.isArray(raw)
+      ? raw
+      : [];
+  return arr.map((c) => ({ ...c, id: c.id || c._id || "" }));
 }
 
 export async function submitContactPublic(data: {
@@ -37,6 +41,9 @@ export async function submitContactPublic(data: {
   message: string;
 }): Promise<{ success: boolean; error?: string }> {
   // Submit a contact form for public users
-  await postJson("/api/contact", data);
+  const res = await postJson<any>("/api/contact", data);
+  if (res?.success === false) {
+    return { success: false, error: res.error || "Submission failed" };
+  }
   return { success: true };
 }

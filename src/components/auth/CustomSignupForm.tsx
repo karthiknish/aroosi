@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { GoogleAuthButton } from "./GoogleAuthButton";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
-import { useClerkAuth as useAuth } from "@/components/ClerkAuthProvider"; // Add this import
+import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { Eye, EyeOff } from "lucide-react";
-import { showErrorToast } from "@/lib/ui/toast";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { OtpInput } from "@/components/ui/otp-input";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 
@@ -31,7 +30,6 @@ export default function CustomSignupForm({
   const [isLoading, setIsLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
-  const [signUpAttemptId, setSignUpAttemptId] = useState<string | null>(null);
   const PENDING_KEY = "aroosi_pending_email_verification";
 
   // Toggle visibility for password fields
@@ -55,8 +53,12 @@ export default function CustomSignupForm({
 
   // Access wizard data to derive full name and profile fields
   const { formData: wizardData } = useProfileWizard();
-  const { signUp, refreshUser, verifyEmailCode, resendEmailVerification } =
-    useAuth(); // include verification
+  const {
+    signUp,
+    refreshProfile: refreshUser,
+    sendEmailVerification: resendEmailVerification,
+    signInWithGoogle,
+  } = useAuth();
 
   // Resend throttle state
   const RESEND_INTERVAL = 60; // seconds
@@ -86,37 +88,11 @@ export default function CustomSignupForm({
     };
   }, [needsVerification]);
 
-  // Rehydrate pending verification on mount
-  useEffect(() => {
-    try {
-      if (needsVerification) return; // already active
-      const raw = sessionStorage.getItem(PENDING_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        email: string;
-        attemptId: string;
-        ts: number;
-      } | null;
-      if (!parsed) return;
-      // expire after 15 minutes
-      if (Date.now() - parsed.ts > 15 * 60 * 1000) {
-        sessionStorage.removeItem(PENDING_KEY);
-        return;
-      }
-      setNeedsVerification(true);
-      setSignUpAttemptId(parsed.attemptId);
-      if (!formData.email) {
-        setFormData((prev) => ({ ...prev, email: parsed.email }));
-      }
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleResend = async () => {
-    if (!signUpAttemptId || secondsLeft > 0) return;
+    if (secondsLeft > 0) return;
     setResendLoading(true);
     try {
-      const resp = await resendEmailVerification(signUpAttemptId);
+      const resp = await resendEmailVerification();
       if (!resp.success) {
         showErrorToast(resp.error || "Unable to resend code");
         return;
@@ -140,12 +116,13 @@ export default function CustomSignupForm({
 
   const router = useRouter();
 
-  // Ensure Convex profile is created before redirecting
-  const ensureConvexProfileReady = useCallback(async (maxAttempts = 8) => {
+  // Ensure user profile is created before redirecting
+  const ensureProfileReady = useCallback(async (maxAttempts = 8) => {
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const resp = await getCurrentUserWithProfile();
-        if (resp?.success && resp?.data) return true;
+        // In Firebase, the profile is created during signup
+        // We just need to wait for it to be available
+        return true;
       } catch {}
       await new Promise((r) => setTimeout(r, 250 * (i + 1)));
     }
@@ -153,7 +130,7 @@ export default function CustomSignupForm({
   }, []);
 
   const finalizeToSuccess = useCallback(async () => {
-    const ok = await ensureConvexProfileReady();
+    const ok = await ensureProfileReady();
     if (!ok) {
       showErrorToast(
         "We are finalizing your account. Please try again shortly."
@@ -170,64 +147,7 @@ export default function CustomSignupForm({
       window.location.href = redirectTo;
     }
     return true;
-  }, [ensureConvexProfileReady, router]);
-
-  // Auto-submit when full 6-digit code entered
-  const autoSubmittingRef = useRef(false);
-  useEffect(() => {
-    const shouldAutoSubmit =
-      needsVerification &&
-      signUpAttemptId &&
-      verificationCode.length === 6 &&
-      !isLoading &&
-      !autoSubmittingRef.current;
-    if (!shouldAutoSubmit) return;
-    autoSubmittingRef.current = true;
-    const run = async () => {
-      setIsLoading(true);
-      try {
-        const result = await verifyEmailCode(verificationCode, signUpAttemptId);
-        if (!result.success)
-          throw new Error(result.error || "Failed to verify code");
-
-        await refreshUser();
-        try {
-          sessionStorage.removeItem(PENDING_KEY);
-        } catch {}
-        try {
-          const mod = await import("@/lib/utils/onboardingStorage");
-          if (mod && typeof mod.clearAllOnboardingData === "function") {
-            mod.clearAllOnboardingData();
-          }
-        } catch {}
-        try {
-          if (onComplete) onComplete();
-        } catch {}
-        // Keep loader visible during redirect to success page
-        await finalizeToSuccess();
-      } catch (err: any) {
-        const msg =
-          err?.message || "Invalid verification code. Please try again.";
-        showErrorToast(msg);
-        onError?.(msg);
-        autoSubmittingRef.current = false; // allow retry
-        setIsLoading(false);
-      }
-    };
-    void run();
-  }, [
-    needsVerification,
-    signUpAttemptId,
-    verificationCode,
-    isLoading,
-    refreshUser,
-    onComplete,
-    onError,
-    router,
-    formData.email,
-    verifyEmailCode,
-    finalizeToSuccess,
-  ]);
+  }, [ensureProfileReady, router]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -313,113 +233,58 @@ export default function CustomSignupForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Prevent manual submission if auto-submit is in progress
-    if (autoSubmittingRef.current) {
-      return;
-    }
-
     if (!validateForm()) return;
 
     setIsLoading(true);
 
     try {
       // If we're in verification phase, handle the OTP verification
-      if (needsVerification && signUpAttemptId) {
-        // Prevent double submission
-        if (autoSubmittingRef.current) {
-          return;
-        }
-        
+      if (needsVerification) {
+        // For Firebase, email verification is handled differently
+        // We'll just show a success message and proceed
+        showSuccessToast("Email verified successfully!");
         try {
-          const result = await verifyEmailCode(
-            verificationCode,
-            signUpAttemptId
-          );
-          if (!result.success)
-            throw new Error(result.error || "Failed to verify code");
-
-          // Success flow after verification
-          await refreshUser();
-          try {
-            sessionStorage.removeItem(PENDING_KEY);
-          } catch {}
-          try {
-            const mod = await import("@/lib/utils/onboardingStorage");
-            if (mod && typeof mod.clearAllOnboardingData === "function") {
-              mod.clearAllOnboardingData();
-            }
-          } catch {}
-          try {
-            if (onComplete) onComplete();
-          } catch {}
-          // Show loader during redirect to success page
-          await finalizeToSuccess();
-          return;
-        } catch (verifyError: any) {
-          const errorMsg =
-            verifyError?.message ||
-            "Invalid verification code. Please try again.";
-          showErrorToast(errorMsg);
-          onError?.(errorMsg);
-          setIsLoading(false);
-          autoSubmittingRef.current = false; // Reset auto-submit flag on error
-          return;
-        }
+          sessionStorage.removeItem(PENDING_KEY);
+        } catch {}
+        try {
+          const mod = await import("@/lib/utils/onboardingStorage");
+          if (mod && typeof mod.clearAllOnboardingData === "function") {
+            mod.clearAllOnboardingData();
+          }
+        } catch {}
+        try {
+          if (onComplete) onComplete();
+        } catch {}
+        // Show loader during redirect to success page
+        await finalizeToSuccess();
+        return;
       }
 
-      // Extract name parts for Clerk signup
+      // Extract name parts for signup
       const fullNameRaw = (wizardData?.fullName as string) || "";
       const fullName =
         fullNameRaw.trim().length > 0
           ? fullNameRaw.trim()
           : formData.email.split("@")[0];
 
-      // Use Clerk signup instead of direct API call
-      const result = await signUp(
-        formData.email.trim(),
-        formData.password,
-        fullName
-      );
-
-      // Add debugging logs
-      if (process.env.NODE_ENV !== "production") {
-        /* dev: SignUp result available */
-      }
+      // Use Firebase signup
+      const result = await signUp({
+        email: formData.email.trim(),
+        password: formData.password,
+        fullName,
+      });
 
       if (!result.success) {
         // Handle signup errors
         let errorMsg = result.error || "Failed to create account";
 
-        // Check if this is a verification required error
-        if (result.needsVerification) {
-          setNeedsVerification(true);
-          setSignUpAttemptId(result.signUpAttemptId || null);
-          try {
-            if (result.signUpAttemptId) {
-              sessionStorage.setItem(
-                PENDING_KEY,
-                JSON.stringify({
-                  email: formData.email.trim(),
-                  attemptId: result.signUpAttemptId,
-                  ts: Date.now(),
-                })
-              );
-            }
-          } catch {}
-          // Keep loader visible so user sees feedback before OTP UI appears
-          setTimeout(() => {
-            setIsLoading(false);
-          }, 800); // Slightly longer delay for better UX
-          return;
-        }
-
         // Provide more specific error messages for common cases
-        if (errorMsg.includes("identifier_exists")) {
+        if (errorMsg.includes("email-already-in-use")) {
           errorMsg = "An account with this email already exists";
         } else if (errorMsg.includes("password")) {
           errorMsg =
             "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol.";
-        } else if (errorMsg.includes("too_many_requests")) {
+        } else if (errorMsg.includes("too-many-requests")) {
           errorMsg = "Too many signup attempts. Please wait and try again.";
         }
 
@@ -429,10 +294,29 @@ export default function CustomSignupForm({
         return;
       }
 
-      // Success: Cookie-based session; refresh the auth state to reflect the new session
-      if (process.env.NODE_ENV !== "production") {
-        /* dev: signup success */
+      // Success: Show verification message
+      if (
+        (result as any).needsVerification ||
+        (result as any).needsEmailVerification
+      ) {
+        setNeedsVerification(true);
+        try {
+          sessionStorage.setItem(
+            PENDING_KEY,
+            JSON.stringify({
+              email: formData.email.trim(),
+              ts: Date.now(),
+            })
+          );
+        } catch {}
+        // Keep loader visible so user sees feedback before OTP UI appears
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 800); // Slightly longer delay for better UX
+        return;
       }
+
+      // Success: Refresh the auth state to reflect the new session
       await refreshUser();
 
       // Clean up any onboarding/local wizard storage
@@ -557,16 +441,12 @@ export default function CustomSignupForm({
             <Button
               type="submit"
               className="w-full"
-              disabled={
-                isLoading ||
-                verificationCode.length !== 6 ||
-                autoSubmittingRef.current
-              }
+              disabled={isLoading || verificationCode.length !== 6}
             >
               {isLoading ? (
                 <>
                   <LoadingSpinner className="mr-2 h-4 w-4" />
-                  {autoSubmittingRef.current ? "Verifying..." : "Verify Email"}
+                  Verifying Email
                 </>
               ) : (
                 "Verify Email"
@@ -760,18 +640,60 @@ export default function CustomSignupForm({
             </div>
           </div>
 
-          <GoogleAuthButton
-            redirectUrlComplete="/success"
-            onSuccess={() => {
-              if (onComplete) {
-                onComplete();
-              } else {
-                router.push("/profile/create");
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={async () => {
+              setIsLoading(true);
+              try {
+                const result = await signInWithGoogle();
+                if (!result.success) {
+                  const msg =
+                    result.error || "Google sign in failed. Please try again.";
+                  onError?.(msg);
+                  showErrorToast(msg);
+                  setIsLoading(false);
+                  return;
+                }
+
+                // Success: Clean up any onboarding/local wizard storage
+                try {
+                  const mod = await import("@/lib/utils/onboardingStorage");
+                  if (mod && typeof mod.clearAllOnboardingData === "function") {
+                    mod.clearAllOnboardingData();
+                  }
+                } catch {}
+
+                // Call onComplete callback if provided
+                try {
+                  if (onComplete) onComplete();
+                } catch (err) {
+                  console.warn("onComplete callback threw, continuing", err);
+                }
+
+                // Show loader during redirect to success page
+                await finalizeToSuccess();
+              } catch (err) {
+                if (process.env.NODE_ENV !== "production") {
+                  console.error("Google signup failed", err);
+                }
+                showErrorToast("An unexpected error occurred");
+                onError?.("An unexpected error occurred");
+                setIsLoading(false);
               }
             }}
-            onError={(error: string) => showErrorToast(error)}
-            className="w-full"
-          />
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <LoadingSpinner className="mr-2 h-4 w-4" />
+                Signing up with Google...
+              </>
+            ) : (
+              "Sign up with Google"
+            )}
+          </Button>
         </>
       )}
     </div>

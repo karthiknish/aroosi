@@ -6,17 +6,18 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useSignIn } from "@clerk/nextjs";
 import { Eye, EyeOff, Mail } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 
 function ResetPasswordInner() {
   const params = useSearchParams();
   const router = useRouter();
   const emailFromQuery = useMemo(() => params.get("email") || "", [params]);
+  const oobCode = useMemo(() => params.get("oobCode") || "", [params]);
 
   const [email, setEmail] = useState<string>(emailFromQuery);
-  const [code, setCode] = useState<string>("");
+  const [code, setCode] = useState<string>(oobCode);
   const [password, setPassword] = useState<string>("");
   const [confirm, setConfirm] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +25,6 @@ function ResetPasswordInner() {
   const [showConf, setShowConf] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { isLoaded, signIn } = useSignIn();
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -41,8 +41,8 @@ function ResetPasswordInner() {
         setError("Please enter your email address.");
         return;
       }
-      if (!otp || otp.length !== 6) {
-        setError("Enter the 6-digit code sent to your email.");
+      if (!otp) {
+        setError("Enter the reset code from your email.");
         return;
       }
       if (pwd.length < 12) {
@@ -66,35 +66,21 @@ function ResetPasswordInner() {
 
       setSubmitting(true);
       try {
-        if (!isLoaded || !signIn)
-          throw new Error("Auth not ready. Please try again.");
-        // Verify code
-        const attempt = await signIn.attemptFirstFactor({
-          strategy: "reset_password_email_code",
-          code: otp,
-        });
-        if (attempt?.status !== "needs_new_password") {
-          throw new Error("Invalid or expired code.");
-        }
-        // Set new password
-        const result = await signIn.resetPassword({
-          password: pwd,
-          signOutOfOtherSessions: true,
-        });
-        if (result?.status !== "complete") {
-          throw new Error("Failed to set new password. Please try again.");
-        }
+        const auth = getAuth();
+        
+        // First verify the code is valid
+        await verifyPasswordResetCode(auth, otp);
+        
+        // Then reset the password
+        await confirmPasswordReset(auth, otp, pwd);
+        
         const msg = "Password reset successfully. Redirecting to sign-in...";
         setSuccess(msg);
         setSubmitting(true); // Keep loader visible during redirect
         showSuccessToast(msg);
         setTimeout(() => router.push("/sign-in"), 900);
       } catch (err: unknown) {
-        const clerkErr = (err as any)?.errors?.[0];
-        const msg =
-          clerkErr?.longMessage ||
-          clerkErr?.message ||
-          (err instanceof Error ? err.message : "Failed to reset password");
+        const msg = err instanceof Error ? err.message : "Failed to reset password";
         const finalMsg =
           msg.includes("too_many_requests") || msg.includes("429")
             ? "Too many requests. Please try again later."
@@ -105,7 +91,7 @@ function ResetPasswordInner() {
         setSubmitting(false);
       }
     },
-    [email, code, password, confirm, router, isLoaded, signIn]
+    [email, code, password, confirm, router]
   );
 
   return (
@@ -143,8 +129,7 @@ function ResetPasswordInner() {
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
           <div className="mb-4 text-sm text-gray-600">
-            Enter the 6-digit code we emailed to you, then choose a new
-            password.
+            Enter the reset code from your email, then choose a new password.
           </div>
           {success && (
             <Alert className="mb-4" variant="default">
@@ -162,19 +147,14 @@ function ResetPasswordInner() {
               htmlFor="code"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Verification Code
+              Reset Code
             </label>
             <Input
               id="code"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="6-digit code"
+              placeholder="Reset code from email"
               value={code}
-              onChange={(e) =>
-                setCode(e.currentTarget.value.replace(/\D/g, "").slice(0, 6))
-              }
+              onChange={(e) => setCode(e.currentTarget.value)}
               required
-              maxLength={6}
             />
           </div>
 

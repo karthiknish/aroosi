@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { useClerkAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import CustomSignInForm from "@/components/auth/CustomSignInForm";
 import { useRouter } from "next/navigation";
 import { getJson } from "@/lib/http/client";
@@ -14,7 +14,7 @@ export default function SignInPage() {
     isAuthenticated,
     isLoaded,
     refreshUser,
-  } = useClerkAuth();
+  } = useFirebaseAuth();
 
   const router = useRouter();
 

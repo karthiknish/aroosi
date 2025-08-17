@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
-import { convexMutationWithAuth } from "@/lib/convexServer";
+import { db } from "@/lib/firebaseAdmin";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 
 // Apple App Store receipt validation helper
 async function validateAppleReceipt(receiptData: string): Promise<{
@@ -21,48 +20,52 @@ async function validateAppleReceipt(receiptData: string): Promise<{
   }
 
   const requestBody = {
-    'receipt-data': receiptData,
-    'password': sharedSecret,
-    'exclude-old-transactions': true
+    "receipt-data": receiptData,
+    password: sharedSecret,
+    "exclude-old-transactions": true,
   };
 
   // Try production first
-  let response = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody)
+  let response = await fetch("https://buy.itunes.apple.com/verifyReceipt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody),
   });
 
   let result = await response.json();
 
   // If production fails with sandbox receipt, try sandbox
   if (result.status === 21007) {
-    response = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+    response = await fetch("https://sandbox.itunes.apple.com/verifyReceipt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     });
     result = await response.json();
   }
 
   if (result.status !== 0) {
-    return { valid: false, error: `Apple validation failed with status ${result.status}` };
+    return {
+      valid: false,
+      error: `Apple validation failed with status ${result.status}`,
+    };
   }
 
   const subscriptions = [];
   const inAppPurchases = result.receipt?.in_app || [];
-  
+
   for (const purchase of inAppPurchases) {
-    if (purchase.product_id === 'com.aroosi.premium.monthly' || 
-        purchase.product_id === 'com.aroosi.premiumplus.monthly') {
-      
+    if (
+      purchase.product_id === "com.aroosi.premium.monthly" ||
+      purchase.product_id === "com.aroosi.premiumplus.monthly"
+    ) {
       const expiresAt = parseInt(purchase.expires_date_ms);
       if (expiresAt > Date.now()) {
         subscriptions.push({
           productId: purchase.product_id,
           expiresAt,
           transactionId: purchase.transaction_id,
-          originalTransactionId: purchase.original_transaction_id
+          originalTransactionId: purchase.original_transaction_id,
         });
       }
     }
@@ -109,15 +112,9 @@ async function validateGooglePurchase(
   return { valid: false, error: "Invalid or cancelled subscription" };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
   try {
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) return session.errorResponse!;
-    const { userId } = session;
-
-    if (!userId) {
-      return errorResponse("User ID not found in session", 401);
-    }
+    const userId = user.id;
 
     // Cookie-only: use convex helpers; no bearer tokens
 
@@ -126,15 +123,18 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { purchases, platform, receiptData } = body;
-    
+
     if (!platform) {
       return errorResponse("Missing platform", 400);
     }
-    
-    if (platform === "android" && (!Array.isArray(purchases) || purchases.length === 0)) {
+
+    if (
+      platform === "android" &&
+      (!Array.isArray(purchases) || purchases.length === 0)
+    ) {
       return errorResponse("Missing purchases for Android", 400);
     }
-    
+
     if (platform === "ios" && !receiptData) {
       return errorResponse("Missing receiptData for iOS", 400);
     }
@@ -172,14 +172,14 @@ export async function POST(request: NextRequest) {
         }
       }
       if (restoredSubscription) {
-        await convexMutationWithAuth(request, api.profiles.updateProfileFields, {
-          userId: userId,
-          updates: {
+        await db.collection("users").doc(userId).set(
+          {
             subscriptionPlan: restoredSubscription.plan,
             subscriptionExpiresAt: restoredSubscription.expiresAt,
             updatedAt: Date.now(),
           },
-        } as any);
+          { merge: true }
+        );
       }
       return successResponse({
         message: restoredSubscription
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
           "com.aroosi.premium.monthly": { plan: "premium", tier: 1 },
           "com.aroosi.premiumplus.monthly": { plan: "premiumPlus", tier: 2 },
         };
-        
+
         const planInfo = productPlanMap[subscription.productId];
         if (planInfo && planInfo.tier > highestTier) {
           highestTier = planInfo.tier;
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
             productId: subscription.productId,
           };
         }
-        
+
         restoredDetails.push({
           productId: subscription.productId,
           plan: planInfo?.plan,
@@ -231,14 +231,14 @@ export async function POST(request: NextRequest) {
       }
 
       if (restoredSubscription) {
-        await convexMutationWithAuth(request, api.profiles.updateProfileFields, {
-          userId: userId,
-          updates: {
+        await db.collection("users").doc(userId).set(
+          {
             subscriptionPlan: restoredSubscription.plan,
             subscriptionExpiresAt: restoredSubscription.expiresAt,
             updatedAt: Date.now(),
           },
-        } as any);
+          { merge: true }
+        );
       }
 
       return successResponse({
@@ -259,4 +259,4 @@ export async function POST(request: NextRequest) {
       details: error instanceof Error ? error.message : String(error),
     });
   }
-}
+});

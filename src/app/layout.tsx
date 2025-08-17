@@ -2,11 +2,11 @@ import "./globals.css";
 import "@/lib/safari-polyfills";
 
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
-import { ClerkProvider } from "@clerk/nextjs";
-import { ClerkAuthProvider } from "@/components/ClerkAuthProvider";
+import { UserProfileProvider } from "@/components/UserProfileProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
 import RouteTransition from "@/components/RouteTransition";
+import { analytics } from "@/lib/analytics";
 
 // Removed Next.js Metadata/Viewport exports; using explicit <head> tags instead.
 
@@ -88,16 +88,31 @@ export default function RootLayout({
           Skip to main content
         </a>
 
-        <ClerkProvider>
-          <ReactQueryProvider>
-            <ClerkAuthProvider>
-              <ClientRoot>
-                <div id="clerk-captcha" style={{ display: 'none' }}></div>
-                <RouteTransition>{children}</RouteTransition>
-              </ClientRoot>
-            </ClerkAuthProvider>
-          </ReactQueryProvider>
-        </ClerkProvider>
+        <ReactQueryProvider>
+          <UserProfileProvider>
+            <ClientRoot>
+              <RouteTransition>{children}</RouteTransition>
+            </ClientRoot>
+          </UserProfileProvider>
+        </ReactQueryProvider>
+
+        {/* Google Analytics (GA4) */}
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);} 
+                gtag('js', new Date());
+                gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', { send_page_view: false });
+              `}
+            </Script>
+          </>
+        ) : null}
 
         {/* OneSignal SDK v16 */}
         <Script

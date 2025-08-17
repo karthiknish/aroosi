@@ -1,11 +1,10 @@
 /**
- * Auth client utilities using Clerk API
+ * Auth client utilities using Firebase Auth
  * - Provides helpers to call API endpoints and normalize responses
  * - Exposes logout for server-side session invalidation
  */
 
 import { postJson } from "../http/client";
-import { SignOutCallback } from "@clerk/types";
 
 type SigninResponse = {
   status?: string;
@@ -17,7 +16,7 @@ type SigninResponse = {
 };
 
 export async function signin(params: { email: string; password: string }) {
-  // For Clerk integration, we'll use the existing API route but enhance it
+  // For Firebase integration, we'll use the existing API route
   const res = await postJson<SigninResponse>("/api/auth/signin", params, {
     cache: "no-store",
   });
@@ -40,31 +39,33 @@ export async function googleAuth(params: {
   return res;
 }
 
-export async function logout(callback?: SignOutCallback) {
-  // Sign out from Clerk and notify server (idempotent endpoint)
+export async function logout() {
+  // Sign out from Firebase and notify server (idempotent endpoint)
   try {
-    // Dynamic import to avoid SSR issues; signOut exists on the module
-    const clerkModule: any = await import("@clerk/nextjs");
-    const signOutFunc: any =
-      clerkModule.signOut || clerkModule?.default?.signOut;
+    // Dynamic import to avoid SSR issues
+    const firebaseModule: any = await import("firebase/auth");
+    const signOutFunc: any = firebaseModule.signOut;
+    
     if (typeof signOutFunc === "function") {
-      await signOutFunc({ redirectUrl: "/sign-in" });
-    } else {
-      // Fallback to window.location for client-side redirect
-      if (typeof window !== "undefined") {
-        window.location.href = "/sign-in";
-      }
+      // Get auth instance
+      const { auth } = await import("@/lib/firebaseClient");
+      await signOutFunc(auth);
     }
 
     // Best-effort notify server
     await postJson<{ message: string }>("/api/auth/logout", undefined, {
       cache: "no-store",
     });
+    
+    // Client-side redirect
+    if (typeof window !== "undefined") {
+      window.location.href = "/sign-in";
+    }
   } catch (error) {
     console.error("Logout error:", error);
-    // Even if Clerk sign out fails, still call the callback if provided
-    if (callback) {
-      callback();
+    // Fallback to client-side redirect
+    if (typeof window !== "undefined") {
+      window.location.href = "/sign-in";
     }
   }
 }
@@ -72,21 +73,25 @@ export async function logout(callback?: SignOutCallback) {
 /**
  * Public: trigger forgot password email
  */
-// Deprecated: use Clerk's useSignIn().create({ strategy: 'reset_password_email_code' }) in client
-export async function forgotPassword(_email: string) {
-  throw new Error("Use Clerk client reset flow instead of API.");
+export async function forgotPassword(email: string) {
+  const res = await postJson<{ success: boolean; message?: string }>("/api/auth/reset-password", { email }, {
+    cache: "no-store",
+  });
+  return res;
 }
 
 /**
  * Public: reset password
  */
-// Deprecated: use Clerk's useSignIn() attemptFirstFactor + resetPassword in client
-export async function resetPassword(_params: { email: string; password: string }) {
-  throw new Error("Use Clerk client reset flow instead of API.");
+export async function resetPassword(params: { email: string; password: string }) {
+  const res = await postJson<{ success: boolean; message?: string }>("/api/auth/reset-password", params, {
+    cache: "no-store",
+  });
+  return res;
 }
 
 /**
- * Accessors for current tokens using Clerk
+ * Accessors for current tokens using Firebase
  */
 export async function getAccessToken(): Promise<string | null> {
   // Client-side function should not import server modules
@@ -95,6 +100,6 @@ export async function getAccessToken(): Promise<string | null> {
 }
 
 export async function getRefreshToken(): Promise<string | null> {
-  // Clerk handles token refresh automatically, so we don't expose refresh tokens directly
+  // Firebase handles token refresh automatically, so we don't expose refresh tokens directly
   return null;
 }

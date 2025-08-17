@@ -1,9 +1,25 @@
 #!/usr/bin/env node
-import { getConvexClient } from "@/lib/convexClient";
-import { api } from "@convex/_generated/api";
-import { sendUserNotification } from "@/lib/email";
-import { Profile } from "@/types/profile";
-import { recommendedProfilesTemplate } from "@/lib/marketingEmailTemplates";
+import { sendUserNotification } from "../../src/lib/email";
+import type { Profile } from "../../src/types/profile";
+import { listProfiles } from "../../src/lib/admin/firestoreAdminProfiles";
+
+// Simple fallback template (original marketing templates removed during Convex purge)
+function recommendedProfilesTemplate(
+  user: Partial<Profile>,
+  recs: any[],
+  baseUrl: string
+) {
+  const subject = `Your recommended profiles (${recs.length})`;
+  const items = recs
+    .slice(0, 5)
+    .map(
+      (r) =>
+        `<li><strong>${r.fullName || r.displayName || "Member"}</strong>${r.city ? " - " + r.city : ""}</li>`
+    )
+    .join("");
+  const html = `<p>Hi ${user.fullName || "there"},</p><p>Here are a few profiles you might like:</p><ul>${items}</ul><p>Visit <a href="${baseUrl || "https://app.aroosi.app"}">Aroosi</a> to view more.</p>`;
+  return { subject, html };
+}
 
 /**
  * Script to send recommended profiles email to all users
@@ -13,20 +29,8 @@ import { recommendedProfilesTemplate } from "@/lib/marketingEmailTemplates";
 async function sendRecommendedProfilesEmails() {
   console.log("Starting recommended profiles email job...");
 
-  const convex = getConvexClient();
-  if (!convex) {
-    console.error("Failed to initialize Convex client");
-    process.exit(1);
-  }
-
   try {
-    // Fetch all profiles (in production, you might want to paginate)
-    const result = await convex.query(api.users.adminListProfiles, {
-      search: undefined,
-      page: 0,
-      pageSize: 1000,
-    });
-
+    // Fetch profiles in pages using Firestore admin helper
     const profiles: Array<{
       email?: string;
       fullName?: string;
@@ -35,7 +39,25 @@ async function sendRecommendedProfilesEmails() {
       images?: string[];
       interests?: string[] | string;
       isProfileComplete?: boolean;
-    }> = result?.profiles || [];
+    }> = [];
+    const pageSize = 200;
+    let page = 1;
+    while (true) {
+      const { profiles: p } = await listProfiles({
+        search: undefined,
+        page,
+        pageSize,
+        sortBy: "createdAt",
+        sortDir: "desc",
+        banned: "all",
+        plan: "all",
+        isProfileComplete: "all",
+      });
+      profiles.push(...p);
+      if (p.length < pageSize) break;
+      page += 1;
+      if (page > 50) break; // safety cap
+    }
 
     console.log(`Processing ${profiles.length} profiles...`);
 
@@ -49,12 +71,9 @@ async function sendRecommendedProfilesEmails() {
       try {
         // Fetch recommended profiles for this user
         const recommendationsResponse = await fetch(
-          "http://localhost:3000/api/recommendations",
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
+          process.env.RECOMMENDATIONS_ENDPOINT ||
+            "http://localhost:3000/api/recommendations",
+          { headers: { "Content-Type": "application/json" } }
         );
 
         if (!recommendationsResponse.ok) {
@@ -74,7 +93,7 @@ async function sendRecommendedProfilesEmails() {
           const emailPayload = recommendedProfilesTemplate(
             p as Profile,
             recommendationsData.recommendations,
-            ""
+            process.env.APP_PUBLIC_URL || ""
           );
 
           await sendUserNotification(

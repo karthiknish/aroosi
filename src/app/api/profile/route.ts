@@ -1,17 +1,48 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import {
   validateProfileData,
   sanitizeProfileInput,
 } from "@/lib/utils/profileValidation";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import {
-  convexQueryWithAuth,
-  convexMutationWithAuth,
-} from "@/lib/convexServer";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { db } from "@/lib/firebaseAdmin";
+
+// Helper to make handlers tolerant to test request objects (e.g. node-mocks-http)
+async function parseJsonBody(req: any): Promise<any> {
+  try {
+    if (typeof req.json === "function") {
+      return await req.json();
+    }
+  } catch {
+    // fall through to alternative strategies
+  }
+  // Direct body object (common in test mocks)
+  if (req && typeof req.body === "object" && req.body !== null) return req.body;
+  if (req && typeof req.body === "string") {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      // ignore
+    }
+  }
+  // node-mocks-http style helpers
+  if (typeof req._getJSON === "function") {
+    try {
+      return req._getJSON();
+    } catch {
+      /* noop */
+    }
+  }
+  if (typeof req._getJSONData === "function") {
+    try {
+      return req._getJSONData();
+    } catch {
+      /* noop */
+    }
+  }
+  throw new Error("Invalid JSON body");
+}
 
 function isProfileWithEmail(
   profile: unknown
@@ -23,74 +54,26 @@ function isProfileWithEmail(
   );
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withFirebaseAuth(async (user: any, request: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
-  try {
-    const { userId } = await requireAuth(request);
-    if (!userId) {
-      console.warn("Profile GET missing userId", {
-        scope: "profile.get",
-        type: "missing_user",
-        correlationId,
-        statusCode: 401,
-        durationMs: Date.now() - startedAt,
-      });
-      return new Response(
-        JSON.stringify({ error: "User ID not found in token", correlationId }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    const rateLimitResult = checkApiRateLimit(
-      `profile_get_${userId}`,
-      50,
-      60000
+  const userId = user.id;
+  const rl = checkApiRateLimit(`profile_get_${userId}`, 50, 60_000);
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded", correlationId }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
     );
-    if (!rateLimitResult.allowed) {
-      console.warn("Profile GET rate limit exceeded", {
-        scope: "profile.get",
-        type: "rate_limit",
-        correlationId,
-        statusCode: 429,
-        durationMs: Date.now() - startedAt,
-      });
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded", correlationId }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    const profile = await convexQueryWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    ).catch((e: unknown) => {
-      console.error("Profile GET query error", {
-        scope: "profile.get",
-        type: "convex_query_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return null;
-    });
-    if (!profile) {
-      console.warn("Profile GET not found", {
-        scope: "profile.get",
-        type: "profile_not_found",
-        correlationId,
-        statusCode: 404,
-        durationMs: Date.now() - startedAt,
-      });
+  }
+  try {
+    const doc = await db.collection("users").doc(userId).get();
+    if (!doc.exists) {
       return new Response(
         JSON.stringify({ error: "User profile not found", correlationId }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
-    const response = new Response(
-      JSON.stringify({ profile, correlationId, success: true }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
+    const profile = { _id: doc.id, ...(doc.data() as any) };
     console.info("Profile GET success", {
       scope: "profile.get",
       type: "success",
@@ -98,16 +81,14 @@ export async function GET(request: NextRequest) {
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
-    return response;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Profile GET unhandled error", {
-      scope: "profile.get",
-      type: "unhandled_error",
-      message,
+    return new Response(
+      JSON.stringify({ profile, correlationId, success: true }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    console.error("Profile GET firebase error", {
+      message: e instanceof Error ? e.message : String(e),
       correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
     });
     return new Response(
       JSON.stringify({
@@ -117,41 +98,23 @@ export async function GET(request: NextRequest) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-}
+});
 
-export async function PUT(request: NextRequest) {
+export const PUT = withFirebaseAuth(async (user: any, request: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
-  try {
-    const { userId } = await requireAuth(request);
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "User ID not found in token", correlationId }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    const rateLimitResult = checkApiRateLimit(
-      `profile_update_${userId}`,
-      20,
-      60000
+  const userId = user.id;
+  const rl = checkApiRateLimit(`profile_update_${userId}`, 20, 60_000);
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded", correlationId }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
     );
-    if (!rateLimitResult.allowed) {
-      console.warn("Profile PUT rate limit", {
-        scope: "profile.update",
-        type: "rate_limit",
-        correlationId,
-        statusCode: 429,
-        durationMs: Date.now() - startedAt,
-      });
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded", correlationId }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    let body;
+  }
+  try {
+    let body: any;
     try {
-      body = await request.json();
+      body = await parseJsonBody(request);
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body", correlationId }),
@@ -192,21 +155,12 @@ export async function PUT(request: NextRequest) {
       "preferredGender",
       "profileFor",
       "hideFromFreeUsers",
-      "subscriptionPlan",
-      "subscriptionExpiresAt",
     ] as const;
-    const adminOnlyFields = ["subscriptionPlan", "subscriptionExpiresAt"];
-    const hasAdminFields = adminOnlyFields.some(
-      (field) => field in sanitizedBody
-    );
-    if (hasAdminFields) {
-      adminOnlyFields.forEach((field) => delete sanitizedBody[field]);
-    }
     const updates = Object.fromEntries(
-      Object.entries(sanitizedBody).filter(([key]) =>
-        (ALLOWED_UPDATE_FIELDS as readonly string[]).includes(key)
+      Object.entries(sanitizedBody).filter(([k]) =>
+        (ALLOWED_UPDATE_FIELDS as readonly string[]).includes(k)
       )
-    ) as Record<string, unknown>;
+    );
     if (Object.keys(updates).length === 0)
       return new Response(
         JSON.stringify({
@@ -215,7 +169,7 @@ export async function PUT(request: NextRequest) {
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
-    const validation = validateProfileData(updates);
+    const validation = validateProfileData(updates as any);
     if (!validation.isValid)
       return new Response(
         JSON.stringify({
@@ -224,60 +178,18 @@ export async function PUT(request: NextRequest) {
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
-    const profile = await convexQueryWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
-    if (!profile)
+    const doc = await db.collection("users").doc(userId).get();
+    if (!doc.exists)
       return new Response(
         JSON.stringify({ error: "User profile not found", correlationId }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
-    if (profile.userId !== userId)
-      return new Response(
-        JSON.stringify({ error: "Unauthorized", correlationId }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-
-    // Apply update via Convex mutation profiles.updateProfileFields
-    await convexMutationWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.updateProfileFields,
-      {
-        userId: userId as Id<"users">,
-        updates: {
-          ...updates,
-          // Ensure array types for partnerPreferenceCity when present
-          ...(updates.partnerPreferenceCity
-            ? {
-                partnerPreferenceCity: Array.isArray(
-                  updates.partnerPreferenceCity
-                )
-                  ? (updates.partnerPreferenceCity as string[])
-                  : [String(updates.partnerPreferenceCity)],
-              }
-            : {}),
-        } as Record<string, unknown>,
-      } as any
-    );
-    const updatedProfile = await convexQueryWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
-
-    // Invalidate recommendation cache for this user (best-effort)
-    try {
-      // Best-effort: invalidate recommendation cache for this user
-      const { api } = await import("@convex/_generated/api");
-      await convexMutationWithAuth(
-        request,
-        api.recommendations.invalidateRecommendations,
-        { userId: userId as Id<"users"> }
-      );
-    } catch {}
-
+    await db
+      .collection("users")
+      .doc(userId)
+      .set({ ...updates, updatedAt: Date.now() }, { merge: true });
+    const updated = await db.collection("users").doc(userId).get();
+    const updatedProfile = { _id: updated.id, ...(updated.data() as any) };
     if (isProfileWithEmail(updatedProfile)) {
       try {
         await Notifications.profileCreated(
@@ -287,14 +199,19 @@ export async function PUT(request: NextRequest) {
         await Notifications.profileCreatedAdmin(updatedProfile);
       } catch (e) {
         console.error("Profile PUT notification error", {
-          scope: "profile.update",
-          type: "notify_error",
           message: e instanceof Error ? e.message : String(e),
           correlationId,
         });
       }
     }
-    const response = new Response(
+    console.info("Profile PUT success", {
+      scope: "profile.update",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+    });
+    return new Response(
       JSON.stringify({
         profile: updatedProfile,
         message: "Profile updated successfully",
@@ -303,41 +220,23 @@ export async function PUT(request: NextRequest) {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
-    console.info("Profile PUT success", {
-      scope: "profile.update",
-      type: "success",
+  } catch (e) {
+    console.error("Profile PUT firebase error", {
+      message: e instanceof Error ? e.message : String(e),
       correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-    });
-    return response;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Profile PUT unhandled error", {
-      scope: "profile.update",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
     });
     return new Response(
       JSON.stringify({ error: "Internal server error", correlationId }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withFirebaseAuth(async (user: any, req: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(req);
-    if (!userId)
-      return new Response(
-        JSON.stringify({ error: "User ID not found in token", correlationId }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+    const userId = user.id;
     const rateLimitResult = checkApiRateLimit(
       `profile_create_${userId}`,
       3,
@@ -350,7 +249,7 @@ export async function POST(req: NextRequest) {
       );
     let body: Record<string, unknown>;
     try {
-      body = await req.json();
+      body = await parseJsonBody(req);
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON body", correlationId }),
@@ -396,12 +295,8 @@ export async function POST(req: NextRequest) {
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
-    const existingProfile = await convexQueryWithAuth(
-      req,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
-    if (existingProfile)
+    const existingProfile = await db.collection("users").doc(userId).get();
+    if (existingProfile.exists)
       return new Response(
         JSON.stringify({ error: "Profile already exists", correlationId }),
         { status: 409, headers: { "Content-Type": "application/json" } }
@@ -560,23 +455,24 @@ export async function POST(req: NextRequest) {
       Object.entries(profileData).filter(([k]) => allowedKeys.has(k as any))
     );
 
-    await convexMutationWithAuth(
-      req,
-      (await import("@convex/_generated/api")).api.users
-        .createUserAndProfile as any,
-      {
-        email: String(profileData.email ?? ""),
-        name: String(profileData.fullName ?? ""),
-        picture: undefined,
-        googleId: undefined,
-        profileData: convexProfileData,
-      } as any
-    );
-    const newProfile = await convexQueryWithAuth(
-      req,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
+    const now = Date.now();
+    const newProfileData = {
+      ...convexProfileData,
+      createdAt: now,
+      updatedAt: now,
+      userId,
+      email: profileData.email,
+      isOnboardingComplete: true,
+    } as any;
+    await db
+      .collection("users")
+      .doc(userId)
+      .set(newProfileData, { merge: true });
+    const newProfileSnap = await db.collection("users").doc(userId).get();
+    const newProfile = {
+      _id: newProfileSnap.id,
+      ...(newProfileSnap.data() as any),
+    };
     if (isProfileWithEmail(newProfile)) {
       try {
         await Notifications.profileCreated(newProfile.email, newProfile);
@@ -622,19 +518,13 @@ export async function POST(req: NextRequest) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-}
+});
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withFirebaseAuth(async (user: any, request: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(request);
-
-    if (!userId)
-      return new Response(
-        JSON.stringify({ error: "User ID not found in token", correlationId }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+    const userId = user.id;
     const rateLimitResult = checkApiRateLimit(
       `profile_delete_${userId}`,
       1,
@@ -645,12 +535,8 @@ export async function DELETE(request: NextRequest) {
         JSON.stringify({ error: "Rate limit exceeded", correlationId }),
         { status: 429, headers: { "Content-Type": "application/json" } }
       );
-    const profile = await convexQueryWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
-    if (!profile || !profile._id)
+    const doc = await db.collection("users").doc(userId).get();
+    if (!doc.exists)
       return new Response(
         JSON.stringify({
           error: "No user or profile found for deletion",
@@ -658,17 +544,7 @@ export async function DELETE(request: NextRequest) {
         }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
-    if (profile.userId !== userId)
-      return new Response(
-        JSON.stringify({ error: "Unauthorized", correlationId }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
-    // Delete profile via Convex mutation profiles.deleteProfile
-    await convexMutationWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.deleteProfile,
-      { userId: userId as Id<"users"> } as any
-    );
+    await db.collection("users").doc(userId).delete();
     const response = new Response(
       JSON.stringify({
         message: "User and profile deleted successfully",
@@ -703,4 +579,4 @@ export async function DELETE(request: NextRequest) {
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-}
+});

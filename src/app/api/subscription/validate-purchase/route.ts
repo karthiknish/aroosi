@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import { convexMutationWithAuth } from "@/lib/convexServer";
-import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireUserToken } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
 
 // Apple App Store receipt validation helper
 async function validateAppleReceipt(receiptData: string): Promise<{
@@ -19,32 +18,35 @@ async function validateAppleReceipt(receiptData: string): Promise<{
   }
 
   const requestBody = {
-    'receipt-data': receiptData,
-    'password': sharedSecret,
-    'exclude-old-transactions': true
+    "receipt-data": receiptData,
+    password: sharedSecret,
+    "exclude-old-transactions": true,
   };
 
   // Try production first
-  let response = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody)
+  let response = await fetch("https://buy.itunes.apple.com/verifyReceipt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody),
   });
 
   let result = await response.json();
 
   // If production fails with sandbox receipt, try sandbox
   if (result.status === 21007) {
-    response = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+    response = await fetch("https://sandbox.itunes.apple.com/verifyReceipt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     });
     result = await response.json();
   }
 
   if (result.status !== 0) {
-    return { valid: false, error: `Apple validation failed with status ${result.status}` };
+    return {
+      valid: false,
+      error: `Apple validation failed with status ${result.status}`,
+    };
   }
 
   // Find the latest subscription purchase
@@ -53,9 +55,10 @@ async function validateAppleReceipt(receiptData: string): Promise<{
   let latestExpiresAt = 0;
 
   for (const purchase of inAppPurchases) {
-    if (purchase.product_id === 'com.aroosi.premium.monthly' || 
-        purchase.product_id === 'com.aroosi.premiumplus.monthly') {
-      
+    if (
+      purchase.product_id === "com.aroosi.premium.monthly" ||
+      purchase.product_id === "com.aroosi.premiumplus.monthly"
+    ) {
       const expiresAt = parseInt(purchase.expires_date_ms);
       if (expiresAt > latestExpiresAt) {
         latestExpiresAt = expiresAt;
@@ -73,7 +76,7 @@ async function validateAppleReceipt(receiptData: string): Promise<{
     productId: latestPurchase.product_id,
     expiresAt: latestExpiresAt,
     transactionId: latestPurchase.transaction_id,
-    originalTransactionId: latestPurchase.original_transaction_id
+    originalTransactionId: latestPurchase.original_transaction_id,
   };
 }
 
@@ -140,7 +143,10 @@ export async function POST(request: NextRequest) {
 
     if (platform === "android") {
       if (!productId || !purchaseToken) {
-        return errorResponse("Missing productId or purchaseToken for Android", 400);
+        return errorResponse(
+          "Missing productId or purchaseToken for Android",
+          400
+        );
       }
 
       validationResult = await validateGooglePurchase(productId, purchaseToken);
@@ -153,14 +159,13 @@ export async function POST(request: NextRequest) {
         aroosi_premium_monthly: "premium",
         aroosi_premium_plus_monthly: "premiumPlus",
       };
-      
+
       plan = productPlanMap[productId];
       if (!plan) {
         return errorResponse("Invalid product ID", 400);
       }
-      
-      expiresAt = validationResult.expiresAt!;
 
+      expiresAt = validationResult.expiresAt!;
     } else if (platform === "ios") {
       if (!receiptData) {
         return errorResponse("Missing receiptData for iOS", 400);
@@ -176,26 +181,26 @@ export async function POST(request: NextRequest) {
         "com.aroosi.premium.monthly": "premium",
         "com.aroosi.premiumplus.monthly": "premiumPlus",
       };
-      
+
       plan = productPlanMap[validationResult.productId!];
       if (!plan) {
         return errorResponse("Invalid product ID", 400);
       }
-      
-      expiresAt = validationResult.expiresAt!;
 
+      expiresAt = validationResult.expiresAt!;
     } else {
       return errorResponse("Unsupported platform", 400);
     }
 
     // Update user profile with subscription
-    await convexMutationWithAuth(request, api.users.updateProfile, {
-      updates: {
+    await db.collection("users").doc(userId).set(
+      {
         subscriptionPlan: plan,
         subscriptionExpiresAt: expiresAt,
         updatedAt: Date.now(),
       },
-    } as any);
+      { merge: true }
+    );
 
     return successResponse({
       message: "Purchase validated successfully",
@@ -205,7 +210,6 @@ export async function POST(request: NextRequest) {
         isActive: true,
       },
     });
-
   } catch (error) {
     console.error("Error validating purchase:", error);
     return errorResponse("Failed to validate purchase", 500, {

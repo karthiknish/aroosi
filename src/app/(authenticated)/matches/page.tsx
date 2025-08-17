@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -145,7 +145,9 @@ function MatchesLoadingSkeleton() {
 }
 
 export default function MatchesPage() {
-  const { userId } = useAuthContext();
+  const { user, profile } = useAuthContext();
+  const userId =
+    user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
   const offline = useOffline();
   const [search, setSearch] = useState("");
 

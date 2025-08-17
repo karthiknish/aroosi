@@ -41,7 +41,6 @@ import type * as safety from "../safety.js";
 import type * as storage from "../storage.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as testAuth from "../testAuth.js";
-import type * as typingIndicators from "../typingIndicators.js";
 import type * as usageTracking from "../usageTracking.js";
 import type * as users from "../users.js";
 import type * as utils_rateLimit from "../utils/rateLimit.js";
@@ -85,7 +84,6 @@ declare const fullApi: ApiFromModules<{
   storage: typeof storage;
   subscriptions: typeof subscriptions;
   testAuth: typeof testAuth;
-  typingIndicators: typeof typingIndicators;
   usageTracking: typeof usageTracking;
   users: typeof users;
   "utils/rateLimit": typeof utils_rateLimit;

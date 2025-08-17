@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
   fetchProfileViewers,
   type ProfileViewer,

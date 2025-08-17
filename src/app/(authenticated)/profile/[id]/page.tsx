@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { showErrorToast } from "@/lib/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   UserCircle,
@@ -29,21 +29,14 @@ import {
 } from "lucide-react";
 import Head from "next/head";
 import Image from "next/image";
-import { Id } from "@convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  fetchUserProfileImages,
-  fetchUserProfile,
-} from "@/lib/profile/userProfileApi";
-import {
-  sendInterest,
-  removeInterest,
-  getSentInterests,
-} from "@/lib/interestUtils";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { useQuery } from "@tanstack/react-query";
+import { fetchUserProfile } from "@/lib/profile/userProfileApi";
+import { useProfileImages } from "@/hooks/useProfileImages";
+import { useInterestStatus } from "@/hooks/useInterestStatus";
 import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
 import { ErrorState } from "@/components/ui/error-state";
@@ -67,16 +60,7 @@ import { IcebreakersPanel } from "./IcebreakersPanel";
 import { fetchIcebreakers } from "@/lib/engagementUtil";
 import { getJson } from "@/lib/http/client";
 
-type Interest = {
-  id: string;
-  toUserId: string;
-  fromUserId: string;
-  status: "pending" | "accepted" | "rejected";
-  createdAt: string;
-};
-
 export default function ProfileDetailPage() {
-  // --- All hooks must be called before any early return ---
   const params = useParams();
   const {
     profile: rawCurrentUserProfile,
@@ -89,33 +73,22 @@ export default function ProfileDetailPage() {
   } | null;
   const offline = useOffline();
   const { trackUsage } = useUsageTracking(undefined);
-  const queryClient = useQueryClient();
   const { isPremiumPlus } = useSubscriptionGuard();
-
   const id = params?.id as string;
-  const userId = id as Id<"users">;
-
-  // Use Convex user IDs for interest actions
+  const userId = id as string;
   const fromUserId = currentUserProfile?.userId;
   const toUserId = userId;
 
-  // Fetch profile data
   const {
     data: profileData,
     isLoading: loadingProfile,
     error: profileError,
   } = useQuery({
     queryKey: ["profileData", userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const result = await fetchUserProfile(userId);
-      return result;
-    },
+    queryFn: async () => (userId ? await fetchUserProfile(userId) : null),
     enabled: !!userId && isLoaded && isAuthenticated,
     retry: false,
   });
-
-  // Handle nested profile object from API. If profileData?.data has a .profile key, use that, else use data directly.
   const profileRaw = profileData?.data;
   const profile: Profile | null =
     profileRaw &&
@@ -124,154 +97,67 @@ export default function ProfileDetailPage() {
     "profile" in profileRaw
       ? (profileRaw as { profile: Profile | null }).profile
       : (profileRaw as Profile | null);
-
-  const skipImagesQuery =
-    profile?.profileImageUrls && profile.profileImageUrls.length > 0;
-
-  const { data: userProfileImagesResponse } = useQuery({
-    queryKey: ["userProfileImages", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      const result = await fetchUserProfileImages(userId);
-      if (result.success && Array.isArray(result.data)) {
-        return result.data.map((img: unknown) =>
-          typeof img === "object" && img !== null && "url" in img
-            ? (img as { url: string }).url
-            : (img as string)
-        );
-      }
-      return [];
-    },
-    enabled: !!userId && !skipImagesQuery && isLoaded && isAuthenticated,
+  const { images: fetchedImages } = useProfileImages({
+    userId,
+    enabled: isLoaded && isAuthenticated,
+    preferInlineUrls: profile?.profileImageUrls,
   });
-
   const isOwnProfile = Boolean(
     currentUserProfile?._id && userId && currentUserProfile._id === userId
   );
-
   const localCurrentUserImageOrder: string[] = useMemo(() => {
-    if (
-      isOwnProfile &&
-      typeof profile === "object" &&
-      profile &&
-      "profileImageIds" in profile &&
-      Array.isArray((profile as { profileImageIds?: string[] }).profileImageIds)
-    ) {
-      return (profile as { profileImageIds?: string[] }).profileImageIds ?? [];
+    if (isOwnProfile && profile && (profile as any).profileImageIds) {
+      return (profile as any).profileImageIds || [];
     }
     return [];
   }, [isOwnProfile, profile]);
-
   const imagesToShow: string[] = useMemo(() => {
-    if (profile?.profileImageUrls && profile.profileImageUrls.length > 0) {
-      return profile.profileImageUrls;
-    }
-    if (
-      isOwnProfile &&
-      localCurrentUserImageOrder.length > 0 &&
-      Array.isArray(userProfileImagesResponse)
-    ) {
+    if (profile?.profileImageUrls?.length) return profile.profileImageUrls;
+    if (isOwnProfile && localCurrentUserImageOrder.length) {
+      const lookup = new Map(
+        fetchedImages.map((i) => [i.storageId || i.url, i.url])
+      );
       return localCurrentUserImageOrder
-        .map((_, idx) => userProfileImagesResponse[idx])
-        .filter(Boolean);
+        .map((id) => lookup.get(id) || "")
+        .filter(Boolean) as string[];
     }
-    return Array.isArray(userProfileImagesResponse)
-      ? userProfileImagesResponse
-      : [];
+    return fetchedImages.map((i) => i.url).filter(Boolean);
   }, [
     profile?.profileImageUrls,
     isOwnProfile,
     localCurrentUserImageOrder,
-    userProfileImagesResponse,
+    fetchedImages,
   ]);
-
-  const imagesLoading =
-    (profile &&
-      (profile.profileImageUrls?.length ?? 0) > 0 &&
-      imagesToShow.length === 0) ||
-    (!skipImagesQuery && userProfileImagesResponse === undefined);
-
   const skeletonCount = profile?.profileImageUrls?.length ?? 0;
-
+  const imagesLoading = skeletonCount > 0 && imagesToShow.length === 0;
   const { data: iceQs } = useQuery({
     queryKey: ["icebreakers", "today"],
     queryFn: fetchIcebreakers,
     enabled: isLoaded && isAuthenticated,
   });
-
-  // --- BEGIN: Interest status (lightweight) and sent list ---
+  const trackWrapper = (evt: {
+    feature: string;
+    metadata?: Record<string, any>;
+  }) => {
+    // Adapt to useUsageTracking's expected params if needed
+    trackUsage({ feature: evt.feature as any, metadata: evt.metadata });
+  };
   const {
-    data: interestStatusData,
-    isLoading: loadingInterestStatus,
-    refetch: refetchInterestStatus,
-  } = useQuery<{
-    status?: "none" | "pending" | "accepted" | "rejected";
-  } | null>({
-    queryKey: ["interestStatus", fromUserId, toUserId],
-    queryFn: async () => {
-      if (!fromUserId || !toUserId) return null;
-      const url = `/api/interests/status?targetUserId=${encodeURIComponent(String(toUserId))}`;
-      try {
-        const data = await (
-          await import("@/lib/http/client")
-        ).getJson<any>(url, {
-          cache: "no-store",
-          headers: { "x-client-check": "interest-status" },
-        });
-        return data && typeof data === "object" ? (data as any) : null;
-      } catch {
-        return null;
-      }
-    },
-    enabled: !!fromUserId && !!toUserId && isLoaded && isAuthenticated,
-    staleTime: 30000,
+    interestStatusData,
+    loadingInterestStatus,
+    loadingInterests,
+    alreadySentInterest,
+    handleToggleInterest,
+    showHeartPop,
+    interestError,
+  } = useInterestStatus({
+    fromUserId,
+    toUserId: String(toUserId),
+    enabled: isLoaded && isAuthenticated,
+    track: trackWrapper,
   });
 
-  const {
-    data: sentInterests,
-    isLoading: loadingInterests,
-    refetch: refetchSentInterests,
-  } = useQuery<Interest[]>({
-    queryKey: ["sentInterests", fromUserId, toUserId],
-    queryFn: async () => {
-      if (!fromUserId) return [];
-      const res = await getSentInterests();
-      const payload: unknown =
-        res && typeof res === "object" && "data" in (res as any)
-          ? (res as { data: unknown }).data
-          : res;
-      return Array.isArray(payload) ? (payload as Interest[]) : [];
-    },
-    enabled: !!fromUserId,
-    retry: false,
-  });
-
-  // Local state to control the heart/interest button for instant UI feedback
-  const [localInterest, setLocalInterest] = useState<null | boolean>(null);
-
-  // Compute alreadySentInterest, allow local override for instant UI
-  const alreadySentInterest = useMemo(() => {
-    if (localInterest !== null) return localInterest;
-
-    // Prefer lightweight status
-    if (
-      interestStatusData &&
-      typeof interestStatusData === "object" &&
-      "status" in interestStatusData
-    ) {
-      const s = (interestStatusData as { status?: string }).status;
-      if (s === "pending" || s === "accepted") return true;
-      if (s === "rejected") return false;
-    }
-
-    if (!sentInterests || !Array.isArray(sentInterests)) return false;
-    return sentInterests.some((interest) => {
-      if (interest.toUserId !== toUserId || interest.fromUserId !== fromUserId)
-        return false;
-      return interest.status !== "rejected";
-    });
-  }, [interestStatusData, sentInterests, toUserId, fromUserId, localInterest]);
-  // --- END: Add local state for interest status ---
+  // Removed legacy duplicated interest/status logic block after hook integration.
 
   // Check if user is blocked
   const { data: blockStatus } = useBlockStatus(toUserId);
@@ -279,24 +165,12 @@ export default function ProfileDetailPage() {
   const isBlockedBy = blockStatus?.isBlockedBy || false;
   const canInteract = !isBlocked && !isBlockedBy;
 
-  let invalidIdError: string | null = null;
-  if (
-    toUserId &&
-    typeof toUserId === "string" &&
-    toUserId.startsWith("user_")
-  ) {
-    invalidIdError =
-      "Internal error: Attempted to fetch profile with JWT user ID instead of Convex user ID.";
-    showErrorToast(
-      null,
-      "Internal error: Attempted to fetch profile with JWT user ID instead of Convex user ID."
-    );
-  }
+  // Removed legacy Convex ID shape validation (no longer applicable after Firebase migration)
+  const invalidIdError: string | null = null;
 
   const [currentImageIdx, setCurrentImageIdx] = useState<number>(0);
   const imagesKey = imagesToShow.join(",");
 
-  const [interestError, setInterestError] = useState<string | null>(null);
   const interestLoading = loadingInterests || loadingInterestStatus;
 
   // Keyboard navigation for image gallery (Left/Right arrows)
@@ -346,99 +220,7 @@ export default function ProfileDetailPage() {
     }
   }, [isOwnProfile, profile?._id, trackUsage, userId]);
 
-  // Animation state for heart pop effect
-  const [showHeartPop, setShowHeartPop] = useState(false);
-
-  // --- BEGIN: Update handleInterestClick for instant UI feedback ---
-  const handleInterestClick = async () => {
-    if (!fromUserId || typeof fromUserId !== "string") {
-      showErrorToast(null, "User ID not available");
-      return;
-    }
-    if (!toUserId || typeof toUserId !== "string") {
-      showErrorToast(null, "Target user ID not available");
-      return;
-    }
-    setInterestError(null);
-    try {
-      if (alreadySentInterest) {
-        // Optimistically update UI: switch heart back immediately
-        setLocalInterest(false);
-        const responseData = await removeInterest(toUserId);
-        showSuccessToast("Interest withdrawn successfully!");
-
-        // Invalidate and refetch related queries
-        void queryClient.invalidateQueries({
-          queryKey: ["interestStatus", fromUserId, toUserId],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["sentInterests", fromUserId, toUserId],
-        });
-        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
-        void queryClient.invalidateQueries({
-          queryKey: ["unreadCounts", "self"],
-        });
-        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
-
-        setLocalInterest(null); // Let server state take over
-        setShowHeartPop(false);
-        return responseData;
-      } else {
-        // Optimistically update UI: switch heart immediately
-        setLocalInterest(true);
-        setShowHeartPop(true); // trigger pop animation
-        const responseData = await sendInterest(toUserId);
-        showSuccessToast("Interest sent successfully!");
-
-        // Track interest sent usage
-        trackUsage({
-          feature: "interest_sent",
-          metadata: { targetUserId: toUserId },
-        });
-
-        // Invalidate and refetch related queries
-        void queryClient.invalidateQueries({
-          queryKey: ["interestStatus", fromUserId, toUserId],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["sentInterests", fromUserId, toUserId],
-        });
-        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
-        void queryClient.invalidateQueries({
-          queryKey: ["unreadCounts", "self"],
-        });
-        // Invalidate and refetch related queries
-        void queryClient.invalidateQueries({
-          queryKey: ["interestStatus", fromUserId, toUserId],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["sentInterests", fromUserId, toUserId],
-        });
-        void queryClient.invalidateQueries({ queryKey: ["matches", "self"] });
-        void queryClient.invalidateQueries({
-          queryKey: ["unreadCounts", "self"],
-        });
-        await Promise.all([refetchInterestStatus(), refetchSentInterests()]);
-
-        setLocalInterest(null); // Let server state take over
-        setTimeout(() => setShowHeartPop(false), 600);
-        return responseData;
-      }
-    } catch (error: unknown) {
-      // Rollback optimistic update on error
-      setLocalInterest(null);
-      const msg =
-        error instanceof Error
-          ? error.message
-          : alreadySentInterest
-            ? "Failed to remove interest"
-            : "Failed to send interest";
-      showErrorToast(msg);
-      setInterestError(msg as string);
-      throw error;
-    }
-  };
-  // --- END: Update handleInterestClick for instant UI feedback ---
+  // Heart pop animation state now comes from hook; retain local variant definitions below
 
   // Get the current image to display (just by index)
   const mainProfileImageUrl =
@@ -530,13 +312,7 @@ export default function ProfileDetailPage() {
     );
   }
 
-  if (invalidIdError) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <ErrorState message={invalidIdError} />
-      </div>
-    );
-  }
+  // invalidIdError always null now
 
   const cardVariants = {
     hidden: { opacity: 0, y: 40 },
@@ -831,20 +607,24 @@ export default function ProfileDetailPage() {
                   {/* Compatibility badge is displayed below near location when available */}
                   {/* Inline interest status chip (only when viewing others) */}
                   {!isOwnProfile &&
-                    (interestStatusData?.status === "pending" ||
-                      interestStatusData?.status === "accepted") && (
+                    ["pending", "accepted", "mutual"].includes(
+                      interestStatusData?.status || ""
+                    ) && (
                       <Badge
                         variant="secondary"
-                        className={
-                          (interestStatusData?.status === "accepted"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700") +
-                          " text-xs px-2 py-0.5 rounded-full"
-                        }
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          interestStatusData?.status === "pending"
+                            ? "bg-amber-100 text-amber-700"
+                            : interestStatusData?.status === "accepted"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-green-100 text-green-700"
+                        }`}
                       >
-                        {interestStatusData?.status === "accepted"
-                          ? "Mutual interest"
-                          : "Interest sent"}
+                        {interestStatusData?.status === "pending"
+                          ? "Interest sent"
+                          : interestStatusData?.status === "accepted"
+                            ? "Interest accepted"
+                            : "Mutual interest"}
                       </Badge>
                     )}
                   {/* Profile viewers count (own profile + Premium Plus) */}
@@ -1132,6 +912,7 @@ export default function ProfileDetailPage() {
                 <AnimatePresence>
                   {!isOwnProfile &&
                     canInteract &&
+                    interestStatusData?.status !== "mutual" &&
                     (interestLoading ? (
                       <div className="flex items-center justify-center">
                         <Skeleton className="w-16 h-16 rounded-full" />
@@ -1153,7 +934,7 @@ export default function ProfileDetailPage() {
                         animate="visible"
                         exit="hidden"
                         whileTap="tap"
-                        onClick={handleInterestClick}
+                        onClick={handleToggleInterest}
                         title={
                           alreadySentInterest
                             ? "Withdraw Interest"

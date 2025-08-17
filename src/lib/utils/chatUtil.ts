@@ -5,7 +5,10 @@ export async function sendGeminiChat({
   messages: { role: string; text: string }[];
   email: string;
 }): Promise<{ reply: string }> {
-  const res = await fetch("/api/gemini-chat", {
+  const { fetchWithFirebaseAuth } = await import(
+    "@/lib/api/fetchWithFirebaseAuth"
+  );
+  const res = await fetchWithFirebaseAuth("/api/gemini-chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

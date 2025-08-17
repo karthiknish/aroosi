@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import {
   showErrorToast,
@@ -46,14 +47,17 @@ export function useUsageTracking(_providedToken?: string): {
 
   const trackUsage = useMutation({
     mutationFn: async ({ feature, metadata }: TrackUsageParams) => {
-      const response = await fetch("/api/subscription/track-usage", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ feature, metadata }),
-      });
+      const response = await fetchWithFirebaseAuth(
+        "/api/subscription/track-usage",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ feature, metadata }),
+        }
+      );
 
       if (!response.ok) {
         let error: unknown;
@@ -139,9 +143,12 @@ export function useCanUseFeature(
   return useQuery({
     queryKey: ["can-use-feature", feature],
     queryFn: async (): Promise<{ canUse: boolean; reason?: string }> => {
-      const response = await fetch(`/api/subscription/can-use/${feature}`, {
-        credentials: "include",
-      });
+      const response = await fetchWithFirebaseAuth(
+        `/api/subscription/can-use/${feature}`,
+        {
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to check feature availability");

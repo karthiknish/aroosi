@@ -1,8 +1,13 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { db } from "@/lib/firebaseAdmin";
+import { ensureAdmin } from "@/lib/auth/requireAdmin";
+import {
+  sanitizeBlogContent,
+  sanitizeBlogExcerpt,
+  sanitizeBlogSlug,
+  sanitizeBlogTitle,
+} from "@/lib/blogSanitize";
 
 // Simple in-memory rate limit store (replace with Redis for production)
 const rateLimitMap = new Map<string, { count: number; last: number }>();
@@ -10,8 +15,6 @@ const RATE_LIMIT_WINDOW = 10 * 60 * 1000; // 10 minutes
 const RATE_LIMIT_MAX = 20;
 
 export async function GET(req: NextRequest) {
-  // Public endpoint: do not require authentication
-  // Rate limiting by IP
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const now = Date.now();
@@ -22,75 +25,69 @@ export async function GET(req: NextRequest) {
   }
   entry.count++;
   rateLimitMap.set(ip, entry);
-  if (entry.count > RATE_LIMIT_MAX) {
+  if (entry.count > RATE_LIMIT_MAX)
     return errorResponse("Too many requests. Please try again later.", 429);
-  }
-  // Public query; cookie not required
   const url = new URL(req.url);
-  const slug = url.pathname.split("/").pop()!;
-  const result = await convexQueryWithAuth(req, api.blog.getBlogPostBySlug, { slug });
-  return successResponse(result);
+  const slug = sanitizeBlogSlug(url.pathname.split("/").pop()!);
+  try {
+    const snap = await db
+      .collection("blogPosts")
+      .where("slug", "==", slug)
+      .limit(1)
+      .get();
+    if (snap.empty) return errorResponse("Not found", 404);
+    const doc = snap.docs[0];
+    return successResponse({ _id: doc.id, ...doc.data() });
+  } catch (e) {
+    return errorResponse(
+      (e as Error).message || "Failed to fetch blog post",
+      500
+    );
+  }
 }
 
 export async function PUT(req: NextRequest) {
-  // Cookie-based auth via Convex session
-  let body: unknown;
+  let body: any;
   try {
     body = await req.json();
-    console.log("[PUT /api/blog/[slug]] Request body:", body);
   } catch {
     return errorResponse("Invalid JSON body", 400);
   }
-  if (!body || typeof body !== "object") {
-    return errorResponse("Missing or invalid body", 400);
-  }
-  // Use _id from the request body
-  const _id = (body as Record<string, unknown>)._id;
-  console.log("[PUT /api/blog/[slug]] _id:", _id);
-  if (!_id || typeof _id !== "string") {
+  if (!body || typeof body !== "object" || !body._id)
     return errorResponse("Missing or invalid _id", 400);
-  }
-  // Validate required fields
-  const requiredFields = [
-    "title",
-    "slug",
-    "excerpt",
-    "content",
-    "imageUrl",
-    "categories",
-  ];
-  for (const field of requiredFields) {
-    if (!(field in body)) {
-      return errorResponse(`Missing field: ${field}`, 400);
-    }
+  const required = ["title", "slug", "excerpt", "content", "categories"];
+  for (const f of required)
+    if (!(f in body)) return errorResponse(`Missing field: ${f}`, 400);
+  try {
+    await ensureAdmin();
+  } catch (e) {
+    const err = e as any;
+    return errorResponse(
+      err.message || "Unauthorized",
+      err.status === 401 ? 401 : 403
+    );
   }
   try {
-    const updateData: {
-      _id: Id<"blogPosts">;
-      title: string;
-      slug: string;
-      excerpt: string;
-      content: string;
-      imageUrl: string;
-      categories: string[];
-    } = {
-      _id: _id as Id<"blogPosts">,
-      title: String((body as Record<string, unknown>).title),
-      slug: String((body as Record<string, unknown>).slug),
-      excerpt: String((body as Record<string, unknown>).excerpt),
-      content: String((body as Record<string, unknown>).content),
-      imageUrl: String((body as Record<string, unknown>).imageUrl),
-      categories: Array.isArray((body as Record<string, unknown>).categories)
-        ? ((body as Record<string, unknown>).categories as string[])
+    const ref = db.collection("blogPosts").doc(String(body._id));
+    const exists = await ref.get();
+    if (!exists.exists) return errorResponse("Not found", 404);
+    const updated = {
+      title: sanitizeBlogTitle(String(body.title)),
+      slug: sanitizeBlogSlug(String(body.slug)),
+      excerpt: sanitizeBlogExcerpt(String(body.excerpt)),
+      content: sanitizeBlogContent(String(body.content)),
+      imageUrl: body.imageUrl ? String(body.imageUrl) : undefined,
+      categories: Array.isArray(body.categories)
+        ? body.categories.slice(0, 10)
         : [],
+      updatedAt: Date.now(),
     };
-    const result = await convexMutationWithAuth(req, api.blog.updateBlogPost, updateData);
-    console.log("[PUT /api/blog/[slug]] Convex mutation result:", result);
-    return successResponse(result);
-  } catch (err: unknown) {
-    console.error("[PUT /api/blog/[slug]] Error:", err);
+    await ref.set(updated, { merge: true });
+    const doc = await ref.get();
+    return successResponse({ _id: doc.id, ...doc.data() });
+  } catch (e) {
     return errorResponse(
-      (err as Error)?.message || "Failed to update blog post",
+      (e as Error).message || "Failed to update blog post",
       500
     );
   }

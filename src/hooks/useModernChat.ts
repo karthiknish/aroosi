@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMatchMessages } from "@/lib/utils/useMatchMessages";
+// Firestore real-time messaging hook
+import { useRealTimeMessages } from "@/hooks/useRealTimeMessages";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { useTypingIndicators } from "@/hooks/useTypingIndicators";
 import { getPresence, heartbeat } from "@/lib/api/conversation";
@@ -30,21 +31,32 @@ export function useModernChat({
 
   const {
     messages,
-    loading,
-    loadingOlder,
-    hasMore,
-    fetchOlder,
-    sendMessage,
-    connectionStatus,
+    isConnected: connectionStatusBool,
+    sendMessage: sendMessageFs,
+    sendTypingStart,
+    sendTypingStop,
+    markAsRead,
     error,
-    getLastReadAtForOther,
-  } = useMatchMessages(conversationId, "");
+  } = useRealTimeMessages({ conversationId });
+
+  // Shim previous shape
+  const connectionStatus: "connected" | "connecting" | "disconnected" =
+    connectionStatusBool ? "connected" : "connecting"; // simple mapping
+  const loading = false; // onSnapshot handles streaming; could add local flag
+  const loadingOlder = false; // pagination not yet implemented in Firestore hook
+  const hasMore = false; // TODO: implement pagination via startAfter
+  const fetchOlder = async () => undefined; // placeholder
+  const getLastReadAtForOther = (otherId: string) => 0; // TODO: integrate read receipts collection if added
 
   // Typing indicators
+  // Replace typing indicators with Firestore hook wrappers
   const { typingUsers, startTyping, stopTyping } = useTypingIndicators({
     conversationId,
     currentUserId,
-  });
+    // Pass through to Firestore typing updates
+    customStart: sendTypingStart,
+    customStop: sendTypingStop,
+  } as any);
 
   // Delivery receipts
   const {
@@ -228,7 +240,10 @@ export function useModernChat({
         markMessageAsPending(tempId);
 
         await withRetry(
-          () => sendMessage(payload),
+          () =>
+            sendMessageFs(payload.text, payload.toUserId).catch((err) => {
+              throw err;
+            }),
           3,
           (err, attempt) => {
             const msg =
@@ -266,7 +281,7 @@ export function useModernChat({
       isBlocked,
       currentUserId,
       matchUserId,
-      sendMessage,
+      sendMessageFs,
       stopTyping,
       markMessageAsPending,
       markMessageAsSent,

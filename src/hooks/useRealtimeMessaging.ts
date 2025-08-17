@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useAuthContext as useAuth } from "@/components/ClerkAuthProvider";
+import { useAuthContext as useAuth } from "@/components/FirebaseAuthProvider";
 import { useSubscriptionStatus } from "./useSubscription";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { matchMessages } from "@/lib/api/matchMessages";
@@ -168,7 +168,7 @@ export function useRealtimeMessaging() {
 
   // Initialize WebSocket connection
   const initializeConnection = useCallback(() => {
-    if (!user?.id) return;
+    if (!user?.uid) return;
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
 
@@ -182,7 +182,7 @@ export function useRealtimeMessaging() {
               ...prev,
               messages: [...prev.messages, data.message],
             }));
-            if (data.message.fromUserId !== user.id) {
+            if (data.message.fromUserId !== user.uid) {
               showSuccessToast("New message received");
             }
             break;
@@ -234,11 +234,11 @@ export function useRealtimeMessaging() {
     );
 
     wsService.current.connect();
-  }, [user?.id]);
+  }, [user?.uid]);
 
   // Connect/disconnect based on auth state
   useEffect(() => {
-    if (user?.id) {
+    if (user?.uid) {
       initializeConnection();
     }
 
@@ -247,7 +247,7 @@ export function useRealtimeMessaging() {
         wsService.current.disconnect();
       }
     };
-  }, [user?.id, initializeConnection]);
+  }, [user?.uid, initializeConnection]);
 
   // Join conversation
   const joinConversation = useCallback((conversationId: string) => {
@@ -316,14 +316,14 @@ export function useRealtimeMessaging() {
         // Also update via REST API for persistence
         await matchMessages.markConversationAsRead({
           conversationId,
-          userId: user?.id || "",
+          userId: user?.uid || "",
         });
         return true;
       } catch {
         return false;
       }
     },
-    [state.connectionStatus.isConnected, user?.id]
+      [state.connectionStatus.isConnected, user?.uid]
   );
 
   // Start typing

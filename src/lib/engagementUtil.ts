@@ -61,14 +61,26 @@ export async function enrichProfiles(userIds: string[]): Promise<QuickPickProfil
 export async function fetchIcebreakers(): Promise<
   Array<{ id: string; text: string; answered?: boolean }>
 > {
-  return getJson("/api/icebreakers");
+  const res = await getJson<{
+    success: boolean;
+    data?: Array<{ id: string; text: string; answered?: boolean }>;
+  }>("/api/icebreakers");
+  // Some older clients expected plain array; support both
+  if (Array.isArray((res as any).data)) return (res as any).data;
+  if (Array.isArray(res)) return res as any;
+  return [];
 }
 
 export async function answerIcebreaker(
   questionId: string,
   answer: string
 ): Promise<{ success: boolean }> {
-  return postJson("/api/icebreakers/answer", { questionId, answer });
+  const res = await postJson<{ success: boolean; data?: any }>(
+    "/api/icebreakers/answer",
+    { questionId, answer }
+  );
+  if ((res as any).success) return { success: true };
+  return { success: false };
 }
 
 

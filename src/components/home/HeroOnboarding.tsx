@@ -35,6 +35,9 @@ import {
   enhancedValidationSchemas,
 } from "@/lib/validation/profileValidation";
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
+import { auth, db } from "@/lib/firebaseClient";
+import { doc, setDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 import RequiredLabel from "../ui/RequiredLabel";
 
 interface OnboardingData {
@@ -61,10 +64,15 @@ const heroStep3Schema = enhancedValidationSchemas.basicInfo.pick({
   phoneNumber: true,
 });
 
-const onboardingStepSchemas = [heroStep1Schema, heroStep2Schema, heroStep3Schema];
+const onboardingStepSchemas = [
+  heroStep1Schema,
+  heroStep2Schema,
+  heroStep3Schema,
+];
 
 function HeroOnboardingInner() {
   const { formData, updateFormData } = useProfileWizard();
+  const router = useRouter();
   const [step, setStep] = useState<number>(() => {
     try {
       if (typeof window !== "undefined") {
@@ -94,8 +102,6 @@ function HeroOnboardingInner() {
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [heroErrors, setHeroErrors] = useState<Record<string, string>>({});
-  
-
 
   const fieldLabels: Record<keyof OnboardingData, string> = {
     profileFor: "This profile is for",
@@ -118,8 +124,46 @@ function HeroOnboardingInner() {
         phoneNumber: (formData.phoneNumber as string) ?? "",
         [field]: value,
       };
-      window.localStorage.setItem(STORAGE_KEYS.HERO_ONBOARDING, JSON.stringify(snapshot));
+      window.localStorage.setItem(
+        STORAGE_KEYS.HERO_ONBOARDING,
+        JSON.stringify(snapshot)
+      );
     } catch {}
+  };
+
+  // Persist partial onboarding to Firestore for authenticated users (idempotent merge)
+  const persistPartialToFirestore = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return; // Not signed in yet; defer until sign in
+      const ref = doc(db, "users", user.uid);
+      // Merge minimal onboarding fields without overwriting later profile fields
+      await setDoc(
+        ref,
+        {
+          // basic identity
+          id: user.uid,
+          email: user.email ?? null,
+          onboardingPartial: {
+            profileFor: heroData.profileFor || null,
+            gender: heroData.gender || null,
+            fullName: heroData.fullName || null,
+            dateOfBirth: heroData.dateOfBirth || null,
+            phoneNumber: heroData.phoneNumber || null,
+            step,
+            updatedAt: Date.now(),
+          },
+          updatedAt: Date.now(),
+        },
+        { merge: true }
+      );
+    } catch (e) {
+      // Non-fatal; surfaces only in dev console
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
+        console.warn("HeroOnboarding partial persist failed", e);
+      }
+    }
   };
 
   const validateOnboardingStep = (): boolean => {
@@ -161,7 +205,10 @@ function HeroOnboardingInner() {
     if (step === 3) {
       const cleaned = String(heroData.phoneNumber ?? "").replace(/[^\d+]/g, "");
       const digits = cleaned.replace(/\D/g, "");
-      const normalized = digits.length >= 10 && digits.length <= 15 ? `+${digits}` : String(heroData.phoneNumber ?? "");
+      const normalized =
+        digits.length >= 10 && digits.length <= 15
+          ? `+${digits}`
+          : String(heroData.phoneNumber ?? "");
       if (normalized !== heroData.phoneNumber) {
         updateFormData({ phoneNumber: normalized });
       }
@@ -171,7 +218,11 @@ function HeroOnboardingInner() {
     if (!validateOnboardingStep()) return;
 
     if (step < 3) {
-      setStep(step + 1);
+      setStep((s) => {
+        const next = s + 1;
+        void persistPartialToFirestore();
+        return next;
+      });
     } else {
       void handleSubmit();
     }
@@ -201,13 +252,20 @@ function HeroOnboardingInner() {
         showErrorToast(null, `Missing: ${pretty}${more}.`);
         return;
       }
-      // Open the profile creation modal with the collected data
+      // If user already authenticated, persist partial immediately (non-blocking)
+      try {
+        await persistPartialToFirestore();
+      } catch {}
+      // Always open modal; Step7 handles sign up / sign in if needed
       setShowProfileModal(true);
       showSuccessToast("Great! Let’s complete your profile.");
       try {
         if (typeof window !== "undefined") {
           // Fire-and-forget signal for belt-and-braces clearing listeners
-          window.postMessage({ type: "onboarding-opened" }, window.location.origin);
+          window.postMessage(
+            { type: "onboarding-opened" },
+            window.location.origin
+          );
         }
       } catch {}
     } catch {
@@ -289,7 +347,7 @@ function HeroOnboardingInner() {
                       >
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
-                                            <SelectContent
+                      <SelectContent
                         className="bg-white border border-gray-200 z-[100]"
                         style={{ backgroundColor: "white" }}
                       >
@@ -314,7 +372,10 @@ function HeroOnboardingInner() {
                       </SelectContent>
                     </Select>
                     {heroErrors.profileFor && (
-                      <p className="text-xs text-red-600 mt-1" id="profileFor-error">
+                      <p
+                        className="text-xs text-red-600 mt-1"
+                        id="profileFor-error"
+                      >
                         {heroErrors.profileFor}
                       </p>
                     )}
@@ -360,7 +421,10 @@ function HeroOnboardingInner() {
                       </Button>
                     </div>
                     {heroErrors.gender && (
-                      <p className="text-xs text-red-600 mt-1" id="gender-error">
+                      <p
+                        className="text-xs text-red-600 mt-1"
+                        id="gender-error"
+                      >
                         {heroErrors.gender}
                       </p>
                     )}
@@ -388,10 +452,15 @@ function HeroOnboardingInner() {
                       }
                       className="w-full bg-white"
                       aria-invalid={!!heroErrors.fullName}
-                      aria-describedby={heroErrors.fullName ? "fullName-error" : undefined}
+                      aria-describedby={
+                        heroErrors.fullName ? "fullName-error" : undefined
+                      }
                     />
                     {heroErrors.fullName && (
-                      <p className="text-xs text-red-600 mt-1" id="fullName-error">
+                      <p
+                        className="text-xs text-red-600 mt-1"
+                        id="fullName-error"
+                      >
                         {heroErrors.fullName}
                       </p>
                     )}
@@ -410,7 +479,7 @@ function HeroOnboardingInner() {
                           variant="outline"
                           className={cn(
                             "w-full justify-start text-left font-normal bg-white",
-                            !heroData.dateOfBirth && "text-muted-foreground",
+                            !heroData.dateOfBirth && "text-muted-foreground"
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -435,12 +504,15 @@ function HeroOnboardingInner() {
                           onSelect={(date) => {
                             // Guard against invalid dates before writing to state
                             if (!date || isNaN(date.getTime())) {
-                              showErrorToast(null, "Please select a valid date.");
+                              showErrorToast(
+                                null,
+                                "Please select a valid date."
+                              );
                               return;
                             }
                             handleInputChange(
                               "dateOfBirth",
-                              format(date, "yyyy-MM-dd"),
+                              format(date, "yyyy-MM-dd")
                             );
                           }}
                           disabled={(date) => {
@@ -448,7 +520,7 @@ function HeroOnboardingInner() {
                             const minDate = new Date(
                               today.getFullYear() - 18,
                               today.getMonth(),
-                              today.getDate(),
+                              today.getDate()
                             );
                             return (
                               date > minDate || date < new Date("1900-01-01")
@@ -461,13 +533,17 @@ function HeroOnboardingInner() {
                     </Popover>
                     {/* Inline helper and friendly message */}
                     {heroErrors.dateOfBirth && (
-                      <p className="text-xs text-red-600 mt-1" id="dateOfBirth-error">
+                      <p
+                        className="text-xs text-red-600 mt-1"
+                        id="dateOfBirth-error"
+                      >
                         {heroErrors.dateOfBirth}
                       </p>
                     )}
                     {heroData.dateOfBirth && (
                       <p className="text-sm text-gray-500 mt-1">
-                        Date selected: {format(new Date(heroData.dateOfBirth), "PPP")}
+                        Date selected:{" "}
+                        {format(new Date(heroData.dateOfBirth), "PPP")}
                       </p>
                     )}
                   </div>
@@ -490,16 +566,24 @@ function HeroOnboardingInner() {
                         // Strip spaces and normalize to "+<digits>" for storage in context
                         const cleaned = value.replace(/[^\d+]/g, "");
                         const digits = cleaned.replace(/\D/g, "");
-                        const normalized = digits.length >= 10 && digits.length <= 15 ? `+${digits}` : value;
+                        const normalized =
+                          digits.length >= 10 && digits.length <= 15
+                            ? `+${digits}`
+                            : value;
                         handleInputChange("phoneNumber", normalized);
                       }}
                       placeholder="7XXX XXXXXX"
                       className="w-full"
                       aria-invalid={!!heroErrors.phoneNumber}
-                      aria-describedby={heroErrors.phoneNumber ? "phoneNumber-error" : undefined}
+                      aria-describedby={
+                        heroErrors.phoneNumber ? "phoneNumber-error" : undefined
+                      }
                     />
                     {heroErrors.phoneNumber && (
-                      <p className="text-xs text-red-600 mt-1" id="phoneNumber-error">
+                      <p
+                        className="text-xs text-red-600 mt-1"
+                        id="phoneNumber-error"
+                      >
                         {heroErrors.phoneNumber}
                       </p>
                     )}
@@ -571,6 +655,8 @@ function HeroOnboardingInner() {
       <ProfileCreationModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
+        // Cast onboarding subset into the generic profile creation data shape
+        initialData={heroData as unknown as Partial<Record<string, unknown>>}
       />
     </div>
   );

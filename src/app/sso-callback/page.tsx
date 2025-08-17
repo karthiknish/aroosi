@@ -1,87 +1,29 @@
 "use client";
 
-import { useSignUp, useSignIn } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useClerkAuth } from "@/components/ClerkAuthProvider";
-import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { Suspense } from 'react';
 import Loading from './loading';
 
 export const dynamic = 'force-dynamic';
 
 function SSOCallbackContent() {
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const { signIn } = useSignIn();
-  const { refreshUser } = useClerkAuth();
+  const { refreshUser } = useFirebaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoaded) return;
-
     const handleSSOCallback = async () => {
       try {
-        // Check if there's a signup attempt in progress
-        if (signUp && 'status' in signUp && signUp.status === "complete" && 'createdSessionId' in signUp && signUp.createdSessionId) {
-          // If signup is complete, set the session active
-          await setActive?.({ session: signUp.createdSessionId });
-          // Refresh user data in our context
-          await refreshUser();
-          // Ensure Convex user/profile exists before redirecting
-          try {
-            for (let i = 0; i < 8; i++) {
-              const r = await getCurrentUserWithProfile();
-              if (r?.success && r?.data) break;
-              await new Promise((res) => setTimeout(res, 250 * (i + 1)));
-            }
-          } catch {}
-          router.push("/success");
-          return;
-        }
-
-        // Check if there's a signin attempt in progress
-        if (signIn && 'status' in signIn && signIn.status === "complete" && 'createdSessionId' in signIn && signIn.createdSessionId) {
-          // If signin is complete, set the session active
-          await setActive?.({ session: signIn.createdSessionId });
-          // Refresh user data in our context
-          await refreshUser();
-          
-          // Check if user has a profile
-          const profileResponse = await getCurrentUserWithProfile();
-          if (!profileResponse.success || !profileResponse.data) {
-            setError("No profile found for this account. Please create a profile first.");
-            return;
-          }
-          
-          // Redirect to search for existing users
-          router.push("/search");
-          return;
-        }
-
         // Get redirect URL from query params or use defaults
         const redirectUrl = searchParams.get("redirect_url");
-        const defaultRedirectForSignUp = "/success";
-        const defaultRedirectForSignIn = "/search";
+        const defaultRedirect = "/search";
         
-        // Try to complete the sign in flow first
-        try {
-          await signIn?.authenticateWithRedirect({
-            strategy: "oauth_google",
-            redirectUrl: "/sso-callback",
-            redirectUrlComplete: redirectUrl || defaultRedirectForSignIn,
-          });
-        } catch (signInError) {
-          // If sign in fails, try sign up
-          await signUp?.authenticateWithRedirect({
-            strategy: "oauth_google",
-            redirectUrl: "/sso-callback",
-            redirectUrlComplete: redirectUrl || defaultRedirectForSignUp,
-          });
-        }
-
-        // The redirect will happen automatically, so we don't need to check the result
+        // For now, redirect to sign-in with an error since we're removing Clerk
+        router.push(`/sign-in?error=sso_not_supported&redirect_url=${encodeURIComponent(redirectUrl || defaultRedirect)}`);
+        
         return;
       } catch (err) {
         console.error("SSO callback error:", err);
@@ -90,7 +32,7 @@ function SSOCallbackContent() {
     };
 
     handleSSOCallback();
-  }, [isLoaded, signUp, signIn, setActive, router, refreshUser, searchParams]);
+  }, [router, refreshUser, searchParams]);
 
   if (error) {
     return (

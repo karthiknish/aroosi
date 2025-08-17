@@ -11,8 +11,7 @@ import {
   weeklyMatchesDigestTemplate,
   welcomeDay1Template,
 } from "@/lib/marketingEmailTemplates";
-import { convexQueryWithAuth } from "@/lib/convexServer";
-import { api } from "@convex/_generated/api";
+import { db } from "@/lib/firebaseAdmin";
 import { sendUserNotification } from "@/lib/email";
 import type { Profile } from "@/types/profile";
 
@@ -54,6 +53,14 @@ export async function POST(request: Request) {
       body: customBody,
       preheader,
       abTest,
+      search,
+      plan,
+      banned,
+      isProfileComplete,
+      page,
+      pageSize,
+      sortBy,
+      sortDir,
     } = (body || {}) as {
       templateKey?: string;
       params?: { args?: unknown[] };
@@ -64,6 +71,14 @@ export async function POST(request: Request) {
       body?: string;
       preheader?: string;
       abTest?: { subjects: [string, string]; ratio?: number };
+      search?: string;
+      plan?: string;
+      banned?: string;
+      isProfileComplete?: string;
+      page?: number;
+      pageSize?: number;
+      sortBy?: string;
+      sortDir?: string;
     };
 
     if (!templateKey && !subject) {
@@ -83,36 +98,83 @@ export async function POST(request: Request) {
       });
     }
 
-    // Fetch candidate audience
-    const result = await convexQueryWithAuth(
-      request as unknown as NextRequest,
-      api.users.adminListProfiles,
-      {
-        search: undefined,
-        page: 0,
-        pageSize: effectiveMax,
-      } as any
-    );
-
-    // Be tolerant to backend shape; only pick what we need and keep optionals
-    const profiles = (
-      Array.isArray(result?.profiles) ? result.profiles : []
-    ) as Array<
-      Partial<
-        Pick<
-          Profile,
-          | "email"
-          | "fullName"
-          | "aboutMe"
-          | "profileImageUrls"
-          | "images"
-          | "interests"
-          | "isProfileComplete"
-        >
-      > & {
-        email?: string;
+    // Audience selection with filtering + pagination
+    const primaryLimit = Math.min(effectiveMax, 5000); // guard
+    let queryRef: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> =
+      db.collection("users");
+    if (plan) queryRef = queryRef.where("subscriptionPlan", "==", plan);
+    if (banned === "true") queryRef = queryRef.where("banned", "==", true);
+    // Sorting (fallback createdAt)
+    const sortField = ["createdAt", "updatedAt", "subscriptionPlan"].includes(
+      String(sortBy)
+    )
+      ? (sortBy as string)
+      : "createdAt";
+    const dir = String(sortDir).toLowerCase() === "asc" ? "asc" : "desc";
+    try {
+      queryRef = queryRef.orderBy(sortField, dir as any);
+    } catch {}
+    const usersSnap = await queryRef.limit(primaryLimit).get();
+    let profiles = usersSnap.docs.map(
+      (
+        d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
+      ) => {
+        const u = d.data() as Record<string, any>;
+        return {
+          email: u.email,
+          fullName: u.fullName,
+          aboutMe: u.aboutMe,
+          profileImageUrls: Array.isArray(u.profileImageUrls)
+            ? (u.profileImageUrls as string[])
+            : [],
+          images: u.images,
+          interests: u.interests,
+          isProfileComplete: !!u.isProfileComplete,
+          subscriptionPlan: u.subscriptionPlan,
+          banned: !!u.banned,
+          createdAt: u.createdAt,
+          updatedAt: u.updatedAt,
+        } as Partial<Profile> & {
+          email?: string;
+          banned?: boolean;
+          subscriptionPlan?: string;
+          createdAt?: number;
+          updatedAt?: number;
+        };
       }
-    >;
+    );
+    const term = (search || "").trim().toLowerCase();
+    if (term) {
+      profiles = profiles.filter(
+        (p) =>
+          (p.fullName && String(p.fullName).toLowerCase().includes(term)) ||
+          (p.aboutMe && String(p.aboutMe).toLowerCase().includes(term))
+      );
+    }
+    if (isProfileComplete === "true")
+      profiles = profiles.filter((p) => p.isProfileComplete === true);
+    if (isProfileComplete === "false")
+      profiles = profiles.filter((p) => p.isProfileComplete !== true);
+    if (plan) profiles = profiles.filter((p) => p.subscriptionPlan === plan);
+    if (banned === "true") profiles = profiles.filter((p) => p.banned === true);
+    if (banned === "false")
+      profiles = profiles.filter((p) => p.banned !== true);
+    // Secondary sort (stable)
+    const dirMul = dir === "asc" ? 1 : -1;
+    profiles.sort((a: any, b: any) => {
+      const av = a?.[sortField] ?? 0;
+      const bv = b?.[sortField] ?? 0;
+      return av === bv ? 0 : av > bv ? dirMul : -dirMul;
+    });
+    const safePageSize = Math.min(
+      Math.max(pageSize ?? effectiveMax, 1),
+      effectiveMax
+    );
+    const safePage = Math.max(page ?? 1, 1);
+    const start = (safePage - 1) * safePageSize;
+    const finalProfiles = profiles
+      .slice(start, start + safePageSize)
+      .slice(0, effectiveMax);
 
     const templateFn = templateKey ? TEMPLATE_MAP[templateKey] : null;
 
@@ -120,7 +182,7 @@ export async function POST(request: Request) {
     if (dryRun) {
       type Preview = { email?: string; subject: string; abVariant?: "A" | "B" };
       const previews: Preview[] = [];
-      const sample = profiles.slice(0, Math.min(10, profiles.length));
+      const sample = finalProfiles.slice(0, Math.min(10, finalProfiles.length));
       const ratio = Math.max(1, Math.min(99, Number(abTest?.ratio ?? 50)));
       const aCount = Math.round((sample.length * ratio) / 100);
       for (let i = 0; i < sample.length; i++) {
@@ -167,6 +229,8 @@ export async function POST(request: Request) {
         previews,
         maxAudience: effectiveMax,
         actorId: userId,
+        page: safePage,
+        pageSize: safePageSize,
         abTest:
           abTest && abTest.subjects
             ? {
@@ -194,9 +258,9 @@ export async function POST(request: Request) {
 
     let sent = 0;
     const ratio = Math.max(1, Math.min(99, Number(abTest?.ratio ?? 50)));
-    const aCount = Math.round((profiles.length * ratio) / 100);
-    for (let i = 0; i < profiles.length; i++) {
-      const p = profiles[i];
+    const aCount = Math.round((finalProfiles.length * ratio) / 100);
+    for (let i = 0; i < finalProfiles.length; i++) {
+      const p = finalProfiles[i];
       try {
         const baseProfile = {
           ...(p as Profile),
@@ -278,10 +342,12 @@ export async function POST(request: Request) {
 
     return successResponse({
       dryRun: false,
-      attempted: profiles.length,
+      attempted: finalProfiles.length,
       sent,
       maxAudience: effectiveMax,
       actorId: userId,
+      page: safePage,
+      pageSize: safePageSize,
     });
   } catch (error) {
     devLog("error", "admin.marketing-email", "unhandled_error", {

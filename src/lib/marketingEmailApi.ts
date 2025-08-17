@@ -1,5 +1,6 @@
 import { ApiResponse } from "@/lib/utils/apiResponse";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 
 /**
  * Send a marketing email campaign.
@@ -30,14 +31,14 @@ export async function sendMarketingEmail(
   }>
 > {
   try {
-    const response = await fetch("/api/admin/marketing-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Cookie-based session; no Authorization header
-      },
-      body: JSON.stringify(payload),
-    });
+  const response = await fetchWithFirebaseAuth("/api/admin/marketing-email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      // Cookie-based session; no Authorization header
+    },
+    body: JSON.stringify(payload),
+  });
 
     const data = await response.json().catch(() => ({}));
 

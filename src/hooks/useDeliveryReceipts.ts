@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 import { DeliveryStatus } from "@/components/chat/DeliveryStatus";
 
 interface DeliveryReceipt {
@@ -42,17 +43,17 @@ export function useDeliveryReceipts({
   const sendDeliveryReceipt = useCallback(
     async (messageId: string, status: "delivered" | "read" | "failed") => {
       try {
-        const response = await fetch("/api/delivery-receipts", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            // Cookie-based session; no Authorization header
-          },
-          body: JSON.stringify({
-            messageId,
-            status,
-          }),
-        });
+  const response = await fetchWithFirebaseAuth("/api/delivery-receipts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      // Cookie-based session; no Authorization header
+    },
+    body: JSON.stringify({
+      messageId,
+      status,
+    }),
+  });
 
         if (response.ok) {
           const data: unknown = await response.json();
@@ -72,14 +73,14 @@ export function useDeliveryReceipts({
   // Fetch delivery receipts for conversation
   const fetchDeliveryReceipts = useCallback(async () => {
     try {
-      const response = await fetch(
-        `/api/delivery-receipts?conversationId=${encodeURIComponent(conversationId)}`,
-        {
-          headers: {
-            // Cookie-based session; no Authorization header
-          },
-        },
-      );
+  const response = await fetchWithFirebaseAuth(
+    `/api/delivery-receipts?conversationId=${encodeURIComponent(conversationId)}`,
+    {
+      headers: {
+        // Cookie-based session; no Authorization header
+      },
+    }
+  );
 
       if (response.ok) {
         const data: unknown = await response.json();
@@ -165,13 +166,16 @@ export function useDeliveryReceipts({
   const markMessageAsRead = useCallback(
     async (messageId: string) => {
       try {
-        await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/mark-read`, {
-          method: "POST",
-          headers: {
-            // Cookie-based session; no Authorization header
-            "Content-Type": "application/json",
-          },
-        });
+  await fetchWithFirebaseAuth(
+    `/api/conversations/${encodeURIComponent(conversationId)}/mark-read`,
+    {
+      method: "POST",
+      headers: {
+        // Cookie-based session; no Authorization header
+        "Content-Type": "application/json",
+      },
+    }
+  );
       } catch (e) {
         console.warn("markMessageAsRead failed, falling back to delivery receipt", e);
         await sendDeliveryReceipt(messageId, "read");

@@ -6,7 +6,7 @@ import {
   AdminProfileMatchesResult,
   fetchAllAdminProfileImages,
 } from "@/lib/profile/adminProfileApi";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserCircle, ExternalLink, Users, Heart } from "lucide-react";

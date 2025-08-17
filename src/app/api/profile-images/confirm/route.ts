@@ -1,47 +1,28 @@
 import { NextRequest } from "next/server";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth, AuthError, authErrorResponse } from "@/lib/auth/requireAuth";
-import { convexQueryWithAuth } from "@/lib/convexServer";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { db } from "@/lib/firebaseAdmin";
 
-export async function POST(request: NextRequest) {
+export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
   try {
-    try {
-      await requireAuth(request);
-    } catch (e) {
-      if (e instanceof AuthError) {
-        return authErrorResponse(e.message, { status: e.status, code: e.code });
-      }
-      return authErrorResponse("Authentication failed", {
-        status: 401,
-        code: "ACCESS_INVALID",
-      });
-    }
-
-    const { userId } = await requireAuth(request);
-    if (!userId) {
-      return errorResponse("User ID not found", 401);
-    }
-
-    // Ensure profile exists
-    const profile = await convexQueryWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
-    if (!profile) return errorResponse("Profile not found", 404);
-
-    const { fileName, uploadId } = (await request.json()) as {
+    const { fileName, uploadId } = (await request.json().catch(() => ({}))) as {
       fileName?: string;
-      uploadId?: string;
+      uploadId?: string; // treat as storageId for firebase flow
     };
     if (!fileName || !uploadId) {
       return errorResponse("Missing fileName or uploadId", 400);
     }
-
-    // Placeholder: verification/processing pipeline handled server-side (Convex storage)
-    console.log(`Confirming image upload for user ${userId}: ${fileName} (${uploadId})`);
-
+    // Check image metadata exists (best-effort)
+    const docId = uploadId.split("/").pop() || uploadId;
+    const snap = await db
+      .collection("users")
+      .doc(authUser.id)
+      .collection("images")
+      .doc(docId)
+      .get();
+    if (!snap.exists) {
+      return errorResponse("Image not found", 404);
+    }
     return successResponse({
       message: "Image upload confirmed",
       fileName,
@@ -52,4 +33,4 @@ export async function POST(request: NextRequest) {
     console.error("Error confirming image upload:", error);
     return errorResponse("Failed to confirm image upload", 500);
   }
-}
+});

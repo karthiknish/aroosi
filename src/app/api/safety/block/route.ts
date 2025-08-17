@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
-import { convexMutationWithAuth } from "@/lib/convexServer";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import { db } from "@/lib/firebaseAdmin";
+import { COL_RECOMMENDATIONS } from "@/lib/firestoreSchema";
 
 // In-memory short cooldown map per (blocker, target)
 const perTargetCooldown = new Map<string, number>();
@@ -53,13 +52,44 @@ export async function POST(request: NextRequest) {
       return errorResponse("Please wait before blocking this user again", 429);
     }
 
-    // Block the user via server-side mutation helper
-    await convexMutationWithAuth(request, api.safety.blockUser, {
-      blockerUserId: userId as Id<"users">,
-      blockedUserId: blockedUserId as Id<"users">,
-    } as any);
+    // Persist block relation in Firestore (collection: blocks, docId: `${blocker}_${blocked}`)
+    try {
+      const docId = `${userId}_${blockedUserId}`;
+      await db.collection("blocks").doc(docId).set(
+        {
+          blockerId: userId,
+          blockedUserId,
+          createdAt: Date.now(),
+        },
+        { merge: true }
+      );
+    } catch (e) {
+      devLog("error", "safety.block", "firestore_error", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+      return errorResponse("Failed to block user", 500);
+    }
 
     perTargetCooldown.set(key, now);
+
+    // Invalidate recommendation cache for blocker (and optionally blocked user) by deleting stale rec docs
+    try {
+      const nowTs = Date.now();
+      const snaps = await db
+        .collection(COL_RECOMMENDATIONS)
+        .where("userId", "in", [userId, blockedUserId])
+        .where("expiresAt", ">", nowTs - 30 * 60 * 1000)
+        .get();
+      const batch = db.batch();
+      snaps.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot) =>
+        batch.delete(d.ref)
+      );
+      if (!snaps.empty) await batch.commit();
+    } catch (e) {
+      devLog("warn", "safety.block", "recs_cache_invalidate_failed", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
 
     return successResponse({
       message: "User blocked successfully",

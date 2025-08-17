@@ -2,11 +2,11 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { useClerkAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { isAuthenticated } = useClerkAuth();
+  const { isAuthenticated } = useFirebaseAuth();
 
   React.useEffect(() => {
     // If user is already authenticated, redirect to search

@@ -1,4 +1,9 @@
 import { postJson } from "@/lib/http/client";
+// Firebase Storage migration helpers
+import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
+import { auth, storage } from "@/lib/firebaseClient";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Image utilities using the centralized HTTP client.
@@ -27,120 +32,141 @@ export const imageApi = {
   updateImageOrder,
 };
 
-export async function uploadProfileImage(
-  file: File
-): Promise<{ imageId: string; url?: string }> {
-  const form = new FormData();
-  form.append("image", file, file.name);
-  const resp = await fetch("/api/profile-images/upload", {
+const USE_FIREBASE_STORAGE =
+  process.env.NEXT_PUBLIC_USE_FIREBASE_STORAGE === "true";
+
+// Common validation aligned with server rules
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg",
+];
+const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
+type UploadResult = { imageId: string; url?: string };
+
+async function registerFirebaseImageMetadata(args: {
+  storageId: string;
+  file: File;
+}): Promise<UploadResult> {
+  // Call firebase metadata route (JSON branch) which persists to Firestore
+  const res = await fetchWithFirebaseAuth("/api/profile-images/firebase", {
     method: "POST",
-    body: form,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      storageId: args.storageId,
+      fileName: args.file.name,
+      contentType: args.file.type,
+      size: args.file.size,
+    }),
   });
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => "");
-    throw new Error(txt || "Failed to upload image");
+  if (!res.ok) {
+    let txt = "";
+    try {
+      txt = await res.text();
+    } catch {}
+    throw new Error(txt || "Failed to save image metadata");
   }
-  const json = (await resp.json().catch(() => ({}))) as {
+  const data = (await res.json().catch(() => ({}))) as {
     imageId?: string;
     url?: string;
+    storageId?: string;
   };
-  if (!json.imageId) throw new Error("Upload response missing imageId");
-  return { imageId: json.imageId, url: json.url };
+  const imageId = data.imageId || data.storageId || args.storageId;
+  return { imageId, url: data.url };
+}
+
+async function uploadViaFirebaseStorage(
+  file: File,
+  onProgress?: (loaded: number, total: number) => void,
+  signal?: AbortSignal
+): Promise<UploadResult> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not authenticated");
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error("Unsupported image type");
+  }
+  if (file.size > MAX_SIZE_BYTES) {
+    throw new Error("File too large (max 5MB)");
+  }
+  const ext = file.name.split(".").pop() || "jpg";
+  const path = `users/${user.uid}/profile-images/${Date.now()}_${uuidv4()}.${ext}`;
+  const storageRef = ref(storage, path);
+  const metadata = {
+    contentType: file.type,
+    customMetadata: {
+      uploadedBy: user.uid,
+      originalName: file.name,
+    },
+  } as any;
+  const task = uploadBytesResumable(storageRef, file, metadata);
+
+  return await new Promise<UploadResult>((resolve, reject) => {
+    if (signal) {
+      if (signal.aborted) {
+        task.cancel();
+        return reject(new Error("Upload aborted"));
+      }
+      signal.addEventListener("abort", () => {
+        try {
+          task.cancel();
+        } catch {}
+        reject(new Error("Upload aborted"));
+      });
+    }
+    task.on(
+      "state_changed",
+      (snap) => {
+        if (onProgress) onProgress(snap.bytesTransferred, snap.totalBytes);
+      },
+      (err) => reject(err),
+      async () => {
+        try {
+          const url = await getDownloadURL(task.snapshot.ref).catch(
+            () => undefined
+          );
+          const meta = await registerFirebaseImageMetadata({
+            storageId: path,
+            file,
+          });
+          // prefer metadata url if provided
+          resolve({ imageId: meta.imageId, url: meta.url || url });
+        } catch (e) {
+          reject(e);
+        }
+      }
+    );
+  });
+}
+
+export async function uploadProfileImage(file: File): Promise<UploadResult> {
+  return uploadViaFirebaseStorage(file);
 }
 
 export function uploadProfileImageWithProgress(
   file: File,
   onProgress?: (loaded: number, total: number) => void
-): Promise<{ imageId: string; url?: string }> {
-  return new Promise((resolve, reject) => {
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/profile-images/upload", true);
-      xhr.responseType = "json";
-      xhr.upload.onprogress = (evt) => {
-        if (evt.lengthComputable && typeof onProgress === "function") {
-          onProgress(evt.loaded, evt.total);
-        }
-      };
-      xhr.onload = () => {
-        const status = xhr.status;
-        if (status >= 200 && status < 300) {
-          const data = (xhr.response || {}) as {
-            imageId?: string;
-            url?: string;
-          };
-          if (!data.imageId) {
-            reject(new Error("Upload response missing imageId"));
-            return;
-          }
-          resolve({ imageId: data.imageId, url: data.url });
-        } else {
-          const body =
-            typeof xhr.responseText === "string" ? xhr.responseText : "";
-          reject(new Error(body || `Upload failed (${status})`));
-        }
-      };
-      xhr.onerror = () =>
-        reject(new Error("Network error during image upload"));
-      const form = new FormData();
-      form.append("image", file, file.name);
-      xhr.send(form);
-    } catch (e) {
-      reject(e);
-    }
-  });
+): Promise<UploadResult> {
+  return uploadViaFirebaseStorage(file, onProgress);
 }
 
 export function uploadProfileImageWithProgressCancellable(
   file: File,
   onProgress?: (loaded: number, total: number) => void
-): { promise: Promise<{ imageId: string; url?: string }>; cancel: () => void } {
-  let xhr: XMLHttpRequest | null = null;
-  const promise = new Promise<{ imageId: string; url?: string }>(
-    (resolve, reject) => {
-      try {
-        xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/profile-images/upload", true);
-        xhr.responseType = "json";
-        xhr.upload.onprogress = (evt) => {
-          if (evt.lengthComputable && typeof onProgress === "function") {
-            onProgress(evt.loaded, evt.total);
-          }
-        };
-        xhr.onload = () => {
-          const status = xhr!.status;
-          if (status >= 200 && status < 300) {
-            const data = (xhr!.response || {}) as {
-              imageId?: string;
-              url?: string;
-            };
-            if (!data.imageId) {
-              reject(new Error("Upload response missing imageId"));
-              return;
-            }
-            resolve({ imageId: data.imageId, url: data.url });
-          } else {
-            const body =
-              typeof xhr!.responseText === "string" ? xhr!.responseText : "";
-            reject(new Error(body || `Upload failed (${status})`));
-          }
-        };
-        xhr.onerror = () =>
-          reject(new Error("Network error during image upload"));
-        const form = new FormData();
-        form.append("image", file, file.name);
-        xhr.send(form);
-      } catch (e) {
-        reject(e);
-      }
-    }
-  );
-  const cancel = () => {
-    try {
-      xhr?.abort();
-    } catch {
-      // ignore
-    }
-  };
+): { promise: Promise<UploadResult>; cancel: () => void } {
+  if (USE_FIREBASE_STORAGE) {
+    const controller = new AbortController();
+    const promise = uploadViaFirebaseStorage(
+      file,
+      onProgress,
+      controller.signal
+    );
+    const cancel = () => controller.abort();
+    return { promise, cancel };
+  }
+  const controller = new AbortController();
+  const promise = uploadViaFirebaseStorage(file, onProgress, controller.signal);
+  const cancel = () => controller.abort();
   return { promise, cancel };
 }

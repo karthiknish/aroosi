@@ -2,7 +2,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { ProfileView } from "@/components/profile/ProfileView";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,18 @@ type ImageType = {
 };
 
 const ProfilePage: React.FC = (): React.ReactElement => {
-  const { isLoading: authLoading, isLoaded, isAuthenticated } = useAuthContext();
+  const {
+    isLoading: authLoading,
+    isLoaded,
+    isAuthenticated,
+    user,
+    profile: authProfile,
+  } = useAuthContext();
+  const userId =
+    user?.uid ||
+    (authProfile as any)?._id ||
+    (authProfile as any)?.userId ||
+    "";
   const router = useRouter();
 
   // Fetch profile data
@@ -41,7 +52,7 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   >({
     queryKey: ["profile"],
     queryFn: async () => {
-      const result = await getCurrentUserWithProfile();
+      const result = await getCurrentUserWithProfile(userId);
       if (!result.success || !result.data) return undefined;
 
       // Unwrap potential nested envelopes { success: true, data: {...} }
@@ -120,7 +131,8 @@ const ProfilePage: React.FC = (): React.ReactElement => {
   const deleteProfileMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
       if (!profile?._id) return;
-      await deleteUserProfile();
+      if (!profile?.userId) return;
+      await deleteUserProfile(profile.userId);
     },
     onSuccess: () => {
       router.push("/");

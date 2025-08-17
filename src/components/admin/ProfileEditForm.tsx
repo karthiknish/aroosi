@@ -81,7 +81,7 @@ type Props = {
   profileId?: string;
   token?: string;
   images: ImageType[];
-  setImages: React.Dispatch<React.SetStateAction<ImageType[]>>;
+  setImages?: React.Dispatch<React.SetStateAction<ImageType[]>>;
   imagesLoading: boolean;
   matches?: Profile[];
 };
@@ -163,7 +163,7 @@ export default function ProfileEditForm({
         profileId,
         file: e.target.files[0],
       } as any);
-      setImages((prev) => [...prev, img]);
+      setImages?.((prev) => [...prev, img]);
     } catch (err: unknown) {
       setImageError(
         isErrorWithMessage(err) ? err.message : "Failed to upload image"
@@ -179,9 +179,9 @@ export default function ProfileEditForm({
     setImageError(null);
     try {
       await deleteAdminProfileImageById({ profileId, imageId } as any);
-      setImages((prev) =>
-        prev.filter((img) => (img.id ?? img.storageId) !== imageId)
-      );
+      setImages?.((prev) =>
+    prev.filter((img) => (img.id ?? img.storageId) !== imageId)
+  );
     } catch (err: unknown) {
       setImageError(
         isErrorWithMessage(err) ? err.message : "Failed to delete image"
@@ -248,7 +248,7 @@ export default function ProfileEditForm({
               images={images}
               userId={profileId}
               onReorder={async (newOrder) => {
-                setImages(newOrder);
+                setImages?.(newOrder);
                 if (profileId) {
                   await updateAdminProfileImageOrder({
                     profileId,

@@ -1,71 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Id } from "@convex/_generated/dataModel";
-import { requireAuth, AuthError, authErrorResponse } from "@/lib/auth/requireAuth";
-import { convexQueryWithAuth, convexMutationWithAuth } from "@/lib/convexServer";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { db } from "@/lib/firebaseAdmin";
 
-export async function PUT(request: NextRequest) {
+export const PUT = withFirebaseAuth(async (authUser, request: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
+    // Parse body
+    let body: any = {};
     try {
-      await requireAuth(request);
-    } catch (e) {
-      if (e instanceof AuthError) {
-        return authErrorResponse(e.message, { status: e.status, code: e.code });
-      }
-      return authErrorResponse("Authentication failed", {
-        status: 401,
-        code: "ACCESS_INVALID",
-      });
-    }
-    const { userId } = await requireAuth(request);
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID not found in session", correlationId },
-        { status: 401 }
-      );
-    }
-
-    const profile = await convexQueryWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    ).catch((e: unknown) => {
-      console.error("Profile images MAIN PUT getProfileByUserId error", {
-        scope: "profile_images.main",
-        type: "convex_query_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return null;
-    });
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: "Profile not found", correlationId },
-        { status: 404 }
-      );
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = await request.json();
+      body = await request.json();
     } catch {
-      console.warn("Profile images MAIN PUT invalid JSON", {
-        scope: "profile_images.main",
-        type: "validation_error",
-        correlationId,
-        statusCode: 400,
-        durationMs: Date.now() - startedAt,
-      });
       return NextResponse.json(
         { error: "Invalid JSON", correlationId },
         { status: 400 }
       );
     }
-    const { imageId } = (parsed as { imageId?: string }) || {};
+    const imageId = body?.imageId as string | undefined;
     if (!imageId) {
       return NextResponse.json(
         { error: "Missing imageId", correlationId },
@@ -73,51 +24,41 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const profileImages =
-      (profile as { profileImageIds?: string[] }).profileImageIds || [];
-    if (!profileImages.includes(imageId)) {
+    // Ensure image metadata exists for this user
+    const imageDocId = imageId.includes("/")
+      ? imageId.split("/").pop()!
+      : imageId;
+    const imageDoc = await db
+      .collection("users")
+      .doc(authUser.id)
+      .collection("images")
+      .doc(imageDocId)
+      .get();
+    if (!imageDoc.exists) {
       return NextResponse.json(
-        { error: "Image not found in user's profile", correlationId },
+        { error: "Image not found in user's images", correlationId },
         { status: 404 }
       );
     }
 
-    const updatedImageOrderStrings = [
-      imageId,
-      ...profileImages.filter((id: string) => id !== imageId),
+    // Load current ordering
+    const userSnap = await db.collection("users").doc(authUser.id).get();
+    const data = userSnap.data() || {};
+    const current: string[] = Array.isArray(data.profileImageIds)
+      ? data.profileImageIds
+      : [];
+    const storageId: string = imageDoc.data()?.storageId || imageId; // prefer canonical storageId
+    const newOrder = [
+      storageId,
+      ...current.filter((id) => id !== storageId),
     ];
-    const updatedImageOrder = updatedImageOrderStrings.map(
-      (id) => id as Id<"_storage">
-    );
-
-    const result = await convexMutationWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.profiles.updateProfileFields,
-      {
-        userId: userId as Id<"users">,
-        updates: {
-          profileImageIds: updatedImageOrder,
-          updatedAt: Date.now(),
-        },
-      } as any
-    ).catch((e: unknown) => {
-      console.error("Profile images MAIN PUT updateProfileFields error", {
-        scope: "profile_images.main",
-        type: "convex_mutation_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return null;
-    });
-
-    if (!result) {
-      return NextResponse.json(
-        { error: "Failed to set main profile image", correlationId },
-        { status: 500 }
+    await db
+      .collection("users")
+      .doc(authUser.id)
+      .set(
+        { profileImageIds: newOrder, updatedAt: Date.now() },
+        { merge: true }
       );
-    }
 
     console.info("Profile images MAIN PUT success", {
       scope: "profile_images.main",
@@ -130,18 +71,17 @@ export async function PUT(request: NextRequest) {
       {
         success: true,
         message: "Main profile image updated successfully",
-        mainImageId: imageId,
-        imageOrder: updatedImageOrder,
+        mainImageId: storageId,
+        imageOrder: newOrder,
         correlationId,
       },
       { status: 200 }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Profile images MAIN PUT unhandled error", {
+    console.error("Profile images MAIN PUT firebase error", {
       scope: "profile_images.main",
       type: "unhandled_error",
-      message,
+      error: error instanceof Error ? error.message : String(error),
       correlationId,
       statusCode: 500,
       durationMs: Date.now() - startedAt,
@@ -151,4 +91,4 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { motion } from "framer-motion";
 import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
 import { ErrorState } from "@/components/ui/error-state";
@@ -477,9 +477,12 @@ export default function SearchProfilesPage() {
   React.useEffect(() => setMounted(true), []);
 
   // Get blocked users to filter them out
-  const { data: blockedUsers } = useBlockedUsers();
-  const blockedUserIds =
-    blockedUsers?.map((blocked) => blocked.blockedUserId) || [];
+  const { data: blockedPages } = useBlockedUsers();
+  const blockedUserIds = blockedPages
+    ? blockedPages.pages.flatMap((p) =>
+        p.blockedUsers.map((b) => b.blockedUserId)
+      )
+    : [];
 
   // Filter out current user and incomplete profiles
   const filtered = useMemo(() => {
@@ -917,23 +920,7 @@ export default function SearchProfilesPage() {
                           </div>
                           <Button
                             className="bg-primary hover:bg-primary/90 text-white w-full mt-2"
-                            onClick={() => {
-                              // Convex user IDs are 15+ chars, JWT user IDs have different format
-                              if (
-                                typeof u.userId !== "string" ||
-                                u.userId.startsWith("user_")
-                              ) {
-                                console.warn(
-                                  "Attempted to navigate with JWT user ID instead of Convex user ID:",
-                                  u.userId
-                                );
-                                alert(
-                                  "Internal error: Invalid user ID for navigation."
-                                );
-                                return;
-                              }
-                              router.push(`/profile/${u.userId}`);
-                            }}
+                            onClick={() => router.push(`/profile/${u.userId}`)}
                           >
                             {"View Profile"}
                           </Button>

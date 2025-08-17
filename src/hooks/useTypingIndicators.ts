@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { db } from "@/lib/firebaseClient";
+import { collection, doc, onSnapshot, query, setDoc } from "firebase/firestore";
 
 interface TypingUser {
   userId: string;
@@ -24,72 +26,33 @@ export function useTypingIndicators({
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const sseRef = useRef<EventSource | null>(null);
+  const unsubRef = useRef<(() => void) | null>(null);
 
   // Send typing status to server
   const sendTypingStatus = useCallback(
     async (action: "start" | "stop") => {
       try {
-        await fetch("/api/typing-indicators", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            // Cookie-based session; no Authorization header
-          },
-          body: JSON.stringify({
-            conversationId,
-            action,
-          }),
-        });
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          console.error("Error sending typing status:", error.message);
-        } else {
-          console.error("Error sending typing status:", error);
-        }
+        const ref = doc(
+          db,
+          "typingIndicators",
+          conversationId,
+          "users",
+          currentUserId
+        );
+        await setDoc(
+          ref,
+          { isTyping: action === "start", updatedAt: Date.now() },
+          { merge: true }
+        );
+      } catch (e) {
+        // ignore
       }
     },
-    [conversationId]
+    [conversationId, currentUserId]
   );
 
   // Fetch current typing users
-  const fetchTypingUsers = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/typing-indicators?conversationId=${encodeURIComponent(conversationId)}`,
-        {
-          headers: {
-            // Cookie-based session; no Authorization header
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data: unknown = await response.json();
-        let otherTypingUsers: TypingUser[] = [];
-        if (
-          typeof data === "object" &&
-          data !== null &&
-          "typingUsers" in data &&
-          Array.isArray((data as { typingUsers: unknown }).typingUsers)
-        ) {
-          otherTypingUsers = (
-            data as { typingUsers: TypingUser[] }
-          ).typingUsers.filter(
-            (user: TypingUser) => user.userId !== currentUserId
-          );
-        }
-        setTypingUsers(otherTypingUsers);
-      }
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error("Error fetching typing users:", error.message);
-      } else {
-        console.error("Error fetching typing users:", error);
-      }
-    }
-  }, [conversationId, currentUserId]);
+  const fetchTypingUsers = useCallback(() => {}, []); // unused after Firestore subscription
 
   // Stop typing
   const stopTyping = useCallback(() => {
@@ -124,67 +87,28 @@ export function useTypingIndicators({
 
   // Prefer SSE updates if available; fallback to polling
   useEffect(() => {
-    // Try SSE from conversation events endpoint
-    try {
-      const es = new EventSource(
-        `/api/conversations/${encodeURIComponent(conversationId)}/events`
-      );
-      sseRef.current = es;
-      es.onmessage = (evt) => {
-        try {
-          const data = JSON.parse(evt.data);
-          if (
-            data?.conversationId === conversationId &&
-            (data?.type === "typing_start" || data?.type === "typing_stop")
-          ) {
-            setTypingUsers((prev) => {
-              const arr = Array.isArray(prev) ? prev : [];
-              if (data.type === "typing_start") {
-                const exists = arr.some((u) => u.userId === data.userId);
-                return exists
-                  ? arr
-                  : [
-                      ...arr,
-                      {
-                        userId: data.userId as string,
-                        lastUpdated: Date.now(),
-                      },
-                    ];
-              } else {
-                return arr.filter((u) => u.userId !== data.userId);
-              }
-            });
-          }
-        } catch {
-          /* ignore */
+    const q = query(
+      collection(db, "typingIndicators", conversationId, "users")
+    );
+    unsubRef.current = onSnapshot(q, (snap) => {
+      const list: TypingUser[] = [];
+      const now = Date.now();
+      snap.forEach((d) => {
+        const data: any = d.data();
+        if (
+          d.id !== currentUserId &&
+          data.isTyping &&
+          now - data.updatedAt <= 5000
+        ) {
+          list.push({ userId: d.id, lastUpdated: data.updatedAt });
         }
-      };
-      es.onerror = () => {
-        // Fallback to polling if SSE fails
-        es.close();
-        sseRef.current = null;
-        void fetchTypingUsers();
-        pollIntervalRef.current = setInterval(
-          () => void fetchTypingUsers(),
-          2000
-        );
-      };
-      return () => {
-        if (sseRef.current) sseRef.current.close();
-        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      };
-    } catch {
-      // If EventSource not available, use polling
-      void fetchTypingUsers();
-      pollIntervalRef.current = setInterval(
-        () => void fetchTypingUsers(),
-        2000
-      );
-      return () => {
-        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      };
-    }
-  }, [conversationId, fetchTypingUsers]);
+      });
+      setTypingUsers(list);
+    });
+    return () => {
+      unsubRef.current?.();
+    };
+  }, [conversationId, currentUserId]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -192,9 +116,7 @@ export function useTypingIndicators({
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
+      unsubRef.current?.();
       if (isTyping) {
         void sendTypingStatus("stop");
       }

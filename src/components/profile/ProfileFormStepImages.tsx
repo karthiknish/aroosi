@@ -1,7 +1,7 @@
 import React from "react";
 import { ProfileImageUpload } from "@/components/ProfileImageUpload";
 import type { ImageType } from "@/types/image";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 
 interface Props {

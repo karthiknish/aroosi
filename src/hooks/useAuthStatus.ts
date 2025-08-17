@@ -1,27 +1,29 @@
-"use client";
-
-import { useClerkAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 
 export function useAuthStatus() {
-  const { 
-    isAuthenticated, 
-    isLoading, 
-    isProfileComplete, 
-    isOnboardingComplete,
+  const {
     user,
-    userId,
-    profile,
-    error
-  } = useClerkAuth();
-
-  return {
-    isAuthenticated,
     isLoading,
+    isAuthenticated,
     isProfileComplete,
     isOnboardingComplete,
+    isAdmin,
+    profile,
+    error,
+    refreshUser,
+  } = useFirebaseAuth();
+  const userId = user?.uid || (profile as any)?._id || (profile as any)?.userId;
+
+  return {
     user,
+    isLoading,
+    isAuthenticated,
+    isProfileComplete,
+    isOnboardingComplete,
+    isAdmin,
     userId,
     profile,
-    error
+    error,
+    refreshUser,
   };
 }

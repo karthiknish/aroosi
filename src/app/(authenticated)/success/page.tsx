@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { useClerkAuth as useAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { motion } from "framer-motion";
 import { Heart, Sparkles, UserCheck } from "lucide-react";
 

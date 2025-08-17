@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useClerkAuth as useAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { showErrorToast } from "@/lib/ui/toast";
 
 interface ProtectedRouteProps {
@@ -18,7 +18,7 @@ export default function ProtectedRoute({
   requireOnboarding = false,
   adminOnly = false,
 }: ProtectedRouteProps) {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, profile } = useAuth() as any;
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
@@ -48,25 +48,26 @@ export default function ProtectedRoute({
     }
 
     // Admin only routes
-    if (adminOnly && user.role !== "admin") {
+    const userRole = (user as any)?.role || profile?.role;
+    if (adminOnly && userRole !== "admin") {
       notify("Admin access required");
       router.push("/search");
       return;
     }
 
     // Check if profile is required
-    if (requireProfile && !user.profile) {
+    const hasProfile = !!profile || !!(user as any)?.profile;
+    if (requireProfile && !hasProfile) {
       notify("Please create your profile to continue");
       router.push("/profile/create");
       return;
     }
 
     // Check if profile completion is required
-    if (
-      requireOnboarding &&
-      user.profile &&
-      !user.profile.isOnboardingComplete
-    ) {
+    const onboardingComplete =
+      profile?.isOnboardingComplete ||
+      (user as any)?.profile?.isOnboardingComplete;
+    if (requireOnboarding && !onboardingComplete) {
       notify("Please complete onboarding to continue");
       router.push("/profile/complete");
       return;
@@ -99,16 +100,22 @@ export default function ProtectedRoute({
   }
 
   // Admin check
-  if (adminOnly && user.role !== "admin") {
+  if (adminOnly && ((user as any)?.role || profile?.role) !== "admin") {
     return null;
   }
 
   // Profile checks
-  if (requireProfile && !user.profile) {
+  if (requireProfile && !(profile || (user as any)?.profile)) {
     return null;
   }
 
-  if (requireOnboarding && user.profile && !user.profile.isOnboardingComplete) {
+  if (
+    requireOnboarding &&
+    !(
+      profile?.isOnboardingComplete ||
+      (user as any)?.profile?.isOnboardingComplete
+    )
+  ) {
     return null;
   }
 

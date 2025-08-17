@@ -1,14 +1,15 @@
 import { NextRequest } from "next/server";
-import { fetchMutation } from "convex/nextjs";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAdminSession, devLog } from "@/app/api/_utils/auth";
+import { ensureAdmin } from "@/lib/auth/requireAdmin";
+import { db } from "@/lib/firebaseAdmin";
+
+function devLog(level: "info" | "warn" | "error", scope: string, event: string, meta: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== "production") console[level](`[${scope}] ${event}`, meta);
+}
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await requireAdminSession(request);
-    if ("errorResponse" in session) return session.errorResponse;
+  try { await ensureAdmin(); } catch { return errorResponse("Unauthorized", 401); }
 
     const url = new URL(request.url);
     const profileId = url.pathname.split("/").slice(-2, -1)[0];
@@ -21,12 +22,14 @@ export async function PUT(request: NextRequest) {
         ? (body.durationDays as number)
         : undefined;
 
-    const result = await fetchMutation(api.users.adminUpdateSpotlightBadge, {
-      profileId: profileId as Id<"profiles">,
-      hasSpotlightBadge,
-      durationDays,
-    } as any);
-    return successResponse(result);
+    const userRef = db.collection("users").doc(profileId);
+    const now = Date.now();
+    let spotlightExpiresAt: number | null = null;
+    if (hasSpotlightBadge && durationDays && durationDays > 0) {
+      spotlightExpiresAt = now + durationDays * 24 * 60 * 60 * 1000;
+    }
+    await userRef.set({ hasSpotlightBadge, spotlightUpdatedAt: now, spotlightExpiresAt }, { merge: true });
+    return successResponse({ profileId, hasSpotlightBadge, spotlightExpiresAt });
   } catch (error) {
     devLog("error", "admin.spotlight", "Failed to update spotlight", {
       error: error instanceof Error ? error.message : String(error),

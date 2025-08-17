@@ -1,10 +1,17 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
-import { fetchMutation } from "convex/nextjs";
+import { db } from "@/lib/firebaseAdmin";
+
+interface ReportDoc {
+  reporterUserId: string;
+  reportedUserId: string;
+  reason: string;
+  description?: string;
+  status: "pending";
+  createdAt: number;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,18 +79,32 @@ export async function POST(request: NextRequest) {
       return errorResponse("Please wait before reporting this user again", 429);
     }
 
-    const result = await fetchMutation(api.safety.reportUser, {
-      reporterUserId: userId as Id<"users">,
-      reportedUserId,
-      reason,
-      description: description?.trim() || undefined,
-    } as any);
+    // Persist report in Firestore
+    let reportId: string | null = null;
+    try {
+      const ref = db.collection("reports").doc();
+      const doc: ReportDoc = {
+        reporterUserId: userId,
+        reportedUserId,
+        reason,
+        description: description?.trim() || undefined,
+        status: "pending",
+        createdAt: Date.now(),
+      };
+      await ref.set(doc);
+      reportId = ref.id;
+    } catch (e) {
+      devLog("error", "safety.report", "firestore_error", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+      return errorResponse("Failed to submit report", 500);
+    }
 
     map.set(key, now);
 
     return successResponse({
       message: "User reported successfully. Our team will review this report.",
-      reportId: result,
+      reportId,
     });
   } catch (error) {
     devLog("error", "safety.report", "unhandled_error", {

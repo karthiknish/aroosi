@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Search, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { searchImages } from "@/lib/utils/imageSearchUtil";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 interface PexelsImageModalProps {
   isOpen: boolean;

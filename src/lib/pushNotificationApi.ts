@@ -1,5 +1,6 @@
 import { ApiResponse } from "@/lib/utils/apiResponse";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 
 export interface PushNotificationPayload {
   title: string;
@@ -19,14 +20,14 @@ export async function sendPushNotification(
   payload: PushNotificationPayload
 ): Promise<ApiResponse<null>> {
   try {
-    const response = await fetch("/api/admin/push-notification", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Cookie-based session; no Authorization header
-      },
-      body: JSON.stringify(payload),
-    });
+  const response = await fetchWithFirebaseAuth("/api/admin/push-notification", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      // Cookie-based session; no Authorization header
+    },
+    body: JSON.stringify(payload),
+  });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

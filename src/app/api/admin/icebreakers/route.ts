@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { api } from "@convex/_generated/api";
-import { convexQueryWithAuth, convexMutationWithAuth } from "@/lib/convexServer";
 import { requireAdminSession } from "@/app/api/_utils/auth";
-import { applySecurityHeaders, checkApiRateLimit } from "@/lib/utils/securityHeaders";
+import {
+  applySecurityHeaders,
+  checkApiRateLimit,
+} from "@/lib/utils/securityHeaders";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function GET(req: NextRequest) {
   const adminCheck = await requireAdminSession(req);
@@ -13,7 +15,19 @@ export async function GET(req: NextRequest) {
   const rl = checkApiRateLimit("admin_icebreakers_list", 60, 60_000);
   if (!rl.allowed) return applySecurityHeaders(errorResponse("Rate limit exceeded", 429));
   try {
-    const items = await convexQueryWithAuth(req, (api as any).icebreakers.listQuestions, {} as any);
+    const snap = await db.collection("icebreakerQuestions").get();
+    const items: any[] = [];
+    snap.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+      const d = doc.data() as any;
+      items.push({
+        id: doc.id,
+        text: d.text,
+        active: !!d.active,
+        category: d.category ?? null,
+        weight: typeof d.weight === "number" ? d.weight : null,
+        createdAt: d.createdAt || Date.now(),
+      });
+    });
     return applySecurityHeaders(successResponse({ items }));
   } catch (e) {
     return applySecurityHeaders(errorResponse(e, 500));
@@ -41,8 +55,15 @@ export async function POST(req: NextRequest) {
   const parsed = CreateSchema.safeParse(body);
   if (!parsed.success) return applySecurityHeaders(errorResponse("Validation failed", 422, { issues: parsed.error.flatten() }));
   try {
-    const res = await convexMutationWithAuth(req as any, (api as any).icebreakers.createQuestion, parsed.data as any);
-    return applySecurityHeaders(successResponse(res));
+    const now = Date.now();
+    const docRef = await db
+      .collection("icebreakerQuestions")
+      .add({
+        ...parsed.data,
+        active: parsed.data.active ?? true,
+        createdAt: now,
+      });
+    return applySecurityHeaders(successResponse({ id: docRef.id }));
   } catch (e) {
     return applySecurityHeaders(errorResponse(e, 500));
   }
@@ -74,8 +95,11 @@ export async function PUT(req: NextRequest) {
   if (!parsed.success) return applySecurityHeaders(errorResponse("Validation failed", 422, { issues: parsed.error.flatten() }));
   const { id, ...patch } = parsed.data;
   try {
-    const res = await convexMutationWithAuth(req as any, (api as any).icebreakers.updateQuestion, { id, ...patch } as any);
-    return applySecurityHeaders(successResponse(res));
+    await db
+      .collection("icebreakerQuestions")
+      .doc(id)
+      .set(patch, { merge: true });
+    return applySecurityHeaders(successResponse({ success: true }));
   } catch (e) {
     return applySecurityHeaders(errorResponse(e, 500));
   }
@@ -97,8 +121,8 @@ export async function DELETE(req: NextRequest) {
   const parsed = DeleteSchema.safeParse(body);
   if (!parsed.success) return applySecurityHeaders(errorResponse("Validation failed", 422, { issues: parsed.error.flatten() }));
   try {
-    const res = await convexMutationWithAuth(req as any, (api as any).icebreakers.deleteQuestion, parsed.data as any);
-    return applySecurityHeaders(successResponse(res));
+    await db.collection("icebreakerQuestions").doc(parsed.data.id).delete();
+    return applySecurityHeaders(successResponse({ success: true }));
   } catch (e) {
     return applySecurityHeaders(errorResponse(e, 500));
   }

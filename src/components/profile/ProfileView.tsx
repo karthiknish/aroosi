@@ -31,9 +31,15 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Profile } from "@/types/profile";
-import { ProfileImageReorder } from "@/components/ProfileImageReorder";
+// Lazy-load heavier image reorder component to reduce initial JS
+import dynamic from "next/dynamic";
+const ProfileImageReorder = dynamic(
+  () => import("@/components/ProfileImageReorder").then(m => m.ProfileImageReorder),
+  { ssr: false }
+);
 import { planDisplayName } from "@/lib/utils/plan";
 import { isPremium, isPremiumPlus } from "@/lib/utils/subscriptionPlan";
+import { normalisePlan } from "@/lib/subscription/planLimits";
 import type { FC } from "react";
 import {
   Dialog,
@@ -43,8 +49,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { deleteProfile } from "@/lib/utils/profileApi";
-import { boostProfile } from "@/lib/profile/userProfileApi";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { boostProfile, activateSpotlight } from "@/lib/profile/userProfileApi";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 // Re-export types for backward compatibility
 type ApiImage = unknown;
@@ -154,9 +160,20 @@ const ProfileView: FC<ProfileViewProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
   // Cookie-auth: token is no longer exposed in AuthContext
-  useAuthContext();
+  const { user: authUser, profile: authProfile } = useAuthContext();
+  const currentUserId =
+    authUser?.uid ||
+    (authProfile as any)?._id ||
+    (authProfile as any)?.userId ||
+    "";
 
-  // Small mapping utility for plan labels using centralized helper (inlined where needed)
+  // Normalize plan once (backend also normalizes) to avoid alias divergence
+  const plan = normalisePlan(profileData.subscriptionPlan as any);
+  const activeSpotlight = Boolean(
+    profileData.hasSpotlightBadge &&
+      profileData.spotlightBadgeExpiresAt &&
+      profileData.spotlightBadgeExpiresAt > Date.now()
+  );
 
   // Format annual income (GBP by default)
   const formatCurrency = (v?: string | number) => {
@@ -297,7 +314,7 @@ const ProfileView: FC<ProfileViewProps> = ({
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {isPremiumPlus(profileData.subscriptionPlan) ? (
+              {isPremiumPlus(plan) ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -311,7 +328,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                         router.push("/premium-settings");
                         return;
                       }
-                      const result = await boostProfile();
+                      const result = await boostProfile(currentUserId);
                       try {
                         const { showSuccessToast, showErrorToast } =
                           await import("@/lib/ui/toast");
@@ -474,15 +491,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                     </dt>
                     <dd className="mt-1 sm:mt-0 sm:col-span-2 text-md text-gray-800 flex items-center gap-1">
                       {profileData.fullName}
-                      {isPremium(profileData.subscriptionPlan) && (
+                      {isPremium(plan) && (
                         <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
                       )}
-                      {isPremium(profileData.subscriptionPlan) &&
-                        profileData.hasSpotlightBadge &&
-                        profileData.spotlightBadgeExpiresAt &&
-                        profileData.spotlightBadgeExpiresAt > Date.now() && (
-                          <SpotlightIcon className="w-4 h-4" />
-                        )}
+                      {isPremium(plan) && activeSpotlight && (
+                        <SpotlightIcon className="w-4 h-4" />
+                      )}
                       <PremiumFeatureGuard
                         feature="spotlight_badge"
                         requiredTier="premiumPlus"
@@ -491,25 +505,45 @@ const ProfileView: FC<ProfileViewProps> = ({
                         {/* If user has Plus, show nothing extra here */}
                         <></>
                       </PremiumFeatureGuard>
-                      {!isPremiumPlus(profileData.subscriptionPlan) && (
-                        <PremiumFeatureGuard
-                          feature="spotlight_badge"
-                          requiredTier="premiumPlus"
-                          fallback={
-                            <button
-                              type="button"
-                              className="ml-2 text-[11px] text-amber-700 underline"
-                              onClick={() =>
-                                (window.location.href = "/subscription")
+                      {!activeSpotlight && isPremiumPlus(plan) && (
+                        <button
+                          type="button"
+                          className="ml-2 text-[11px] text-amber-700 underline"
+                          onClick={async () => {
+                            try {
+                              const { showSuccessToast, showErrorToast } =
+                                await import("@/lib/ui/toast");
+                              const res = await activateSpotlight();
+                              if (res.success) {
+                                showSuccessToast(
+                                  "Spotlight badge activated for 30 days"
+                                );
+                                router.refresh?.();
+                              } else {
+                                showErrorToast(
+                                  res.message || "Activation failed"
+                                );
                               }
-                              title="Upgrade to Premium Plus for a spotlight badge"
-                            >
-                              Get Spotlight
-                            </button>
-                          }
+                            } catch (e) {
+                              console.warn("activate spotlight failed", e);
+                            }
+                          }}
+                          title="Activate your spotlight badge"
                         >
-                          <></>
-                        </PremiumFeatureGuard>
+                          Activate Spotlight
+                        </button>
+                      )}
+                      {!isPremiumPlus(plan) && (
+                        <button
+                          type="button"
+                          className="ml-2 text-[11px] text-amber-700 underline"
+                          onClick={() =>
+                            (window.location.href = "/subscription")
+                          }
+                          title="Upgrade to Premium Plus for a spotlight badge"
+                        >
+                          Get Spotlight
+                        </button>
                       )}
                     </dd>
                   </div>
@@ -691,11 +725,11 @@ const ProfileView: FC<ProfileViewProps> = ({
                 >
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-md font-semibold">
-                      {planDisplayName(profileData.subscriptionPlan)}
+                      {planDisplayName(plan)}
                     </span>
 
                     {/* Action buttons based on plan */}
-                    {!isPremium(profileData.subscriptionPlan) && (
+                    {!isPremium(plan) && (
                       <Button
                         size="sm"
                         className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg"
@@ -705,29 +739,28 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </Button>
                     )}
 
-                    {isPremium(profileData.subscriptionPlan) &&
-                      !isPremiumPlus(profileData.subscriptionPlan) && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-pink-600 border-pink-600"
-                            onClick={() => router.push("/plans")}
-                          >
-                            Upgrade to Plus
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleOpenBillingPortal}
-                            title="Open Stripe Billing Portal"
-                          >
-                            Manage
-                          </Button>
-                        </div>
-                      )}
+                    {isPremium(plan) && !isPremiumPlus(plan) && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-pink-600 border-pink-600"
+                          onClick={() => router.push("/plans")}
+                        >
+                          Upgrade to Plus
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleOpenBillingPortal}
+                          title="Open Stripe Billing Portal"
+                        >
+                          Manage
+                        </Button>
+                      </div>
+                    )}
 
-                    {isPremiumPlus(profileData.subscriptionPlan) && (
+                    {isPremiumPlus(plan) && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -740,7 +773,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   </div>
 
                   {/* Spotlight upsell hint for non-Plus plans */}
-                  {!isPremiumPlus(profileData.subscriptionPlan) && (
+                  {!isPremiumPlus(plan) && (
                     <div className="mt-2 text-xs text-amber-700">
                       Want a spotlight badge?{" "}
                       <button

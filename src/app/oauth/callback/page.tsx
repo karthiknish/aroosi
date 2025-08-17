@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-// import { useUser } from "@clerk/nextjs"; // Removed for native auth
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+// OAuth callback page for handling authentication redirects
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 export default function OAuthCallbackPage() {
   const router = useRouter();

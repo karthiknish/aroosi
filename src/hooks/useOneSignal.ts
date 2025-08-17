@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 // Minimal OneSignal type definition supporting v15 and v16
 type AnyOS = any;
@@ -54,7 +55,8 @@ function onSubscriptionChange(
  * Assumes the OneSignal SDK has already been loaded globally via layout.tsx.
  */
 export function useOneSignal(): void {
-  const { isSignedIn, userId } = useAuthContext();
+  const { user, profile, isAuthenticated: isSignedIn } = useAuthContext();
+  const userId = user?.uid || (profile as any)?._id || (profile as any)?.userId;
 
   useEffect(() => {
     if (!isSignedIn || !userId) return;
@@ -68,10 +70,9 @@ export function useOneSignal(): void {
       try {
         const id = await getPlayerIdCompat(os);
         if (id) {
-          await fetch("/api/push/register", {
+          await fetchWithFirebaseAuth("/api/push/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            credentials: "include",
             body: JSON.stringify({ playerId: id }),
           });
         }
@@ -84,17 +85,15 @@ export function useOneSignal(): void {
         try {
           const id = await getPlayerIdCompat(os);
           if (subscribed && id) {
-            await fetch("/api/push/register", {
+            await fetchWithFirebaseAuth("/api/push/register", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              credentials: "include",
               body: JSON.stringify({ playerId: id }),
             });
           } else if (!subscribed && id) {
-            await fetch("/api/push/register", {
+            await fetchWithFirebaseAuth("/api/push/register", {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
-              credentials: "include",
               body: JSON.stringify({ playerId: id }),
             });
           }

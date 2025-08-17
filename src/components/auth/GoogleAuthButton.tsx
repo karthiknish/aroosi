@@ -1,6 +1,6 @@
 "use client";
 
-import { useClerkAuthApi } from "@/hooks/useClerkAuthApi";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Chrome } from "lucide-react";
@@ -16,19 +16,23 @@ interface GoogleAuthButtonProps {
 export function GoogleAuthButton({
   text = "Continue with Google",
   className,
-  redirectUrlComplete,
+  redirectUrlComplete = "/search",
   onSuccess,
   onError,
 }: GoogleAuthButtonProps) {
-  const { signInWithOAuth } = useClerkAuthApi();
+  const { signInWithGoogle } = useFirebaseAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const result = await signInWithOAuth("google", redirectUrlComplete);
+      const result = await signInWithGoogle();
       
       if (result.success) {
+        // Redirect to the specified URL or default to search
+        if (typeof window !== "undefined") {
+          window.location.href = redirectUrlComplete;
+        }
         onSuccess?.();
       } else {
         onError?.(result.error || "Google sign in failed");

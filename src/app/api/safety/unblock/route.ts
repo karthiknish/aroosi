@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
-import { convexMutationWithAuth } from "@/lib/convexServer";
+import { db } from "@/lib/firebaseAdmin";
+import { COL_RECOMMENDATIONS } from "@/lib/firestoreSchema";
 
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
@@ -34,10 +33,34 @@ export async function POST(request: NextRequest) {
       return errorResponse("Missing required field: blockedUserId", 400);
     }
 
-    await convexMutationWithAuth(request, api.safety.unblockUser, {
-      blockerUserId: userId as Id<"users">,
-      blockedUserId: blockedUserId as Id<"users">,
-    } as any);
+    try {
+      const docId = `${userId}_${blockedUserId}`;
+      await db.collection("blocks").doc(docId).delete();
+    } catch (e) {
+      devLog("error", "safety.unblock", "firestore_error", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+      return errorResponse("Failed to unblock user", 500);
+    }
+
+    // Invalidate recommendation cache (so previously filtered user can reappear)
+    try {
+      const snaps = await db
+        .collection(COL_RECOMMENDATIONS)
+        .where("userId", "==", userId)
+        .get();
+      if (!snaps.empty) {
+        const batch = db.batch();
+        snaps.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot) =>
+          batch.delete(d.ref)
+        );
+        await batch.commit();
+      }
+    } catch (e) {
+      devLog("warn", "safety.unblock", "recs_cache_invalidate_failed", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
 
     const res = successResponse({
       message: "User unblocked successfully",

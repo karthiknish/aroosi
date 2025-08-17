@@ -1,27 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Id } from "@convex/_generated/dataModel";
-import { requireSession } from "@/app/api/_utils/auth";
+import { NextRequest } from "next/server";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
-import { validateConversationId } from "@/lib/utils/messageValidation";
-import { convexMutationWithAuth } from "@/lib/convexServer";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { sendFirebaseMessage } from "@/lib/messages/firebaseMessages";
+import { db } from "@/lib/firebaseAdmin";
 
 // ApiResponse envelope type
-type ApiResponse<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
-
-function json<T>(body: ApiResponse<T>, status = 200) {
-  return NextResponse.json(body, { status });
-}
-
-export async function POST(request: NextRequest) {
+export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
-
   try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) return session.errorResponse as any;
-    const { userId } = session;
+    const userId = authUser.id;
 
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
@@ -31,20 +20,16 @@ export async function POST(request: NextRequest) {
       60_000
     );
     if (!rate.allowed) {
-      return json(
-        {
-          success: false,
-          error: rate.error || "Rate limit exceeded",
-        },
-        429
-      );
+      return errorResponse(rate.error || "Rate limit exceeded", 429, {
+        correlationId,
+      });
     }
 
     let body: unknown;
     try {
       body = await request.json();
     } catch {
-      return json({ success: false, error: "Invalid JSON body" }, 400);
+      return errorResponse("Invalid JSON body", 400, { correlationId });
     }
 
     const {
@@ -70,124 +55,82 @@ export async function POST(request: NextRequest) {
     };
 
     if (!conversationId || !fromUserId || !toUserId) {
-      return json(
-        {
-          success: false,
-          error:
-            "Missing required fields: conversationId, fromUserId, toUserId",
-        },
-        400
-      );
+      return errorResponse("Missing required fields", 400, { correlationId });
+    }
+    const participants = conversationId.split("_");
+    if (!participants.includes(userId)) {
+      return errorResponse("Unauthorized access to conversation", 403, {
+        correlationId,
+      });
     }
 
-    if (!validateConversationId(conversationId)) {
-      return json(
-        { success: false, error: "Invalid conversationId format" },
-        400
-      );
-    }
-
-    if (!userId) {
-      return json({ success: false, error: "User ID not found" }, 401);
-    }
-    const userIds = conversationId.split("_");
-    if (!userIds.includes(userId)) {
-      return json(
-        { success: false, error: "Unauthorized access to conversation" },
-        403
-      );
+    // Block checks (bidirectional). Prevent sending if either direction block exists.
+    const forwardBlock = await db
+      .collection("blocks")
+      .doc(`${fromUserId}_${toUserId}`)
+      .get();
+    const reverseBlock = await db
+      .collection("blocks")
+      .doc(`${toUserId}_${fromUserId}`)
+      .get();
+    if (forwardBlock.exists || reverseBlock.exists) {
+      return errorResponse("Cannot send message (user is blocked)", 403, {
+        correlationId,
+      });
     }
 
     const resolvedType: "text" | "voice" | "image" = type || "text";
     let finalText: string | undefined = text;
 
     if (resolvedType === "text") {
-      const { validateMessagePayload } = await import(
-        "@/lib/utils/messageValidation"
-      );
-      const v = validateMessagePayload({
-        conversationId,
-        fromUserId,
-        toUserId,
-        text: text ?? "",
-      });
-      if (!v.isValid) {
-        return json(
-          { success: false, error: v.error || "Invalid message" },
-          400
-        );
+      if (!text || text.trim() === "") {
+        return errorResponse("Text message cannot be empty", 400, {
+          correlationId,
+        });
       }
-      finalText = v.sanitizedText!;
+      finalText = text.trim();
     } else if (resolvedType === "voice") {
       if (!audioStorageId) {
-        return json(
-          { success: false, error: "Voice message missing audioStorageId" },
-          400
-        );
+        return errorResponse("Voice message missing audioStorageId", 400, {
+          correlationId,
+        });
       }
       if (typeof duration !== "number" || duration <= 0) {
-        return json(
-          { success: false, error: "Voice message missing duration" },
-          400
-        );
+        return errorResponse("Voice message missing duration", 400, {
+          correlationId,
+        });
       }
     } else if (resolvedType === "image") {
       if (!audioStorageId) {
-        return json(
-          { success: false, error: "Image message missing storageId" },
-          400
-        );
+        return errorResponse("Image message missing storageId", 400, {
+          correlationId,
+        });
       }
     }
-
-    // Use cookie-aware Convex mutation
-    const message = await convexMutationWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.messages.sendMessage,
-      {
-        conversationId,
-        fromUserId: fromUserId as Id<"users">,
-        toUserId: toUserId as Id<"users">,
-        text: finalText,
-        type: resolvedType,
-        audioStorageId,
-        duration,
-        fileSize,
-        mimeType,
-      } as any
-    ).catch((e: unknown) => {
-      const msg =
-        e instanceof Error
-          ? e.message
-          : typeof e === "string"
-            ? e
-            : "Send failed";
-      throw new Error(String(msg));
+    const message = await sendFirebaseMessage({
+      conversationId,
+      fromUserId,
+      toUserId,
+      type: resolvedType,
+      text: resolvedType === "text" ? finalText : undefined,
+      audioStorageId,
+      duration,
+      fileSize,
+      mimeType,
     });
-
-    try {
-      const { eventBus } = await import("@/lib/eventBus");
-      eventBus.emit(conversationId, {
-        type: "message_sent",
-        message,
-      });
-    } catch (eventError) {
-      console.warn("Messages send POST broadcast warn", {
-        scope: "messages.send",
-        type: "broadcast_warn",
-        message:
-          eventError instanceof Error ? eventError.message : String(eventError),
+    return successResponse(message, 200);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return errorResponse(msg || "Failed to send message", 500, {
+      correlationId,
+    });
+  } finally {
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.log("messages.send", {
+        correlationId,
+        durationMs: Date.now() - startedAt,
       });
     }
-
-    return json({ success: true, data: message }, 200);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return json(
-      { success: false, error: message || "Failed to send message" },
-      500
-    );
-  } finally {
-    // console.info("messages.send", { correlationId, durationMs: Date.now() - startedAt });
   }
-}
+});

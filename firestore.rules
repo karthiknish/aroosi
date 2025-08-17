@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /blocks/{blockId} {
+      allow create: if isSignedIn()
+        && request.resource.data.blockerId == request.auth.uid
+        && request.resource.data.blockedUserId is string
+        && request.resource.data.blockedUserId != request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.blockerId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.blockerId == request.auth.uid ||
+        resource.data.blockedUserId == request.auth.uid
+      );
+      allow update: if false;
+    }
+
+    // Message delivery & read receipts (write server-only: rely on custom backend)
+    match /messageReceipts/{receiptId} {
+      allow read: if isSignedIn();
+      // Deny direct client writes to prevent spoofing; backend uses Admin SDK.
+      allow write: if false;
+    }
+
+    // Cached recommendations snapshots - never directly writable by clients
+    match /recommendations/{recId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid; // only owner can read
+      allow write: if false;
+    }
+
+    // Voice messages metadata - restrict to sender or participants (simplified: owner write, participants read)
+    match /voiceMessages/{msgId} {
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        (resource.data.recipientId != null && resource.data.recipientId == request.auth.uid)
+      );
+      // Prevent updates except maybe status by sender (optional hard deny for now)
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Fine-grained usage tracking collections - server authored only
+    match /usageEvents/{eventId} {
+      allow read: if false; // not needed client-side; aggregate endpoints expose needed data
+      allow write: if false; // server only
+    }
+    match /usageMonthly/{docId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid; // allow user to query own aggregates if needed
+      allow write: if false; // server only
+    }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn() && request.resource.data.reporterUserId == request.auth.uid;
+      allow read: if isAdmin() || (isSignedIn() && resource.data.reporterUserId == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

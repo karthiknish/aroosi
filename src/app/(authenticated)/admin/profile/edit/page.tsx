@@ -3,16 +3,16 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   fetchAdminProfileById,
   updateAdminProfileById,
-  fetchAdminProfileImagesById,
   fetchAdminProfileMatches,
 } from "@/lib/profile/adminProfileApi";
+import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
 import type { Profile } from "@/types/profile";
 import { useQuery } from "@tanstack/react-query";
 import type { ProfileFormValues } from "@/types/profile";
@@ -26,9 +26,11 @@ function AdminEditProfilePageInner() {
   const { isLoaded: authIsLoaded, isSignedIn, isAdmin } = useAuthContext();
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  // Image state for admin profile images
-  const [images, setImages] = useState<ImageType[]>([]);
-  const [imagesLoading, setImagesLoading] = useState(false);
+  const profileIdForImages = (profile?._id || id) ?? undefined;
+  const { images, loading: imagesLoading } = useAdminProfileImages({
+    profileId: profileIdForImages,
+    enabled: !!profileIdForImages,
+  });
 
   // Fetch the profile by id
   const { data: profileData, isLoading } = useQuery<Profile | null>({
@@ -57,19 +59,7 @@ function AdminEditProfilePageInner() {
     }
   }, [profileData]);
 
-  // Fetch images when profile and token are available
-  useEffect(() => {
-    const profileId: string = profile?._id || id || "";
-    if (!profileId) return;
-    setImagesLoading(true);
-    fetchAdminProfileImagesById({ profileId })
-      .then((imgs) => setImages(imgs.filter((img) => !!img && !!img.url)))
-      .catch(() => {
-        // Optionally handle error here if you want to show a toast
-        // showErrorToast(null, "Failed to load images");
-      })
-      .finally(() => setImagesLoading(false));
-  }, [profile?._id, id]);
+  // Images now loaded via hook
 
   // Admin profile update handler
   const handleAdminProfileUpdate = async (values: ProfileFormValues) => {
@@ -230,7 +220,6 @@ function AdminEditProfilePageInner() {
           onSubmit={handleAdminProfileUpdate}
           profileId={profile?._id || id || ""}
           images={images}
-          setImages={setImages}
           imagesLoading={imagesLoading}
           matches={matches || []}
         />

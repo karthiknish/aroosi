@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
-import { Id } from "@convex/_generated/dataModel";
 import { Notifications } from "@/lib/notify";
-import type { Profile } from "@/types/profile";
 import { requireAuth } from "@/lib/auth/requireAuth";
+import { db } from "@/lib/firebaseAdmin";
+
+interface BanRequestBody {
+  banned?: boolean;
+}
+
+async function getUserProfile(userId: string) {
+  const doc = await db.collection("users").doc(userId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...(doc.data() as any) };
+}
 
 export async function PUT(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -26,7 +33,7 @@ export async function PUT(req: NextRequest) {
 
   const url = new URL(req.url);
   const id = url.pathname.split("/").slice(-2, -1)[0]!; // /profiles/[id]/ban
-  let body: { banned?: boolean } = {};
+  let body: BanRequestBody = {};
   try {
     body = await req.json();
   } catch {}
@@ -45,94 +52,59 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const profile = await fetchQuery(
-      api.users.getProfileById,
-      { id: id as unknown as Id<"profiles"> } as any
-    ).catch((e: unknown) => {
-        console.error("Admin profile.ban PUT getProfileById error", {
-          scope: "admin.profile_ban",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
+    const profile = await getUserProfile(id).catch((e: unknown) => {
+      console.error("Admin profile.ban PUT fetch user error", {
+        scope: "admin.profile_ban",
+        type: "firestore_query_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
       });
+      return null;
+    });
 
-    if (!profile || !(profile as { userId?: unknown })?.userId) {
+    if (!profile) {
       return NextResponse.json(
         { error: "Profile not found", correlationId },
         { status: 404 }
       );
     }
-
-    let result: unknown;
-    if (body.banned) {
-       result = await fetchMutation(
-         api.users.banUser,
-         { userId: (profile as { userId: Id<"users"> }).userId } as any
-       ).catch((e: unknown) => {          console.error("Admin profile.ban PUT banUser error", {
-            scope: "admin.profile_ban",
-            type: "convex_mutation_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return null;
-        });
-      if ((profile as { email?: string }).email) {
-        try {
-          await Notifications.profileBanStatus((profile as { email: string }).email, {
-            profile: profile as Profile,
-            banned: true,
-          });
-        } catch (e) {
-          console.error("Admin profile.ban PUT notify ban error", {
-            scope: "admin.profile_ban",
-            type: "unhandled_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-          });
-        }
-      }
-    } else {
-       result = await fetchMutation(
-         api.users.unbanUser,
-         { userId: (profile as { userId: Id<"users"> }).userId } as any
-       ).catch((e: unknown) => {          console.error("Admin profile.ban PUT unbanUser error", {
-            scope: "admin.profile_ban",
-            type: "convex_mutation_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return null;
-        });
-      if ((profile as { email?: string }).email) {
-        try {
-          await Notifications.profileBanStatus((profile as { email: string }).email, {
-            profile: profile as Profile,
-            banned: false,
-          });
-        } catch (e) {
-          console.error("Admin profile.ban PUT notify unban error", {
-            scope: "admin.profile_ban",
-            type: "unhandled_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-          });
-        }
-      }
-    }
-
-    if (!result) {
+    // Update banned flag in Firestore
+    try {
+      await db
+        .collection("users")
+        .doc(profile.id)
+        .set({ banned: body.banned, updatedAt: Date.now() }, { merge: true });
+    } catch (e) {
+      console.error("Admin profile.ban PUT update error", {
+        scope: "admin.profile_ban",
+        type: "firestore_update_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+        statusCode: 500,
+        durationMs: Date.now() - startedAt,
+      });
       return NextResponse.json(
         { error: "Failed to update ban status", correlationId },
         { status: 500 }
       );
+    }
+
+    if (profile.email) {
+      try {
+        await Notifications.profileBanStatus(profile.email, {
+          profile: profile as any,
+          banned: !!body.banned,
+        });
+      } catch (e) {
+        console.error("Admin profile.ban PUT notify error", {
+          scope: "admin.profile_ban",
+          type: "notification_error",
+          message: e instanceof Error ? e.message : String(e),
+          correlationId,
+        });
+      }
     }
 
     console.info("Admin profile.ban PUT success", {

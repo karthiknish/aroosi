@@ -1,81 +1,50 @@
 import { NextResponse } from "next/server";
-import { fetchQuery } from "convex/nextjs";
-import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { getUserEmailServer, getUserFullNameServer } from "@/lib/clerkServerApi";
+import { cookies } from "next/headers";
+import { verifyFirebaseIdToken, getFirebaseUser } from "@/lib/firebaseAdmin";
 
-// Return current user with profile using Clerk authentication
+// Return current user with profile using Firebase authentication
 export async function GET(_request: Request) {
   try {
-    // Get the session token from Clerk
-    const { userId } = await auth();
+    // Get the Firebase ID token from cookies
+    const cookieStore = await cookies();
+    const token = cookieStore.get("firebaseAuthToken")?.value;
+
+    if (!token) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
+
+    // Verify the Firebase ID token
+    const decodedToken = await verifyFirebaseIdToken(token);
+    const userId = decodedToken.uid;
+
     if (!userId) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Get full user data from Clerk
-    const clerkUser = await currentUser();
-    if (!clerkUser) {
+    // Get the user data from Firestore
+    const userData = await getFirebaseUser(userId);
+    if (!userData) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Create Convex client
-    const _convex = new ConvexHttpClient(
-      process.env.NEXT_PUBLIC_CONVEX_URL!
-    );
-
-    // Get the user data from Convex using Clerk user ID
-    const convexUser = await fetchQuery(api.users.getUserByClerkId, { clerkId: userId });
-    
-    // If user doesn't exist in Convex, we can still return Clerk data
-    if (!convexUser) {
-      // Enhance user data with Clerk information
-      const userEmail = await getUserEmailServer();
-      const userFullName = await getUserFullNameServer();
-      
-      return NextResponse.json(
-        {
-          user: {
-            id: userId,
-            email: userEmail || clerkUser.emailAddresses[0]?.emailAddress || "",
-            role: "user",
-            emailVerified: clerkUser.emailAddresses.some(e => e.verification?.status === "verified"),
-            createdAt: clerkUser.createdAt,
-            fullName: userFullName || clerkUser.fullName || undefined,
-            profile: null,
-          },
-        },
-        { status: 200 }
-      );
-    }
-    
-    // If user exists in Convex, get their profile
-    // @ts-expect-error - Type mismatch between generated types and runtime response
-    const data = await fetchQuery(api.users.getCurrentUserWithProfile, { userId: convexUser._id });
-    if (!data) return NextResponse.json({ user: null }, { status: 200 });
-    const user = data.user;
-    const profile = data.profile;
-    
-    // Enhance user data with Clerk information
-    const userEmail = await getUserEmailServer();
-    const userFullName = await getUserFullNameServer();
-    
+    // Return user data with profile
     return NextResponse.json(
       {
         user: {
-          id: String(user?._id ?? userId),
-          email: String(user?.email ?? userEmail ?? clerkUser.emailAddresses[0]?.emailAddress ?? ""),
-          role: String(user?.role ?? "user"),
-          emailVerified: Boolean(user?.emailVerified ?? clerkUser.emailAddresses.some(e => e.verification?.status === "verified")),
-          createdAt: Number(user?.createdAt ?? clerkUser.createdAt),
-          fullName: userFullName || clerkUser.fullName || undefined,
-          profile: profile
+          id: userId,
+          email: userData.email || "",
+          role: userData.role || "user",
+          emailVerified: userData.emailVerified || false,
+          createdAt: userData.createdAt || Date.now(),
+          fullName: userData.fullName || userData.displayName || undefined,
+          profile: userData
             ? {
-                id: String(profile?._id ?? ""),
-                fullName: profile?.fullName ?? userFullName ?? undefined,
-                isProfileComplete: Boolean(profile?.isProfileComplete ?? false),
-                isOnboardingComplete: Boolean(profile?.isOnboardingComplete ?? false),
+                id: userId,
+                fullName: userData.fullName || undefined,
+                isProfileComplete: Boolean(userData.isProfileComplete ?? false),
+                isOnboardingComplete: Boolean(
+                  userData.isOnboardingComplete ?? false
+                ),
               }
             : null,
         },

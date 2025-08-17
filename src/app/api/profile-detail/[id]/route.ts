@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { convexQueryWithAuth } from "@/lib/convexServer";
-import { Id } from "@convex/_generated/dataModel";
-// import { errorResponse } from "@/lib/apiResponse";
+import { db } from "@/lib/firebaseAdmin";
+import { requireSession } from "@/app/api/_utils/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,78 +20,42 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const viewedUserId = id as Id<"users">;
+      // Auth optional for now (if needed, enforce requireSession)
+      let authedUserId: string | null = null;
+      const session = await requireSession(req);
+      if (!("errorResponse" in session)) authedUserId = session.userId;
 
-      try {
-        // Compose profile detail data from existing queries
-        const basicProfile = await convexQueryWithAuth(
-          req,
-          api.users.getProfileByUserIdPublic,
-          {
-            userId: viewedUserId,
-          } as any
-        );
-        // For now, return minimal shape expected by clients
-        const result = {
-          currentUser: null,
-          profileData: basicProfile,
-          isBlocked: false,
-          isMutualInterest: false,
-          sentInterest: [],
-        } as const;
-
-        // Only return text/profile data, not images
-        const {
-          currentUser,
-          profileData,
-          isBlocked = false,
-          isMutualInterest = false,
-          sentInterest = [],
-        } = result;
-
-        const responseData = {
-          success: true,
-          currentUser: currentUser || null,
-          profileData: profileData || null,
-          isBlocked: Boolean(isBlocked),
-          isMutualInterest: Boolean(isMutualInterest),
-          sentInterest: Array.isArray(sentInterest) ? sentInterest : [],
-          // No additional error info in composed response
-          timestamp: new Date().toISOString(),
-        };
-
-        return NextResponse.json(responseData, {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-          },
-        });
-      } catch (actionError) {
-        // Check if this is a known error from Convex
-        const errorMessage =
-          actionError instanceof Error ? actionError.message : "Unknown error";
-        const isAuthError =
-          errorMessage.includes("Unauthenticated") ||
-          errorMessage.includes("token") ||
-          errorMessage.includes("authentication");
-
+      const userDoc = await db.collection("users").doc(id).get();
+      if (!userDoc.exists) {
         return NextResponse.json(
           {
-            error: isAuthError
-              ? "Authentication failed"
-              : "Failed to fetch profile data",
-            details:
-              process.env.NODE_ENV === "development" ? errorMessage : undefined,
-            code: isAuthError ? "AUTH_ERROR" : "API_ERROR",
+            error: "Profile not found",
+            code: "NOT_FOUND",
             timestamp: new Date().toISOString(),
           },
-          {
-            status: isAuthError ? 401 : 500,
-            headers: { "Content-Type": "application/json" },
-          }
+          { status: 404 }
         );
       }
+      const profileData = userDoc.data();
+
+      // Basic shape parity with legacy response
+      const responseData = {
+        success: true,
+        currentUser: authedUserId ? { id: authedUserId } : null,
+        profileData: profileData || null,
+        isBlocked: false, // TODO: integrate block lookup if required
+        isMutualInterest: false, // TODO: integrate interest matching
+        sentInterest: [],
+        timestamp: new Date().toISOString(),
+      } as const;
+
+      return NextResponse.json(responseData, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
+        },
+      });
     } catch (convexError) {
       return NextResponse.json(
         {

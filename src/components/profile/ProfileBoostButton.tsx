@@ -8,15 +8,12 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Rocket, Zap, Clock } from "lucide-react";
 import { useProfileContext } from "@/contexts/ProfileContext";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
 import { FeatureUsageTracker } from "@/components/subscription/FeatureUsageTracker";
 
-function computeCurrentMonthKey(): number {
-  const now = new Date();
-  return now.getUTCFullYear() * 100 + (now.getUTCMonth() + 1);
-}
+// Removed client month key quota reset guess; rely on server quota endpoint
 
 function formatTimeRemaining(boostedUntil: number): string {
   const now = Date.now();
@@ -36,7 +33,12 @@ function formatTimeRemaining(boostedUntil: number): string {
 const ProfileBoostButton = () => {
   const { profile, refetchProfileStatus, isLoading } = useProfileContext();
   // Cookie-only auth: no client token required
-  const {} = useAuthContext();
+  const { user: authUser, profile: authProfile } = useAuthContext();
+  const userId =
+    authUser?.uid ||
+    (authProfile as any)?._id ||
+    (authProfile as any)?.userId ||
+    "";
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
 
@@ -58,14 +60,39 @@ const ProfileBoostButton = () => {
     return () => clearInterval(interval);
   }, [profile?.boostedUntil]);
 
-  if (isLoading || !profile) {
-    return null;
-  }
+  const [boostsRemaining, setBoostsRemaining] = useState<number | null>(null);
+  // Fetch quota (moved above conditional returns so hooks aren't conditional)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadQuota() {
+      try {
+        const res = await fetch("/api/subscription/quota/boosts", {
+          credentials: "include",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!cancelled && json?.success !== false) {
+          if (json.unlimited) setBoostsRemaining(-1);
+          else if (typeof json.remaining === "number")
+            setBoostsRemaining(json.remaining);
+        }
+      } catch {
+        // silent
+      }
+    }
+    loadQuota();
+    const interval = setInterval(loadQuota, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [profile?.boostedUntil]);
+
+  if (isLoading || !profile) return null;
 
   const handleBoost = async () => {
     setLoading(true);
     try {
-      const result = await boostProfile();
+      const result = await boostProfile(userId || "");
       if (result.success) {
         showSuccessToast(
           `Profile boosted for 24 hours! Your profile will appear first in search results. (${result.boostsRemaining ?? 0} boosts left this month)`
@@ -92,17 +119,14 @@ const ProfileBoostButton = () => {
     }
   };
 
-  let boostsRemaining = profile.boostsRemaining ?? 0;
-  if (
-    typeof profile.boostsMonth === "number" &&
-    profile.boostsMonth !== computeCurrentMonthKey()
-  ) {
-    boostsRemaining = 5; // reset quota client-side if month changed
-  }
+  const effectiveRemaining = boostsRemaining ?? profile.boostsRemaining ?? 0;
 
   const isCurrentlyBoosted =
     !!profile.boostedUntil && profile.boostedUntil > Date.now();
-  const disabled = loading || boostsRemaining <= 0 || isCurrentlyBoosted;
+  const disabled =
+    loading ||
+    (effectiveRemaining !== -1 && effectiveRemaining <= 0) ||
+    isCurrentlyBoosted;
 
   if (isCurrentlyBoosted) {
     return (
@@ -132,7 +156,11 @@ const ProfileBoostButton = () => {
           <Button
             onClick={handleBoost}
             disabled={disabled}
-            variant={boostsRemaining > 0 ? "default" : "secondary"}
+            variant={
+              effectiveRemaining > 0 || effectiveRemaining === -1
+                ? "default"
+                : "secondary"
+            }
             className="bg-pink-600 hover:bg-pink-700 text-white"
           >
             {loading ? (
@@ -143,9 +171,11 @@ const ProfileBoostButton = () => {
             Boost Profile (24h)
           </Button>
           <div className="text-xs text-gray-500">
-            {boostsRemaining > 0
-              ? `${boostsRemaining} boost${boostsRemaining === 1 ? "" : "s"} remaining this month`
-              : "No boosts remaining this month"}
+            {effectiveRemaining === -1
+              ? "Unlimited boosts"
+              : effectiveRemaining > 0
+                ? `${effectiveRemaining} boost${effectiveRemaining === 1 ? "" : "s"} remaining this month`
+                : "No boosts remaining this month"}
           </div>
         </div>
       </FeatureUsageTracker>

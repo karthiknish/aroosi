@@ -1,10 +1,8 @@
 import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchQuery } from "convex/nextjs";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import {
   checkApiRateLimit,
   logSecurityEvent,
@@ -31,13 +29,19 @@ interface RequestBody {
  * Validates public-facing planId strictly against server constants.
  */
 function isValidPlanId(planId: unknown): planId is PublicPlanId {
-  return typeof planId === "string" && planId in ALLOWED_PLAN_IDS && ALLOWED_PLAN_IDS[planId as PublicPlanId] === true;
+  return (
+    typeof planId === "string" &&
+    planId in ALLOWED_PLAN_IDS &&
+    ALLOWED_PLAN_IDS[planId as PublicPlanId] === true
+  );
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // Centralized cookie-based session (with auto-refresh + cookie forwarding)
-    const { userId } = await requireAuth(req);
+    // Firebase session (cookie based)
+    const session = await requireSession(req);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId, profile } = session;
 
     // Strict rate limiting for payment operations
     const rateLimitResult = checkApiRateLimit(
@@ -80,29 +84,16 @@ export async function POST(req: NextRequest) {
       return errorResponse("Payment service temporarily unavailable", 503);
     }
 
-    // Fetch user profile from Convex to pre-fill email and pass userId as metadata.
-    const profile = await fetchQuery(api.profiles.getProfileByUserId, {
-      userId: userId as Id<"users">,
-    } as any);
-    if (!profile) {
-      return errorResponse("User not found", 404);
+    // Ensure we have fresh Firestore profile (may contain stripeCustomerId)
+    let userDoc: any = profile;
+    try {
+      const snap = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+      if (snap.exists) userDoc = { id: snap.id, ...(snap.data() as any) };
+    } catch (e) {
+      console.warn("Checkout Firestore profile fetch failed", e);
     }
-    // Validate user record
-    if (!profile.email || typeof profile.email !== "string") {
-      console.error("Invalid user record - missing email:", profile);
-      return errorResponse("User account error", 400);
-    }
-    // Security check: ensure the authenticated user has a valid email
-    if (!profile.email) {
-      logSecurityEvent(
-        "UNAUTHORIZED_ACCESS",
-        {
-          userId,
-          action: "stripe_checkout_missing_email",
-        },
-        req
-      );
-      return errorResponse("User verification failed", 403);
+    if (!userDoc?.email || typeof userDoc.email !== "string") {
+      return errorResponse("User account missing email", 400);
     }
     // Validate and sanitize base URL
     const origin = req.headers.get("origin");
@@ -112,15 +103,18 @@ export async function POST(req: NextRequest) {
       "http://localhost:3000";
     // Validate email if provided
     const customerEmail =
-      profile.email && isValidEmail(profile.email) ? profile.email : undefined;
+      userDoc.email && isValidEmail(userDoc.email) ? userDoc.email : undefined;
     console.log(
       `Creating Stripe checkout session for user ${userId}, plan: ${planId}`
     );
     // Create Stripe checkout session with security considerations
+    // Reuse existing customer if known
     const stripeSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
-      customer_email: customerEmail,
+      ...(userDoc.stripeCustomerId
+        ? { customer: userDoc.stripeCustomerId }
+        : { customer_email: customerEmail }),
       line_items: [
         {
           price: priceId,
@@ -129,7 +123,7 @@ export async function POST(req: NextRequest) {
       ],
       metadata: {
         planId,
-        email: profile.email,
+        email: userDoc.email,
         userId, // Add for double verification in webhook
       },
       success_url: `${baseUrl}/plans?checkout=success`,
@@ -138,7 +132,7 @@ export async function POST(req: NextRequest) {
       subscription_data: {
         metadata: {
           planId,
-          email: profile.email,
+          email: userDoc.email,
           userId,
         },
       },
@@ -151,7 +145,10 @@ export async function POST(req: NextRequest) {
       `Stripe checkout session created: ${stripeSession.id} for user ${userId}`
     );
 
-    return successResponse({ url: stripeSession.url, sessionId: stripeSession.id });
+    return successResponse({
+      url: stripeSession.url,
+      sessionId: stripeSession.id,
+    });
   } catch (error) {
     console.error("Error in Stripe checkout:", error);
     logSecurityEvent(
@@ -160,7 +157,7 @@ export async function POST(req: NextRequest) {
         endpoint: "stripe/checkout",
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      req,
+      req
     );
     if (error instanceof Error && error.message.includes("Unauthenticated")) {
       return errorResponse("Authentication failed", 401);

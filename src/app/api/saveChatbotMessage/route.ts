@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { convexMutationWithAuth } from "@/lib/convexServer";
-import { api } from "@convex/_generated/api";
+import { db } from "@/lib/firebaseAdmin";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,22 +13,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await convexMutationWithAuth(req, api.messages.saveChatbotMessage, {
-      email,
-      role,
-      text,
-      timestamp,
-    } as any);
-
-    return NextResponse.json({ success: true });
+  await db
+    .collection("chatbotMessages")
+    .add({ email, role, text, timestamp, createdAt: Date.now() });
+  return successResponse({ success: true });
   } catch (error: unknown) {
-    console.error("Error saving chatbot message:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to save message",
-      },
-      { status: 500 },
-    );
+  return errorResponse("Failed to save message", 500, {
+    details: error instanceof Error ? error.message : String(error),
+  });
   }
 }

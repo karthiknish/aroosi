@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { enqueueEmail } from "@/lib/emailQueue";
 
 // Lazy-initialize Resend to avoid requiring API key in test environment
 let resendInstance: Resend | null = null;
@@ -44,12 +45,14 @@ export const sendAdminNotification = async (subject: string, html: string) => {
     console.error("ADMIN_EMAIL environment variable not set");
     return { error: "Admin email not configured" };
   }
-
-  return sendEmail({
+  // Enqueue instead of direct send
+  await enqueueEmail({
     to: process.env.ADMIN_EMAIL,
     subject: `[Admin Notification] ${subject}`,
     html,
+    metadata: { type: "admin_notification" },
   });
+  return { queued: true };
 };
 
 export const sendUserNotification = async (
@@ -57,9 +60,11 @@ export const sendUserNotification = async (
   subject: string,
   html: string
 ) => {
-  return sendEmail({
+  await enqueueEmail({
     to: email,
     subject,
     html,
+    metadata: { type: "user_notification" },
   });
+  return { queued: true };
 };

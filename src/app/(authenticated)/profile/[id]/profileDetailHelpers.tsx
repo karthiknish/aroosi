@@ -45,7 +45,8 @@ export const DisplaySection: React.FC<DisplaySectionProps> = ({
 );
 
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { Id } from "@convex/_generated/dataModel";
+// Removed Convex Id import; use string for user ids post-migration
+export type UserId = string;
 
 export async function handleExpressInterest({
   setInterestError,
@@ -56,11 +57,11 @@ export async function handleExpressInterest({
 }: {
   setInterestError: (err: string | null) => void;
   sendInterestMutation: (args: {
-    fromUserId: Id<"users">;
-    toUserId: Id<"users">;
+    fromUserId: UserId;
+    toUserId: UserId;
   }) => Promise<unknown>;
-  currentUserId: Id<"users">;
-  id: Id<"users">;
+  currentUserId: UserId;
+  id: UserId;
   setInterestSent: (val: boolean) => void;
 }) {
   setInterestError(null);
@@ -86,11 +87,11 @@ export async function handleBlock({
 }: {
   setBlockLoading: (val: boolean) => void;
   blockUserMutation: (args: {
-    blockerUserId: Id<"users">;
-    blockedUserId: Id<"users">;
+    blockerUserId: UserId;
+    blockedUserId: UserId;
   }) => Promise<unknown>;
-  currentUserId: Id<"users">;
-  id: Id<"users">;
+  currentUserId: UserId;
+  id: UserId;
 }) {
   setBlockLoading(true);
   try {
@@ -118,11 +119,11 @@ export async function handleUnblock({
 }: {
   setBlockLoading: (val: boolean) => void;
   unblockUserMutation: (args: {
-    blockerUserId: Id<"users">;
-    blockedUserId: Id<"users">;
+    blockerUserId: UserId;
+    blockedUserId: UserId;
   }) => Promise<unknown>;
-  currentUserId: Id<"users">;
-  id: Id<"users">;
+  currentUserId: UserId;
+  id: UserId;
 }) {
   setBlockLoading(true);
   try {
@@ -151,11 +152,11 @@ export async function handleRemoveInterest({
 }: {
   setInterestError: (err: string | null) => void;
   removeInterestMutation: (args: {
-    fromUserId: Id<"users">;
-    toUserId: Id<"users">;
+    fromUserId: UserId;
+    toUserId: UserId;
   }) => Promise<unknown>;
-  currentUserId: Id<"users">;
-  id: Id<"users">;
+  currentUserId: UserId;
+  id: UserId;
   setInterestSent: (val: boolean) => void;
 }) {
   setInterestError(null);

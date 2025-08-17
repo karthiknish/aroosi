@@ -1,0 +1,94 @@
+// New consolidated Firebase-based profile images endpoint (optional modern path)
+// GET    /api/profile-images/firebase      -> list current user's images
+// POST   /api/profile-images/firebase      -> metadata only (after client direct upload) { storageId, fileName, contentType, size }
+// DELETE /api/profile-images/firebase?storageId=... -> delete an image owned by user
+
+import { NextRequest } from "next/server";
+import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
+import { adminStorage, db } from "@/lib/firebaseAdmin";
+
+async function listImages(user: AuthenticatedUser) {
+  const bucket = adminStorage.bucket();
+  const [files] = await bucket.getFiles({ prefix: `users/${user.id}/profile-images/` });
+  const images = await Promise.all(
+    files
+      .filter((f) => !f.name.endsWith("/"))
+      .map(async (f) => {
+        const [meta] = await f.getMetadata();
+        return {
+          url: `https://storage.googleapis.com/${bucket.name}/${f.name}`,
+            storageId: f.name,
+            fileName: meta.name,
+            size: Number(meta.size || 0),
+            uploadedAt: meta.metadata?.uploadedAt || meta.timeCreated,
+            contentType: meta.contentType || null,
+        };
+      })
+  );
+  return images;
+}
+
+export const GET = withFirebaseAuth(async (user: AuthenticatedUser) => {
+  try {
+    const images = await listImages(user);
+    return new Response(
+      JSON.stringify({ success: true, images }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    console.error("firebase images GET error", e);
+    return new Response(JSON.stringify({ success: false, error: "Failed" }), { status: 500 });
+  }
+});
+
+export const POST = withFirebaseAuth(async (user: AuthenticatedUser, req: NextRequest) => {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { storageId, fileName, contentType, size } = body as {
+      storageId?: string; fileName?: string; contentType?: string; size?: number;
+    };
+    if (!storageId || !fileName || !contentType || typeof size !== "number") {
+      return new Response(JSON.stringify({ success: false, error: "Missing fields" }), { status: 400 });
+    }
+    if (!storageId.startsWith(`users/${user.id}/`)) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized storageId" }), { status: 403 });
+    }
+    // Persist metadata to Firestore (simplified subcollection)
+    const imagesCol = db.collection("users").doc(user.id).collection("images");
+    const imageId = storageId.split("/").pop() || storageId;
+    await imagesCol.doc(imageId).set({
+      storageId,
+      fileName,
+      contentType,
+      size,
+      url: `https://storage.googleapis.com/${adminStorage.bucket().name}/${storageId}`,
+      uploadedAt: new Date().toISOString(),
+    }, { merge: true });
+    return new Response(
+      JSON.stringify({ success: true, imageId, url: `https://storage.googleapis.com/${adminStorage.bucket().name}/${storageId}` }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    console.error("firebase images POST error", e);
+    return new Response(JSON.stringify({ success: false, error: "Failed" }), { status: 500 });
+  }
+});
+
+export const DELETE = withFirebaseAuth(async (user: AuthenticatedUser, req: NextRequest) => {
+  try {
+    const { searchParams } = new URL(req.url);
+    const storageId = searchParams.get("storageId");
+    if (!storageId) return new Response(JSON.stringify({ success: false, error: "Missing storageId" }), { status: 400 });
+    if (!storageId.startsWith(`users/${user.id}/`)) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 403 });
+    }
+    const file = adminStorage.bucket().file(storageId);
+    await file.delete({ ignoreNotFound: true });
+    const imageId = storageId.split("/").pop() || storageId;
+    await db.collection("users").doc(user.id).collection("images").doc(imageId).delete().catch(() => {});
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  } catch (e) {
+    console.error("firebase images DELETE error", e);
+    return new Response(JSON.stringify({ success: false, error: "Failed" }), { status: 500 });
+  }
+});

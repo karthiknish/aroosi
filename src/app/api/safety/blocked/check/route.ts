@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { convexQueryWithAuth } from "@/lib/convexServer";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { Id } from "@convex/_generated/dataModel";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,38 +24,34 @@ export async function GET(request: NextRequest) {
       return errorResponse("Missing profileId or userId parameter", 400);
     }
 
-    // Fetch current user (authenticated) record with profile
-    const currentUser = await convexQueryWithAuth(request, api.users.getCurrentUserWithProfile, {}).catch(
-      () => null as any,
-    );
+    // Auth (we require session to know current user)
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const { userId: currentUserId } = session;
 
-    if (!currentUser || !currentUser.profile) {
-      return errorResponse("Current user profile not found", 404);
+    let targetUserId: string = targetUserIdParam || "";
+    if (targetProfileId && !targetUserIdParam) {
+      // Lookup profile -> user mapping in users collection (assuming profileId stored inside user doc arrays? fallback to direct id)
+      // For now treat profileId as userId if direct mapping absent
+      targetUserId = targetProfileId;
     }
+    if (!targetUserId) return errorResponse("Target user not resolved", 404);
 
-    let targetUserId: Id<"users">;
-    if (targetProfileId) {
-      const targetProfile = await convexQueryWithAuth(request, api.users.getProfileOwnerById, {
-        id: targetProfileId as Id<"profiles">,
-      } as any).catch(() => null as any);
-      if (!targetProfile) {
-        return errorResponse("Target profile not found", 404);
-      }
-      targetUserId = targetProfile.userId as Id<"users">;
-    } else {
-      // Treat provided userId as internal Convex user ID
-      targetUserId = targetUserIdParam as Id<"users">;
-    }
-
-    const blockStatus = await convexQueryWithAuth(request, api.safety.getBlockStatus, {
-      blockerUserId: currentUser._id as Id<"users">,
-      blockedUserId: targetUserId,
-    } as any).catch(() => null as any);
+    // Forward (current user blocks target)
+    const forwardDocId = `${currentUserId}_${targetUserId}`;
+    const reverseDocId = `${targetUserId}_${currentUserId}`;
+    const [forwardSnap, reverseSnap] = await Promise.all([
+      db.collection("blocks").doc(forwardDocId).get(),
+      db.collection("blocks").doc(reverseDocId).get(),
+    ]);
+    const isBlocked = forwardSnap.exists;
+    const isBlockedBy = reverseSnap.exists;
+    const canInteract = !isBlocked && !isBlockedBy;
 
     return successResponse({
-      isBlocked: !!blockStatus,
-      isBlockedBy: false, // Would need reverse check
-      canInteract: !blockStatus,
+      isBlocked,
+      isBlockedBy,
+      canInteract,
     });
   } catch (error) {
     // avoid noisy logs in production

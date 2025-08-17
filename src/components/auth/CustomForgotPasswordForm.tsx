@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useSignIn } from "@clerk/nextjs";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 interface CustomForgotPasswordFormProps {
@@ -19,7 +19,7 @@ export default function CustomForgotPasswordForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
-  const { isLoaded, signIn } = useSignIn();
+  const { sendPasswordReset } = useFirebaseAuth();
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -35,24 +35,19 @@ export default function CustomForgotPasswordForm({
 
       setSubmitting(true);
       try {
-        if (!isLoaded || !signIn) {
-          throw new Error("Auth not ready. Please try again.");
+        const result = await sendPasswordReset(safeEmail);
+        if (!result.success) {
+          throw new Error(result.error || "Failed to send password reset email.");
         }
-        await signIn.create({
-          identifier: safeEmail,
-          strategy: "reset_password_email_code",
-        });
-        const msg = "If that email exists, we sent a verification code.";
+        
+        const msg = "If that email exists, we sent a password reset link.";
         setSuccess(msg);
         showSuccessToast(msg);
         if (onComplete) {
           setTimeout(() => onComplete(), 800);
         }
       } catch (err: any) {
-        const clerkErr = err?.errors?.[0];
         const msg =
-          clerkErr?.longMessage ||
-          clerkErr?.message ||
           err?.message ||
           "We couldn't process your request right now. Please try again.";
         const finalMsg =
@@ -65,7 +60,7 @@ export default function CustomForgotPasswordForm({
         setSubmitting(false);
       }
     },
-    [email, onComplete]
+    [email, onComplete, sendPasswordReset]
   );
 
   return (

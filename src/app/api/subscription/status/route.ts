@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
-import { convexQueryWithAuth } from "@/lib/convexServer";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { requireSession } from "@/app/api/_utils/auth";
 
 /**
  * Normalize subscription status response and avoid wrappers that might cause 404/rewrites.
@@ -24,46 +22,50 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get("userId");
 
-    let profile: unknown = null;
+    let profile: any = null;
     if (userIdParam) {
-      profile = await convexQueryWithAuth(
-        request,
-        api.profiles.getProfileByUserId,
-        {
-          userId: userIdParam as Id<"users">,
-        }
-      ).catch((e: unknown) => {
-        console.error("Subscription status getProfileByUserId error", {
+      try {
+        const snap = await db
+          .collection(COLLECTIONS.USERS)
+          .doc(userIdParam)
+          .get();
+        profile = snap.exists
+          ? { _id: snap.id, ...(snap.data() as any) }
+          : null;
+      } catch (e) {
+        console.error("Subscription status Firestore doc fetch error", {
           scope: "subscription.status",
-          type: "convex_query_error",
+          type: "firestore_query_error",
           message: e instanceof Error ? e.message : String(e),
           correlationId,
           statusCode: 500,
           durationMs: Date.now() - startedAt,
         });
-        return null;
-      });
+      }
     } else {
-      const session = await getSessionFromRequest(request);
-      if (!session.ok) return session.errorResponse!;
-      profile = await convexQueryWithAuth(
-        request,
-        api.profiles.getProfileByUserId,
-        { userId: session.userId as unknown as Id<"users"> }
-      ).catch((e: unknown) => {
+      const session = await requireSession(request);
+      if ("errorResponse" in session) return session.errorResponse;
+      try {
+        const snap = await db
+          .collection(COLLECTIONS.USERS)
+          .doc(session.userId)
+          .get();
+        profile = snap.exists
+          ? { _id: snap.id, ...(snap.data() as any) }
+          : null;
+      } catch (e) {
         console.error(
-          "Subscription status getProfileByUserId (session) error",
+          "Subscription status Firestore doc fetch (session) error",
           {
             scope: "subscription.status",
-            type: "convex_query_error",
+            type: "firestore_query_error",
             message: e instanceof Error ? e.message : String(e),
             correlationId,
             statusCode: 500,
             durationMs: Date.now() - startedAt,
           }
         );
-        return null;
-      });
+      }
     }
 
     if (!profile) {

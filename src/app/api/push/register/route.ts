@@ -1,63 +1,58 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchMutation } from "convex/nextjs";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { db } from "@/lib/firebaseAdmin";
 
-export async function POST(request: NextRequest) {
+export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
   try {
-    const { userId } = await requireAuth(request);
-
-    const { playerId, deviceType, deviceToken } = await request.json();
-    if (!playerId) return errorResponse("Missing playerId", 400);
-
-    const registrationId = await fetchMutation(api.pushNotifications.registerDevice, {
-      userId: userId as Id<"users">,
-      playerId,
-      deviceType: deviceType || "unknown",
-      deviceToken: deviceToken || undefined,
-    } as any);
-
+    const { token, deviceType } = await request.json();
+    if (!token) return errorResponse("Missing token", 400);
+    const docId = token.slice(0, 140); // shorten if huge
+    await db
+      .collection("pushTokens")
+      .doc(docId)
+      .set(
+        {
+          userId: user.id,
+          token,
+          deviceType: deviceType || "web",
+          registeredAt: Date.now(),
+          isActive: true,
+        },
+        { merge: true }
+      );
     return successResponse({
-      message: "Push notifications registered successfully",
-      registrationId,
-      playerId,
+      message: "Push token registered",
+      token,
       registeredAt: Date.now(),
-      features: [
-        "New message notifications",
-        "New interest notifications",
-        "Match notifications",
-        "Profile view notifications (Premium Plus)",
-      ],
     });
   } catch (error) {
-    console.error("Error registering push notifications:", error);
-    return errorResponse("Failed to register push notifications", 500);
+    console.error("Error registering push token:", error);
+    return errorResponse("Failed to register push token", 500);
   }
-}
+});
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withFirebaseAuth(async (user, request: NextRequest) => {
   try {
-    const { userId } = await requireAuth(request);
-
-    const { playerId } = await request.json();
-    if (!playerId) return errorResponse("Missing playerId", 400);
-
-    // Remove registration from Convex
-    const unregistered = await fetchMutation(api.pushNotifications.unregisterDevice, {
-      userId: userId as Id<"users">,
-      playerId,
-    } as any);
-
+    const { token } = await request.json();
+    if (!token) return errorResponse("Missing token", 400);
+    const docId = token.slice(0, 140);
+    await db.collection("pushTokens").doc(docId).set(
+      {
+        userId: user.id,
+        token,
+        isActive: false,
+        unregisteredAt: Date.now(),
+      },
+      { merge: true }
+    );
     return successResponse({
-      message: unregistered ? "Push notifications unregistered successfully" : "No active registration found",
-      playerId,
-      unregistered,
+      message: "Push token unregistered",
+      token,
       unregisteredAt: Date.now(),
     });
   } catch (error) {
-    console.error("Error unregistering push notifications:", error);
-    return errorResponse("Failed to unregister push notifications", 500);
+    console.error("Error unregistering push token:", error);
+    return errorResponse("Failed to unregister push token", 500);
   }
-}
+});

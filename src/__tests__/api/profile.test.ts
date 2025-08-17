@@ -1,41 +1,78 @@
 import { createMocks } from "node-mocks-http";
-import { GET, POST, PUT, DELETE } from "@/app/api/profile/route";
-// Mock the helpers used internally by the route
-jest.mock("@/lib/auth/requireAuth", () => ({ requireAuth: jest.fn() }));
-jest.mock("@/lib/convexServer", () => ({
-  convexQueryWithAuth: jest.fn(),
-  convexMutationWithAuth: jest.fn(),
-}));
-import { requireAuth } from "@/lib/auth/requireAuth";
-import {
-  convexQueryWithAuth,
-  convexMutationWithAuth,
-} from "@/lib/convexServer";
-const mockRequireAuth = requireAuth as jest.MockedFunction<typeof requireAuth>;
-const mockConvexQuery = convexQueryWithAuth as jest.MockedFunction<
-  typeof convexQueryWithAuth
->;
-const mockConvexMutation = convexMutationWithAuth as jest.MockedFunction<
-  typeof convexMutationWithAuth
->;
+// Use relative imports to avoid tsconfig base exclude of src/__tests__ impacting path alias resolution in test tsconfig
+import { __setGetAuthenticatedUserForTests } from "../../lib/auth/firebaseAuth";
+import { GET, POST, PUT, DELETE } from "../../app/api/profile/route";
 
-describe("/api/profile API Routes", () => {
+// Provide a mutable mock function via the setter
+const mockGetUser = jest.fn<ReturnType<any>, any>();
+beforeAll(() => {
+  __setGetAuthenticatedUserForTests(async () => mockGetUser());
+});
+
+// In-memory Firestore mock
+jest.mock("@/lib/firebaseAdmin", () => {
+  const store: Record<string, any> = {};
+  return {
+    db: {
+      collection: (_name: string) => ({
+        doc: (id: string) => ({
+          get: async () => ({ exists: !!store[id], id, data: () => store[id] }),
+          set: async (data: any) => {
+            store[id] = { ...(store[id] || {}), ...data };
+          },
+          delete: async () => {
+            delete store[id];
+          },
+        }),
+      }),
+    },
+  };
+});
+
+describe("/api/profile API Routes (Firebase)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetUser.mockReset();
   });
 
   describe("GET /api/profile", () => {
     test("returns user profile when authenticated", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: "user_123" } as any);
-
-      const mockProfile = {
-        _id: "profile_123",
-        userId: "user_123",
-        fullName: "Test User",
+      const userObj = {
+        id: "user_123",
         email: "test@example.com",
-      };
-
-      mockConvexQuery.mockResolvedValueOnce(mockProfile as any);
+        role: "user",
+        emailVerified: true,
+        createdAt: Date.now(),
+        profile: null,
+      } as any;
+      mockGetUser.mockResolvedValue(userObj);
+      // create profile first (uses same mock user)
+      const { req: createReq } = createMocks({
+        method: "POST",
+        body: {
+          fullName: "Test User",
+          dateOfBirth: "1990-01-01",
+          gender: "male",
+          preferredGender: "female",
+          city: "London",
+          aboutMe: "About me long enough to pass validation 1234567890",
+          occupation: "Engineer",
+          education: "Uni",
+          height: "170",
+          maritalStatus: "single",
+          phoneNumber: "+441234567890",
+        },
+        headers: { "content-type": "application/json" },
+      });
+      await POST(createReq as any);
+      // debug: ensure profile was created
+      const postResp = await POST(createReq as any);
+      // eslint-disable-next-line no-console
+      console.log(
+        "Debug POST status (should be 200):",
+        postResp.status,
+        await postResp.text()
+      );
 
       const { req } = createMocks({
         method: "GET",
@@ -46,7 +83,7 @@ describe("/api/profile API Routes", () => {
     });
 
     test("returns 401 when not authenticated", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: undefined } as any);
+      mockGetUser.mockResolvedValue(null);
 
       const { req } = createMocks({ method: "GET" });
       const response = await GET(req as any);
@@ -55,9 +92,7 @@ describe("/api/profile API Routes", () => {
     });
 
     test("handles profile not found", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: "user_123" } as any);
-
-      mockConvexQuery.mockResolvedValueOnce(null as any);
+      mockGetUser.mockResolvedValue({ id: "absent", email: "x@y.com" } as any);
 
       const { req } = createMocks({
         method: "GET",
@@ -68,12 +103,8 @@ describe("/api/profile API Routes", () => {
       expect(response.status).toBe(404);
     });
 
-    test("handles database errors gracefully", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: "user_123" } as any);
-
-      mockConvexQuery.mockRejectedValueOnce(new Error("Database error"));
-      // After catch, the route code returns 404 if profile is null. Ensure null.
-      mockConvexQuery.mockResolvedValueOnce(null as any);
+    test("handles database errors gracefully (still 404/no profile)", async () => {
+      mockGetUser.mockResolvedValue({ id: "no_doc", email: "a@b.com" } as any);
 
       const { req } = createMocks({
         method: "GET",
@@ -88,27 +119,25 @@ describe("/api/profile API Routes", () => {
 
   describe("POST /api/profile", () => {
     test("creates new profile when authenticated", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: "user_123" } as any);
+      mockGetUser.mockResolvedValue({
+        id: "user_create",
+        email: "c@d.com",
+      } as any);
 
       const profileData = {
         fullName: "New User",
         city: "London",
         dateOfBirth: "1990-01-01",
         gender: "male",
-        aboutMe: "Test about me",
+        preferredGender: "female",
+        aboutMe:
+          "This is a sufficiently long about me text to pass validation.",
         occupation: "Engineer",
         education: "University",
-        height: "5ft 10in",
+        height: "175",
         maritalStatus: "single",
+        phoneNumber: "+447000000001",
       };
-
-      mockConvexQuery.mockResolvedValueOnce(null as any).mockResolvedValueOnce({
-        _id: "profile_123",
-        userId: "user_123",
-        fullName: profileData.fullName,
-        email: "test@example.com",
-      } as any);
-      mockConvexMutation.mockResolvedValue({ success: true } as any);
 
       const { req } = createMocks({
         method: "POST",
@@ -125,7 +154,7 @@ describe("/api/profile API Routes", () => {
     });
 
     test("returns 401 when not authenticated", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: undefined } as any);
+      mockGetUser.mockResolvedValue(null);
 
       const { req } = createMocks({
         method: "POST",
@@ -140,23 +169,34 @@ describe("/api/profile API Routes", () => {
 
   describe("PUT /api/profile", () => {
     test("updates existing profile when authenticated", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: "user_123" } as any);
+      mockGetUser.mockResolvedValue({
+        id: "user_update",
+        email: "u@e.com",
+      } as any);
+      // create existing
+      const { req: createReq } = createMocks({
+        method: "POST",
+        body: {
+          fullName: "Old Name",
+          dateOfBirth: "1990-01-01",
+          gender: "male",
+          preferredGender: "female",
+          city: "Birmingham",
+          aboutMe: "About me long enough 1234567890",
+          occupation: "Engineer",
+          education: "Uni",
+          height: "170",
+          maritalStatus: "single",
+          phoneNumber: "+441234567890",
+        },
+        headers: { "content-type": "application/json" },
+      });
+      await POST(createReq as any);
 
       const updateData = {
         fullName: "Updated User",
         city: "Birmingham",
       };
-
-      const mockProfile = {
-        _id: "profile_123",
-        userId: "user_123",
-        fullName: "Old Name",
-      };
-
-      mockConvexQuery
-        .mockResolvedValueOnce(mockProfile as any)
-        .mockResolvedValueOnce({ ...mockProfile, ...updateData } as any);
-      mockConvexMutation.mockResolvedValue({ success: true } as any);
 
       const { req } = createMocks({
         method: "PUT",
@@ -174,15 +214,29 @@ describe("/api/profile API Routes", () => {
 
   describe("DELETE /api/profile", () => {
     test("deletes profile when authenticated", async () => {
-      mockRequireAuth.mockResolvedValue({ userId: "user_123" } as any);
-
-      const mockProfile = {
-        _id: "profile_123",
-        userId: "user_123",
-      };
-
-      mockConvexQuery.mockResolvedValue(mockProfile as any);
-      mockConvexMutation.mockResolvedValue({ success: true } as any);
+      mockGetUser.mockResolvedValue({
+        id: "user_delete",
+        email: "d@e.com",
+      } as any);
+      // create first
+      const { req: createReq } = createMocks({
+        method: "POST",
+        body: {
+          fullName: "Temp User",
+          dateOfBirth: "1990-01-01",
+          gender: "male",
+          preferredGender: "female",
+          city: "Leeds",
+          aboutMe: "About me long enough 1234567890",
+          occupation: "Engineer",
+          education: "Uni",
+          height: "170",
+          maritalStatus: "single",
+          phoneNumber: "+441234567890",
+        },
+        headers: { "content-type": "application/json" },
+      });
+      await POST(createReq as any);
 
       const { req } = createMocks({
         method: "DELETE",

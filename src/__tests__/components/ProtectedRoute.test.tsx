@@ -3,7 +3,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import type { Profile } from "@/types/profile";
 
 // Mock hooks
@@ -21,7 +21,7 @@ jest.mock("next/navigation", () => {
     useSearchParams: jest.fn(() => new URLSearchParams()),
   };
 });
-jest.mock("@/components/ClerkAuthProvider");
+jest.mock("@/components/FirebaseAuthProvider");
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;

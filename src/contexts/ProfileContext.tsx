@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import type { Profile, ProfileContextType } from "@/types/profile";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
@@ -21,10 +22,18 @@ export const ProfileProvider = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const { user, profile: authProfile } = useAuthContext();
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
-      const result = await getCurrentUserWithProfile();
+      const id =
+        user?.uid || (authProfile as any)?._id || (authProfile as any)?.userId;
+      if (!id) {
+        setProfile(null);
+        setIsLoading(false);
+        return;
+      }
+      const result = await getCurrentUserWithProfile(id);
       if (result.success && result.data) {
         const envelope = result.data ?? {};
         setProfile((envelope as any).profile ?? null);
@@ -36,7 +45,7 @@ export const ProfileProvider = ({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user, authProfile]);
 
   // Initial load
   useEffect(() => {

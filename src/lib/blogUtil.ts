@@ -164,7 +164,10 @@ export async function fetchBlogPostBySlug(
   slug: string,
   token?: string
 ): Promise<BlogPost | null> {
-  const data = (await getJson(`/api/blog/${encodeURIComponent(slug)}`)) as unknown;
+  // Firestore-backed API returns { success, data } where data is the post
+  const data = (await getJson(
+    `/api/blog/${encodeURIComponent(slug)}`
+  )) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
   if (

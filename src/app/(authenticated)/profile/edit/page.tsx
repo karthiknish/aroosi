@@ -11,10 +11,9 @@ import type {
   PhysicalStatus,
 } from "@/types/profile";
 import ProfileEditSimpleForm from "@/components/profile/ProfileEditSimpleForm";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { Id } from "@convex/_generated/dataModel";
 import {
   getCurrentUserWithProfile,
   submitProfile,
@@ -26,8 +25,8 @@ import React from "react";
 
 // Default profile data matching the Profile interface
 const defaultProfile: Profile = {
-  _id: "" as Id<"profiles">,
-  userId: "" as Id<"users">,
+  _id: "",
+  userId: "",
   email: "",
   fullName: "",
   dateOfBirth: "",
@@ -65,18 +64,18 @@ const defaultProfile: Profile = {
 // eslint-disable-next-line no-unused-vars
 function convertFormValuesToProfile(
   formValues: ProfileFormValues,
-  existingProfile: Partial<Profile> = {},
+  existingProfile: Partial<Profile> = {}
 ): Profile {
   // Remove _creationTime and _id from both formValues and existingProfile
   const cleanFormValues = Object.fromEntries(
     Object.entries(formValues).filter(
-      ([k]) => k !== "_creationTime" && k !== "_id",
-    ),
+      ([k]) => k !== "_creationTime" && k !== "_id"
+    )
   );
   const cleanExistingProfile = Object.fromEntries(
     Object.entries(existingProfile).filter(
-      ([k]) => k !== "_creationTime" && k !== "_id",
-    ),
+      ([k]) => k !== "_creationTime" && k !== "_id"
+    )
   );
   return {
     ...defaultProfile,
@@ -92,12 +91,12 @@ function convertFormValuesToProfile(
         ? parseInt(formValues.partnerPreferenceAgeMax, 10) || 80
         : (formValues.partnerPreferenceAgeMax ?? 80),
     maritalStatus: (["single", "divorced", "widowed"].includes(
-      formValues.maritalStatus,
+      formValues.maritalStatus
     )
       ? formValues.maritalStatus
       : "single") as "single" | "divorced" | "widowed",
     preferredGender: (["male", "female", "any"].includes(
-      formValues.preferredGender,
+      formValues.preferredGender
     )
       ? formValues.preferredGender
       : "any") as "male" | "female" | "any",
@@ -111,13 +110,11 @@ function convertFormValuesToProfile(
 
 // Utility to map ProfileFormComponentValues (with string fields for arrays) back to canonical ProfileFormValues
 function fromProfileFormComponentValues(
-  values: ProfileFormComponentValues & { profileImageIds: string[] },
+  values: ProfileFormComponentValues & { profileImageIds: string[] }
 ): ProfileFormValues & { profileImageIds: string[] } {
   // Remove _creationTime and _id from values
   const cleanValues = Object.fromEntries(
-    Object.entries(values).filter(
-      ([k]) => k !== "_creationTime" && k !== "_id",
-    ),
+    Object.entries(values).filter(([k]) => k !== "_creationTime" && k !== "_id")
   );
   return {
     ...cleanValues,
@@ -162,12 +159,15 @@ function fromProfileFormComponentValues(
 export default function EditProfilePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { profile: rawAuthProfile, isSignedIn } = useAuthContext();
-  const authProfile = rawAuthProfile as { _id?: string } | null;
-  const userId = authProfile?._id;
+  const { user, profile: rawAuthProfile, isSignedIn } = useAuthContext();
+  const authProfile = rawAuthProfile as {
+    _id?: string;
+    userId?: string;
+  } | null;
+  const userId = user?.uid || authProfile?._id || authProfile?.userId || "";
   const [serverError, setServerError] = useState<string | null>(null);
   const [profileDataState, setProfileDataState] = useState<Profile | null>(
-    null,
+    null
   );
   const [isSaving, setIsSaving] = useState(false);
 
@@ -184,7 +184,7 @@ export default function EditProfilePage() {
   } = useQuery<Profile | null>({
     queryKey: profileQueryKey,
     queryFn: async () => {
-      const result = await getCurrentUserWithProfile();
+      const result = await getCurrentUserWithProfile(userId);
       return result.success ? (result.data as Profile) : null;
     },
     // Only run after auth hydration in token-based flow
@@ -246,13 +246,13 @@ export default function EditProfilePage() {
   const profileData: Profile = useMemo(() => {
     if (!profileDataState) return defaultProfile;
     const filtered = Object.fromEntries(
-      Object.entries(profileDataState).filter(([, v]) => v !== undefined),
+      Object.entries(profileDataState).filter(([, v]) => v !== undefined)
     );
     return {
       ...defaultProfile,
       ...filtered,
       _id: profileDataState._id || defaultProfile._id,
-      userId: (profileDataState.userId as Id<"users">) || defaultProfile.userId,
+      userId: (profileDataState.userId as string) || defaultProfile.userId,
       gender:
         (profileDataState.gender as "male" | "female" | "other") || "other",
       createdAt: profileDataState.createdAt || Date.now(),
@@ -269,7 +269,7 @@ export default function EditProfilePage() {
         _id: _omitId, // eslint-disable-line no-unused-vars
         ...safeValues
       } = values;
-      const apiResult = await submitProfile(safeValues, "edit");
+      const apiResult = await submitProfile(userId, safeValues, "edit");
       if (!apiResult.success) {
         // Bubble up specific errors for better UX
         throw new Error(apiResult.error || "Profile update was not successful");
@@ -318,7 +318,7 @@ export default function EditProfilePage() {
         const age = new Date(ageMs).getUTCFullYear() - 1970;
         if (isNaN(age) || age < 18) {
           showErrorToast(
-            "You must be at least 18 years old to edit your profile.",
+            "You must be at least 18 years old to edit your profile."
           );
           return;
         }
@@ -335,7 +335,7 @@ export default function EditProfilePage() {
         setIsSaving(false);
       }
     },
-    [isSaving, updateProfileMutation],
+    [isSaving, updateProfileMutation]
   );
 
   // Wrapper for onSubmit to map values back to canonical shape
@@ -343,11 +343,11 @@ export default function EditProfilePage() {
     (values: ProfileFormComponentValues) => {
       return handleProfileSubmit(
         fromProfileFormComponentValues(
-          values as ProfileFormComponentValues & { profileImageIds: string[] },
-        ),
+          values as ProfileFormComponentValues & { profileImageIds: string[] }
+        )
       );
     },
-    [handleProfileSubmit],
+    [handleProfileSubmit]
   );
 
   // Main form

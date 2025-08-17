@@ -8,7 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Bell, Search, Menu, User, Settings, LogOut, Home } from "lucide-react";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 

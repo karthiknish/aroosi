@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useRouter } from "next/navigation";
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
 

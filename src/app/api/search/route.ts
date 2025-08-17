@@ -1,13 +1,11 @@
 import { NextRequest } from "next/server";
-// import { api } from "@convex/_generated/api";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth } from "@/lib/auth/requireAuth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { z } from "zod";
-import { convexQueryWithAuth } from "@/lib/convexServer";
-import { api as convexApi } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { FieldPath } from "firebase-admin/firestore";
 
 // type Gender = "any" | "male" | "female" | "other";
 
@@ -29,88 +27,30 @@ const QuerySchema = z.object({
   ageMax: z.coerce.number().int().min(18).max(120).optional(),
   page: z.coerce.number().int().min(0).max(100).default(0),
   pageSize: z.coerce.number().int().min(1).max(50).default(12),
+  cursor: z.string().min(1).max(200).optional(), // base64 or 'createdAt|id'
 });
 
 export async function GET(request: NextRequest) {
   try {
-    // Correlation ID for cross-tier tracing
     const cid =
-      request.headers.get("x-correlation-id") ??
-      (() => {
-        try {
-          return crypto.randomUUID();
-        } catch {
-          // Fallback unique-ish
-          return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        }
-      })();
+      request.headers.get("x-correlation-id") ||
+      (typeof crypto !== "undefined" && (crypto as any).randomUUID
+        ? (crypto as any).randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
-    // Cookie-session auth; keep bearer extraction only if a limiter depends on it
-    const authHeader =
-      request.headers.get("authorization") ||
-      request.headers.get("Authorization") ||
-      "";
-    const bearerToken = (() => {
-      const parts = authHeader.trim().split(/\s+/);
-      const scheme = parts[0]?.toLowerCase();
-      const token = parts.slice(1).join(" ").trim();
-      return scheme === "bearer" && token ? token : null;
-    })();
+    // Firebase cookie-based session
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
+    const userId = String(session.userId);
+    const viewerPlan = session.profile?.subscriptionPlan || "free";
 
-    const { userId } = await requireAuth(request);
-
-    if (!userId) {
-      return errorResponse("User ID is required", 400);
-    }
-
-    // 1) Coarse per-user burst limiter (e.g. 60/min) to protect infra
-    const burstKey = `search:${userId}`;
-    const burstLimit = checkApiRateLimit(burstKey, 60, 60_000);
+    // Burst limiter
+    const burstLimit = checkApiRateLimit(`search:${userId}`, 60, 60_000);
     if (!burstLimit.allowed) {
       return errorResponse("Rate limit exceeded. Please slow down.", 429);
     }
 
-    // 2) Plan enforcement: premium filters require Premium (or higher)
-    try {
-      const meProfile = await convexQueryWithAuth(
-        request,
-        convexApi.profiles.getProfileByUserId,
-        { userId: userId as Id<"users"> }
-      );
-      const plan = (meProfile as any)?.subscriptionPlan ?? "free";
-      const hasAdvancedFilters = plan === "premium" || plan === "premiumPlus";
-      const url = new URL(request.url);
-      const hasPremiumParams =
-        url.searchParams.has("ethnicity") ||
-        url.searchParams.has("motherTongue") ||
-        url.searchParams.has("language");
-      if (hasPremiumParams && !hasAdvancedFilters) {
-        return errorResponse(
-          "Advanced filters require a Premium subscription",
-          403
-        );
-      }
-    } catch {
-      // If the profile cannot be loaded, fail closed to avoid leaking feature access
-      return errorResponse("Authorization failed", 403);
-    }
-
-    // 3) Subscription-aware limiter for plan entitlements
-    const subscriptionRateLimit =
-      await subscriptionRateLimiter.checkSubscriptionRateLimit(
-        request,
-        bearerToken || "", // pass actual Bearer access token if limiter expects token; otherwise can be ignored internally
-        userId,
-        "search_performed"
-      );
-    if (!subscriptionRateLimit.allowed) {
-      return errorResponse(
-        subscriptionRateLimit.error || "Subscription limit exceeded",
-        429
-      );
-    }
-
-    // 4) Parse and validate with Zod
+    // Parse & validate
     const { searchParams } = new URL(request.url);
     const paramsObj = Object.fromEntries(searchParams.entries());
     const parsed = QuerySchema.safeParse(paramsObj);
@@ -129,14 +69,14 @@ export async function GET(request: NextRequest) {
       ethnicity,
       motherTongue,
       language,
-      preferredGender,
+      preferredGender, // presently unused in Firestore filter logic
       ageMin,
       ageMax,
       page,
       pageSize,
+      cursor,
     } = parsed.data;
 
-    // Cross-field validation: ageMin <= ageMax
     if (
       typeof ageMin === "number" &&
       typeof ageMax === "number" &&
@@ -148,50 +88,134 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const t0 = Date.now();
-
-    // Convex query via cookie-aware server helper
-    const result = await convexQueryWithAuth(
-      request,
-      (await import("@convex/_generated/api")).api.users.searchPublicProfiles,
-      {
-        city,
-        country,
-        ageMin,
-        ageMax,
-        preferredGender,
-        page,
-        pageSize,
-        ethnicity,
-        motherTongue,
-        language,
-        viewerUserId: userId as Id<"users">,
-        correlationId: cid,
-      }
-    ).catch((e: unknown) => {
-      console.error("searchPublicProfiles failed", {
-        scope: "search",
-        correlationId: cid,
-        message: e instanceof Error ? e.message : String(e),
-      });
-      return null;
-    });
-
-    if (!result || typeof result !== "object") {
-      console.error("Invalid search results from Convex:", result, {
-        scope: "search",
-        correlationId: cid,
-      });
-      return errorResponse("Search service error", 500);
+    // Advanced filter gating
+    const hasPremiumParams = [ethnicity, motherTongue, language].some(
+      (v) => v && v !== "any"
+    );
+    const hasAdvancedFilters =
+      viewerPlan === "premium" ||
+      viewerPlan === "premium_plus" ||
+      viewerPlan === "premiumPlus";
+    if (hasPremiumParams && !hasAdvancedFilters) {
+      return errorResponse(
+        "Advanced filters require a Premium subscription",
+        403
+      );
     }
 
-    const _latencyMs = Date.now() - t0;
+    // Subscription-aware rate limit (plan quotas)
+    const subscriptionLimit =
+      await subscriptionRateLimiter.checkSubscriptionRateLimit(
+        request,
+        "", // bearer token not used in Firebase cookie model
+        userId,
+        "search_performed"
+      );
+    if (!subscriptionLimit.allowed) {
+      return errorResponse(
+        subscriptionLimit.error || "Subscription limit exceeded",
+        429
+      );
+    }
 
-    // Forward any cookies updated during session refresh
+    // Build base Firestore query
+    let base: FirebaseFirestore.Query = db
+      .collection(COLLECTIONS.USERS)
+      .where("isProfileComplete", "==", true);
+
+    if (city && city !== "any") base = base.where("city", "==", city);
+    if (country && country !== "any")
+      base = base.where("country", "==", country);
+    if (ethnicity && ethnicity !== "any")
+      base = base.where("ethnicity", "==", ethnicity);
+    if (motherTongue && motherTongue !== "any")
+      base = base.where("motherTongue", "==", motherTongue);
+    if (language && language !== "any")
+      base = base.where("language", "==", language); // field stored as 'language' if present
+    if (typeof ageMin === "number") base = base.where("age", ">=", ageMin);
+    if (typeof ageMax === "number") base = base.where("age", "<=", ageMax);
+
+    // For stable cursor pagination: order by createdAt desc then docId desc
+    let query = base
+      .orderBy("createdAt", "desc")
+      .orderBy(FieldPath.documentId(), "desc");
+
+    // Aggregate count BEFORE pagination (use base query to avoid startAfter)
+    let total = 0;
+    try {
+      const countSnap = await (base as any).count().get();
+      total = countSnap.data().count || 0;
+    } catch {
+      // ignore count failure
+    }
+
+    // Cursor pagination preferred when cursor provided; else fallback to offset for initial integration
+    if (cursor) {
+      // Decode cursor format: createdAt|docId (both encoded as strings)
+      let createdAtCursor: number | null = null;
+      let docIdCursor: string | null = null;
+      try {
+        const decoded = decodeURIComponent(cursor);
+        const parts = decoded.split("|");
+        if (parts.length === 2) {
+          createdAtCursor = Number(parts[0]);
+          docIdCursor = parts[1];
+        }
+      } catch {
+        // malformed cursor ignored (treat as first page)
+      }
+      if (createdAtCursor && docIdCursor) {
+        query = query.startAfter(createdAtCursor, docIdCursor);
+      }
+      query = query.limit(pageSize);
+    } else {
+      if (page > 0) {
+        // Fallback legacy offset (note: costly at scale; prefer cursor path)
+        query = query.offset(page * pageSize);
+      }
+      query = query.limit(pageSize);
+    }
+
+    const snap = await query.get();
+    const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+
+      if (!total) total = docs.length + (cursor ? 0 : page * pageSize); // heuristic fallback
+
+    const profiles = docs
+      .filter((d) => !d.banned && !d.hiddenFromSearch)
+      .map((d) => ({
+        userId: d.id,
+        email: d.email,
+        profile: {
+          fullName: d.fullName || "",
+          city: d.city,
+          dateOfBirth: d.dateOfBirth,
+          isProfileComplete: d.isProfileComplete,
+          hiddenFromSearch: d.hiddenFromSearch,
+          boostedUntil: d.boostedUntil,
+          subscriptionPlan: d.subscriptionPlan,
+          hideFromFreeUsers: d.hideFromFreeUsers,
+          profileImageUrls: d.profileImageUrls || [],
+          hasSpotlightBadge: d.hasSpotlightBadge,
+          spotlightBadgeExpiresAt: d.spotlightBadgeExpiresAt,
+        },
+      }));
+
+    // Build next cursor if more potential results
+    let nextCursor: string | undefined = undefined;
+    if (docs.length === pageSize) {
+      const last = docs[docs.length - 1];
+      if (last?.createdAt) {
+        nextCursor = `${encodeURIComponent(`${last.createdAt}|${last.id}`)}`;
+      }
+    }
+
     return successResponse({
-      ...result,
+      profiles,
+      total,
       page,
       pageSize,
+      nextCursor,
       correlationId: cid,
       searchParams: {
         city,
@@ -205,34 +229,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error in search API route:", error);
-
-    // Standardize auth failures from requireAuth
-    const { AuthError, authErrorResponse } = await import(
-      "@/lib/auth/requireAuth"
-    );
-    if (error instanceof AuthError) {
-      return authErrorResponse(error.message, {
-        status: error.status,
-        code: error.code,
-      });
-    }
-
-    if (
-      error instanceof Error &&
-      (error.message.includes("AUTHENTICATION_ERROR") ||
-        error.message.includes("Unauthenticated"))
-    ) {
-      return errorResponse("Authentication failed. Please log in again.", 401);
-    }
-
-    const errorMessage =
-      process.env.NODE_ENV === "development"
-        ? error instanceof Error
-          ? error.message
-          : "Unknown error"
-        : "Search service temporarily unavailable";
-
-    return errorResponse(errorMessage, 500);
+    console.error("Firestore search API error", error);
+    return errorResponse("Search service temporarily unavailable", 500);
   }
 }

@@ -1,60 +1,73 @@
-import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
+import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { convexMutationWithAuth } from "@/lib/convexServer";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
 
+// POST: respond to an interest (accepted | rejected)
 export async function POST(req: NextRequest) {
-  const { userId } = await requireAuth(req);
+  const session = await requireSession(req);
+  if ("errorResponse" in session) return session.errorResponse as Response;
+  const authUserId = String(session.userId);
 
-  // Parse and validate body
   let body: { interestId?: string; status?: "accepted" | "rejected" } = {};
   try {
     body = await req.json();
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Invalid JSON body" },
-      { status: 400 }
-    );
-  }
-
+  } catch {}
   const { interestId, status } = body;
   if (!interestId || (status !== "accepted" && status !== "rejected")) {
-    return NextResponse.json(
-      { success: false, error: "Missing or invalid interestId or status" },
-      { status: 400 }
-    );
+    return errorResponse("Missing or invalid interestId or status", 400);
   }
-
-  // Basic env/config sanity
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    return NextResponse.json(
-      { success: false, error: "Server configuration error" },
-      { status: 500 }
-    );
-  }
-
   try {
-    const result = await convexMutationWithAuth(
-      req,
-      api.interests.respondToInterest,
-      {
-        interestId: interestId as Id<"interests">,
-        status,
-        userId: userId as Id<"users">,
-      } as any
-    );
-    return successResponse(result);
+    // Load interest
+    const interestDoc = await db.collection("interests").doc(interestId).get();
+    if (!interestDoc.exists) return errorResponse("Interest not found", 404);
+    const interest = interestDoc.data() as any;
+    if (interest.toUserId !== authUserId) {
+      return errorResponse("Unauthorized to respond to this interest", 403);
+    }
+    // Update status
+    await interestDoc.ref.update({ status });
+
+    if (status === "accepted") {
+      // Check for mutual accepted interest to create a match
+      const reverseSnap = await db
+        .collection("interests")
+        .where("fromUserId", "==", interest.toUserId)
+        .where("toUserId", "==", interest.fromUserId)
+        .where("status", "==", "accepted")
+        .limit(1)
+        .get();
+      if (!reverseSnap.empty) {
+        // Ensure no existing match in either ordering
+        const m1 = await db
+          .collection("matches")
+          .where("user1Id", "==", interest.fromUserId)
+          .where("user2Id", "==", interest.toUserId)
+          .limit(1)
+          .get();
+        const m2 = await db
+          .collection("matches")
+          .where("user1Id", "==", interest.toUserId)
+          .where("user2Id", "==", interest.fromUserId)
+          .limit(1)
+          .get();
+        if (m1.empty && m2.empty) {
+          const conversationId = [interest.fromUserId, interest.toUserId]
+            .sort()
+            .join("_");
+          await db.collection("matches").add({
+            user1Id: interest.fromUserId,
+            user2Id: interest.toUserId,
+            status: "matched",
+            createdAt: Date.now(),
+            conversationId,
+          });
+        }
+      }
+    }
+    return successResponse({ success: true, status });
   } catch (error) {
-    return errorResponse(
-      "Failed to respond to interest",
-      500,
-      process.env.NODE_ENV === "development"
-        ? { details: error instanceof Error ? error.message : String(error) }
-        : undefined
-    );
+    console.error("Firestore respond interest error", error);
+    return errorResponse("Failed to respond to interest", 500);
   }
 }
-
-

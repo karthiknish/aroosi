@@ -10,9 +10,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useRouter } from "next/navigation";
-import { updateUserProfile, boostProfile } from "@/lib/profile/userProfileApi";
+import {
+  updateUserProfile,
+  boostProfile,
+  activateSpotlight,
+} from "@/lib/profile/userProfileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import {
   Eye,
@@ -53,10 +57,14 @@ interface ProfileData {
   subscriptionPlan?: string;
   subscriptionExpiresAt?: number;
   boostsRemaining?: number;
+  hasSpotlightBadge?: boolean;
+  spotlightBadgeExpiresAt?: number;
 }
 
 export default function PremiumSettingsPage() {
-  const { profile: rawProfile, refreshProfile } = useAuthContext();
+  const { user, profile: rawProfile, refreshProfile } = useAuthContext();
+  const userId =
+    user?.uid || (rawProfile as any)?._id || (rawProfile as any)?.userId || "";
   const profile = rawProfile as ProfileData;
   const [hideProfile, setHideProfile] = useState<boolean>(
     !!profile?.hideFromFreeUsers
@@ -110,7 +118,7 @@ export default function PremiumSettingsPage() {
     try {
       setSaving(true);
       // Cookie-auth via central userProfileApi util
-      const result = await updateUserProfile({
+      const result = await updateUserProfile(userId, {
         hideFromFreeUsers: hideProfile,
       });
       if (!result.success) {
@@ -130,7 +138,7 @@ export default function PremiumSettingsPage() {
     try {
       setBoostLoading(true);
       // Use central util; surfaces server messages and remaining quota
-      const result = await boostProfile();
+      const result = await boostProfile(userId);
       if (!result.success) {
         const msg =
           result.message ||
@@ -255,9 +263,26 @@ export default function PremiumSettingsPage() {
     {
       icon: <Sparkles className="w-5 h-5 text-purple-600" />,
       title: "Spotlight Badge",
-      description: "Stand out with a premium badge on your profile",
+      description:
+        profile.hasSpotlightBadge && profile.subscriptionPlan === "premiumPlus"
+          ? "Spotlight active"
+          : "Stand out with a premium badge on your profile",
       available: isPremiumPlus,
-      action: () => handleNavigate("/profile"),
+      action: profile.hasSpotlightBadge
+        ? () => handleNavigate("/profile")
+        : async () => {
+            try {
+              const res = await activateSpotlight();
+              if (res.success) {
+                showSuccessToast("Spotlight activated");
+                await refreshProfile();
+              } else {
+                showErrorToast(res.message || "Activation failed");
+              }
+            } catch (e) {
+              showErrorToast("Activation failed");
+            }
+          },
     },
   ];
 

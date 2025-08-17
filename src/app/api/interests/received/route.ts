@@ -1,44 +1,33 @@
 import { NextRequest } from "next/server";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
 import {
   checkApiRateLimit,
   logSecurityEvent,
 } from "@/lib/utils/securityHeaders";
-import { convexQueryWithAuth } from "@/lib/convexServer";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("userId");
   try {
-    const session = await getSessionFromRequest(req);
-    if (!session.ok) return errorResponse("Unauthorized", 401);
-    const authenticatedUserId = String(session.userId);
+    const session = await requireSession(req);
+    if ("errorResponse" in session) return session.errorResponse as Response;
+    const authUserId = String(session.userId);
 
-    const rateLimitResult = checkApiRateLimit(
-      `interest_received_${authenticatedUserId}`,
+    const rl = checkApiRateLimit(
+      `interest_received_${authUserId}`,
       100,
-      60000
+      60_000
     );
-    if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded", 429);
-    }
+    if (!rl.allowed) return errorResponse("Rate limit exceeded", 429);
 
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return errorResponse("Missing userId parameter", 400);
-    }
-
-    if (typeof userId !== "string" || userId.length < 10) {
-      return errorResponse("Invalid userId parameter", 400);
-    }
-
-    if (userId !== authenticatedUserId) {
+    if (!userId) return errorResponse("Missing userId parameter", 400);
+    if (userId !== authUserId) {
       logSecurityEvent(
         "UNAUTHORIZED_ACCESS",
         {
-          userId: String(authenticatedUserId),
+          userId: authUserId,
           attemptedUserId: userId,
           action: "get_received_interests",
         },
@@ -50,41 +39,40 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log(`User ${authenticatedUserId} querying received interests`);
+    // Fetch received interests where current user is the target
+    const interestsSnap = await db
+      .collection("interests")
+      .where("toUserId", "==", userId)
+      .get();
+    const interests = interestsSnap.docs.map((d: any) => d.data());
 
-    const result = await convexQueryWithAuth(
-      req,
-      (await import("@convex/_generated/api")).api.interests
-        .getReceivedInterests,
-      { userId: userId as Id<"users"> }
+    // Enrich with basic profile info (fullName, city, profileImageUrls) from users collection
+    const enriched = await Promise.all(
+      interests.map(async (i: any) => {
+        let fromProfile: any = null;
+        try {
+          const profDoc = await db.collection("users").doc(i.fromUserId).get();
+          fromProfile = profDoc.exists ? profDoc.data() : null;
+        } catch {}
+        return {
+          ...i,
+          fromProfile: fromProfile
+            ? {
+                fullName: fromProfile.fullName || null,
+                city: fromProfile.city || null,
+                profileImageUrls: Array.isArray(fromProfile.profileImageUrls)
+                  ? fromProfile.profileImageUrls
+                  : [],
+              }
+            : null,
+        };
+      })
     );
 
-    if (!result || (typeof result !== "object" && !Array.isArray(result))) {
-      console.error("Invalid received interests result:", result);
-      return errorResponse("Failed to fetch interests", 500);
-    }
-
-    return successResponse(result);
+    return successResponse(enriched);
   } catch (error) {
-    console.error("Error fetching received interests:", error);
-
-    logSecurityEvent(
-      "VALIDATION_FAILED",
-      {
-        userId: req.url.includes("userId=")
-          ? new URL(req.url).searchParams.get("userId")
-          : "unknown",
-        endpoint: "interests/received",
-        method: "GET",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      req
-    );
-
-    if (error instanceof Error && error.message.includes("Unauthenticated")) {
-      return errorResponse("Authentication failed", 401);
-    }
-
-    return errorResponse("Failed to fetch received interests", 500);
+    console.error("Firestore received interests error", error);
+    if (error instanceof Response) return error;
+    return errorResponse("Failed to fetch interests", 500);
   }
 }

@@ -1,14 +1,48 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
-import { getConversationEventsSSEUrl, markConversationRead } from "@/lib/api/conversation";
-import { MessageData, MessageEvent } from "@/lib/utils/messageUtils";
+// Removed REST message send in favor of direct Firestore writes
+// (legacy REST utilities no longer needed here)
+import { useAuthContext } from "@/components/UserProfileProvider";
 import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
+import { db } from "@/lib/firebaseClient";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  limit as fsLimit,
+  addDoc,
+  serverTimestamp,
+  doc,
+  setDoc,
+  updateDoc,
+  Timestamp,
+  getDocs,
+  writeBatch,
+} from "firebase/firestore";
 
 interface UseRealTimeMessagesProps {
   conversationId: string;
   initialMessages?: MessageData[];
+}
+
+interface MessageData {
+  _id: string;
+  conversationId: string;
+  fromUserId: string;
+  toUserId: string;
+  text: string;
+  type: "text" | "voice" | "image";
+  audioStorageId?: string;
+  duration?: number;
+  fileSize?: number;
+  mimeType?: string;
+  isRead?: boolean;
+  readAt?: number;
+  createdAt: number; // required for compatibility with UI expecting createdAt
+  _creationTime: number;
 }
 
 interface UseRealTimeMessagesReturn {
@@ -19,12 +53,15 @@ interface UseRealTimeMessagesReturn {
   sendVoiceMessage: (
     blob: Blob,
     toUserId: string,
-    duration: number,
+    duration: number
   ) => Promise<void>;
   sendTypingStart: () => void;
   sendTypingStop: () => void;
   markAsRead: (messageIds: string[]) => Promise<void>;
   refreshMessages: () => Promise<void>;
+  fetchOlder: () => Promise<void>;
+  hasMore: boolean;
+  loadingOlder: boolean;
   error: string | null;
 }
 
@@ -32,185 +69,295 @@ export function useRealTimeMessages({
   conversationId,
   initialMessages = [],
 }: UseRealTimeMessagesProps): UseRealTimeMessagesReturn {
-  const { userId } = useAuthContext();
-  const [messages, setMessages] = useState<MessageData[]>(initialMessages);
+  const { user: userObj } = useAuthContext();
+  const userId = userObj?.uid;
+  // Core message state (merged text + voice + older pages)
+  const [messages, setMessages] = useState<MessageData[]>(
+    initialMessages.map((m) => ({
+      ...m,
+      createdAt: m.createdAt ?? m._creationTime,
+      _creationTime: m._creationTime ?? m.createdAt ?? Date.now(),
+    }))
+  );
+  const [windowMessages, setWindowMessages] = useState<MessageData[]>([]); // latest real-time window
+  const [olderMessages, setOlderMessages] = useState<MessageData[]>([]); // paged-in older messages
+  const [voiceMessages, setVoiceMessages] = useState<MessageData[]>([]); // all voice messages for conversation
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [isTyping, setIsTyping] = useState<Record<string, boolean>>({});
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const unsubMessagesRef = useRef<(() => void) | null>(null);
+  const unsubTypingRef = useRef<(() => void) | null>(null);
+  const unsubVoiceRef = useRef<(() => void) | null>(null);
 
-  // Handle real-time events (moved above to satisfy dependency order for effects)
-  const handleRealTimeEvent = useCallback(
-    (event: MessageEvent) => {
-      switch (event.type) {
-        case "message_sent":
-          if (event.data && event.conversationId === conversationId) {
-            setMessages((prev) => {
-              const exists = prev.some(
-                (msg) => msg._id === (event.data as MessageData)._id,
-              );
-              if (exists) return prev;
-              return [...prev, event.data as MessageData];
-            });
-          }
-          break;
-        case "message_read":
-          if (event.data && event.conversationId === conversationId) {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                (event.data as { messageIds: string[] }).messageIds.includes(
-                  msg._id,
-                )
-                  ? { ...msg, isRead: true, readAt: event.timestamp }
-                  : msg,
-              ),
-            );
-          }
-          break;
-        case "typing_start":
-          if (event.userId !== userId && event.conversationId === conversationId) {
-            setIsTyping((prev) => ({ ...prev, [event.userId]: true }));
-          }
-          break;
-        case "typing_stop":
-          if (event.userId !== userId && event.conversationId === conversationId) {
-            setIsTyping((prev) => ({ ...prev, [event.userId]: false }));
-          }
-          break;
-      }
-    },
-    [conversationId, userId],
-  );
+  const PAGE_SIZE = 50;
 
-  // Initialize EventSource connection for real-time updates
-  const initializeConnection = useCallback(async () => {
+  // Firestore real-time subscription for messages
+  useEffect(() => {
     if (!userId || !conversationId) return;
-
-    try {
-      // Close existing connection
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-
-      // Create new EventSource connection (cookie-based auth; server reads session cookies)
-      const eventSource = new EventSource(
-        getConversationEventsSSEUrl({ conversationId }),
-      );
-
-      eventSource.onopen = () => {
-        setIsConnected(true);
-        setError(null);
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const messageEvent: unknown = JSON.parse(event.data);
-          if (isMessageEvent(messageEvent)) {
-            handleRealTimeEvent(messageEvent);
-          } else {
-            console.error(
-              "Received malformed real-time message:",
-              messageEvent,
+    setIsConnected(true);
+    const msgsRef = collection(db, "messages");
+    const q = query(
+      msgsRef,
+      where("conversationId", "==", conversationId),
+      orderBy("createdAt", "desc"),
+      fsLimit(PAGE_SIZE)
+    );
+    unsubMessagesRef.current = onSnapshot(
+      q,
+      (snap) => {
+        const list: MessageData[] = [];
+        snap.forEach((docSnap) => {
+          const d: any = docSnap.data();
+          // Normalize Firestore Timestamp -> number
+          const createdAt =
+            d.createdAt instanceof Timestamp
+              ? d.createdAt.toMillis()
+              : d.createdAt || Date.now();
+          const readAtNorm =
+            d.readAt instanceof Timestamp ? d.readAt.toMillis() : d.readAt;
+          list.push({
+            _id: d.id || docSnap.id,
+            conversationId: d.conversationId,
+            fromUserId: d.fromUserId,
+            toUserId: d.toUserId,
+            text: d.text || "",
+            type: d.type || "text",
+            audioStorageId: d.audioStorageId,
+            duration: d.duration,
+            fileSize: d.fileSize,
+            mimeType: d.mimeType,
+            isRead: !!readAtNorm,
+            readAt: readAtNorm,
+            createdAt,
+            _creationTime: createdAt,
+          });
+        });
+        // list currently descending -> reverse to ascending for UI
+        const ascWindow = list.reverse();
+        setWindowMessages(ascWindow);
+        // Determine if more older messages exist (cheap probe)
+        (async () => {
+          try {
+            if (ascWindow.length === 0) {
+              setHasMore(false);
+              return;
+            }
+            const oldest = ascWindow[0].createdAt;
+            const probeQ = query(
+              msgsRef,
+              where("conversationId", "==", conversationId),
+              orderBy("createdAt", "asc"),
+              where("createdAt", "<", oldest),
+              fsLimit(1)
             );
+            const probeSnap = await getDocs(probeQ);
+            setHasMore(!probeSnap.empty);
+          } catch {
+            /* ignore */
           }
-        } catch (err: unknown) {
-          if (err instanceof Error) {
-            console.error("Error parsing real-time message:", err.message);
-          } else {
-            console.error("Error parsing real-time message:", err);
-          }
-        }
-      };
-
-      eventSource.onerror = () => {
+        })();
+      },
+      (err) => {
+        console.error("Firestore messages subscription error", err);
+        setError("Realtime messages failed");
         setIsConnected(false);
-        setError("Connection lost. Attempting to reconnect...");
+      }
+    );
+    return () => {
+      unsubMessagesRef.current?.();
+    };
+  }, [userId, conversationId]);
 
-        // Attempt to reconnect after 3 seconds
-        setTimeout(() => {
-          void initializeConnection();
-        }, 3000);
-      };
+  // Voice messages subscription (no pagination yet; typically fewer)
+  useEffect(() => {
+    if (!userId || !conversationId) return;
+    const vRef = collection(db, "voiceMessages");
+    const vq = query(
+      vRef,
+      where("conversationId", "==", conversationId),
+      orderBy("createdAt", "asc")
+    );
+    unsubVoiceRef.current = onSnapshot(
+      vq,
+      (snap) => {
+        const list: MessageData[] = [];
+        snap.forEach((docSnap) => {
+          const d: any = docSnap.data();
+          const createdAt =
+            d.createdAt instanceof Timestamp
+              ? d.createdAt.toMillis()
+              : d.createdAt || Date.now();
+          list.push({
+            _id: docSnap.id,
+            conversationId: d.conversationId,
+            fromUserId: d.fromUserId,
+            toUserId: d.toUserId,
+            text: "",
+            type: "voice",
+            audioStorageId: d.audioStorageId,
+            duration: d.duration,
+            fileSize: d.fileSize,
+            mimeType: d.mimeType,
+            isRead: !!d.readAt,
+            readAt: d.readAt,
+            createdAt,
+            _creationTime: createdAt,
+          });
+        });
+        setVoiceMessages(list);
+      },
+      (err) => {
+        console.error("Voice messages subscription error", err);
+      }
+    );
+    return () => {
+      unsubVoiceRef.current?.();
+    };
+  }, [userId, conversationId]);
 
-      eventSourceRef.current = eventSource;
-    } catch (err) {
-      console.error("Error initializing real-time connection:", err);
-      setError("Failed to establish real-time connection");
+  // Merge older + window + voice into messages (ascending by createdAt)
+  useEffect(() => {
+    const merged = [...olderMessages, ...windowMessages, ...voiceMessages].sort(
+      (a, b) => a.createdAt - b.createdAt
+    );
+    // De-duplicate by _id (voice/text ids distinct collections)
+    const seen = new Set<string>();
+    const unique: MessageData[] = [];
+    for (const m of merged) {
+      const key = m._id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(m);
+      }
     }
-  }, [userId, conversationId, handleRealTimeEvent]);
+    setMessages(unique);
+  }, [olderMessages, windowMessages, voiceMessages]);
+
+  // Firestore typing indicators (ephemeral docs in collection typingIndicators/{conversationId}/users/{userId})
+  useEffect(() => {
+    if (!userId || !conversationId) return;
+    const typingColl = collection(
+      db,
+      "typingIndicators",
+      conversationId,
+      "users"
+    );
+    const typingQ = query(typingColl);
+    unsubTypingRef.current = onSnapshot(
+      typingQ,
+      (snap) => {
+        const map: Record<string, boolean> = {};
+        const now = Date.now();
+        snap.forEach((docSnap) => {
+          const d: any = docSnap.data();
+          // expire after 5s
+          if (
+            d.updatedAt &&
+            now - d.updatedAt <= 5000 &&
+            docSnap.id !== userId
+          ) {
+            map[docSnap.id] = !!d.isTyping;
+          }
+        });
+        setIsTyping(map);
+      },
+      (err) => {
+        console.error("Typing indicators subscription error", err);
+      }
+    );
+    return () => {
+      unsubTypingRef.current?.();
+    };
+  }, [userId, conversationId]);
 
   // (moved above to satisfy dependency order)
 
-  // Send a text message
+  // Send a text message directly via Firestore (bypassing REST API)
   const sendMessage = useCallback(
     async (text: string, toUserId: string) => {
       if (!userId || !text.trim()) return;
-
+      const trimmed = text.trim();
       try {
-        const response = await fetch("/api/messages/send", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            conversationId,
-            toUserId,
-            text: text.trim(),
-          }),
-        });
-
-        if (!response.ok) {
-          let errorData: unknown;
-          try {
-            errorData = await response.json();
-          } catch {
-            errorData = {};
-          }
-          if (
-            typeof errorData === "object" &&
-            errorData !== null &&
-            "error" in errorData &&
-            typeof (errorData as { error?: unknown }).error === "string"
-          ) {
-            throw new Error((errorData as { error: string }).error);
-          }
-          throw new Error("Failed to send message");
-        }
-
-        const result: unknown = await response.json();
-
-        if (
-          typeof result === "object" &&
-          result !== null &&
-          "data" in result &&
-          typeof (result as { data: unknown }).data === "object" &&
-          result.data !== null &&
-          "_id" in (result as { data: { _id?: unknown } }).data &&
-          typeof (result as { data: { _id?: unknown } }).data._id === "string"
-        ) {
-          // Optimistically add message to local state
-          const newMessage: MessageData = {
-            _id: (result as { data: { _id: string } }).data._id,
+        const createdAt = Date.now();
+        // Optimistic local append (will be replaced by snapshot shortly)
+        const tempId = `tmp-${createdAt}`;
+        setMessages((prev) => [
+          ...prev,
+          {
+            _id: tempId,
             conversationId,
             fromUserId: userId,
             toUserId,
-            text: text.trim(),
+            text: trimmed,
             type: "text",
+            createdAt,
+            _creationTime: createdAt,
             isRead: false,
-            _creationTime: Date.now(),
-          };
-          setMessages((prev) => [...prev, newMessage]);
+          },
+        ]);
+        const docRef = await addDoc(collection(db, "messages"), {
+          conversationId,
+          fromUserId: userId,
+          toUserId,
+          text: trimmed,
+          type: "text",
+          createdAt, // numeric for easier client sorting
+          createdAtTs: serverTimestamp(), // optional canonical server timestamp
+        });
+        // Denormalize lastMessage onto match doc
+        try {
+          const a = [userId, toUserId].sort();
+          const a1 = a[0];
+          const a2 = a[1];
+          const matchesColl = collection(db, "matches");
+          let matchDocId: string | null = null;
+          // Try user1Id=a1 user2Id=a2 first
+          const q1 = query(
+            matchesColl,
+            where("user1Id", "==", a1),
+            where("user2Id", "==", a2),
+            where("status", "==", "matched"),
+            fsLimit(1)
+          );
+          const snap1 = await getDocs(q1);
+          if (!snap1.empty) {
+            matchDocId = snap1.docs[0].id;
+          } else {
+            // Fallback try reversed (if schema not normalized)
+            const q2 = query(
+              matchesColl,
+              where("user1Id", "==", a2),
+              where("user2Id", "==", a1),
+              where("status", "==", "matched"),
+              fsLimit(1)
+            );
+            const snap2 = await getDocs(q2);
+            if (!snap2.empty) matchDocId = snap2.docs[0].id;
+          }
+          if (matchDocId) {
+            const matchRef = doc(db, "matches", matchDocId);
+            await updateDoc(matchRef, {
+              lastMessage: {
+                id: docRef.id,
+                fromUserId: userId,
+                toUserId,
+                text: trimmed,
+                type: "text",
+                createdAt,
+              },
+              updatedAt: createdAt,
+            });
+          }
+        } catch {
+          // Non-fatal
         }
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          console.error("Error sending message:", err.message);
-          setError(err.message);
-        } else {
-          console.error("Error sending message:", err);
-          setError("Failed to send message");
-        }
+      } catch (err: any) {
+        console.error("Failed to send message via Firestore", err);
+        setError(err?.message || "Failed to send message");
         throw err;
       }
     },
@@ -223,23 +370,12 @@ export function useRealTimeMessages({
       if (!userId) return;
 
       try {
-        const savedList = await uploadVoiceMessage({
+        const saved = await uploadVoiceMessage({
           conversationId,
-          fromUserId: userId,
           toUserId,
           blob,
           duration,
-        });
-
-        // Determine the newest voice message from the returned list
-        const saved =
-          Array.isArray(savedList) && savedList.length > 0
-            ? savedList[savedList.length - 1]
-            : undefined;
-
-        if (!saved) {
-          throw new Error("Voice message not returned from server");
-        }
+        } as any); // util returns single VoiceMessage
 
         // Optimistically add to state
         setMessages((prev) => [
@@ -256,9 +392,54 @@ export function useRealTimeMessages({
             fileSize: saved.fileSize,
             mimeType: saved.mimeType,
             isRead: false,
+            createdAt: saved.createdAt,
             _creationTime: saved.createdAt,
           },
         ]);
+        // Denormalize lastMessage for voice
+        try {
+          const a = [userId, toUserId].sort();
+          const a1 = a[0];
+          const a2 = a[1];
+          const matchesColl = collection(db, "matches");
+          let matchDocId: string | null = null;
+          const q1 = query(
+            matchesColl,
+            where("user1Id", "==", a1),
+            where("user2Id", "==", a2),
+            where("status", "==", "matched"),
+            fsLimit(1)
+          );
+          const snap1 = await getDocs(q1);
+          if (!snap1.empty) matchDocId = snap1.docs[0].id;
+          else {
+            const q2 = query(
+              matchesColl,
+              where("user1Id", "==", a2),
+              where("user2Id", "==", a1),
+              where("status", "==", "matched"),
+              fsLimit(1)
+            );
+            const snap2 = await getDocs(q2);
+            if (!snap2.empty) matchDocId = snap2.docs[0].id;
+          }
+          if (matchDocId) {
+            await updateDoc(doc(db, "matches", matchDocId), {
+              lastMessage: {
+                id: saved._id,
+                fromUserId: userId,
+                toUserId,
+                text: "",
+                type: "voice",
+                createdAt: saved.createdAt,
+                duration: saved.duration,
+              },
+              updatedAt: saved.createdAt,
+            });
+          }
+        } catch {
+          /* ignore */
+        }
       } catch (err) {
         console.error("Error sending voice message", err);
         if (err instanceof Error) setError(err.message);
@@ -269,148 +450,188 @@ export function useRealTimeMessages({
   );
 
   // Send typing indicators
-  const sendTypingStop = useCallback(() => {
-    if (!userId || !eventSourceRef.current) return;
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-
-    // Broadcast typing stop
-    // const event = createMessageEvent('typing_stop', conversationId, userId);
-  }, [userId]);
-
-  const sendTypingStart = useCallback(() => {
-    if (!userId || !eventSourceRef.current) return;
-
-    // Clear existing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    // Broadcast typing start (implementation would depend on your WebSocket/SSE setup)
-    // const event = createMessageEvent('typing_start', conversationId, userId);
-
-    // Set timeout to automatically stop typing after 3 seconds
-    typingTimeoutRef.current = setTimeout(() => {
-      sendTypingStop();
-    }, 3000);
-  }, [userId, sendTypingStop]);
-
-  // Mark messages as read
-  const markAsRead = useCallback(
-    async (messageIds: string[]) => {
-      if (!userId || messageIds.length === 0) return;
-
+  const updateTypingDoc = useCallback(
+    async (isTyping: boolean) => {
+      if (!userId || !conversationId) return;
       try {
-        // Use canonical messages mark-read endpoint
-        await fetch(`/api/messages/mark-read`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversationId }),
-        });
-
-        // Optimistically update local state
-        setMessages((prev) =>
-          prev.map((msg) =>
-            messageIds.includes(msg._id)
-              ? { ...msg, isRead: true, readAt: Date.now() }
-              : msg
-          )
+        const ref = doc(
+          db,
+          "typingIndicators",
+          conversationId,
+          "users",
+          userId
         );
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          console.error("Error marking messages as read:", err.message);
-          setError(err.message);
-        } else {
-          console.error("Error marking messages as read:", err);
-          setError("Failed to mark messages as read");
-        }
+        await setDoc(ref, { isTyping, updatedAt: Date.now() }, { merge: true });
+      } catch {
+        /* ignore */
       }
     },
     [userId, conversationId]
   );
 
-  // Refresh messages from server
-  const refreshMessages = useCallback(async () => {
+  const sendTypingStop = useCallback(() => {
     if (!userId) return;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    void updateTypingDoc(false);
+  }, [userId, updateTypingDoc]);
 
-    try {
-      const response = await fetch(
-        `/api/messages?conversationId=${conversationId}&limit=50`,
-        {
-          // Cookie-only auth: no Authorization header; server uses cookies
-        }
-      );
+  const sendTypingStart = useCallback(() => {
+    if (!userId) return;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    void updateTypingDoc(true);
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTypingStop();
+    }, 3000);
+  }, [userId, sendTypingStop, updateTypingDoc]);
 
-      if (!response.ok) {
-        let errorData: unknown;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = {};
-        }
-        if (
-          typeof errorData === "object" &&
-          errorData !== null &&
-          "error" in errorData &&
-          typeof (errorData as { error?: unknown }).error === "string"
-        ) {
-          throw new Error((errorData as { error: string }).error);
-        }
-        throw new Error("Failed to fetch messages");
-      }
-
-      const result: unknown = await response.json();
-      if (
-        typeof result === "object" &&
-        result !== null &&
-        "data" in result &&
-        typeof (result as { data: unknown }).data === "object" &&
-        result.data !== null &&
-        "messages" in (result as { data: { messages?: unknown } }).data &&
-        Array.isArray(
-          (result as { data: { messages?: unknown } }).data.messages
-        )
-      ) {
-        setMessages(
-          (result as { data: { messages: MessageData[] } }).data.messages || []
+  // Mark messages as read
+  const markAsRead = useCallback(
+    async (messageIds: string[]) => {
+      if (!userId || messageIds.length === 0) return;
+      try {
+        const batch = writeBatch(db);
+        const readAt = Date.now();
+        messageIds.forEach((id) => {
+          const ref = doc(db, "messages", id);
+          batch.update(ref, { readAt });
+          // Delivery/read receipt document (idempotent upsert)
+          const receiptRef = doc(db, "messageReceipts", `${id}_${userId}`);
+          batch.set(
+            receiptRef,
+            {
+              messageId: id,
+              userId,
+              status: "read",
+              updatedAt: readAt,
+            },
+            { merge: true }
+          );
+        });
+        await batch.commit();
+        setMessages((prev) =>
+          prev.map((msg) =>
+            messageIds.includes(msg._id)
+              ? { ...msg, isRead: true, readAt }
+              : msg
+          )
+        );
+      } catch (err) {
+        console.error("Error marking messages read (Firestore batch)", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to mark messages as read"
         );
       }
-      // else: do not update if response is malformed
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        console.error("Error refreshing messages:", err.message);
-        setError(err.message);
-      } else {
-        console.error("Error refreshing messages:", err);
-        setError("Failed to refresh messages");
-      }
+    },
+    [userId]
+  );
+
+  // Refresh messages from server
+  const refreshMessages = useCallback(async () => {
+    // Force probe of hasMore again (could be invoked manually)
+    try {
+      if (windowMessages.length === 0) return;
+      const oldest = windowMessages[0].createdAt;
+      const msgsRef = collection(db, "messages");
+      const probeQ = query(
+        msgsRef,
+        where("conversationId", "==", conversationId),
+        orderBy("createdAt", "asc"),
+        where("createdAt", "<", oldest),
+        fsLimit(1)
+      );
+      const probeSnap = await getDocs(probeQ);
+      setHasMore(!probeSnap.empty);
+    } catch {
+      /* ignore */
     }
-  }, [userId, conversationId]);
+  }, [conversationId, windowMessages]);
+
+  // Pagination: fetch older chunk
+  const fetchOlder = useCallback(async () => {
+    if (loadingOlder || !hasMore) return;
+    try {
+      setLoadingOlder(true);
+      const anchor = (olderMessages[0] || windowMessages[0])?.createdAt;
+      if (!anchor) {
+        setLoadingOlder(false);
+        return;
+      }
+      const msgsRef = collection(db, "messages");
+      const olderQ = query(
+        msgsRef,
+        where("conversationId", "==", conversationId),
+        orderBy("createdAt", "asc"),
+        where("createdAt", "<", anchor),
+        fsLimit(PAGE_SIZE)
+      );
+      const snap = await getDocs(olderQ);
+      const chunk: MessageData[] = [];
+      snap.forEach((docSnap) => {
+        const d: any = docSnap.data();
+        const createdAt =
+          d.createdAt instanceof Timestamp
+            ? d.createdAt.toMillis()
+            : d.createdAt || Date.now();
+        const readAtNorm =
+          d.readAt instanceof Timestamp ? d.readAt.toMillis() : d.readAt;
+        chunk.push({
+          _id: docSnap.id,
+          conversationId: d.conversationId,
+          fromUserId: d.fromUserId,
+          toUserId: d.toUserId,
+          text: d.text || "",
+          type: d.type || "text",
+          audioStorageId: d.audioStorageId,
+          duration: d.duration,
+          fileSize: d.fileSize,
+          mimeType: d.mimeType,
+          isRead: !!readAtNorm,
+          readAt: readAtNorm,
+          createdAt,
+          _creationTime: createdAt,
+        });
+      });
+      setOlderMessages((prev) => [...chunk, ...prev]);
+      setHasMore(chunk.length === PAGE_SIZE);
+    } catch (err) {
+      console.error("Fetch older messages failed", err);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [loadingOlder, hasMore, olderMessages, windowMessages, conversationId]);
 
   // Initialize connection on mount
   useEffect(() => {
-    void initializeConnection();
-
-    // Cleanup on unmount
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      if (unsubMessagesRef.current) {
+        unsubMessagesRef.current();
+      }
+      if (unsubTypingRef.current) {
+        unsubTypingRef.current();
+      }
+      if (unsubVoiceRef.current) {
+        unsubVoiceRef.current();
+      }
+      if (userId) {
+        void updateTypingDoc(false);
+      }
     };
-  }, [initializeConnection]);
+  }, [userId, updateTypingDoc]);
 
   // Auto-mark messages as read when they come in
   useEffect(() => {
     if (!userId) return;
 
     const unreadMessages = messages.filter(
-      (msg) => msg.toUserId === userId && !msg.isRead,
+      (msg) => msg.toUserId === userId && !msg.isRead
     );
 
     if (unreadMessages.length > 0) {
@@ -429,18 +650,11 @@ export function useRealTimeMessages({
     sendTypingStop,
     markAsRead,
     refreshMessages,
+    fetchOlder,
+    hasMore,
+    loadingOlder,
     error,
   };
 }
 
-// Type guard for MessageEvent
-function isMessageEvent(event: unknown): event is MessageEvent {
-  return (
-    typeof event === "object" &&
-    event !== null &&
-    "type" in event &&
-    typeof (event as { type: unknown }).type === "string" &&
-    "conversationId" in event &&
-    typeof (event as { conversationId: unknown }).conversationId === "string"
-  );
-}
+// (SSE message type guard removed — Firestore onSnapshot now used)

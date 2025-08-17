@@ -15,7 +15,7 @@ import { DndContext } from "@dnd-kit/core";
 import * as imageUtil from "@/lib/utils/imageUtil";
 
 // Provide a minimal AuthProvider stub to satisfy useAuthContext()
-jest.mock("@/components/ClerkAuthProvider", () => {
+jest.mock("@/components/FirebaseAuthProvider", () => {
   return {
     useAuthContext: () => ({
       token: "test-token",

@@ -1,284 +1,223 @@
+// Firebase migration: this route now delegates to Firebase Storage/Firestore.
+// It remains at /api/profile-images for backward compatibility while clients
+// are updated to use /api/profile-images/firebase. Convex dependencies removed.
+// Supported operations:
+//  GET    /api/profile-images               -> list current user's images
+//  POST   /api/profile-images               -> save image metadata (after direct upload)
+//  DELETE /api/profile-images (JSON body)   -> { storageId } deletes image
+// Legacy fields (fileSize) are mapped to `size`.
+
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
-import {
-  convexQueryWithAuth,
-  convexMutationWithAuth,
-} from "@/lib/convexServer";
-import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
+import { adminStorage, db } from "@/lib/firebaseAdmin";
 
-// GET /api/profile-images -> get user's profile images
-// POST /api/profile-images -> upload profile image metadata
-// DELETE /api/profile-images -> delete a profile image (expects JSON body { userId, imageId })
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg",
+] as const;
+const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGES_PER_USER = 5;
 
-export async function GET(request: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
-  try {
-    const { userId } = await requireAuth(request);
-
-    const images = await convexQueryWithAuth(
-      request,
-      api.images.getProfileImages,
-      {
-        userId: userId as Id<"users">,
-      } as any
-    ).catch((e: unknown) => {
-      console.error("Profile images GET query error", {
-        scope: "profile_images.get",
-        type: "convex_query_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return [];
-    });
-    const response = NextResponse.json(
-      { images, correlationId, success: true },
-      { status: 200 }
-    );
-
-    console.info("Profile images GET success", {
-      scope: "profile_images.get",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      count: Array.isArray(images) ? images.length : 0,
-    });
-    return response;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Profile images GET unhandled error", {
-      scope: "profile_images.get",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Failed to fetch profile images", correlationId },
-      { status: 500 }
-    );
-  }
+async function listUserImages(user: AuthenticatedUser) {
+  const bucket = adminStorage.bucket();
+  const [files] = await bucket.getFiles({
+    prefix: `users/${user.id}/profile-images/`,
+  });
+  return Promise.all(
+    files
+      .filter((f) => !f.name.endsWith("/"))
+      .map(async (f) => {
+        const [meta] = await f.getMetadata();
+        return {
+          storageId: f.name,
+          fileName: meta.name,
+          url: `https://storage.googleapis.com/${bucket.name}/${f.name}`,
+          size: Number(meta.size || 0),
+          uploadedAt: meta.metadata?.uploadedAt || meta.timeCreated,
+          contentType: meta.contentType || null,
+        };
+      })
+  );
 }
 
-export async function DELETE(req: NextRequest) {
+export const GET = withFirebaseAuth(async (user) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(req);
-
-    let body: { imageId?: string } = {};
-    try {
-      body = await req.json();
-    } catch {}
-    const { imageId } = body;
-    if (!imageId) {
-      return NextResponse.json(
-        { error: "Missing imageId", correlationId },
-        { status: 400 }
-      );
-    }
-
-    const result = await convexMutationWithAuth(
-      req,
-      api.images.deleteProfileImage,
-      {
-        userId: userId as Id<"users">,
-        imageId: imageId as Id<"_storage">,
-      } as any
-    ).catch((e: unknown) => {
-      console.error("Profile images DELETE mutation error", {
-        scope: "profile_images.delete",
-        type: "convex_mutation_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return { success: false, message: "Delete failed" } as {
-        success: boolean;
-        message?: string;
-      };
-    });
-    if (result && (result as { success?: boolean }).success) {
-      const response = NextResponse.json(
-        { success: true, correlationId },
-        { status: 200 }
-      );
-      console.info("Profile images DELETE success", {
-        scope: "profile_images.delete",
-        type: "success",
-        correlationId,
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-      });
-      return response;
-    }
-    return NextResponse.json(
-      {
-        error:
-          (result as { message?: string }).message || "Failed to delete image",
-        correlationId,
-      },
-      { status: 400 }
+    const images = await listUserImages(user);
+    return new Response(
+      JSON.stringify({ success: true, images, correlationId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("Profile images DELETE unhandled error", {
-      scope: "profile_images.delete",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Failed to delete image", correlationId },
-      { status: 500 }
+    console.error("profile-images GET firebase error", e);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Failed to fetch images",
+        correlationId,
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
   try {
-    const { userId } = await requireAuth(req);
-
-    let body: {
-      storageId?: string;
-      fileName?: string;
-      contentType?: string;
-      fileSize?: number;
-    } = {};
+    const body = await req.json().catch(() => ({}));
+    const { storageId, fileName, contentType } = body as Record<
+      string,
+      unknown
+    >;
+    const size = (body as any).size ?? (body as any).fileSize; // legacy support
+    if (!storageId || !fileName || !contentType || typeof size !== "number") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Missing required fields",
+          correlationId,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (!String(storageId).startsWith(`users/${user.id}/`)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Unauthorized storage path",
+          correlationId,
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (!ALLOWED_TYPES.includes(String(contentType).toLowerCase() as any)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Unsupported image type",
+          correlationId,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (size > MAX_SIZE_BYTES) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "File too large",
+          correlationId,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    // Enforce max images (Firestore count + storage listing best-effort)
     try {
-      body = await req.json();
+      const existing = await listUserImages(user);
+      if (existing.length >= MAX_IMAGES_PER_USER) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `You can only display up to ${MAX_IMAGES_PER_USER} images`,
+            correlationId,
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
     } catch {}
 
-    const { storageId, fileName, contentType, fileSize } = body;
-    if (!storageId || !fileName || !contentType || !fileSize) {
-      return NextResponse.json(
-        { error: "Missing required fields", correlationId },
-        { status: 400 }
-      );
-    }
-
-    const ALLOWED_TYPES = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/jpg",
-    ];
-    const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-    const MAX_IMAGES_PER_USER = 5;
-
-    if (!ALLOWED_TYPES.includes(contentType as string)) {
-      return NextResponse.json(
-        { error: "Unsupported image type", correlationId },
-        { status: 400 }
-      );
-    }
-    if (typeof fileSize !== "number" || fileSize > MAX_SIZE_BYTES) {
-      return NextResponse.json(
-        { error: "File too large. Max 5MB allowed.", correlationId },
-        { status: 400 }
-      );
-    }
-
-    const existingImages = await convexQueryWithAuth(
-      req,
-      api.images.getProfileImages,
-      {
-        userId: userId as Id<"users">,
-      } as any
-    ).catch((e: unknown) => {
-      console.error("Profile images POST getProfileImages error", {
-        scope: "profile_images.post",
-        type: "convex_query_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return [] as unknown[];
-    });
-    if (
-      Array.isArray(existingImages) &&
-      existingImages.length >= MAX_IMAGES_PER_USER
-    ) {
-      return NextResponse.json(
+    const imageId = String(storageId).split("/").pop() || String(storageId);
+    await db
+      .collection("users")
+      .doc(user.id)
+      .collection("images")
+      .doc(imageId)
+      .set(
         {
-          error: `You can only display up to ${MAX_IMAGES_PER_USER} images on your profile`,
-          correlationId,
+          storageId,
+          fileName,
+          contentType,
+          size,
+          url: `https://storage.googleapis.com/${adminStorage.bucket().name}/${storageId}`,
+          uploadedAt: new Date().toISOString(),
         },
-        { status: 400 }
+        { merge: true }
       );
-    }
-
-    const result = await convexMutationWithAuth(
-      req,
-      api.images.uploadProfileImage,
-      {
-        userId: userId as Id<"users">,
-        storageId: storageId as Id<"_storage">,
-        fileName,
-        contentType,
-        fileSize,
-      } as any
-    ).catch((e: unknown) => {
-      console.error("Profile images POST upload error", {
-        scope: "profile_images.post",
-        type: "convex_mutation_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return null;
-    });
-    if (
-      !result ||
-      typeof result !== "object" ||
-      (result as { success?: boolean }).success !== true
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            (result as { message?: string })?.message || "Upload failed",
-          correlationId,
-        },
-        { status: 400 }
-      );
-    }
-    const response = NextResponse.json(
-      { ...(result as object), correlationId, success: true },
-      { status: 200 }
+    return new Response(
+      JSON.stringify({ success: true, imageId, correlationId }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
     );
-    console.info("Profile images POST success", {
-      scope: "profile_images.post",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-    });
-    return response;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("Profile images POST unhandled error", {
-      scope: "profile_images.post",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Failed to upload image", correlationId },
-      { status: 500 }
+  } catch (e) {
+    console.error("profile-images POST firebase error", e);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Failed to save metadata",
+        correlationId,
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-}
+});
+
+export const DELETE = withFirebaseAuth(async (user, req: NextRequest) => {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  try {
+    let storageId: string | null = null;
+    // Prefer JSON body
+    try {
+      const body = await req.json();
+      storageId = body?.storageId || body?.imageId || null; // legacy imageId
+    } catch {}
+    if (!storageId) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Missing storageId",
+          correlationId,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (!storageId.startsWith(`users/${user.id}/`)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Unauthorized",
+          correlationId,
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const fileRef = adminStorage.bucket().file(storageId);
+    await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
+    const imageId = storageId.split("/").pop() || storageId;
+    await db
+      .collection("users")
+      .doc(user.id)
+      .collection("images")
+      .doc(imageId)
+      .delete()
+      .catch(() => {});
+    return new Response(JSON.stringify({ success: true, correlationId }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("profile-images DELETE firebase error", e);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Failed to delete image",
+        correlationId,
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+});
+
+// NOTE: Admin cross-user image management previously supported via Convex by
+// passing an arbitrary userId. That functionality will be reintroduced via
+// dedicated admin endpoints (e.g. /api/admin/profiles/[id]/images/*) if still
+// required. This legacy route now only acts on the authenticated user's images.

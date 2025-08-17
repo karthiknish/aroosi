@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { convexQueryWithAuth } from "@/lib/convexServer";
 import { requireSession } from "@/app/api/_utils/auth";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import type { Id } from "@convex/_generated/dataModel";
+import { db } from "@/lib/firebaseAdmin";
 
 // NOTE: Explicit JSON helper to avoid accidental 404/redirect behavior from wrappers.
-  const json = (data: unknown, status = 200) =>
+const json = (data: unknown, status = 200) =>
   new NextResponse(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
@@ -25,7 +23,11 @@ export async function GET(request: NextRequest) {
       // Normalize helper response to plain JSON
       const res = authCheck.errorResponse as NextResponse;
       const status = res.status || 401;
-      let body: unknown = { success: false, error: "Authentication failed", correlationId };
+      let body: unknown = {
+        success: false,
+        error: "Authentication failed",
+        correlationId,
+      };
       try {
         const txt = await res.text();
         body = txt ? { ...JSON.parse(txt), correlationId } : body;
@@ -42,7 +44,11 @@ export async function GET(request: NextRequest) {
     const { userId } = authCheck;
 
     // Rate limiting for fetching blocked users
-    const rateLimitResult = checkApiRateLimit(`safety_blocked_${userId}`, 50, 60000);
+    const rateLimitResult = checkApiRateLimit(
+      `safety_blocked_${userId}`,
+      50,
+      60000
+    );
     if (!rateLimitResult.allowed) {
       console.warn("Safety blocked rate limit exceeded", {
         scope: "safety.blocked",
@@ -51,67 +57,116 @@ export async function GET(request: NextRequest) {
         statusCode: 429,
         durationMs: Date.now() - startedAt,
       });
-      return json({ success: false, error: "Rate limit exceeded", correlationId }, 429);
+      return json(
+        { success: false, error: "Rate limit exceeded", correlationId },
+        429
+      );
     }
 
-    const currentUser = (await convexQueryWithAuth(request, api.users.getCurrentUserWithProfile, {}).catch(
-      (e: unknown) => {
-        console.error("Safety blocked identity error", {
-          scope: "safety.blocked",
-          type: "identity_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null as any;
-      },
-    )) as { _id: Id<"users"> } | null;
+    // Pagination params
+    const blockerUserId = userId;
+    const { searchParams } = new URL(request.url);
+    const limitParam = parseInt(searchParams.get("limit") || "20", 10);
+    const limit = Math.min(Math.max(limitParam, 1), 50);
+    const cursor = searchParams.get("cursor");
 
-    if (!currentUser) {
-      console.warn("Safety blocked user not found", {
-        scope: "safety.blocked",
-        type: "user_not_found",
-        correlationId,
-        statusCode: 404,
-        durationMs: Date.now() - startedAt,
-      });
-      return json({ success: false, error: "User record not found", correlationId }, 404);
-    }
+    let blockedUsers: any[] = [];
+    try {
+      let queryRef: FirebaseFirestore.Query = db
+        .collection("blocks")
+        .where("blockerId", "==", blockerUserId)
+        .orderBy("createdAt", "desc")
+        .limit(limit);
+      if (cursor) {
+        try {
+          const cursorDoc = await db.collection("blocks").doc(cursor).get();
+          if (cursorDoc.exists) queryRef = queryRef.startAfter(cursorDoc);
+        } catch {}
+      }
+      const snap = await queryRef.get();
+      blockedUsers = snap.docs.map(
+        (d: FirebaseFirestore.QueryDocumentSnapshot) => ({
+          id: d.id,
+          ...(d.data() as any),
+        })
+      );
 
-    // Get blocked users by explicit user id
-    const blockedUsers = await convexQueryWithAuth(request, api.safety.getBlockedUsers, {
-      blockerUserId: currentUser._id,
-    }).catch((e: unknown) => {
-      console.error("Safety blocked query error", {
+      const uniqueTargetIds = Array.from(
+        new Set(blockedUsers.map((b) => b.blockedUserId).filter(Boolean))
+      ) as string[];
+      if (uniqueTargetIds.length) {
+        const profileSnaps = await Promise.all(
+          uniqueTargetIds.map((uid) => db.collection("users").doc(uid).get())
+        );
+        const profileMap = new Map(
+          profileSnaps
+            .filter((s) => s.exists)
+            .map((s) => [s.id, s.data() as any])
+        );
+        blockedUsers = await Promise.all(
+          blockedUsers.map(async (b) => {
+            let isBlockedBy = false;
+            try {
+              const reverse = await db
+                .collection("blocks")
+                .doc(`${b.blockedUserId}_${blockerUserId}`)
+                .get();
+              isBlockedBy = reverse.exists;
+            } catch {}
+            return {
+              ...b,
+              isBlockedBy,
+              blockedProfile: profileMap.has(b.blockedUserId)
+                ? {
+                    fullName: profileMap.get(b.blockedUserId)?.fullName,
+                    profileImageUrl: (profileMap.get(b.blockedUserId)
+                      ?.profileImageUrls || [])[0],
+                  }
+                : undefined,
+            };
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Safety blocked Firestore query error", {
         scope: "safety.blocked",
-        type: "convex_query_error",
+        type: "firestore_query_error",
         message: e instanceof Error ? e.message : String(e),
         correlationId,
         statusCode: 500,
         durationMs: Date.now() - startedAt,
       });
-      return null as any;
-    });
-
-    if (blockedUsers == null) {
-      return json({ success: false, error: "Failed to fetch blocked users", correlationId }, 500);
+      return json(
+        {
+          success: false,
+          error: "Failed to fetch blocked users",
+          correlationId,
+        },
+        500
+      );
     }
 
+    const nextCursor =
+      blockedUsers.length === limit
+        ? blockedUsers[blockedUsers.length - 1].id
+        : null;
     const response = json(
-      { success: true, blockedUsers: blockedUsers || [], correlationId },
+      {
+        success: true,
+        blockedUsers: blockedUsers || [],
+        nextCursor,
+        correlationId,
+      },
       200
     );
-
     console.info("Safety blocked success", {
       scope: "safety.blocked",
       type: "success",
-      count: Array.isArray(blockedUsers) ? blockedUsers.length : 0,
+      count: blockedUsers.length,
       correlationId,
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
-
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -123,6 +178,14 @@ export async function GET(request: NextRequest) {
       statusCode: 500,
       durationMs: Date.now() - startedAt,
     });
-    return json({ success: false, error: "Failed to fetch blocked users", details: message, correlationId }, 500);
+    return json(
+      {
+        success: false,
+        error: "Failed to fetch blocked users",
+        details: message,
+        correlationId,
+      },
+      500
+    );
   }
 }

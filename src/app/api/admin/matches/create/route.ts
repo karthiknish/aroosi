@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
 import { Notifications } from "@/lib/notify";
-import type { Doc, Id } from "@convex/_generated/dataModel";
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchQuery, fetchMutation } from "convex/nextjs";
+import { requireAdminSession } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
 
 export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const { role } = await requireAuth(req);
-  if ((role || "user") !== "admin") {
+  const adminCheck = await requireAdminSession(req);
+  if ("errorResponse" in adminCheck) {
     const status = 403;
     const body = { error: "Unauthorized", correlationId };
     console.warn("Admin matches.create POST auth failed", {
@@ -21,20 +19,6 @@ export async function POST(req: NextRequest) {
       durationMs: Date.now() - startedAt,
     });
     return NextResponse.json(body, { status });
-  }
-
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    console.error("Admin matches.create POST convex url missing", {
-      scope: "admin.matches_create",
-      type: "convex_not_configured",
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Server config error", correlationId },
-      { status: 500 }
-    );
   }
 
   let body: { fromProfileId?: string; toProfileId?: string };
@@ -69,139 +53,72 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const fromProfile = (await fetchQuery(
-      api.users.getProfileById,
-      {
-        id: fromProfileId as Id<"profiles">,
-      } as any
-    ).catch((e: unknown) => {
-        console.error("Admin matches.create POST getProfileById(from) error", {
-          scope: "admin.matches_create",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
-      })) as Doc<"profiles"> | null;
-
-    const toProfile = (await fetchQuery(
-      api.users.getProfileById,
-      {
-        id: toProfileId as Id<"profiles">,
-      } as any
-    ).catch((e: unknown) => {
-        console.error("Admin matches.create POST getProfileById(to) error", {
-          scope: "admin.matches_create",
-          type: "convex_query_error",
-          message: e instanceof Error ? e.message : String(e),
-          correlationId,
-          statusCode: 500,
-          durationMs: Date.now() - startedAt,
-        });
-        return null;
-      })) as Doc<"profiles"> | null;
-
-    if (!fromProfile || !toProfile) {
+    const fromProfileDoc = await db
+      .collection("users")
+      .doc(fromProfileId)
+      .get();
+    const toProfileDoc = await db.collection("users").doc(toProfileId).get();
+    if (!fromProfileDoc.exists || !toProfileDoc.exists) {
       return NextResponse.json(
         { error: "Profile not found", correlationId },
         { status: 404 }
       );
     }
+    const fromProfile: any = fromProfileDoc.data();
+    const toProfile: any = toProfileDoc.data();
+    const fromUserId = fromProfile.id || fromProfileDoc.id;
+    const toUserId = toProfile.id || toProfileDoc.id;
 
-    const fromUserId = fromProfile.userId;
-    const toUserId = toProfile.userId;
-
-    const upsertAcceptedInterest = async (
-      fromUser: Id<"users">,
-      toUser: Id<"users">
-    ) => {
-      const existing = (await fetchQuery(
-        api.interests.getSentInterests,
-        {
-          userId: fromUser,
-        } as any
-      ).catch((e: unknown) => {
-          console.error("Admin matches.create POST getSentInterests error", {
-            scope: "admin.matches_create",
-            type: "convex_query_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return [] as Doc<"interests">[];
-        })) as Doc<"interests">[];
-
-      const found = existing.find((i) => i.toUserId === toUser);
-      if (found) {
-        if (found.status !== "accepted") {
-           await fetchMutation(api.interests.respondToInterest, {
-             interestId: found._id,
-             status: "accepted",
-           } as any).catch((e: unknown) => {
-              console.error(
-                "Admin matches.create POST respondToInterest update error",
-                {
-                  scope: "admin.matches_create",
-                  type: "convex_mutation_error",
-                  message: e instanceof Error ? e.message : String(e),
-                  correlationId,
-                  statusCode: 500,
-                  durationMs: Date.now() - startedAt,
-                }
-              );
-            });
-        }
-        return found._id;
+    // Helper to upsert an accepted interest
+    const upsertAcceptedInterest = async (fromUser: string, toUser: string) => {
+      const existingSnap = await db
+        .collection("interests")
+        .where("fromUserId", "==", fromUser)
+        .where("toUserId", "==", toUser)
+        .limit(1)
+        .get();
+      if (!existingSnap.empty) {
+        const docRef = existingSnap.docs[0].ref;
+        const data = existingSnap.docs[0].data();
+        if (data.status !== "accepted")
+          await docRef.update({ status: "accepted" });
+        return docRef.id;
       }
-      const result = await fetchMutation(
-        api.interests.sendInterest,
-        {
-          fromUserId: fromUser,
-          toUserId: toUser,
-        } as any
-      ).catch((e: unknown) => {
-          console.error("Admin matches.create POST sendInterest error", {
-            scope: "admin.matches_create",
-            type: "convex_mutation_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-          return { success: false, error: "Failed to send interest" } as {
-            success: false;
-            error?: string;
-            interestId?: Id<"interests">;
-          };
-        });
-
-      if (!result || (result as { success?: boolean }).success !== true) {
-        throw new Error(
-          (result as { error?: string })?.error || "Failed to send interest"
-        );
-      }
-      const newId = (result as { interestId?: Id<"interests"> }).interestId as Id<"interests">;
-      await fetchMutation(api.interests.respondToInterest, {
-        interestId: newId,
+      const docRef = await db.collection("interests").add({
+        fromUserId: fromUser,
+        toUserId: toUser,
         status: "accepted",
-      } as any).catch((e: unknown) => {
-          console.error("Admin matches.create POST respondToInterest create error", {
-            scope: "admin.matches_create",
-            type: "convex_mutation_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-        });
-      return newId;
+        createdAt: Date.now(),
+      });
+      return docRef.id;
     };
 
     await upsertAcceptedInterest(fromUserId, toUserId);
     await upsertAcceptedInterest(toUserId, fromUserId);
+
+    // Create match if not exists
+    const m1 = await db
+      .collection("matches")
+      .where("user1Id", "==", fromUserId)
+      .where("user2Id", "==", toUserId)
+      .limit(1)
+      .get();
+    const m2 = await db
+      .collection("matches")
+      .where("user1Id", "==", toUserId)
+      .where("user2Id", "==", fromUserId)
+      .limit(1)
+      .get();
+    if (m1.empty && m2.empty) {
+      const conversationId = [fromUserId, toUserId].sort().join("_");
+      await db.collection("matches").add({
+        user1Id: fromUserId,
+        user2Id: toUserId,
+        status: "matched",
+        createdAt: Date.now(),
+        conversationId,
+      });
+    }
 
     void (async () => {
       try {
@@ -252,7 +169,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          process.env.NODE_ENV === "development" ? message : "Failed to create match",
+          process.env.NODE_ENV === "development"
+            ? message
+            : "Failed to create match",
         correlationId,
       },
       { status: 500 }

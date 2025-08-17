@@ -1,33 +1,36 @@
+import { fetchWithFirebaseAuth } from "../api/fetchWithFirebaseAuth";
+
 export async function updateProfile({
   updates,
 }: {
   updates: Record<string, unknown>;
 }): Promise<void> {
-  const res = await fetch("/api/profile", {
+  const res = await fetchWithFirebaseAuth("/api/profile", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify(updates),
-    credentials: "include", // Include cookies in the request
+    credentials: "include",
   });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
     throw new Error(msg || "Failed to update profile");
   }
 }
- 
+
 /**
  * Boost profile using cookie-based auth (no Authorization header).
  * The server reads HttpOnly session cookies and performs the action.
  */
-export async function boostProfileCookieAuth(): Promise<{ boostsRemaining: number }> {
-  const res = await fetch("/api/profile/boost", {
+export async function boostProfileCookieAuth(): Promise<{
+  boostsRemaining: number;
+}> {
+  const res = await fetchWithFirebaseAuth("/api/profile/boost", {
     method: "POST",
     credentials: "include",
   });
-  const json = await res.json().catch(() => ({} as any));
+  const json = await res.json().catch(() => ({}) as any);
   if (!res.ok || (json && json.success === false)) {
     const msg = (json && json.error) || `Failed to boost profile`;
     throw new Error(msg);
@@ -36,7 +39,7 @@ export async function boostProfileCookieAuth(): Promise<{ boostsRemaining: numbe
 }
 
 export async function deleteProfile(): Promise<void> {
-  const res = await fetch("/api/profile/delete", {
+  const res = await fetchWithFirebaseAuth("/api/profile/delete", {
     method: "DELETE",
     headers: {},
     credentials: "include", // Include cookies in the request
@@ -84,7 +87,7 @@ export async function fetchProfileViewers({
   const res = await fetch(`/api/profile/view?${params.toString()}`, {
     credentials: "include",
   });
-  const json = await res.json().catch(() => ({} as any));
+  const json = await res.json().catch(() => ({}) as any);
   if (!res.ok || json?.success === false) {
     throw new Error(json?.error || "Failed to fetch viewers");
   }
@@ -95,17 +98,20 @@ export async function fetchProfileViewers({
     profileImageUrls: (v?.profileImageUrls ?? null) as string[] | null,
     viewedAt: Number(v?.viewedAt ?? v?.createdAt ?? Date.now()),
   }));
-  const total = typeof json?.total === "number" ? (json.total as number) : undefined;
+  const total =
+    typeof json?.total === "number" ? (json.total as number) : undefined;
   return { viewers: mapped, total };
 }
 
-export async function fetchProfileViewersCount(profileId: string): Promise<number> {
+export async function fetchProfileViewersCount(
+  profileId: string
+): Promise<number> {
   if (!profileId) return 0;
   const params = new URLSearchParams({ profileId, mode: "count" });
   const res = await fetch(`/api/profile/view?${params.toString()}`, {
     credentials: "include",
   });
-  const json = await res.json().catch(() => ({} as any));
+  const json = await res.json().catch(() => ({}) as any);
   if (!res.ok || json?.success === false) {
     throw new Error(json?.error || "Failed to fetch viewers count");
   }

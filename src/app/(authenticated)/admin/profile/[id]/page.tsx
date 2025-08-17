@@ -20,7 +20,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";
@@ -102,7 +102,7 @@ export default function AdminProfileDetailPage() {
 
   const userId = profile?.userId;
   const { data: images = [] } = useQuery<ImageType[]>({
-    queryKey: ["adminProfileImages", userId],
+    queryKey: ["profileImages", userId, "admin"],
     queryFn: async () => {
       if (!userId) return [];
       const cacheKey = `adminProfileImages_${userId}`;
@@ -133,7 +133,8 @@ export default function AdminProfileDetailPage() {
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
     },
-    enabled: !!userId && authIsLoaded && isAuthenticated && isSignedIn && isAdmin,
+    enabled:
+      !!userId && authIsLoaded && isAuthenticated && isSignedIn && isAdmin,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,

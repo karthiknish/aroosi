@@ -1,7 +1,4 @@
-import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
-// Use Convex's generated Id type for branded IDs
-import type { Id } from "@convex/_generated/dataModel";
+import { db } from "@/lib/firebaseAdmin";
 
 /**
  * Cache for match validation results to avoid repeated API calls
@@ -19,50 +16,56 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 export async function validateUsersAreMatched(
   userId1: string,
   userId2: string,
-  token: string
+  _token: string
 ): Promise<boolean> {
-  if (!userId1 || !userId2 || !token) {
-    return false;
-  }
-
-  // Users cannot message themselves
-  if (userId1 === userId2) {
-    return false;
-  }
-
-  // Create cache key (sorted to ensure consistency)
+  if (!userId1 || !userId2) return false;
+  if (userId1 === userId2) return false;
   const cacheKey = [userId1, userId2].sort().join("_");
-
-  // Check cache first
   const cached = matchValidationCache.get(cacheKey);
-  if (cached && cached.expiry > Date.now()) {
-    return cached.result;
-  }
-
+  if (cached && cached.expiry > Date.now()) return cached.result;
   try {
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      console.error("NEXT_PUBLIC_CONVEX_URL not configured");
-      return false;
+    // Determine if a match doc exists (either ordering) OR both interests accepted mutually
+    const [m1, m2] = await Promise.all([
+      db
+        .collection("matches")
+        .where("user1Id", "==", userId1)
+        .where("user2Id", "==", userId2)
+        .limit(1)
+        .get(),
+      db
+        .collection("matches")
+        .where("user1Id", "==", userId2)
+        .where("user2Id", "==", userId1)
+        .limit(1)
+        .get(),
+    ]);
+    let matched = !m1.empty || !m2.empty;
+    if (!matched) {
+      const [aToB, bToA] = await Promise.all([
+        db
+          .collection("interests")
+          .where("fromUserId", "==", userId1)
+          .where("toUserId", "==", userId2)
+          .where("status", "==", "accepted")
+          .limit(1)
+          .get(),
+        db
+          .collection("interests")
+          .where("fromUserId", "==", userId2)
+          .where("toUserId", "==", userId1)
+          .where("status", "==", "accepted")
+          .limit(1)
+          .get(),
+      ]);
+      matched = !aToB.empty && !bToA.empty;
     }
-
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
-    convex.setAuth(token);
-
-    // Check if users are matched (mutual interest acceptance)
-    const areMatched = await convex.query(api.interests.isMutualInterest, {
-      userA: asUserId(userId1),
-      userB: asUserId(userId2),
-    });
-
-    // Cache the result
     matchValidationCache.set(cacheKey, {
-      result: areMatched,
+      result: matched,
       expiry: Date.now() + CACHE_TTL,
     });
-
-    return areMatched;
-  } catch (error) {
-    console.error("Error validating user match:", error);
+    return matched;
+  } catch (e) {
+    console.error("validateUsersAreMatched Firestore error", e);
     return false;
   }
 }
@@ -148,9 +151,6 @@ export async function validateUserOwnsProfile(
       return false;
     }
 
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
-    convex.setAuth(token);
-
     // Additional validation through database if needed
     // This could check for cases like admin access, family account management, etc.
     // Comment out or remove missing API calls to unblock build
@@ -220,33 +220,53 @@ export function clearMatchValidationCache(
 export async function validateInterestStatus(
   fromUserId: string,
   toUserId: string,
-  token: string
+  _token: string
 ): Promise<{
   canSendInterest: boolean;
   canMessage: boolean;
   interestStatus: "none" | "sent" | "received" | "mutual" | "blocked";
 }> {
-  try {
-    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-      throw new Error("Convex URL not configured");
-    }
-
-    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
-    convex.setAuth(token);
-
-    // Comment out or remove missing API calls to unblock build
-    // const interestStatus = await convex.query(api.interests.getInterestStatus, {
-    //   fromUserId,
-    //   toUserId,
-    // });
-
+  if (!fromUserId || !toUserId || fromUserId === toUserId) {
     return {
-      canSendInterest: true, //interestStatus === 'none',
-      canMessage: true, //interestStatus === 'mutual',
+      canSendInterest: false,
+      canMessage: false,
       interestStatus: "none",
     };
-  } catch (error) {
-    console.error("Error validating interest status:", error);
+  }
+  try {
+    const [sentSnap, receivedSnap] = await Promise.all([
+      db
+        .collection("interests")
+        .where("fromUserId", "==", fromUserId)
+        .where("toUserId", "==", toUserId)
+        .limit(1)
+        .get(),
+      db
+        .collection("interests")
+        .where("fromUserId", "==", toUserId)
+        .where("toUserId", "==", fromUserId)
+        .limit(1)
+        .get(),
+    ]);
+    const sent = sentSnap.empty ? null : sentSnap.docs[0].data();
+    const received = receivedSnap.empty ? null : receivedSnap.docs[0].data();
+    let interestStatus: "none" | "sent" | "received" | "mutual" = "none";
+    if (sent && !received)
+      interestStatus = sent.status === "accepted" ? "sent" : "sent";
+    else if (!sent && received)
+      interestStatus = received.status === "accepted" ? "received" : "received";
+    else if (
+      sent &&
+      received &&
+      sent.status === "accepted" &&
+      received.status === "accepted"
+    )
+      interestStatus = "mutual";
+    const canSendInterest = !sent; // cannot re-send if already sent
+    const canMessage = interestStatus === "mutual";
+    return { canSendInterest, canMessage, interestStatus };
+  } catch (e) {
+    console.error("validateInterestStatus Firestore error", e);
     return {
       canSendInterest: false,
       canMessage: false,
@@ -325,6 +345,6 @@ export async function validateMessagingPermissions(
 }
 
 // Utility to cast string to Convex Id<"users">
-function asUserId(id: string): Id<"users"> {
-  return id as unknown as Id<"users">;
+function asUserId(id: string): string {
+  return id;
 }

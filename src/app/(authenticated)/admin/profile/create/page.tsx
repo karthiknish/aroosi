@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import ProfileCreateWizard from "@/components/profile/ProfileCreateWizard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -16,7 +16,9 @@ export default function AdminCreateProfilePage() {
     isLoaded: authIsLoaded,
     isSignedIn,
     isAdmin,
-  } = useAuthContext();
+    user, // firebase user object
+    userId: currentUserId,
+  } = useAuthContext() as any;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if not admin or not loaded yet
@@ -64,15 +66,31 @@ export default function AdminCreateProfilePage() {
               > = {
                 ...values,
                 dateOfBirth: values.dateOfBirth,
-                partnerPreferenceCity: Array.isArray(values.partnerPreferenceCity)
+                partnerPreferenceCity: Array.isArray(
+                  values.partnerPreferenceCity
+                )
                   ? values.partnerPreferenceCity
                   : typeof values.partnerPreferenceCity === "string"
-                  ? values.partnerPreferenceCity.split(",").map((s) => s.trim()).filter(Boolean)
-                  : [],
+                    ? values.partnerPreferenceCity
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                    : [],
               };
               const { ...restValues } = submitValues;
               // Cookie-auth: server reads HttpOnly cookies
-              const response = await submitProfile(restValues, "create");
+              // Admin-created profile: use a generated userId or require one in values
+              // Expect values.userId or fallback to user.uid
+              const targetUserId =
+                (values as any).userId ||
+                currentUserId ||
+                user?.uid ||
+                user?.id;
+              const response = await submitProfile(
+                targetUserId,
+                restValues,
+                "create"
+              );
               if (response.success) {
                 showSuccessToast("Profile created successfully");
                 router.push("/admin");

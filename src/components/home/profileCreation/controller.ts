@@ -1,19 +1,38 @@
 import React from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebaseClient";
 import { useStepValidation } from "@/hooks/useStepValidation";
-import { useClerkAuth as useAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { submitProfile, getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import {
+  submitProfile,
+  getCurrentUserWithProfile,
+} from "@/lib/profile/userProfileApi";
 import type { ImageType } from "@/types/image";
 
 import { computeNextStep, normalizeStartStep } from "./flow";
 import { normalizeStepData } from "./step2";
-import { getGlobalRequiredFields, computeMissingRequiredFields, normalizePhoneE164Like, filterEmptyValues, buildProfilePayload } from "./step7";
-import { uploadPendingImages, persistServerImageOrder, summarizeImageUploadErrors } from "./step6";
+import {
+  getGlobalRequiredFields,
+  computeMissingRequiredFields,
+  normalizePhoneE164Like,
+  filterEmptyValues,
+  buildProfilePayload,
+} from "./step7";
+import {
+  uploadPendingImages,
+  persistServerImageOrder,
+  summarizeImageUploadErrors,
+} from "./step6";
 import { clearAllOnboardingData } from "./utils";
 
 // Import a few generic helpers from the main helpers module
-import { createOnChangeHandler, createOnProfileImagesChangeHandler, focusFirstErrorField } from "../profileCreationHelpers";
+import {
+  createOnChangeHandler,
+  createOnProfileImagesChangeHandler,
+  focusFirstErrorField,
+} from "../profileCreationHelpers";
 
 export * as Flow from "./flow";
 export * as Step2 from "./step2";
@@ -33,18 +52,30 @@ export function useProfileCreationController(params: {
   const { isOpen, onClose, router } = params;
 
   const __isProd = process.env.NODE_ENV === "production";
-  const __devLog = React.useCallback((..._args: unknown[]) => {
-    if (!__isProd) {
-      /* noop in production */
-    }
-  }, [__isProd]);
-  const __devInfo = React.useCallback((..._args: unknown[]) => {
-    if (!__isProd) {
-      /* noop in production */
-    }
-  }, [__isProd]);
+  const __devLog = React.useCallback(
+    (..._args: unknown[]) => {
+      if (!__isProd) {
+        /* noop in production */
+      }
+    },
+    [__isProd]
+  );
+  const __devInfo = React.useCallback(
+    (..._args: unknown[]) => {
+      if (!__isProd) {
+        /* noop in production */
+      }
+    },
+    [__isProd]
+  );
 
-  const { formData: contextData, updateFormData: updateContextData, step: contextStep, setStep: setContextStep, reset: resetWizard } = useProfileWizard();
+  const {
+    formData: contextData,
+    updateFormData: updateContextData,
+    step: contextStep,
+    setStep: setContextStep,
+    reset: resetWizard,
+  } = useProfileWizard();
 
   const hasBasicData = Boolean(
     contextData?.profileFor &&
@@ -79,43 +110,65 @@ export function useProfileCreationController(params: {
     annualIncome: (contextData?.annualIncome as string) || "",
     aboutMe: (contextData?.aboutMe as string) || "",
     preferredGender: (contextData?.preferredGender as string) || "",
-    partnerPreferenceAgeMin: (contextData?.partnerPreferenceAgeMin as number) || 18,
+    partnerPreferenceAgeMin:
+      (contextData?.partnerPreferenceAgeMin as number) || 18,
     partnerPreferenceAgeMax: contextData?.partnerPreferenceAgeMax as number,
-    partnerPreferenceCity: (contextData?.partnerPreferenceCity as string[]) || [],
+    partnerPreferenceCity:
+      (contextData?.partnerPreferenceCity as string[]) || [],
     profileImageIds: (contextData?.profileImageIds as string[]) || [],
   }))();
 
-  const step = Number.isFinite(contextStep) && (contextStep as number) >= 1 && (contextStep as number) <= 7 ? (contextStep as number) : 1;
+  const step =
+    Number.isFinite(contextStep) &&
+    (contextStep as number) >= 1 &&
+    (contextStep as number) <= 7
+      ? (contextStep as number)
+      : 1;
 
-  const setStep = React.useCallback((newStep: number) => {
-    const clamped = Math.max(1, Math.min(7, Math.floor(Number(newStep) || 1)));
-    setContextStep(clamped);
-    try {
-      if (typeof window !== "undefined") {
-        const snapshot = {
-          step: clamped,
-          data: {
-            fullName: (formData as any)?.fullName ?? "",
-            dateOfBirth: (formData as any)?.dateOfBirth ?? "",
-            phoneNumber: (formData as any)?.phoneNumber ?? "",
-            city: (formData as any)?.city ?? "",
-            height: (formData as any)?.height ?? "",
-            maritalStatus: (formData as any)?.maritalStatus ?? "",
-          },
-        };
-        window.localStorage.setItem("PROFILE_CREATION", JSON.stringify(snapshot));
-      }
-    } catch {}
-  }, [setContextStep, formData]);
-
-  const [preferredCitiesInput, setPreferredCitiesInput] = React.useState<string>(
-    Array.isArray((formData as any).partnerPreferenceCity)
-      ? ((formData as any).partnerPreferenceCity as string[]).join(", ")
-      : ""
+  const setStep = React.useCallback(
+    (newStep: number) => {
+      const clamped = Math.max(
+        1,
+        Math.min(7, Math.floor(Number(newStep) || 1))
+      );
+      setContextStep(clamped);
+      try {
+        if (typeof window !== "undefined") {
+          const snapshot = {
+            step: clamped,
+            data: {
+              fullName: (formData as any)?.fullName ?? "",
+              dateOfBirth: (formData as any)?.dateOfBirth ?? "",
+              phoneNumber: (formData as any)?.phoneNumber ?? "",
+              city: (formData as any)?.city ?? "",
+              height: (formData as any)?.height ?? "",
+              maritalStatus: (formData as any)?.maritalStatus ?? "",
+            },
+          };
+          window.localStorage.setItem(
+            "PROFILE_CREATION",
+            JSON.stringify(snapshot)
+          );
+        }
+      } catch {}
+    },
+    [setContextStep, formData]
   );
-  const partnerPreferenceCityDep = React.useMemo(() => (formData as any).partnerPreferenceCity, [formData]);
+
+  const [preferredCitiesInput, setPreferredCitiesInput] =
+    React.useState<string>(
+      Array.isArray((formData as any).partnerPreferenceCity)
+        ? ((formData as any).partnerPreferenceCity as string[]).join(", ")
+        : ""
+    );
+  const partnerPreferenceCityDep = React.useMemo(
+    () => (formData as any).partnerPreferenceCity,
+    [formData]
+  );
   React.useEffect(() => {
-    const joined = Array.isArray(partnerPreferenceCityDep) ? (partnerPreferenceCityDep as string[]).join(", ") : "";
+    const joined = Array.isArray(partnerPreferenceCityDep)
+      ? (partnerPreferenceCityDep as string[]).join(", ")
+      : "";
     setPreferredCitiesInput(joined);
   }, [partnerPreferenceCityDep]);
 
@@ -125,7 +178,10 @@ export function useProfileCreationController(params: {
   const validationData = React.useMemo(() => {
     if (step !== 2) return formData;
     const height = (formData as any).height;
-    const normalized = typeof height === "string" && /^\d{2,3}$/.test(height.trim()) ? `${height.trim()} cm` : height;
+    const normalized =
+      typeof height === "string" && /^\d{2,3}$/.test(height.trim())
+        ? `${height.trim()} cm`
+        : height;
     return { ...(formData as any), height: normalized } as any;
   }, [formData, step]);
 
@@ -137,12 +193,20 @@ export function useProfileCreationController(params: {
     },
   });
 
-  const { user: authUser, refreshUser, isAuthenticated, signOut } = useAuth();
-  const userId = (authUser as any)?.id as string | undefined;
+  const {
+    user: authUser,
+    refreshProfile: refreshUser,
+    isAuthenticated,
+    signOut,
+  } = useAuth() as any;
+  const userId: string | undefined =
+    authUser && (authUser as any).uid ? (authUser as any).uid : undefined;
 
   const handleClose = React.useCallback(() => {
     try {
-      try { clearAllOnboardingData(); } catch {}
+      try {
+        clearAllOnboardingData();
+      } catch {}
       resetWizard();
       __devLog("Profile creation modal closed - data cleared and wizard reset");
     } catch (error) {
@@ -152,8 +216,10 @@ export function useProfileCreationController(params: {
     }
   }, [resetWizard, __devLog, onClose]);
 
+  // Submission guards
   const [hasSubmittedProfile, setHasSubmittedProfile] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const submissionTokenRef = React.useRef<string | null>(null);
 
   const handleInputChange = (field: string, value: unknown) => {
     const onChange = createOnChangeHandler(updateContextData as any);
@@ -162,7 +228,10 @@ export function useProfileCreationController(params: {
 
   const handleProfileImagesChange = async (imgs: (string | ImageType)[]) => {
     const onFieldChange = createOnChangeHandler(updateContextData as any);
-    const handler = createOnProfileImagesChangeHandler(onFieldChange, setPendingImages as any);
+    const handler = createOnProfileImagesChangeHandler(
+      onFieldChange,
+      setPendingImages as any
+    );
     await handler(imgs);
   };
 
@@ -177,28 +246,46 @@ export function useProfileCreationController(params: {
     }
     if (step === 2) {
       const normalized = normalizeStepData(step, formData as any);
-      if ((normalized as any).height !== (formData as any).height) handleInputChange("height", (normalized as any).height as string);
-      if ((normalized as any).city !== (formData as any).city) handleInputChange("city", (normalized as any).city as string);
+      if ((normalized as any).height !== (formData as any).height)
+        handleInputChange("height", (normalized as any).height as string);
+      if ((normalized as any).city !== (formData as any).city)
+        handleInputChange("city", (normalized as any).city as string);
       await new Promise((r) => setTimeout(r, 0));
     }
     const result = await stepValidation.validateCurrentStep();
     if (!result.isValid) {
       try {
-        focusFirstErrorField(stepValidation.getFieldError, ["city", "height", "maritalStatus"]);
+        focusFirstErrorField(stepValidation.getFieldError, [
+          "city",
+          "height",
+          "maritalStatus",
+        ]);
       } catch {}
       const summary = stepValidation.getValidationSummary();
       showErrorToast(null, summary.summary);
       return;
     }
     if (step < 7) {
-      const next = computeNextStep({ step, hasBasicData: !!hasBasicData, direction: "next", min: 1, max: 7 });
+      const next = computeNextStep({
+        step,
+        hasBasicData: !!hasBasicData,
+        direction: "next",
+        min: 1,
+        max: 7,
+      });
       setStep(next);
     }
   };
 
   const handleBack = async () => {
     if (step > 1) {
-      const prev = computeNextStep({ step, hasBasicData: !!hasBasicData, direction: "back", min: 1, max: 7 });
+      const prev = computeNextStep({
+        step,
+        hasBasicData: !!hasBasicData,
+        direction: "back",
+        min: 1,
+        max: 7,
+      });
       setStep(prev);
     }
   };
@@ -206,7 +293,10 @@ export function useProfileCreationController(params: {
   React.useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
-      if ((event as any).data?.type === "auth-success" && (event as any).data?.isAuthenticated) {
+      if (
+        (event as any).data?.type === "auth-success" &&
+        (event as any).data?.isAuthenticated
+      ) {
         window.location.reload();
       }
     }
@@ -222,193 +312,245 @@ export function useProfileCreationController(params: {
 
   React.useEffect(() => {
     const submitProfileAndImages = async () => {
-      if (!isAuthenticated) return;
-      if (hasSubmittedProfile) return;
-      if (isSubmitting) return;
-      if (step !== 7) return;
+      if (!isAuthenticated) return; // must be authed
+      if (step !== 7) return; // only on final step
+      if (isSubmitting) return; // active submit in progress
+      if (hasSubmittedProfile) return; // already logically submitted
+      if (submissionTokenRef.current) return; // hard guard against race
 
       setIsSubmitting(true);
+      // Generate one-time submission token
+      submissionTokenRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  try {
+    if (!userId) {
+      setIsSubmitting(false);
+      return;
+    }
+    const existing = await getCurrentUserWithProfile(userId);
+    if (existing.success && existing.data) {
       try {
-        const existing = await getCurrentUserWithProfile();
-        if (existing.success && existing.data) {
-          try {
-            await refreshUser();
-          } catch {}
-          try {
-            clearAllOnboardingData();
-          } catch {}
-          showSuccessToast("Account created. Finalizing your profile...");
-          handleClose();
-          try {
-            const ok = await (async () => {
-              for (let i = 0; i < 8; i++) {
-                try {
-                  const resp = await getCurrentUserWithProfile();
-                  if (resp?.success && resp?.data) return true;
-                } catch {}
-                await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-              }
-              return false;
-            })();
-            if (ok) router.push("/success");
-          } catch {}
-          return;
-        }
+        await refreshUser();
+      } catch {}
+      try {
+        clearAllOnboardingData();
+      } catch {}
+      showSuccessToast("Account created. Finalizing your profile...");
+      handleClose();
+      try {
+        const ok = await (async () => {
+          for (let i = 0; i < 8; i++) {
+            try {
+              const resp = await getCurrentUserWithProfile(userId);
+              if (resp?.success && resp?.data) return true;
+            } catch {}
+            await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+          }
+          return false;
+        })();
+        if (ok) router.push("/success");
+      } catch {}
+      return;
+    }
 
-        setHasSubmittedProfile(true);
-        try {
-          updateContextData({ lastProfileSubmissionAt: Date.now() });
-        } catch {}
+    setHasSubmittedProfile(true);
+    try {
+      updateContextData({ lastProfileSubmissionAt: Date.now() });
+    } catch {}
 
-        const merged: Record<string, unknown> = { ...contextData };
-        const cleanedData: Record<string, unknown> = {};
-        Object.entries(merged).forEach(([k, v]) => {
-          const isValidValue =
-            v !== undefined &&
-            v !== null &&
-            !(typeof v === "string" && v.trim() === "") &&
-            !(Array.isArray(v) && v.length === 0);
-          if (isValidValue) cleanedData[k] = v;
-        });
+    const merged: Record<string, unknown> = { ...contextData };
+    const cleanedData: Record<string, unknown> = {};
+    Object.entries(merged).forEach(([k, v]) => {
+      const isValidValue =
+        v !== undefined &&
+        v !== null &&
+        !(typeof v === "string" && v.trim() === "") &&
+        !(Array.isArray(v) && v.length === 0);
+      if (isValidValue) cleanedData[k] = v;
+    });
 
-        const requiredFields = getGlobalRequiredFields();
-        const { missing: missingFields } = computeMissingRequiredFields(
-          cleanedData,
-          requiredFields
+    const requiredFields = getGlobalRequiredFields();
+    const { missing: missingFields } = computeMissingRequiredFields(
+      cleanedData,
+      requiredFields
+    );
+    if (missingFields.length > 0) {
+      showErrorToast(
+        null,
+        `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`
+      );
+      setHasSubmittedProfile(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const normalizedPhone =
+      normalizePhoneE164Like(cleanedData.phoneNumber as string) ??
+      (typeof cleanedData.phoneNumber === "string"
+        ? cleanedData.phoneNumber
+        : "");
+    try {
+      if (normalizedPhone) updateContextData({ phoneNumber: normalizedPhone });
+    } catch {}
+
+    const trimmedData = filterEmptyValues(cleanedData);
+    const payload = buildProfilePayload(
+      trimmedData,
+      normalizedPhone || undefined
+    );
+
+    const profileRes = await submitProfile(userId, payload as any, "create");
+    if (!profileRes.success) {
+      showErrorToast(profileRes.error, "Failed to create profile");
+      setHasSubmittedProfile(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (pendingImages.length > 0 && userId) {
+      const { createdImageIds, failedImages } = await uploadPendingImages({
+        pendingImages,
+        userId,
+      });
+      if (failedImages.length > 0) {
+        const mapped = failedImages.map((f) => ({
+          name: `#${f.index} ${f.name}`,
+          reason: f.reason,
+        }));
+        const msg = summarizeImageUploadErrors(mapped, 3);
+        showErrorToast(null, msg);
+        __devInfo(
+          "Some images failed to upload. You can retry failed items individually from Step 6."
         );
-        if (missingFields.length > 0) {
+      }
+      if (createdImageIds.length > 0) {
+        try {
+          const orderIds =
+            createdImageIds.length > 0
+              ? createdImageIds
+              : Array.isArray((formData as any).profileImageIds)
+                ? ((formData as any).profileImageIds as string[])
+                : [];
+          const filteredOrderIds = orderIds.filter(
+            (id) =>
+              typeof id === "string" &&
+              !id.startsWith("local-") &&
+              id.trim().length > 0
+          );
+          if (filteredOrderIds.length > 1) {
+            await persistServerImageOrder({
+              userId: userId as string,
+              imageIds: filteredOrderIds,
+            });
+          }
+        } catch {
           showErrorToast(
             null,
-            `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`
+            "Unable to save image order. You can reorder later."
           );
-          setHasSubmittedProfile(false);
-          setIsSubmitting(false);
-          return;
         }
-
-        const normalizedPhone =
-          normalizePhoneE164Like(cleanedData.phoneNumber as string) ??
-          (typeof cleanedData.phoneNumber === "string"
-            ? cleanedData.phoneNumber
-            : "");
-        try {
-          if (normalizedPhone)
-            updateContextData({ phoneNumber: normalizedPhone });
-        } catch {}
-
-        const trimmedData = filterEmptyValues(cleanedData);
-        const payload = buildProfilePayload(
-          trimmedData,
-          normalizedPhone || undefined
-        );
-
-        const profileRes = await submitProfile(payload as any, "create");
-        if (!profileRes.success) {
-          showErrorToast(profileRes.error, "Failed to create profile");
-          setHasSubmittedProfile(false);
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (pendingImages.length > 0 && userId) {
-          const { createdImageIds, failedImages } = await uploadPendingImages({
-            pendingImages,
-            userId,
-          });
-          if (failedImages.length > 0) {
-            const mapped = failedImages.map((f) => ({
-              name: `#${f.index} ${f.name}`,
-              reason: f.reason,
-            }));
-            const msg = summarizeImageUploadErrors(mapped, 3);
-            showErrorToast(null, msg);
-            __devInfo(
-              "Some images failed to upload. You can retry failed items individually from Step 6."
-            );
-          }
-          if (createdImageIds.length > 0) {
-            try {
-              const orderIds =
-                createdImageIds.length > 0
-                  ? createdImageIds
-                  : Array.isArray((formData as any).profileImageIds)
-                    ? ((formData as any).profileImageIds as string[])
-                    : [];
-              const filteredOrderIds = orderIds.filter(
-                (id) =>
-                  typeof id === "string" &&
-                  !id.startsWith("local-") &&
-                  id.trim().length > 0
-              );
-              if (filteredOrderIds.length > 1) {
-                await persistServerImageOrder({
-                  userId: userId as string,
-                  imageIds: filteredOrderIds,
-                });
-              }
-            } catch {
-              showErrorToast(
-                null,
-                "Unable to save image order. You can reorder later."
-              );
-            }
-          }
-        }
-
-        try {
-          await refreshUser();
-        } catch {}
-        try {
-          clearAllOnboardingData();
-        } catch {}
-        try {
-          if (typeof window !== "undefined")
-            window.localStorage.removeItem("PROFILE_CREATION");
-        } catch {}
-        try {
-          updateContextData({
-            isProfileComplete: true,
-            isOnboardingComplete: true,
-          });
-        } catch {}
-        showSuccessToast("Profile created successfully!");
-        handleClose();
-        try {
-          const ok = await (async () => {
-            for (let i = 0; i < 8; i++) {
-              try {
-                const resp = await getCurrentUserWithProfile();
-                if (resp?.success && resp?.data) return true;
-              } catch {}
-              await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-            }
-            return false;
-          })();
-          if (ok) router.push("/success");
-        } catch {}
-      } catch (err: any) {
-        let errorMessage = "Profile submission failed";
-        const msg = String(err?.message || "").toLowerCase();
-        if (msg.includes("network") || msg.includes("fetch")) errorMessage = "Network error. Please check your connection and try again.";
-        else if (msg.includes("timeout")) errorMessage = "Request timed out. Please try again.";
-        else if (msg.includes("401") || msg.includes("unauthorized")) errorMessage = "Authentication expired. Please sign in again.";
-        else if (msg.includes("409") || msg.includes("duplicate")) errorMessage = "Profile already exists. Please use the profile edit feature.";
-        else if (msg.includes("400") || msg.includes("validation")) errorMessage = "Invalid profile data. Please check your information and try again.";
-        else if (msg.includes("500") || msg.includes("server")) errorMessage = "Server error while creating profile. Please try again.";
-        else if (err?.message) errorMessage = `Profile submission failed: ${err.message}`;
-        showErrorToast(null, errorMessage);
-        setHasSubmittedProfile(false);
-      } finally {
-        setIsSubmitting(false);
       }
+    }
+
+    try {
+      await refreshUser();
+    } catch {}
+    try {
+      clearAllOnboardingData();
+    } catch {}
+    try {
+      if (typeof window !== "undefined")
+        window.localStorage.removeItem("PROFILE_CREATION");
+    } catch {}
+    try {
+      updateContextData({
+        isProfileComplete: true,
+        isOnboardingComplete: true,
+      });
+    } catch {}
+    // Attempt to remove onboardingPartial from Firestore to avoid stale data
+    try {
+      if (userId) {
+        const userDocRef = doc(db, "users", userId);
+        await updateDoc(userDocRef, {
+          onboardingPartial: null,
+          updatedAt: Date.now(),
+        });
+      }
+    } catch {}
+
+    showSuccessToast("Profile created successfully!");
+    handleClose();
+    try {
+      const ok = await (async () => {
+        for (let i = 0; i < 8; i++) {
+          try {
+            const resp = await getCurrentUserWithProfile(userId);
+            if (resp?.success && resp?.data) return true;
+          } catch {}
+          await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+        }
+        return false;
+      })();
+      if (ok) router.push("/success");
+    } catch {}
+  } catch (err: any) {
+    let errorMessage = "Profile submission failed";
+    const msg = String(err?.message || "").toLowerCase();
+    if (msg.includes("network") || msg.includes("fetch"))
+      errorMessage =
+        "Network error. Please check your connection and try again.";
+    else if (msg.includes("timeout"))
+      errorMessage = "Request timed out. Please try again.";
+    else if (msg.includes("401") || msg.includes("unauthorized"))
+      errorMessage = "Authentication expired. Please sign in again.";
+    else if (msg.includes("409") || msg.includes("duplicate"))
+      errorMessage =
+        "Profile already exists. Please use the profile edit feature.";
+    else if (msg.includes("400") || msg.includes("validation"))
+      errorMessage =
+        "Invalid profile data. Please check your information and try again.";
+    else if (msg.includes("500") || msg.includes("server"))
+      errorMessage = "Server error while creating profile. Please try again.";
+    else if (err?.message)
+      errorMessage = `Profile submission failed: ${err.message}`;
+    showErrorToast(null, errorMessage);
+    setHasSubmittedProfile(false);
+  } finally {
+    setIsSubmitting(false);
+    // Clear token allowing future submissions only after state reset if something failed
+    if (!hasSubmittedProfile) {
+      submissionTokenRef.current = null;
+    }
+  }
     };
     void submitProfileAndImages();
-  }, [isAuthenticated, validationData, pendingImages, userId, step, hasSubmittedProfile, isSubmitting, refreshUser, onClose, router, signOut, __devInfo, updateContextData, handleClose, __devLog, hasBasicData, formData, contextData]);
+  }, [
+    isAuthenticated,
+    validationData,
+    pendingImages,
+    userId,
+    step,
+    hasSubmittedProfile,
+    isSubmitting,
+    refreshUser,
+    onClose,
+    router,
+    signOut,
+    __devInfo,
+    updateContextData,
+    handleClose,
+    __devLog,
+    hasBasicData,
+    formData,
+    contextData,
+  ]);
 
   React.useEffect(() => {
     if (!isOpen) return;
     const handleUnload = () => {
-      try { clearAllOnboardingData(); } catch {}
+      try {
+        clearAllOnboardingData();
+      } catch {}
     };
     window.addEventListener("beforeunload", handleUnload);
     window.addEventListener("pagehide", handleUnload);
@@ -420,7 +562,10 @@ export function useProfileCreationController(params: {
 
   const normalizedOnOpenRef = React.useRef(false);
   React.useEffect(() => {
-    if (!isOpen) { normalizedOnOpenRef.current = false; return; }
+    if (!isOpen) {
+      normalizedOnOpenRef.current = false;
+      return;
+    }
     if (normalizedOnOpenRef.current) return;
     setStep(normalizeStartStep(!!hasBasicData));
     normalizedOnOpenRef.current = true;

@@ -1,13 +1,18 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   safetyAPI,
   type ReportData,
   type ReportReason,
 } from "@/lib/api/safety";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 // Hook for reporting users
 export const useReportUser = () => {
@@ -16,7 +21,7 @@ export const useReportUser = () => {
     mutationFn: (data: ReportData) => safetyAPI.reportUser(null, data),
     onSuccess: () => {
       showSuccessToast(
-        "User reported successfully. Our team will review this report.",
+        "User reported successfully. Our team will review this report."
       );
     },
     onError: (error: Error) => {
@@ -69,21 +74,25 @@ export const useUnblockUser = () => {
 };
 
 // Hook for fetching blocked users
-export const useBlockedUsers = () => {
+export const useBlockedUsers = (limit: number = 25) => {
   useAuthContext();
-
-  return useQuery({
-    queryKey: ["blockedUsers"],
-    queryFn: async () => {
-      const result = await safetyAPI.getBlockedUsers(null);
-      return result.blockedUsers;
+  return useInfiniteQuery({
+    queryKey: ["blockedUsers", limit],
+    queryFn: async ({ pageParam }) => {
+      const res = await safetyAPI.getBlockedUsers(null, {
+        limit,
+        cursor: pageParam ?? null,
+      });
+      return res;
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 };
 
 // Hook for checking if a user is blocked (matching mobile app pattern)
 export const useBlockStatus = (
-  input: string | { profileId?: string; userId?: string },
+  input: string | { profileId?: string; userId?: string }
 ) => {
   useAuthContext();
 
@@ -106,10 +115,19 @@ export const useSafety = () => {
   const reportUser = useReportUser();
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
-  const { data: blockedUsers, isLoading: isLoadingBlocked } = useBlockedUsers();
+  const {
+    data: blockedPages,
+    isLoading: isLoadingBlocked,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useBlockedUsers();
 
-  const blockedUserIds =
-    blockedUsers?.map((blocked) => blocked.blockedUserId) || [];
+  const blockedUsers = blockedPages
+    ? blockedPages.pages.flatMap((p) => p.blockedUsers)
+    : [];
+
+  const blockedUserIds = blockedUsers.map((b) => b.blockedUserId);
 
   const checkIfBlocked = async (userId: string): Promise<boolean> => {
     try {
@@ -126,7 +144,10 @@ export const useSafety = () => {
 
   return {
     // Data
-    blockedUsers: blockedUsers || [],
+    blockedUsers,
+    fetchMoreBlocked: fetchNextPage,
+    hasMoreBlocked: !!hasNextPage,
+    fetchingMoreBlocked: isFetchingNextPage,
 
     // Loading states
     loading: isLoadingBlocked,
@@ -137,7 +158,7 @@ export const useSafety = () => {
     reportUser: async (
       userId: string,
       reason: ReportReason,
-      description?: string,
+      description?: string
     ): Promise<boolean> => {
       try {
         await reportUser.mutateAsync({

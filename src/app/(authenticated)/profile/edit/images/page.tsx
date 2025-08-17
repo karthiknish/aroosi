@@ -3,11 +3,9 @@
 import React, { useCallback, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
-import {
-  fetchUserProfileImages,
-  getCurrentUserWithProfile,
-} from "@/lib/profile/userProfileApi";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { useProfileImages } from "@/hooks/useProfileImages";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import ProfileFormStepImages from "@/components/profile/ProfileFormStepImages";
 import type { ImageType } from "@/types/image";
@@ -18,9 +16,12 @@ import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { updateImageOrder } from "@/lib/utils/imageUtil";
 
 export default function EditProfileImagesPage() {
-  const {
-    /* token removed */
-  } = useAuthContext();
+  const { user, profile: authProfile } = useAuthContext();
+  const userId =
+    user?.uid ||
+    (authProfile as any)?._id ||
+    (authProfile as any)?.userId ||
+    "";
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -33,7 +34,7 @@ export default function EditProfileImagesPage() {
     {
       queryKey: ["profile"],
       queryFn: async () => {
-        const res = await getCurrentUserWithProfile();
+        const res = await getCurrentUserWithProfile(userId);
         if (!res?.success || !res.data) return null;
 
         const envelope = (res.data as { profile?: unknown })?.profile
@@ -45,52 +46,16 @@ export default function EditProfileImagesPage() {
     }
   );
 
-  const { data: images = [], isLoading: imagesLoading } = useQuery<ImageType[]>(
-    {
-      queryKey: ["profileImages", profile?._id],
-      queryFn: async () => {
-        if (!profile?._id) return [];
-        const result = await fetchUserProfileImages(profile._id);
-        if (!result.success || !result.data) return [];
-        /* unwrap */
-
-        const payload = Array.isArray(result.data)
-          ? result.data
-          : (result.data as { images?: unknown[] }).images;
-
-        // Type guard to ensure we have the right structure
-        const isValidImageArray = (
-          arr: unknown[]
-        ): arr is Array<{
-          id?: string;
-          _id?: string;
-          url?: string;
-          storageId?: string;
-          name?: string;
-          fileName?: string;
-          size?: number;
-          uploadedAt?: number;
-        }> => {
-          return Array.isArray(arr);
-        };
-
-        const validPayload =
-          payload && isValidImageArray(payload) ? payload : [];
-
-        const mapped = validPayload.map((img) => ({
-          id: img.id || img._id || img.storageId || "",
-          url: img.url,
-          _id: img._id,
-          storageId: img.storageId,
-          name: img.name || img.fileName,
-          size: img.size,
-          uploadedAt: img.uploadedAt,
-        })) as ImageType[];
-        return mapped;
-      },
-      enabled: !!profile?.userId,
-    }
-  );
+  const { images: rawImages, loading: imagesLoading } = useProfileImages({
+    userId: profile?._id,
+    enabled: !!profile?.userId,
+    preferInlineUrls: profile?.profileImageUrls,
+  });
+  const images: ImageType[] = rawImages.map((img) => ({
+    id: img.storageId || img.url,
+    url: img.url,
+    storageId: img.storageId,
+  })) as ImageType[];
 
   // When images are fetched, initialise local state
   useEffect(() => {

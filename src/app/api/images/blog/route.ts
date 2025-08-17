@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { convexMutationWithAuth } from "@/lib/convexServer";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
 
 // POST /api/images/blog
 // Upload metadata for a blog image and retrieve its public URL.
@@ -38,30 +38,35 @@ export async function POST(req: NextRequest) {
     return errorResponse("File too large. Max 5MB allowed.", 400);
   }
 
-  // Call Convex mutation (admin guard happens server-side)
+  // Auth (require admin session once role system integrated) - placeholder allow if session exists
+  const session = await requireSession(req);
+  if ("errorResponse" in session) return session.errorResponse;
+
+  // Placeholder Firestore metadata write (no actual file handling here; assume already uploaded to storage by client flow)
   try {
-    const result = await convexMutationWithAuth(req, api.images.uploadBlogImage, {
+    await db
+      .collection("blogImages")
+      .doc(storageId)
+      .set(
+        {
+          storageId,
+          fileName,
+          contentType: contentType || null,
+          fileSize: fileSize || null,
+          uploadedBy: session.userId,
+          createdAt: Date.now(),
+        },
+        { merge: true }
+      );
+    return successResponse({
+      success: true,
       storageId,
       fileName,
-      contentType,
-      fileSize,
+      url: null, // TODO: generate signed URL or public URL if needed
+      placeholder: true,
     });
-
-    if (
-      !result ||
-      typeof result !== "object" ||
-      !(result as { success?: boolean }).success
-    ) {
-      return errorResponse(
-        (result as { message?: string }).message || "Upload failed",
-        400
-      );
-    }
-    return successResponse(result);
   } catch (err) {
-    console.error("/api/images/blog POST error", err);
-    const message =
-      err instanceof Error ? err.message : "Failed to upload image";
-    return errorResponse(message, 500);
+    console.error("/api/images/blog Firestore write error", err);
+    return errorResponse("Failed to record blog image metadata", 500);
   }
 }

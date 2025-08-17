@@ -1,8 +1,14 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
-import { convexQueryWithAuth } from "@/lib/convexServer";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
+import { db } from "@/lib/firebaseAdmin";
+import {
+  COL_USAGE_EVENTS,
+  COL_USAGE_MONTHLY,
+  monthKey,
+  usageMonthlyId,
+} from "@/lib/firestoreSchema";
+import { getPlanLimits, featureRemaining } from "@/lib/subscription/planLimits";
 
 /**
  * Prevent 307 domain redirects and enforce JSON-only responses with structured logs.
@@ -52,28 +58,18 @@ export async function GET(
 
   try {
     // Gate with app-layer auth; normalize any helper response into plain JSON
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) {
-      const res = session.errorResponse!;
-      const status = res.status || 401;
-      let body: Record<string, unknown> = {
-        error: "Unauthorized",
-        correlationId,
-      };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {
-        // fall through with default body
-      }
+    let auth;
+    try {
+      auth = await requireAuth(request);
+    } catch (e) {
+      const err = e as AuthError;
       log(scope, "warn", "Auth failed", {
         correlationId,
-        statusCode: status,
+        statusCode: err.status,
         durationMs: Date.now() - startedAt,
       });
-      return errorResponse(body?.error || "Unauthorized", status, body);
+      return errorResponse(err.message, err.status, { correlationId });
     }
-
     const params = await context.params;
     const rawFeature = params?.feature;
     const feature = rawFeature as Feature;
@@ -93,42 +89,52 @@ export async function GET(
       });
     }
 
-    const userId = session.userId;
-
-    if (!userId) {
-      log(scope, "warn", "User not found", {
-        correlationId,
-        statusCode: 404,
-        durationMs: Date.now() - startedAt,
-      });
-      return errorResponse("User not found in database", 404, {
-        correlationId,
-      });
-    }
-
-    let result: any = null;
-    try {
-      result = await convexQueryWithAuth(
-        request,
-        api.usageTracking.checkActionLimit,
-        {
-          action: feature,
+    const userId = auth.userId;
+    const profileDoc = await db.collection("users").doc(userId).get();
+    if (!profileDoc.exists)
+      return errorResponse("Profile not found", 404, { correlationId });
+    const profile = profileDoc.data() as any;
+    const plan = profile.subscriptionPlan || "free";
+    const limits = getPlanLimits(plan);
+    const limit = limits[feature];
+    let currentUsage = 0;
+    const month = monthKey();
+    if (feature === "profile_view" || feature === "search_performed") {
+      const since = Date.now() - 24 * 60 * 60 * 1000;
+      const snap = await db
+        .collection(COL_USAGE_EVENTS)
+        .where("userId", "==", userId)
+        .where("timestamp", ">=", since)
+        .get();
+      snap.docs.forEach(
+        (
+          d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
+        ) => {
+          const data = d.data() as any;
+          if (data.feature === feature) currentUsage++;
         }
       );
-    } catch (e: unknown) {
-      log(scope, "error", "Feature check failed", {
-        correlationId,
-        feature,
-        statusCode: 500,
-        message: e instanceof Error ? e.message : String(e),
-        durationMs: Date.now() - startedAt,
-      });
-      return errorResponse("Failed to check feature availability", 500, {
-        correlationId,
-      });
+    } else {
+      const monthlyId = usageMonthlyId(userId, feature, month);
+      const monthlySnap = await db
+        .collection(COL_USAGE_MONTHLY)
+        .doc(monthlyId)
+        .get();
+      currentUsage = monthlySnap.exists
+        ? (monthlySnap.data() as any).count || 0
+        : 0;
     }
-
-    const responseBody = { ...result, correlationId };
+    const rem = featureRemaining(plan, feature as any, currentUsage);
+    const canPerform = rem.unlimited || currentUsage < rem.limit;
+    const remaining = rem.remaining;
+    const responseBody = {
+      canPerform,
+      currentUsage,
+      limit: rem.limit,
+      remaining,
+      plan,
+      correlationId,
+    };
     log(scope, "info", "Feature check success", {
       correlationId,
       feature,

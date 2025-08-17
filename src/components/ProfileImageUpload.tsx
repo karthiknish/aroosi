@@ -12,18 +12,15 @@ import ImageDeleteConfirmation from "./ImageDeleteConfirmation";
 import { ProfileImageReorder } from "./ProfileImageReorder";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
-import { Id } from "@convex/_generated/dataModel";
-import { useAuthContext } from "./ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import type { ImageType } from "@/types/image";
 import {
-  fetchAdminProfileImagesById,
   deleteAdminProfileImageById,
   adminUploadProfileImage,
 } from "@/lib/profile/adminProfileApi";
-import {
-  fetchUserProfileImages,
-  getCurrentUserWithProfile,
-} from "@/lib/profile/userProfileApi";
+import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
+import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
+import { useProfileImages } from "@/hooks/useProfileImages";
 
 // Types
 // Note: Upload responses are handled internally by ImageUploader and utilities
@@ -51,7 +48,7 @@ type ProfileImageUploadWithUserId = {
     fileName: string;
     contentType: string;
     fileSize: number;
-  }) => Promise<{ success: boolean; imageId: Id<"_storage">; message: string }>;
+  }) => Promise<{ success: boolean; imageId: string; message: string }>;
 };
 
 // Combine the props, making all userId-dependent props optional
@@ -71,7 +68,8 @@ export function ProfileImageUpload({
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const { refreshProfile, isAdmin: authIsAdmin } = useAuthContext();
+  const { refreshProfile, isAdmin: authIsAdmin, user } = useAuthContext();
+  const derivedUserId = user?.uid || userId;
 
   // State management (moved to top)
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -85,82 +83,32 @@ export function ProfileImageUpload({
   const [optimisticImages, setOptimisticImages] = useState<ImageType[]>([]);
   const MAX_IMAGES_PER_USER = 5;
 
-  const { data: orderedImages = [], refetch: _refetchImages } = useQuery({
-    queryKey: ["profileImages", userId, authIsAdmin, profileId],
-    queryFn: async () => {
-      try {
-        if (!userId || userId === "user-id-placeholder") {
-          console.warn("Missing or placeholder userId when fetching images");
-          return [];
-        }
+  const { images: adminImages, query: adminImagesQuery } =
+    useAdminProfileImages({ profileId, enabled: authIsAdmin && !!profileId });
 
-        if (authIsAdmin && profileId) {
-          // Use admin util for fetching images (cookie-auth)
-          try {
-            return await fetchAdminProfileImagesById({ profileId });
-          } catch (error) {
-            console.error("Error fetching admin profile images:", error);
-            showErrorToast(null, "Failed to load profile images");
-            return [];
-          }
-        }
-
-        // Use existing utility function (cookie-auth)
-        const result = await fetchUserProfileImages(userId);
-        if (!result.success) {
-          console.error("Error fetching user profile images:", result.error);
-          if (result.error?.includes("Authentication")) {
-            showErrorToast(null, "Please sign in again to view images");
-          } else {
-            showErrorToast(null, "Failed to load profile images");
-          }
-          return [];
-        }
-
-        if (!result.data) return [];
-
-        return (result.data || [])
-          .filter((img) => !!img?.url && !!img?.storageId)
-          .map((img) => ({
-            ...img,
-            id: img.storageId,
-            storageId: img.storageId,
-          })) as ImageType[];
-      } catch (error) {
-        console.error("Unexpected error fetching profile images:", error);
-        showErrorToast(
-          null,
-          "An unexpected error occurred while loading images"
-        );
-        return [];
-      }
-    },
-    enabled: mode === "edit" && !!userId && userId !== "user-id-placeholder",
-    staleTime: 60 * 1000, // Consider data fresh for 1 minute
-    retry: (failureCount, error) => {
-      // Don't retry on authentication errors
-      if (error instanceof Error && error.message.includes("Authentication")) {
-        return false;
-      }
-      // Retry up to 2 times for other errors
-      return failureCount < 2;
-    },
+  // Non-admin images via shared hook
+  const { images: userImages } = useProfileImages({
+    userId: derivedUserId,
+    enabled: mode === "edit" && !!derivedUserId && !authIsAdmin,
   });
 
   // Initialize hasInitialized after first query or in create mode
   React.useEffect(() => {
     if (
       !hasInitialized &&
-      (mode === "create" || (mode === "edit" && orderedImages))
+      (mode === "create" ||
+        (mode === "edit" && (authIsAdmin ? adminImages : userImages)))
     ) {
       setHasInitialized(true);
     }
-  }, [mode, orderedImages, hasInitialized]);
+  }, [mode, adminImages, userImages, authIsAdmin, hasInitialized]);
 
   // Wrap refetchImages to include reordering logic
   const refetchImages = useCallback(async () => {
     try {
-      await _refetchImages();
+      if (authIsAdmin) {
+        await adminImagesQuery.refetch();
+      }
       if (userId) {
         void queryClient.invalidateQueries({
           queryKey: ["profile-images", userId],
@@ -171,12 +119,14 @@ export function ProfileImageUpload({
       console.error("Failed to refetch images:", error);
       showErrorToast(null, "Failed to refresh images");
     }
-  }, [_refetchImages, refreshProfile, queryClient, userId]);
+  }, [adminImagesQuery, refreshProfile, queryClient, userId, authIsAdmin]);
 
   const { data: currentUserProfile } = useQuery({
     queryKey: ["currentUserWithProfile"],
     queryFn: async () => {
-      const result = await getCurrentUserWithProfile();
+      const result = await getCurrentUserWithProfile(
+        derivedUserId || userId || ""
+      );
       if (!result.success) return null;
       return result.data;
     },
@@ -187,12 +137,26 @@ export function ProfileImageUpload({
     if (mode === "create") {
       return [...localImages, ...optimisticImages];
     }
-    const validImages = (orderedImages || []).filter((img): img is ImageType =>
-      Boolean(img?.url && img.id)
+    const baseImages = authIsAdmin
+      ? adminImages
+      : userImages.map((i) => ({
+          id: i.storageId || i.url,
+          url: i.url,
+          storageId: i.storageId,
+        }));
+    const validImages = (baseImages || []).filter(
+      (img: any): img is ImageType => Boolean(img?.url && img.id)
     );
     // Combine server images with optimistic updates
     return [...validImages, ...optimisticImages];
-  }, [mode, localImages, orderedImages, optimisticImages]);
+  }, [
+    mode,
+    localImages,
+    adminImages,
+    userImages,
+    optimisticImages,
+    authIsAdmin,
+  ]);
 
   // Memoize the profile image IDs
   const profileImageIds = useMemo(() => {
@@ -245,16 +209,21 @@ export function ProfileImageUpload({
 
   // Clear optimistic images when server data is updated
   useEffect(() => {
-    if (mode === "edit" && orderedImages.length > 0) {
+    if (
+      mode === "edit" &&
+      (authIsAdmin ? adminImages.length : userImages.length) > 0
+    ) {
       // Clear optimistic images that are now in server data
       setOptimisticImages((prev) =>
         prev.filter(
           (optimistic) =>
-            !orderedImages.some((server) => server.id === optimistic.id)
+            !(authIsAdmin ? adminImages : userImages).some(
+              (server: any) => server.id === optimistic.id
+            )
         )
       );
     }
-  }, [mode, orderedImages]);
+  }, [mode, adminImages, userImages, authIsAdmin]);
 
   useEffect(() => {
     if (currentUserProfile && currentUserProfile.isProfileComplete) {

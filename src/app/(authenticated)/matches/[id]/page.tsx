@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useParams } from "next/navigation";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import ModernChat from "@/components/chat/ModernChat";
 import { getConversationId } from "@/lib/utils/conversation";
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +11,9 @@ import { markConversationRead } from "@/lib/api/messages";
 export default function MatchChatPage() {
   const { id: otherUserId } = useParams<{ id: string }>();
   // Cookie-auth: remove token from context; server reads HttpOnly cookies
-  const { userId } = useAuthContext();
+  const { user, profile } = useAuthContext();
+  const userId =
+    user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
   const router = useRouter();
 
   const conversationId = getConversationId(userId ?? "", otherUserId);

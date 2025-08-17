@@ -5,9 +5,6 @@
   - 'src/components/**'
   - 'src/app/**'
 
-'area:convex':
-  - 'convex/**'
-
 'area:tests':
   - 'src/__tests__/**'
   - 'tests/**'

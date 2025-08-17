@@ -1,29 +1,31 @@
 interface BlockedUser {
-  id: string;
-  blockerId: string;
-  blockedUserId: string;
-  blockedProfile: {
-    fullName: string;
+  id: string; // block document id (blocker_blocked)
+  blockerId: string; // current user id
+  blockedUserId: string; // target user id
+  createdAt: number; // epoch ms
+  // Firestore version no longer embeds full profile snapshot; fetch separately if needed
+  blockedProfile?: {
+    fullName?: string;
     profileImageUrl?: string;
-    userId: string;
   };
-  createdAt: string;
+  // Added by enriched blocked list route
+  isBlockedBy?: boolean; // whether the other user also blocked current user
 }
 
 interface BlockStatus {
-  isBlocked: boolean;
-  isBlockedBy?: boolean;
-  canInteract?: boolean;
+  isBlocked: boolean; // current user blocks target
+  isBlockedBy?: boolean; // target blocks current user
+  canInteract?: boolean; // derived convenience flag
 }
 
-type ReportReason = 
-  | 'inappropriate_content'
-  | 'harassment' 
-  | 'fake_profile'
-  | 'spam'
-  | 'safety_concern'
-  | 'inappropriate_behavior'
-  | 'other';
+type ReportReason =
+  | "inappropriate_content"
+  | "harassment"
+  | "fake_profile"
+  | "spam"
+  | "safety_concern"
+  | "inappropriate_behavior"
+  | "other";
 
 interface ReportData {
   reportedUserId: string;
@@ -37,7 +39,7 @@ interface UserReport {
   reportedUserId: string;
   reason: ReportReason;
   description?: string;
-  status: 'pending' | 'reviewed' | 'resolved';
+  status: "pending" | "reviewed" | "resolved";
   createdAt: string;
 }
 
@@ -58,7 +60,6 @@ class SafetyAPI {
       ...baseHeaders,
       ...((options?.headers as Record<string, string>) || {}),
     };
-
 
     const response = await fetch(`/api/safety${endpoint}`, {
       headers,
@@ -123,9 +124,14 @@ class SafetyAPI {
   }
 
   async getBlockedUsers(
-    token: string | null
-  ): Promise<{ blockedUsers: BlockedUser[] }> {
-    return this.makeRequest("/blocked", undefined, token);
+    token: string | null,
+    opts?: { limit?: number; cursor?: string | null }
+  ): Promise<{ blockedUsers: BlockedUser[]; nextCursor?: string | null }> {
+    const params = new URLSearchParams();
+    if (opts?.limit) params.set("limit", String(opts.limit));
+    if (opts?.cursor) params.set("cursor", opts.cursor);
+    const qs = params.toString();
+    return this.makeRequest(`/blocked${qs ? "?" + qs : ""}`, undefined, token);
   }
 
   // Overload signatures for backward compatibility

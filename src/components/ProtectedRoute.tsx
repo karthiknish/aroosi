@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
   useEffect,
   useMemo,
@@ -47,6 +47,7 @@ function ProtectedRouteInner({
     isProfileComplete,
     isOnboardingComplete,
     profile: rawProfile,
+    refreshUser,
   } = useAuthContext();
   const profile = (rawProfile as { subscriptionPlan?: string } | null) || null;
   const userPlan =
@@ -131,6 +132,34 @@ function ProtectedRouteInner({
 
     // Wait for auth to hydrate
     if (!isLoaded) return;
+
+    // Diagnostics (sampled) similar to prior ProfileCompletionGuard
+    if (Math.random() < 0.02) {
+      // 2% sampling to avoid flooding logs
+      // eslint-disable-next-line no-console
+      console.info("[ProtectedRoute] state", {
+        path: pathname,
+        isLoaded,
+        isSignedIn,
+        isProfileComplete,
+        isOnboardingComplete,
+        requireProfileComplete,
+        requireOnboardingComplete,
+        userPlan,
+      });
+    }
+
+    // Attempt a refresh for freshness (non-blocking)
+    (async () => {
+      try {
+        await refreshUser?.();
+      } catch (e) {
+        if (process.env.NODE_ENV !== "production") {
+          // eslint-disable-next-line no-console
+          console.warn("[ProtectedRoute] refreshUser failed", e);
+        }
+      }
+    })();
 
     // Not signed in → redirect if route requires auth and isn't public
     if (requireAuth && isSignedIn === false && !isPublicRoute) {
@@ -227,6 +256,7 @@ function ProtectedRouteInner({
     redirectTo,
     userPlan,
     handleNavigation,
+  refreshUser,
   ]);
 
   // Loading state

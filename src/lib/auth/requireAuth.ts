@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { adminAuth, adminDb } from "@/lib/firebaseAdminInit";
+import { DocumentSnapshot } from "firebase-admin/firestore";
 
 export type AuthPayload = {
   userId: string;
@@ -51,54 +51,49 @@ export function authErrorResponse(
  * - Distinguishes missing/malformed header vs invalid/expired token
  */
 export async function requireAuth(req: NextRequest): Promise<AuthPayload> {
-  // Use Convex cookie session to resolve identity, then map to our user
-  const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL || "";
-  if (!CONVEX_URL) {
-    throw new AuthError("Convex not configured", 500, "CONVEX_NOT_CONFIGURED");
+  // Accept either Authorization: Bearer <idToken> or firebaseAuthToken cookie
+  const authHeader =
+    req.headers.get("authorization") || req.headers.get("Authorization");
+  let idToken: string | null = null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    idToken = authHeader.slice(7).trim();
+  } else {
+    // Fallback to cookie name used elsewhere
+    const cookieHeader = req.headers.get("cookie") || "";
+    const match = cookieHeader.match(/(?:^|; )firebaseAuthToken=([^;]+)/);
+    if (match) idToken = decodeURIComponent(match[1]);
   }
 
-  // Build cookie header to forward session cookies
-  const cookieHeader = req.headers.get("cookie") || "";
-  const client = new ConvexHttpClient(CONVEX_URL);
+  if (!idToken) {
+    throw new AuthError("Missing authentication token", 401, "UNAUTHENTICATED");
+  }
 
-  // 1) Get identity via an action that requires auth; using consolidateUserAfterAuth identity getter is overkill.
-  // Instead, call a minimal query that requires ctx.auth.getUserIdentity() implicitly.
-  // We'll add a tiny identity check by calling a safe query that returns user by email if identity is present.
-  let email: string | null = null;
+  let decoded;
   try {
-    // Call users.getUserByEmail with the email from identity resolved in a dedicated action
-    // Since we do not have such an action, leverage a small auth echo action in convex/auth.ts: requireIdentity
-    // which returns identity with email.
-    const identity = await (client as any).action(
-      (api as any).auth.requireIdentity,
-      {},
-      { headers: { cookie: cookieHeader } }
-    );
-    email = identity?.email ?? null;
-    if (!email) {
-      throw new Error("NO_EMAIL");
-    }
+    decoded = await adminAuth.verifyIdToken(idToken, true);
+  } catch (e: any) {
+    const code =
+      e?.code === "auth/id-token-expired" ? "TOKEN_EXPIRED" : "TOKEN_INVALID";
+    throw new AuthError("Invalid authentication token", 401, code);
+  }
+
+  const uid = decoded.uid;
+  if (!uid) throw new AuthError("Invalid token payload", 401, "TOKEN_INVALID");
+
+  // Fetch user doc (assuming users collection, doc id = uid)
+  let snap: DocumentSnapshot | undefined;
+  try {
+    snap = await adminDb.collection("users").doc(uid).get();
   } catch {
-    throw new AuthError("Not authenticated", 401, "UNAUTHENTICATED");
+    throw new AuthError("Failed to load user", 500, "USER_LOOKUP_FAILED");
   }
-
-  // 2) Map identity email to our users table to get userId/role
-  try {
-    const user = await (client as any).query(
-      (api as any).users.getUserByEmail,
-      { email },
-      { headers: { cookie: cookieHeader } }
-    );
-    if (!user?._id) {
-      throw new AuthError("User not found", 404, "USER_NOT_FOUND");
-    }
-    return {
-      userId: String(user._id),
-      email: user.email,
-      role: user.role || "user",
-    };
-  } catch (e) {
-    if (e instanceof AuthError) throw e;
-    throw new AuthError("Failed to resolve user", 500, "USER_RESOLVE_FAILED");
+  if (!snap?.exists) {
+    throw new AuthError("User not found", 404, "USER_NOT_FOUND");
   }
+  const data: any = snap.data() || {};
+  return {
+    userId: uid,
+    email: data.email || decoded.email || undefined,
+    role: data.role || "user",
+  };
 }

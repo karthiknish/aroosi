@@ -1,6 +1,3 @@
-import { ConvexReactClient } from "convex/react";
-
-// Create Convex client instance
-export const convex = new ConvexReactClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL!
-);
+// Deprecated Convex client placeholder. All Convex functionality has been removed.
+// Delete this file after confirming no imports remain.
+export const convex: never = undefined as never;

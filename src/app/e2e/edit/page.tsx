@@ -1,6 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import { updateUserProfile } from "@/lib/profile/userProfileApi";
+import { auth } from "@/lib/firebaseClient";
 import { useSearchParams } from "next/navigation";
 
 function EditProfileE2ETestPageInner() {
@@ -13,10 +14,9 @@ function EditProfileE2ETestPageInner() {
   const handleSave = async () => {
     setStatus("loading");
     try {
-      const res = await updateUserProfile(
-        { fullName },
-        0, // retries
-      );
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error("Not signed in");
+      const res = await updateUserProfile(uid, { fullName }, 0);
       setStatus(res.success ? "success" : "error");
     } catch {
       setStatus("error");

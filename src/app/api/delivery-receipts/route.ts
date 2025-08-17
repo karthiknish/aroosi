@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
-import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 import { requireSession } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
+import {
+  COL_MESSAGE_RECEIPTS,
+  buildMessageReceipt,
+  messageReceiptId,
+} from "@/lib/firestoreSchema";
 
 const VALID_STATUSES = ["delivered", "read", "failed"] as const;
 
@@ -42,11 +45,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { messageId, status } =
-      (body as { messageId?: string; status?: string }) || {};
-    if (!messageId || !status) {
+    const { messageId, conversationId, status } =
+      (body as {
+        messageId?: string;
+        conversationId?: string;
+        status?: string;
+      }) || {};
+    if (!messageId || !conversationId || !status) {
       return NextResponse.json(
-        { error: "Missing messageId or status", correlationId },
+        { error: "Missing messageId, conversationId or status", correlationId },
         { status: 400 }
       );
     }
@@ -61,27 +68,61 @@ export async function POST(request: NextRequest) {
     // Narrow status to the allowed literal union type
     const narrowedStatus = status as "delivered" | "read" | "failed";
 
-    const receiptId = await convexMutationWithAuth(request, api.deliveryReceipts.recordDeliveryReceipt, {
-      messageId: messageId as Id<"messages">,
-      userId: userId as Id<"users">,
-      status: narrowedStatus,
-    }).catch((e: unknown) => {
-      console.error("Delivery receipts POST mutation error", {
-        scope: "delivery_receipts.post",
-        type: "convex_mutation_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return null as any;
-    });
-
-    if (!receiptId) {
-      return NextResponse.json(
-        { error: "Failed to record delivery receipt", correlationId },
-        { status: 500 }
+    // Upsert Firestore receipt (one per messageId_userId)
+    const receiptDocId = messageReceiptId(messageId, userId!);
+    const existing = await db
+      .collection(COL_MESSAGE_RECEIPTS)
+      .doc(receiptDocId)
+      .get();
+    const now = Date.now();
+    if (existing.exists) {
+      const data = existing.data() as any;
+      const updates: any = { status: narrowedStatus, updatedAt: now };
+      if (narrowedStatus === "delivered" && !data.deliveredAt)
+        updates.deliveredAt = now;
+      if (narrowedStatus === "read" && !data.readAt) updates.readAt = now;
+      await db
+        .collection(COL_MESSAGE_RECEIPTS)
+        .doc(receiptDocId)
+        .set(updates, { merge: true });
+    } else {
+      const base = buildMessageReceipt(
+        messageId,
+        conversationId,
+        userId!,
+        narrowedStatus
       );
+      if (narrowedStatus === "delivered") base.deliveredAt = base.updatedAt;
+      if (narrowedStatus === "read") base.readAt = base.updatedAt;
+      await db.collection(COL_MESSAGE_RECEIPTS).doc(receiptDocId).set(base);
+    }
+
+    // Failure sampling / alert hook
+    if (narrowedStatus === "failed") {
+      // Simple 10% sampling rate to avoid log flood
+      if (Math.random() < 0.1) {
+        console.warn("Delivery receipt failure sampled", {
+          scope: "delivery_receipts.post",
+          type: "receipt_failed_sampled",
+          correlationId,
+          messageId,
+          conversationId,
+          userId,
+          sampled: true,
+          durationMs: Date.now() - startedAt,
+        });
+      } else {
+        console.warn("Delivery receipt failure", {
+          scope: "delivery_receipts.post",
+          type: "receipt_failed",
+          correlationId,
+          messageId,
+          conversationId,
+          userId,
+          sampled: false,
+          durationMs: Date.now() - startedAt,
+        });
+      }
     }
 
     console.info("Delivery receipts POST success", {
@@ -95,9 +136,10 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         message: "Delivery receipt recorded",
-        receiptId,
+        receiptId: receiptDocId,
         messageId,
         status,
+        conversationId,
         timestamp: Date.now(),
         correlationId,
       },
@@ -154,26 +196,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const deliveryReceipts = await convexQueryWithAuth(request, api.deliveryReceipts.getDeliveryReceipts, {
-      conversationId: conversationId as Id<"messages">,
-    }).catch((e: unknown) => {
-      console.error("Delivery receipts GET query error", {
-        scope: "delivery_receipts.get",
-        type: "convex_query_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return null as any;
-    });
-
-    if (!deliveryReceipts) {
-      return NextResponse.json(
-        { error: "Failed to fetch delivery receipts", correlationId },
-        { status: 500 }
-      );
-    }
+    // Query receipts by indexed conversationId field (more robust than messageId prefix)
+    const snap = await db
+      .collection(COL_MESSAGE_RECEIPTS)
+      .where("conversationId", "==", conversationId)
+      .limit(500)
+      .get();
+    const deliveryReceipts = snap.docs.map(
+      (
+        d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
+      ) => ({ id: d.id, ...(d.data() as any) })
+    );
 
     console.info("Delivery receipts GET success", {
       scope: "delivery_receipts.get",

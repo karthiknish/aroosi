@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     domains: [
+      // Legacy Convex domains left for historical images; can prune once confirmed unused
       "quirky-akita-969.convex.cloud",
       "proper-gull-501.convex.cloud",
       "images.pexels.com",
@@ -21,7 +22,7 @@ const nextConfig: NextConfig = {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       "@": path.resolve(__dirname, "src"),
-      "@convex": path.resolve(__dirname, "convex"),
+      // Removed legacy "@convex" alias
     };
 
     // Add fallback for monorepo dependencies
@@ -49,8 +50,8 @@ const nextConfig: NextConfig = {
               ? [ignoredExisting]
               : []),
           ...extraIgnores,
-        ].filter((s) => typeof s === "string" && s.trim().length > 0),
-      ),
+        ].filter((s) => typeof s === "string" && s.trim().length > 0)
+      )
     );
 
     // Assign a fresh object to avoid mutating read-only config
@@ -64,7 +65,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     resolveAlias: {
       "@": path.resolve(__dirname, "src"),
-      "@convex": path.resolve(__dirname, "convex"),
+      // Removed legacy "@convex" alias
     },
   },
   // Add headers for better Safari compatibility

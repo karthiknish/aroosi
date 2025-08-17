@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { convexMutationWithAuth } from "@/lib/convexServer";
-import { requireAuth } from "@/lib/auth/requireAuth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import {
+  uploadMessageImage,
+  sendFirebaseMessage,
+} from "@/lib/messages/firebaseMessages";
 
 // Accepts multipart/form-data with fields:
 // - image: File (required)
@@ -13,12 +15,11 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 // - fileName: string (optional - fallback to image.name)
 // - contentType: string (optional - fallback to image.type)
 // Emits SSE "message_sent" after successful Convex insert.
-export async function POST(request: NextRequest) {
+export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
-
   try {
-    const { userId } = await requireAuth(request);
+    const userId = authUser.id;
 
     // Subscription-aware rate limit for image message upload
     // Cookie-only: pass empty string for token parameter to satisfy current signature
@@ -86,69 +87,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
-
     // Build bytes for upload
     const arrayBuffer = await image.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
 
-    // Upload image to storage via helper (server identity; no bearer token)
-    let storageId: string;
-    try {
-      const { uploadImageToStorage } = await import(
-        "@/lib/storage/convexStorage"
-      );
-      // If helper still accepts a token param, pass empty string to satisfy types
-      storageId = await uploadImageToStorage(
-        bytes,
-        fileName,
-        contentType,
-        "" as any
-      );
-    } catch {
-      return errorResponse("Image storage upload is not configured", 500, {
-        correlationId,
-      });
-    }
-
-    // Create the message in Convex (type=image)
-    const message = await convexMutationWithAuth(
-      request,
-      api.messages.sendMessage,
-      {
-        conversationId,
-        fromUserId: fromUserId as any,
-        toUserId: toUserId as any,
-        type: "image",
-        audioStorageId: storageId,
-        fileSize: image.size,
-        mimeType: contentType,
-      } as any
-    ).catch((e: unknown) => {
-      const msg =
-        e instanceof Error
-          ? e.message
-          : typeof e === "string"
-            ? e
-            : "Send failed";
-      throw new Error(String(msg));
+    // Upload image to Firebase Storage
+    const { storageId } = await uploadMessageImage({
+      conversationId,
+      fileName,
+      contentType,
+      bytes,
     });
 
-    // Broadcast SSE event for UI refresh
-    try {
-      const { eventBus } = await import("@/lib/eventBus");
-      eventBus.emit(conversationId, {
-        type: "message_sent",
-        message,
-      });
-    } catch (eventError) {
-      console.warn("Messages upload-image POST broadcast warn", {
-        scope: "messages.upload-image",
-        type: "broadcast_warn",
-        message:
-          eventError instanceof Error ? eventError.message : String(eventError),
-        correlationId,
-      });
-    }
+    // Create message document
+    const message = await sendFirebaseMessage({
+      conversationId,
+      fromUserId,
+      toUserId,
+      type: "image",
+      audioStorageId: storageId,
+      fileSize: image.size,
+      mimeType: contentType,
+    });
 
     return successResponse(
       {
@@ -166,4 +126,4 @@ export async function POST(request: NextRequest) {
       correlationId,
     });
   }
-}
+});

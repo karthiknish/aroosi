@@ -11,7 +11,17 @@ import { ErrorState } from "@/components/ui/error-state";
 import Link from "next/link";
 
 export default function BlockedUsersPage() {
-  const { data: blockedUsers, isLoading, error, refetch } = useBlockedUsers();
+  const {
+    data: pages,
+    isLoading,
+    error,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useBlockedUsers(25);
+
+  const items = pages ? pages.pages.flatMap((p) => p.blockedUsers) : [];
   const unblockUserMutation = useUnblockUser();
 
   const handleUnblock = (userId: string) => {
@@ -99,7 +109,7 @@ export default function BlockedUsersPage() {
       </Card>
 
       {/* Blocked Users List */}
-      {!blockedUsers || blockedUsers.length === 0 ? (
+      {!items || items.length === 0 ? (
         <Card>
           <CardContent className="p-8">
             <EmptyState
@@ -119,12 +129,11 @@ export default function BlockedUsersPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
-              {blockedUsers.length} blocked user
-              {blockedUsers.length !== 1 ? "s" : ""}
+              {items.length} blocked user{items.length !== 1 ? "s" : ""}
             </h2>
           </div>
 
-          {blockedUsers.map((blockedUser) => (
+          {items.map((blockedUser) => (
             <Card key={blockedUser.id}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
@@ -133,7 +142,7 @@ export default function BlockedUsersPage() {
                     {blockedUser.blockedProfile?.profileImageUrl ? (
                       <img
                         src={blockedUser.blockedProfile.profileImageUrl}
-                        alt={blockedUser.blockedProfile.fullName}
+                        alt={blockedUser.blockedProfile.fullName || "User"}
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -144,11 +153,20 @@ export default function BlockedUsersPage() {
                   {/* User Info */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 truncate">
-                      {blockedUser.blockedProfile?.fullName || "Unknown User"}
+                      {blockedUser.blockedProfile?.fullName ||
+                        blockedUser.blockedUserId ||
+                        "Unknown User"}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      Blocked on{" "}
-                      {new Date(blockedUser.createdAt).toLocaleDateString()}
+                    <p className="text-sm text-gray-500 flex flex-col">
+                      <span>
+                        Blocked on{" "}
+                        {new Date(blockedUser.createdAt).toLocaleDateString()}
+                      </span>
+                      {blockedUser.isBlockedBy && (
+                        <span className="text-red-600 font-medium">
+                          You are blocked by this user
+                        </span>
+                      )}
                     </p>
                   </div>
 
@@ -176,6 +194,18 @@ export default function BlockedUsersPage() {
               </CardContent>
             </Card>
           ))}
+          {hasNextPage && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+              >
+                {isFetchingNextPage ? "Loading..." : "Load more"}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,25 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Id } from "@convex/_generated/dataModel";
-import { AuthError, authErrorResponse, requireAuth } from "@/lib/auth/requireAuth";
-import { convexMutationWithAuth } from "@/lib/convexServer";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
+import { db } from "@/lib/firebaseAdmin";
 
-export async function POST(req: NextRequest) {
+export const POST = withFirebaseAuth(async (authUser, req: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    try {
-      await requireAuth(req);
-    } catch (e) {
-      if (e instanceof AuthError) {
-        return authErrorResponse(e.message, { status: e.status, code: e.code });
-      }
-      return authErrorResponse("Authentication failed", {
-        status: 401,
-        code: "ACCESS_INVALID",
-      });
-    }
-
-    let body: { profileId?: string; imageIds?: string[] } = {};
+    let body: { profileId?: string; imageIds?: string[] } = {} as any;
     try {
       body = await req.json();
     } catch {}
@@ -32,54 +19,62 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await convexMutationWithAuth(
-      req,
-      (await import("@convex/_generated/api")).api.images.updateProfileImageOrder,
-      {
-        userId: profileId as Id<"users">,
-        imageIds: imageIds as Id<"_storage">[],
-      } as any
-    ).catch((e: unknown) => {
-      console.error("Profile images ORDER mutation error", {
-        scope: "profile_images.order",
-        type: "convex_mutation_error",
-        message: e instanceof Error ? e.message : String(e),
-        correlationId,
-        statusCode: 500,
-        durationMs: Date.now() - startedAt,
-      });
-      return null;
-    });
-
-    if (!result) {
+    // Authorization: user can reorder own images; admins can reorder any.
+    if (authUser.id !== profileId && authUser.role !== "admin") {
       return NextResponse.json(
-        { error: "Failed to update order", correlationId },
-        { status: 500 }
+        { error: "Unauthorized", correlationId },
+        { status: 403 }
       );
     }
 
-    if ((result as any).success) {
-      const response = NextResponse.json(
-        { success: true, correlationId },
-        { status: 200 }
-      );
-      console.info("Profile images ORDER success", {
-        scope: "profile_images.order",
-        type: "success",
-        correlationId,
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-      });
-      return response;
-    }
-
-    return NextResponse.json(
-      { error: (result as any).message || "Failed to update order", correlationId },
-      { status: 400 }
+    // Validate each image belongs to this user (best-effort)
+    const imagesCol = db
+      .collection("users")
+      .doc(profileId)
+      .collection("images");
+    const invalid: string[] = [];
+    await Promise.all(
+      imageIds.map(async (imgId) => {
+        const docId = imgId.includes("/") ? imgId.split("/").pop()! : imgId;
+        const snap = await imagesCol.doc(docId).get();
+        if (!snap.exists) invalid.push(imgId);
+      })
     );
+    if (invalid.length) {
+      return NextResponse.json(
+        { error: `Invalid image IDs: ${invalid.join(", ")}`, correlationId },
+        { status: 400 }
+      );
+    }
+
+    // Normalize to stored storageId values
+    const normalized: string[] = [];
+    for (const imgId of imageIds) {
+      const docId = imgId.includes("/") ? imgId.split("/").pop()! : imgId;
+      const snap = await imagesCol.doc(docId).get();
+      const storageId = (snap.data() as any)?.storageId || imgId;
+      normalized.push(storageId);
+    }
+
+    await db
+      .collection("users")
+      .doc(profileId)
+      .set(
+        { profileImageIds: normalized, updatedAt: Date.now() },
+        { merge: true }
+      );
+
+    console.info("Profile images ORDER success", {
+      scope: "profile_images.order",
+      type: "success",
+      correlationId,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+    });
+    return NextResponse.json({ success: true, correlationId }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("/api/profile-images/order unhandled error", {
+    console.error("/api/profile-images/order firebase error", {
       scope: "profile_images.order",
       type: "unhandled_error",
       message,
@@ -92,4 +87,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

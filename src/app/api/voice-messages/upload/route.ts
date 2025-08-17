@@ -1,12 +1,15 @@
 import { NextRequest } from "next/server";
-import { fetchMutation, fetchQuery } from "convex/nextjs";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { validateConversationId } from "@/lib/utils/messageValidation";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
+import { adminStorage, db } from "@/lib/firebaseAdmin";
+import { buildVoiceMessage, COL_VOICE_MESSAGES } from "@/lib/firestoreSchema";
+import { normalisePlan } from "@/lib/subscription/planLimits";
+import { COL_BLOCKS } from "@/lib/firestoreSchema";
+import { successResponse as ok } from "@/lib/apiResponse"; // alias example (avoid accidental shadowing)
+import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -101,73 +104,97 @@ export async function POST(request: NextRequest) {
       return errorResponse("Unauthorized access to conversation", 403);
     }
 
-    // Check if either user has blocked the other
-    const blockStatus = await fetchQuery(
-      api.safety.getBlockStatus as any,
-      {
-        blockerUserId: userId as Id<"users">,
-        blockedUserId: toUserId as Id<"users">,
-      } as any
-    ).catch(() => false as any);
-
-    if (blockStatus) {
+    // Check if either user has blocked the other (bidirectional)
+    const [blockedForward, blockedReverse] = await Promise.all([
+      db
+        .collection(COL_BLOCKS)
+        .where("blockerId", "==", userId)
+        .where("blockedId", "==", toUserId)
+        .limit(1)
+        .get(),
+      db
+        .collection(COL_BLOCKS)
+        .where("blockerId", "==", toUserId)
+        .where("blockedId", "==", userId)
+        .limit(1)
+        .get(),
+    ]);
+    if (blockedForward.size > 0 || blockedReverse.size > 0) {
       return errorResponse("Cannot send voice message to this user", 403);
     }
 
-    // Check subscription limits for voice messages
-    const canSendVoice = await fetchQuery(
-      api.subscriptions.checkFeatureAccess as any,
-      {
-        userId: userId as Id<"users">,
-        feature: "voice_messages",
-      } as any
-    ).catch(() => false as any);
-
+    // Enforce plan-based limits:
+    // free: disallowed
+    // premium: 10 per rolling 24h window
+    // premiumPlus / premium_plus: unlimited
+    // (If plan naming mismatch, normalise to lowercase for comparison.)
+    const profileSnap = await db.collection("users").doc(userId!).get();
+    const planRaw = profileSnap.exists
+      ? (profileSnap.data() as any)?.subscriptionPlan
+      : "free";
+    const plan = normalisePlan(planRaw || "free");
+    if (plan === "free") {
+      return errorResponse(
+        "Upgrade required to send voice messages (not available on free plan)",
+        402
+      );
+    }
+    let canSendVoice = true;
+    if (plan === "premium") {
+      const since = Date.now() - 24 * 60 * 60 * 1000; // last 24h
+      const countSnap = await db
+        .collection(COL_VOICE_MESSAGES)
+        .where("fromUserId", "==", userId)
+        .where("createdAt", ">", since)
+        .get();
+      if (countSnap.size >= 10) canSendVoice = false;
+    }
     if (!canSendVoice) {
       return errorResponse(
-        "Voice messages require a premium subscription",
-        403
+        "Daily voice message limit reached for your plan (10 / 24h). Upgrade for unlimited.",
+        429
       );
     }
 
-    // Generate upload URL for the audio file
-    const uploadUrl = await fetchMutation(
-      api.messages.generateUploadUrl as any,
-      {} as any
-    );
-
-    // Upload the audio file to Convex storage
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "POST",
-      body: audioFile,
+    // Upload to Firebase Storage
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const objectId = uuidv4();
+    const storagePath = `voiceMessages/${conversationId}/${objectId}`;
+    const bucket = adminStorage.bucket();
+    const file = bucket.file(storagePath);
+    await file.save(buffer, {
+      contentType: audioFile.type,
+      metadata: { cacheControl: "public,max-age=31536000" },
     });
-
-    if (!uploadResponse.ok) {
-      return errorResponse("Failed to upload audio file", 500);
-    }
-
-    const { storageId } = await uploadResponse.json();
-
-    // Create the voice message record
-    const message = await fetchMutation(
-      api.messages.sendMessage as any,
-      {
-        conversationId,
-        fromUserId: userId as Id<"users">,
-        toUserId: toUserId as Id<"users">,
-        text: `Voice message (${formatVoiceDuration(duration)})`,
-        type: "voice",
-        audioStorageId: storageId,
-        duration,
-        fileSize: audioFile.size,
-        mimeType: audioFile.type,
-        peaks,
-      } as any
-    );
-
-    if (!message) {
-      return errorResponse("Failed to create voice message record", 500);
-    }
+    const [signedUrl] = await file.getSignedUrl({
+      action: "read",
+      expires: Date.now() + 60 * 60 * 1000,
+    });
+    const vm = buildVoiceMessage({
+      conversationId,
+      fromUserId: userId!,
+      toUserId,
+      storagePath,
+      duration,
+      fileSize: audioFile.size,
+      mimeType: audioFile.type,
+      peaks,
+    });
+    const docRef = await db.collection(COL_VOICE_MESSAGES).add(vm);
+    const message = {
+      _id: docRef.id,
+      conversationId,
+      fromUserId: userId,
+      toUserId,
+      text: `Voice message (${formatVoiceDuration(duration)})`,
+      type: "voice",
+      audioStorageId: storagePath,
+      duration,
+      fileSize: audioFile.size,
+      mimeType: audioFile.type,
+      createdAt: vm.createdAt,
+    } as any;
 
     // Emit SSE message_sent for voice message
     try {
@@ -190,7 +217,8 @@ export async function POST(request: NextRequest) {
         message: "Voice message uploaded successfully",
         messageId: message._id,
         duration,
-        storageId,
+        storageId: storagePath,
+        audioUrl: signedUrl,
         correlationId,
         durationMs: Date.now() - startedAt,
       },

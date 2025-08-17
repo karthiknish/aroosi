@@ -1,42 +1,35 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
-import { convexQueryWithAuth } from "@/lib/convexServer";
 import { stripe } from "@/lib/stripe";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 // Profile type removed as it's not used
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) return session.errorResponse!;
+    const session = await requireSession(request);
+    if ("errorResponse" in session) return session.errorResponse;
     const { userId } = session;
 
-    if (!userId) {
-      return errorResponse("User ID not found in session", 401);
-    }
-    const profile = await convexQueryWithAuth(
-      request,
-      api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
-    if (!profile) return errorResponse("User profile not found", 404);
+    // Fetch user doc
+    const snap = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+    if (!snap.exists) return errorResponse("User profile not found", 404);
+    const profile = { id: snap.id, ...(snap.data() as any) };
 
     if (profile.subscriptionPlan === "free") {
       return errorResponse("User already has free subscription", 400);
     }
 
-    const stripeSubscriptionId = (profile as { stripeSubscriptionId?: string })
-      .stripeSubscriptionId;
+    const stripeSubscriptionId = profile.stripeSubscriptionId as
+      | string
+      | undefined;
     if (!stripeSubscriptionId) {
       return errorResponse(
         "No Stripe subscription found for this user. Please contact support.",
-        400,
+        400
       );
     }
 
-    // Cancel the Stripe subscription
     try {
       await stripe.subscriptions.cancel(stripeSubscriptionId);
     } catch (stripeError) {
@@ -49,11 +42,10 @@ export async function POST(request: NextRequest) {
             stripeError instanceof Error
               ? stripeError.message
               : String(stripeError),
-        },
+        }
       );
     }
 
-    // Do NOT downgrade the plan here; let the webhook handle it
     return successResponse({
       message:
         "Your subscription cancellation is being processed. You will retain premium access until the end of your billing period.",

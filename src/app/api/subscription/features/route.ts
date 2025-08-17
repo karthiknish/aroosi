@@ -1,24 +1,15 @@
-import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
-import { convexQueryWithAuth } from "@/lib/convexServer";
 import { getSubscriptionFeatures } from "@/lib/utils/subscriptionUtils";
+import { db } from "@/lib/firebaseAdmin";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 
-export async function GET(request: NextRequest) {
+export const GET = withFirebaseAuth(async (user) => {
   try {
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) return session.errorResponse!;
-    const { userId } = session;
-    if (!userId) return errorResponse("User ID not found in session", 401);
+    const userId = user.id;
 
-    const profile = await convexQueryWithAuth(
-      request,
-      api.profiles.getProfileByUserId,
-      { userId: userId as Id<"users"> }
-    );
-    if (!profile) return errorResponse("User profile not found", 404);
+    const snap = await db.collection("users").doc(userId).get();
+    if (!snap.exists) return errorResponse("User profile not found", 404);
+    const profile = snap.data() as any;
 
     const plan = profile.subscriptionPlan || "free";
     const features = getSubscriptionFeatures(plan);
@@ -32,14 +23,16 @@ export async function GET(request: NextRequest) {
     };
 
     return successResponse({
-      plan,
-      features: enhancedFeatures,
-      isActive: profile.subscriptionExpiresAt ? profile.subscriptionExpiresAt > Date.now() : false,
-    });
+    plan,
+    features: enhancedFeatures,
+    isActive: profile.subscriptionExpiresAt
+      ? profile.subscriptionExpiresAt > Date.now()
+      : false,
+  });
   } catch (error) {
     console.error("Error fetching subscription features:", error);
     return errorResponse("Failed to fetch subscription features", 500, {
       details: error instanceof Error ? error.message : String(error),
     });
   }
-}
+});

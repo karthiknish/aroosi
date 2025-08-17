@@ -2,15 +2,12 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useClerkAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { GoogleAuthButton } from "./GoogleAuthButton";
-import { showErrorToast } from "@/lib/ui/toast";
-import { signInWithProfileCheck } from "./signInWithProfileCheck";
-
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
 interface CustomSignInFormProps {
   onComplete?: () => void;
@@ -25,7 +22,7 @@ export default function CustomSignInForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signIn, refreshUser, user } = useClerkAuth();
+  const { signIn, refreshUser, user, signInWithGoogle } = useFirebaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -47,8 +44,8 @@ export default function CustomSignInForm({
     setIsLoading(true);
 
     try {
-      // 1) Perform sign in with profile check
-      const result = await signInWithProfileCheck(email, password, { signIn });
+      // 1) Perform sign in
+      const result = await signIn({ email, password });
       if (!result.success) {
         const msg = result.error || "Sign in failed. Please try again.";
         onError?.(msg);
@@ -58,13 +55,7 @@ export default function CustomSignInForm({
       }
 
       // Show success message
-      import("@/lib/ui/toast")
-        .then(({ showSuccessToast }) => {
-          showSuccessToast(
-            "Welcome back! You have been successfully signed in."
-          );
-        })
-        .catch(() => {});
+      showSuccessToast("Welcome back! You have been successfully signed in.");
 
       // 2) Hydration retry loop to cover propagation delay after sign-in
       const backoffs = [0, 150, 300, 750];
@@ -80,8 +71,6 @@ export default function CustomSignInForm({
           // ignore, allow next retry
         }
 
-        // Optional warm-up removed to enforce util-only API access
-
         hydratedUser = (user as any) ?? null;
         if (
           hydratedUser &&
@@ -94,6 +83,33 @@ export default function CustomSignInForm({
       }
 
       // Proceed regardless; downstream guards handle profile completion
+      handleOnboardingComplete();
+      setIsLoading(false);
+    } catch {
+      const msg =
+        "An unexpected error occurred. Please try again in a few minutes.";
+      onError?.(msg);
+      showErrorToast(msg);
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (!result.success) {
+        const msg = result.error || "Google sign in failed. Please try again.";
+        onError?.(msg);
+        showErrorToast(msg);
+        setIsLoading(false);
+        return;
+      }
+
+      // Show success message
+      showSuccessToast("Welcome back! You have been successfully signed in.");
+
+      // Proceed to onboarding completion
       handleOnboardingComplete();
       setIsLoading(false);
     } catch {
@@ -170,11 +186,22 @@ export default function CustomSignInForm({
         </div>
       </div>
 
-      <GoogleAuthButton
-        redirectUrlComplete="/search"
-        onSuccess={handleOnboardingComplete}
-        onError={(error: string) => showErrorToast(error)}
-      />
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={handleGoogleSignIn}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <>
+            <LoadingSpinner className="mr-2 h-4 w-4" />
+            Signing in...
+          </>
+        ) : (
+          "Sign in with Google"
+        )}
+      </Button>
 
       <div className="text-center text-sm">
         <span className="text-muted-foreground">
@@ -182,7 +209,7 @@ export default function CustomSignInForm({
         </span>
         <button
           type="button"
-          onClick={() => router.push("/sign-in")}
+          onClick={() => router.push("/sign-up")}
           className="text-primary hover:underline font-medium"
         >
           Sign up

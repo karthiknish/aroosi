@@ -77,9 +77,9 @@ class InterestsAPI {
   /**
    * Get interest status with respect to a target user (e.g., sent/received/mutual)
    */
-  async getStatus(targetUserId: string): Promise<any> {
-    const qs = new URLSearchParams({ targetUserId }).toString();
-    return this.makeRequest(`/api/interests/status${qs ? `?${qs}` : ""}`, { method: "GET" });
+  async getStatus(otherUserId: string): Promise<any> {
+    const qs = new URLSearchParams({ targetUserId: otherUserId }).toString();
+    return this.makeRequest(`/api/interests/status?${qs}`, { method: "GET" });
   }
 
   /**

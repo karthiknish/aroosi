@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 
 export default function OAuthRedirectHandler() {
-  const { signIn } = useSignIn();
   const router = useRouter();
   const searchParams = useSearchParams();
   const provider = searchParams.get("provider");
 
   useEffect(() => {
     const handleOAuth = async () => {
-      if (provider && signIn) {
+      if (provider) {
         try {
           // Validate provider
           const validProviders = ["google", "github", "facebook", "linkedin"];
@@ -22,12 +20,8 @@ export default function OAuthRedirectHandler() {
             return;
           }
           
-          // Initiate OAuth flow
-          await signIn.authenticateWithRedirect({
-            strategy: `oauth_${provider}` as any,
-            redirectUrl: "/sso-callback",
-            redirectUrlComplete: "/",
-          });
+          // For now, redirect to sign-in with an error since we're removing Clerk
+          router.push(`/sign-in?error=oauth_not_supported&provider=${provider}`);
         } catch (error) {
           console.error("OAuth error:", error);
           router.push("/sign-in?error=oauth_failed");
@@ -38,7 +32,7 @@ export default function OAuthRedirectHandler() {
     };
 
     handleOAuth();
-  }, [signIn, router, provider]);
+  }, [router, provider]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

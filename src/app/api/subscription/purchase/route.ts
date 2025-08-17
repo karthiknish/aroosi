@@ -1,11 +1,9 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
-import { convexMutationWithAuth, convexQueryWithAuth } from "@/lib/convexServer";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@/types/profile";
+import { db } from "@/lib/firebaseAdmin";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 
 // Type for Apple receipt item
 interface AppleReceiptItem {
@@ -17,7 +15,7 @@ interface AppleReceiptItem {
 // Apple App Store receipt validation helper
 async function validateAppleReceipt(
   productId: string,
-  receiptData: string,
+  receiptData: string
 ): Promise<{ valid: boolean; expiresAt?: number; error?: string }> {
   const appleSharedSecret = process.env.APPLE_SHARED_SECRET;
   if (!appleSharedSecret) {
@@ -67,7 +65,7 @@ async function validateAppleReceipt(
     // Find the subscription in the receipt
     const latestReceiptInfo = data.latest_receipt_info || [];
     const subscription = latestReceiptInfo.find(
-      (item: AppleReceiptItem) => item.product_id === productId,
+      (item: AppleReceiptItem) => item.product_id === productId
     );
 
     if (!subscription) {
@@ -103,7 +101,7 @@ async function validateAppleReceipt(
 // Google Play API validation helper
 async function validateGooglePurchase(
   productId: string,
-  purchaseToken: string,
+  purchaseToken: string
 ): Promise<{ valid: boolean; expiresAt?: number; error?: string }> {
   const packageName = process.env.GOOGLE_PLAY_PACKAGE_NAME;
   const apiKey = process.env.GOOGLE_PLAY_API_KEY;
@@ -136,12 +134,9 @@ async function validateGooglePurchase(
   return { valid: false, error: "Invalid or cancelled subscription" };
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
   try {
-    const session = await getSessionFromRequest(request);
-    if (!session.ok) return session.errorResponse!;
-    const { userId } = session;
-    if (!userId) return errorResponse("User ID not found in session", 401);
+    const userId = user.id;
 
     const { productId, purchaseToken, platform, receiptData } =
       await request.json();
@@ -170,31 +165,29 @@ export async function POST(request: NextRequest) {
       if (!result.valid) {
         return errorResponse(
           `Google Play validation failed: ${result.error || "Unknown error"}`,
-          400,
+          400
         );
       }
       // Use the expiry from Google
       const expiresAt =
         result.expiresAt || Date.now() + 30 * 24 * 60 * 60 * 1000;
-      await convexMutationWithAuth(request, api.profiles.updateProfileFields, {
-        userId: userId as Id<"users">,
-        updates: {
+      await db.collection("users").doc(userId).set(
+        {
           subscriptionPlan: plan,
           subscriptionExpiresAt: expiresAt,
           updatedAt: Date.now(),
         },
-      } as any);
-      // Optionally notify admin
-      const profile = await convexQueryWithAuth(
-        request,
-        api.profiles.getProfileByUserId,
-        { userId: userId as Id<"users"> }
+        { merge: true }
       );
+      const profileSnap = await db.collection("users").doc(userId).get();
+      const profile = profileSnap.exists
+        ? { _id: profileSnap.id, ...(profileSnap.data() as any) }
+        : null;
       if (profile && typeof profile.email === "string") {
         try {
           await Notifications.subscriptionPurchasedAdmin(
             profile as Profile,
-            plan,
+            plan
           );
         } catch (e) {
           console.error("Failed to send admin subscription notification", e);
@@ -214,31 +207,29 @@ export async function POST(request: NextRequest) {
       if (!result.valid) {
         return errorResponse(
           `Apple receipt validation failed: ${result.error || "Unknown error"}`,
-          400,
+          400
         );
       }
       // Use the expiry from Apple
       const expiresAt =
         result.expiresAt || Date.now() + 30 * 24 * 60 * 60 * 1000;
-      await convexMutationWithAuth(request, api.profiles.updateProfileFields, {
-        userId: userId as Id<"users">,
-        updates: {
+      await db.collection("users").doc(userId).set(
+        {
           subscriptionPlan: plan,
           subscriptionExpiresAt: expiresAt,
           updatedAt: Date.now(),
         },
-      } as any);
-      // Optionally notify admin
-      const profile = await convexQueryWithAuth(
-        request,
-        api.profiles.getProfileByUserId,
-        { userId: userId as Id<"users"> }
+        { merge: true }
       );
+      const profileSnap = await db.collection("users").doc(userId).get();
+      const profile = profileSnap.exists
+        ? { _id: profileSnap.id, ...(profileSnap.data() as any) }
+        : null;
       if (profile && typeof profile.email === "string") {
         try {
           await Notifications.subscriptionPurchasedAdmin(
             profile as Profile,
-            plan,
+            plan
           );
         } catch (e) {
           console.error("Failed to send admin subscription notification", e);
@@ -258,4 +249,4 @@ export async function POST(request: NextRequest) {
     console.error("Error processing purchase:", error);
     return errorResponse("Failed to process purchase", 500);
   }
-}
+});

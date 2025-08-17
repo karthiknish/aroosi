@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { convexQueryWithAuth } from "@/lib/convexServer";
-import { Id } from "@convex/_generated/dataModel";
+import { db, COLLECTIONS } from '@/lib/userProfile';
 
 export async function GET(req: NextRequest) {
   const email = new URL(req.url).searchParams.get("email");
@@ -13,31 +11,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Look up user by email (case-insensitive)
-    const user = await convexQueryWithAuth(req, api.users.getUserByEmail, {
-      email: email.toLowerCase(),
-    });
-
-    if (!user) {
+    // Firestore lookup
+    const userSnap = await db.collection(COLLECTIONS.USERS).where('email', '==', email.toLowerCase()).limit(1).get();
+    if (userSnap.empty) {
       return NextResponse.json({
         success: true,
         exists: false,
         hasProfile: false,
       });
     }
-
-    const profile = await convexQueryWithAuth(
-      req,
-      api.profiles.getProfileByUserId,
-      {
-        userId: user._id as Id<"users">,
-      }
-    );
-
+    const doc = userSnap.docs[0];
+    const userData: any = doc.data();
+    const profileComplete = !!userData.isProfileComplete;
     return NextResponse.json({
       success: true,
       exists: true,
-      hasProfile: Boolean(profile && profile.isProfileComplete),
+      hasProfile: profileComplete,
     });
   } catch {
     return NextResponse.json(

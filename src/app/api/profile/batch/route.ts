@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
-import { convexQueryWithAuth } from "@/lib/convexServer";
+import { db } from "@/lib/firebaseAdmin";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 export async function POST(req: NextRequest) {
@@ -17,12 +15,8 @@ export async function POST(req: NextRequest) {
     const results = await Promise.all(
       userIds.map(async (userId: string) => {
         try {
-          const res = await convexQueryWithAuth(req, api.users.getProfileByUserIdPublic, {
-            userId: userId as Id<"users">,
-          } as any);
-          if (res) {
-            return { userId, profile: res };
-          }
+          const snap = await db.collection("users").doc(userId).get();
+          if (snap.exists) return { userId, profile: snap.data() };
         } catch (e) {
           console.error(`Error fetching profile for userId ${userId}:`, e);
         }

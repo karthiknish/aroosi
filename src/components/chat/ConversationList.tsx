@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { formatMessageTime, ConversationData } from "@/lib/utils/messageUtils";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
 import { getConversations } from "@/lib/api/conversation";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 // Type for conversation from API
 interface ApiConversation {
@@ -62,7 +62,9 @@ export default function ConversationList({
   selectedConversationId,
   className = "",
 }: ConversationListProps) {
-  const { userId } = useAuthContext();
+  const { user, profile } = useAuthContext();
+  const userId =
+    user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
   const subscriptionStatus = useSubscriptionStatus();
   const [conversations, setConversations] = useState<ConversationWithUser[]>(
     []

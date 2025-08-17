@@ -1,58 +1,48 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { getSessionFromRequest } from "@/app/api/_utils/authSession";
-import { convexQueryWithAuth } from "@/lib/convexServer";
 import {
   checkApiRateLimit,
   logSecurityEvent,
 } from "@/lib/utils/securityHeaders";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db } from "@/lib/firebaseAdmin";
 
+// Firestore implementation for interest status lookup.
+// Status semantics mirror legacy Convex version:
+//  - null/"none" when no interest found
+//  - "pending" | "accepted" | "rejected" from stored document
+//  - "mutual" convenience state when both directions are accepted (returned as status: "mutual")
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  let fromUserId = searchParams.get("fromUserId");
+  let toUserId = searchParams.get("toUserId");
+  const targetUserId = searchParams.get("targetUserId");
+
   try {
-    const session = await getSessionFromRequest(req);
-    if (!session.ok) return errorResponse("Unauthorized", 401);
-    const authenticatedUserId = String(session.userId);
+    const session = await requireSession(req);
+    if ("errorResponse" in session) return session.errorResponse as Response;
+    const authUserId = String(session.userId);
 
-    // Rate limiting for interest status queries
-    const rateLimitResult = checkApiRateLimit(
-      `interest_status_${authenticatedUserId}`,
-      200,
-      60000
-    ); // 200 requests per minute
-    if (!rateLimitResult.allowed) {
-      return errorResponse("Rate limit exceeded", 429);
+    const rl = checkApiRateLimit(`interest_status_${authUserId}`, 200, 60_000);
+    if (!rl.allowed) return errorResponse("Rate limit exceeded", 429);
+
+    // Backward compatibility: if client only supplies targetUserId, infer direction with current user as sender
+    if (!fromUserId && !toUserId && targetUserId) {
+      fromUserId = authUserId;
+      toUserId = targetUserId;
     }
 
-    // Get parameters from query string
-    const { searchParams } = new URL(req.url);
-    const fromUserId = searchParams.get("fromUserId");
-    const toUserId = searchParams.get("toUserId");
+    if (!fromUserId || !toUserId)
+      return errorResponse(
+        "Missing fromUserId/toUserId or targetUserId parameter",
+        400
+      );
 
-    if (!fromUserId || !toUserId) {
-      return errorResponse("Missing fromUserId or toUserId parameters", 400);
-    }
-
-    // Input validation
-    if (
-      typeof fromUserId !== "string" ||
-      fromUserId.length < 10 ||
-      typeof toUserId !== "string" ||
-      toUserId.length < 10
-    ) {
-      return errorResponse("Invalid userId parameters", 400);
-    }
-
-    // Security check: user can only query interests involving themselves
-    if (
-      fromUserId !== authenticatedUserId &&
-      toUserId !== authenticatedUserId
-    ) {
+    if (fromUserId !== authUserId && toUserId !== authUserId) {
       logSecurityEvent(
         "UNAUTHORIZED_ACCESS",
         {
-          userId: authenticatedUserId,
+          userId: authUserId,
           attemptedFromUserId: fromUserId,
           attemptedToUserId: toUserId,
           action: "get_interest_status",
@@ -65,39 +55,33 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log(
-      `User ${authenticatedUserId} checking interest status: ${fromUserId} -> ${toUserId}`
-    );
+    // Fetch interest doc from from->to
+    const interestSnap = await db
+      .collection("interests")
+      .where("fromUserId", "==", fromUserId)
+      .where("toUserId", "==", toUserId)
+      .limit(1)
+      .get();
+    const interest = interestSnap.empty ? null : interestSnap.docs[0].data();
 
-    const result = await convexQueryWithAuth(
-      req,
-      api.interests.getInterestStatus,
-      {
-        fromUserId: fromUserId as Id<"users">,
-        toUserId: toUserId as Id<"users">,
-      } as any
-    );
+    if (!interest) return successResponse({ status: null });
 
-    return successResponse({ status: result });
-  } catch (error) {
-    console.error("Error fetching interest status:", error);
-
-    // Log security event for monitoring
-    logSecurityEvent(
-      "VALIDATION_FAILED",
-      {
-        userId: new URL(req.url).searchParams.get("fromUserId") || "unknown",
-        endpoint: "interests/status",
-        method: "GET",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      req
-    );
-
-    if (error instanceof Error && error.message.includes("Unauthenticated")) {
-      return errorResponse("Authentication failed", 401);
+    let status = interest.status as string | null;
+    if (status === "accepted") {
+      // Check reverse acceptance for mutual convenience flag
+      const reverseSnap = await db
+        .collection("interests")
+        .where("fromUserId", "==", toUserId)
+        .where("toUserId", "==", fromUserId)
+        .where("status", "==", "accepted")
+        .limit(1)
+        .get();
+      if (!reverseSnap.empty) status = "mutual"; // surface mutual
     }
-
+    return successResponse({ status });
+  } catch (error) {
+    console.error("Firestore interest status error", error);
+    if (error instanceof Response) return error; // already formatted
     return errorResponse("Failed to fetch interest status", 500);
   }
 }

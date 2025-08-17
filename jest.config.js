@@ -14,7 +14,6 @@ const customJestConfig = {
   maxWorkers: "50%",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
-    "^@convex/(.*)$": "<rootDir>/convex/$1",
   },
 };
 

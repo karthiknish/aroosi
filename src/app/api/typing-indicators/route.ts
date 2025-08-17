@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { requireSession } from "@/app/api/_utils/auth";
-import { fetchMutation, fetchQuery } from "convex/nextjs";
+import { db } from "@/lib/firebaseAdmin";
+import {
+  COL_TYPING_INDICATORS,
+  buildTypingIndicator,
+} from "@/lib/firestoreSchema";
 
 export async function POST(request: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
@@ -33,11 +35,17 @@ export async function POST(request: NextRequest) {
       return errorResponse("Invalid request parameters", 400);
     }
 
-    const indicatorId = await fetchMutation(api.typingIndicators.updateTypingStatus, {
+    // Upsert ephemeral typing indicator (expires after 10s of inactivity)
+    const docId = `${conversationId}_${userId}`;
+    const indicator = buildTypingIndicator(
       conversationId,
-      userId: userId as Id<"users">,
-      isTyping: action === "start",
-    } as any);
+      userId!,
+      action === "start"
+    );
+    await db
+      .collection(COL_TYPING_INDICATORS)
+      .doc(docId)
+      .set(indicator, { merge: true });
 
     // Emit SSE typing event
     try {
@@ -52,13 +60,14 @@ export async function POST(request: NextRequest) {
       console.warn("Typing SSE emit failed", {
         scope: "typing.update",
         correlationId,
-        message: eventError instanceof Error ? eventError.message : String(eventError),
+        message:
+          eventError instanceof Error ? eventError.message : String(eventError),
       });
     }
 
     return successResponse({
       message: `Typing indicator ${action}ed`,
-      indicatorId,
+      indicatorId: docId,
       conversationId,
       userId,
       action,
@@ -83,9 +92,20 @@ export async function GET(request: NextRequest) {
     const conversationId = searchParams.get("conversationId");
     if (!conversationId) return errorResponse("Missing conversationId", 400);
 
-    const typingUsers = await fetchQuery(api.typingIndicators.getTypingUsers, {
-      conversationId,
-    } as any);
+    const cutoff = Date.now() - 10000; // 10s window
+    const snap = await db
+      .collection(COL_TYPING_INDICATORS)
+      .where("conversationId", "==", conversationId)
+      .where("updatedAt", ">=", cutoff)
+      .get();
+    const typingUsers = snap.docs
+      .map(
+        (
+          d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
+        ) => d.data() as any
+      )
+      .filter((d: any) => d.isTyping)
+      .map((d: any) => d.userId);
 
     return successResponse({
       conversationId,

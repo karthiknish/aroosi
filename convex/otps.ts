@@ -1,1 +1,1 @@
-// OTP functionality removed
+// Removed legacy Convex file (otps.ts)

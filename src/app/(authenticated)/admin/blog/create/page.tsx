@@ -9,11 +9,10 @@ import {
 } from "@/lib/blogUtil";
 import { CreatePost } from "@/components/admin/CreatePost";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
 import { ErrorState } from "@/components/ui/error-state";
-import { api } from "@convex/_generated/api";
-import { fetchQuery } from "convex/nextjs";
+import { fetchBlogPostBySlug } from "@/lib/blogUtil";
 
 export default function CreateBlogPage() {
   useAuthContext(); // maintain hook order; no token usage in cookie-auth
@@ -147,8 +146,8 @@ export default function CreateBlogPage() {
       ) {
         throw new Error("Please fill in all required fields.");
       }
-      // Slug uniqueness check via Convex
-      const existing = await fetchQuery(api.blog.getBlogPostBySlug, { slug });
+      // Slug uniqueness check via Firestore-backed API
+      const existing = await fetchBlogPostBySlug(slug);
       if (existing) {
         throw new Error("Slug already exists. Please choose a different slug.");
       }

@@ -1,39 +1,32 @@
-import { NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
-export async function POST(request: Request) {
+// Logout user by clearing Firebase auth cookies
+export async function POST(_request: NextRequest) {
   try {
-    // Get the current session from Clerk
-    const { sessionId } = await auth();
+    const response = NextResponse.json({ ok: true }, { status: 200 });
     
-    if (sessionId) {
-      // Revoke the session in Clerk
-      await (await clerkClient()).sessions.revokeSession(sessionId);
-    }
-  } catch (error) {
-    console.error("Error revoking Clerk session:", error);
-    // Continue with cookie clearing even if Clerk revocation fails
+    // Clear the Firebase auth cookies
+    response.cookies.set("firebaseAuthToken", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 0, // Expire immediately
+      path: "/",
+    });
+    
+    response.cookies.set("firebaseUserId", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 0, // Expire immediately
+      path: "/",
+    });
+    
+    return response;
+  } catch (e) {
+    console.error("Unexpected error in logout route:", e);
+    return NextResponse.json(
+      { error: "Logout failed", code: "UNKNOWN" },
+      { status: 500 }
+    );
   }
-
-  // Clear all auth-related cookies
-  const isProd = process.env.NODE_ENV === "production";
-  const prefix = isProd ? "__Secure-" : "";
-
-  const expire = `${new Date(0).toUTCString()}`;
-  const base = `Path=/; HttpOnly; SameSite=Lax${isProd ? "; Secure" : ""}`;
-
-  const clearAuth = `${prefix}auth-token=; Expires=${expire}; Max-Age=0; ${base}`;
-  const clearRefresh = `${prefix}refresh-token=; Expires=${expire}; Max-Age=0; ${base}`;
-  const clearNextAuth1 = `${prefix}next-auth.session-token=; Expires=${expire}; Max-Age=0; ${base}`;
-  const clearNextAuth2 = `next-auth.session-token=; Expires=${expire}; Max-Age=0; ${base}`;
-  const clearConvexSession = `convex-session=; Expires=${expire}; Max-Age=0; ${base}`;
-
-  const res = NextResponse.json({ success: true, message: "You have been successfully signed out." }, { status: 200 });
-  res.headers.append("Set-Cookie", clearAuth);
-  res.headers.append("Set-Cookie", clearRefresh);
-  res.headers.append("Set-Cookie", clearNextAuth1);
-  res.headers.append("Set-Cookie", clearNextAuth2);
-  res.headers.append("Set-Cookie", clearConvexSession);
-  res.headers.set("Cache-Control", "no-store");
-  return res;
 }

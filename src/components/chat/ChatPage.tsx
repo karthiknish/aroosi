@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ConversationList from "./ConversationList";
 import ModernChat from "./ModernChat";
-import { useAuthContext } from "@/components/ClerkAuthProvider";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
 // import { createConversationId } from '@/lib/utils/messageUtils';
 
@@ -24,7 +24,9 @@ export default function ChatPage({
   initialOtherUserName,
   className = "",
 }: ChatPageProps) {
-  const { userId } = useAuthContext();
+  const { user, profile } = useAuthContext();
+  const userId =
+    user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
   const [selectedConversation, setSelectedConversation] = useState<{
     conversationId: string;
     otherUserId: string;

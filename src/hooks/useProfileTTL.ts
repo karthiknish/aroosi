@@ -5,7 +5,11 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
-import { profileTTLManagerInstance, PROFILE_TTL_CONFIG } from "@/lib/storage/profile-ttl-manager";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import {
+  profileTTLManagerInstance,
+  PROFILE_TTL_CONFIG,
+} from "@/lib/storage/profile-ttl-manager";
 import { Profile, ProfileFormValues } from "@/types/profile";
 import {
   getCurrentUserWithProfile,
@@ -27,7 +31,7 @@ export const useProfileTTL = (userId: string) => {
       }
 
       // Fetch from API util if not cached
-      const result = await getCurrentUserWithProfile();
+      const result = await getCurrentUserWithProfile(userId);
       if (!result.success || !result.data) {
         throw new Error(result.error || "Failed to fetch profile");
       }
@@ -59,7 +63,7 @@ export const useUpdateProfileTTL = () => {
       userId: string;
       updates: Partial<ProfileFormValues>;
     }) => {
-      const result = await submitProfile(updates as any, "edit");
+  const result = await submitProfile(userId, updates as any, "edit");
       if (!result.success || !result.data) {
         throw new Error(result.error || "Failed to update profile");
       }

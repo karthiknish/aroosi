@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { api } from "@convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
-import { convexQueryWithAuth } from "@/lib/convexServer";
+import { db } from "@/lib/firebaseAdmin";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 
 // Add debug logging
@@ -59,54 +57,17 @@ export async function GET(req: NextRequest) {
 
     log("Fetching profile details", { profileId: id });
 
-    let resolvedUserId: Id<"users"> | null = null;
+    let resolvedUserId: string | null = null;
     let images: unknown[] = [];
 
     try {
       // Only try getProfileById if the id is likely a profileId (e.g., if you have a prefix or length check, use it here)
       // Otherwise, skip to getUserPublicProfile
-      if (id && id.length === 24) {
-        // Convex profile IDs are usually 24 chars, adjust as needed
-        try {
-          const profile = await convexQueryWithAuth(
-            req,
-            api.users.getProfileOwnerById,
-            {
-              id: id as Id<"profiles">,
-            } as any
-          );
-          if (profile) {
-            resolvedUserId = profile.userId;
-            log("Found profile by ID", {
-              profileId: id,
-              userId: String(resolvedUserId),
-            });
-          }
-        } catch (profileError) {
-          log("Profile not found by ID, trying user ID", {
-            error: String(profileError),
-          });
-        }
-      }
-
-      // If no profile found by ID, try to get user by ID
-      if (!resolvedUserId) {
-        try {
-          const user = await convexQueryWithAuth(
-            req,
-            api.users.getProfileByUserIdPublic,
-            {
-              userId: id as Id<"users">,
-            } as any
-          );
-
-          if (user) {
-            resolvedUserId = id as Id<"users">;
-            log("Found user by ID", { userId: String(resolvedUserId) });
-          }
-        } catch (userError) {
-          log("User not found by ID", { error: String(userError) });
-        }
+      // We only use user docs in Firestore; treat id as userId directly
+      const userDoc = await db.collection("users").doc(id).get();
+      if (userDoc.exists) {
+        resolvedUserId = id;
+        log("Found user by ID", { userId: resolvedUserId });
       }
 
       // If we still don't have a user ID, return 404
@@ -131,12 +92,20 @@ export async function GET(req: NextRequest) {
             { status: 404 }
           );
         }
-        images = await convexQueryWithAuth(req, api.images.getProfileImages, {
-          userId: resolvedUserId as Id<"users">,
-        } as any);
-        if (!Array.isArray(images)) {
-          throw new Error("Invalid response format from getProfileImages");
-        }
+        const u = await db.collection("users").doc(resolvedUserId).get();
+        const data = u.exists ? (u.data() as any) : {};
+        const ids: string[] = Array.isArray(data.profileImageIds)
+          ? data.profileImageIds
+          : [];
+        const urls: string[] = Array.isArray(data.profileImageUrls)
+          ? data.profileImageUrls
+          : [];
+        images = ids.length
+          ? ids.map((id: string, i: number) => ({ id, url: urls[i] || null }))
+          : urls.map((url: string, i: number) => ({
+              id: `${resolvedUserId}_${i}`,
+              url,
+            }));
         log("Fetched profile images", { count: images.length });
       } catch (queryError) {
         log("Error in getProfileImages query", {

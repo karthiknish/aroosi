@@ -1,4 +1,3 @@
-// import { api } from "@convex/_generated/api";
 // Cookie-based Convex Auth is used in server routes; this is a pure UI utility module.
 
 // Message types and interfaces
@@ -40,7 +39,7 @@ export function createConversationId(userId1: string, userId2: string): string {
 }
 
 export function parseConversationId(
-  conversationId: string,
+  conversationId: string
 ): { user1: string; user2: string } | null {
   const parts = conversationId.split("_");
   if (parts.length !== 2) return null;
@@ -53,7 +52,7 @@ export function parseConversationId(
 
 export function getOtherUserId(
   conversationId: string,
-  currentUserId: string,
+  currentUserId: string
 ): string | null {
   const parsed = parseConversationId(conversationId);
   if (!parsed) return null;
@@ -98,7 +97,7 @@ export function truncateMessage(text: string, maxLength: number = 50): string {
 
 // Message grouping utilities
 export function groupMessagesByDate(
-  messages: MessageData[],
+  messages: MessageData[]
 ): Record<string, MessageData[]> {
   const groups: Record<string, MessageData[]> = {};
 
@@ -117,7 +116,7 @@ export function groupMessagesByDate(
 
 export function shouldShowTimestamp(
   currentMessage: MessageData,
-  previousMessage?: MessageData,
+  previousMessage?: MessageData
 ): boolean {
   if (!previousMessage) return true;
 
@@ -136,7 +135,7 @@ const typingTimeouts = new Map<string, NodeJS.Timeout>();
 export function handleTypingStart(
   conversationId: string,
   userId: string,
-  onTypingUpdate: (typing: TypingIndicator) => void,
+  onTypingUpdate: (typing: TypingIndicator) => void
 ): void {
   // Clear existing timeout
   const existingTimeout = typingTimeouts.get(`${conversationId}_${userId}`);
@@ -169,7 +168,7 @@ export function handleTypingStart(
 export function handleTypingStop(
   conversationId: string,
   userId: string,
-  onTypingUpdate: (typing: TypingIndicator) => void,
+  onTypingUpdate: (typing: TypingIndicator) => void
 ): void {
   const existingTimeout = typingTimeouts.get(`${conversationId}_${userId}`);
   if (existingTimeout) {
@@ -188,10 +187,10 @@ export function handleTypingStop(
 // Unread message utilities
 export function calculateUnreadCount(
   messages: MessageData[],
-  currentUserId: string,
+  currentUserId: string
 ): number {
   return messages.filter(
-    (message) => message.toUserId === currentUserId && !message.isRead,
+    (message) => message.toUserId === currentUserId && !message.isRead
   ).length;
 }
 
@@ -261,17 +260,17 @@ export function getMessageLimit(userPlan: string): number {
 // Search and filter utilities
 export function searchMessages(
   messages: MessageData[],
-  query: string,
+  query: string
 ): MessageData[] {
   const lowercaseQuery = query.toLowerCase();
   return messages.filter((message) =>
-    message.text.toLowerCase().includes(lowercaseQuery),
+    message.text.toLowerCase().includes(lowercaseQuery)
   );
 }
 
 export function filterMessagesByType(
   messages: MessageData[],
-  type: "text" | "voice" | "image",
+  type: "text" | "voice" | "image"
 ): MessageData[] {
   return messages.filter((message) => message.type === type);
 }
@@ -279,7 +278,7 @@ export function filterMessagesByType(
 // Message export utilities
 export function exportConversationToText(
   messages: MessageData[],
-  userNames: Record<string, string>,
+  userNames: Record<string, string>
 ): string {
   let exportText = `Conversation Export - ${new Date().toISOString()}\n`;
   exportText += "=".repeat(50) + "\n\n";
@@ -342,7 +341,7 @@ export function createMessageEvent(
   type: MessageEvent["type"],
   conversationId: string,
   userId: string,
-  data?: unknown,
+  data?: unknown
 ): MessageEvent {
   return {
     type,

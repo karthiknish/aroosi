@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { stripe } from "@/lib/stripe";
-import { api } from "@convex/_generated/api";
-import { requireAuth } from "@/lib/auth/requireAuth";
-import { fetchQuery } from "convex/nextjs";
+import { requireSession } from "@/app/api/_utils/auth";
+import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 
 /**
  * POST /api/stripe/portal
@@ -15,8 +14,9 @@ import { fetchQuery } from "convex/nextjs";
 export async function POST(req: NextRequest) {
   try {
     // Require cookie/JWT auth (same pattern as checkout)
-    const { userId } = await requireAuth(req);
-    if (!userId) return errorResponse("User ID not found in session", 401);
+    const authSession = await requireSession(req);
+    if ("errorResponse" in authSession) return authSession.errorResponse;
+    const { userId } = authSession;
 
     if (!stripe) {
       console.error("Stripe not configured in portal route");
@@ -24,21 +24,23 @@ export async function POST(req: NextRequest) {
     }
 
     const returnUrl =
-      process.env.STRIPE_BILLING_PORTAL_RETURN_URL || "https://aroosi.app/plans";
+      process.env.STRIPE_BILLING_PORTAL_RETURN_URL ||
+      "https://aroosi.app/plans";
 
-    // Fetch Stripe customer id for this user from Convex (server-side source of truth)
+    // Fetch Stripe customer id for this user from Firestore
     let customerId: string | null = null;
     try {
-      const profile = (await fetchQuery(api.users.getProfileByUserIdPublic, {
-        userId: userId as unknown as import("@convex/_generated/dataModel").Id<"users">,
-      } as any)) as any;
-      customerId =
-        profile?.stripeCustomerId ||
-        profile?.billing?.customerId ||
-        profile?.stripe?.customerId ||
-        null;
+      const snap = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+      if (snap.exists) {
+        const data = snap.data() as any;
+        customerId =
+          data?.stripeCustomerId ||
+          data?.billing?.customerId ||
+          data?.stripe?.customerId ||
+          null;
+      }
     } catch (e) {
-      console.warn("Portal route: unable to fetch profile for customer id", {
+      console.warn("Portal route Firestore fetch failed", {
         scope: "stripe.portal",
         userId,
         message: e instanceof Error ? e.message : String(e),
@@ -55,12 +57,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Stripe requires a customer for billing portal session
-    const session = await stripe.billingPortal.sessions.create({
+    const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
     });
 
-    if (!session?.url) {
+    if (!portalSession?.url) {
       console.error("Failed to create Stripe billing portal session");
       return errorResponse("Failed to create billing portal session", 500);
     }
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
       userId,
     });
 
-    return successResponse({ url: session.url });
+    return successResponse({ url: portalSession.url });
   } catch (error) {
     console.error("Stripe portal error", {
       scope: "stripe.portal",

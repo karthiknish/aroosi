@@ -21,7 +21,7 @@ import { Step7AccountCreation } from "./steps/Step7AccountCreation";
 import { COUNTRIES } from "@/lib/constants/countries";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useProfileCreationController } from "./profileCreation/controller";
-import { useClerkAuth as useAuth } from "@/components/ClerkAuthProvider";
+import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { getGlobalRequiredFields } from "./profileCreation/step7";
 
 const countries: string[] = COUNTRIES.map((c) => c.name).sort();
