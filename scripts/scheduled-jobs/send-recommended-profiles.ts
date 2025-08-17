@@ -38,7 +38,6 @@ async function sendRecommendedProfilesEmails() {
       profileImageUrls?: string[];
       images?: string[];
       interests?: string[] | string;
-      isProfileComplete?: boolean;
     }> = [];
     const pageSize = 200;
     let page = 1;
@@ -51,7 +50,6 @@ async function sendRecommendedProfilesEmails() {
         sortDir: "desc",
         banned: "all",
         plan: "all",
-        isProfileComplete: "all",
       });
       profiles.push(...p);
       if (p.length < pageSize) break;

@@ -1,10 +1,13 @@
-import { auth } from "../firebaseClient";
+import { auth } from "../firebase";
 
 /**
  * Perform a fetch adding a Firebase ID token in the Authorization header.
  * If the user isn't signed in or token retrieval fails, proceeds without header.
  */
-export async function fetchWithFirebaseAuth(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+export async function fetchWithFirebaseAuth(
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+): Promise<Response> {
   let token: string | undefined;
   try {
     const user = auth.currentUser;
@@ -20,7 +23,10 @@ export async function fetchWithFirebaseAuth(input: RequestInfo | URL, init: Requ
 }
 
 /** Convenience helper returning parsed JSON, throwing on non-2xx */
-export async function fetchJsonWithFirebaseAuth<T = any>(input: RequestInfo | URL, init: RequestInit = {}): Promise<T> {
+export async function fetchJsonWithFirebaseAuth<T = any>(
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+): Promise<T> {
   const res = await fetchWithFirebaseAuth(input, init);
   if (!res.ok) {
     const text = await res.text().catch(() => "");

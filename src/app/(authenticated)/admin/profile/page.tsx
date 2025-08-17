@@ -84,7 +84,6 @@ export default function AdminProfilePage() {
   const [planFilter] = useState<"all" | "free" | "premium" | "premiumPlus">(
     "all"
   );
-  const [isProfileComplete] = useState<"all" | "true" | "false">("all");
 
   const {
     data,
@@ -100,7 +99,6 @@ export default function AdminProfilePage() {
       sortDir,
       bannedFilter,
       planFilter,
-      isProfileComplete,
       // Note: search/status remain client-side for now
     ],
     queryFn: async () => {
@@ -113,7 +111,6 @@ export default function AdminProfilePage() {
         sortDir,
         banned: bannedFilter,
         plan: planFilter,
-        isProfileComplete,
       } as any);
 
       const profilesForImages = profiles.map((p: AdminProfile) => ({

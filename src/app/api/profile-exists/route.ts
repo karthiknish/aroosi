@@ -22,11 +22,11 @@ export async function GET(req: NextRequest) {
     }
     const doc = userSnap.docs[0];
     const userData: any = doc.data();
-    const profileComplete = !!userData.isProfileComplete;
+    const hasProfile = !!userData.isOnboardingComplete;
     return NextResponse.json({
       success: true,
       exists: true,
-      hasProfile: profileComplete,
+      hasProfile,
     });
   } catch {
     return NextResponse.json(

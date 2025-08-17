@@ -8,13 +8,8 @@ import { useRouter } from "next/navigation";
 import { getJson } from "@/lib/http/client";
 
 export default function SignInPage() {
-  const {
-    isProfileComplete,
-    isOnboardingComplete,
-    isAuthenticated,
-    isLoaded,
-    refreshUser,
-  } = useFirebaseAuth();
+  const { isOnboardingComplete, isAuthenticated, isLoaded, refreshUser } =
+    useFirebaseAuth();
 
   const router = useRouter();
 

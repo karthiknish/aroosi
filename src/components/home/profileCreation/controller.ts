@@ -1,6 +1,6 @@
 import React from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebaseClient";
+import { db } from "@/lib/firebase";
 import { useStepValidation } from "@/hooks/useStepValidation";
 import { useFirebaseAuth as useAuth } from "@/components/FirebaseAuthProvider";
 import { useProfileWizard } from "@/contexts/ProfileWizardContext";
@@ -321,207 +321,212 @@ export function useProfileCreationController(params: {
       setIsSubmitting(true);
       // Generate one-time submission token
       submissionTokenRef.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  try {
-    if (!userId) {
-      setIsSubmitting(false);
-      return;
-    }
-    const existing = await getCurrentUserWithProfile(userId);
-    if (existing.success && existing.data) {
       try {
-        await refreshUser();
-      } catch {}
-      try {
-        clearAllOnboardingData();
-      } catch {}
-      showSuccessToast("Account created. Finalizing your profile...");
-      handleClose();
-      try {
-        const ok = await (async () => {
-          for (let i = 0; i < 8; i++) {
-            try {
-              const resp = await getCurrentUserWithProfile(userId);
-              if (resp?.success && resp?.data) return true;
-            } catch {}
-            await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-          }
-          return false;
-        })();
-        if (ok) router.push("/success");
-      } catch {}
-      return;
-    }
+        if (!userId) {
+          setIsSubmitting(false);
+          return;
+        }
+        const existing = await getCurrentUserWithProfile(userId);
+        if (existing.success && existing.data) {
+          try {
+            await refreshUser();
+          } catch {}
+          try {
+            clearAllOnboardingData();
+          } catch {}
+          showSuccessToast("Account created. Finalizing your profile...");
+          handleClose();
+          try {
+            const ok = await (async () => {
+              for (let i = 0; i < 8; i++) {
+                try {
+                  const resp = await getCurrentUserWithProfile(userId);
+                  if (resp?.success && resp?.data) return true;
+                } catch {}
+                await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+              }
+              return false;
+            })();
+            if (ok) router.push("/success");
+          } catch {}
+          return;
+        }
 
-    setHasSubmittedProfile(true);
-    try {
-      updateContextData({ lastProfileSubmissionAt: Date.now() });
-    } catch {}
-
-    const merged: Record<string, unknown> = { ...contextData };
-    const cleanedData: Record<string, unknown> = {};
-    Object.entries(merged).forEach(([k, v]) => {
-      const isValidValue =
-        v !== undefined &&
-        v !== null &&
-        !(typeof v === "string" && v.trim() === "") &&
-        !(Array.isArray(v) && v.length === 0);
-      if (isValidValue) cleanedData[k] = v;
-    });
-
-    const requiredFields = getGlobalRequiredFields();
-    const { missing: missingFields } = computeMissingRequiredFields(
-      cleanedData,
-      requiredFields
-    );
-    if (missingFields.length > 0) {
-      showErrorToast(
-        null,
-        `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`
-      );
-      setHasSubmittedProfile(false);
-      setIsSubmitting(false);
-      return;
-    }
-
-    const normalizedPhone =
-      normalizePhoneE164Like(cleanedData.phoneNumber as string) ??
-      (typeof cleanedData.phoneNumber === "string"
-        ? cleanedData.phoneNumber
-        : "");
-    try {
-      if (normalizedPhone) updateContextData({ phoneNumber: normalizedPhone });
-    } catch {}
-
-    const trimmedData = filterEmptyValues(cleanedData);
-    const payload = buildProfilePayload(
-      trimmedData,
-      normalizedPhone || undefined
-    );
-
-    const profileRes = await submitProfile(userId, payload as any, "create");
-    if (!profileRes.success) {
-      showErrorToast(profileRes.error, "Failed to create profile");
-      setHasSubmittedProfile(false);
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (pendingImages.length > 0 && userId) {
-      const { createdImageIds, failedImages } = await uploadPendingImages({
-        pendingImages,
-        userId,
-      });
-      if (failedImages.length > 0) {
-        const mapped = failedImages.map((f) => ({
-          name: `#${f.index} ${f.name}`,
-          reason: f.reason,
-        }));
-        const msg = summarizeImageUploadErrors(mapped, 3);
-        showErrorToast(null, msg);
-        __devInfo(
-          "Some images failed to upload. You can retry failed items individually from Step 6."
-        );
-      }
-      if (createdImageIds.length > 0) {
+        setHasSubmittedProfile(true);
         try {
-          const orderIds =
-            createdImageIds.length > 0
-              ? createdImageIds
-              : Array.isArray((formData as any).profileImageIds)
-                ? ((formData as any).profileImageIds as string[])
-                : [];
-          const filteredOrderIds = orderIds.filter(
-            (id) =>
-              typeof id === "string" &&
-              !id.startsWith("local-") &&
-              id.trim().length > 0
-          );
-          if (filteredOrderIds.length > 1) {
-            await persistServerImageOrder({
-              userId: userId as string,
-              imageIds: filteredOrderIds,
-            });
-          }
-        } catch {
+          updateContextData({ lastProfileSubmissionAt: Date.now() });
+        } catch {}
+
+        const merged: Record<string, unknown> = { ...contextData };
+        const cleanedData: Record<string, unknown> = {};
+        Object.entries(merged).forEach(([k, v]) => {
+          const isValidValue =
+            v !== undefined &&
+            v !== null &&
+            !(typeof v === "string" && v.trim() === "") &&
+            !(Array.isArray(v) && v.length === 0);
+          if (isValidValue) cleanedData[k] = v;
+        });
+
+        const requiredFields = getGlobalRequiredFields();
+        const { missing: missingFields } = computeMissingRequiredFields(
+          cleanedData,
+          requiredFields
+        );
+        if (missingFields.length > 0) {
           showErrorToast(
             null,
-            "Unable to save image order. You can reorder later."
+            `Cannot create profile. Missing required fields: ${missingFields.slice(0, 3).join(", ")}${missingFields.length > 3 ? " and more" : ""}. Please go back and complete all sections.`
           );
+          setHasSubmittedProfile(false);
+          setIsSubmitting(false);
+          return;
+        }
+
+        const normalizedPhone =
+          normalizePhoneE164Like(cleanedData.phoneNumber as string) ??
+          (typeof cleanedData.phoneNumber === "string"
+            ? cleanedData.phoneNumber
+            : "");
+        try {
+          if (normalizedPhone)
+            updateContextData({ phoneNumber: normalizedPhone });
+        } catch {}
+
+        const trimmedData = filterEmptyValues(cleanedData);
+        const payload = buildProfilePayload(
+          trimmedData,
+          normalizedPhone || undefined
+        );
+
+        const profileRes = await submitProfile(
+          userId,
+          payload as any,
+          "create"
+        );
+        if (!profileRes.success) {
+          showErrorToast(profileRes.error, "Failed to create profile");
+          setHasSubmittedProfile(false);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (pendingImages.length > 0 && userId) {
+          const { createdImageIds, failedImages } = await uploadPendingImages({
+            pendingImages,
+            userId,
+          });
+          if (failedImages.length > 0) {
+            const mapped = failedImages.map((f) => ({
+              name: `#${f.index} ${f.name}`,
+              reason: f.reason,
+            }));
+            const msg = summarizeImageUploadErrors(mapped, 3);
+            showErrorToast(null, msg);
+            __devInfo(
+              "Some images failed to upload. You can retry failed items individually from Step 6."
+            );
+          }
+          if (createdImageIds.length > 0) {
+            try {
+              const orderIds =
+                createdImageIds.length > 0
+                  ? createdImageIds
+                  : Array.isArray((formData as any).profileImageIds)
+                    ? ((formData as any).profileImageIds as string[])
+                    : [];
+              const filteredOrderIds = orderIds.filter(
+                (id) =>
+                  typeof id === "string" &&
+                  !id.startsWith("local-") &&
+                  id.trim().length > 0
+              );
+              if (filteredOrderIds.length > 1) {
+                await persistServerImageOrder({
+                  userId: userId as string,
+                  imageIds: filteredOrderIds,
+                });
+              }
+            } catch {
+              showErrorToast(
+                null,
+                "Unable to save image order. You can reorder later."
+              );
+            }
+          }
+        }
+
+        try {
+          await refreshUser();
+        } catch {}
+        try {
+          clearAllOnboardingData();
+        } catch {}
+        try {
+          if (typeof window !== "undefined")
+            window.localStorage.removeItem("PROFILE_CREATION");
+        } catch {}
+        try {
+          updateContextData({
+            isOnboardingComplete: true,
+          });
+        } catch {}
+        // Attempt to remove onboardingPartial from Firestore to avoid stale data
+        try {
+          if (userId) {
+            const userDocRef = doc(db, "users", userId);
+            await updateDoc(userDocRef, {
+              onboardingPartial: null,
+              updatedAt: Date.now(),
+            });
+          }
+        } catch {}
+
+        showSuccessToast("Profile created successfully!");
+        handleClose();
+        try {
+          const ok = await (async () => {
+            for (let i = 0; i < 8; i++) {
+              try {
+                const resp = await getCurrentUserWithProfile(userId);
+                if (resp?.success && resp?.data) return true;
+              } catch {}
+              await new Promise((r) => setTimeout(r, 250 * (i + 1)));
+            }
+            return false;
+          })();
+          if (ok) router.push("/success");
+        } catch {}
+      } catch (err: any) {
+        let errorMessage = "Profile submission failed";
+        const msg = String(err?.message || "").toLowerCase();
+        if (msg.includes("network") || msg.includes("fetch"))
+          errorMessage =
+            "Network error. Please check your connection and try again.";
+        else if (msg.includes("timeout"))
+          errorMessage = "Request timed out. Please try again.";
+        else if (msg.includes("401") || msg.includes("unauthorized"))
+          errorMessage = "Authentication expired. Please sign in again.";
+        else if (msg.includes("409") || msg.includes("duplicate"))
+          errorMessage =
+            "Profile already exists. Please use the profile edit feature.";
+        else if (msg.includes("400") || msg.includes("validation"))
+          errorMessage =
+            "Invalid profile data. Please check your information and try again.";
+        else if (msg.includes("500") || msg.includes("server"))
+          errorMessage =
+            "Server error while creating profile. Please try again.";
+        else if (err?.message)
+          errorMessage = `Profile submission failed: ${err.message}`;
+        showErrorToast(null, errorMessage);
+        setHasSubmittedProfile(false);
+      } finally {
+        setIsSubmitting(false);
+        // Clear token allowing future submissions only after state reset if something failed
+        if (!hasSubmittedProfile) {
+          submissionTokenRef.current = null;
         }
       }
-    }
-
-    try {
-      await refreshUser();
-    } catch {}
-    try {
-      clearAllOnboardingData();
-    } catch {}
-    try {
-      if (typeof window !== "undefined")
-        window.localStorage.removeItem("PROFILE_CREATION");
-    } catch {}
-    try {
-      updateContextData({
-        isProfileComplete: true,
-        isOnboardingComplete: true,
-      });
-    } catch {}
-    // Attempt to remove onboardingPartial from Firestore to avoid stale data
-    try {
-      if (userId) {
-        const userDocRef = doc(db, "users", userId);
-        await updateDoc(userDocRef, {
-          onboardingPartial: null,
-          updatedAt: Date.now(),
-        });
-      }
-    } catch {}
-
-    showSuccessToast("Profile created successfully!");
-    handleClose();
-    try {
-      const ok = await (async () => {
-        for (let i = 0; i < 8; i++) {
-          try {
-            const resp = await getCurrentUserWithProfile(userId);
-            if (resp?.success && resp?.data) return true;
-          } catch {}
-          await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-        }
-        return false;
-      })();
-      if (ok) router.push("/success");
-    } catch {}
-  } catch (err: any) {
-    let errorMessage = "Profile submission failed";
-    const msg = String(err?.message || "").toLowerCase();
-    if (msg.includes("network") || msg.includes("fetch"))
-      errorMessage =
-        "Network error. Please check your connection and try again.";
-    else if (msg.includes("timeout"))
-      errorMessage = "Request timed out. Please try again.";
-    else if (msg.includes("401") || msg.includes("unauthorized"))
-      errorMessage = "Authentication expired. Please sign in again.";
-    else if (msg.includes("409") || msg.includes("duplicate"))
-      errorMessage =
-        "Profile already exists. Please use the profile edit feature.";
-    else if (msg.includes("400") || msg.includes("validation"))
-      errorMessage =
-        "Invalid profile data. Please check your information and try again.";
-    else if (msg.includes("500") || msg.includes("server"))
-      errorMessage = "Server error while creating profile. Please try again.";
-    else if (err?.message)
-      errorMessage = `Profile submission failed: ${err.message}`;
-    showErrorToast(null, errorMessage);
-    setHasSubmittedProfile(false);
-  } finally {
-    setIsSubmitting(false);
-    // Clear token allowing future submissions only after state reset if something failed
-    if (!hasSubmittedProfile) {
-      submissionTokenRef.current = null;
-    }
-  }
     };
     void submitProfileAndImages();
   }, [

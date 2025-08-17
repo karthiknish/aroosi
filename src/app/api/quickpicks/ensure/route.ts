@@ -35,10 +35,10 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
     const candidates: string[] = [];
   profileSnap.docs.forEach((d: any) => {
       const data = d.data() as any;
-      if (d.id === user.id) return;
-      if (data.banned) return;
-      if (!data.isProfileComplete) return;
-      candidates.push(d.id);
+  if (d.id === user.id) return;
+  if (data.banned) return;
+  if (!data.isOnboardingComplete) return;
+  candidates.push(d.id);
     });
 
     // Determine subscription plan limit

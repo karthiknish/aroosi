@@ -1,5 +1,5 @@
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { storage } from "@/lib/firebaseClient";
+import { storage } from "@/lib/firebase";
 import { v4 as uuidv4 } from "uuid";
 
 // Upload a file to Firebase Storage with progress tracking

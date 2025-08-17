@@ -1,7 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import { updateUserProfile } from "@/lib/profile/userProfileApi";
-import { auth } from "@/lib/firebaseClient";
+import { auth } from "@/lib/firebase";
 import { useSearchParams } from "next/navigation";
 
 function EditProfileE2ETestPageInner() {

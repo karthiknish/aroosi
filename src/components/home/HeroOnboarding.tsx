@@ -35,7 +35,7 @@ import {
   enhancedValidationSchemas,
 } from "@/lib/validation/profileValidation";
 import { STORAGE_KEYS } from "@/lib/utils/onboardingStorage";
-import { auth, db } from "@/lib/firebaseClient";
+import { auth, db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import RequiredLabel from "../ui/RequiredLabel";

@@ -1,7 +1,7 @@
 import { postJson } from "@/lib/http/client";
 // Firebase Storage migration helpers
 import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
-import { auth, storage } from "@/lib/firebaseClient";
+import { auth, storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
 

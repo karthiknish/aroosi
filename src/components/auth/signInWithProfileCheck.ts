@@ -1,5 +1,5 @@
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
-import { auth } from "@/lib/firebaseClient";
+import { auth } from "@/lib/firebase";
 
 /**
  * Non-hook util that performs sign-in by calling the provided `signIn` function

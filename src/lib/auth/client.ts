@@ -48,7 +48,7 @@ export async function logout() {
     
     if (typeof signOutFunc === "function") {
       // Get auth instance
-      const { auth } = await import("@/lib/firebaseClient");
+  const { auth } = await import("@/lib/firebase");
       await signOutFunc(auth);
     }
 

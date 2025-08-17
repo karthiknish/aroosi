@@ -20,7 +20,6 @@ export type FirestoreUserProfile = {
   role?: string;
   banned?: boolean;
   emailVerified?: boolean;
-  isProfileComplete?: boolean;
   isOnboardingComplete?: boolean;
   fullName?: string;
   dateOfBirth?: string;

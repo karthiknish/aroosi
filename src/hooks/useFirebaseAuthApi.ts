@@ -73,10 +73,20 @@ export function useFirebaseAuthApi() {
    * Sign up with email and password
    */
   const signUpWithEmail = useCallback(
-  async (email: string, password: string, fullName: string) => {
+    async (
+      email: string,
+      password: string,
+      fullName: string,
+      profileData?: Record<string, unknown>
+    ) => {
       try {
-    const result = await signUp({ email, password, fullName });
-        
+        const result = await signUp({
+          email,
+          password,
+          fullName,
+          profileData: profileData as any,
+        });
+
         return {
           success: result.success,
           status: result.success ? "complete" : "failed",

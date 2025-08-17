@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       search,
       plan,
       banned,
-      isProfileComplete,
+      // deprecated isProfileComplete removed; optional future filters: isOnboardingComplete
       page,
       pageSize,
       sortBy,
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       search?: string;
       plan?: string;
       banned?: string;
-      isProfileComplete?: string;
+      // deprecated isProfileComplete?: string;
       page?: number;
       pageSize?: number;
       sortBy?: string;
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
             : [],
           images: u.images,
           interests: u.interests,
-          isProfileComplete: !!u.isProfileComplete,
+          isOnboardingComplete: !!u.isOnboardingComplete,
           subscriptionPlan: u.subscriptionPlan,
           banned: !!u.banned,
           createdAt: u.createdAt,
@@ -151,10 +151,7 @@ export async function POST(request: Request) {
           (p.aboutMe && String(p.aboutMe).toLowerCase().includes(term))
       );
     }
-    if (isProfileComplete === "true")
-      profiles = profiles.filter((p) => p.isProfileComplete === true);
-    if (isProfileComplete === "false")
-      profiles = profiles.filter((p) => p.isProfileComplete !== true);
+    // removed isProfileComplete filtering
     if (plan) profiles = profiles.filter((p) => p.subscriptionPlan === plan);
     if (banned === "true") profiles = profiles.filter((p) => p.banned === true);
     if (banned === "false")
@@ -196,7 +193,11 @@ export async function POST(request: Request) {
 
         const payload = templateFn
           ? templateKey === "profileCompletionReminder"
-            ? templateFn(baseProfile, p.isProfileComplete ? 100 : 70, "")
+            ? templateFn(
+                baseProfile,
+                baseProfile.profileCompletionPercentage || 0,
+                ""
+              )
             : templateKey === "premiumPromo"
               ? templateFn(baseProfile, 30, "")
               : templateKey === "recommendedProfiles"
@@ -273,7 +274,7 @@ export async function POST(request: Request) {
           if (templateKey === "profileCompletionReminder") {
             emailPayload = templateFn(
               baseProfile,
-              p.isProfileComplete ? 100 : 70,
+              baseProfile.profileCompletionPercentage || 0,
               ""
             );
           } else if (templateKey === "premiumPromo") {

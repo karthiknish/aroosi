@@ -16,7 +16,6 @@ import { showInfoToast, showErrorToast } from "@/lib/ui/toast";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
-  requireProfileComplete?: boolean; // currently not enforced
   requireOnboardingComplete?: boolean; // currently not enforced
   redirectTo?: string;
 }
@@ -30,7 +29,6 @@ const planManagementRoute = "/plans" as const;
 function ProtectedRouteInner({
   children,
   requireAuth = true,
-  requireProfileComplete = false,
   requireOnboardingComplete = false,
   redirectTo,
 }: ProtectedRouteProps) {
@@ -44,7 +42,6 @@ function ProtectedRouteInner({
   const {
     isLoaded,
     isSignedIn,
-    isProfileComplete,
     isOnboardingComplete,
     profile: rawProfile,
     refreshUser,
@@ -141,9 +138,7 @@ function ProtectedRouteInner({
         path: pathname,
         isLoaded,
         isSignedIn,
-        isProfileComplete,
         isOnboardingComplete,
-        requireProfileComplete,
         requireOnboardingComplete,
         userPlan,
       });
@@ -220,43 +215,24 @@ function ProtectedRouteInner({
           return;
         }
       }
-      if (requireProfileComplete && !isProfileComplete) {
-        // Allow access if on onboarding/create-profile or profile edit routes
-        if (
-          !isOnboardingRoute &&
-          !isCreateProfileRoute &&
-          !isProfileEditRoute
-        ) {
-          // Prefer edit route if profile exists; fallback to create-profile
-          const target = "/profile/edit";
-          void handleNavigation(
-            target,
-            "Complete your profile to access this page.",
-            "error"
-          );
-          return;
-        }
-      }
     }
   }, [
     authDisabled,
     isLoaded,
     isSignedIn,
-    isProfileComplete,
     isOnboardingComplete,
     pathname,
     searchParams,
     isPublicRoute,
     requireAuth,
     requireOnboardingComplete,
-    requireProfileComplete,
     isOnboardingRoute,
     isCreateProfileRoute,
     isProfileEditRoute,
     redirectTo,
     userPlan,
     handleNavigation,
-  refreshUser,
+    refreshUser,
   ]);
 
   // Loading state

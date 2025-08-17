@@ -56,16 +56,54 @@ export const POST = withFirebaseAuth(async (user: AuthenticatedUser, req: NextRe
     // Persist metadata to Firestore (simplified subcollection)
     const imagesCol = db.collection("users").doc(user.id).collection("images");
     const imageId = storageId.split("/").pop() || storageId;
-    await imagesCol.doc(imageId).set({
-      storageId,
-      fileName,
-      contentType,
-      size,
-      url: `https://storage.googleapis.com/${adminStorage.bucket().name}/${storageId}`,
-      uploadedAt: new Date().toISOString(),
-    }, { merge: true });
+    const publicUrl = `https://storage.googleapis.com/${adminStorage.bucket().name}/${storageId}`;
+    await imagesCol.doc(imageId).set(
+      {
+        storageId,
+        fileName,
+        contentType,
+        size,
+        url: publicUrl,
+        uploadedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    // Append to user document arrays (idempotent: avoid duplicates)
+    const userRef = db.collection("users").doc(user.id);
+    const userSnap = await userRef.get();
+    const data = userSnap.exists ? (userSnap.data() as any) : {};
+    const existingIds: string[] = Array.isArray(data.profileImageIds)
+      ? data.profileImageIds
+      : [];
+    const existingUrls: string[] = Array.isArray(data.profileImageUrls)
+      ? data.profileImageUrls
+      : [];
+    if (!existingIds.includes(storageId)) {
+      existingIds.push(storageId);
+      existingUrls.push(publicUrl);
+      await userRef.set(
+        {
+          profileImageIds: existingIds,
+          profileImageUrls: existingUrls,
+          updatedAt: Date.now(),
+        },
+        { merge: true }
+      );
+    } else {
+      // If ID exists but URL missing at same index, repair alignment
+      const idx = existingIds.indexOf(storageId);
+      if (idx >= 0 && (!existingUrls[idx] || existingUrls[idx] === "")) {
+        existingUrls[idx] = publicUrl;
+        await userRef.set(
+          { profileImageUrls: existingUrls, updatedAt: Date.now() },
+          { merge: true }
+        );
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, imageId, url: `https://storage.googleapis.com/${adminStorage.bucket().name}/${storageId}` }),
+      JSON.stringify({ success: true, imageId, url: publicUrl }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (e) {

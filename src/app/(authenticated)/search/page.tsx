@@ -113,7 +113,8 @@ export interface ProfileData {
   fullName: string;
   city?: string;
   dateOfBirth?: string;
-  isProfileComplete?: boolean;
+  isOnboardingComplete?: boolean;
+  profileCompletionPercentage?: number;
   hiddenFromSearch?: boolean;
   boostedUntil?: number;
   subscriptionPlan?: string;
@@ -461,7 +462,8 @@ export default function SearchProfilesPage() {
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
     return profiles.filter(
-      (u: ProfileSearchResult) => u.profile && u.profile.isProfileComplete
+      (u: ProfileSearchResult) =>
+        u.profile && u.profile.isOnboardingComplete === true
     );
   }, [profiles]);
 
@@ -488,7 +490,7 @@ export default function SearchProfilesPage() {
   const filtered = useMemo(() => {
     return (publicProfiles || []).filter((u: ProfileSearchResult) => {
       const p = u.profile;
-      if (!p?.isProfileComplete) return false;
+      if (!p?.isOnboardingComplete) return false;
 
       // Hide blocked users from search results
       if (blockedUserIds.includes(u.userId)) return false;

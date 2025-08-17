@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // (legacy REST utilities no longer needed here)
 import { useAuthContext } from "@/components/UserProfileProvider";
 import { uploadVoiceMessage } from "@/lib/voiceMessageUtil";
-import { db } from "@/lib/firebaseClient";
+import { db } from "@/lib/firebase";
 import {
   collection,
   query,

@@ -53,8 +53,6 @@ export async function GET(req: NextRequest) {
       | "free"
       | "premium"
       | "premiumPlus";
-    const isProfileCompleteParam = (searchParams.get("isProfileComplete") ||
-      "all") as "all" | "true" | "false";
     if (search && (search.length < 2 || search.length > 100))
       return errorResponse("Invalid search parameter", 400);
     const sortBy = ["createdAt", "banned", "subscriptionPlan"].includes(
@@ -71,11 +69,7 @@ export async function GET(req: NextRequest) {
     const plan = ["all", "free", "premium", "premiumPlus"].includes(planParam)
       ? planParam
       : "all";
-    const isProfileComplete = ["all", "true", "false"].includes(
-      isProfileCompleteParam
-    )
-      ? isProfileCompleteParam
-      : "all";
+    // Deprecated isProfileComplete filter removed; rely on isOnboardingComplete if needed in future
     const { profiles, total } = await listProfiles({
       search,
       page,
@@ -84,7 +78,6 @@ export async function GET(req: NextRequest) {
       sortDir,
       banned,
       plan,
-      isProfileComplete,
     });
     return successResponse({
       profiles,
@@ -95,7 +88,6 @@ export async function GET(req: NextRequest) {
       sortDir,
       banned,
       plan,
-      isProfileComplete,
     });
   } catch (error) {
     devLog("error", "admin.profiles", "unhandled_error", {
@@ -168,7 +160,6 @@ export async function PUT(req: NextRequest) {
     const ADMIN_PROFILE_UPDATE_ALLOWED_FIELDS = [
       "fullName",
       "aboutMe",
-      "isProfileComplete",
       "motherTongue",
       "religion",
       "ethnicity",
@@ -181,7 +172,6 @@ export async function PUT(req: NextRequest) {
       .object({
         fullName: z.string().trim().max(200).optional(),
         aboutMe: z.string().trim().max(5000).optional(),
-        isProfileComplete: z.boolean().optional(),
         motherTongue: z.string().trim().max(100).optional(),
         religion: z.string().trim().max(100).optional(),
         ethnicity: z.string().trim().max(100).optional(),

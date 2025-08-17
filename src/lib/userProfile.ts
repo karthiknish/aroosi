@@ -24,56 +24,57 @@ export interface UserProfile {
   email: string;
   emailVerified: boolean;
   disabled?: boolean;
-  
+
   // Timestamps
   createdAt: number;
   updatedAt: number;
   lastLoginAt?: number;
-  
+
   // User status
-  role: 'user' | 'admin' | 'moderator';
+  role: "user" | "admin" | "moderator";
   banned?: boolean;
   banReason?: string;
   banExpiresAt?: number;
-  
-  // Profile completion status
-  isProfileComplete: boolean;
+
+  // Onboarding/completion status (single source of truth)
   isOnboardingComplete: boolean;
   profileCompletionPercentage: number;
-  
+
   // Personal information
   fullName?: string;
   displayName?: string;
   firstName?: string;
   lastName?: string;
+  profileFor?: string; // e.g., 'self', 'relative'
   dateOfBirth?: string; // ISO format date
   age?: number;
   gender?: string;
   preferredGender?: string[];
-  
+
   // Location
   city?: string;
   state?: string;
   country?: string;
   countryCode?: string;
-  
+
   // Physical attributes
   height?: string; // e.g., "5'8""
+  heightCm?: number; // normalized height in centimeters
   weight?: number; // in kg
-  physicalStatus?: 'normal' | 'with_disability';
-  
+  physicalStatus?: "normal" | "with_disability";
+
   // Lifestyle
-  maritalStatus?: 'single' | 'divorced' | 'widowed' | 'separated';
-  diet?: 'vegetarian' | 'non_vegetarian' | 'vegan' | 'eggetarian';
-  smoking?: 'no' | 'occasionally' | 'yes';
-  drinking?: 'no' | 'occasionally' | 'yes';
-  
+  maritalStatus?: "single" | "divorced" | "widowed" | "separated";
+  diet?: "vegetarian" | "non_vegetarian" | "vegan" | "eggetarian";
+  smoking?: "no" | "occasionally" | "yes";
+  drinking?: "no" | "occasionally" | "yes";
+
   // Professional
   education?: string;
   occupation?: string;
   annualIncome?: number;
   annualIncomeCurrency?: string;
-  
+
   // Cultural
   motherTongue?: string;
   religion?: string;
@@ -81,7 +82,7 @@ export interface UserProfile {
   subcaste?: string;
   ethnicity?: string;
   community?: string;
-  
+
   // Contact
   phoneNumber?: string;
   whatsappNumber?: string;
@@ -90,18 +91,23 @@ export interface UserProfile {
     facebook?: string;
     linkedin?: string;
   };
-  
+
   // About
   aboutMe?: string;
   hobbies?: string[];
   interests?: string[];
-  
+
   // Preferences
   partnerPreferenceAgeMin?: number;
   partnerPreferenceAgeMax?: number;
   partnerPreferenceHeightMin?: string;
   partnerPreferenceHeightMax?: string;
-  partnerPreferenceMaritalStatus?: ('single' | 'divorced' | 'widowed' | 'separated')[];
+  partnerPreferenceMaritalStatus?: (
+    | "single"
+    | "divorced"
+    | "widowed"
+    | "separated"
+  )[];
   partnerPreferenceReligion?: string[];
   partnerPreferenceCaste?: string[];
   partnerPreferenceEducation?: string[];
@@ -109,14 +115,14 @@ export interface UserProfile {
   partnerPreferenceAnnualIncomeMin?: number;
   partnerPreferenceLocation?: string[];
   partnerPreferenceCountry?: string[];
-  
+
   // Media
   profileImageUrls?: string[];
   profileImageStorageIds?: string[];
   mainProfileImageIndex?: number;
-  
+
   // Subscription
-  subscriptionPlan?: 'free' | 'premium' | 'premium_plus';
+  subscriptionPlan?: "free" | "premium" | "premium_plus";
   subscriptionExpiresAt?: number;
   subscriptionFeatures?: {
     unlimitedLikes?: boolean;
@@ -124,14 +130,14 @@ export interface UserProfile {
     advancedSearch?: boolean;
     prioritySupport?: boolean;
   };
-  
+
   // Engagement features
   boostsRemaining?: number;
   boostedUntil?: number;
   hasSpotlightBadge?: boolean;
   spotlightBadgeExpiresAt?: number;
   hideFromFreeUsers?: boolean;
-  
+
   // Privacy settings
   privacySettings?: {
     showProfileToNonMembers?: boolean;
@@ -139,7 +145,7 @@ export interface UserProfile {
     showLastSeen?: boolean;
     showDistance?: boolean;
   };
-  
+
   // Notification preferences
   notificationPreferences?: {
     messages?: boolean;
@@ -148,7 +154,7 @@ export interface UserProfile {
     profileViews?: boolean;
     promotions?: boolean;
   };
-  
+
   // Activity metrics
   totalProfileViews?: number;
   totalMessagesSent?: number;
@@ -156,14 +162,14 @@ export interface UserProfile {
   totalLikesGiven?: number;
   totalLikesReceived?: number;
   totalMatches?: number;
-  
+
   // Verification status
   emailVerificationSentAt?: number;
   phoneVerified?: boolean;
   phoneVerificationSentAt?: number;
   idVerified?: boolean;
   idVerificationDocuments?: string[]; // Storage IDs of verification documents
-  
+
   // Metadata
   appVersion?: string;
   deviceInfo?: {
@@ -171,16 +177,16 @@ export interface UserProfile {
     platform?: string;
     os?: string;
   };
-  
+
   // Matching algorithm data
   compatibilityScore?: number;
   searchKeywords?: string[]; // For faster text search
-  
+
   // Referral program
   referralCode?: string;
   referredBy?: string;
   referredUsers?: string[]; // User IDs of people they referred
-  
+
   // Analytics
   lastActiveAt?: number;
   loginCount?: number;
@@ -195,7 +201,7 @@ export interface UserDocument {
   emailVerified: boolean;
   createdAt: number;
   updatedAt: number;
-  role: 'user' | 'admin' | 'moderator';
+  role: "user" | "admin" | "moderator";
   banned?: boolean;
   fullName?: string;
   displayName?: string;
@@ -204,11 +210,10 @@ export interface UserDocument {
   age?: number;
   city?: string;
   country?: string;
-  isProfileComplete: boolean;
   isOnboardingComplete: boolean;
   profileCompletionPercentage: number;
   profileImageUrls?: string[];
-  subscriptionPlan?: 'free' | 'premium' | 'premium_plus';
+  subscriptionPlan?: "free" | "premium" | "premium_plus";
   subscriptionExpiresAt?: number;
   lastActiveAt?: number;
 }

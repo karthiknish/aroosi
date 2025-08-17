@@ -41,7 +41,6 @@ export async function GET(_request: Request) {
             ? {
                 id: userId,
                 fullName: userData.fullName || undefined,
-                isProfileComplete: Boolean(userData.isProfileComplete ?? false),
                 isOnboardingComplete: Boolean(
                   userData.isOnboardingComplete ?? false
                 ),

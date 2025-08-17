@@ -268,10 +268,51 @@ export default function CustomSignupForm({
           : formData.email.split("@")[0];
 
       // Use Firebase signup
+      // Collect initial profile fields from wizard to persist at account creation
+      const initialProfile: Record<string, unknown> = {};
+      if (wizardData) {
+        const fieldKeys = [
+          "profileFor",
+          "gender",
+          "dateOfBirth",
+          "phoneNumber",
+          "country",
+          "city",
+          "height",
+          "maritalStatus",
+          "physicalStatus",
+          "motherTongue",
+          "religion",
+          "ethnicity",
+          "diet",
+          "smoking",
+          "drinking",
+          "education",
+          "occupation",
+          "annualIncome",
+          "aboutMe",
+          "preferredGender",
+          "partnerPreferenceAgeMin",
+          "partnerPreferenceAgeMax",
+        ];
+        fieldKeys.forEach((k) => {
+          const v = (wizardData as any)[k];
+          if (
+            v === undefined ||
+            v === null ||
+            (typeof v === "string" && v.trim() === "") ||
+            (Array.isArray(v) && v.length === 0)
+          )
+            return;
+          initialProfile[k] = v;
+        });
+      }
+
       const result = await signUp({
         email: formData.email.trim(),
         password: formData.password,
         fullName,
+        profileData: initialProfile,
       });
 
       if (!result.success) {

@@ -22,7 +22,8 @@ export interface SearchResultItem {
     fullName?: string;
     city?: string;
     dateOfBirth?: string;
-    isProfileComplete?: boolean;
+    isOnboardingComplete?: boolean;
+    profileCompletionPercentage?: number;
     hiddenFromSearch?: boolean;
     boostedUntil?: number;
     subscriptionPlan?: string;

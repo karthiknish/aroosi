@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { db } from "@/lib/firebaseClient";
+import { db } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, setDoc } from "firebase/firestore";
 
 interface TypingUser {

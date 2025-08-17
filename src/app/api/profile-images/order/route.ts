@@ -6,11 +6,16 @@ export const POST = withFirebaseAuth(async (authUser, req: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
-    let body: { profileId?: string; imageIds?: string[] } = {} as any;
+    let body: {
+      profileId?: string;
+      imageIds?: string[];
+      skipUrlReorder?: boolean;
+      rebuildUrls?: boolean;
+    } = {} as any;
     try {
       body = await req.json();
     } catch {}
-    const { profileId, imageIds } = body;
+    const { profileId, imageIds, skipUrlReorder, rebuildUrls } = body;
 
     if (!profileId || !Array.isArray(imageIds)) {
       return NextResponse.json(
@@ -27,42 +32,81 @@ export const POST = withFirebaseAuth(async (authUser, req: NextRequest) => {
       );
     }
 
-    // Validate each image belongs to this user (best-effort)
+    // Validate & fetch each image doc in parallel (single pass) and build maps
     const imagesCol = db
       .collection("users")
       .doc(profileId)
       .collection("images");
-    const invalid: string[] = [];
-    await Promise.all(
-      imageIds.map(async (imgId) => {
-        const docId = imgId.includes("/") ? imgId.split("/").pop()! : imgId;
+    const docIds = imageIds.map((imgId) =>
+      imgId.includes("/") ? imgId.split("/").pop()! : imgId
+    );
+    const imageDocs = await Promise.all(
+      docIds.map(async (docId) => {
         const snap = await imagesCol.doc(docId).get();
-        if (!snap.exists) invalid.push(imgId);
+        return { docId, snap };
       })
     );
+    const invalid = imageDocs.filter((d) => !d.snap.exists).map((d) => d.docId);
     if (invalid.length) {
       return NextResponse.json(
         { error: `Invalid image IDs: ${invalid.join(", ")}`, correlationId },
         { status: 400 }
       );
     }
-
-    // Normalize to stored storageId values
+    // Build normalized storageIds and url map from image docs (if present)
     const normalized: string[] = [];
-    for (const imgId of imageIds) {
-      const docId = imgId.includes("/") ? imgId.split("/").pop()! : imgId;
-      const snap = await imagesCol.doc(docId).get();
-      const storageId = (snap.data() as any)?.storageId || imgId;
+    const storageIdToUrl: Record<string, string> = {};
+    for (const { docId, snap } of imageDocs) {
+      const data = snap.data() as any;
+      const storageId = data?.storageId || docId; // fallback on doc id
       normalized.push(storageId);
+      if (data?.url) storageIdToUrl[storageId] = data.url;
     }
 
-    await db
-      .collection("users")
-      .doc(profileId)
-      .set(
-        { profileImageIds: normalized, updatedAt: Date.now() },
-        { merge: true }
-      );
+    const userRef = db.collection("users").doc(profileId);
+    const userSnap = await userRef.get();
+    let urls: string[] = [];
+    if (!skipUrlReorder) {
+      if (rebuildUrls) {
+        // Rebuild purely from storageId->url map; if missing, insert empty string placeholder
+        urls = normalized.map((id) => storageIdToUrl[id] || "");
+      } else if (userSnap.exists) {
+        const d = userSnap.data() as any;
+        const existingUrls: string[] = Array.isArray(d.profileImageUrls)
+          ? d.profileImageUrls.slice()
+          : [];
+        const existingIds: string[] = Array.isArray(d.profileImageIds)
+          ? d.profileImageIds
+          : [];
+        const map: Record<string, string> = {};
+        existingIds.forEach((id, idx) => {
+          map[id] = existingUrls[idx];
+        });
+        // Fill from map first, then override with any newer url discovered from image docs
+        urls = normalized.map((id) => storageIdToUrl[id] || map[id] || "");
+      } else {
+        urls = normalized.map((id) => storageIdToUrl[id] || "");
+      }
+    } else if (userSnap.exists) {
+      // Preserve existing order of URLs if skipping reorder (still ensure length alignment)
+      const d = userSnap.data() as any;
+      const existingUrls: string[] = Array.isArray(d.profileImageUrls)
+        ? d.profileImageUrls.slice()
+        : [];
+      urls =
+        existingUrls.length === normalized.length
+          ? existingUrls
+          : normalized.map((id, idx) => existingUrls[idx] || "");
+    }
+    await userRef.set(
+      {
+        profileImageIds: normalized,
+        // Only write urls if we actually computed a reordered list (skipUrlReorder means leave untouched)
+        ...(skipUrlReorder ? {} : { profileImageUrls: urls }),
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
 
     console.info("Profile images ORDER success", {
       scope: "profile_images.order",
@@ -71,7 +115,15 @@ export const POST = withFirebaseAuth(async (authUser, req: NextRequest) => {
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
-    return NextResponse.json({ success: true, correlationId }, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        correlationId,
+        normalizedCount: normalized.length,
+        reorderedUrls: !skipUrlReorder,
+      },
+      { status: 200 }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("/api/profile-images/order firebase error", {

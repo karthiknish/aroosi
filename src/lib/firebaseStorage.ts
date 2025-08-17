@@ -1,29 +1,31 @@
-import { storage } from "@/lib/firebaseClient";
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL, 
+import { storage } from "@/lib/firebase";
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
   deleteObject,
   listAll,
   getMetadata,
-  updateMetadata
+  updateMetadata,
 } from "firebase/storage";
 import { AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 
 // Define storage paths
 export const STORAGE_PATHS = {
   profileImages: (userId: string) => `users/${userId}/profile-images`,
-  profileImage: (userId: string, fileName: string) => `users/${userId}/profile-images/${fileName}`,
+  profileImage: (userId: string, fileName: string) =>
+    `users/${userId}/profile-images/${fileName}`,
   blogImages: "blog-images",
   blogImage: (fileName: string) => `blog-images/${fileName}`,
   voiceMessages: (userId: string) => `users/${userId}/voice-messages`,
-  voiceMessage: (userId: string, fileName: string) => `users/${userId}/voice-messages/${fileName}`,
+  voiceMessage: (userId: string, fileName: string) =>
+    `users/${userId}/voice-messages/${fileName}`,
 };
 
 // Upload a file to Firebase Storage
 export async function uploadFile(
-  file: File, 
-  path: string, 
+  file: File,
+  path: string,
   metadata?: any
 ): Promise<{ url: string; storageId: string }> {
   try {
@@ -51,7 +53,7 @@ export async function uploadProfileImage(
 
     // Generate a unique filename
     const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop() || 'jpg';
+    const fileExtension = file.name.split(".").pop() || "jpg";
     const fileName = `${timestamp}_${file.size}.${fileExtension}`;
     const path = STORAGE_PATHS.profileImage(userId, fileName);
 
@@ -60,7 +62,7 @@ export async function uploadProfileImage(
       customMetadata: {
         uploadedBy: userId,
         uploadedAt: new Date().toISOString(),
-      }
+      },
     });
 
     return result;
@@ -77,14 +79,15 @@ export async function uploadBlogImage(
 ): Promise<{ url: string; storageId: string }> {
   try {
     // Generate a unique filename if not provided
-    const fileName = customFileName || `${Date.now()}_${file.size}_${file.name}`;
+    const fileName =
+      customFileName || `${Date.now()}_${file.size}_${file.name}`;
     const path = STORAGE_PATHS.blogImage(fileName);
 
     // Upload the file
     const result = await uploadFile(file, path, {
       customMetadata: {
         uploadedAt: new Date().toISOString(),
-      }
+      },
     });
 
     return result;
@@ -103,12 +106,14 @@ export async function uploadVoiceMessage(
   try {
     // Validate that the user is uploading their own voice message
     if (user.id !== userId) {
-      throw new Error("Unauthorized: Cannot upload voice message for another user");
+      throw new Error(
+        "Unauthorized: Cannot upload voice message for another user"
+      );
     }
 
     // Generate a unique filename
     const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop() || 'mp3';
+    const fileExtension = file.name.split(".").pop() || "mp3";
     const fileName = `${timestamp}_${file.size}.${fileExtension}`;
     const path = STORAGE_PATHS.voiceMessage(userId, fileName);
 
@@ -117,7 +122,7 @@ export async function uploadVoiceMessage(
       customMetadata: {
         uploadedBy: userId,
         uploadedAt: new Date().toISOString(),
-      }
+      },
     });
 
     return result;
@@ -150,11 +155,13 @@ export async function deleteFile(storageId: string): Promise<void> {
 }
 
 // List all files in a directory
-export async function listFiles(path: string): Promise<{ name: string; url: string; storageId: string }[]> {
+export async function listFiles(
+  path: string
+): Promise<{ name: string; url: string; storageId: string }[]> {
   try {
     const listRef = ref(storage, path);
     const res = await listAll(listRef);
-    
+
     const files = await Promise.all(
       res.items.map(async (itemRef) => {
         const url = await getDownloadURL(itemRef);
@@ -165,7 +172,7 @@ export async function listFiles(path: string): Promise<{ name: string; url: stri
         };
       })
     );
-    
+
     return files;
   } catch (error) {
     console.error("Error listing files:", error);
@@ -185,7 +192,10 @@ export async function getFileMetadata(storageId: string): Promise<any> {
 }
 
 // Update file metadata
-export async function updateFileMetadata(storageId: string, metadata: any): Promise<any> {
+export async function updateFileMetadata(
+  storageId: string,
+  metadata: any
+): Promise<any> {
   try {
     const fileRef = ref(storage, storageId);
     return await updateMetadata(fileRef, metadata);
@@ -196,11 +206,13 @@ export async function updateFileMetadata(storageId: string, metadata: any): Prom
 }
 
 // Get all profile images for a user
-export async function getProfileImages(userId: string): Promise<{ url: string; storageId: string }[]> {
+export async function getProfileImages(
+  userId: string
+): Promise<{ url: string; storageId: string }[]> {
   try {
     const path = STORAGE_PATHS.profileImages(userId);
     const files = await listFiles(path);
-    return files.map(file => ({
+    return files.map((file) => ({
       url: file.url,
       storageId: file.storageId,
     }));

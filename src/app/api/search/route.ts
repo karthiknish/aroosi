@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
     // Build base Firestore query
     let base: FirebaseFirestore.Query = db
       .collection(COLLECTIONS.USERS)
-      .where("isProfileComplete", "==", true);
+      .where("isOnboardingComplete", "==", true);
 
     if (city && city !== "any") base = base.where("city", "==", city);
     if (country && country !== "any")
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     const snap = await query.get();
     const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
-      if (!total) total = docs.length + (cursor ? 0 : page * pageSize); // heuristic fallback
+    if (!total) total = docs.length + (cursor ? 0 : page * pageSize); // heuristic fallback
 
     const profiles = docs
       .filter((d) => !d.banned && !d.hiddenFromSearch)
@@ -190,7 +190,8 @@ export async function GET(request: NextRequest) {
           fullName: d.fullName || "",
           city: d.city,
           dateOfBirth: d.dateOfBirth,
-          isProfileComplete: d.isProfileComplete,
+          isOnboardingComplete: d.isOnboardingComplete,
+          profileCompletionPercentage: d.profileCompletionPercentage,
           hiddenFromSearch: d.hiddenFromSearch,
           boostedUntil: d.boostedUntil,
           subscriptionPlan: d.subscriptionPlan,

@@ -28,13 +28,8 @@ export default function ProfileCompletionGuard({
   requireComplete = false,
   redirectTo,
 }: GuardProps) {
-  const {
-    isLoaded,
-    isAuthenticated,
-    isProfileComplete,
-    isOnboardingComplete,
-    refreshUser,
-  } = useAuthContext();
+  const { isLoaded, isAuthenticated, isOnboardingComplete, refreshUser } =
+    useAuthContext();
   const router = useRouter();
 
   // Add robust diagnostics to trace guard-driven redirects
@@ -43,13 +38,18 @@ export default function ProfileCompletionGuard({
     console.info("[Guard] effect enter", {
       isLoaded,
       isAuthenticated,
-      isProfileComplete,
       isOnboardingComplete,
       requireComplete,
       redirectTo,
       path: typeof window !== "undefined" ? window.location.pathname : "(ssr)",
     });
-  }, [isLoaded, isAuthenticated, isProfileComplete, isOnboardingComplete, requireComplete, redirectTo]);
+  }, [
+    isLoaded,
+    isAuthenticated,
+    isOnboardingComplete,
+    requireComplete,
+    redirectTo,
+  ]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -86,11 +86,10 @@ export default function ProfileCompletionGuard({
 
       // For routes requiring completed profile, enforce completion
       if (requireComplete) {
-        const needsWizard = !isProfileComplete || !isOnboardingComplete;
+              const needsWizard = !isOnboardingComplete;
         if (needsWizard) {
           // eslint-disable-next-line no-console
           console.warn("[Guard] redirecting: profile incomplete", {
-            isProfileComplete,
             isOnboardingComplete,
             to: redirectTo || "/",
           });
@@ -109,7 +108,6 @@ export default function ProfileCompletionGuard({
   }, [
     isLoaded,
     isAuthenticated,
-    isProfileComplete,
     isOnboardingComplete,
     requireComplete,
     redirectTo,
@@ -124,7 +122,7 @@ export default function ProfileCompletionGuard({
   if (!isAuthenticated) {
     return null;
   }
-  if (requireComplete && (!isProfileComplete || !isOnboardingComplete)) {
+  if (requireComplete && !isOnboardingComplete) {
     return null;
   }
 

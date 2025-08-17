@@ -9,7 +9,6 @@ export interface ListProfilesOptions {
   sortDir: "asc" | "desc";
   banned: "true" | "false" | "all";
   plan: "all" | "free" | "premium" | "premiumPlus";
-  isProfileComplete: "all" | "true" | "false";
 }
 
 export interface ListProfilesResult {
@@ -19,8 +18,10 @@ export interface ListProfilesResult {
 
 // Firestore doesn't support arbitrary offset pagination efficiently; we use cursor-based pagination fallback.
 // For now keep simple offset approach for small admin datasets (<5k). If larger, add cursor implementation.
-export async function listProfiles(opts: ListProfilesOptions): Promise<ListProfilesResult> {
-  const { page, pageSize, search, sortBy, sortDir, banned, plan, isProfileComplete } = opts;
+export async function listProfiles(
+  opts: ListProfilesOptions
+): Promise<ListProfilesResult> {
+  const { page, pageSize, search, sortBy, sortDir, banned, plan } = opts;
   let query: FirebaseFirestore.Query = db.collection("users");
 
   // Basic filters
@@ -29,9 +30,6 @@ export async function listProfiles(opts: ListProfilesOptions): Promise<ListProfi
   }
   if (plan !== "all") {
     query = query.where("subscriptionPlan", "==", plan);
-  }
-  if (isProfileComplete !== "all") {
-    query = query.where("isProfileComplete", "==", isProfileComplete === "true");
   }
   // Search: naive approach on fullName or email (exact/startsWith). For startsWith we need range on lowercased field; assume we have stored fullNameLower.
   // If not present, do client-side filter post fetch limited to 500 docs.
@@ -74,27 +72,50 @@ export async function listProfiles(opts: ListProfilesOptions): Promise<ListProfi
     snapshot = { docs } as unknown as FirebaseFirestore.QuerySnapshot;
   }
 
-  const profiles = snapshot.docs.map((d: any) => ({ _id: d.id, ...(d.data() as any) })) as (Profile & { _id: string })[];
+  const profiles = snapshot.docs.map((d: any) => ({
+    _id: d.id,
+    ...(d.data() as any),
+  })) as (Profile & { _id: string })[];
 
   // Total count (expensive). For now count via aggregate if available; fallback to separate fetch capped at 10k.
   let total = profiles.length;
   try {
-    if (typeof (db as any).collectionGroup === "function" && (query as any).count) {
+    if (
+      typeof (db as any).collectionGroup === "function" &&
+      (query as any).count
+    ) {
       const agg = await (query as any).count().get();
       total = agg.data().count || total;
     } else {
       // fallback approximate
-      const countSnap = await db.collection("users").select().limit(10000).get();
+      const countSnap = await db
+        .collection("users")
+        .select()
+        .limit(10000)
+        .get();
       total = countSnap.size;
     }
   } catch {}
 
   // Post-filter search if simple fallback and search provided but no ordering used.
   if (search && !profiles.length) {
-    const altSnap = await db.collection("users").orderBy("createdAt", "desc").limit(200).get();
-  const all = altSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => ({ _id: d.id, ...(d.data() as any) })) as any[];
+    const altSnap = await db
+      .collection("users")
+      .orderBy("createdAt", "desc")
+      .limit(200)
+      .get();
+    const all = altSnap.docs.map(
+      (d: FirebaseFirestore.QueryDocumentSnapshot) => ({
+        _id: d.id,
+        ...(d.data() as any),
+      })
+    ) as any[];
     const lower = search.toLowerCase();
-    const filtered = all.filter(p => (p.fullName || "").toLowerCase().includes(lower) || (p.email || "").toLowerCase().includes(lower));
+    const filtered = all.filter(
+      (p) =>
+        (p.fullName || "").toLowerCase().includes(lower) ||
+        (p.email || "").toLowerCase().includes(lower)
+    );
     return { profiles: filtered.slice(0, pageSize), total: filtered.length };
   }
 

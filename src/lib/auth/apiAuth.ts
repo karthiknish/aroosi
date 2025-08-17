@@ -15,7 +15,6 @@ export interface AuthenticatedUser {
   profile: {
     id: string;
     fullName?: string;
-    isProfileComplete: boolean;
     isOnboardingComplete: boolean;
   } | null;
 }
@@ -48,17 +47,21 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     // Return user data with profile
     return {
       id: userId,
-  email: (userData.email as string) || "",
-  role: (userData.role as string) || "user",
-  emailVerified: !!userData.emailVerified,
-  createdAt: (userData.createdAt as number) || Date.now(),
-  fullName: (userData.fullName as string) || (userData.displayName as string) || undefined,
+      email: (userData.email as string) || "",
+      role: (userData.role as string) || "user",
+      emailVerified: !!userData.emailVerified,
+      createdAt: (userData.createdAt as number) || Date.now(),
+      fullName:
+        (userData.fullName as string) ||
+        (userData.displayName as string) ||
+        undefined,
       profile: userData
         ? {
             id: userId,
-    fullName: (userData.fullName as string) || undefined,
-    isProfileComplete: Boolean((userData.isProfileComplete as boolean) ?? false),
-    isOnboardingComplete: Boolean((userData.isOnboardingComplete as boolean) ?? false),
+            fullName: (userData.fullName as string) || undefined,
+            isOnboardingComplete: Boolean(
+              (userData.isOnboardingComplete as boolean) ?? false
+            ),
           }
         : null,
     };

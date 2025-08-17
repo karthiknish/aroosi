@@ -1,7 +1,7 @@
 import { Profile, ProfileFormValues } from "@/types/profile";
 import { doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 // NOTE: Client-side usage tracking for boosts removed; server is authoritative now.
-import { db } from "@/lib/firebaseClient";
+import { db } from "@/lib/firebase";
 import { showErrorToast } from "@/lib/ui/toast";
 
 // Types for API responses
@@ -12,9 +12,7 @@ type ApiResponse<T> = {
   status?: number;
 };
 
-type ProfileResponse = ApiResponse<Profile | null> & {
-  isProfileComplete?: boolean;
-};
+type ProfileResponse = ApiResponse<Profile | null>;
 
 // Helper function to handle API errors
 function handleApiError(error: unknown, context: string): ApiResponse<null> {
@@ -93,7 +91,6 @@ export async function fetchUserProfile(
         preferredGender: (profileData.preferredGender as any) || "any",
         profileImageIds: profileData.profileImageIds || [],
         profileImageUrls: profileData.profileImageUrls || [],
-        isProfileComplete: !!profileData.isProfileComplete,
         isOnboardingComplete: !!profileData.isOnboardingComplete,
         isApproved: profileData.isApproved,
         hideFromFreeUsers: profileData.hideFromFreeUsers,
@@ -117,7 +114,6 @@ export async function fetchUserProfile(
       return {
         success: true,
         data: normalized,
-        isProfileComplete: normalized.isProfileComplete,
       };
     } else {
       return { success: true, data: null, status: 404 };
@@ -222,7 +218,6 @@ export async function updateUserProfile(
     return {
       success: true,
       data: updatedProfile.data,
-      isProfileComplete: updatedProfile.data?.isProfileComplete,
     };
   } catch (error) {
     if (retries > 0) {
@@ -308,7 +303,7 @@ export async function submitProfile(
 
   const requestData = {
     ...profileData,
-    isProfileComplete: mode === "create" ? false : true,
+    // isOnboardingComplete is derived separately; do not set here
     updatedAt: Date.now(),
   };
 
@@ -325,7 +320,6 @@ export async function submitProfile(
     return {
       success: true,
       data: updatedProfile.data,
-      isProfileComplete: true,
     };
   } catch (error) {
     if (retries > 0) {
@@ -362,7 +356,6 @@ export async function getCurrentUserWithProfile(
     return {
       success: profileResponse.success,
       data: profileResponse.data,
-      isProfileComplete: profileResponse.data?.isProfileComplete,
       status: profileResponse.status,
       error: profileResponse.error,
     };

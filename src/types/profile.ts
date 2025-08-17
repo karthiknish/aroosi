@@ -50,8 +50,11 @@ export interface Profile {
   preferredGender: PreferredGender;
   profileImageIds?: string[];
   profileImageUrls?: string[];
-  isProfileComplete: boolean;
+  /** @deprecated Replaced by isOnboardingComplete + completion percentage */
+  isProfileComplete?: boolean;
   isOnboardingComplete: boolean;
+  /** Derived percentage (0-100) of profile completion */
+  profileCompletionPercentage?: number;
   isApproved?: boolean;
 
   hideFromFreeUsers?: boolean;
@@ -111,6 +114,7 @@ export interface ProfileFormValues {
   profileImageIds?: string[];
   isProfileComplete?: boolean;
   isOnboardingComplete?: boolean;
+  profileCompletionPercentage?: number;
 
   banned?: boolean;
   createdAt?: number;
@@ -124,7 +128,8 @@ export interface ProfileFormValues {
 }
 
 export interface ProfileContextType {
-  isProfileComplete: boolean;
+  /** @deprecated use profile?.isOnboardingComplete */
+  isProfileComplete?: boolean;
   isLoading: boolean;
   error: Error | null;
   refetchProfileStatus: () => void;

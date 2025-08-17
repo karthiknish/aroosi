@@ -225,11 +225,7 @@ export function ProfileImageUpload({
     }
   }, [mode, adminImages, userImages, authIsAdmin]);
 
-  useEffect(() => {
-    if (currentUserProfile && currentUserProfile.isProfileComplete) {
-      router.replace("/"); // Redirect to homepage instead of create-profile
-    }
-  }, [currentUserProfile, router]);
+  // ...existing code...
 
   const handleStartUpload = () => setIsUploadingFile(true);
 

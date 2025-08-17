@@ -43,9 +43,23 @@ apps/web/test-results/
 test-results/**/*.md
 playwright-report/**/*.md
 
+
 # misc
 .DS_Store
 *.pem
+# Firebase sensitive files
+firebase-service-account.json
+serviceAccountKey.json
+firebase.json
+.firebaserc
+firebase/
+.firebase/
+# Firestore export/import
+firestore-export.json
+firestore-import.json
+# Any other service account or secret files
+**/serviceAccount*.json
+**/firebase-service-account*.json
 
 # debug
 npm-debug.log*

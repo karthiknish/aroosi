@@ -5,7 +5,6 @@ export { useFirebaseAuth as useAuth, useAuthContext } from "@/components/Firebas
 export interface AuthUser {
   id: string;
   email: string;
-  isProfileComplete: boolean;
   isOnboardingComplete: boolean;
 }
 
@@ -15,6 +14,5 @@ export interface AuthState {
   isSignedIn: boolean;
   isLoading: boolean;
   token: string | null;
-  isProfileComplete: boolean;
   isOnboardingComplete: boolean;
 }

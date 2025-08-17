@@ -1,5 +1,8 @@
 import { db, COLLECTIONS } from '@/lib/userProfile';
-import { calculateProfileCompletion } from '@/lib/userProfile/calculations';
+import {
+  calculateProfileCompletion,
+  isOnboardingEssentialComplete,
+} from "@/lib/userProfile/calculations";
 import type { UserProfile } from '@/lib/userProfile';
 
 // Centralized create or update logic for user profiles
@@ -22,6 +25,7 @@ export async function createOrUpdateUserProfile(
     }
   }
   const profileCompletionPercentage = calculateProfileCompletion({ ...data, age });
+  const onboardingDone = isOnboardingEssentialComplete({ ...data });
   const userProfile: UserProfile = {
     id: uid,
     uid,
@@ -29,9 +33,8 @@ export async function createOrUpdateUserProfile(
     emailVerified: data.emailVerified || false,
     createdAt: data.createdAt || now,
     updatedAt: now,
-    role: data.role || 'user',
-    isProfileComplete: data.isProfileComplete || false,
-    isOnboardingComplete: data.isOnboardingComplete || false,
+    role: data.role || "user",
+    isOnboardingComplete: onboardingDone,
     profileCompletionPercentage,
     fullName: data.fullName,
     displayName: data.displayName,
@@ -118,7 +121,7 @@ export async function createOrUpdateUserProfile(
     disabled: data.disabled,
     banReason: data.banReason,
     banExpiresAt: data.banExpiresAt,
-    banned: data.banned
+    banned: data.banned,
   };
   await userRef.set(userProfile, { merge: true });
   return userProfile;
@@ -141,7 +144,14 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
   const existingProfile = existingDoc.exists ? ( { id: existingDoc.id, ...existingDoc.data() } as UserProfile) : undefined;
   const merged = { ...existingProfile, ...data, age: age || data.age || existingProfile?.age, updatedAt: now };
   const profileCompletionPercentage = calculateProfileCompletion(merged);
-  const updateData = { ...data, age: age || data.age, updatedAt: now, profileCompletionPercentage };
+  const onboardingDone = isOnboardingEssentialComplete(merged);
+  const updateData = {
+    ...data,
+    age: age || data.age,
+    updatedAt: now,
+    profileCompletionPercentage,
+    ...(onboardingDone ? { isOnboardingComplete: true } : {}),
+  };
   await userRef.set(updateData, { merge: true });
   const updatedDoc = await userRef.get();
   return { id: updatedDoc.id, ...updatedDoc.data() } as UserProfile;
