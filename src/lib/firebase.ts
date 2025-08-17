@@ -4,17 +4,28 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Firebase configuration now sourced from environment variables to avoid hardcoding secrets.
+// NEXT_PUBLIC_ prefix exposes only non-sensitive values required for client SDK initialization.
+// Ensure these are defined in your .env.local (and not committed) and matching values in deployment env.
 const firebaseConfig = {
-  apiKey: "AIzaSyAE5mV2fPvNFnA5svhn0xYTxGOunPWpriI",
-  authDomain: "aroosi-project.firebaseapp.com",
-  projectId: "aroosi-project",
-  storageBucket: "aroosi-project.firebasestorage.app",
-  messagingSenderId: "762041256503",
-  appId: "1:762041256503:web:cad42e297e8e1a29ac8db2",
-  measurementId: "G-LW4V9JBD39"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+// Basic runtime guard (dev only) to surface misconfiguration early.
+if (process.env.NODE_ENV !== "production") {
+  for (const [k, v] of Object.entries(firebaseConfig)) {
+    if (!v) {
+      // eslint-disable-next-line no-console
+      console.warn(`[firebase] Missing env var for ${k}`);
+    }
+  }
+}
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

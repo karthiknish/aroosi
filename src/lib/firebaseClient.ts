@@ -23,6 +23,15 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+if (process.env.NODE_ENV !== "production") {
+  for (const [k, v] of Object.entries(firebaseConfig)) {
+    if (!v) {
+      // eslint-disable-next-line no-console
+      console.warn(`[firebaseClient] Missing env var for ${k}`);
+    }
+  }
+}
+
 // Initialize Firebase
 let app;
 if (!getApps().length) {
