@@ -49,6 +49,7 @@ export default function ManagePlansPage() {
           }
         }
       } catch (e) {
+        console.error("Failed to load plans:", e);
         if (mounted) {
           setPlans([{ id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false }]);
           setFetchError(e instanceof Error ? e.message : "Failed to load plans");
@@ -101,14 +102,18 @@ export default function ManagePlansPage() {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
-      {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-gradient-to-tr from-blue-300 to-indigo-300 rounded-full opacity-15 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-amber-200 to-yellow-200 rounded-full opacity-10 blur-2xl" />
-      </div>
+      {/* Decorative background elements for visual appeal */}
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      {/* Subtle SVG pattern background for texture */}
+      <div
+        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2V6h4V4H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      ></div>
 
-      <div className="relative pt-32 pb-16 px-4">
+      <div className="relative pt-32 pb-16 px-4 z-10">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-20">

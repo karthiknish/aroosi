@@ -12,12 +12,20 @@ import {
 export const useSubscriptionStatus = (_providedToken?: string) => {
   // Cookie-based auth; no token needed
   useAuthContext();
+  // If user was just redirected from checkout success we want ultra-fresh data
+  let quickRefresh = false;
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    quickRefresh = params.get("checkout") === "success";
+  }
   return useQuery({
     queryKey: ["subscription", "status"],
-    // Pass undefined to satisfy types while ignoring token on server
     queryFn: () => subscriptionAPI.getStatus(undefined),
     enabled: true,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: quickRefresh ? 5_000 : 5 * 60 * 1000, // 5s right after success, else 5m
+    gcTime: 10 * 60 * 1000,
+    refetchInterval: quickRefresh ? 5_000 : false,
+    refetchOnWindowFocus: quickRefresh,
   });
 };
 

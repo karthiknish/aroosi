@@ -38,7 +38,26 @@ export const buildBlock = (blockerId: string, blockedId: string, reason?: string
 
 // quickPicks
 export interface FSQuickPick { id?: string; userId: string; candidateUserId: string; createdAt: TimestampMillis; rank: number; algorithm: string; expiresAt?: TimestampMillis; }
-export const buildQuickPick = (userId: string, candidateUserId: string, rank: number, algorithm: string, ttlMs?: number): FSQuickPick => { const now=Date.now(); return { userId, candidateUserId, createdAt: now, rank, algorithm, expiresAt: ttlMs?now+ttlMs:undefined }; };
+export const buildQuickPick = (
+  userId: string,
+  candidateUserId: string,
+  rank: number,
+  algorithm: string,
+  ttlMs?: number
+): FSQuickPick => {
+  const now = Date.now();
+  const base: FSQuickPick = {
+    userId,
+    candidateUserId,
+    createdAt: now,
+    rank,
+    algorithm,
+  };
+  if (ttlMs && ttlMs > 0) {
+    (base as any).expiresAt = now + ttlMs;
+  }
+  return base;
+};
 
 // engagementNotes
 export interface FSEngagementNote { id?: string; userId: string; actorUserId: string; note: string; createdAt: TimestampMillis; category?: string; }
@@ -54,7 +73,28 @@ export const buildUsageMonthly = (userId: string, feature: string, month: string
 
 // recommendations items (subcollection)
 export interface FSRecommendationItem { id?: string; userId: string; candidateUserId: string; score: number; reasons?: string[]; createdAt: TimestampMillis; expiresAt?: TimestampMillis; algorithm: string; }
-export const buildRecommendationItem = (userId: string, candidateUserId: string, score: number, algorithm: string, reasons?: string[], ttlMs?: number): FSRecommendationItem => { const now=Date.now(); return { userId, candidateUserId, score, algorithm, reasons, createdAt: now, expiresAt: ttlMs?now+ttlMs:undefined }; };
+export const buildRecommendationItem = (
+  userId: string,
+  candidateUserId: string,
+  score: number,
+  algorithm: string,
+  reasons?: string[],
+  ttlMs?: number
+): FSRecommendationItem => {
+  const now = Date.now();
+  const base: FSRecommendationItem = {
+    userId,
+    candidateUserId,
+    score,
+    algorithm,
+    reasons,
+    createdAt: now,
+  } as FSRecommendationItem;
+  if (ttlMs && ttlMs > 0) {
+    (base as any).expiresAt = now + ttlMs;
+  }
+  return base;
+};
 
 // subscriptions
 export interface FSSubscription { id?: string; userId: string; plan: string; status: 'active'|'past_due'|'canceled'|'incomplete'|'trialing'|'expired'; startedAt: TimestampMillis; currentPeriodEnd: TimestampMillis; cancelAtPeriodEnd?: boolean; updatedAt: TimestampMillis; provider?: string; providerSubscriptionId?: string; trialEndsAt?: TimestampMillis; meta?: Record<string, unknown>; }

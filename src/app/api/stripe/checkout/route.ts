@@ -87,6 +87,11 @@ export async function POST(req: NextRequest) {
       planId === "premium"
         ? SUBSCRIPTION_PLANS.PREMIUM?.priceId
         : SUBSCRIPTION_PLANS.PREMIUM_PLUS?.priceId;
+    const priceIdSource = envPriceId
+      ? "env"
+      : constPriceId
+        ? "constants"
+        : "none";
     const priceId = envPriceId || constPriceId;
     if (!priceId) {
       console.error(
@@ -138,9 +143,17 @@ export async function POST(req: NextRequest) {
     // Validate email if provided
     const customerEmail =
       userDoc.email && isValidEmail(userDoc.email) ? userDoc.email : undefined;
-    console.log(
-      `Creating Stripe checkout session for user ${userId}, plan: ${planId}`
-    );
+    console.info("stripe.checkout.prepare", {
+      userId,
+      planId,
+      priceId,
+      priceIdSource,
+      hasStripeCustomerId: !!userDoc.stripeCustomerId,
+      email: userDoc.email,
+      baseUrl,
+      successUrlOverride: !!successUrlOverride,
+      cancelUrlOverride: !!cancelUrlOverride,
+    });
     // Create Stripe checkout session with security considerations
     // Reuse existing customer if known
     const stripeSession = await stripe.checkout.sessions.create({
@@ -172,19 +185,27 @@ export async function POST(req: NextRequest) {
       },
     });
     if (!stripeSession || !stripeSession.url) {
-      console.error("Failed to create Stripe checkout session");
+      console.error("stripe.checkout.failed_to_create", { userId, planId });
       return errorResponse("Failed to create checkout session", 500);
     }
-    console.log(
-      `Stripe checkout session created: ${stripeSession.id} for user ${userId}`
-    );
+    console.info("stripe.checkout.created", {
+      sessionId: stripeSession.id,
+      userId,
+      planId,
+      priceId,
+      priceIdSource,
+      url: stripeSession.url,
+    });
 
     return successResponse({
       url: stripeSession.url,
       sessionId: stripeSession.id,
     });
   } catch (error) {
-    console.error("Error in Stripe checkout:", error);
+    console.error("stripe.checkout.error", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     logSecurityEvent(
       "VALIDATION_FAILED",
       {

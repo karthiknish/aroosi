@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
     const ALLOWED_EVENT_TYPES: Readonly<Set<string>> = new Set([
       "checkout.session.completed",
       "customer.subscription.deleted",
-      // Add more when explicitly implemented
+      "customer.subscription.updated",
+      "invoice.paid",
     ]);
     const sig = req.headers.get("stripe-signature");
     if (!sig) {
@@ -214,7 +215,11 @@ export async function POST(req: NextRequest) {
           | "premium"
           | "premiumPlus"
           | undefined;
-        const email = session.metadata.email;
+        // Prefer explicit metadata email; fallback to session.customer_email then customer_details.email
+        const email =
+          session.metadata.email ||
+          (session as any).customer_email ||
+          (session as any).customer_details?.email;
 
         if (!planId || !email) {
           console.warn("Stripe webhook missing metadata in checkout session", {
@@ -446,6 +451,146 @@ export async function POST(req: NextRequest) {
             correlationId,
             statusCode: 500,
             durationMs: Date.now() - startedAt,
+          });
+        }
+        break;
+      }
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        if (!sub || !sub.id) {
+          console.warn("Stripe webhook invalid subscription.updated object", {
+            scope: "stripe.webhook",
+            type: "validation_error",
+            correlationId,
+          });
+          break;
+        }
+        const planPrice = sub.items?.data?.[0]?.price;
+        const planNickname = (
+          planPrice?.nickname ||
+          planPrice?.id ||
+          ""
+        ).toLowerCase();
+        // Attempt to infer our internal planId from price nickname/id mapping
+        let planId: "premium" | "premiumPlus" | undefined;
+        if (/(premium_plus|premium\+|plus)/.test(planNickname))
+          planId = "premiumPlus";
+        else if (/premium/.test(planNickname)) planId = "premium";
+        // Accept metadata override if present
+        if (
+          sub.metadata?.planId &&
+          ["premium", "premiumPlus"].includes(sub.metadata.planId)
+        ) {
+          planId = sub.metadata.planId as any;
+        }
+        const email = (sub.metadata?.email || sub.metadata?.userEmail) as
+          | string
+          | undefined;
+        if (!email) {
+          console.warn("Stripe subscription.updated missing email metadata", {
+            subscriptionId: sub.id,
+            correlationId,
+          });
+        }
+        try {
+          if (email && planId) {
+            const snap = await db
+              .collection(COLLECTIONS.USERS)
+              .where("email", "==", email.toLowerCase())
+              .limit(1)
+              .get();
+            if (!snap.empty) {
+              await snap.docs[0].ref.set(
+                {
+                  subscriptionPlan: planId,
+                  subscriptionExpiresAt: sub.current_period_end
+                    ? sub.current_period_end * 1000
+                    : null,
+                  stripeSubscriptionId: sub.id,
+                  stripeCustomerId:
+                    typeof sub.customer === "string" ? sub.customer : undefined,
+                  updatedAt: Date.now(),
+                },
+                { merge: true }
+              );
+              console.info("Stripe subscription.updated synced", {
+                correlationId,
+                subscriptionId: sub.id,
+                planId,
+              });
+            }
+          }
+          await markProcessed(event.id, event.type);
+        } catch (e) {
+          console.error("Stripe subscription.updated Firestore sync failed", {
+            correlationId,
+            subscriptionId: sub.id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+        break;
+      }
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+        if (!invoice || !invoice.id) {
+          console.warn("Stripe webhook invalid invoice.paid object", {
+            correlationId,
+          });
+          break;
+        }
+        const subscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : undefined;
+        if (!subscriptionId) break;
+        try {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          const invoiceAny: any = invoice; // widen for optional customer_details in some API versions
+          const email = (sub.metadata?.email ||
+            invoice.customer_email ||
+            invoiceAny.customer_details?.email) as string | undefined;
+          let planId: "premium" | "premiumPlus" | undefined = sub.metadata
+            ?.planId as any;
+          if (!planId) {
+            const priceNickname =
+              sub.items?.data?.[0]?.price?.nickname?.toLowerCase() || "";
+            if (/(premium_plus|premium\+|plus)/.test(priceNickname))
+              planId = "premiumPlus";
+            else if (/premium/.test(priceNickname)) planId = "premium";
+          }
+          if (email && planId) {
+            const snap = await db
+              .collection(COLLECTIONS.USERS)
+              .where("email", "==", email.toLowerCase())
+              .limit(1)
+              .get();
+            if (!snap.empty) {
+              await snap.docs[0].ref.set(
+                {
+                  subscriptionPlan: planId,
+                  subscriptionExpiresAt: sub.current_period_end
+                    ? sub.current_period_end * 1000
+                    : null,
+                  stripeSubscriptionId: sub.id,
+                  stripeCustomerId:
+                    typeof sub.customer === "string" ? sub.customer : undefined,
+                  updatedAt: Date.now(),
+                },
+                { merge: true }
+              );
+              console.info("Stripe invoice.paid subscription synced", {
+                correlationId,
+                subscriptionId: sub.id,
+                planId,
+              });
+            }
+          }
+          await markProcessed(event.id, event.type);
+        } catch (e) {
+          console.error("Stripe invoice.paid sync failed", {
+            correlationId,
+            subscriptionId,
+            error: e instanceof Error ? e.message : String(e),
           });
         }
         break;

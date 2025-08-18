@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import {
+  successResponse,
+  errorResponse,
+  errorResponsePublic,
+} from "@/lib/apiResponse";
 import {
   COL_USAGE_EVENTS,
   COL_USAGE_MONTHLY,
@@ -109,12 +113,16 @@ export async function POST(req: NextRequest) {
       const monthlyMap = await getMonthlyUsageMap(auth.userId, month);
       currentUsage = monthlyMap[feature] || 0;
     }
-    if (limit !== -1 && currentUsage >= limit)
-      return errorResponse("Feature usage limit reached", 403, {
+    if (limit !== -1 && currentUsage >= limit) {
+      // Return a public-facing descriptive error so client logic can detect "limit" condition even in production.
+      return errorResponsePublic("Feature usage limit reached", 403, {
+        feature,
+        plan,
         limit,
         used: currentUsage,
         remaining: 0,
       });
+    }
     // Record event
     const event = buildUsageEvent(auth.userId, feature, metadata);
     // For profile_view, if same target already viewed today, we do not record a duplicate event

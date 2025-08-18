@@ -10,7 +10,7 @@ import {
   useSubscriptionActions,
   useSubscriptionGuard,
 } from "@/hooks/useSubscription";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
@@ -18,6 +18,7 @@ import {
   openBillingPortal,
 } from "@/lib/utils/stripeUtil";
 import { motion } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Crown,
   Zap,
@@ -81,6 +82,32 @@ export default function SubscriptionPage() {
   } = useSubscriptionActions();
   const { status, isPremium, isPremiumPlus } = useSubscriptionGuard();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+
+  // After returning from Stripe checkout (?checkout=success) aggressively refetch subscription status
+  // to reflect plan upgrade without waiting for default staleTime (webhook latency buffer).
+  React.useEffect(() => {
+    if (!searchParams) return;
+    const checkoutState = searchParams.get("checkout");
+    if (checkoutState !== "success") return;
+    let attempts = 0;
+    const maxAttempts = 6; // up to ~12s (6 * 2s)
+    const initialPlan = status?.plan || "free";
+    const interval = setInterval(() => {
+      attempts++;
+      // Force refetch
+      queryClient.invalidateQueries({ queryKey: ["subscription", "status"] });
+      const latest: any = queryClient.getQueryData(["subscription", "status"]);
+      const latestPlan = latest?.plan;
+      if (latestPlan && latestPlan !== "free" && latestPlan !== initialPlan) {
+        clearInterval(interval);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [searchParams, queryClient, status?.plan]);
 
   const handleUpgrade = async (tier: "premium" | "premiumPlus") => {
     // Only allow direct upgrade if on free plan (for trial/admin/testing)
