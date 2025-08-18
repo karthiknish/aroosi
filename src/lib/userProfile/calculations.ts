@@ -82,20 +82,35 @@ export function calculateProfileCompletion(
 }
 
 // Helper to derive onboarding completion from same core required subset (single source of truth)
+// Canonical list of required fields for declaring onboarding complete.
+// Keep this single source of truth in sync with UI onboarding forms.
+export const ONBOARDING_REQUIRED_FIELDS: (keyof UserProfile)[] = [
+  'fullName',
+  'dateOfBirth',
+  'gender',
+  'profileFor',
+  'phoneNumber',
+  'country',
+  'city',
+  'maritalStatus',
+  'education',
+  'occupation',
+  'religion',
+  'aboutMe',
+  // height handled specially (height or heightCm acceptable)
+];
+
 export function isOnboardingEssentialComplete(
   profile: Partial<UserProfile>
 ): boolean {
-  const essentials: (keyof UserProfile)[] = [
-    "fullName",
-    "dateOfBirth",
-    "gender",
-    "city",
-    "country",
-    "maritalStatus",
-    "education",
-    "occupation",
-    "religion",
-    "aboutMe",
-  ];
-  return essentials.every((f) => isNonEmpty((profile as any)[f]));
+  // All listed fields must be non-empty except height which we check separately.
+  for (const f of ONBOARDING_REQUIRED_FIELDS) {
+    if (!isNonEmpty((profile as any)[f])) return false;
+  }
+  // Height acceptance: textual height OR numeric heightCm.
+  const hasHeight =
+    isNonEmpty((profile as any).height) ||
+    isNonEmpty((profile as any).heightCm);
+  if (!hasHeight) return false;
+  return true;
 }

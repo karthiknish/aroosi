@@ -28,23 +28,14 @@ import { UserProfile } from "@/lib/userProfile";
 import {
   calculateProfileCompletion,
   isOnboardingEssentialComplete,
+  ONBOARDING_REQUIRED_FIELDS,
 } from "@/lib/userProfile/calculations";
 
 // Minimal required fields for onboarding completion
 const REQUIRED_ONBOARDING_FIELDS: (keyof ProfileUpdates)[] = [
-  "fullName",
-  "dateOfBirth",
-  "gender",
-  "profileFor",
-  "phoneNumber",
-  "country",
-  "city",
-  "height",
-  "maritalStatus",
-  "education",
-  "occupation",
-  "aboutMe",
-  "religion",
+  ...(ONBOARDING_REQUIRED_FIELDS as (keyof ProfileUpdates &
+    keyof typeof ONBOARDING_REQUIRED_FIELDS)[]),
+  "height", // ensure height present (calculations also allow heightCm)
 ];
 
 // Deprecated local implementation replaced by shared calculation helper

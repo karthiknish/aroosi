@@ -128,10 +128,9 @@ export async function fetchProfileSearchResults({
     if (code === "ONBOARDING_INCOMPLETE") {
       showErrorToast("Finish onboarding to start searching.");
       try {
-        // Redirect user to onboarding (assumed route)
-        // Using window.location to avoid importing client router in non-react context if SSR skipped.
+        // Redirect user to home (acts as onboarding entry) instead of dedicated /onboarding route.
         if (typeof window !== "undefined") {
-          window.location.href = "/onboarding";
+          window.location.href = "/";
         }
       } catch {}
       return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
