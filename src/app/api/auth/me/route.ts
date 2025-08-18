@@ -53,6 +53,11 @@ export async function GET(request: Request) {
       userData = await getFirebaseUser(userId);
     }
 
+    const signInProvider = (decodedToken as any)?.firebase?.sign_in_provider;
+    const exp = (decodedToken as any)?.exp; // seconds since epoch
+    const nowSec = Math.floor(Date.now() / 1000);
+    const secondsUntilExpiry = typeof exp === "number" ? exp - nowSec : null;
+
     return NextResponse.json(
       {
         user: {
@@ -62,6 +67,8 @@ export async function GET(request: Request) {
           emailVerified: userData.emailVerified || false,
           createdAt: userData.createdAt || Date.now(),
           fullName: userData.fullName || userData.displayName || undefined,
+          signInProvider: signInProvider || null,
+          tokenExpiresInSeconds: secondsUntilExpiry,
           profile: userData
             ? {
                 id: userId,

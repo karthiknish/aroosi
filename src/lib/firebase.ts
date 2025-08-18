@@ -5,6 +5,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   onAuthStateChanged,
+  onIdTokenChanged,
   getIdToken,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -88,7 +89,10 @@ export async function setAuthTokenCookie() {
       try {
         if (user) {
           const token = await getIdToken(user, true);
-          document.cookie = `firebaseAuthToken=${token}; path=/;`;
+          const baseDomain = process.env.NEXT_PUBLIC_COOKIE_BASE_DOMAIN?.trim(); // optional, non-HttpOnly client write
+          document.cookie =
+            `firebaseAuthToken=${token}; path=/;` +
+            (baseDomain ? ` domain=${baseDomain};` : "");
         } else {
           document.cookie = `firebaseAuthToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         }
@@ -100,6 +104,35 @@ export async function setAuthTokenCookie() {
         resolve();
       }
     });
+  });
+}
+
+// Continuous token refresh: keep firebaseAuthToken cookie up to date (ID tokens ~1h lifetime)
+// This listener updates the cookie whenever Firebase rotates the ID token.
+if (typeof window !== "undefined") {
+  let lastSet: string | null = null;
+  onIdTokenChanged(auth, async (user) => {
+    try {
+      if (!user) {
+        if (lastSet !== null) {
+          document.cookie = `firebaseAuthToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          lastSet = null;
+        }
+        return;
+      }
+      // Force refresh if token close to expiry or every 50 minutes
+      const token = await user.getIdToken(/* forceRefresh */ false);
+      if (token && token !== lastSet) {
+        const baseDomain = process.env.NEXT_PUBLIC_COOKIE_BASE_DOMAIN?.trim();
+        document.cookie =
+          `firebaseAuthToken=${token}; path=/;` +
+          (baseDomain ? ` domain=${baseDomain};` : "");
+        lastSet = token;
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[firebase] Failed refreshing ID token cookie", e);
+    }
   });
 }
 

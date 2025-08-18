@@ -24,12 +24,14 @@ export const POST = async (req: NextRequest) => {
     }
     // Set session cookie
     const cookieStore = await cookies();
+    const cookieDomain = process.env.COOKIE_BASE_DOMAIN?.trim(); // e.g. '.aroosi.app'
     cookieStore.set("firebaseAuthToken", credential, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     });
     // Optionally fetch user profile
     const userData = await getFirebaseUser(decoded.uid);

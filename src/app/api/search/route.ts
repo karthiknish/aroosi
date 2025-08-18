@@ -111,7 +111,9 @@ export async function GET(request: NextRequest) {
       .collection(COLLECTIONS.USERS)
       .where("isOnboardingComplete", "==", true);
 
-    if (city && !isAny(city)) base = base.where("city", "==", city);
+    // City now handled as case-insensitive substring filter AFTER fetch to allow partial matches.
+    // (Previously exact equality in Firestore. This change broadens match capability.)
+    const cityFilter = city && !isAny(city) ? city.toLowerCase() : undefined;
     if (country && !isAny(country)) base = base.where("country", "==", country);
     if (ethnicity && !isAny(ethnicity))
       base = base.where("ethnicity", "==", ethnicity);
@@ -119,16 +121,15 @@ export async function GET(request: NextRequest) {
       base = base.where("motherTongue", "==", motherTongue);
     if (language && !isAny(language))
       base = base.where("language", "==", language); // field stored as 'language' if present
-    if (typeof ageMin === "number") base = base.where("age", ">=", ageMin);
-    if (typeof ageMax === "number") base = base.where("age", "<=", ageMax);
+    // Age filtering now handled in-memory using derived age from dateOfBirth (supports profiles lacking precomputed age field).
+    // We intentionally skip Firestore inequality filters on 'age' to avoid excluding documents missing 'age'.
     // Apply preferred gender filter: when viewer specifies a preference other than 'any'
     if (preferredGender && preferredGender !== "any") {
       base = base.where("gender", "==", preferredGender);
     }
 
     // Determine if we have inequality filters (Firestore requires first orderBy on that field)
-    const hasAgeInequality =
-      typeof ageMin === "number" || typeof ageMax === "number";
+    const hasAgeInequality = false; // we removed direct Firestore age inequality filters (see note above)
 
     // Composite ordering migration:
     // We now attempt to push the answeredIcebreakersCount weighting into Firestore ordering
@@ -328,7 +329,28 @@ export async function GET(request: NextRequest) {
         })
       );
       let filtered = all.filter((d: any) => {
-        if (city && city !== "any" && d.city !== city) return false;
+        const computeAge = (): number | null => {
+          if (typeof d.age === "number" && !Number.isNaN(d.age)) return d.age;
+          const dob = d.dateOfBirth;
+          if (!dob) return null;
+          let dt: Date | null = null;
+          if (typeof dob === "number") dt = new Date(dob);
+          else if (typeof dob === "string") {
+            const parsed = Date.parse(dob);
+            if (!Number.isNaN(parsed)) dt = new Date(parsed);
+          }
+          if (!dt) return null;
+          const ageMs = Date.now() - dt.getTime();
+          if (ageMs <= 0) return null;
+          return Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
+        };
+        if (
+          cityFilter &&
+          (!d.city ||
+            typeof d.city !== "string" ||
+            !d.city.toLowerCase().includes(cityFilter))
+        )
+          return false;
         if (country && country !== "any" && d.country !== country) return false;
         if (ethnicity && ethnicity !== "any" && d.ethnicity !== ethnicity)
           return false;
@@ -340,16 +362,14 @@ export async function GET(request: NextRequest) {
           return false;
         if (language && language !== "any" && d.language !== language)
           return false;
-        if (
-          typeof ageMin === "number" &&
-          (typeof d.age !== "number" || d.age < ageMin)
-        )
-          return false;
-        if (
-          typeof ageMax === "number" &&
-          (typeof d.age !== "number" || d.age > ageMax)
-        )
-          return false;
+        if (typeof ageMin === "number") {
+          const a = computeAge();
+          if (a === null || a < ageMin) return false;
+        }
+        if (typeof ageMax === "number") {
+          const a = computeAge();
+          if (a === null || a > ageMax) return false;
+        }
         if (
           preferredGender &&
           preferredGender !== "any" &&
@@ -379,7 +399,62 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (!total) total = docs.length + (cursor ? 0 : page * pageSize); // heuristic fallback
+    // Apply city substring filtering for primary query path (fallback already handled it)
+    if (cityFilter) {
+      docs = docs.filter(
+        (d: any) =>
+          d.city &&
+          typeof d.city === "string" &&
+          d.city.toLowerCase().includes(cityFilter)
+      );
+    }
+
+    // Apply city substring filtering for primary query path (fallback already handled it)
+    if (cityFilter) {
+      docs = docs.filter(
+        (d: any) =>
+          d.city &&
+          typeof d.city === "string" &&
+          d.city.toLowerCase().includes(cityFilter)
+      );
+    }
+
+    // Extra age filtering pass for primary query results when age constraints active
+    if (typeof ageMin === "number" || typeof ageMax === "number") {
+      const now = Date.now();
+      docs = docs.filter((d: any) => {
+        let derived: number | null = null;
+        if (typeof d.age === "number" && !Number.isNaN(d.age)) {
+          derived = d.age;
+        } else if (d.dateOfBirth) {
+          let dt: Date | null = null;
+          if (typeof d.dateOfBirth === "number") dt = new Date(d.dateOfBirth);
+          else if (typeof d.dateOfBirth === "string") {
+            const parsed = Date.parse(d.dateOfBirth);
+            if (!Number.isNaN(parsed)) dt = new Date(parsed);
+          }
+          if (dt) {
+            const ageMs = now - dt.getTime();
+            if (ageMs > 0)
+              derived = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
+          }
+        }
+        if (derived === null) return false; // Exclude if cannot determine age while filtering
+        if (typeof ageMin === "number" && derived < ageMin) return false;
+        if (typeof ageMax === "number" && derived > ageMax) return false;
+        return true;
+      });
+    }
+
+    if (
+      !total ||
+      cityFilter ||
+      typeof ageMin === "number" ||
+      typeof ageMax === "number"
+    ) {
+      // Recalculate approximate total when using substring filter or if total unset
+      total = docs.length + (cursor ? 0 : page * pageSize);
+    }
 
     // Apply in-memory weighting ONLY if Firestore ordering by answeredIcebreakersCount was not applied
     if (!primaryAnsweredOrderingApplied) {
@@ -396,10 +471,8 @@ export async function GET(request: NextRequest) {
           if (bc !== ac) return bc - ac; // higher count first
           return 0; // keep original relative order (already by recency)
         });
-      } catch (e) {
-      }
+      } catch (e) {}
     }
-
 
     const profiles = docs
       .filter((d) => !d.banned && !d.hiddenFromSearch)

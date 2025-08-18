@@ -46,3 +46,17 @@ export const errorResponse = (
     }
   );
 };
+
+// Public variant: always expose provided message (already user-friendly)
+export const errorResponsePublic = (
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>
+) =>
+  new Response(
+    JSON.stringify({ success: false, error: message, ...(extra ?? {}) }),
+    {
+      status,
+      headers: { "Content-Type": "application/json", ...SECURITY_HEADERS },
+    }
+  );

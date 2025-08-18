@@ -10,7 +10,7 @@ import {
   applySecurityHeaders,
   validateSecurityRequirements,
 } from "@/lib/utils/securityHeaders";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { successResponse, errorResponse, errorResponsePublic } from "@/lib/apiResponse";
 
 const toggleSchema = z.object({ toUserId: z.string().min(1) });
 
@@ -68,14 +68,14 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
   const parsed = toggleSchema.safeParse(body);
   if (!parsed.success) {
     return applySecurityHeaders(
-      errorResponse("Validation failed", 422, {
-        issues: parsed.error.flatten(),
-      })
+      errorResponsePublic("Invalid request data", 422)
     );
   }
   const { toUserId } = parsed.data;
   if (toUserId === user.id)
-    return applySecurityHeaders(errorResponse("Cannot shortlist self", 400));
+    return applySecurityHeaders(
+      errorResponsePublic("You can't shortlist yourself", 400)
+    );
   try {
     const existingSnap = await db
       .collection("shortlists")
@@ -104,7 +104,11 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
         .get();
       if (countSnap.size >= limit) {
         return applySecurityHeaders(
-          errorResponse("Shortlist limit reached", 400, { limit })
+          errorResponsePublic(
+            "You've reached your shortlist limit. Upgrade your plan to add more.",
+            400,
+            { limit }
+          )
         );
       }
     }
@@ -156,7 +160,15 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       successResponse({ success: true, added: true, notified: tokens.length })
     );
   } catch (e: any) {
-    return applySecurityHeaders(errorResponse(e?.message || "Failed", 500));
+    // Map common Firestore / permission issues to user-friendly messages
+    const raw = (e?.message || "").toLowerCase();
+    let friendly = "Couldn't update shortlist. Please try again.";
+    if (raw.includes("permission") || raw.includes("missing or insufficient permissions")) {
+      friendly = "You don't have permission to do that.";
+    } else if (raw.includes("quota") || raw.includes("resource exhausted")) {
+      friendly = "Shortlist temporarily unavailable. Please try again soon.";
+    }
+    return applySecurityHeaders(errorResponsePublic(friendly, 500));
   }
 });
 
