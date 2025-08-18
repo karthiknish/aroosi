@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/firebaseAdmin";
+import { FieldPath } from "firebase-admin/firestore";
 import { requireAuth, AuthError } from "@/lib/auth/requireAuth"; // TODO: replace with Firebase-only auth implementation
 import {
   applySecurityHeaders,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/utils/securityHeaders";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { buildQuickPick, COL_QUICK_PICKS } from "@/lib/firestoreSchema";
+import { getCorrelationIdFromHeaders, logInfo, logWarn, logError, errorMeta } from "@/lib/log";
 
 // Firestore schema notes:
 // quickPicks collection stores documents of shape FSQuickPick (see firestoreSchema.ts)
@@ -67,7 +69,11 @@ async function fetchQuickPickProfiles(userIds: string[]) {
   const chunkSize = 10;
   for (let i = 0; i < userIds.length; i += chunkSize) {
     const slice = userIds.slice(i, i + chunkSize);
-    const snap = await db.collection("users").where("_id", "in", slice).get();
+    // Use document ID field for lookup instead of a non-existent "_id" field
+    const snap = await db
+      .collection("users")
+      .where(FieldPath.documentId(), "in", slice)
+      .get();
     snap.docs.forEach(
       (
         d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
@@ -78,31 +84,36 @@ async function fetchQuickPickProfiles(userIds: string[]) {
 }
 
 export async function GET(req: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
+  const correlationId = getCorrelationIdFromHeaders(req.headers);
   const startedAt = Date.now();
   const dayKey = req.nextUrl.searchParams.get("day") || undefined;
   try {
+    logInfo("quick_picks.GET.start", { correlationId, dayKey });
     let auth;
     try {
       auth = await requireAuth(req);
     } catch (e) {
       const err = e as AuthError;
+      logWarn("quick_picks.GET.auth_failed", { correlationId, status: err.status, code: (err as any)?.code, ...errorMeta(err) });
       return applySecurityHeaders(errorResponse(err.message, err.status));
     }
     // Rate limit: 30/minute per user
     const rl = checkApiRateLimit(`quick_picks_${auth.userId}`, 30, 60000);
     if (!rl.allowed) {
+      logWarn("quick_picks.GET.rate_limited", { correlationId, userId: auth.userId });
       return applySecurityHeaders(
         errorResponse("Rate limit exceeded", 429, { correlationId })
       );
     }
     const picks = await ensureQuickPicks(auth.userId, dayKey);
     const profiles = await fetchQuickPickProfiles(picks);
+    logInfo("quick_picks.GET.success", { correlationId, userId: auth.userId, picksCount: picks.length, tookMs: Date.now() - startedAt });
     return applySecurityHeaders(
       successResponse({ userIds: picks, profiles, correlationId })
     );
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
+    logError("quick_picks.GET.error", { correlationId, msg, ...errorMeta(e), tookMs: Date.now() - startedAt });
     return applySecurityHeaders(errorResponse(msg, 500, { correlationId }));
   } finally {
     // (Optional logging hook here)
@@ -115,17 +126,19 @@ const actSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
+  const correlationId = getCorrelationIdFromHeaders(req.headers);
   const sec = validateSecurityRequirements(req as unknown as Request);
   if (!sec.valid) return applySecurityHeaders(errorResponse(sec.error ?? "Invalid request", 400));
   let body: unknown;
   try {
     body = await req.json();
   } catch {
+    logWarn("quick_picks.POST.bad_json", { correlationId });
     return applySecurityHeaders(errorResponse("Invalid JSON body", 400));
   }
   const parsed = actSchema.safeParse(body);
   if (!parsed.success) {
+    logWarn("quick_picks.POST.validation_failed", { correlationId, issues: parsed.error.flatten() });
     return applySecurityHeaders(
       errorResponse("Validation failed", 422, {
         issues: parsed.error.flatten(),
@@ -138,6 +151,7 @@ export async function POST(req: NextRequest) {
     auth = await requireAuth(req);
   } catch (e) {
     const err = e as AuthError;
+    logWarn("quick_picks.POST.auth_failed", { correlationId, status: err.status, code: (err as any)?.code, ...errorMeta(err) });
     return applySecurityHeaders(errorResponse(err.message, err.status));
   }
   const { toUserId, action } = parsed.data;
@@ -168,11 +182,13 @@ export async function POST(req: NextRequest) {
         .collection("quickPickSkips")
         .add({ userId: auth.userId, toUserId, createdAt: Date.now() });
     }
+    logInfo("quick_picks.POST.success", { correlationId, userId: auth.userId, action, toUserId });
     return applySecurityHeaders(
       successResponse({ success: true, action, toUserId, correlationId })
     );
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
+    logError("quick_picks.POST.error", { correlationId, msg, ...errorMeta(e) });
     return applySecurityHeaders(errorResponse(msg, 500, { correlationId }));
   }
 }

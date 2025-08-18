@@ -1,0 +1,43 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Publicly readable profile images; writes restricted to the owner and valid image types/sizes
+    match /users/{userId}/profile-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource != null
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Voice messages: owner-only read/write; playback for others should use signed URLs from server
+    match /users/{userId}/voice-messages/{allPaths=**} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource != null
+                   && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // Blog images: public read; authenticated write with basic image constraints
+    match /blog-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.resource != null
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Message attachments are managed by server (Admin SDK). Disallow client access by default.
+    match /messages/{conversationId}/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Default deny for everything else
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
