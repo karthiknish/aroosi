@@ -58,6 +58,7 @@ export default function CustomSignupForm({
     refreshProfile: refreshUser,
     sendEmailVerification: resendEmailVerification,
     signInWithGoogle,
+  completeGoogleSignup,
   } = useAuth();
 
   // Resend throttle state
@@ -694,6 +695,64 @@ export default function CustomSignupForm({
                   showErrorToast(msg);
                   setIsLoading(false);
                   return;
+                }
+
+                // If profile not yet created (first-time Google signup), attempt completion with wizard data
+                try {
+                  const fieldKeys = [
+                    "fullName",
+                    "profileFor",
+                    "gender",
+                    "dateOfBirth",
+                    "phoneNumber",
+                    "country",
+                    "city",
+                    "height",
+                    "maritalStatus",
+                    "physicalStatus",
+                    "motherTongue",
+                    "religion",
+                    "ethnicity",
+                    "diet",
+                    "smoking",
+                    "drinking",
+                    "education",
+                    "occupation",
+                    "annualIncome",
+                    "aboutMe",
+                    "preferredGender",
+                    "partnerPreferenceAgeMin",
+                    "partnerPreferenceAgeMax",
+                  ];
+                  const googleProfilePayload: Record<string, unknown> = {};
+                  if (wizardData) {
+                    fieldKeys.forEach((k) => {
+                      const v = (wizardData as any)[k];
+                      if (
+                        v === undefined ||
+                        v === null ||
+                        (typeof v === "string" && v.trim() === "") ||
+                        (Array.isArray(v) && v.length === 0)
+                      )
+                        return;
+                      googleProfilePayload[k] = v;
+                    });
+                  }
+                  if (!googleProfilePayload.fullName && wizardData?.fullName)
+                    googleProfilePayload.fullName = wizardData.fullName;
+                  if (Object.keys(googleProfilePayload).length > 0) {
+                    const compResult = await completeGoogleSignup(
+                      googleProfilePayload as any
+                    );
+                    if (!compResult.success && compResult.error) {
+                      showErrorToast(compResult.error);
+                      // Do not abort; user can finish onboarding later.
+                    }
+                  }
+                } catch (e) {
+                  if (process.env.NODE_ENV !== "production") {
+                    console.warn("completeGoogleSignup failed", e);
+                  }
                 }
 
                 // Success: Clean up any onboarding/local wizard storage

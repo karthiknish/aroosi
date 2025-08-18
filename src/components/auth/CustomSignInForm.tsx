@@ -22,7 +22,8 @@ export default function CustomSignInForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signIn, refreshUser, user, signInWithGoogle } = useFirebaseAuth();
+  const { signIn, refreshUser, user, signInWithGoogleExistingOnly } =
+    useFirebaseAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -97,7 +98,7 @@ export default function CustomSignInForm({
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogleExistingOnly();
       if (!result.success) {
         const msg = result.error || "Google sign in failed. Please try again.";
         onError?.(msg);
