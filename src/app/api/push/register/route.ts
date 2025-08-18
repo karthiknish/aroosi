@@ -5,16 +5,18 @@ import { db } from "@/lib/firebaseAdmin";
 
 export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
   try {
-    const { token, deviceType } = await request.json();
-    if (!token) return errorResponse("Missing token", 400);
-    const docId = token.slice(0, 140); // shorten if huge
+    const { token, playerId, deviceType } = await request.json();
+    const id = String(playerId || token || "").trim();
+    if (!id) return errorResponse("Missing playerId/token", 400);
+    const docId = id.slice(0, 140); // shorten if huge
     await db
       .collection("pushTokens")
       .doc(docId)
       .set(
         {
           userId: user.id,
-          token,
+          playerId: id,
+          token: token || undefined,
           deviceType: deviceType || "web",
           registeredAt: Date.now(),
           isActive: true,
@@ -23,7 +25,7 @@ export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
       );
     return successResponse({
       message: "Push token registered",
-      token,
+      playerId: id,
       registeredAt: Date.now(),
     });
   } catch (error) {
@@ -34,21 +36,26 @@ export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
 
 export const DELETE = withFirebaseAuth(async (user, request: NextRequest) => {
   try {
-    const { token } = await request.json();
-    if (!token) return errorResponse("Missing token", 400);
-    const docId = token.slice(0, 140);
-    await db.collection("pushTokens").doc(docId).set(
-      {
-        userId: user.id,
-        token,
-        isActive: false,
-        unregisteredAt: Date.now(),
-      },
-      { merge: true }
-    );
+    const { token, playerId } = await request.json();
+    const id = String(playerId || token || "").trim();
+    if (!id) return errorResponse("Missing playerId/token", 400);
+    const docId = id.slice(0, 140);
+    await db
+      .collection("pushTokens")
+      .doc(docId)
+      .set(
+        {
+          userId: user.id,
+          playerId: id,
+          token: token || undefined,
+          isActive: false,
+          unregisteredAt: Date.now(),
+        },
+        { merge: true }
+      );
     return successResponse({
       message: "Push token unregistered",
-      token,
+      playerId: id,
       unregisteredAt: Date.now(),
     });
   } catch (error) {

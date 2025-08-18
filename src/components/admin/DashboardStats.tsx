@@ -16,15 +16,11 @@ import {
 interface StatCardProps {
   title: string;
   value: string | number;
-  change?: {
-    value: string;
-    type: "increase" | "decrease";
-  };
   icon: React.ReactNode;
   description?: string;
 }
 
-function StatCard({ title, value, change, icon, description }: StatCardProps) {
+function StatCard({ title, value, icon, description }: StatCardProps) {
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -37,21 +33,6 @@ function StatCard({ title, value, change, icon, description }: StatCardProps) {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-gray-900">{value}</div>
-        {change && (
-          <div className="flex items-center mt-1">
-            <Badge
-              variant={change.type === "increase" ? "default" : "secondary"}
-              className={`text-xs ${
-                change.type === "increase"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {change.type === "increase" ? "+" : "-"}{change.value}
-            </Badge>
-            <span className="text-xs text-gray-500 ml-2">vs last month</span>
-          </div>
-        )}
         {description && (
           <p className="text-xs text-gray-500 mt-1">{description}</p>
         )}
@@ -110,7 +91,6 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
       <StatCard
         title="Total Users"
         value={defaultStats.totalUsers.toLocaleString()}
-        change={{ value: "12%", type: "increase" }}
         icon={<Users className="h-4 w-4" />}
         description="Registered members"
       />
@@ -118,7 +98,6 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
       <StatCard
         title="Active Users"
         value={defaultStats.activeUsers.toLocaleString()}
-        change={{ value: "8%", type: "increase" }}
         icon={<Activity className="h-4 w-4" />}
         description="Last 30 days"
       />
@@ -126,7 +105,6 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
       <StatCard
         title="Total Matches"
         value={defaultStats.totalMatches.toLocaleString()}
-        change={{ value: "23%", type: "increase" }}
         icon={<Heart className="h-4 w-4" />}
         description="Successful connections"
       />
@@ -134,7 +112,6 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
       <StatCard
         title="Messages"
         value={defaultStats.messagesCount.toLocaleString()}
-        change={{ value: "5%", type: "decrease" }}
         icon={<MessageSquare className="h-4 w-4" />}
         description="This month"
       />
@@ -142,7 +119,6 @@ export function DashboardStats({ stats, loading }: DashboardStatsProps) {
       <StatCard
         title="New Registrations"
         value={defaultStats.newRegistrations.toLocaleString()}
-        change={{ value: "18%", type: "increase" }}
         icon={<UserPlus className="h-4 w-4" />}
         description="This week"
       />

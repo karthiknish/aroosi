@@ -28,6 +28,24 @@ export default function CreateBlogPage() {
   const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(false);
   const [pexelsOpen, setPexelsOpen] = useState<boolean>(false);
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const isValid =
+    title.trim().length > 0 &&
+    slug.trim().length > 0 &&
+    excerpt.trim().length > 0 &&
+    content.trim().length > 0 &&
+    imageUrl.trim().length > 0;
+
+  // Auto-generate slug from title if user hasn't manually edited it
+  const onTitleChange = (v: string) => {
+    setTitle(v);
+    if (!slugManuallyEdited) {
+      setSlug(slugify(v));
+    }
+  };
+  const onSlugChange = (v: string) => {
+    setSlug(v);
+    setSlugManuallyEdited(true);
+  };
 
   // Dummy implementations for missing variables and functions
   // Replace these with your actual implementations
@@ -196,9 +214,9 @@ export default function CreateBlogPage() {
         <div className="my-8">
           <CreatePost
             title={title}
-            setTitle={setTitle}
+            setTitle={onTitleChange}
             slug={slug}
-            setSlug={setSlug}
+            setSlug={onSlugChange}
             excerpt={excerpt}
             setExcerpt={setExcerpt}
             content={content}
@@ -224,6 +242,30 @@ export default function CreateBlogPage() {
             previewHtml={previewHtml}
             editorResetKey={editorResetKey}
           />
+          {/* Live validation + info */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-600">
+            <div>Title: {title.trim().length}/120</div>
+            <div>Excerpt: {excerpt.trim().length}/300</div>
+            <div>Content: {content.trim().length} chars</div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-md border text-sm disabled:opacity-50"
+            onClick={() => router.back()}
+            disabled={creating}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 rounded-md bg-pink-600 text-white hover:bg-pink-700 text-sm disabled:opacity-50"
+            onClick={handleCreatePost}
+            disabled={creating || !isValid}
+          >
+            {creating ? "Creating..." : "Create Post"}
+          </button>
         </div>
       </div>
       <PexelsImageModal

@@ -740,7 +740,7 @@ export default function SearchProfilesPage() {
                       <Button
                         size="sm"
                         className="bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
-                        onClick={() => router.push("/engagement/quick-picks")}
+                        onClick={() => router.push("/engagement/icebreakers")}
                       >
                         Answer Icebreakers
                       </Button>

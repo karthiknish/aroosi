@@ -79,6 +79,8 @@ async function getDailyUsage(userId: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const correlationId = Math.random().toString(36).slice(2, 10);
+  const startedAt = Date.now();
   // unify semantics with previous Convex-based endpoint
   let auth;
   try {
@@ -92,11 +94,16 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {}
   const { feature, metadata } = body;
-  if (!feature || !SUBSCRIPTION_FEATURES.includes(feature))
+  if (!feature || !SUBSCRIPTION_FEATURES.includes(feature)) {
+    console.warn("subscription.usage.invalid_feature", {
+      feature,
+      correlationId,
+    });
     return errorResponse(
       `Invalid feature. Must be one of: ${SUBSCRIPTION_FEATURES.join(", ")}`,
       400
     );
+  }
   try {
     const profile = await getProfile(auth.userId);
     if (!profile) return errorResponse("Profile not found", 404);
@@ -114,6 +121,15 @@ export async function POST(req: NextRequest) {
       currentUsage = monthlyMap[feature] || 0;
     }
     if (limit !== -1 && currentUsage >= limit) {
+      console.info("subscription.usage.limit_reached", {
+        feature,
+        plan,
+        limit,
+        currentUsage,
+        userId: auth.userId,
+        correlationId,
+        durationMs: Date.now() - startedAt,
+      });
       // Return a public-facing descriptive error so client logic can detect "limit" condition even in production.
       return errorResponsePublic("Feature usage limit reached", 403, {
         feature,
@@ -121,6 +137,7 @@ export async function POST(req: NextRequest) {
         limit,
         used: currentUsage,
         remaining: 0,
+        correlationId,
       });
     }
     // Record event
@@ -149,6 +166,12 @@ export async function POST(req: NextRequest) {
           }
         );
         if (alreadyViewed) {
+          console.info("subscription.usage.duplicate_profile_view", {
+            feature,
+            userId: auth.userId,
+            targetId,
+            correlationId,
+          });
           const remExisting = featureRemaining(
             plan,
             feature as SubscriptionFeature,
@@ -163,6 +186,7 @@ export async function POST(req: NextRequest) {
             limit: remExisting.limit,
             remainingQuota: remExisting.remaining,
             isUnlimited: remExisting.unlimited,
+            correlationId,
           });
         }
       }
@@ -192,7 +216,7 @@ export async function POST(req: NextRequest) {
       feature as SubscriptionFeature,
       newUsage
     );
-    return successResponse({
+    const res = successResponse({
       feature,
       plan,
       tracked: true,
@@ -200,11 +224,29 @@ export async function POST(req: NextRequest) {
       limit: rem.limit,
       remainingQuota: rem.remaining,
       isUnlimited: rem.unlimited,
+      correlationId,
     });
+    console.info("subscription.usage.tracked", {
+      feature,
+      plan,
+      userId: auth.userId,
+      newUsage,
+      limit: rem.limit,
+      remaining: rem.remaining,
+      correlationId,
+      durationMs: Date.now() - startedAt,
+    });
+    return res;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    console.error("subscription.usage.error", {
+      error: msg,
+      correlationId,
+      stack: e instanceof Error ? e.stack : undefined,
+    });
     return errorResponse("Failed to track feature usage", 500, {
       details: msg,
+      correlationId,
     });
   }
 }

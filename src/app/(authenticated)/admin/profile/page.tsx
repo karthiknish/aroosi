@@ -260,10 +260,16 @@ export default function AdminProfilePage() {
           <select
             className="border rounded px-2 py-1 text-base text-foreground bg-white"
             value={status}
-            onChange={(e) => setStatus(e.target.value as "all" | "active" | "banned")}
+            onChange={(e) =>
+              setStatus(e.target.value as "all" | "active" | "banned")
+            }
           >
             {statusOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} className="text-foreground">
+              <option
+                key={opt.value}
+                value={opt.value}
+                className="text-foreground"
+              >
                 {opt.label}
               </option>
             ))}
@@ -274,7 +280,8 @@ export default function AdminProfilePage() {
       {/* Pagination header */}
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm text-muted-foreground">
-          Page {serverPage} of {totalPages} • Page size {serverPageSize} • Total {total}
+          Page {serverPage} of {totalPages} • Page size {serverPageSize} • Total{" "}
+          {total}
         </div>
         <div className="flex gap-2">
           <Button
@@ -300,7 +307,9 @@ export default function AdminProfilePage() {
       {/* Empty-state or Grid */}
       {filteredProfiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center gap-4 py-8">
-          <div className="text-gray-500">No profiles match your search/filter.</div>
+          <div className="text-gray-500">
+            No profiles match your search/filter.
+          </div>
           {!loading && (
             <Button variant="outline" onClick={() => loadProfiles()}>
               Refresh
@@ -316,8 +325,9 @@ export default function AdminProfilePage() {
             >
               {/* Profile image */}
               <div className="w-20 h-20 rounded-lg overflow-hidden border mx-auto mb-2 bg-gray-50 flex items-center justify-center">
-                {profileImages[profile._id] &&
-                profileImages[profile._id].length > 0 ? (
+                {profileImages[profile._id] === undefined ? (
+                  <Skeleton className="w-full h-full" />
+                ) : profileImages[profile._id].length > 0 ? (
                   <Image
                     src={
                       profileImages[profile._id][0].url ||
@@ -395,7 +405,9 @@ export default function AdminProfilePage() {
                 type="button"
                 className="absolute top-2 right-2 bg-white rounded-full p-2 shadow hover:bg-gray-100 transition"
                 title="Edit Profile"
-                onClick={() => router.push(`/admin/profile/edit?id=${profile._id}`)}
+                onClick={() =>
+                  router.push(`/admin/profile/edit?id=${profile._id}`)
+                }
               >
                 <Pencil className="w-5 h-5 text-gray-600" />
               </button>
@@ -427,7 +439,10 @@ export default function AdminProfilePage() {
               be undone.
             </DialogDescription>
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDeleteId(null)}
+              >
                 Cancel
               </Button>
               <Button
@@ -443,7 +458,10 @@ export default function AdminProfilePage() {
 
       {/* Confirm Ban Dialog */}
       {confirmBanId && (
-        <Dialog open={!!confirmBanId} onOpenChange={() => setConfirmBanId(null)}>
+        <Dialog
+          open={!!confirmBanId}
+          onOpenChange={() => setConfirmBanId(null)}
+        >
           <DialogContent>
             <DialogTitle>
               {filteredProfiles.find((p) => p._id === confirmBanId)?.banned
@@ -467,7 +485,8 @@ export default function AdminProfilePage() {
                 onClick={() =>
                   onToggleBan(
                     confirmBanId,
-                    !!filteredProfiles.find((p) => p._id === confirmBanId)?.banned
+                    !!filteredProfiles.find((p) => p._id === confirmBanId)
+                      ?.banned
                   )
                 }
               >

@@ -65,13 +65,7 @@ export function AdminSidebar({
       href: "/admin/blog",
       isActive: currentPath.startsWith("/admin/blog"),
     },
-    {
-      id: "analytics",
-      label: "Analytics",
-      icon: BarChart3,
-      href: "/admin/analytics",
-      isActive: currentPath.startsWith("/admin/analytics"),
-    },
+    // Analytics tab removed until real dashboards are shipped
     {
       id: "icebreakers",
       label: "Icebreakers",

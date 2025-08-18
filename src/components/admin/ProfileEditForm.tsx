@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm, Controller, useWatch } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { ProfileFormValues } from "@/types/profile";
 import type { ImageType } from "@/types/image";
@@ -19,6 +20,8 @@ import {
 import { ProfileImageReorder } from "@/components/ProfileImageReorder";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { COUNTRIES } from "@/lib/constants/countries";
+import { useMemo } from "react";
 
 // Zod schema matches ProfileFormValues (allow string for enums for compatibility)
 const profileSchema = z.object({
@@ -81,7 +84,7 @@ type Props = {
   profileId?: string;
   token?: string;
   images: ImageType[];
-  setImages?: React.Dispatch<React.SetStateAction<ImageType[]>>;
+  setImages: React.Dispatch<React.SetStateAction<ImageType[]>>;
   imagesLoading: boolean;
   matches?: Profile[];
 };
@@ -118,6 +121,9 @@ export default function ProfileEditForm({
     defaultValues: initialValues,
     mode: "onChange",
   });
+
+  // Country options
+  const countries = useMemo(() => COUNTRIES.map((c) => c.name).sort(), []);
 
   // --- Profile Images State ---
   const [imageError, setImageError] = useState<string | null>(null);
@@ -163,7 +169,7 @@ export default function ProfileEditForm({
         profileId,
         file: e.target.files[0],
       } as any);
-      setImages?.((prev) => [...prev, img]);
+      setImages((prev) => [...prev, img]);
     } catch (err: unknown) {
       setImageError(
         isErrorWithMessage(err) ? err.message : "Failed to upload image"
@@ -179,7 +185,7 @@ export default function ProfileEditForm({
     setImageError(null);
     try {
       await deleteAdminProfileImageById({ profileId, imageId } as any);
-      setImages?.((prev) =>
+      setImages((prev) =>
         prev.filter((img) => (img.id ?? img.storageId) !== imageId)
       );
     } catch (err: unknown) {
@@ -248,7 +254,7 @@ export default function ProfileEditForm({
               images={images}
               userId={profileId}
               onReorder={async (newOrder) => {
-                setImages?.(newOrder);
+                setImages(newOrder);
                 if (profileId) {
                   await updateAdminProfileImageOrder({
                     profileId,
@@ -359,11 +365,18 @@ export default function ProfileEditForm({
           <label className="block font-medium" htmlFor="country">
             Country
           </label>
-          <input
-            id="country"
-            {...register("country")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Country"
+          <Controller
+            name="country"
+            control={control}
+            render={({ field }) => (
+              <SearchableSelect
+                options={countries.map((c) => ({ value: c, label: c }))}
+                value={(field.value as string) || ""}
+                onValueChange={(v) => field.onChange(v)}
+                placeholder="Select country"
+                className="w-full"
+              />
+            )}
           />
           {errors.country && (
             <p className="text-red-600 text-sm">{errors.country.message}</p>
@@ -883,10 +896,23 @@ function SubscriptionExpiryPreview({
 }: {
   control: ReturnType<typeof useForm>["control"];
 }) {
-  // Public API: watch the single field value reactively
-  const raw = useWatch({ control, name: "subscriptionExpiresAt" });
-  const num = typeof raw === "string" ? Number(raw) : raw;
-  const value = Number.isFinite(num) ? (num as number) : null;
+  const [value, setValue] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    const sub = (control as any)._subjects.values.subscribe(
+      ({ values }: any) => {
+        const raw = values?.subscriptionExpiresAt;
+        const num =
+          raw === undefined || raw === null
+            ? null
+            : typeof raw === "string"
+              ? Number(raw)
+              : raw;
+        setValue(Number.isFinite(num as number) ? (num as number) : null);
+      }
+    );
+    return () => sub?.unsubscribe?.();
+  }, [control]);
 
   if (!value) {
     return (
@@ -903,15 +929,13 @@ function SubscriptionExpiryPreview({
 
   return (
     <div className="text-xs text-muted-foreground mt-1 space-y-1">
-      <div>
-        Formatted:{" "}
-        {isNaN(date.getTime()) ? "Invalid date" : date.toLocaleString()}
-      </div>
+      <div>Formatted: {date.toLocaleString()}</div>
       <div>
         {isFuture
           ? `Days remaining: ${diffDays}`
           : `Expired ${Math.abs(diffDays)} day(s) ago`}
       </div>
+      {/* Spotlight badge expiry preview (placeholder if applicable) */}
       <div className="italic opacity-80">
         Spotlight badge expiry: not available for this profile
       </div>

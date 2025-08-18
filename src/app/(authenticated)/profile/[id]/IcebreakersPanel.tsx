@@ -1,12 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchIcebreakers, answerIcebreaker } from "@/lib/engagementUtil";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import {
+  ChevronsLeft,
+  ChevronsRight,
+  CheckCircle2,
+  SkipForward,
+} from "lucide-react";
 
 export function IcebreakersPanel() {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -20,6 +26,7 @@ export function IcebreakersPanel() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const [index, setIndex] = useState<number>(0);
   const debounceRefs = useRef<
     Record<string, ReturnType<typeof setTimeout> | null>
   >({});
@@ -70,9 +77,23 @@ export function IcebreakersPanel() {
     );
   }
 
-  const questions = Array.isArray(data)
-    ? (data as Array<{ id: string; text: string; answered?: boolean }>)
-    : [];
+  const questions = useMemo(
+    () =>
+      Array.isArray(data)
+        ? (data as Array<{ id: string; text: string; answered?: boolean }>)
+        : [],
+    [data]
+  );
+  const visibleQuestions = useMemo(
+    () => questions.filter((q) => !hidden[q.id]),
+    [questions, hidden]
+  );
+  const total = visibleQuestions.length;
+  const current =
+    total > 0 ? visibleQuestions[Math.min(index, total - 1)] : undefined;
+  const answeredCount = visibleQuestions.filter(
+    (q) => submitted[q.id] || q.answered
+  ).length;
   if (questions.length === 0) return null;
 
   const handleSubmit = async (qid: string) => {
@@ -98,6 +119,8 @@ export function IcebreakersPanel() {
   const handleSkip = (qid: string) => {
     setHidden((h) => ({ ...h, [qid]: true }));
     showSuccessToast("Skipped for now");
+    // advance to next
+    setIndex((i) => Math.min(i + 1, Math.max(visibleQuestions.length - 2, 0)));
   };
 
   const handleCopy = async (qid: string) => {
@@ -120,103 +143,170 @@ export function IcebreakersPanel() {
     }, 800);
   };
 
+  // Friendly starters to help users answer faster
+  const starters = useMemo(
+    () => [
+      "I’m passionate about...",
+      "On weekends, you’ll find me...",
+      "My friends describe me as...",
+      "A fun fact about me is...",
+    ],
+    []
+  );
+
   return (
     <section className="mt-8">
-      <h3 className="font-serif font-semibold mb-3 flex items-center gap-2 text-primary-dark text-lg">
-        Today&apos;s icebreakers
-      </h3>
-      <div className="text-xs text-gray-600 mb-4">
-        {(() => {
-          const total = questions.filter((q) => !hidden[q.id]).length;
-          const done = questions.filter(
-            (q) => !hidden[q.id] && (submitted[q.id] || q.answered)
-          ).length;
-          return `${done}/${total} answered`;
-        })()}
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-serif font-semibold text-primary-dark text-lg">
+          Today&apos;s icebreakers
+        </h3>
+        <div className="text-xs text-gray-600">
+          {answeredCount}/{total} answered
+        </div>
       </div>
-      <div className="space-y-6">
-        {questions
-          .filter((q) => !hidden[q.id])
-          .map((q) => (
-            <div
-              key={q.id}
-              className="rounded-lg border border-gray-200 bg-white/70 p-4"
-            >
-              <p className="text-sm text-gray-800 mb-2">{q.text}</p>
-              <Textarea
-                value={answers[q.id] || ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setAnswers((a) => ({ ...a, [q.id]: val }));
-                  // if already saved, enable editing mode and autosave
-                  if (submitted[q.id] || q.answered) {
-                    setEditing((ed) => ({ ...ed, [q.id]: true }));
-                  }
-                  scheduleAutosave(q.id);
+
+      {/* Progress bar */}
+      <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden mb-4">
+        <div
+          className="h-2 bg-rose-500 transition-all"
+          style={{
+            width: total
+              ? `${Math.round((answeredCount / total) * 100)}%`
+              : "0%",
+          }}
+        />
+      </div>
+
+      {current ? (
+        <div className="rounded-lg border border-gray-200 bg-white/80 p-4">
+          <div className="mb-2 flex items-start justify-between gap-3">
+            <p className="text-sm text-gray-800">
+              <span className="text-gray-500 mr-2">
+                Question {Math.min(index + 1, total)} of {total}
+              </span>
+              {current.text}
+            </p>
+            {(submitted[current.id] || current.answered) &&
+              !editing[current.id] && (
+                <span className="inline-flex items-center text-green-600 text-xs">
+                  <CheckCircle2 className="w-4 h-4 mr-1" /> Saved
+                </span>
+              )}
+          </div>
+
+          {/* Starters */}
+          <div className="mb-2 flex flex-wrap gap-2">
+            {starters.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className="text-xs rounded-full border border-gray-300 px-2 py-1 hover:bg-gray-50"
+                onClick={() => {
+                  setAnswers((a) => ({
+                    ...a,
+                    [current.id]: `${(a[current.id] || "").trim()}${(a[current.id] || "").trim() ? " " : ""}${s} `,
+                  }));
                 }}
-                placeholder="Your answer..."
-                maxLength={500}
-                className="min-h-[80px]"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <Textarea
+            value={answers[current.id] || ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              setAnswers((a) => ({ ...a, [current.id]: val }));
+              if (submitted[current.id] || current.answered) {
+                setEditing((ed) => ({ ...ed, [current.id]: true }));
+              }
+              scheduleAutosave(current.id);
+            }}
+            placeholder="Your answer..."
+            maxLength={500}
+            className="min-h-[100px]"
+            disabled={
+              saving[current.id] ||
+              (!editing[current.id] &&
+                (submitted[current.id] || current.answered))
+            }
+            aria-label={`Answer to: ${current.text}`}
+          />
+          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+            <span>{answers[current.id]?.length || 0}/500</span>
+            <div className="flex items-center gap-2">
+              {(submitted[current.id] || current.answered) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setEditing((e) => ({ ...e, [current.id]: !e[current.id] }))
+                  }
+                  disabled={saving[current.id]}
+                >
+                  {editing[current.id] ? "Done" : "Edit"}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleCopy(current.id)}
+                disabled={!((answers[current.id] || "").trim().length > 0)}
+              >
+                Copy
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleSkip(current.id)}
+              >
+                <SkipForward className="w-4 h-4 mr-1" /> Skip
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleSubmit(current.id)}
                 disabled={
-                  saving[q.id] ||
-                  (!editing[q.id] && (submitted[q.id] || q.answered))
+                  mutationPending ||
+                  (!editing[current.id] &&
+                    (submitted[current.id] || current.answered)) ||
+                  !(answers[current.id] || "").trim()
                 }
-              />
-              <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                <span>{answers[q.id]?.length || 0}/500</span>
-                <div className="flex items-center gap-2">
-                  {saving[q.id] ? (
-                    <span className="text-amber-600">Saving...</span>
-                  ) : (submitted[q.id] || q.answered) && !editing[q.id] ? (
-                    <span className="text-green-600">Saved</span>
-                  ) : null}
-                  {(submitted[q.id] || q.answered) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setEditing((e) => ({ ...e, [q.id]: !e[q.id] }))
-                      }
-                      disabled={saving[q.id]}
-                    >
-                      {editing[q.id] ? "Done" : "Edit"}
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopy(q.id)}
-                    disabled={!((answers[q.id] || "").trim().length > 0)}
-                  >
-                    Copy
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSkip(q.id)}
-                  >
-                    Skip
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleSubmit(q.id)}
-                    disabled={
-                      mutationPending ||
-                      (!editing[q.id] && (submitted[q.id] || q.answered)) ||
-                      !(answers[q.id] || "").trim()
-                    }
-                  >
-                    {saving[q.id]
-                      ? "Saving..."
-                      : submitted[q.id] || (q.answered && !editing[q.id])
-                        ? "Saved"
-                        : "Save"}
-                  </Button>
-                </div>
-              </div>
+              >
+                {saving[current.id] ? "Saving..." : "Save & Continue"}
+              </Button>
             </div>
-          ))}
-      </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIndex((i) => Math.max(i - 1, 0))}
+              disabled={index === 0}
+            >
+              <ChevronsLeft className="w-4 h-4 mr-1" /> Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                setIndex((i) => Math.min(i + 1, Math.max(total - 1, 0)))
+              }
+              disabled={index >= total - 1}
+            >
+              Next <ChevronsRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 bg-white/80 p-6 text-center">
+          <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-2" />
+          <p className="text-sm text-gray-700">
+            All done for today. Great job!
+          </p>
+        </div>
+      )}
     </section>
   );
 }

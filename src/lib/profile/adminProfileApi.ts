@@ -275,7 +275,14 @@ export async function fetchAdminProfileById({
       const errorText = await res.text();
       throw new Error(`Failed to fetch profile: ${errorText}`);
     }
-    return await res.json();
+    const json = await res.json();
+    // New standardized shape: { success: true, profile, correlationId }
+    if (json && typeof json === "object") {
+      if (json.profile && json.success) return json.profile as AdminProfile;
+      // Legacy / fallback: direct profile object
+      if (json._id || json.userId || json.fullName) return json as AdminProfile;
+    }
+    return null;
   } catch (error) {
     throw new Error(
       `Error fetching admin profile: ${(error as Error).message}`
@@ -528,15 +535,12 @@ export async function fetchAdminProfileMatches({
       const errorText = await res.text();
       throw new Error(`Failed to fetch profile matches: ${errorText}`);
     }
-    const response = await res.json();
-
-    // Handle the wrapped response format {success: true, matches: [...]}
-    if (response.success && response.matches) {
-      return response.matches;
+    const json = await res.json();
+    if (json && typeof json === "object") {
+      if (Array.isArray(json.matches)) return json.matches as Profile[];
+      if (Array.isArray(json)) return json as Profile[];
     }
-
-    // Fallback for direct data format
-    return response.matches || response || [];
+    return [];
   } catch (error) {
     throw new Error(
       `Error fetching profile matches: ${(error as Error).message}`

@@ -125,7 +125,10 @@ export async function editBlogPost(
   _id: string,
   updates: Partial<Omit<BlogPost, "_id" | "createdAt" | "updatedAt">>
 ): Promise<BlogApiResponse<BlogPost>> {
-  const data = (await putJson("/api/blog", { _id, ...updates })) as unknown;
+  const data = (await putJson(`/api/blog/${encodeURIComponent(_id)}`, {
+    _id,
+    ...updates,
+  })) as unknown;
   if (!(data as Record<string, unknown>)?.success) {
     return {
       success: false,
@@ -147,7 +150,9 @@ export async function fetchBlogPostById(
   id: string,
   token?: string
 ): Promise<BlogPost | null> {
-  const data = (await getJson(`/api/blog/${id}`)) as unknown;
+  const data = (await getJson(
+    `/api/blog/${encodeURIComponent(id)}`
+  )) as unknown;
   if (!data) return null;
   // If the API returns { data: BlogPost }, return data.data; else, return data
   if (
@@ -177,6 +182,26 @@ export async function fetchBlogPostBySlug(
   )
     return (data as { data: BlogPost }).data;
   return data as BlogPost;
+}
+
+// User: submit a blog post draft for admin review
+export async function submitUserBlogPostDraft(
+  post: Omit<BlogPost, "_id" | "createdAt" | "updatedAt"> & { excerpt?: string }
+): Promise<BlogApiResponse<{ id: string }>> {
+  const data = (await postJson("/api/blog/user-submissions", post)) as unknown;
+  if (!(data as Record<string, unknown>)?.success) {
+    return {
+      success: false,
+      error:
+        ((data as Record<string, unknown>)?.error as string) ||
+        "Failed to submit blog draft",
+    };
+  }
+  const payload = (data as { data?: { id: string } }).data as
+    | { id: string }
+    | undefined;
+  if (!payload?.id) return { success: true, data: { id: "" } };
+  return { success: true, data: payload };
 }
 
 // Upload blog image metadata and get public URL (requires admin token)

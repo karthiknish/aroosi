@@ -37,7 +37,11 @@ export default function AdminPage() {
       });
       if (!res.ok) throw new Error("Failed stats");
       const json = await res.json();
-      return json.stats as DashboardStatsPayload;
+      // Support both { success, stats } and plain stats
+      return (
+        (json?.stats as DashboardStatsPayload) ||
+        (json as DashboardStatsPayload)
+      );
     },
     staleTime: 60_000,
   });

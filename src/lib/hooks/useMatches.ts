@@ -38,15 +38,18 @@ export function useMatches(
           }
           return [];
         }
-        const data = (await res.json().catch(() => ({}))) as unknown;
-        if (
-          data &&
-          typeof data === "object" &&
-          Array.isArray((data as any).matches)
-        ) {
-          return (data as { matches: Profile[] }).matches;
+        const json = (await res.json().catch(() => ({}))) as unknown;
+        if (json && typeof json === "object") {
+          // Handle standard successResponse shape: { success: true, data: [...] }
+          if (Array.isArray((json as any).data)) {
+            return (json as any).data as Profile[];
+          }
+          // Fallback legacy: { matches: [...] }
+          if (Array.isArray((json as any).matches)) {
+            return (json as any).matches as Profile[];
+          }
         }
-        if (Array.isArray(data)) return data as Profile[];
+        if (Array.isArray(json)) return json as Profile[];
         return [];
       },
       enabled: true,

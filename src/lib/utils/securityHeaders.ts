@@ -134,29 +134,66 @@ export function sanitizeUserId(userId: unknown): string | null {
 export function validateRequestOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
+  const reqHost = (request.headers.get("host") || "").toLowerCase();
+  const fwdHost =
+    (request.headers.get("x-forwarded-host") || "").toLowerCase().trim() ||
+    null;
 
-  // Allow same-origin requests
-  const allowedOrigins = [
+  const expandHostVariants = (h: string | undefined | null): string[] => {
+    if (!h) return [];
+    const lower = h.toLowerCase();
+    const noWww = lower.startsWith("www.") ? lower.slice(4) : lower;
+    const withWww = noWww === lower ? `www.${noWww}` : lower;
+    return Array.from(new Set([lower, noWww, withWww]));
+  };
+
+  const allowedHostCandidates: string[] = [];
+  [
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXT_PUBLIC_SITE_URL,
-    "http://localhost:3000", // Development
-    "https://localhost:3000", // Development with HTTPS
-  ].filter(Boolean);
+    "http://localhost:3000",
+    "https://localhost:3000",
+  ]
+    .filter(Boolean)
+    .forEach((urlLike) => {
+      try {
+        const host = new URL(urlLike as string).host;
+        allowedHostCandidates.push(host);
+      } catch {
+        // ignore invalid env values
+      }
+    });
 
-  if (origin && allowedOrigins.includes(origin)) {
-    return true;
+  const allowedHosts = new Set<string>([
+    ...allowedHostCandidates.flatMap((h) => expandHostVariants(h)),
+    ...expandHostVariants(reqHost),
+    ...expandHostVariants(fwdHost),
+  ]);
+
+  if (origin) {
+    try {
+      const originHost = new URL(origin).host.toLowerCase();
+      if (expandHostVariants(originHost).some((h) => allowedHosts.has(h))) {
+        return true;
+      }
+    } catch {
+      // malformed origin; fall through
+    }
   }
 
   if (referer) {
-    const refererUrl = new URL(referer);
-    const allowedHosts = allowedOrigins
-      .filter(Boolean)
-      .map((url) => new URL(url as string).host);
-    return allowedHosts.includes(refererUrl.host);
+    try {
+      const refererHost = new URL(referer).host.toLowerCase();
+      if (expandHostVariants(refererHost).some((h) => allowedHosts.has(h))) {
+        return true;
+      }
+    } catch {
+      // malformed referer; fall through
+    }
   }
 
   // Allow requests without origin/referer for API clients
-  return true;
+  return !origin && !referer;
 }
 
 /**
@@ -235,37 +272,55 @@ export function validateSecurityRequirements(request: Request): {
   //    Original implementation rejected any presence of common reverse-proxy headers
   //    (e.g. x-forwarded-host) which are legitimately injected by Next.js / hosting layers.
   //    We now only flag them if values look inconsistent / spoofed.
-  const host = request.headers.get("host") || "";
-  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = (request.headers.get("host") || "").toLowerCase();
+  const forwardedHost =
+    (request.headers.get("x-forwarded-host") || "").toLowerCase().trim() ||
+    null;
   const originalUrl = request.headers.get("x-original-url");
   const rewriteUrl = request.headers.get("x-rewrite-url");
 
   // Allowlist hosts (dynamic + localhost)
-  const allowedHostSet = new Set(
-    [
-      host,
-      "localhost:3000",
-      process.env.NEXT_PUBLIC_APP_URL &&
-        (() => {
-          try {
-            return new URL(process.env.NEXT_PUBLIC_APP_URL as string).host;
-          } catch {
-            return undefined;
-          }
-        })(),
-      process.env.NEXT_PUBLIC_SITE_URL &&
-        (() => {
-          try {
-            return new URL(process.env.NEXT_PUBLIC_SITE_URL as string).host;
-          } catch {
-            return undefined;
-          }
-        })(),
-    ].filter(Boolean) as string[]
-  );
+  const expandHostVariants = (h: string | undefined | null): string[] => {
+    if (!h) return [];
+    const lower = h.toLowerCase();
+    const noWww = lower.startsWith("www.") ? lower.slice(4) : lower;
+    const withWww = noWww === lower ? `www.${noWww}` : lower;
+    return Array.from(new Set([lower, noWww, withWww]));
+  };
+
+  const envHosts: string[] = [];
+  try {
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      envHosts.push(new URL(process.env.NEXT_PUBLIC_APP_URL as string).host);
+    }
+  } catch {}
+  try {
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      envHosts.push(new URL(process.env.NEXT_PUBLIC_SITE_URL as string).host);
+    }
+  } catch {}
+
+  const allowedHostSet = new Set<string>([
+    ...expandHostVariants(host),
+    ...expandHostVariants("localhost:3000"),
+    ...envHosts.flatMap((h) => expandHostVariants(h)),
+  ]);
 
   // Heuristic: flag if forwardedHost exists but not in allowlist AND differs from host (potential spoof)
-  if (forwardedHost && !allowedHostSet.has(forwardedHost)) {
+  // Allow common hosting domains (e.g., Vercel previews)
+  const isKnownHostingDomain = (h: string | null) =>
+    !!h && (h.endsWith(".vercel.app") || h.endsWith(".netlify.app"));
+
+  if (
+    forwardedHost &&
+    !allowedHostSet.has(forwardedHost) &&
+    !isKnownHostingDomain(forwardedHost) &&
+    forwardedHost !== host &&
+    // Treat apex and www forms as equivalent
+    !expandHostVariants(forwardedHost).some((variant) =>
+      allowedHostSet.has(variant)
+    )
+  ) {
     logSecurityEvent(
       "VALIDATION_FAILED",
       { reason: "forwarded_host_mismatch", host, forwardedHost },

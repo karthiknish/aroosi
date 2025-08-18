@@ -23,14 +23,20 @@ export async function GET(req: NextRequest) {
   const session = await requireAdminSession(req);
   if ("errorResponse" in session) return session.errorResponse;
   try {
-    const [totalUsers, totalMatches, messagesCount, contactMessages, blogPosts] =
-      await Promise.all([
-        countCollection("profiles"),
-        countCollection("matches"),
-        countCollection("messages"),
-        countCollection("contactSubmissions"),
-        countCollection("blogPosts"),
-      ]);
+    const [
+      totalUsers,
+      totalMatches,
+      messagesCount,
+      contactMessages,
+      blogPosts,
+    ] = await Promise.all([
+      // Count user profiles from the canonical users collection
+      countCollection("users"),
+      countCollection("matches"),
+      countCollection("messages"),
+      countCollection("contactSubmissions"),
+      countCollection("blogPosts"),
+    ]);
 
     // Active users: distinct senderId in messages last 30 days
     const THIRTY_DAYS = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -50,12 +56,12 @@ export async function GET(req: NextRequest) {
       activeUsers = ids.size;
     } catch {}
 
-    // New registrations last 7 days
+    // New registrations last 7 days (users collection)
     let newRegistrations = 0;
     try {
       const sevenDays = Date.now() - 7 * 24 * 60 * 60 * 1000;
       const newSnap = await db
-        .collection("profiles")
+        .collection("users")
         .where("createdAt", ">=", sevenDays)
         .select("createdAt")
         .limit(5000)
@@ -63,11 +69,11 @@ export async function GET(req: NextRequest) {
       newRegistrations = newSnap.size;
     } catch {}
 
-    // Pending approvals: profiles where needsApproval == true (if field exists)
+    // Pending approvals: users where needsApproval == true (if field exists)
     let approvalsPending = 0;
     try {
       const pendingSnap = await db
-        .collection("profiles")
+        .collection("users")
         .where("needsApproval", "==", true)
         .limit(5000)
         .get();
