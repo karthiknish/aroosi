@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
@@ -32,23 +32,24 @@ export default function EditProfileImagesPage() {
 
   const { data: profile, isLoading: profileLoading } = useQuery<Profile | null>(
     {
-      queryKey: ["profile"],
+      queryKey: ["profile", userId],
       queryFn: async () => {
+        if (!userId) return null;
         const res = await getCurrentUserWithProfile(userId);
         if (!res?.success || !res.data) return null;
-
         const envelope = (res.data as { profile?: unknown })?.profile
           ? (res.data as { profile?: unknown }).profile
           : res.data;
         return envelope as Profile;
       },
-      enabled: true,
+      enabled: !!userId,
     }
   );
 
+  const profileUserId = profile?.userId || (profile as any)?._id;
   const { images: rawImages, loading: imagesLoading } = useProfileImages({
-    userId: profile?._id,
-    enabled: !!profile?.userId,
+    userId: profileUserId,
+    enabled: !!profileUserId,
     preferInlineUrls: profile?.profileImageUrls,
   });
   const images: ImageType[] = rawImages.map((img) => ({
@@ -58,10 +59,12 @@ export default function EditProfileImagesPage() {
   })) as ImageType[];
 
   // When images are fetched, initialise local state
+  const initializedRef = useRef(false);
   useEffect(() => {
-    if (!imagesLoading) {
+    if (!imagesLoading && !initializedRef.current) {
       setEditedImages(images);
       setInitialImages(images);
+      initializedRef.current = true;
     }
   }, [images, imagesLoading]);
 
@@ -73,6 +76,8 @@ export default function EditProfileImagesPage() {
 
   const handleImageDelete = useCallback(async (imageId: string) => {
     setEditedImages((prev) => prev.filter((img) => img.id !== imageId));
+    // Inform user that physical deletion is not yet implemented
+    showErrorToast("Photo removed from order (original file not deleted yet).");
   }, []);
 
   const handleImageReorder = useCallback((newOrder: ImageType[]) => {
@@ -88,8 +93,10 @@ export default function EditProfileImagesPage() {
     if (!profile) return;
     setIsUpdating(true);
 
-    const initialIds = initialImages.map((img) => img.id);
-    const editedIds = editedImages.map((img) => img.id);
+    const normalizeIds = (arr: ImageType[]) =>
+      arr.map((img) => img.storageId || img.id);
+    const initialIds = normalizeIds(initialImages);
+    const editedIds = normalizeIds(editedImages);
 
     const deletions = initialIds.filter((id) => !editedIds.includes(id));
     const additions = editedImages.filter(
@@ -109,7 +116,7 @@ export default function EditProfileImagesPage() {
       // Update order if changed
       if (!arraysEqual(initialIds, editedIds)) {
         await updateImageOrder({
-          userId: profile.userId,
+          userId: profileUserId,
           imageIds: editedIds,
         });
       }
@@ -164,7 +171,7 @@ export default function EditProfileImagesPage() {
             onImageDelete={handleImageDelete}
             onImageReorder={handleImageReorder}
             isLoading={imagesLoading || isUpdating}
-            profileId={profile._id}
+            profileId={profileUserId}
           />
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="outline" onClick={() => router.back()}>

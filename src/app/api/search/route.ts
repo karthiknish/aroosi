@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import {
+  successResponse,
+  errorResponse,
+  errorResponsePublic,
+} from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit"; // (retained for potential future re-enable)
 import { z } from "zod";
@@ -58,7 +62,28 @@ export async function GET(request: NextRequest) {
     const paramsObj = Object.fromEntries(searchParams.entries());
     const parsed = QuerySchema.safeParse(paramsObj);
     if (!parsed.success) {
-      return errorResponse("Invalid parameters", 400);
+      // Humanize first validation issue for user-friendly feedback
+      const issue = parsed.error.issues[0];
+      let friendly = "Invalid search filters";
+      if (issue) {
+        const path = issue.path.join(".");
+        if (path === "ageMin" && issue.code === "too_small") {
+          friendly = "Minimum age must be at least 18.";
+        } else if (path === "ageMax" && issue.code === "too_small") {
+          friendly = "Maximum age must be at least 18."; // theoretical; max has same min constraint
+        } else if (path === "ageMin" && issue.code === "too_big") {
+          friendly = "Minimum age is too large.";
+        } else if (path === "ageMax" && issue.code === "too_big") {
+          friendly = "Maximum age cannot exceed 120.";
+        } else if (path === "pageSize" && issue.code === "too_big") {
+          friendly = "Page size is too large.";
+        } else if (path === "pageSize" && issue.code === "too_small") {
+          friendly = "Page size must be at least 1.";
+        } else if (path === "preferredGender") {
+          friendly = "Invalid preferred gender value.";
+        }
+      }
+      return errorResponsePublic(friendly, 400, { code: "VALIDATION_ERROR" });
     }
     const {
       city,
@@ -79,9 +104,10 @@ export async function GET(request: NextRequest) {
       typeof ageMax === "number" &&
       ageMin > ageMax
     ) {
-      return errorResponse(
+      return errorResponsePublic(
         "Minimum age cannot be greater than maximum age",
-        400
+        400,
+        { code: "AGE_RANGE_INVALID" }
       );
     }
 
@@ -94,9 +120,10 @@ export async function GET(request: NextRequest) {
       viewerPlan === "premium_plus" ||
       viewerPlan === "premiumPlus";
     if (hasPremiumParams && !hasAdvancedFilters) {
-      return errorResponse(
+      return errorResponsePublic(
         "Advanced filters require a Premium subscription",
-        403
+        403,
+        { code: "UPGRADE_REQUIRED" }
       );
     }
 

@@ -33,55 +33,38 @@ export async function GET(request: Request) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    let userData = await getFirebaseUser(userId);
-    // Auto-provision a minimal user document if missing (fixes 401 on first Google auth before profile upsert completes)
-    if (!userData) {
-      const now = Date.now();
-      const email = (decodedToken as any).email || "";
-      const fullName = (decodedToken as any).name || (decodedToken as any).displayName || undefined;
-      await db.collection("users").doc(userId).set(
-        {
-          email: email.toLowerCase(),
-          createdAt: now,
-            updatedAt: now,
-          fullName,
-          isOnboardingComplete: false,
-          role: "user",
-        },
-        { merge: true }
-      );
-      userData = await getFirebaseUser(userId);
-    }
+  const userData = await getFirebaseUser(userId);
 
-    const signInProvider = (decodedToken as any)?.firebase?.sign_in_provider;
-    const exp = (decodedToken as any)?.exp; // seconds since epoch
-    const nowSec = Math.floor(Date.now() / 1000);
-    const secondsUntilExpiry = typeof exp === "number" ? exp - nowSec : null;
+  const signInProvider = (decodedToken as any)?.firebase?.sign_in_provider;
+  const exp = (decodedToken as any)?.exp; // seconds since epoch
+  const nowSec = Math.floor(Date.now() / 1000);
+  const secondsUntilExpiry = typeof exp === "number" ? exp - nowSec : null;
 
-    return NextResponse.json(
-      {
-        user: {
-          id: userId,
-          email: userData.email || "",
-          role: userData.role || "user",
-          emailVerified: userData.emailVerified || false,
-          createdAt: userData.createdAt || Date.now(),
-          fullName: userData.fullName || userData.displayName || undefined,
-          signInProvider: signInProvider || null,
-          tokenExpiresInSeconds: secondsUntilExpiry,
-          profile: userData
-            ? {
-                id: userId,
-                fullName: userData.fullName || undefined,
-                isOnboardingComplete: Boolean(
-                  userData.isOnboardingComplete ?? false
-                ),
-              }
-            : null,
-        },
+  return NextResponse.json(
+    {
+      user: {
+        id: userId,
+        email: userData.email || "",
+        role: userData.role || "user",
+        emailVerified: userData.emailVerified || false,
+        createdAt: userData.createdAt || Date.now(),
+        fullName: userData.fullName || userData.displayName || undefined,
+        signInProvider: signInProvider || null,
+        tokenExpiresInSeconds: secondsUntilExpiry,
+        profile: userData
+          ? {
+              id: userId,
+              fullName: userData.fullName || undefined,
+              isOnboardingComplete: Boolean(
+                userData.isOnboardingComplete ?? false
+              ),
+            }
+          : null,
+        needsProfile: !userData,
       },
-      { status: 200 }
-    );
+    },
+    { status: 200 }
+  );
   } catch (error) {
     // On unexpected failures, mask with 401 to encourage client retry rather than caching null success
     if (process.env.NODE_ENV !== "production") {

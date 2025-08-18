@@ -391,28 +391,7 @@ export function useUserProfile() {
             setAuthTokenCookie().catch(() => {});
           }
         }
-        let profile = await fetchUserProfile(firebaseUser.uid);
-        // Fallback: if profile is null (possibly due to permission issues or missing doc), attempt creation then refetch
-        if (!profile) {
-          try {
-            await setDoc(
-              doc(db, "users", firebaseUser.uid),
-              {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || "",
-                emailVerified: firebaseUser.emailVerified,
-                role: "user",
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                lastLoginAt: serverTimestamp(),
-              },
-              { merge: true }
-            );
-            profile = await fetchUserProfile(firebaseUser.uid);
-          } catch (e) {
-            console.warn("[authStateChanged] Failed fallback profile creation", e);
-          }
-        }
+        const profile = await fetchUserProfile(firebaseUser.uid);
         setAuthState({
           user: firebaseUser,
           profile,
@@ -677,10 +656,7 @@ export function useUserProfile() {
       setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
-      // Ensure profile exists / updated
-      await createOrUpdateUserProfile(cred.user, {
-        fullName: cred.user.displayName || "",
-      });
+      // Do not auto-create profile; allow onboarding flow to collect mandatory fields first
       const profile = await fetchUserProfile(cred.user.uid);
       if (typeof window !== "undefined") {
         setAuthTokenCookie().catch(() => {});
