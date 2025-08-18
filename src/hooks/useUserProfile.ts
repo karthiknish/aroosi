@@ -22,7 +22,7 @@ import {
   serverTimestamp,
   runTransaction,
 } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { db, auth, setAuthTokenCookie } from "@/lib/firebase";
 import { UserProfile } from "@/lib/userProfile";
 import {
   calculateProfileCompletion,
@@ -384,6 +384,12 @@ export function useUserProfile() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Ensure the auth token cookie is present (avoid duplicate refreshes)
+        if (typeof window !== "undefined") {
+          if (!document.cookie.includes("firebaseAuthToken=")) {
+            setAuthTokenCookie().catch(() => {});
+          }
+        }
         const profile = await fetchUserProfile(firebaseUser.uid);
         setAuthState({
           user: firebaseUser,
@@ -435,6 +441,10 @@ export function useUserProfile() {
 
         const profile = await fetchUserProfile(userCredential.user.uid);
 
+        // Proactively refresh cookie after sign in
+        if (typeof window !== "undefined") {
+          setAuthTokenCookie().catch(() => {});
+        }
         setAuthState({
           user: userCredential.user,
           profile: profile,
@@ -550,6 +560,9 @@ export function useUserProfile() {
           cleaned
         );
 
+        if (typeof window !== "undefined") {
+          setAuthTokenCookie().catch(() => {});
+        }
         setAuthState({
           user: userCredential.user,
           profile: profile,
@@ -613,6 +626,9 @@ export function useUserProfile() {
         fullName: cred.user.displayName || "",
       });
       const profile = await fetchUserProfile(cred.user.uid);
+      if (typeof window !== "undefined") {
+        setAuthTokenCookie().catch(() => {});
+      }
       setAuthState({
         user: cred.user,
         profile: profile,

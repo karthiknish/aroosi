@@ -15,27 +15,9 @@ export async function GET(req: NextRequest) {
     }
     const { userId } = session;
 
-    const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
-      req,
-      "",
-      String(userId),
-      "unread_counts",
-      60_000
-    );
-    if (!rate.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: rate.error || "Rate limit exceeded",
-          correlationId,
-          plan: rate.plan,
-          limit: rate.limit,
-          remaining: rate.remaining,
-          resetTime: new Date(rate.resetTime).toISOString(),
-        },
-        { status: 429 }
-      );
-    }
+    // Previously enforced subscription feature rate limiting for 'unread_counts'.
+    // This endpoint is a lightweight read used for UI badge updates; excessive 429s degrade UX.
+    // Rate limiting removed; if abuse surfaces, reintroduce with more lenient thresholds or per-IP limiter.
 
     // Query unread messages directed to current user
     const snap = await db

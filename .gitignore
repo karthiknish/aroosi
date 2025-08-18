@@ -50,7 +50,8 @@ playwright-report/**/*.md
 # Firebase sensitive files
 firebase-service-account.json
 serviceAccountKey.json
-firebase.json
+# Allow firebase.json so Firestore indexes config is versioned (was previously ignored)
+!firebase.json
 .firebaserc
 firebase/
 .firebase/

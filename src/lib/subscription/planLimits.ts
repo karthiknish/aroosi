@@ -2,13 +2,15 @@
 // Negative (-1) indicates unlimited
 
 export const SUBSCRIPTION_FEATURES = [
-  'message_sent',
-  'profile_view',
-  'search_performed',
-  'interest_sent',
-  'profile_boost_used',
-  'voice_message_sent',
-  'spotlight_badge'
+  "message_sent",
+  "profile_view",
+  "search_performed",
+  "interest_sent",
+  "profile_boost_used",
+  "voice_message_sent",
+  // Added lightweight polling feature for unread message counts
+  "unread_counts",
+  "spotlight_badge",
 ] as const;
 export type SubscriptionFeature = typeof SUBSCRIPTION_FEATURES[number];
 
@@ -18,12 +20,13 @@ export interface PlanLimits { [plan: string]: PlanLimitMap; }
 export const PLAN_LIMITS: PlanLimits = {
   free: {
     message_sent: 5,
-    profile_view: 10,
+    profile_view: 50,
     search_performed: 20,
     interest_sent: 3,
     profile_boost_used: 0,
     voice_message_sent: 0,
-  spotlight_badge: 0,
+    unread_counts: -1, // allow unlimited polling; external rate limiter still applies
+    spotlight_badge: 0,
   },
   premium: {
     message_sent: -1,
@@ -32,7 +35,8 @@ export const PLAN_LIMITS: PlanLimits = {
     interest_sent: -1,
     profile_boost_used: 1,
     voice_message_sent: 10,
-  spotlight_badge: 0,
+    unread_counts: -1,
+    spotlight_badge: 0,
   },
   premiumPlus: {
     message_sent: -1,
@@ -41,7 +45,8 @@ export const PLAN_LIMITS: PlanLimits = {
     interest_sent: -1,
     profile_boost_used: -1,
     voice_message_sent: -1,
-  spotlight_badge: -1,
+    unread_counts: -1,
+    spotlight_badge: -1,
   },
   // alias normalization (premium_plus) if used elsewhere
   premium_plus: {
@@ -51,8 +56,9 @@ export const PLAN_LIMITS: PlanLimits = {
     interest_sent: -1,
     profile_boost_used: -1,
     voice_message_sent: -1,
-  spotlight_badge: -1,
-  }
+    unread_counts: -1,
+    spotlight_badge: -1,
+  },
 };
 
 export function normalisePlan(plan: string | undefined | null): string {

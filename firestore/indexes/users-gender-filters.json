@@ -1,0 +1,11 @@
+{
+  "indexes": [
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"gender","order":"ASCENDING"},{"fieldPath":"city","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]},
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"gender","order":"ASCENDING"},{"fieldPath":"country","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]},
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"gender","order":"ASCENDING"},{"fieldPath":"city","order":"ASCENDING"},{"fieldPath":"age","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]},
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"gender","order":"ASCENDING"},{"fieldPath":"country","order":"ASCENDING"},{"fieldPath":"age","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]},
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"gender","order":"ASCENDING"},{"fieldPath":"ethnicity","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]},
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"gender","order":"ASCENDING"},{"fieldPath":"motherTongue","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]},
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"gender","order":"ASCENDING"},{"fieldPath":"language","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]}
+  ]
+}

@@ -59,8 +59,16 @@ async function getDailyUsage(userId: string) {
 }
 
 export async function GET(request: NextRequest) {
+  let auth;
   try {
-    const auth = await requireAuth(request);
+    auth = await requireAuth(request);
+  } catch (e) {
+    const err = e as AuthError;
+    return errorResponse(err.message, (err as AuthError).status || 401, {
+      code: (err as AuthError).code,
+    });
+  }
+  try {
     const profile = await getProfile(auth.userId);
     if (!profile) return errorResponse("Profile not found", 404);
     const plan = profile.subscriptionPlan || "free";
@@ -94,6 +102,14 @@ export async function GET(request: NextRequest) {
         remaining: i.remaining,
         percentageUsed: i.percentageUsed,
       })),
+      // Provide a consistent monthly reset date (start of next month UTC)
+      resetDate: (() => {
+        const now = new Date();
+        const nextMonth = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0)
+        );
+        return nextMonth.getTime();
+      })(),
       messaging: {
         sent: usageList.find((u) => u.feature === "message_sent")?.used || 0,
         limit: usageList.find((u) => u.feature === "message_sent")?.limit || 0,
@@ -118,6 +134,7 @@ export async function GET(request: NextRequest) {
     return successResponse(usage);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    console.error("/api/subscription/usage failure", { message: msg, error });
     return errorResponse("Failed to fetch usage statistics", 500, {
       details: msg,
     });

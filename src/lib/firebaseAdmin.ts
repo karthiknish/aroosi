@@ -80,7 +80,55 @@ export async function upsertUser(email: string, data: Partial<FirestoreUserProfi
 
 // Verify a Firebase ID token (returns decoded token or throws)
 export async function verifyFirebaseIdToken(idToken: string) {
-  return await adminAuth.verifyIdToken(idToken);
+  try {
+    if (!idToken || typeof idToken !== "string") {
+      throw new Error("Missing idToken");
+    }
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    // Development diagnostics: verify project / issuer alignment.
+    if (process.env.NODE_ENV !== "production") {
+      const expectedProject =
+        process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+        process.env.FIREBASE_PROJECT_ID;
+      const issuer: string | undefined = (decoded as any).iss;
+      const aud: string | undefined = (decoded as any).aud;
+      const uid: string | undefined = (decoded as any).uid;
+      const mismatch: string[] = [];
+      if (expectedProject && issuer && !issuer.includes(expectedProject))
+        mismatch.push("issuer");
+      if (expectedProject && aud && aud !== expectedProject)
+        mismatch.push("aud");
+      if (mismatch.length) {
+        // eslint-disable-next-line no-console
+        console.warn("[verifyFirebaseIdToken] Project mismatch", {
+          expectedProject,
+          issuer,
+          aud,
+          uid,
+          mismatch,
+        });
+      }
+    }
+    return decoded;
+  } catch (err: any) {
+    if (process.env.NODE_ENV !== "production") {
+      // Helpful structured troubleshooting hints; avoid logging raw token.
+      // eslint-disable-next-line no-console
+      console.error("[verifyFirebaseIdToken] Failed", {
+        message: err?.message,
+        code: err?.code,
+        name: err?.name,
+        suggestions: [
+          "Confirm client & admin SDK use the same Firebase project ID",
+          "Ensure FIREBASE_SERVICE_ACCOUNT (or GOOGLE_APPLICATION_CREDENTIALS) is configured",
+          "If using emulator, set FIREBASE_AUTH_EMULATOR_HOST and skip verification for emulator tokens",
+          "Check system clock skew (<5 minutes)",
+          "Force refresh token on client: currentUser.getIdToken(true)",
+        ],
+      });
+    }
+    throw err;
+  }
 }
 
 // Minimal helper to fetch user document from Firestore (used by firebase auth wrappers)

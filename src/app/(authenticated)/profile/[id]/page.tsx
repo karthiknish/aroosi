@@ -55,7 +55,6 @@ import {
   formatBoolean,
 } from "@/lib/utils/profileFormatting";
 import { ProfileActions } from "@/components/profile/ProfileActions";
-import { SimilarProfiles } from "./SimilarProfiles";
 import { IcebreakersPanel } from "./IcebreakersPanel";
 import { fetchIcebreakers } from "@/lib/engagementUtil";
 import { getJson } from "@/lib/http/client";
@@ -67,29 +66,45 @@ export default function ProfileDetailPage() {
     isLoaded,
     isAuthenticated,
   } = useAuthContext();
-  const currentUserProfile = rawCurrentUserProfile as {
-    _id?: string;
-    userId?: string;
-  } | null;
+  // Current user profile model (Firebase) uses `id` (doc id) and `uid` (auth uid).
+  // Previous logic incorrectly looked for `_id` / `userId` causing fromUserId to be undefined.
+  const currentUserProfile = rawCurrentUserProfile as
+    | (typeof rawCurrentUserProfile & {
+        id?: string;
+        uid?: string;
+      })
+    | null;
   const offline = useOffline();
   const { trackUsage } = useUsageTracking(undefined);
   const { isPremiumPlus } = useSubscriptionGuard();
   const id = params?.id as string;
   const userId = id as string;
-  const fromUserId = currentUserProfile?.userId;
+  // Use Firebase uid first, fall back to document id for interest interactions
+  const fromUserId = currentUserProfile?.uid || currentUserProfile?.id;
   const toUserId = userId;
 
+  // Determine if viewing own profile (support both uid & doc id comparisons)
+  const isOwnProfile = Boolean(
+    currentUserProfile &&
+      userId &&
+      (currentUserProfile.id === userId || currentUserProfile.uid === userId)
+  );
+  const viewingOwn = isOwnProfile;
+  const skipRemoteProfile = viewingOwn && !!currentUserProfile;
   const {
     data: profileData,
-    isLoading: loadingProfile,
+    isLoading: loadingProfileRemote,
     error: profileError,
   } = useQuery({
     queryKey: ["profileData", userId],
     queryFn: async () => (userId ? await fetchUserProfile(userId) : null),
-    enabled: !!userId && isLoaded && isAuthenticated,
+    enabled: !!userId && isLoaded && isAuthenticated && !skipRemoteProfile,
     retry: false,
   });
-  const profileRaw = profileData?.data;
+  const loadingProfile = skipRemoteProfile ? false : loadingProfileRemote;
+  const profileRaw = skipRemoteProfile
+    ? (currentUserProfile as any)
+    : profileData?.data;
   const profile: Profile | null =
     profileRaw &&
     typeof profileRaw === "object" &&
@@ -102,9 +117,6 @@ export default function ProfileDetailPage() {
     enabled: isLoaded && isAuthenticated,
     preferInlineUrls: profile?.profileImageUrls,
   });
-  const isOwnProfile = Boolean(
-    currentUserProfile?._id && userId && currentUserProfile._id === userId
-  );
   const localCurrentUserImageOrder: string[] = useMemo(() => {
     if (isOwnProfile && profile && (profile as any).profileImageIds) {
       return (profile as any).profileImageIds || [];
@@ -145,11 +157,11 @@ export default function ProfileDetailPage() {
   const {
     interestStatusData,
     loadingInterestStatus,
-    loadingInterests,
     alreadySentInterest,
     handleToggleInterest,
     showHeartPop,
     interestError,
+    mutationPending,
   } = useInterestStatus({
     fromUserId,
     toUserId: String(toUserId),
@@ -171,7 +183,21 @@ export default function ProfileDetailPage() {
   const [currentImageIdx, setCurrentImageIdx] = useState<number>(0);
   const imagesKey = imagesToShow.join(",");
 
-  const interestLoading = loadingInterests || loadingInterestStatus;
+  const interestLoading = loadingInterestStatus;
+  const missingInteractionIds = !fromUserId || !toUserId;
+  if (typeof window !== "undefined") {
+    // Lightweight debug (won't spam because values stabilize quickly)
+    (window as any).__lastInterestDebug = {
+      fromUserId,
+      toUserId,
+      missingInteractionIds,
+      // include raw ids for deeper debugging
+      rawProfileIds: {
+        profile_id: currentUserProfile?.id,
+        profile_uid: currentUserProfile?.uid,
+      },
+    };
+  }
 
   // Keyboard navigation for image gallery (Left/Right arrows)
   useEffect(() => {
@@ -367,7 +393,7 @@ export default function ProfileDetailPage() {
         />
         {/* ... other meta tags ... */}
       </Head>
-      <div className="relative w-full min-h-screen bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
+      <div className="relative w-full overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
         {/* Decorative color pop circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
         <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
@@ -527,40 +553,7 @@ export default function ProfileDetailPage() {
                   className="mb-6"
                 />
               )}
-              {/* Inline CTA chips near name for quick access */}
-              {!isOwnProfile && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      document
-                        .getElementById("profile-actions-section")
-                        ?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    Add to Shortlist
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      document
-                        .getElementById("profile-actions-section")
-                        ?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    Add Note
-                  </Button>
-                </div>
-              )}
-
-              {/* Engagement actions: shortlist + private note */}
-              {!isOwnProfile && (
-                <div id="profile-actions-section" className="mb-6">
-                  <ProfileActions toUserId={String(userId)} />
-                </div>
-              )}
+              {/* Removed inline shortlist & note actions (moved to bottom) */}
 
               {/* Quick actions: Previous/Next image buttons */}
               {imagesToShow.length > 1 && (
@@ -677,16 +670,7 @@ export default function ProfileDetailPage() {
                 </div>
               </motion.div>
 
-              {/* Similar profiles */}
-              <div className="mt-8 w-full">
-                <h3 className="text-lg font-semibold mb-3">Similar profiles</h3>
-                <SimilarProfiles
-                  baseCity={profile.city || undefined}
-                  baseCountry={profile.country || undefined}
-                  baseMotherTongue={profile.motherTongue || undefined}
-                  excludeUserId={String(userId)}
-                />
-              </div>
+              {/* Similar profiles section removed */}
 
               {imagesLoading && skeletonCount > 0 && (
                 <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
@@ -934,7 +918,11 @@ export default function ProfileDetailPage() {
                         animate="visible"
                         exit="hidden"
                         whileTap="tap"
-                        onClick={handleToggleInterest}
+                        onClick={() => {
+                          if (missingInteractionIds) return; // silently ignore until IDs ready
+                          handleToggleInterest();
+                        }}
+                        // Dynamic labels; disabled state shows loading context
                         title={
                           alreadySentInterest
                             ? "Withdraw Interest"
@@ -946,7 +934,16 @@ export default function ProfileDetailPage() {
                             : "Express Interest"
                         }
                         type="button"
-                        disabled={loadingInterests}
+                        disabled={
+                          loadingInterestStatus ||
+                          mutationPending ||
+                          missingInteractionIds
+                        }
+                        aria-disabled={
+                          loadingInterestStatus ||
+                          mutationPending ||
+                          missingInteractionIds
+                        }
                       >
                         <motion.span
                           initial={{ scale: 0.8, opacity: 0.7 }}
@@ -958,7 +955,27 @@ export default function ProfileDetailPage() {
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.92 }}
                         >
-                          {alreadySentInterest ? (
+                          {mutationPending ? (
+                            <svg
+                              className="w-10 h-10 animate-spin text-white"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                              />
+                            </svg>
+                          ) : alreadySentInterest ? (
                             <div className="relative">
                               <HeartOff className="w-10 h-10 fill-primary text-primary" />
                             </div>
@@ -969,6 +986,22 @@ export default function ProfileDetailPage() {
                       </motion.button>
                     ))}
                 </AnimatePresence>
+                {canInteract && interestStatusData?.status === "mutual" && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full shadow font-semibold">
+                    <svg
+                      className="w-5 h-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                    Matched
+                  </div>
+                )}
                 {/* Heart pop animation overlay */}
                 <AnimatePresence>
                   {showHeartPop && (
@@ -985,27 +1018,13 @@ export default function ProfileDetailPage() {
                   )}
                 </AnimatePresence>
               </div>
-              <AnimatePresence>
-                {interestError && (
-                  <motion.div
-                    key="interest-error"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      transition: { duration: 0.3 },
-                    }}
-                    exit={{
-                      opacity: 0,
-                      y: 10,
-                      transition: { duration: 0.2 },
-                    }}
-                    className="text-center text-red-600 text-sm mt-2"
-                  >
-                    {interestError}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
+              {/* Shortlist action moved to bottom of card */}
+              {!isOwnProfile && (
+                <div className="flex justify-center mt-6">
+                  <ProfileActions toUserId={String(userId)} />
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

@@ -698,7 +698,13 @@ const ProfileView: FC<ProfileViewProps> = ({
                 >
                   <ProfileDetailView
                     label="Min Preferred Partner Age"
-                    value={profileData.partnerPreferenceAgeMin?.toString()}
+                    value={
+                      profileData.partnerPreferenceAgeMin === 0 ||
+                      profileData.partnerPreferenceAgeMin === undefined ||
+                      profileData.partnerPreferenceAgeMin === null
+                        ? "18"
+                        : profileData.partnerPreferenceAgeMin?.toString()
+                    }
                   />
                   <ProfileDetailView
                     label="Max Preferred Partner Age"

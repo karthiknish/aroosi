@@ -82,8 +82,14 @@ export async function fetchUserProfile(
         smoking: (profileData.smoking as any) || "no",
         drinking: (profileData.drinking as any) || "no",
         physicalStatus: (profileData.physicalStatus as any) || "normal",
-        partnerPreferenceAgeMin:
-          (profileData.partnerPreferenceAgeMin as any) || 0,
+        // Default minimum preferred partner age to 18 (legal adulthood) instead of 0/undefined
+        partnerPreferenceAgeMin: (() => {
+          const raw = (profileData as any).partnerPreferenceAgeMin;
+          const num = typeof raw === "string" ? parseInt(raw, 10) : raw;
+          // If parsed number invalid or below 18, fallback
+          if (typeof num !== "number" || isNaN(num) || num < 18) return 18;
+          return num;
+        })(),
         partnerPreferenceAgeMax:
           (profileData.partnerPreferenceAgeMax as any) || 0,
         partnerPreferenceCity: (profileData.partnerPreferenceCity as any) || [],

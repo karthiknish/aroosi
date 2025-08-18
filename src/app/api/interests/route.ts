@@ -37,11 +37,14 @@ const PostSchema = z.discriminatedUnion("action", [
 
 function snapshotUser(user: any) {
   if (!user) return undefined;
-  return {
-    fullName: user.fullName,
-    city: user.city,
-    image: user.profileImageUrls?.[0],
-  };
+  const snap: Record<string, any> = {};
+  if (user.fullName != null) snap.fullName = user.fullName;
+  if (user.city != null) snap.city = user.city;
+  const firstImage = Array.isArray(user.profileImageUrls)
+    ? user.profileImageUrls[0]
+    : undefined;
+  if (firstImage) snap.image = firstImage; // only set if truthy to avoid undefined Firestore values
+  return Object.keys(snap).length ? snap : undefined;
 }
 async function loadUser(userId: string) {
   const doc = await db.collection("users").doc(userId).get();
@@ -110,7 +113,7 @@ export async function POST(req: NextRequest) {
       const existing = await ref.get();
       if (existing.exists)
         return applySecurityHeaders(
-          successResponse({ success: false, error: "Interest already sent" })
+          errorResponse("Interest already sent", 409)
         );
       const fromUser = await loadUser(auth.userId);
       const toUser = await loadUser(data.toUserId);

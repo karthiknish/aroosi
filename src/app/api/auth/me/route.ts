@@ -2,32 +2,42 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyFirebaseIdToken, getFirebaseUser } from "@/lib/firebaseAdmin";
 
-// Return current user with profile using Firebase authentication
-export async function GET(_request: Request) {
+// Return current user with profile using Firebase authentication (cookie first, bearer header fallback)
+export async function GET(request: Request) {
   try {
-    // Get the Firebase ID token from cookies
     const cookieStore = await cookies();
-    const token = cookieStore.get("firebaseAuthToken")?.value;
+    let token: string | null | undefined =
+      cookieStore.get("firebaseAuthToken")?.value;
+
+    // Authorization: Bearer <token> fallback (mirrors requireSession logic)
+    if (!token) {
+      const authz =
+        request.headers.get("authorization") ||
+        request.headers.get("Authorization");
+      if (authz && authz.toLowerCase().startsWith("bearer ")) {
+        token = authz.slice(7).trim() || null;
+        if (process.env.NODE_ENV !== "production") {
+          // eslint-disable-next-line no-console
+          console.info("[/api/auth/me] Using bearer header fallback");
+        }
+      }
+    }
 
     if (!token) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Verify the Firebase ID token
     const decodedToken = await verifyFirebaseIdToken(token);
     const userId = decodedToken.uid;
-
     if (!userId) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Get the user data from Firestore
     const userData = await getFirebaseUser(userId);
     if (!userData) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Return user data with profile
     return NextResponse.json(
       {
         user: {
@@ -51,7 +61,11 @@ export async function GET(_request: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error in /api/auth/me:", error);
-    return NextResponse.json({ user: null }, { status: 200 });
+    // On unexpected failures, mask with 401 to encourage client retry rather than caching null success
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.error("Error in /api/auth/me:", error);
+    }
+    return NextResponse.json({ user: null }, { status: 401 });
   }
 }

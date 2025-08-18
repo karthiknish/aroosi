@@ -12,6 +12,7 @@
     "@dnd-kit/modifiers": "9.0.0",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
+    "@faker-js/faker": "9.0.0",
     "@hookform/resolvers": "^3.9.1",
     "@popperjs/core": "2.11.8",
     "@radix-ui/react-accordion": "1.2.11",
@@ -145,7 +146,9 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "deploy:indexes": "firebase deploy --only firestore:indexes",
+    "build:indexes": "ts-node scripts/build-firestore-indexes.ts",
     "deploy:firestore": "firebase deploy --only firestore",
-    "precompute:recs": "ts-node scripts/precomputeRecommendations.ts"
+    "precompute:recs": "ts-node scripts/precomputeRecommendations.ts",
+    "seed:users": "ts-node scripts/seedUsers.ts --count 20"
   }
 }

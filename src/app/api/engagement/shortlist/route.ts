@@ -117,11 +117,16 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
     const fromDoc = await db.collection("users").doc(user.id).get();
     const fromData = fromDoc.exists ? (fromDoc.data() as any) : {};
     const senderName = fromData.fullName || "Someone";
-    const senderImage =
+    const senderImageRaw =
       Array.isArray(fromData.profileImageUrls) &&
       fromData.profileImageUrls.length > 0
         ? fromData.profileImageUrls[0]
         : undefined;
+    const notificationData: Record<string, any> = {
+      fromUserId: user.id,
+      senderName,
+    };
+    if (senderImageRaw) notificationData.senderImage = senderImageRaw;
     // Fetch target user's push tokens
     const tokenSnap = await db
       .collection("pushTokens")
@@ -137,7 +142,7 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       type: "shortlist",
       title: `${senderName} shortlisted you`,
       body: "You were added to a shortlist",
-      data: { fromUserId: user.id, senderName, senderImage },
+      data: notificationData,
     });
     if (tokens.length) {
       await sendFcmNotificationToTokens(

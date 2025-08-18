@@ -45,9 +45,7 @@ export default function RootLayout({
         {/* Canonical URL */}
         <link rel="canonical" href="https://aroosi.app" />
 
-        {/* Favicons/manifest - removing icon imports from app manifest per request */}
-        {/* Keep only the base favicon and manifest to avoid Next.js importing icon modules */}
-        <link rel="icon" href="/favicon.ico" />
+        {/* Favicon: rely on public/favicon.ico only (avoid duplicate app favicon file) */}
         <link rel="manifest" href="/site.webmanifest" />
 
         {/* Fonts */}

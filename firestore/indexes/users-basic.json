@@ -1,0 +1,6 @@
+{
+  "indexes": [
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]},
+    {"collectionId":"users","queryScope":"COLLECTION","fields":[{"fieldPath":"isOnboardingComplete","order":"ASCENDING"},{"fieldPath":"age","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"},{"fieldPath":"__name__","order":"DESCENDING"}]}
+  ]
+}

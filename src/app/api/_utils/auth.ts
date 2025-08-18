@@ -42,8 +42,22 @@ export async function requireSession(
   | { errorResponse: Response }
 > {
   // Prefer Firebase ID token cookie
-  const firebaseToken = readCookie(req, "firebaseAuthToken");
+  let firebaseToken = readCookie(req, "firebaseAuthToken");
+  // Fallback: Authorization: Bearer <token>
   if (!firebaseToken) {
+    const authz =
+      req.headers.get("authorization") || req.headers.get("Authorization");
+    if (authz && authz.toLowerCase().startsWith("bearer ")) {
+      firebaseToken = authz.slice(7).trim() || null;
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[requireSession] Using bearer header fallback");
+      }
+    }
+  }
+  if (!firebaseToken) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[requireSession] Missing auth (no cookie, no bearer)");
+    }
     return {
       errorResponse: json(401, { success: false, error: "No auth session" }),
     };
@@ -52,6 +66,9 @@ export async function requireSession(
   try {
     decoded = await verifyFirebaseIdToken(firebaseToken);
   } catch {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[requireSession] Token verification failed");
+    }
     return {
       errorResponse: json(401, { success: false, error: "Invalid session" }),
     };

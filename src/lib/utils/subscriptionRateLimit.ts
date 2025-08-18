@@ -143,10 +143,12 @@ export class SubscriptionRateLimiter {
         premium: 100, // 100 profile views per minute
         premiumPlus: 500, // 500 profile views per minute
       },
+      // Relaxed substantially: primary quota for searches is daily (usageEvents),
+      // this per-minute guard is now just anti-bot / runaway safeguard.
       search_performed: {
-        free: 20, // 20 searches per minute
-        premium: 100, // 100 searches per minute
-        premiumPlus: 500, // 500 searches per minute
+        free: 200, // was 20
+        premium: 500, // was 100
+        premiumPlus: 2000, // was 500
       },
       interest_sent: {
         free: 5, // 5 interests per minute
@@ -162,6 +164,11 @@ export class SubscriptionRateLimiter {
         free: 5, // 5 voice messages per minute
         premium: 25, // 25 voice messages per minute
         premiumPlus: 100, // 100 voice messages per minute
+      },
+      unread_counts: {
+        free: 60, // 60 unread polls per minute (client currently ~6/min) ample headroom
+        premium: 120,
+        premiumPlus: 300,
       },
     } as const;
 

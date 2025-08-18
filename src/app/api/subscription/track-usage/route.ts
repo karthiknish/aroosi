@@ -49,16 +49,26 @@ async function getDailyUsage(userId: string) {
     .where("timestamp", ">=", since)
     .get();
   const daily: Record<string, number> = {};
+  const profileViewTargets = new Set<string>();
   snap.docs.forEach(
     (
       d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
     ) => {
       const data = d.data() as any;
-      if (
-        data.feature === "profile_view" ||
-        data.feature === "search_performed"
-      )
+      if (data.feature === "search_performed") {
         daily[data.feature] = (daily[data.feature] || 0) + 1;
+      } else if (data.feature === "profile_view") {
+        const tgt = data.metadata?.targetUserId || data.metadata?.profileId;
+        if (tgt) {
+          if (!profileViewTargets.has(tgt)) {
+            profileViewTargets.add(tgt);
+            daily[data.feature] = (daily[data.feature] || 0) + 1;
+          }
+        } else {
+          // fallback if no metadata target present treat as generic increment
+          daily[data.feature] = (daily[data.feature] || 0) + 1;
+        }
+      }
     }
   );
   return daily;
@@ -107,6 +117,48 @@ export async function POST(req: NextRequest) {
       });
     // Record event
     const event = buildUsageEvent(auth.userId, feature, metadata);
+    // For profile_view, if same target already viewed today, we do not record a duplicate event
+    if (feature === "profile_view") {
+      const targetId = metadata?.targetUserId || metadata?.profileId;
+      if (targetId) {
+        const since = Date.now() - 24 * 60 * 60 * 1000;
+        // Use only userId + timestamp range (already indexed from previous logic) and filter in memory
+        const dupSnap = await db
+          .collection(COL_USAGE_EVENTS)
+          .where("userId", "==", auth.userId)
+          .where("timestamp", ">=", since)
+          .get();
+        const alreadyViewed = dupSnap.docs.some(
+          (
+            d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
+          ) => {
+            const dat = d.data() as any;
+            return (
+              dat.feature === "profile_view" &&
+              (dat.metadata?.targetUserId || dat.metadata?.profileId) ===
+                targetId
+            );
+          }
+        );
+        if (alreadyViewed) {
+          const remExisting = featureRemaining(
+            plan,
+            feature as SubscriptionFeature,
+            currentUsage
+          );
+          return successResponse({
+            feature,
+            plan,
+            tracked: false,
+            duplicate: true,
+            currentUsage,
+            limit: remExisting.limit,
+            remainingQuota: remExisting.remaining,
+            isUnlimited: remExisting.unlimited,
+          });
+        }
+      }
+    }
     const batch = db.batch();
     const eventRef = db.collection(COL_USAGE_EVENTS).doc();
     batch.set(eventRef, event);

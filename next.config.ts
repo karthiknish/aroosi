@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
       "images.squarespace-cdn.com",
       "img.clerk.com",
       "images.clerk.dev",
+      // Firebase Storage signed URLs and direct media endpoints
+      "firebasestorage.googleapis.com",
+      "storage.googleapis.com",
+      // Custom bucket domain variant (if using CNAME / alternate)
+      "aroosi-project.firebasestorage.app",
     ],
   },
   // Ensure proper transpilation for Safari compatibility

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
-import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
+import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit"; // (retained for potential future re-enable)
 import { z } from "zod";
 import { requireSession } from "@/app/api/_utils/auth";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       ethnicity,
       motherTongue,
       language,
-      preferredGender, // presently unused in Firestore filter logic
+      preferredGender, // now used to filter target profile gender (viewer preference)
       ageMin,
       ageMax,
       page,
@@ -103,20 +103,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Subscription-aware rate limit (plan quotas)
-    const subscriptionLimit =
-      await subscriptionRateLimiter.checkSubscriptionRateLimit(
-        request,
-        "", // bearer token not used in Firebase cookie model
-        userId,
-        "search_performed"
-      );
-    if (!subscriptionLimit.allowed) {
-      return errorResponse(
-        subscriptionLimit.error || "Subscription limit exceeded",
-        429
-      );
-    }
+    // NOTE: Previously enforced per-minute subscription feature rate limiting here.
+    // We now rely on: (1) burst limiter above, (2) daily usageEvents quota via can-use endpoint when invoked elsewhere.
+    // This removal prevents stacking 429 sources and lets search remain responsive while still guarded against abuse.
 
     // Build base Firestore query
     let base: FirebaseFirestore.Query = db
@@ -134,6 +123,10 @@ export async function GET(request: NextRequest) {
       base = base.where("language", "==", language); // field stored as 'language' if present
     if (typeof ageMin === "number") base = base.where("age", ">=", ageMin);
     if (typeof ageMax === "number") base = base.where("age", "<=", ageMax);
+    // Apply preferred gender filter: when viewer specifies a preference other than 'any'
+    if (preferredGender && preferredGender !== "any") {
+      base = base.where("gender", "==", preferredGender);
+    }
 
     // For stable cursor pagination: order by createdAt desc then docId desc
     let query = base
@@ -176,8 +169,95 @@ export async function GET(request: NextRequest) {
       query = query.limit(pageSize);
     }
 
-    const snap = await query.get();
-    const docs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+    function isIndexMissing(e: any): boolean {
+      if (!e) return false;
+      const msg = typeof e.message === "string" ? e.message : "";
+      return (
+        e.code === 9 ||
+        msg.includes("FAILED_PRECONDITION") ||
+        msg.includes("The query requires an index")
+      );
+    }
+
+    async function runPrimaryQuery(): Promise<any[]> {
+      const snap = await query.get();
+      return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+    }
+
+    async function runFallbackScan(): Promise<{
+      docs: any[];
+      scanned: number;
+    }> {
+      const FALLBACK_SCAN_LIMIT = 400; // slightly higher for better result coverage
+      const fallbackQuery = db
+        .collection(COLLECTIONS.USERS)
+        .where("isOnboardingComplete", "==", true)
+        .orderBy("createdAt", "desc")
+        .orderBy(FieldPath.documentId(), "desc")
+        .limit(FALLBACK_SCAN_LIMIT);
+      const fbSnap = await fallbackQuery.get();
+      const all = fbSnap.docs.map(
+        (d: FirebaseFirestore.QueryDocumentSnapshot) => ({
+          id: d.id,
+          ...(d.data() as any),
+        })
+      );
+      let filtered = all.filter((d: any) => {
+        if (city && city !== "any" && d.city !== city) return false;
+        if (country && country !== "any" && d.country !== country) return false;
+        if (ethnicity && ethnicity !== "any" && d.ethnicity !== ethnicity)
+          return false;
+        if (
+          motherTongue &&
+          motherTongue !== "any" &&
+          d.motherTongue !== motherTongue
+        )
+          return false;
+        if (language && language !== "any" && d.language !== language)
+          return false;
+        if (
+          typeof ageMin === "number" &&
+          (typeof d.age !== "number" || d.age < ageMin)
+        )
+          return false;
+        if (
+          typeof ageMax === "number" &&
+          (typeof d.age !== "number" || d.age > ageMax)
+        )
+          return false;
+        if (
+          preferredGender &&
+          preferredGender !== "any" &&
+          d.gender !== preferredGender
+        )
+          return false;
+        return true;
+      });
+      if (!cursor && page > 0) filtered = filtered.slice(page * pageSize);
+      filtered = filtered.slice(0, pageSize);
+      return { docs: filtered, scanned: all.length };
+    }
+
+    let docs: any[] = [];
+    try {
+      docs = await runPrimaryQuery();
+    } catch (err: any) {
+      if (isIndexMissing(err)) {
+        console.warn("search.api index missing, applying fallback", {
+          correlationId: cid,
+          error: String(err?.message || err),
+        });
+        const fb = await runFallbackScan();
+        docs = fb.docs;
+        if (!total) total = fb.scanned; // approximate
+      } else {
+        console.error("search.api unexpected failure", {
+          correlationId: cid,
+          error: err,
+        });
+        throw err; // bubble to outer catch -> 500
+      }
+    }
 
     if (!total) total = docs.length + (cursor ? 0 : page * pageSize); // heuristic fallback
 

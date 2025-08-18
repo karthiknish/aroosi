@@ -22,6 +22,8 @@ const validFeatures = [
   "interest_sent",
   "profile_boost_used",
   "voice_message_sent",
+  // Lightweight read-only poll for unread counts (added)
+  "unread_counts",
 ] as const;
 
 type Feature = (typeof validFeatures)[number];
@@ -101,19 +103,42 @@ export async function GET(
     const month = monthKey();
     if (feature === "profile_view" || feature === "search_performed") {
       const since = Date.now() - 24 * 60 * 60 * 1000;
-      const snap = await db
-        .collection(COL_USAGE_EVENTS)
-        .where("userId", "==", userId)
-        .where("timestamp", ">=", since)
-        .get();
-      snap.docs.forEach(
-        (
-          d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
-        ) => {
-          const data = d.data() as any;
-          if (data.feature === feature) currentUsage++;
+      try {
+        const snap = await db
+          .collection(COL_USAGE_EVENTS)
+          .where("userId", "==", userId)
+          .where("timestamp", ">=", since)
+          .get();
+        snap.docs.forEach(
+          (
+            d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
+          ) => {
+            const data = d.data() as any;
+            if (data.feature === feature) currentUsage++;
+          }
+        );
+      } catch (idxErr: any) {
+        // Graceful fallback if composite index not yet built
+        if (
+          typeof idxErr?.message === "string" &&
+          idxErr.message.includes("FAILED_PRECONDITION")
+        ) {
+          log(
+            scope,
+            "warn",
+            "Index missing; falling back to optimistic allowance",
+            {
+              correlationId,
+              feature,
+              statusCode: 200,
+              fallback: true,
+            }
+          );
+          currentUsage = 0; // treat as unused so the feature is not blocked
+        } else {
+          throw idxErr;
         }
-      );
+      }
     } else {
       const monthlyId = usageMonthlyId(userId, feature, month);
       const monthlySnap = await db

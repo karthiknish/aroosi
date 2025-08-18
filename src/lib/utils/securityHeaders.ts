@@ -218,7 +218,7 @@ export function validateSecurityRequirements(request: Request): {
   valid: boolean;
   error?: string;
 } {
-  // Check content type for POST/PUT requests
+  // 1. Content-Type enforcement for state-changing requests
   if (["POST", "PUT", "PATCH"].includes(request.method)) {
     const contentType = request.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
@@ -226,26 +226,72 @@ export function validateSecurityRequirements(request: Request): {
     }
   }
 
-  // Validate request origin
+  // 2. Origin / Referer validation (lightweight; still allows API clients)
   if (!validateRequestOrigin(request)) {
     return { valid: false, error: "Invalid request origin" };
   }
 
-  // Check for suspicious headers
-  const suspiciousHeaders = [
-    "x-forwarded-host",
-    "x-original-url",
-    "x-rewrite-url",
-  ];
-  for (const header of suspiciousHeaders) {
-    if (request.headers.get(header)) {
-      logSecurityEvent(
-        "VALIDATION_FAILED",
-        { reason: `Suspicious header: ${header}` },
-        request
-      );
-      return { valid: false, error: "Suspicious request headers" };
-    }
+  // 3. Header anomaly detection
+  //    Original implementation rejected any presence of common reverse-proxy headers
+  //    (e.g. x-forwarded-host) which are legitimately injected by Next.js / hosting layers.
+  //    We now only flag them if values look inconsistent / spoofed.
+  const host = request.headers.get("host") || "";
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const originalUrl = request.headers.get("x-original-url");
+  const rewriteUrl = request.headers.get("x-rewrite-url");
+
+  // Allowlist hosts (dynamic + localhost)
+  const allowedHostSet = new Set(
+    [
+      host,
+      "localhost:3000",
+      process.env.NEXT_PUBLIC_APP_URL &&
+        (() => {
+          try {
+            return new URL(process.env.NEXT_PUBLIC_APP_URL as string).host;
+          } catch {
+            return undefined;
+          }
+        })(),
+      process.env.NEXT_PUBLIC_SITE_URL &&
+        (() => {
+          try {
+            return new URL(process.env.NEXT_PUBLIC_SITE_URL as string).host;
+          } catch {
+            return undefined;
+          }
+        })(),
+    ].filter(Boolean) as string[]
+  );
+
+  // Heuristic: flag if forwardedHost exists but not in allowlist AND differs from host (potential spoof)
+  if (forwardedHost && !allowedHostSet.has(forwardedHost)) {
+    logSecurityEvent(
+      "VALIDATION_FAILED",
+      { reason: "forwarded_host_mismatch", host, forwardedHost },
+      request
+    );
+    return { valid: false, error: "Suspicious request headers" };
+  }
+
+  // x-original-url / x-rewrite-url are rarely needed; treat presence with unexpected patterns as suspicious.
+  const suspiciousRewriteHeader = (hdr?: string | null) =>
+    !!hdr && /https?:\/\//i.test(hdr) && !hdr.startsWith("/");
+
+  if (
+    suspiciousRewriteHeader(originalUrl) ||
+    suspiciousRewriteHeader(rewriteUrl)
+  ) {
+    logSecurityEvent(
+      "VALIDATION_FAILED",
+      {
+        reason: "rewrite_header_external_url",
+        originalUrl,
+        rewriteUrl,
+      },
+      request
+    );
+    return { valid: false, error: "Suspicious request headers" };
   }
 
   return { valid: true };

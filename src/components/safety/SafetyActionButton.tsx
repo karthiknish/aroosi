@@ -94,12 +94,19 @@ export const SafetyActionButton: React.FC<SafetyActionButtonProps> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className={className}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`bg-white/95 hover:bg-white text-gray-700 border border-gray-200 shadow-sm ${className || ""}`}
+          >
             <MoreVertical className="h-4 w-4" />
             <span className="sr-only">Safety options</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent
+          align="end"
+          className="bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg"
+        >
           <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
             <Flag className="h-4 w-4 mr-2" />
             Report User

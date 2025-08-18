@@ -5,8 +5,16 @@ import { db } from "@/lib/firebaseAdmin";
 import { COL_USAGE_EVENTS } from "@/lib/firestoreSchema";
 
 export async function GET(request: NextRequest) {
+  let auth;
   try {
-    const auth = await requireAuth(request);
+    auth = await requireAuth(request);
+  } catch (e) {
+    const err = e as AuthError;
+    return errorResponse(err.message, (err as AuthError).status || 401, {
+      code: (err as AuthError).code,
+    });
+  }
+  try {
     const url = new URL(request.url);
     const days = Math.max(
       1,
@@ -32,6 +40,10 @@ export async function GET(request: NextRequest) {
     return successResponse(events);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    console.error("/api/subscription/usage-history failure", {
+      message: msg,
+      error,
+    });
     return errorResponse("Failed to fetch usage history", 500, {
       details: msg,
     });

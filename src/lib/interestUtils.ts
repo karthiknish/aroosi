@@ -12,10 +12,27 @@ import { getJson, postJson, deleteJson } from "@/lib/http/client";
  */
 export async function sendInterest(toUserId: string): Promise<any> {
   try {
-    return await postJson<any>("/api/interests", { toUserId }, {
-      headers: { "Content-Type": "application/json", Accept: "application/json", "x-client-check": "interest-send" },
-      cache: "no-store",
-    });
+    const res = await postJson<any>(
+      "/api/interests",
+      { action: "send", toUserId },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "x-client-check": "interest-send",
+        },
+        cache: "no-store",
+      }
+    );
+    if (
+      res &&
+      typeof res === "object" &&
+      "success" in res &&
+      (res as any).success === false
+    ) {
+      throw new Error((res as any).error || "Failed to send interest");
+    }
+    return res;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to send interest";
     throw new Error(msg);
@@ -27,17 +44,18 @@ export async function sendInterest(toUserId: string): Promise<any> {
  */
 export async function removeInterest(toUserId: string): Promise<any> {
   try {
-    // deleteJson sends a DELETE request with JSON body via fetchJson wrapper
-    return await deleteJson<any>("/api/interests", {
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "x-client-check": "interest-remove",
-      },
-      cache: "no-store",
-      // fetchJson supports body via options; our client forwards it in deleteJson
-      body: JSON.stringify({ toUserId }) as unknown as undefined,
-    } as any);
+    return await postJson<any>(
+      "/api/interests",
+      { action: "remove", toUserId },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "x-client-check": "interest-remove",
+        },
+        cache: "no-store",
+      }
+    );
   } catch (err) {
     const msg =
       err instanceof Error ? err.message : "Failed to remove interest";
@@ -73,8 +91,8 @@ export async function respondToInterest(
 ): Promise<any> {
   try {
     return await postJson<any>(
-      "/api/interests/respond",
-      { interestId, status },
+      "/api/interests",
+      { action: "respond", interestId, status },
       {
         headers: {
           "Content-Type": "application/json",

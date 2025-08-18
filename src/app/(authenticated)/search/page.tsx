@@ -135,7 +135,10 @@ export default function SearchProfilesPage() {
     isAuthenticated,
     profile: rawProfile,
   } = useAuthContext();
-  const profile = rawProfile as { subscriptionPlan?: string } | null;
+  const profile = rawProfile as {
+    subscriptionPlan?: string;
+    preferredGender?: string;
+  } | null;
   const router = useRouter();
   const searchParams = useSearchParams();
   const { trackUsage } = useUsageTracking(undefined);
@@ -167,6 +170,7 @@ export default function SearchProfilesPage() {
     setEthnicity(params.get("ethnicity") ?? "any");
     setMotherTongue(params.get("motherTongue") ?? "any");
     setLanguage(params.get("language") ?? "any");
+  // Intentionally ignore any preferredGender query param: filtering is automatic from user profile
     const pageParam = params.get("page");
     setPage(pageParam ? Math.max(0, Number(pageParam) || 0) : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,6 +211,8 @@ export default function SearchProfilesPage() {
   const debouncedEthnicity = useDebouncedValue(ethnicity);
   const debouncedMotherTongue = useDebouncedValue(motherTongue);
   const debouncedLanguage = useDebouncedValue(language);
+  // Viewer preferred gender preference (used for automatic filtering)
+  const viewerPreferredGender = (profile?.preferredGender as string) || "any";
 
   // Debug logging only in development
   React.useEffect(() => {
@@ -259,6 +265,7 @@ export default function SearchProfilesPage() {
       debouncedEthnicity,
       debouncedMotherTongue,
       debouncedLanguage,
+      viewerPreferredGender,
     ],
     queryFn: () =>
       fetchProfileSearchResults({
@@ -268,6 +275,10 @@ export default function SearchProfilesPage() {
         country: debouncedCountry,
         ageMin: debouncedAgeMin,
         ageMax: debouncedAgeMax,
+        preferredGender:
+          viewerPreferredGender !== "any"
+            ? (viewerPreferredGender as any)
+            : undefined,
         ethnicity: debouncedEthnicity,
         motherTongue: debouncedMotherTongue,
         language: debouncedLanguage,
@@ -518,28 +529,7 @@ export default function SearchProfilesPage() {
   const offline = useOffline();
 
   // Edge cases – offline or errors
-  const edgeContent = (content: React.ReactNode) => (
-    <>
-      <div
-        style={{
-          position: "fixed",
-          top: 64,
-          left: 0,
-          right: 0,
-          zIndex: 9999,
-          display: mounted ? "block" : "none",
-          background: "#111827",
-          color: "#fff",
-          padding: "6px 12px",
-          fontSize: 12,
-        }}
-      >
-        [Search] mounted • isSignedIn={String(isSignedIn)} • isAuthenticated=
-        {String(isAuthenticated)} • isLoaded={String(isLoaded)}
-      </div>
-      {content}
-    </>
-  );
+  const edgeContent = (content: React.ReactNode) => content;
 
   if (offline) {
     return edgeContent(
@@ -559,24 +549,7 @@ export default function SearchProfilesPage() {
 
   return (
     <>
-      <div
-        style={{
-          position: "fixed",
-          top: 64,
-          left: 0,
-          right: 0,
-          zIndex: 9999,
-          display: mounted ? "block" : "none",
-          background: "#111827",
-          color: "#fff",
-          padding: "6px 12px",
-          fontSize: 12,
-        }}
-      >
-        [Search] mounted • isSignedIn=
-        {String(isSignedIn)} • isAuthenticated={String(isAuthenticated)} •
-        isLoaded={String(isLoaded)}
-      </div>
+      {/* Removed debug auth status banner */}
       <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
         {/* Decorative color pop circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>

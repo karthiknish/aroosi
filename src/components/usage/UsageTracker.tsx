@@ -47,10 +47,13 @@ interface UsageFeature {
   percentageUsed: number;
 }
 
-interface UsageSummary {
+// NOTE: API currently returns SubscriptionUsageResponse shape without resetDate/currentMonth.
+// We keep a loose interface for forward compatibility but guard at runtime.
+interface UsageSummaryLike {
   plan: string;
-  currentMonth: string;
-  resetDate: number;
+  // Optional fields – may not be present from the API yet.
+  currentMonth?: string;
+  resetDate?: number;
   features: UsageFeature[];
 }
 
@@ -64,7 +67,24 @@ export function UsageTracker() {
     error,
   } = useUsageStats();
 
-  const usage = usageRaw as unknown as UsageSummary | undefined;
+  const usage = usageRaw as unknown as UsageSummaryLike | undefined;
+
+  // Derive a safe reset date (start of next month) if not provided / invalid.
+  let formattedResetDate = "-";
+  if (usage) {
+    const candidate = usage.resetDate;
+    let dateObj: Date | null = null;
+    if (typeof candidate === "number" && isFinite(candidate)) {
+      const d = new Date(candidate);
+      if (!isNaN(d.getTime())) dateObj = d;
+    }
+    if (!dateObj) {
+      const now = new Date();
+      // Start of next month (when monthly quotas typically reset)
+      dateObj = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    }
+    formattedResetDate = format(dateObj, "MMMM d, yyyy");
+  }
 
   if (isLoading) {
     return (
@@ -116,10 +136,7 @@ export function UsageTracker() {
             {usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1)} Plan
           </Badge>
         </div>
-        <p className="text-sm text-gray-500">
-          Resets on{" "}
-          {usage ? format(new Date(usage.resetDate), "MMMM d, yyyy") : "-"}
-        </p>
+        <p className="text-sm text-gray-500">Resets on {formattedResetDate}</p>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">

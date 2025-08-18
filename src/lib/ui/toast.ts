@@ -59,14 +59,18 @@ export function showErrorToast(
 
   toast.error(message, {
     style: {
-      background: "linear-gradient(135deg, #B45E5E 0%, #BE185D 100%)",
-      color: "#ffffff",
-      border: "1px solid #F9A8D4",
+      // Force vivid error background (fallback to gradient if CSS vars missing)
+      background:
+        "var(--toast-error-bg, linear-gradient(135deg, #dc2626 0%, #be123c 100%))",
+      color: "var(--toast-error-fg, #ffffff)",
+      border: "1px solid var(--toast-error-border, #fecdd3)",
       borderRadius: "0.75rem",
       fontSize: "14px",
       fontWeight: "500",
       padding: "16px 20px",
-      boxShadow: "0 6px 16px rgba(190, 24, 93, 0.25)",
+      boxShadow:
+        "0 6px 18px -2px rgba(220,38,38,0.35), 0 2px 4px rgba(220,38,38,0.25)",
+      backdropFilter: "blur(4px)",
     },
     duration: 5000,
   });

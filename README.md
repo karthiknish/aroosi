@@ -91,3 +91,26 @@ Session lifecycle:
 - Evaluate migration of scheduled jobs to Cloud Functions
 
 This document is intentionally operations- and architecture-forward to convey system complexity without step-by-step install instructions.
+
+## Firebase Admin Credentials (Environment-Only)
+
+Provide credentials exclusively via environment variables (no path-based JSON in production):
+
+Priority order:
+1. `FIREBASE_SERVICE_ACCOUNT` – single-line JSON OR base64 string (if it does not start with `{` it is treated as base64)
+2. `FIREBASE_SERVICE_ACCOUNT_BASE64` – explicit base64 JSON
+3. Application Default Credentials (local fallback only)
+
+Example (compact single line – escape newlines in the private key with `\\n`):
+
+```
+FIREBASE_SERVICE_ACCOUNT={"type":"service_account","project_id":"your-project","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\\nABC...\\n-----END PRIVATE KEY-----\\n","client_email":"firebase-adminsdk@your-project.iam.gserviceaccount.com"}
+```
+
+If multi-line JSON was accidentally pasted and you see only `{` parsed, base64 encode instead:
+
+```
+FIREBASE_SERVICE_ACCOUNT_BASE64=$(base64 -i serviceAccount.json | tr -d '\n')
+```
+
+Deprecated: `FIREBASE_SERVICE_ACCOUNT_PATH` has been removed to reduce secret sprawl and accidental commits. Delete any usage of it in existing environments.

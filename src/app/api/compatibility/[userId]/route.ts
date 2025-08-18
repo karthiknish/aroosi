@@ -5,9 +5,13 @@ import { db } from "@/lib/firebaseAdmin";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  context:
+    | { params: { userId: string } }
+    | { params: Promise<{ userId: string }> }
 ) {
-  const targetUserId = params.userId;
+  // Next.js 15 may provide params as a Promise; normalize by awaiting.
+  // (Covers both sync and async forms.)
+  const { userId: targetUserId } = await (context as any).params;
   if (!targetUserId) return errorResponse("Missing userId", 400);
   let authedUserId: string;
   try {

@@ -105,86 +105,98 @@ export default function UsagePage() {
   }, [history, featureNames]);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <h1 className="text-3xl font-bold mb-8">Usage Analytics</h1>
+    <div className="w-full overflow-y-hidden bg-base-light pt-28 sm:pt-28 md:pt-34 pb-12 relative overflow-x-hidden">
+      {/* Decorative color pop circles (match search page) */}
+      <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
+      {/* Subtle SVG background pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      ></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <h1 className="text-3xl font-bold mb-8">Usage Analytics</h1>
 
-      <div className="grid gap-6 md:grid-cols-2 mb-8">
-        <UsageTracker />
+        <div className="grid gap-6 md:grid-cols-2 mb-8">
+          <UsageTracker />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Usage Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="h-[300px] bg-gray-100 animate-pulse rounded" />
+              ) : isError ? (
+                <div className="text-sm text-red-600">
+                  Failed to load usage data.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={chartData.distribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent = 0 }) =>
+                        `${name} ${(percent * 100).toFixed(0)}%`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.distribution.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={chartColors[index % chartColors.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Usage Distribution</CardTitle>
+            <CardTitle>Daily Usage Trends</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="h-[300px] bg-gray-100 animate-pulse rounded" />
+              <div className="h-[400px] bg-gray-100 animate-pulse rounded" />
             ) : isError ? (
               <div className="text-sm text-red-600">
                 Failed to load usage data.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={chartData.distribution}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent = 0 }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.distribution.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={chartColors[index % chartColors.length]}
-                      />
-                    ))}
-                  </Pie>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={chartData.daily}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
                   <Tooltip />
-                </PieChart>
+                  {Object.keys(featureNames).map((feature, index) => (
+                    <Bar
+                      key={feature}
+                      dataKey={feature}
+                      fill={chartColors[index % chartColors.length]}
+                      name={featureNames[feature]}
+                    />
+                  ))}
+                  {/* Legend for clarity */}
+                  <Tooltip />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Daily Usage Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="h-[400px] bg-gray-100 animate-pulse rounded" />
-          ) : isError ? (
-            <div className="text-sm text-red-600">
-              Failed to load usage data.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={chartData.daily}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                {Object.keys(featureNames).map((feature, index) => (
-                  <Bar
-                    key={feature}
-                    dataKey={feature}
-                    fill={chartColors[index % chartColors.length]}
-                    name={featureNames[feature]}
-                  />
-                ))}
-                {/* Legend for clarity */}
-                <Tooltip />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
