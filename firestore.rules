@@ -7,18 +7,22 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == userId &&
-        // Disallow client decreasing completion percentage (server will always increase or keep same)
-        (!('profileCompletionPercentage' in request.resource.data) ||
-          !('profileCompletionPercentage' in resource.data) ||
-          request.resource.data.profileCompletionPercentage >= resource.data.profileCompletionPercentage) &&
-        // If client attempts to set isOnboardingComplete from false->true it's allowed only if essentials present; never allow reverting true->false
+        // Disallow decreasing completion percentage after creation
         (
+          !('profileCompletionPercentage' in request.resource.data) ||
+          resource == null ||
+          request.resource.data.profileCompletionPercentage >= resource.data.profileCompletionPercentage
+        ) &&
+        (
+          // If isOnboardingComplete not being touched, allow
           !('isOnboardingComplete' in request.resource.data) ||
-          (resource.data.isOnboardingComplete == true && request.resource.data.isOnboardingComplete == true) ||
-          (
-            resource.data.isOnboardingComplete != true &&
+          // Create with explicit false allowed
+          (resource == null && request.resource.data.isOnboardingComplete == false) ||
+          // Once true, must remain true
+          (resource != null && resource.data.isOnboardingComplete == true && request.resource.data.isOnboardingComplete == true) ||
+          // Transition false (or unset) -> true requires essentials
+          ((resource == null || resource.data.isOnboardingComplete != true) &&
             request.resource.data.isOnboardingComplete == true &&
-            // basic essential fields non-empty check
             request.resource.data.fullName is string && request.resource.data.fullName.size() > 0 &&
             request.resource.data.dateOfBirth is string && request.resource.data.dateOfBirth.size() > 0 &&
             request.resource.data.gender is string && request.resource.data.gender.size() > 0 &&
@@ -28,8 +32,7 @@ service cloud.firestore {
             request.resource.data.education is string && request.resource.data.education.size() > 0 &&
             request.resource.data.occupation is string && request.resource.data.occupation.size() > 0 &&
             request.resource.data.religion is string && request.resource.data.religion.size() > 0 &&
-            request.resource.data.aboutMe is string && request.resource.data.aboutMe.size() > 0
-          )
+            request.resource.data.aboutMe is string && request.resource.data.aboutMe.size() > 0)
         );
     }
 

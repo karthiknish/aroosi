@@ -335,12 +335,13 @@ export default function CustomSignupForm({
         return;
       }
 
-      // Success: Show verification message
+      // (Modified) Regardless of email verification requirement, continue to success page immediately.
+      // If you want to require email verification before redirect, restore previous conditional block.
       if (
         (result as any).needsVerification ||
         (result as any).needsEmailVerification
       ) {
-        setNeedsVerification(true);
+        // Persist pending state (optional) but still proceed.
         try {
           sessionStorage.setItem(
             PENDING_KEY,
@@ -350,15 +351,12 @@ export default function CustomSignupForm({
             })
           );
         } catch {}
-        // Keep loader visible so user sees feedback before OTP UI appears
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 800); // Slightly longer delay for better UX
-        return;
       }
 
-      // Success: Refresh the auth state to reflect the new session
-      await refreshUser();
+      // Refresh auth state before redirect (best-effort)
+      try {
+        await refreshUser();
+      } catch {}
 
       // Clean up any onboarding/local wizard storage
       try {
@@ -394,7 +392,7 @@ export default function CustomSignupForm({
         console.warn("onComplete callback threw, continuing", err);
       }
 
-      // Show loader during redirect to success page
+      // Redirect to success page
       await finalizeToSuccess();
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {

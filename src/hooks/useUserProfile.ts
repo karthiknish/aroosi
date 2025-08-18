@@ -195,16 +195,24 @@ export function useUserProfile() {
       try {
         const userRef = doc(db, "users", firebaseUser.uid);
 
-        const baseData: Record<string, unknown> = {
+        // Compose a prospective profile snapshot for initial calculation BEFORE writing
+        const prospective: any = {
           uid: firebaseUser.uid,
           email: firebaseUser.email || "",
           emailVerified: firebaseUser.emailVerified,
           role: "user",
-          isOnboardingComplete: false,
-          profileCompletionPercentage: 0,
+          ...(additionalData || {}),
+        };
+        const initialCompletion = calculateProfileCompletion(prospective);
+        const initialOnboarding = isOnboardingDone(prospective);
+
+        const baseData: Record<string, unknown> = {
+          ...prospective,
+          // Explicit initial values (rules updated to allow these on create)
+          isOnboardingComplete: initialOnboarding,
+          profileCompletionPercentage: initialCompletion,
           updatedAt: serverTimestamp(),
           lastLoginAt: serverTimestamp(),
-          ...(additionalData || {}),
         };
 
         // Use setDoc with merge to avoid race & simplify rules evaluation.
@@ -242,15 +250,30 @@ export function useUserProfile() {
             profileCompletionPercentage: 0,
           } as UserProfile;
         }
-        // Post-create: if required fields present, mark onboarding complete
+        // Post-create: recalc completion & onboarding in case of server merges or defaults
         try {
-          if (prof && !prof.isOnboardingComplete && isOnboardingDone(prof)) {
-            await setDoc(
-              userRef,
-              { isOnboardingComplete: true, updatedAt: serverTimestamp() },
-              { merge: true }
-            );
-            prof = { ...prof, isOnboardingComplete: true } as UserProfile;
+          if (prof) {
+            const recalculatedPct = calculateProfileCompletion(prof);
+            const onboardingNow = isOnboardingDone(prof);
+            const needsUpdate =
+              prof.profileCompletionPercentage !== recalculatedPct ||
+              prof.isOnboardingComplete !== onboardingNow;
+            if (needsUpdate) {
+              await setDoc(
+                userRef,
+                {
+                  profileCompletionPercentage: recalculatedPct,
+                  isOnboardingComplete: onboardingNow,
+                  updatedAt: serverTimestamp(),
+                },
+                { merge: true }
+              );
+              prof = {
+                ...prof,
+                profileCompletionPercentage: recalculatedPct,
+                isOnboardingComplete: onboardingNow,
+              } as UserProfile;
+            }
           }
         } catch {}
         return prof as UserProfile;
