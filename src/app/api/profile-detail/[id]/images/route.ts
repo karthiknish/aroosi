@@ -41,15 +41,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Validate ID format (basic check for Convex IDs)
-    const isValidId = /^[a-z0-9]+$/.test(id);
+    // Validate ID format (Firestore auto IDs are 20 chars mixed case, allow broader range)
+    // Firestore auto IDs are 20 chars (mixed case + digits); allow a reasonable range 6-40.
+    // NOTE: Previous regex had spaces in the quantifier and rejected all valid IDs.
+    const isValidId = /^[A-Za-z0-9_-]{6,40}$/.test(id);
     if (!isValidId) {
       log("Invalid ID format", { id });
       return NextResponse.json(
         {
           error: "Invalid ID format",
           requestId,
-          details: "ID should only contain alphanumeric characters",
+          details:
+            "ID must be 6-40 chars: letters, numbers, underscore or dash (Firestore style)",
         },
         { status: 400 }
       );

@@ -86,14 +86,19 @@ export async function createOrUpdateUserProfile(
     profileImageUrls: data.profileImageUrls,
     profileImageStorageIds: data.profileImageStorageIds,
     mainProfileImageIndex: data.mainProfileImageIndex,
-    subscriptionPlan: data.subscriptionPlan,
+    // Default new users to 'free' plan if not specified
+    subscriptionPlan: data.subscriptionPlan || "free",
     subscriptionExpiresAt: data.subscriptionExpiresAt,
     subscriptionFeatures: data.subscriptionFeatures,
-    boostsRemaining: data.boostsRemaining,
-    boostedUntil: data.boostedUntil,
+    // Engagement defaults
+    boostsRemaining: data.boostsRemaining ?? 0,
+    boostedUntil: data.boostedUntil ?? undefined,
     hasSpotlightBadge: data.hasSpotlightBadge,
     spotlightBadgeExpiresAt: data.spotlightBadgeExpiresAt,
-    hideFromFreeUsers: data.hideFromFreeUsers,
+    // Visibility defaults
+    hideFromFreeUsers: data.hideFromFreeUsers ?? false,
+    // Safety / moderation baseline counters (if model extended later)
+    // reportCount / blockCount intentionally omitted from interface now; placeholder for future
     privacySettings: data.privacySettings,
     notificationPreferences: data.notificationPreferences,
     totalProfileViews: data.totalProfileViews,

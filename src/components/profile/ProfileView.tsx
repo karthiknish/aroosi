@@ -516,7 +516,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                               const res = await activateSpotlight();
                               if (res.success) {
                                 showSuccessToast(
-                                  "Spotlight badge activated for 30 days"
+                                  "Spotlight activated – you’re highlighted for 30 days"
                                 );
                                 router.refresh?.();
                               } else {
@@ -528,9 +528,9 @@ const ProfileView: FC<ProfileViewProps> = ({
                               console.warn("activate spotlight failed", e);
                             }
                           }}
-                          title="Activate your spotlight badge"
+                          title="Activate Spotlight to increase profile visibility"
                         >
-                          Activate Spotlight
+                          Activate Spotlight (30 days)
                         </button>
                       )}
                       {!isPremiumPlus(plan) && (
@@ -540,9 +540,9 @@ const ProfileView: FC<ProfileViewProps> = ({
                           onClick={() =>
                             (window.location.href = "/subscription")
                           }
-                          title="Upgrade to Premium Plus for a spotlight badge"
+                          title="Upgrade to Premium Plus to unlock Spotlight and boosts"
                         >
-                          Get Spotlight
+                          Get Spotlight (stand out more)
                         </button>
                       )}
                     </dd>
@@ -781,14 +781,14 @@ const ProfileView: FC<ProfileViewProps> = ({
                   {/* Spotlight upsell hint for non-Plus plans */}
                   {!isPremiumPlus(plan) && (
                     <div className="mt-2 text-xs text-amber-700">
-                      Want a spotlight badge?{" "}
+                      Boost visibility & attract more matches with Spotlight.{" "}
                       <button
                         type="button"
                         className="underline"
                         onClick={() => (window.location.href = "/subscription")}
-                        title="Upgrade to Premium Plus to get Spotlight"
+                        title="Upgrade to Premium Plus for Spotlight and unlimited boosts"
                       >
-                        Get Spotlight
+                        Upgrade to unlock
                       </button>
                     </div>
                   )}

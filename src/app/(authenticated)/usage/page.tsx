@@ -5,6 +5,7 @@ import { UsageTracker } from "@/components/usage/UsageTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { useUnreadCounts } from "@/lib/hooks/useUnreadCounts";
 import { format } from "date-fns";
 import {
   BarChart,
@@ -17,6 +18,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
 
 interface UsageHistoryItem {
@@ -26,6 +28,11 @@ interface UsageHistoryItem {
 
 export default function UsagePage() {
   useAuthContext(); // ensure auth order; no token usage
+  // Unread counts (aggregate) for display - safe even if undefined
+  const { data: unreadCounts } = useUnreadCounts(
+    undefined as any,
+    undefined as any
+  );
 
   // Detailed usage history (last 100 events)
   const {
@@ -122,7 +129,7 @@ export default function UsagePage() {
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <UsageTracker />
 
-          <Card>
+          <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
             <CardHeader>
               <CardTitle>Usage Distribution</CardTitle>
             </CardHeader>
@@ -163,7 +170,7 @@ export default function UsagePage() {
           </Card>
         </div>
 
-        <Card>
+        <Card className="mt-8 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
           <CardHeader>
             <CardTitle>Daily Usage Trends</CardTitle>
           </CardHeader>
@@ -180,7 +187,10 @@ export default function UsagePage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip
+                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                    wrapperStyle={{ zIndex: 30 }}
+                  />
                   {Object.keys(featureNames).map((feature, index) => (
                     <Bar
                       key={feature}
@@ -189,11 +199,45 @@ export default function UsagePage() {
                       name={featureNames[feature]}
                     />
                   ))}
-                  {/* Legend for clarity */}
-                  <Tooltip />
+                  <Legend verticalAlign="bottom" height={36} />
                 </BarChart>
               </ResponsiveContainer>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Unread aggregate summary */}
+        <Card className="mt-8 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
+          <CardHeader>
+            <CardTitle>Unread Messages Snapshot</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {unreadCounts ? (
+              <div className="text-sm text-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>
+                  Conversations with unread messages:{" "}
+                  {
+                    Object.values(unreadCounts).filter((v) => (v as number) > 0)
+                      .length
+                  }
+                </span>
+                <span className="text-xs text-gray-500">
+                  Total unread messages (approx):{" "}
+                  {Object.values(unreadCounts).reduce(
+                    (a, b) => a + (b as number),
+                    0
+                  )}
+                </span>
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">
+                No unread message data available.
+              </div>
+            )}
+            <p className="mt-3 text-xs text-gray-500">
+              Unread counts update automatically while you browse. Opening a
+              conversation marks its messages as read.
+            </p>
           </CardContent>
         </Card>
       </div>

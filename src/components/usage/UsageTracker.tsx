@@ -27,6 +27,8 @@ const featureIcons: Record<string, React.ReactNode> = {
   interest_sent: <Heart className="h-5 w-5" />,
   profile_boost_used: <Zap className="h-5 w-5" />,
   voice_message_sent: <Mic className="h-5 w-5" />,
+  unread_counts: <Eye className="h-5 w-5" />,
+  spotlight_badge: <Zap className="h-5 w-5" />,
 };
 
 const featureNames: Record<string, string> = {
@@ -36,6 +38,8 @@ const featureNames: Record<string, string> = {
   interest_sent: "Interests Sent",
   profile_boost_used: "Profile Boosts",
   voice_message_sent: "Voice Messages",
+  unread_counts: "Unread Polls",
+  spotlight_badge: "Spotlight Badge",
 };
 
 interface UsageFeature {
@@ -61,11 +65,7 @@ export function UsageTracker() {
   // AuthContext no longer provides token; usage stats rely on cookie-auth
   useAuthContext();
 
-  const {
-    data: usageRaw,
-    isLoading,
-    error,
-  } = useUsageStats();
+  const { data: usageRaw, isLoading, error } = useUsageStats();
 
   const usage = usageRaw as unknown as UsageSummaryLike | undefined;
 
@@ -88,7 +88,7 @@ export function UsageTracker() {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
         <CardContent className="p-6">
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -105,7 +105,7 @@ export function UsageTracker() {
 
   if (error || !usage) {
     return (
-      <Card>
+      <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
         <CardContent className="p-6">
           <div className="text-center text-gray-500">
             <AlertCircle className="h-8 w-8 mx-auto mb-2" />
@@ -123,7 +123,7 @@ export function UsageTracker() {
   };
 
   return (
-    <Card>
+    <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Usage Tracker</CardTitle>
@@ -162,7 +162,8 @@ export function UsageTracker() {
                   )}
                 </div>
               </div>
-              {!feature.unlimited && (
+              {/* Treat "spotlight_badge" and other one-off toggles differently */}
+              {!feature.unlimited && feature.name !== "spotlight_badge" && (
                 <Progress
                   value={feature.percentageUsed}
                   className={`h-2 ${
@@ -173,6 +174,13 @@ export function UsageTracker() {
                         : "bg-gray-100"
                   }`}
                 />
+              )}
+              {feature.name === "spotlight_badge" && (
+                <div className="text-xs text-gray-500 italic">
+                  {feature.used > 0
+                    ? "Spotlight active / claimed this period"
+                    : "Activate Spotlight from your profile to stand out"}
+                </div>
               )}
               {!feature.unlimited && feature.percentageUsed >= 90 && (
                 <div className="flex items-center justify-between text-xs mt-1">
@@ -195,12 +203,21 @@ export function UsageTracker() {
         </div>
 
         {usage.plan === "free" && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800 mb-3">
-              Upgrade to Premium for unlimited messaging and more features!
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+            <p className="text-sm text-blue-800 mb-2 font-medium">
+              Upgrade to Premium to unlock unlimited messaging, advanced search,
+              and voice messages.
             </p>
+            <ul className="text-xs text-blue-700 list-disc ml-4 mb-3 space-y-1">
+              <li>Unlimited messages & searches</li>
+              <li>More daily interests</li>
+              <li>Access profile boosts & Spotlight (Plus)</li>
+            </ul>
             <Link href="/pricing">
-              <Button size="sm" className="w-full">
+              <Button
+                size="sm"
+                className="w-full bg-pink-600 hover:bg-pink-700 text-white"
+              >
                 View Premium Plans
               </Button>
             </Link>

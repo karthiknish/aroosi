@@ -159,7 +159,12 @@ export default function SubscriptionPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          <h1
+            style={{
+              lineHeight: "1.7",
+            }}
+            className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent mb-4"
+          >
             Subscription Management
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -167,13 +172,13 @@ export default function SubscriptionPage() {
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Current Subscription & Usage */}
-          <motion.div
+        <div className="grid gap-8 xl:grid-cols-3">
+          {/* Primary Content: Current Subscription & Usage */}
+          <motion.section
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            className="lg:col-span-2 space-y-6"
+            className="space-y-6 xl:col-span-2 order-2 xl:order-1"
           >
             {/* Current Subscription Card */}
             <Card className="overflow-hidden shadow-lg border-0">
@@ -257,14 +262,14 @@ export default function SubscriptionPage() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </motion.section>
 
-          {/* Upgrade Options */}
-          <motion.div
+          {/* Secondary Sidebar: Upgrade Options */}
+          <motion.aside
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="space-y-6"
+            className="space-y-6 order-1 xl:order-2 xl:sticky xl:top-6 self-start"
           >
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Available Plans
@@ -418,7 +423,7 @@ export default function SubscriptionPage() {
                 </CardContent>
               </Card>
             </motion.div>
-          </motion.div>
+          </motion.aside>
         </div>
       </div>
     </div>

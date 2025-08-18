@@ -68,6 +68,13 @@ if (!getApps().length) {
         credential: cert(svc),
         projectId: svc.project_id,
       } as any);
+      // Ensure downstream Google libs see a project ID (some rely on GCLOUD_PROJECT / GOOGLE_CLOUD_PROJECT)
+      if (!process.env.GCLOUD_PROJECT && svc.project_id) {
+        process.env.GCLOUD_PROJECT = svc.project_id;
+      }
+      if (!process.env.GOOGLE_CLOUD_PROJECT && svc.project_id) {
+        process.env.GOOGLE_CLOUD_PROJECT = svc.project_id;
+      }
       if (process.env.NODE_ENV !== "production") {
         console.info(
           "[firebase-admin] Initialized with explicit service account for project:",

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ const profileSchema = z.object({
     .string()
     .regex(
       /^\+\d{1,4}\s?\d{6,14}$/i,
-      "Enter a valid phone number with country code",
+      "Enter a valid phone number with country code"
     ),
   aboutMe: z.string().min(1, "About Me is required"),
   height: z.string().min(1, "Height is required"),
@@ -59,7 +59,7 @@ const profileSchema = z.object({
     .transform((v) => (typeof v === "string" ? Number(v) : v))
     .refine(
       (v) => v === undefined || v === null || (Number.isInteger(v) && v > 0),
-      "subscriptionExpiresAt must be a positive integer timestamp",
+      "subscriptionExpiresAt must be a positive integer timestamp"
     )
     .optional(),
   hideFromFreeUsers: z
@@ -180,8 +180,8 @@ export default function ProfileEditForm({
     try {
       await deleteAdminProfileImageById({ profileId, imageId } as any);
       setImages?.((prev) =>
-    prev.filter((img) => (img.id ?? img.storageId) !== imageId)
-  );
+        prev.filter((img) => (img.id ?? img.storageId) !== imageId)
+      );
     } catch (err: unknown) {
       setImageError(
         isErrorWithMessage(err) ? err.message : "Failed to delete image"
@@ -873,57 +873,48 @@ export default function ProfileEditForm({
 }
 
 /**
-* Read-only preview for subscription expiry:
-* - Shows formatted date
-* - Days remaining (if in future)
-* - Placeholder for spotlight badge expiry preview (if applicable)
-*/
+ * Read-only preview for subscription expiry:
+ * - Shows formatted date
+ * - Days remaining (if in future)
+ * - Placeholder for spotlight badge expiry preview (if applicable)
+ */
 function SubscriptionExpiryPreview({
- control,
+  control,
 }: {
- control: ReturnType<typeof useForm>["control"];
+  control: ReturnType<typeof useForm>["control"];
 }) {
- const [value, setValue] = React.useState<number | null>(null);
+  // Public API: watch the single field value reactively
+  const raw = useWatch({ control, name: "subscriptionExpiresAt" });
+  const num = typeof raw === "string" ? Number(raw) : raw;
+  const value = Number.isFinite(num) ? (num as number) : null;
 
- React.useEffect(() => {
-   const sub = (control as any)._subjects.values.subscribe(({ values }: any) => {
-     const raw = values?.subscriptionExpiresAt;
-     const num =
-       raw === undefined || raw === null
-         ? null
-         : typeof raw === "string"
-         ? Number(raw)
-         : raw;
-     setValue(Number.isFinite(num as number) ? (num as number) : null);
-   });
-   return () => sub?.unsubscribe?.();
- }, [control]);
+  if (!value) {
+    return (
+      <p className="text-xs text-muted-foreground mt-1">
+        No expiry set. Users on paid plans should have a future timestamp in ms.
+      </p>
+    );
+  }
 
- if (!value) {
-   return (
-     <p className="text-xs text-muted-foreground mt-1">
-       No expiry set. Users on paid plans should have a future timestamp in ms.
-     </p>
-   );
- }
+  const date = new Date(value);
+  const now = Date.now();
+  const diffDays = Math.ceil((value - now) / (1000 * 60 * 60 * 24));
+  const isFuture = value > now;
 
- const date = new Date(value);
- const now = Date.now();
- const diffDays = Math.ceil((value - now) / (1000 * 60 * 60 * 24));
- const isFuture = value > now;
-
- return (
-   <div className="text-xs text-muted-foreground mt-1 space-y-1">
-     <div>Formatted: {date.toLocaleString()}</div>
-     <div>
-       {isFuture
-         ? `Days remaining: ${diffDays}`
-         : `Expired ${Math.abs(diffDays)} day(s) ago`}
-     </div>
-     {/* Spotlight badge expiry preview (placeholder if applicable) */}
-     <div className="italic opacity-80">
-       Spotlight badge expiry: not available for this profile
-     </div>
-   </div>
- );
+  return (
+    <div className="text-xs text-muted-foreground mt-1 space-y-1">
+      <div>
+        Formatted:{" "}
+        {isNaN(date.getTime()) ? "Invalid date" : date.toLocaleString()}
+      </div>
+      <div>
+        {isFuture
+          ? `Days remaining: ${diffDays}`
+          : `Expired ${Math.abs(diffDays)} day(s) ago`}
+      </div>
+      <div className="italic opacity-80">
+        Spotlight badge expiry: not available for this profile
+      </div>
+    </div>
+  );
 }

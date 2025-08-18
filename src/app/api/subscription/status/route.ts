@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { normalisePlan } from "@/lib/subscription/planLimits";
 import { requireSession } from "@/app/api/_utils/auth";
 
 /**
@@ -94,7 +95,8 @@ export async function GET(request: NextRequest) {
         ? p.subscriptionExpiresAt
         : null;
     const isActive = expiresAt ? expiresAt > now : false;
-    const plan = (p.subscriptionPlan ?? "free") || "free";
+    const rawPlan = (p.subscriptionPlan ?? "free") || "free";
+    const plan = normalisePlan(rawPlan);
     let daysRemaining = 0;
     if (expiresAt && isActive) {
       daysRemaining = Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000));

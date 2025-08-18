@@ -164,14 +164,19 @@ export const useFeatureUsage = () => {
 
 export const useSubscriptionGuard = () => {
   const { data: status } = useSubscriptionStatus();
+  // Pull admin flag from auth context (already invoked inside useSubscriptionStatus for token purposes)
+  const { isAdmin } = useAuthContext();
 
+  // Admins implicitly have the highest tier and active subscription state
   const isPremium =
-    status?.plan === "premium" || status?.plan === "premiumPlus";
-  const isPremiumPlus = status?.plan === "premiumPlus";
-  const isActive = status?.isActive ?? false;
+    isAdmin || status?.plan === "premium" || status?.plan === "premiumPlus";
+  const isPremiumPlus = isAdmin || status?.plan === "premiumPlus";
+  // Ensure operator precedence is explicit
+  const isActive = isAdmin || (status?.isActive ?? false);
 
   const canAccess = useCallback(
     (requiredTier: "premium" | "premiumPlus") => {
+      if (isAdmin) return true; // short‑circuit for admins
       if (!isActive) return false;
 
       if (requiredTier === "premium") {
@@ -184,7 +189,7 @@ export const useSubscriptionGuard = () => {
 
       return false;
     },
-    [isActive, isPremium, isPremiumPlus],
+    [isAdmin, isActive, isPremium, isPremiumPlus]
   );
 
   const requiresPremium = useCallback((feature: string) => {
@@ -208,6 +213,7 @@ export const useSubscriptionGuard = () => {
 
   return {
     status,
+    isAdmin,
     isPremium,
     isPremiumPlus,
     isActive,

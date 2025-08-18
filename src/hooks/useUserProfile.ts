@@ -528,8 +528,11 @@ export function useUserProfile() {
             cleaned[k] = v;
           });
         }
-        // Ensure fullName stored even if blank later
+        // Ensure fullName & default subscription plan stored
         cleaned.fullName = fullName;
+        if (!("subscriptionPlan" in cleaned)) {
+          cleaned.subscriptionPlan = "free";
+        }
 
         // Basic normalization for annualIncome & height at creation
         if (typeof cleaned.annualIncome === "string") {
