@@ -14,9 +14,21 @@ import { getAnalytics } from "firebase/analytics";
 // Firebase configuration now sourced from environment variables to avoid hardcoding secrets.
 // NEXT_PUBLIC_ prefix exposes only non-sensitive values required for client SDK initialization.
 // Ensure these are defined in your .env.local (and not committed) and matching values in deployment env.
+// Support optional custom auth domain (e.g. auth.example.com) if provided.
+// To show your own domain instead of PROJECT_ID.firebaseapp.com during Google OAuth
+// flows, you must:
+// 1. Add the custom domain in Firebase Hosting (verify DNS & deploy).
+// 2. Add the domain under Authentication > Settings > Authorized domains.
+// 3. (If using Identity Platform advanced features) ensure the domain is also authorized there.
+// 4. Set NEXT_PUBLIC_FIREBASE_CUSTOM_AUTH_DOMAIN to that domain (e.g. auth.example.com).
+// 5. Redeploy. The popup / redirect handler will use https://auth.example.com/__/auth/handler.
+const resolvedAuthDomain =
+  process.env.NEXT_PUBLIC_FIREBASE_CUSTOM_AUTH_DOMAIN?.trim() ||
+  process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!;
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  authDomain: resolvedAuthDomain,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
@@ -39,6 +51,16 @@ if (process.env.NODE_ENV !== "production") {
     );
     throw new Error(
       `Firebase configuration incomplete (missing: ${missing.join(", ")}). Check NEXT_PUBLIC_FIREBASE_* env vars and restart dev server.`
+    );
+  }
+  // Warn if custom domain variable is set but not used (empty after trim)
+  if (
+    process.env.NEXT_PUBLIC_FIREBASE_CUSTOM_AUTH_DOMAIN !== undefined &&
+    !process.env.NEXT_PUBLIC_FIREBASE_CUSTOM_AUTH_DOMAIN.trim()
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[firebase] NEXT_PUBLIC_FIREBASE_CUSTOM_AUTH_DOMAIN is defined but blank; falling back to default auth domain."
     );
   }
 }
