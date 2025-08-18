@@ -20,6 +20,7 @@ import {
 import {
   updateImageOrder,
   uploadProfileImageWithProgressCancellable,
+  deleteImageById,
 } from "@/lib/utils/imageUtil";
 import { DuplicateSession } from "@/lib/utils/imageUploadHelpers";
 
@@ -41,7 +42,13 @@ export default function EditProfileImagesPage() {
     Record<
       string,
       {
-        status: "idle" | "pending" | "uploading" | "success" | "error" | "canceled";
+        status:
+          | "idle"
+          | "pending"
+          | "uploading"
+          | "success"
+          | "error"
+          | "canceled";
         progress: number;
         error?: string;
         cancel?: () => void;
@@ -60,7 +67,7 @@ export default function EditProfileImagesPage() {
       sessionStorage.removeItem(DuplicateSession.key);
       // Also clear any other related storage
       sessionStorage.removeItem("profile_upload_hashes_v1");
-    } catch (e) {
+    } catch {
       // Ignore storage errors
     }
   }, [userId]);
@@ -147,7 +154,6 @@ export default function EditProfileImagesPage() {
         !img.storageId;
 
       const nextLocal = updatedImages.filter(isLocal);
-      const persisted = updatedImages.filter((img) => !isLocal(img));
 
       // Update local images
       setLocalImages((prev) => {
@@ -197,19 +203,7 @@ export default function EditProfileImagesPage() {
       try {
         if (!target) return;
         const storageId = target.storageId || target.id;
-        const res = await fetch(
-          `/api/profile-images/firebase?storageId=${encodeURIComponent(storageId)}`,
-          {
-            method: "DELETE",
-            credentials: "include",
-            headers: { Accept: "application/json" },
-          }
-        );
-        if (!res.ok) {
-          throw new Error(
-            (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
-          );
-        }
+        await deleteImageById(storageId);
         showInfoToast("Photo deleted");
         // Invalidate caches
         queryClient.invalidateQueries({
@@ -269,8 +263,6 @@ export default function EditProfileImagesPage() {
   const hasDeletions = initialIds.some((id) => !editedIds.includes(id));
   const hasAdditions = editedIds.some((id) => !initialIds.includes(id));
   const hasChanges = hasOrderChange || hasDeletions || hasAdditions;
-
-  // Warn on unload if unsaved changes
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (!hasChanges || isUpdating || isAutoSaving) return;
@@ -280,8 +272,6 @@ export default function EditProfileImagesPage() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [hasChanges, isUpdating, isAutoSaving]);
-
-  // Debounced auto-save for pure reorder changes (no adds/deletes)
   useEffect(() => {
     if (!profile) return;
     if (!hasOrderChange) return;
@@ -291,11 +281,7 @@ export default function EditProfileImagesPage() {
     const t = setTimeout(async () => {
       try {
         await updateImageOrder({ userId: profileUserId, imageIds: editedIds });
-        // Update baseline after successful save - only include persisted images
-        setInitialImages((prev) => {
-          const persistedImages = editedImages.filter((img) => img.storageId);
-          return persistedImages;
-        });
+        setInitialImages(() => editedImages.filter((img) => img.storageId));
         queryClient.invalidateQueries({
           queryKey: ["profileImages", profile._id],
         });
@@ -316,7 +302,8 @@ export default function EditProfileImagesPage() {
     profileUserId,
     isUpdating,
     queryClient,
-  ]); // Removed editedImages from dependencies
+    editedImages,
+  ]);
 
   // Persist all changes
   const handleSaveChanges = useCallback(async () => {
@@ -339,106 +326,134 @@ export default function EditProfileImagesPage() {
     let persistedImages: ImageType[] = [...editedImages];
     const localToUpload = editedImages.filter((img) => isLocalId(img.id));
     if (localToUpload.length) {
-      // Initialize states (respect any retry set to idle)
-      setUploadStates((prev) => {
-        const next = { ...prev };
-        for (const li of localToUpload) {
-          if (!next[li.id] || next[li.id].status === "idle") {
-            next[li.id] = { status: "uploading", progress: 0 };
+      // Filter out any that already succeeded (user hit Save again after partial success)
+      const queue = localToUpload.filter(
+        (li) => uploadStates[li.id]?.status !== "success"
+      );
+      if (queue.length) {
+        // Initialize upload state entries
+        setUploadStates((prev) => {
+          const next = { ...prev } as typeof prev;
+          for (const li of queue) {
+            if (
+              !next[li.id] ||
+              next[li.id].status === "idle" ||
+              next[li.id].status === "error"
+            ) {
+              next[li.id] = { status: "uploading", progress: 0 };
+            }
           }
-        }
-        return next;
-      });
+          return next;
+        });
 
-      await Promise.all(
-        localToUpload.map(async (localImg) => {
-          // Skip if previously succeeded
-          if (uploadStates[localImg.id]?.status === "success") return;
-          if (!localImg.url?.startsWith("blob:")) return;
-          try {
-            const blob = await fetch(localImg.url).then((r) => r.blob());
-            const file = new File([blob], localImg.fileName || "photo.jpg", {
-              type: blob.type || "image/jpeg",
-            });
-            const { promise, cancel } = uploadProfileImageWithProgressCancellable(
-              file,
-              (loaded, total) => {
+        const MAX_CONCURRENT = 3;
+        let index = 0;
+
+        const worker = async () => {
+          while (true) {
+            if (batchCanceled) return;
+            const localImg = queue[index++];
+            if (!localImg) return;
+            try {
+              // Get underlying blob from the object URL (or remote URL if ever applicable)
+              const resp = await fetch(localImg.url);
+              const blob = await resp.blob();
+              const file = new File([blob], localImg.fileName || "photo.jpg", {
+                type: blob.type || "image/jpeg",
+              });
+              const { promise, cancel } =
+                uploadProfileImageWithProgressCancellable(
+                  file,
+                  (loaded, total) => {
+                    setUploadStates((prev) => ({
+                      ...prev,
+                      [localImg.id]: {
+                        ...(prev[localImg.id] || { status: "uploading" }),
+                        status:
+                          prev[localImg.id]?.status === "canceled"
+                            ? "canceled"
+                            : loaded < total
+                              ? "uploading"
+                              : "success",
+                        progress: total
+                          ? Math.min(100, Math.round((loaded / total) * 100))
+                          : 0,
+                        cancel,
+                      },
+                    }));
+                  }
+                );
+              // Store cancel immediately (in case progress cb hasn't fired yet)
+              setUploadStates((prev) => ({
+                ...prev,
+                [localImg.id]: {
+                  ...(prev[localImg.id] || {
+                    status: "uploading",
+                    progress: 0,
+                  }),
+                  cancel,
+                },
+              }));
+              const result = await promise;
+              if (result?.imageId) {
+                persistedImages = persistedImages.map((p) =>
+                  p.id === localImg.id
+                    ? {
+                        ...p,
+                        id: result.imageId,
+                        storageId: result.imageId,
+                        url: result.url || p.url,
+                      }
+                    : p
+                );
                 setUploadStates((prev) => ({
                   ...prev,
                   [localImg.id]: {
-                    ...(prev[localImg.id] || { status: "uploading" }),
-                    status:
-                      prev[localImg.id]?.status === "canceled"
-                        ? "canceled"
-                        : loaded < total
-                          ? "uploading"
-                          : "success",
-                    progress: total
-                      ? Math.min(100, Math.round((loaded / total) * 100))
-                      : 0,
-                    cancel,
+                    ...(prev[localImg.id] || {}),
+                    status: "success",
+                    progress: 100,
                   },
                 }));
               }
-            );
-            // Store cancel immediately
-            setUploadStates((prev) => ({
-              ...prev,
-              [localImg.id]: {
-                ...(prev[localImg.id] || { status: "uploading", progress: 0 }),
-                cancel,
-              },
-            }));
-            const result = await promise;
-            if (result?.imageId) {
-              persistedImages = persistedImages.map((p) =>
-                p.id === localImg.id
-                  ? {
-                      ...p,
-                      id: result.imageId!,
-                      storageId: result.imageId!,
-                      url: result.url || p.url,
-                    }
-                  : p
-              );
+            } catch (e: any) {
+              const aborted = /aborted|canceled/i.test(e?.message || "");
               setUploadStates((prev) => ({
                 ...prev,
                 [localImg.id]: {
                   ...(prev[localImg.id] || {}),
-                  status: "success",
-                  progress: 100,
+                  status: aborted ? "canceled" : "error",
+                  error: aborted ? "Canceled" : e?.message || "Upload failed",
+                  progress: prev[localImg.id]?.progress || 0,
                 },
               }));
             }
-          } catch (e: any) {
-            const aborted = /aborted|canceled/i.test(e?.message || "");
-            setUploadStates((prev) => ({
-              ...prev,
-              [localImg.id]: {
-                ...(prev[localImg.id] || {}),
-                status: aborted ? "canceled" : "error",
-                error: aborted ? "Canceled" : e?.message || "Upload failed",
-                progress: prev[localImg.id]?.progress || 0,
-              },
-            }));
           }
-        })
-      );
+        };
 
-      if (batchCanceled) {
-        showInfoToast("Upload batch canceled");
-        setIsUpdating(false);
-        return;
-      }
+        const workers = Array.from({
+          length: Math.min(MAX_CONCURRENT, queue.length),
+        }).map(() => worker());
+        await Promise.all(workers);
 
-      // If any errors, stop order update and allow retry
-      const anyErrors = Object.values(uploadStates).some(
-        (s) => s.status === "error"
-      );
-      if (anyErrors) {
-        showErrorToast(
-          "Some images failed to upload. Press Retry on failed ones or remove them, then Save again."
-        );
+        if (batchCanceled) {
+          showInfoToast("Upload batch canceled");
+          setIsUpdating(false);
+          return;
+        }
+
+        // After uploads, check for errors
+        const anyErrors = Object.values(
+          (typeof window !== "undefined"
+            ? uploadStates
+            : {}) as typeof uploadStates
+        ).some((s) => s.status === "error");
+        if (anyErrors) {
+          showErrorToast(
+            "Some images failed to upload. Press Retry on failed ones or remove them, then Save again."
+          );
+          setIsUpdating(false);
+          return;
+        }
       }
     }
 
@@ -554,9 +569,9 @@ export default function EditProfileImagesPage() {
               if (!img.storageId) {
                 if (st?.status === "uploading") {
                   return (
-                    <span className={`${base} bg-pink-600 text-white`}>{
-                      st.progress
-                    }%</span>
+                    <span className={`${base} bg-pink-600 text-white`}>
+                      {st.progress}%
+                    </span>
                   );
                 }
                 if (st?.status === "error") {
@@ -578,16 +593,22 @@ export default function EditProfileImagesPage() {
                 }
                 if (st?.status === "canceled") {
                   return (
-                    <span className={`${base} bg-gray-400 text-white`}>Canceled</span>
+                    <span className={`${base} bg-gray-400 text-white`}>
+                      Canceled
+                    </span>
                   );
                 }
                 if (st?.status === "success") {
                   return (
-                    <span className={`${base} bg-emerald-600 text-white`}>Uploaded</span>
+                    <span className={`${base} bg-emerald-600 text-white`}>
+                      Uploaded
+                    </span>
                   );
                 }
                 return (
-                  <span className={`${base} bg-neutral text-white`}>Pending</span>
+                  <span className={`${base} bg-neutral text-white`}>
+                    Pending
+                  </span>
                 );
               }
               return null;
@@ -598,7 +619,9 @@ export default function EditProfileImagesPage() {
               Cancel
             </Button>
             {isUpdating &&
-              Object.values(uploadStates).some((s) => s.status === "uploading") && (
+              Object.values(uploadStates).some(
+                (s) => s.status === "uploading"
+              ) && (
                 <Button
                   type="button"
                   variant="outline"
@@ -663,7 +686,12 @@ export default function EditProfileImagesPage() {
                     </span>
                     <div className="flex items-center gap-2">
                       {st.status === "uploading" && (
-                        <span className="text-[10px] text-neutral/70">{st.progress}%</span>
+                        <div className="w-12 h-1 bg-neutral/20 rounded overflow-hidden">
+                          <div
+                            className="h-full bg-pink-600 transition-all"
+                            style={{ width: `${st.progress}%` }}
+                          />
+                        </div>
                       )}
                       {st.status === "error" && (
                         <button
@@ -689,10 +717,14 @@ export default function EditProfileImagesPage() {
                         </button>
                       )}
                       {st.status === "canceled" && (
-                        <span className="text-[10px] text-neutral/50">Canceled</span>
+                        <span className="text-[10px] text-neutral/50">
+                          Canceled
+                        </span>
                       )}
                       {st.status === "success" && (
-                        <span className="text-[10px] text-emerald-600">Done</span>
+                        <span className="text-[10px] text-emerald-600">
+                          Done
+                        </span>
                       )}
                       {st.status === "error" && (
                         <span className="text-[10px] text-red-600">Failed</span>

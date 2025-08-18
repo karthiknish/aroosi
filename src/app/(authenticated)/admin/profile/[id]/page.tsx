@@ -339,10 +339,19 @@ export default function AdminProfileDetailPage() {
           const profileImageIds = Array.isArray(m.profileImageIds)
             ? m.profileImageIds
             : [];
-          const matchImageUrl =
-            profileImageIds.length > 0
-              ? `/api/storage/${String(profileImageIds[0])}`
-              : null;
+          // Use pre-normalized url from profileImageUrls array if aligned; otherwise build canonical GCS URL
+          let matchImageUrl: string | null = null;
+          if (profileImageIds.length > 0) {
+            const firstId = String(profileImageIds[0]);
+            const urls = Array.isArray((m as any).profileImageUrls)
+              ? (m as any).profileImageUrls
+              : [];
+            if (urls[0] && typeof urls[0] === "string") {
+              matchImageUrl = urls[0];
+            } else {
+              matchImageUrl = `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID + ".appspot.com"}/${firstId}`;
+            }
+          }
           const fullName =
             typeof m.fullName === "string" ? m.fullName : "Unnamed";
           const city = typeof m.city === "string" ? m.city : "-";
@@ -408,25 +417,26 @@ export default function AdminProfileDetailPage() {
                   <div className="w-full h-full flex items-center justify-center">
                     <Image
                       src={
-                        (orderedImages[currentImageIdx]?.url ?? undefined) ||
+                        orderedImages[currentImageIdx]?.url ||
                         (orderedImages[currentImageIdx]?.storageId
-                          ? `/api/storage/${orderedImages[currentImageIdx].storageId}`
+                          ? `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID + ".appspot.com"}/${orderedImages[currentImageIdx].storageId}`
                           : "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png")
                       }
-                      alt={typeof profile?.fullName === "string"
-                        ? `${profile.fullName} profile photo ${currentImageIdx + 1}`
-                        : `Profile photo ${currentImageIdx + 1}`}
+                      alt={
+                        typeof profile?.fullName === "string"
+                          ? `${profile.fullName} profile photo ${currentImageIdx + 1}`
+                          : `Profile photo ${currentImageIdx + 1}`
+                      }
                       width={256}
                       height={256}
                       className="max-h-full  max-w-full object-contain"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        if (orderedImages[currentImageIdx]?.storageId) {
-                          target.src = `/api/storage/${orderedImages[currentImageIdx].storageId}`;
-                        } else {
-                          target.src =
-                            "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png";
-                        }
+                        target.src =
+                          orderedImages[currentImageIdx]?.url ||
+                          (orderedImages[currentImageIdx]?.storageId
+                            ? `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID + ".appspot.com"}/${orderedImages[currentImageIdx].storageId}`
+                            : "https://hds.hel.fi/images/foundation/visual-assets/placeholders/user-image-l@3x.png");
                       }}
                     />
                   </div>
@@ -518,8 +528,8 @@ export default function AdminProfileDetailPage() {
                       >
                         <Image
                           src={
-                            (img.url ?? undefined) ||
-                            `/api/storage/${img.storageId}`
+                            img.url ||
+                            `https://storage.googleapis.com/${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID + ".appspot.com"}/${img.storageId}`
                           }
                           alt={
                             typeof profile?.fullName === "string"

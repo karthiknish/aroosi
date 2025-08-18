@@ -163,12 +163,44 @@ export async function fetchUserProfileImages(
         profileData.profileImageIds?.map((id: string) => ({ storageId: id })) ||
         [];
 
+      const bucketName = (
+        await import("@/lib/firebaseAdmin")
+      ).adminStorage.bucket().name;
+      const needsRepair: { index: number; canonical: string }[] = [];
       const normalized = imagesRaw
         .filter((img: any) => img && (img.url || img.storageId))
-        .map((img: any) => ({
-          url: (img.url as string) || "",
-          storageId: (img.storageId as string) || (img.id as string) || "",
-        }));
+        .map((img: any, index: number) => {
+          const storageId =
+            (img.storageId as string) || (img.id as string) || "";
+          let url = (img.url as string) || "";
+          const canonical = storageId
+            ? `https://storage.googleapis.com/${bucketName}/${storageId}`
+            : "";
+          if (storageId) {
+            // Repair if url missing or host not storage.googleapis.com
+            if (!url || !/^https:\/\/storage\.googleapis\.com\//.test(url)) {
+              url = canonical;
+              needsRepair.push({ index, canonical });
+            }
+          }
+          return { url, storageId };
+        });
+      // If any repairs needed, patch Firestore arrays quietly (best-effort)
+      if (needsRepair.length > 0) {
+        try {
+          const docRef = doc(db, "users", userId);
+          // Reconstruct arrays ensuring index alignment with profileImageIds
+          const fixedUrls = normalized.map((n) => n.url);
+          await setDoc(
+            docRef,
+            { profileImageUrls: fixedUrls, updatedAt: Date.now() },
+            { merge: true }
+          );
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn("[ProfileAPI] Failed to persist repaired image URLs", e);
+        }
+      }
 
       return { success: true, data: normalized };
     } else {

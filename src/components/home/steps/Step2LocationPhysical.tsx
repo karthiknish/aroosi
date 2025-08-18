@@ -62,15 +62,24 @@ export function Step2LocationPhysical(props: {
             options={Array.from({ length: 198 - 137 + 1 }, (_, i) => {
               const cm = 137 + i;
               const normalized = `${cm} cm`;
-              return { value: normalized, label: `${cmToFeetInches(cm)} (${cm} cm)` };
+              return {
+                value: normalized,
+                label: `${cmToFeetInches(cm)} (${cm} cm)`,
+              };
             })}
             value={
-              typeof formData.height === "string" && /^\d{2,3}$/.test(formData.height.trim())
+              typeof formData.height === "string" &&
+              /^\d{2,3}$/.test(formData.height.trim())
                 ? `${formData.height.trim()} cm`
                 : formData.height
             }
             onValueChange={(v) => {
-              const normalized = typeof v === "string" ? (/^\d{2,3}$/.test(v.trim()) ? `${v.trim()} cm` : v) : v;
+              const normalized =
+                typeof v === "string"
+                  ? /^\d{2,3}$/.test(v.trim())
+                    ? `${v.trim()} cm`
+                    : v
+                  : v;
               onChange("height", normalized as string);
               void stepValidation.validateCurrentStep();
             }}
@@ -83,7 +92,7 @@ export function Step2LocationPhysical(props: {
       <ValidatedSelect
         label="Marital Status"
         field="maritalStatus"
-        className="bg-white text-black"
+        className="bg-white text-neutral"
         step={step}
         value={formData.maritalStatus}
         onValueChange={(v) => onChange("maritalStatus", v)}

@@ -50,13 +50,8 @@ async function registerFirebaseImageMetadata(args: {
   storageId: string;
   file: File;
 }): Promise<UploadResult> {
-  console.log("[registerFirebaseImageMetadata] Registering metadata:", {
-    storageId: args.storageId,
-    fileName: args.file.name,
-    contentType: args.file.type,
-    size: args.file.size,
-  });
-  
+  // (debug logs removed)
+
   // Call firebase metadata route (JSON branch) which persists to Firestore
   const res = await fetchWithFirebaseAuth("/api/profile-images/firebase", {
     method: "POST",
@@ -68,11 +63,8 @@ async function registerFirebaseImageMetadata(args: {
       size: args.file.size,
     }),
   });
-  
-  console.log(
-    "[registerFirebaseImageMetadata] API response status:",
-    res.status
-  );
+
+  // (debug logs removed)
   if (!res.ok) {
     let txt = "";
     try {
@@ -153,10 +145,7 @@ async function uploadViaFirebaseStorage(
 }
 
 export async function uploadProfileImage(file: File): Promise<UploadResult> {
-  console.log("[uploadProfileImage] Starting upload for:", file.name);
-  const result = await uploadViaFirebaseStorage(file);
-  console.log("[uploadProfileImage] Upload completed:", result);
-  return result;
+  return uploadViaFirebaseStorage(file);
 }
 
 export function uploadProfileImageWithProgress(
@@ -184,4 +173,47 @@ export function uploadProfileImageWithProgressCancellable(
   const promise = uploadViaFirebaseStorage(file, onProgress, controller.signal);
   const cancel = () => controller.abort();
   return { promise, cancel };
+}
+
+// ------------------------------------------------------------
+// Image list & delete utilities (server-backed)
+// ------------------------------------------------------------
+
+export type ProfileImageInfo = { url: string; storageId: string };
+
+/**
+ * Fetch the authenticated user's profile images from the server.
+ * Uses cookie session via fetchWithFirebaseAuth to ensure proper auth locally.
+ */
+export async function fetchProfileImages(): Promise<ProfileImageInfo[]> {
+  const res = await fetchWithFirebaseAuth("/api/profile-images/firebase", {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({} as any));
+    throw new Error(err?.error || `HTTP ${res.status}`);
+  }
+  const json = (await res.json().catch(() => ({}))) as {
+    success?: boolean;
+    images?: ProfileImageInfo[];
+  };
+  return Array.isArray(json.images) ? json.images : [];
+}
+
+/**
+ * Delete an image by its storageId for the authenticated user.
+ */
+export async function deleteImageById(storageId: string): Promise<void> {
+  const url = `/api/profile-images/firebase?storageId=${encodeURIComponent(
+    storageId
+  )}`;
+  const res = await fetchWithFirebaseAuth(url, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({} as any));
+    throw new Error(err?.error || `HTTP ${res.status}`);
+  }
 }

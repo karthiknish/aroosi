@@ -134,6 +134,7 @@
     "whatwg-fetch": "3.6.20"
   },
   "scripts": {
+    "backfill:profile-image-urls": "ts-node --transpile-only scripts/backfillProfileImageUrls.ts",
     "dev": "next dev",
     "build": "npm run type-check && next build",
     "build:with-lint": "npm run lint && npm run type-check && next build",

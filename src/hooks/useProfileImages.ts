@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchUserProfileImages } from "@/lib/profile/userProfileApi";
+import { fetchProfileImages } from "@/lib/utils/imageUtil";
 
 export interface ProfileImageItem { url: string; storageId: string }
 
@@ -16,9 +16,8 @@ export function useProfileImages({ userId, enabled = true, preferInlineUrls }: U
     queryKey: ["profileImages", userId],
     queryFn: async () => {
       if (!userId) return [];
-      const res = await fetchUserProfileImages(userId);
-      if (!res.success || !Array.isArray(res.data)) return [];
-      return res.data
+      const data = await fetchProfileImages();
+      return (data || [])
         .filter((i) => i && (i.url || i.storageId))
         .map((i) => ({ url: i.url || "", storageId: i.storageId }));
     },
