@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireSession } from "@/app/api/_utils/auth";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { FieldPath } from "firebase-admin/firestore";
+import { logInfo, logWarn, logError } from "@/lib/log";
 
 // type Gender = "any" | "male" | "female" | "other";
 
@@ -32,6 +33,13 @@ const QuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    // Log incoming request details
+    logInfo("search.GET.request", {
+      url: request.url,
+      headers: Object.fromEntries(request.headers.entries()),
+      method: request.method,
+      timestamp: Date.now(),
+    });
     const cid =
       request.headers.get("x-correlation-id") ||
       (typeof crypto !== "undefined" && (crypto as any).randomUUID
@@ -40,9 +48,20 @@ export async function GET(request: NextRequest) {
 
     // Firebase cookie-based session
     const session = await requireSession(request);
-    if ("errorResponse" in session) return session.errorResponse;
+    if ("errorResponse" in session) {
+      logWarn("search.GET.auth_failed", {
+        error: session.errorResponse,
+        url: request.url,
+      });
+      return session.errorResponse;
+    }
     const userId = String(session.userId);
     const viewerPlan = session.profile?.subscriptionPlan || "free";
+    logInfo("search.GET.auth_success", {
+      userId,
+      viewerPlan,
+      email: session.profile?.email,
+    });
 
     // Burst limiter
     const burstLimit = checkApiRateLimit(`search:${userId}`, 60, 60_000);
@@ -55,12 +74,11 @@ export async function GET(request: NextRequest) {
     const paramsObj = Object.fromEntries(searchParams.entries());
     const parsed = QuerySchema.safeParse(paramsObj);
     if (!parsed.success) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn("search.api validation failed", {
-          correlationId: cid,
-          issues: parsed.error.issues,
-        });
-      }
+      logWarn("search.GET.validation_failed", {
+        correlationId: cid,
+        issues: parsed.error.issues,
+        params: paramsObj,
+      });
       return errorResponse("Invalid parameters", 400);
     }
     const {
@@ -82,6 +100,11 @@ export async function GET(request: NextRequest) {
       typeof ageMax === "number" &&
       ageMin > ageMax
     ) {
+      logWarn("search.GET.age_range_invalid", {
+        ageMin,
+        ageMax,
+        userId,
+      });
       return errorResponse(
         "Minimum age cannot be greater than maximum age",
         400
@@ -97,6 +120,11 @@ export async function GET(request: NextRequest) {
       viewerPlan === "premium_plus" ||
       viewerPlan === "premiumPlus";
     if (hasPremiumParams && !hasAdvancedFilters) {
+      logWarn("search.GET.premium_filter_blocked", {
+        userId,
+        viewerPlan,
+        params: { ethnicity, motherTongue, language },
+      });
       return errorResponse(
         "Advanced filters require a Premium subscription",
         403
@@ -108,18 +136,19 @@ export async function GET(request: NextRequest) {
     // This removal prevents stacking 429 sources and lets search remain responsive while still guarded against abuse.
 
     // Build base Firestore query
+    const isAny = (v?: string) =>
+      typeof v === "string" ? v.trim().toLowerCase() === "any" : false;
     let base: FirebaseFirestore.Query = db
       .collection(COLLECTIONS.USERS)
       .where("isOnboardingComplete", "==", true);
 
-    if (city && city !== "any") base = base.where("city", "==", city);
-    if (country && country !== "any")
-      base = base.where("country", "==", country);
-    if (ethnicity && ethnicity !== "any")
+    if (city && !isAny(city)) base = base.where("city", "==", city);
+    if (country && !isAny(country)) base = base.where("country", "==", country);
+    if (ethnicity && !isAny(ethnicity))
       base = base.where("ethnicity", "==", ethnicity);
-    if (motherTongue && motherTongue !== "any")
+    if (motherTongue && !isAny(motherTongue))
       base = base.where("motherTongue", "==", motherTongue);
-    if (language && language !== "any")
+    if (language && !isAny(language))
       base = base.where("language", "==", language); // field stored as 'language' if present
     if (typeof ageMin === "number") base = base.where("age", ">=", ageMin);
     if (typeof ageMax === "number") base = base.where("age", "<=", ageMax);
@@ -167,6 +196,22 @@ export async function GET(request: NextRequest) {
           .orderBy(FieldPath.documentId(), "desc");
       }
     }
+    logInfo("search.GET.query_built", {
+      userId,
+      queryOrdering: hasAgeInequality
+        ? "age+answered+createdAt+id"
+        : "answered+createdAt+id",
+      filters: {
+        city,
+        country,
+        ethnicity,
+        motherTongue,
+        language,
+        preferredGender,
+        ageMin,
+        ageMax,
+      },
+    });
 
     // Aggregate count BEFORE pagination (use base query to avoid startAfter)
     let total = 0;
@@ -370,20 +415,55 @@ export async function GET(request: NextRequest) {
     try {
       docs = await runPrimaryQuery();
       primaryAnsweredOrderingApplied = includeAnsweredOrdering; // we attempted it and query succeeded
+      logInfo("search.GET.primary_ok", {
+        userId,
+        totalApprox: total,
+        count: docs.length,
+        params: {
+          city,
+          country,
+          ethnicity,
+          motherTongue,
+          language,
+          preferredGender,
+          ageMin,
+          ageMax,
+        },
+        docsPreview: docs.slice(0, 2),
+      });
     } catch (err: any) {
       if (isIndexMissing(err)) {
-        console.warn("search.api index missing, applying fallback", {
+        logWarn("search.GET.index_missing_fallback", {
           correlationId: cid,
           error: String(err?.message || err),
+          queryOrdering: hasAgeInequality
+            ? "age+answered+createdAt+id"
+            : "answered+createdAt+id",
         });
         const fb = await runFallbackScan();
         docs = fb.docs;
         if (!total) total = fb.scanned; // approximate
         primaryAnsweredOrderingApplied = false;
+        logInfo("search.GET.fallback_ok", {
+          userId,
+          totalApprox: total,
+          count: docs.length,
+          docsPreview: docs.slice(0, 2),
+        });
       } else {
-        console.error("search.api unexpected failure", {
+        logError("search.GET.unexpected_error", {
           correlationId: cid,
-          error: err,
+          error: String(err?.message || err),
+          params: {
+            city,
+            country,
+            ethnicity,
+            motherTongue,
+            language,
+            preferredGender,
+            ageMin,
+            ageMax,
+          },
         });
         throw err; // bubble to outer catch -> 500
       }
@@ -406,30 +486,61 @@ export async function GET(request: NextRequest) {
           if (bc !== ac) return bc - ac; // higher count first
           return 0; // keep original relative order (already by recency)
         });
-      } catch {}
+        logInfo("search.GET.in_memory_sort_applied", {
+          userId,
+          docsPreview: docs.slice(0, 2),
+        });
+      } catch (e) {
+        logError("search.GET.in_memory_sort_failed", {
+          error: String(e),
+          userId,
+        });
+      }
     }
+
+    // Log raw docs for debugging image retrieval
+    logInfo("search.GET.docs_raw_for_images", {
+      userId,
+      docsPreview: docs.slice(0, 3).map((d) => ({
+        id: d.id,
+        banned: d.banned,
+        hiddenFromSearch: d.hiddenFromSearch,
+        profileImageUrls: d.profileImageUrls,
+      })),
+      totalDocs: docs.length,
+    });
 
     const profiles = docs
       .filter((d) => !d.banned && !d.hiddenFromSearch)
-      .map((d) => ({
-        userId: d.id,
-        email: d.email,
-        profile: {
-          fullName: d.fullName || "",
-          city: d.city,
-          dateOfBirth: d.dateOfBirth,
-          isOnboardingComplete: d.isOnboardingComplete,
-          profileCompletionPercentage: d.profileCompletionPercentage,
-          hiddenFromSearch: d.hiddenFromSearch,
-          boostedUntil: d.boostedUntil,
-          subscriptionPlan: d.subscriptionPlan,
-          hideFromFreeUsers: d.hideFromFreeUsers,
-          profileImageUrls: d.profileImageUrls || [],
-          hasSpotlightBadge: d.hasSpotlightBadge,
-          spotlightBadgeExpiresAt: d.spotlightBadgeExpiresAt,
-          answeredIcebreakersCount: d.answeredIcebreakersCount,
-        },
-      }));
+      .map((d) => {
+        // Log image URL status for each profile
+        logInfo("search.GET.profile_image_urls", {
+          userId: d.id,
+          imageUrls: d.profileImageUrls,
+          imageCount: Array.isArray(d.profileImageUrls)
+            ? d.profileImageUrls.length
+            : 0,
+        });
+        return {
+          userId: d.id,
+          email: d.email,
+          profile: {
+            fullName: d.fullName || "",
+            city: d.city,
+            dateOfBirth: d.dateOfBirth,
+            isOnboardingComplete: d.isOnboardingComplete,
+            profileCompletionPercentage: d.profileCompletionPercentage,
+            hiddenFromSearch: d.hiddenFromSearch,
+            boostedUntil: d.boostedUntil,
+            subscriptionPlan: d.subscriptionPlan,
+            hideFromFreeUsers: d.hideFromFreeUsers,
+            profileImageUrls: d.profileImageUrls || [],
+            hasSpotlightBadge: d.hasSpotlightBadge,
+            spotlightBadgeExpiresAt: d.spotlightBadgeExpiresAt,
+            answeredIcebreakersCount: d.answeredIcebreakersCount,
+          },
+        };
+      });
 
     // Build next cursor if more potential results
     let nextCursor: string | undefined = undefined;
@@ -462,6 +573,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    logInfo("search.GET.response", {
+      userId,
+      total,
+      page,
+      pageSize,
+      nextCursor,
+      profilesCount: profiles.length,
+      profilesPreview: profiles.slice(0, 2),
+      correlationId: cid,
+      searchParams: {
+        city,
+        country,
+        ageMin,
+        ageMax,
+        preferredGender,
+        ethnicity,
+        motherTongue,
+        language,
+      },
+    });
     return successResponse({
       profiles,
       total,

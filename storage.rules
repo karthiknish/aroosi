@@ -11,13 +11,19 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // Voice messages: owner-only read/write; playback for others should use signed URLs from server
-    match /users/{userId}/voice-messages/{allPaths=**} {
+    // Voice messages: client-side uploads to voice/ path
+    match /voice/{userId}/{conversationId}/{allPaths=**} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource != null
                    && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // Server-managed voice messages: allow reads with auth, server handles writes via Admin SDK
+    match /voiceMessages/{conversationId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false; // Server-only via Admin SDK
     }
 
     // Blog images: public read; authenticated write with basic image constraints

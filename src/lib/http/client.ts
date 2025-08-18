@@ -40,6 +40,34 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
   };
   if (cid) headers["x-correlation-id"] = cid;
 
+  // Attach Firebase ID token if available (client-side only) and not already provided
+  try {
+    if (typeof window !== "undefined" && !headers["Authorization"]) {
+      // Dynamic import to avoid pulling Firebase into server bundles
+      const mod = await import("@/lib/firebase").catch(() => null);
+      const auth = (mod as any)?.auth;
+      const user = auth?.currentUser;
+      if (user && typeof user.getIdToken === "function") {
+        const token = await user.getIdToken(true).catch(() => null); // Force refresh
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+          if (process.env.NODE_ENV !== "production") {
+            console.log("fetchJson: attached auth token for", input);
+          }
+        }
+      } else if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "fetchJson: no current user or getIdToken unavailable for",
+          input
+        );
+      }
+    }
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("fetchJson: failed to attach auth token for", input, err);
+    }
+  }
+
   const resp = await fetch(input, {
     method,
     headers,
@@ -57,7 +85,8 @@ export async function fetchJson<T = unknown>(input: string, opts: FetchJsonOptio
       // ignore
     }
     const error = new Error(
-      `HTTP ${resp.status} ${resp.statusText} for ${method} ${input}` + (errText ? ` :: ${errText}` : "")
+      `HTTP ${resp.status} ${resp.statusText} for ${method} ${input}` +
+        (errText ? ` :: ${errText}` : "")
     );
     (error as any).status = resp.status;
     throw error;
