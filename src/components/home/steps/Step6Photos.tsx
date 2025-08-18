@@ -138,6 +138,30 @@ export function Step6Photos(props: {
     };
   }, [userId, pendingImages, setPendingImages, onImagesChanged]);
 
+  // Persist order to server once all images are uploaded (no local- ids remain)
+  React.useEffect(() => {
+    if (!userId) return;
+    if (!Array.isArray(pendingImages) || pendingImages.length === 0) return;
+    const hasLocal = pendingImages.some((img) => img.id.startsWith("local-"));
+    if (hasLocal) return;
+    const ids = pendingImages
+      .map((img) => img.storageId || img.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+    let t: any;
+    (async () => {
+      try {
+        const { updateImageOrder } = await import("@/lib/utils/imageUtil");
+        // debounce slightly to avoid rapid calls during quick reorders
+        t = setTimeout(async () => {
+          await updateImageOrder({ userId, imageIds: ids });
+        }, 500);
+      } catch {}
+    })();
+    return () => {
+      if (t) clearTimeout(t);
+    };
+  }, [userId, pendingImages]);
+
   const subscribeProgress = React.useCallback(async () => {
     try {
       const { createOrGetUploadManager, createUploadManager } = await import(

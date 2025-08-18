@@ -163,9 +163,35 @@ export async function fetchUserProfileImages(
         profileData.profileImageIds?.map((id: string) => ({ storageId: id })) ||
         [];
 
-      const bucketName = (
-        await import("@/lib/firebaseAdmin")
-      ).adminStorage.bucket().name;
+      // IMPORTANT: Do NOT import firebase-admin (server-only) here; this module is used client-side.
+      // Derive bucket name from public env or heuristics instead.
+      const bucketFromEnv =
+        (process as any)?.env?.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+        (typeof window !== "undefined"
+          ? (window as any)?.__NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+          : undefined);
+      // Attempt to infer from any existing profileImageUrls if env missing
+      let inferredBucket: string | undefined = bucketFromEnv;
+      if (!inferredBucket) {
+        const sampleUrl: string | undefined =
+          (profileData.profileImageUrls || []).find((u: string) =>
+            /https:\/\/storage.googleapis.com\//.test(u)
+          );
+        if (sampleUrl) {
+          const m = sampleUrl.match(
+            /https:\/\/storage.googleapis.com\/([^/]+)\//
+          );
+            // eslint-disable-next-line prefer-destructuring
+          if (m) inferredBucket = m[1];
+        }
+      }
+      // Fallback: derive from project id if available
+      if (!inferredBucket) {
+        const projectId =
+          (process as any)?.env?.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
+        if (projectId) inferredBucket = `${projectId}.appspot.com`;
+      }
+      const bucketName = inferredBucket || ""; // empty string if truly unknown (repair skipped)
       const needsRepair: { index: number; canonical: string }[] = [];
       const normalized = imagesRaw
         .filter((img: any) => img && (img.url || img.storageId))
@@ -176,8 +202,8 @@ export async function fetchUserProfileImages(
           const canonical = storageId
             ? `https://storage.googleapis.com/${bucketName}/${storageId}`
             : "";
-          if (storageId) {
-            // Repair if url missing or host not storage.googleapis.com
+          if (storageId && bucketName) {
+            // Repair if url missing or host not storage.googleapis.com (only if we know bucket)
             if (!url || !/^https:\/\/storage\.googleapis\.com\//.test(url)) {
               url = canonical;
               needsRepair.push({ index, canonical });
@@ -186,7 +212,7 @@ export async function fetchUserProfileImages(
           return { url, storageId };
         });
       // If any repairs needed, patch Firestore arrays quietly (best-effort)
-      if (needsRepair.length > 0) {
+      if (bucketName && needsRepair.length > 0) {
         try {
           const docRef = doc(db, "users", userId);
           // Reconstruct arrays ensuring index alignment with profileImageIds
