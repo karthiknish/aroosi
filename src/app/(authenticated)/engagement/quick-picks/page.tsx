@@ -11,7 +11,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import Link from "next/link";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
@@ -43,7 +43,9 @@ export default function QuickPicksPage() {
   const userIds = data?.userIds || [];
   const profiles = data?.profiles || [];
   const currentId = userIds[index];
-  const currentProfile: QuickPickProfile | undefined = profiles.find((p) => p.userId === currentId);
+  const currentProfile: QuickPickProfile | undefined = profiles.find(
+    (p) => p.userId === currentId
+  );
 
   const dailyLimit = useMemo(() => {
     const plan = subscription?.plan || "free";
@@ -55,11 +57,14 @@ export default function QuickPicksPage() {
     try {
       await actOnQuickPick(currentId, action);
       setIndex((i) => i + 1);
-      if (action === "like") toast.success("Liked");
+      if (action === "like") showSuccessToast("Liked");
       // Track usage event (quick pick action)
-      trackUsage({ feature: "profile_view", metadata: { targetUserId: currentId } });
+      trackUsage({
+        feature: "profile_view",
+        metadata: { targetUserId: currentId },
+      });
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to submit action");
+      showErrorToast(e?.message ?? "Failed to submit action");
     }
   };
 

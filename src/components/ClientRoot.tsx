@@ -35,19 +35,20 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
         position="bottom-right"
         toastOptions={{
           style: {
-            background: "rgba(255, 255, 255, 0.95)",
-            border: "1px solid rgba(231, 227, 223, 0.8)",
-            color: "#4A4A4A",
+            background: "rgba(20,20,20,0.85)",
+            color: "#f5f5f5",
+            border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: "0.75rem",
             fontSize: "14px",
             fontWeight: "500",
-            padding: "16px 20px",
+            padding: "14px 18px",
             fontFamily: "var(--font-family-sans)",
-            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
-            backdropFilter: "blur(10px)",
+            boxShadow:
+              "0 4px 14px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.35)",
+            backdropFilter: "blur(8px)",
           },
         }}
-        theme="light"
+        theme="dark"
         richColors={false}
         closeButton={true}
         expand={true}

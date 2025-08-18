@@ -10,7 +10,7 @@ import { enrichProfiles } from "@/lib/engagementUtil";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 
 export default function MyShortlistsPage() {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -23,7 +23,13 @@ export default function MyShortlistsPage() {
   const { data: enriched } = useRQ({
     queryKey: ["shortlist-profiles", userIds],
     queryFn: async () => {
-      if (userIds.length === 0) return [] as Array<{ userId: string; fullName?: string | null; city?: string | null; imageUrl?: string | null }>;
+      if (userIds.length === 0)
+        return [] as Array<{
+          userId: string;
+          fullName?: string | null;
+          city?: string | null;
+          imageUrl?: string | null;
+        }>;
       try {
         return await enrichProfiles(userIds);
       } catch {
@@ -55,11 +61,11 @@ export default function MyShortlistsPage() {
     try {
       const res = await toggleShortlist(userId);
       if (res.removed) {
-        toast.success("Removed from shortlist");
+        showSuccessToast("Removed from shortlist");
         void refetch();
       }
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to remove");
+      showErrorToast(e?.message ?? "Failed to remove");
     }
   };
 
@@ -67,15 +73,17 @@ export default function MyShortlistsPage() {
     try {
       const text = notes[userId] || "";
       const res = await setNote(userId, text);
-      if (res.success) toast.success("Note saved");
+      if (res.success) showSuccessToast("Note saved");
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to save note");
+      showErrorToast(e?.message ?? "Failed to save note");
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">Loading…</div>
+      <div className="min-h-screen flex items-center justify-center">
+        Loading…
+      </div>
     );
   }
   if (isError) {
@@ -100,30 +108,60 @@ export default function MyShortlistsPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
-                        {enriched?.find((p: any) => p.userId === e.userId)?.imageUrl ? (
-                          <Image src={enriched.find((p: any) => p.userId === e.userId)!.imageUrl!} alt="avatar" width={40} height={40} className="w-10 h-10 object-cover" />
+                        {enriched?.find((p: any) => p.userId === e.userId)
+                          ?.imageUrl ? (
+                          <Image
+                            src={
+                              enriched.find((p: any) => p.userId === e.userId)!
+                                .imageUrl!
+                            }
+                            alt="avatar"
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 object-cover"
+                          />
                         ) : null}
                       </div>
                       <div>
                         <div className="text-sm font-medium">
-                          <Link href={`/profile/${e.userId}`} className="hover:underline">{e.fullName || e.userId}</Link>
+                          <Link
+                            href={`/profile/${e.userId}`}
+                            className="hover:underline"
+                          >
+                            {e.fullName || e.userId}
+                          </Link>
                         </div>
-                        <div className="text-xs text-gray-500">{new Date(e.createdAt).toLocaleString()}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(e.createdAt).toLocaleString()}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => onRemove(e.userId)}>Remove</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onRemove(e.userId)}
+                      >
+                        Remove
+                      </Button>
                     </div>
                   </div>
                   <div className="mt-3">
                     <Textarea
                       value={notes[e.userId] || ""}
-                      onChange={(ev) => setNotes((prev) => ({ ...prev, [e.userId]: ev.target.value }))}
+                      onChange={(ev) =>
+                        setNotes((prev) => ({
+                          ...prev,
+                          [e.userId]: ev.target.value,
+                        }))
+                      }
                       rows={3}
                       placeholder="Add a private note"
                     />
                     <div className="mt-2">
-                      <Button size="sm" onClick={() => onSaveNote(e.userId)}>Save Note</Button>
+                      <Button size="sm" onClick={() => onSaveNote(e.userId)}>
+                        Save Note
+                      </Button>
                     </div>
                   </div>
                 </li>

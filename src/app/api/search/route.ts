@@ -132,18 +132,40 @@ export async function GET(request: NextRequest) {
     const hasAgeInequality =
       typeof ageMin === "number" || typeof ageMax === "number";
 
-    // For stable cursor pagination: when age inequalities present, order by age asc then createdAt desc then docId desc
-    // Otherwise (no inequalities), order by createdAt desc then docId desc
+    // Composite ordering migration:
+    // We now attempt to push the answeredIcebreakersCount weighting into Firestore ordering
+    // to avoid in-memory resort. Index requirements (add to firestore.indexes.json):
+    //   isOnboardingComplete ASC, age ASC, answeredIcebreakersCount DESC, createdAt DESC, __name__ DESC (when age inequality)
+    //   isOnboardingComplete ASC, answeredIcebreakersCount DESC, createdAt DESC, __name__ DESC (no age inequality)
+    // Additional equality filters (city, country, gender, etc.) will still require further composite indexes
+    // for fully indexed execution. If they are absent OR matching index exists, Firestore returns ordered results.
+    // Otherwise we fall back to previous behaviour (scan subset + in-memory sort) when index missing.
     let query: FirebaseFirestore.Query;
+    const includeAnsweredOrdering = true; // feature flag – set false to revert quickly if needed
     if (hasAgeInequality) {
-      query = base
-        .orderBy("age", "asc")
-        .orderBy("createdAt", "desc")
-        .orderBy(FieldPath.documentId(), "desc");
+      if (includeAnsweredOrdering) {
+        query = base
+          .orderBy("age", "asc")
+          .orderBy("answeredIcebreakersCount", "desc")
+          .orderBy("createdAt", "desc")
+          .orderBy(FieldPath.documentId(), "desc");
+      } else {
+        query = base
+          .orderBy("age", "asc")
+          .orderBy("createdAt", "desc")
+          .orderBy(FieldPath.documentId(), "desc");
+      }
     } else {
-      query = base
-        .orderBy("createdAt", "desc")
-        .orderBy(FieldPath.documentId(), "desc");
+      if (includeAnsweredOrdering) {
+        query = base
+          .orderBy("answeredIcebreakersCount", "desc")
+          .orderBy("createdAt", "desc")
+          .orderBy(FieldPath.documentId(), "desc");
+      } else {
+        query = base
+          .orderBy("createdAt", "desc")
+          .orderBy(FieldPath.documentId(), "desc");
+      }
     }
 
     // Aggregate count BEFORE pagination (use base query to avoid startAfter)
@@ -157,44 +179,112 @@ export async function GET(request: NextRequest) {
 
     // Cursor pagination preferred when cursor provided; else fallback to offset for initial integration
     if (cursor) {
-      // Decode cursor formats:
-      //   createdAt|docId (legacy, when no age inequality ordering)
-      //   age|createdAt|docId (new, when age inequality ordering used)
+      // Decode cursor formats (backwards compatible):
+      //   createdAt|docId (legacy, no age inequality, pre-answered ordering)
+      //   age|createdAt|docId (legacy with age inequality, pre-answered ordering)
+      //   answered|createdAt|docId (new, no age inequality, with answered ordering)
+      //   age|answered|createdAt|docId (new, with age inequality & answered ordering)
       let ageCursor: number | null = null;
+      let answeredCursor: number | null = null;
       let createdAtCursor: number | null = null;
       let docIdCursor: string | null = null;
       try {
         const decoded = decodeURIComponent(cursor);
         const parts = decoded.split("|");
-        if (parts.length === 3) {
+        if (parts.length === 4) {
+          // age|answered|createdAt|docId
           ageCursor = Number(parts[0]);
-          createdAtCursor = Number(parts[1]);
-          docIdCursor = parts[2];
+          answeredCursor = Number(parts[1]);
+          createdAtCursor = Number(parts[2]);
+          docIdCursor = parts[3];
+        } else if (parts.length === 3) {
+          if (hasAgeInequality) {
+            // legacy age|createdAt|docId
+            ageCursor = Number(parts[0]);
+            createdAtCursor = Number(parts[1]);
+            docIdCursor = parts[2];
+          } else {
+            // answered|createdAt|docId (new without age inequality)
+            answeredCursor = Number(parts[0]);
+            createdAtCursor = Number(parts[1]);
+            docIdCursor = parts[2];
+          }
         } else if (parts.length === 2) {
+          // legacy createdAt|docId
           createdAtCursor = Number(parts[0]);
-          // legacy 2-part cursor
           docIdCursor = parts[1];
         }
       } catch {
         // malformed cursor ignored (treat as first page)
       }
       if (hasAgeInequality) {
-        if (
-          ageCursor !== null &&
-          !Number.isNaN(ageCursor) &&
-          createdAtCursor !== null &&
-          !Number.isNaN(createdAtCursor) &&
-          docIdCursor
-        ) {
-          query = query.startAfter(ageCursor, createdAtCursor, docIdCursor);
+        if (includeAnsweredOrdering) {
+          if (
+            ageCursor !== null &&
+            !Number.isNaN(ageCursor) &&
+            answeredCursor !== null &&
+            !Number.isNaN(answeredCursor) &&
+            createdAtCursor !== null &&
+            !Number.isNaN(createdAtCursor) &&
+            docIdCursor
+          ) {
+            query = query.startAfter(
+              ageCursor,
+              answeredCursor,
+              createdAtCursor,
+              docIdCursor
+            );
+          } else if (
+            // fall back to legacy 3-part cursor if provided
+            ageCursor !== null &&
+            !Number.isNaN(ageCursor) &&
+            createdAtCursor !== null &&
+            !Number.isNaN(createdAtCursor) &&
+            docIdCursor
+          ) {
+            query = query.startAfter(ageCursor, createdAtCursor, docIdCursor);
+          }
+        } else {
+          if (
+            ageCursor !== null &&
+            !Number.isNaN(ageCursor) &&
+            createdAtCursor !== null &&
+            !Number.isNaN(createdAtCursor) &&
+            docIdCursor
+          ) {
+            query = query.startAfter(ageCursor, createdAtCursor, docIdCursor);
+          }
         }
       } else {
-        if (
-          createdAtCursor !== null &&
-          !Number.isNaN(createdAtCursor) &&
-          docIdCursor
-        ) {
-          query = query.startAfter(createdAtCursor, docIdCursor);
+        if (includeAnsweredOrdering) {
+          if (
+            answeredCursor !== null &&
+            !Number.isNaN(answeredCursor) &&
+            createdAtCursor !== null &&
+            !Number.isNaN(createdAtCursor) &&
+            docIdCursor
+          ) {
+            query = query.startAfter(
+              answeredCursor,
+              createdAtCursor,
+              docIdCursor
+            );
+          } else if (
+            createdAtCursor !== null &&
+            !Number.isNaN(createdAtCursor) &&
+            docIdCursor
+          ) {
+            // legacy 2-part
+            query = query.startAfter(createdAtCursor, docIdCursor);
+          }
+        } else {
+          if (
+            createdAtCursor !== null &&
+            !Number.isNaN(createdAtCursor) &&
+            docIdCursor
+          ) {
+            query = query.startAfter(createdAtCursor, docIdCursor);
+          }
         }
       }
       query = query.limit(pageSize);
@@ -276,8 +366,10 @@ export async function GET(request: NextRequest) {
     }
 
     let docs: any[] = [];
+    let primaryAnsweredOrderingApplied = false;
     try {
       docs = await runPrimaryQuery();
+      primaryAnsweredOrderingApplied = includeAnsweredOrdering; // we attempted it and query succeeded
     } catch (err: any) {
       if (isIndexMissing(err)) {
         console.warn("search.api index missing, applying fallback", {
@@ -287,6 +379,7 @@ export async function GET(request: NextRequest) {
         const fb = await runFallbackScan();
         docs = fb.docs;
         if (!total) total = fb.scanned; // approximate
+        primaryAnsweredOrderingApplied = false;
       } else {
         console.error("search.api unexpected failure", {
           correlationId: cid,
@@ -297,6 +390,24 @@ export async function GET(request: NextRequest) {
     }
 
     if (!total) total = docs.length + (cursor ? 0 : page * pageSize); // heuristic fallback
+
+    // Apply in-memory weighting ONLY if Firestore ordering by answeredIcebreakersCount was not applied
+    if (!primaryAnsweredOrderingApplied) {
+      try {
+        docs.sort((a: any, b: any) => {
+          const ac =
+            typeof a.answeredIcebreakersCount === "number"
+              ? a.answeredIcebreakersCount
+              : 0;
+          const bc =
+            typeof b.answeredIcebreakersCount === "number"
+              ? b.answeredIcebreakersCount
+              : 0;
+          if (bc !== ac) return bc - ac; // higher count first
+          return 0; // keep original relative order (already by recency)
+        });
+      } catch {}
+    }
 
     const profiles = docs
       .filter((d) => !d.banned && !d.hiddenFromSearch)
@@ -316,6 +427,7 @@ export async function GET(request: NextRequest) {
           profileImageUrls: d.profileImageUrls || [],
           hasSpotlightBadge: d.hasSpotlightBadge,
           spotlightBadgeExpiresAt: d.spotlightBadgeExpiresAt,
+          answeredIcebreakersCount: d.answeredIcebreakersCount,
         },
       }));
 
@@ -323,14 +435,30 @@ export async function GET(request: NextRequest) {
     let nextCursor: string | undefined = undefined;
     if (docs.length === pageSize) {
       const last = docs[docs.length - 1];
+      const lastAnswered =
+        typeof last?.answeredIcebreakersCount === "number"
+          ? last.answeredIcebreakersCount
+          : 0;
       if (hasAgeInequality) {
         if (last?.age != null && last?.createdAt) {
-          nextCursor = `${encodeURIComponent(
-            `${last.age}|${last.createdAt}|${last.id}`
-          )}`;
+          if (includeAnsweredOrdering) {
+            nextCursor = `${encodeURIComponent(
+              `${last.age}|${lastAnswered}|${last.createdAt}|${last.id}`
+            )}`;
+          } else {
+            nextCursor = `${encodeURIComponent(
+              `${last.age}|${last.createdAt}|${last.id}`
+            )}`;
+          }
         }
       } else if (last?.createdAt) {
-        nextCursor = `${encodeURIComponent(`${last.createdAt}|${last.id}`)}`;
+        if (includeAnsweredOrdering) {
+          nextCursor = `${encodeURIComponent(
+            `${lastAnswered}|${last.createdAt}|${last.id}`
+          )}`;
+        } else {
+          nextCursor = `${encodeURIComponent(`${last.createdAt}|${last.id}`)}`;
+        }
       }
     }
 
