@@ -13,6 +13,7 @@ import {
   User as FirebaseUser,
   GoogleAuthProvider,
   signInWithPopup,
+  fetchSignInMethodsForEmail,
 } from "firebase/auth";
 import {
   doc,
@@ -390,7 +391,28 @@ export function useUserProfile() {
             setAuthTokenCookie().catch(() => {});
           }
         }
-        const profile = await fetchUserProfile(firebaseUser.uid);
+        let profile = await fetchUserProfile(firebaseUser.uid);
+        // Fallback: if profile is null (possibly due to permission issues or missing doc), attempt creation then refetch
+        if (!profile) {
+          try {
+            await setDoc(
+              doc(db, "users", firebaseUser.uid),
+              {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email || "",
+                emailVerified: firebaseUser.emailVerified,
+                role: "user",
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                lastLoginAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+            profile = await fetchUserProfile(firebaseUser.uid);
+          } catch (e) {
+            console.warn("[authStateChanged] Failed fallback profile creation", e);
+          }
+        }
         setAuthState({
           user: firebaseUser,
           profile,
@@ -425,6 +447,37 @@ export function useUserProfile() {
     }: SignInCredentials): Promise<AuthActionResult> => {
       try {
         setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        // Detect if this email was originally created with Google (or another provider)
+        // and does not have a password sign-in method enabled. In that case, surface
+        // a clear, friendly message instead of the generic "user not found" / "wrong password".
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, email);
+          if (methods.length > 0 && !methods.includes("password")) {
+            // Specifically handle Google-only accounts (common case that causes confusion)
+            if (methods.includes("google.com")) {
+              const msg =
+                "This account was created using Google. Please use 'Sign in with Google' instead.";
+              setAuthState((prev) => ({
+                ...prev,
+                isLoading: false,
+                error: msg,
+              }));
+              return { success: false, error: msg };
+            } else {
+              const msg =
+                "This account uses a different sign‑in method. Use the original provider to continue.";
+              setAuthState((prev) => ({
+                ...prev,
+                isLoading: false,
+                error: msg,
+              }));
+              return { success: false, error: msg };
+            }
+          }
+        } catch (providerCheckErr) {
+          // Non-fatal; fall through to normal sign-in attempt
+        }
 
         const userCredential = await signInWithEmailAndPassword(
           auth,

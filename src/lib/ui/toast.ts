@@ -32,6 +32,80 @@ export function showErrorToast(
   // Fallback when no specific message available
   if (!message || message.length === 0) message = fallback;
 
+  // Humanize Firebase / technical auth errors to be user-friendly
+  function humanize(msg: string): string {
+    const original = msg;
+    // Strip standard Firebase wrapper prefix e.g. "Firebase: Error (auth/invalid-email)."
+    msg = msg.replace(/^Firebase:?( Error)? ?\(([^)]+)\)\.?/i, "$2");
+    // Replace remaining explicit brand mentions (avoid exposing backend vendor)
+    msg = msg.replace(/firebase/gi, "service");
+    // Common auth code mappings
+    const mappings: { pattern: RegExp; friendly: string }[] = [
+      {
+        pattern: /auth\/(email-already-in-use|email-already-exists)/i,
+        friendly: "An account with this email already exists.",
+      },
+      { pattern: /auth\/invalid-email/i, friendly: "Invalid email address." },
+      {
+        pattern: /auth\/(invalid-password|weak-password)/i,
+        friendly: "Password is too weak.",
+      },
+      {
+        pattern: /auth\/wrong-password/i,
+        friendly: "Incorrect email or password.",
+      },
+      {
+        pattern: /auth\/(user-not-found|user-disabled)/i,
+        friendly: "Account not found.",
+      },
+      {
+        pattern: /auth\/too-many-requests/i,
+        friendly: "Too many attempts. Please try again later.",
+      },
+      {
+        pattern: /auth\/network-request-failed/i,
+        friendly: "Network error. Check your connection.",
+      },
+      {
+        pattern: /auth\/popup-closed-by-user/i,
+        friendly: "Sign-in was cancelled.",
+      },
+      {
+        pattern: /auth\/internal-error/i,
+        friendly: "Unexpected error. Please try again.",
+      },
+      {
+        pattern: /auth\/id-token-expired/i,
+        friendly: "Session expired. Please sign in again.",
+      },
+      {
+        pattern: /auth\/invalid-credential/i,
+        friendly: "Invalid email or password.",
+      },
+      {
+        pattern: /permission-denied/i,
+        friendly: "You don't have permission to do that.",
+      },
+      {
+        pattern: /missing or insufficient permissions/i,
+        friendly: "You don't have permission to do that.",
+      },
+    ];
+    for (const { pattern, friendly } of mappings) {
+      if (pattern.test(msg)) return friendly;
+    }
+    // If entire message still looks like an auth code (e.g. auth/xyz) simplify
+    if (/^auth\//i.test(msg)) return fallback;
+    // If nothing changed but original was very technical, fall back
+    if (original === msg && /auth\//i.test(original)) return fallback;
+    return msg;
+  }
+  try {
+    message = humanize(message);
+  } catch {
+    // swallow humanize errors
+  }
+
   // Basic sanitation to avoid multi-line/noisy messages
   try {
     message = message.replace(/[\r\n]+/g, " ").slice(0, 300);
@@ -46,10 +120,10 @@ export function showErrorToast(
     // Skip showing duplicate toast
     return;
   }
-  
+
   // Record this toast
   recentToasts.set(message, now);
-  
+
   // Clean up old entries (older than 5 seconds) to prevent memory leaks
   for (const [msg, time] of recentToasts.entries()) {
     if (now - time > 5000) {
