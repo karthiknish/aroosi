@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyFirebaseIdToken, getFirebaseUser } from "@/lib/firebaseAdmin";
+import { verifyFirebaseIdToken, getFirebaseUser, db } from "@/lib/firebaseAdmin";
 
 // Return current user with profile using Firebase authentication (cookie first, bearer header fallback)
 export async function GET(request: Request) {
@@ -33,9 +33,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    const userData = await getFirebaseUser(userId);
+    let userData = await getFirebaseUser(userId);
+    // Auto-provision a minimal user document if missing (fixes 401 on first Google auth before profile upsert completes)
     if (!userData) {
-      return NextResponse.json({ user: null }, { status: 401 });
+      const now = Date.now();
+      const email = (decodedToken as any).email || "";
+      const fullName = (decodedToken as any).name || (decodedToken as any).displayName || undefined;
+      await db.collection("users").doc(userId).set(
+        {
+          email: email.toLowerCase(),
+          createdAt: now,
+            updatedAt: now,
+          fullName,
+          isOnboardingComplete: false,
+          role: "user",
+        },
+        { merge: true }
+      );
+      userData = await getFirebaseUser(userId);
     }
 
     return NextResponse.json(

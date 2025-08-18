@@ -450,7 +450,7 @@ export default function ProfileDetailPage() {
                       </button>
                     )}
                     <Image
-                      src={mainProfileImageUrl || "/placeholder.png"}
+                      src={mainProfileImageUrl || "/placeholder.jpg"}
                       alt={
                         profile?.fullName
                           ? `${profile.fullName}'s profile image`
@@ -464,7 +464,9 @@ export default function ProfileDetailPage() {
                         e: React.SyntheticEvent<HTMLImageElement, Event>
                       ) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = "/placeholder.png";
+                        if (!target.src.includes("placeholder")) {
+                          target.src = "/placeholder.jpg";
+                        }
                       }}
                     />
                     {/* Right Arrow */}
@@ -495,7 +497,13 @@ export default function ProfileDetailPage() {
                     style={{ aspectRatio: "1 / 1" }}
                   >
                     <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <UserCircle className="w-28 h-28 text-gray-300" />
+                      <Image
+                        src="/placeholder.jpg"
+                        alt="Profile placeholder"
+                        fill
+                        className="object-cover object-center"
+                        sizes="(max-width: 768px) 100vw, 768px"
+                      />
                     </div>
                   </motion.div>
                 )}
@@ -714,13 +722,21 @@ export default function ProfileDetailPage() {
                                 e: React.SyntheticEvent<HTMLImageElement, Event>
                               ) => {
                                 const target = e.target as HTMLImageElement;
-                                target.src = "/placeholder.png";
+                                if (!target.src.includes("placeholder")) {
+                                  target.src = "/placeholder.jpg";
+                                }
                               }}
                             />
                           </div>
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-                            <UserCircle className="w-16 h-16 text-gray-300" />
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
+                            <Image
+                              src="/placeholder.jpg"
+                              alt="Profile placeholder"
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 50vw, 25vw"
+                            />
                           </div>
                         )}
                       </motion.div>

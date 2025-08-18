@@ -879,6 +879,15 @@ export default function SearchProfilesPage() {
                                   [u.userId]: true,
                                 }))
                               }
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (target.src.includes("placeholder")) return; // prevent loop
+                                target.src = "/placeholder.jpg";
+                                setImgLoaded((prev) => ({
+                                  ...prev,
+                                  [u.userId]: true,
+                                }));
+                              }}
                             />
                             {p.boostedUntil && p.boostedUntil > Date.now() && (
                               <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-pink-400/30">
@@ -888,8 +897,18 @@ export default function SearchProfilesPage() {
                             )}
                           </div>
                         ) : (
-                          <div className="w-full h-40 flex items-center justify-center bg-gray-100">
-                            <UserCircle className="w-16 h-16 text-gray-300" />
+                          <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                            <img
+                              src="/placeholder.jpg"
+                              alt="Profile placeholder"
+                              className="w-full h-full object-cover"
+                            />
+                            {p.boostedUntil && p.boostedUntil > Date.now() && (
+                              <div className="absolute top-2 left-2 bg-gradient-to-r from-pink-600 via-pink-700 to-rose-600 text-white text-xs px-3 py-1.5 rounded-full z-10 flex items-center gap-1 shadow-lg animate-pulse border border-pink-400/30">
+                                <Rocket className="h-3 w-3 fill-current" />
+                                <span className="font-semibold">Boosted</span>
+                              </div>
+                            )}
                           </div>
                         )}
                         <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
