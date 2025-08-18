@@ -156,6 +156,7 @@ export async function fetchUserProfileImages(
     const userDoc = await getDoc(doc(db, "users", userId));
     if (userDoc.exists()) {
       const profileData = userDoc.data() as any;
+
       const imagesRaw: any[] =
         profileData.profileImages || // legacy array of objects
         profileData.profileImageUrls?.map((url: string) => ({ url })) ||
@@ -171,6 +172,10 @@ export async function fetchUserProfileImages(
 
       return { success: true, data: normalized };
     } else {
+      console.log(
+        "[ProfileAPI] User document does not exist for userId:",
+        userId
+      );
       return { success: true, data: [], status: 404 };
     }
   } catch (error) {

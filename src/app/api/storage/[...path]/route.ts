@@ -1,0 +1,42 @@
+import { NextRequest } from "next/server";
+import { adminStorage } from "@/lib/firebaseAdmin";
+
+// Proxy (302 redirect) or stream a Firebase Storage object by its storageId (path after users/..).
+// Usage: /api/storage/<storageId or full path>
+// We expect callers to pass the full storage path like users/<uid>/profile-images/<filename>
+// For backwards compatibility, if only a filename is provided we attempt to locate it under any user's profile-images (NOT recommended: O(n) listing, so we avoid and just 404).
+
+export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
+  const start = Date.now();
+  const segments = params.path || [];
+  if (!segments.length) {
+    return new Response(JSON.stringify({ error: "Missing path" }), { status: 400 });
+  }
+  // Reconstruct storage path
+  const storagePath = segments.join("/");
+  try {
+    const bucket = adminStorage.bucket();
+    // Security: only allow expected folder
+    if (!storagePath.startsWith("users/") || storagePath.includes("..")) {
+      return new Response(JSON.stringify({ error: "Invalid path" }), { status: 400 });
+    }
+    const file = bucket.file(storagePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
+    }
+    // Generate signed URL with short expiry (1 hour) to leverage CDN caching client-side if desired
+    const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 60 * 60 * 1000 });
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: signedUrl,
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+        "X-Proxy-Time": `${Date.now() - start}ms`,
+      },
+    });
+  } catch (e: any) {
+    console.error("/api/storage error", e);
+    return new Response(JSON.stringify({ error: e?.message || "Failed" }), { status: 500 });
+  }
+}

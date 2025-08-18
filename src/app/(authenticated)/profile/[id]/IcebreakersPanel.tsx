@@ -46,37 +46,6 @@ export function IcebreakersPanel() {
   });
   const mutationPending = isPending;
 
-  if (isLoading) {
-    return (
-      <div className="mt-8">
-        <Skeleton className="h-6 w-48 mb-3" />
-        <div className="space-y-3">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="mt-8">
-        <div className="text-sm text-red-600">
-          Failed to load today&apos;s icebreakers.
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-2"
-          onClick={() => refetch()}
-        >
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
   const questions = useMemo(
     () =>
       Array.isArray(data)
@@ -94,7 +63,38 @@ export function IcebreakersPanel() {
   const answeredCount = visibleQuestions.filter(
     (q) => submitted[q.id] || q.answered
   ).length;
-  if (questions.length === 0) return null;
+  // Rendering branches moved below hook declarations to satisfy rules-of-hooks
+  let loadingContent: React.ReactElement | null = null;
+  if (isLoading) {
+    loadingContent = (
+      <div className="mt-8">
+        <Skeleton className="h-6 w-48 mb-3" />
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </div>
+    );
+  } else if (isError) {
+    loadingContent = (
+      <div className="mt-8">
+        <div className="text-sm text-red-600">
+          Failed to load today&apos;s icebreakers.
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => refetch()}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  } else if (questions.length === 0) {
+    loadingContent = null;
+  }
 
   const handleSubmit = async (qid: string) => {
     const val = (answers[qid] || "").trim();
@@ -153,6 +153,9 @@ export function IcebreakersPanel() {
     ],
     []
   );
+
+  if (loadingContent !== null) return loadingContent;
+  if (questions.length === 0) return null;
 
   return (
     <section className="mt-8">

@@ -134,13 +134,34 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     log("Request completed successfully", { duration: `${duration}ms` });
 
-    return NextResponse.json(images, {
-      headers: {
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-        "X-Request-ID": requestId,
-        "X-Response-Time": `${duration}ms`,
-      },
+    // Normalize: guarantee each image has a url. If missing, construct from bucket + storageId/id.
+    const bucketName = (
+      await import("@/lib/firebaseAdmin")
+    ).adminStorage.bucket().name;
+    const normalized = (images as any[]).map((img) => {
+      const storageId = img.storageId || img.id || null;
+      let url = img.url || null;
+      if (!url && storageId) {
+        // Ensure no leading slash duplication
+        url = `https://storage.googleapis.com/${bucketName}/${storageId}`;
+      }
+      return { id: storageId || img.id, storageId, url };
     });
+    return NextResponse.json(
+      {
+        success: true,
+        userProfileImages: normalized,
+        count: normalized.length,
+        requestId,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+          "X-Request-ID": requestId,
+          "X-Response-Time": `${duration}ms`,
+        },
+      }
+    );
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =

@@ -50,6 +50,13 @@ async function registerFirebaseImageMetadata(args: {
   storageId: string;
   file: File;
 }): Promise<UploadResult> {
+  console.log("[registerFirebaseImageMetadata] Registering metadata:", {
+    storageId: args.storageId,
+    fileName: args.file.name,
+    contentType: args.file.type,
+    size: args.file.size,
+  });
+  
   // Call firebase metadata route (JSON branch) which persists to Firestore
   const res = await fetchWithFirebaseAuth("/api/profile-images/firebase", {
     method: "POST",
@@ -61,6 +68,11 @@ async function registerFirebaseImageMetadata(args: {
       size: args.file.size,
     }),
   });
+  
+  console.log(
+    "[registerFirebaseImageMetadata] API response status:",
+    res.status
+  );
   if (!res.ok) {
     let txt = "";
     try {
@@ -141,7 +153,10 @@ async function uploadViaFirebaseStorage(
 }
 
 export async function uploadProfileImage(file: File): Promise<UploadResult> {
-  return uploadViaFirebaseStorage(file);
+  console.log("[uploadProfileImage] Starting upload for:", file.name);
+  const result = await uploadViaFirebaseStorage(file);
+  console.log("[uploadProfileImage] Upload completed:", result);
+  return result;
 }
 
 export function uploadProfileImageWithProgress(

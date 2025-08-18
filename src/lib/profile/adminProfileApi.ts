@@ -336,11 +336,14 @@ export async function fetchAdminProfileImagesById({
       throw new Error(`Failed to fetch profile images: ${errorText}`);
     }
     const data = await res.json();
-    return Array.isArray(data)
-      ? data
-      : Array.isArray(data.images)
-        ? data.images
-        : [];
+    // Supported response shapes:
+    // 1. Raw array: [ { storageId, url }, ... ] (legacy)
+    // 2. Wrapped: { success: true, userProfileImages: [...] }
+    // 3. Alternate: { images: [...] }
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.userProfileImages)) return data.userProfileImages;
+    if (Array.isArray(data.images)) return data.images;
+    return [];
   } catch (error) {
     throw new Error(
       `Error fetching profile images: ${(error as Error).message}`

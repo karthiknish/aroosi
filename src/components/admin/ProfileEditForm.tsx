@@ -715,7 +715,7 @@ export default function ProfileEditForm({
         {/* Cultural Information */}
         <div>
           <label
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-neutral mb-1"
             htmlFor="motherTongue"
           >
             Mother Tongue
@@ -744,7 +744,7 @@ export default function ProfileEditForm({
 
         <div>
           <label
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-neutral mb-1"
             htmlFor="religion"
           >
             Religion
@@ -766,7 +766,7 @@ export default function ProfileEditForm({
 
         <div>
           <label
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-neutral mb-1"
             htmlFor="ethnicity"
           >
             Ethnicity

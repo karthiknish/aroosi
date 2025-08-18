@@ -322,7 +322,9 @@ export function ImageUploader({
         }
 
         // Immediate upload: use canonical utility to upload via multipart endpoint
+        console.log("[ImageUploader] Starting upload for file:", file.name);
         const json = await uploadProfileImage(file);
+        console.log("[ImageUploader] Upload result:", json);
 
         // Optimistic update
         if (onOptimisticUpdate && json?.imageId) {
@@ -566,8 +568,8 @@ export function ImageUploader({
                       }
                     );
                     const result = await uploadImageFile(croppedFile);
-                    if (result?.success) {
-                      // Fetch images immediately to update UI
+                    // Only fetch server images if not pure local mode
+                    if (result?.success && mode !== "local") {
                       await fetchImages();
                     }
                     setIsCropping(false);
@@ -587,7 +589,7 @@ export function ImageUploader({
                 className="bg-primary hover:bg-primary-dark"
                 disabled={!croppedAreaPixels || isUploading}
               >
-                {isUploading ? (
+                {isUploading && mode !== "local" ? (
                   <>
                     <LoadingSpinner size={16} className="mr-2" />
                     Uploading...
@@ -595,7 +597,7 @@ export function ImageUploader({
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    Upload
+                    {mode === "local" ? "Add" : "Upload"}
                   </>
                 )}
               </Button>

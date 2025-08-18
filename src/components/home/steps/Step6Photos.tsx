@@ -314,13 +314,13 @@ export function Step6Photos(props: {
   return (
     <div className="space-y-6">
       <div className="text-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Profile Photos</h3>
-        <p className="text-sm text-gray-600">
+        <h3 className="text-lg font-semibold text-neutral">Profile Photos</h3>
+        <p className="text-sm text-neutral/70">
           Add photos to your profile (optional)
         </p>
       </div>
       <div className="mb-6">
-        <Label className="text-gray-700 mb-2 block">Profile Photos</Label>
+        <Label className="text-neutral mb-2 block">Profile Photos</Label>
         {pendingImages.length > 0 && (
           <div className="mt-2">
             {/* Reorder strip (placed above uploader). Also provides delete X on each image. */}
@@ -410,7 +410,7 @@ export function Step6Photos(props: {
               } catch {}
             }}
           />
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-neutral/60">
             Max 5 images. JPG, PNG, WebP up to 5MB, minimum 512x512.
           </p>
         </div>

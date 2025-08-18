@@ -32,6 +32,38 @@ export function showErrorToast(
   // Fallback when no specific message available
   if (!message || message.length === 0) message = fallback;
 
+  // Attempt to detect structured server payloads appended to error messages (e.g., "... :: {\"code\":\"ONBOARDING_INCOMPLETE\"}")
+  try {
+    const raw = message.split("::").pop()?.trim();
+    if (raw && raw.startsWith("{") && raw.endsWith("}")) {
+      const parsed = JSON.parse(raw);
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed.code === "ONBOARDING_INCOMPLETE"
+      ) {
+        message = "Please finish onboarding to continue.";
+      }
+    }
+  } catch {
+    // ignore parse issues
+  }
+
+  // If the user hasn't finished onboarding (tracked in localStorage) and we see generic permission wording, prefer onboarding guidance
+  try {
+    if (typeof window !== "undefined") {
+      const onboardingState = window.localStorage.getItem("onboarding");
+      if (
+        onboardingState === "incomplete" &&
+        /permission|insufficient permissions|forbidden/i.test(message)
+      ) {
+        message = "Please finish onboarding to continue.";
+      }
+    }
+  } catch {
+    // ignore storage issues
+  }
+
   // Humanize Firebase / technical auth errors to be user-friendly
   function humanize(msg: string): string {
     const original = msg;

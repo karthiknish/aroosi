@@ -17,7 +17,6 @@ import type { Profile } from "@/types/profile";
 import { useQuery } from "@tanstack/react-query";
 import type { ProfileFormValues } from "@/types/profile";
 import ProfileEditForm from "@/components/admin/ProfileEditForm";
-import type { ImageType } from "@/types/image";
 
 function AdminEditProfilePageInner() {
   const router = useRouter();
@@ -27,7 +26,11 @@ function AdminEditProfilePageInner() {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const profileIdForImages = (profile?._id || id) ?? undefined;
-  const { images, loading: imagesLoading } = useAdminProfileImages({
+  const {
+    images,
+    loading: imagesLoading,
+    setImages,
+  } = useAdminProfileImages({
     profileId: profileIdForImages,
     enabled: !!profileIdForImages,
   });
@@ -222,6 +225,7 @@ function AdminEditProfilePageInner() {
           images={images}
           imagesLoading={imagesLoading}
           matches={matches || []}
+          setImages={setImages}
         />
       </div>
     </div>

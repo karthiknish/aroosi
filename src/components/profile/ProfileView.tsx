@@ -88,9 +88,7 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
   className = "",
 }) => {
   const displayValue = value == null || value === "" ? "-" : String(value);
-  const textClass = isSubtle
-    ? "text-sm text-gray-500"
-    : "text-md text-gray-800";
+  const textClass = isSubtle ? "text-sm text-gray-500" : "text-md text-neutral";
 
   return (
     <div
@@ -129,7 +127,7 @@ const DisplaySection: React.FC<DisplaySectionProps> = ({
       fullWidth ? "w-full" : ""
     } first:border-t-0 first:pt-0 ${className}`}
   >
-    <h2 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+    <h2 className="text-lg font-semibold text-neutral mb-3 flex items-center gap-2">
       {title}
     </h2>
     {children}
@@ -309,7 +307,7 @@ const ProfileView: FC<ProfileViewProps> = ({
               <CardTitle className="text-3xl font-serif mb-4 text-neutral sm:text-4xl font-semibold tracking-tight ">
                 My Profile
               </CardTitle>
-              <CardDescription className="text-gray-600">
+              <CardDescription className="text-neutral-light">
                 View and manage your information.
               </CardDescription>
             </div>

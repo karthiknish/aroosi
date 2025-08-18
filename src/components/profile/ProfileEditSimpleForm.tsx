@@ -224,7 +224,7 @@ export default function ProfileEditSimpleForm({
       form.reset(initialValues);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(initialValues)]);
+  }, [initialValues]);
 
   const isDataReady =
     initialValues &&

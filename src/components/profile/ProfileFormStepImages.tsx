@@ -12,6 +12,7 @@ interface Props {
   isLoading: boolean;
   isAdmin?: boolean;
   profileId?: string;
+  renderAction?: (img: ImageType, idx: number) => React.ReactNode;
 }
 
 const ProfileFormStepImages: React.FC<Props> = ({
@@ -21,10 +22,12 @@ const ProfileFormStepImages: React.FC<Props> = ({
   onImagesChanged,
   isLoading,
   profileId,
+  renderAction,
 }) => {
   const { profile: rawProfile, isAdmin } = useAuthContext();
   const profile = rawProfile as { userId?: string } | null;
-  const userId = profile?.userId || "user-id-placeholder";
+  // Use profileId prop if provided, otherwise fall back to auth context
+  const userId = profileId || profile?.userId || "user-id-placeholder";
 
   // Notify parent of image changes (run even during loading to reset state)
   React.useEffect(() => {
@@ -50,6 +53,7 @@ const ProfileFormStepImages: React.FC<Props> = ({
           onReorder={onImageReorder}
           onDeleteImage={onImageDelete}
           isAdmin={isAdmin}
+          renderAction={renderAction}
         />
       )}
       {images.length < 5 && (
@@ -59,17 +63,18 @@ const ProfileFormStepImages: React.FC<Props> = ({
             isAdmin={isAdmin}
             profileId={profileId}
             mode="edit"
+            uploaderMode="local"
             onImagesChanged={onImagesChanged}
             className="w-full h-48"
           />
         </div>
       )}
       {images.length > 1 && (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-neutral">
           The first image will be your profile picture.
         </div>
       )}
-      <p className="text-xs text-gray-500 mt-2">
+      <p className="text-xs text-neutral mt-2">
         Upload photos to make your profile more attractive. First image will be
         your main profile picture. Photos are optional but recommended.
       </p>

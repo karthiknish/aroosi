@@ -283,10 +283,10 @@ function HeroOnboardingInner() {
       <Card className="bg-white/95 backdrop-blur-sm shadow-2xl border-0 max-h-[80vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
         <div className="sm:p-8 p-4">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-neutral mb-2">
               Find Your Perfect Match
             </h2>
-            <p className="text-gray-600">
+            <p className="text-neutral-light">
               Join thousands of Afghan singles finding love
             </p>
           </div>
@@ -331,7 +331,7 @@ function HeroOnboardingInner() {
                   <div>
                     <Label
                       htmlFor="profileFor"
-                      className="text-gray-700 mb-2 block"
+                      className="text-neutral mb-2 block"
                     >
                       {required("This profile is for")}
                     </Label>
@@ -382,7 +382,7 @@ function HeroOnboardingInner() {
                   </div>
 
                   <div>
-                    <Label className="text-gray-700 mb-2 block">
+                    <Label className="text-neutral mb-2 block">
                       {required("Gender")}
                     </Label>
                     <div className="grid grid-cols-2 gap-4">
@@ -438,7 +438,7 @@ function HeroOnboardingInner() {
                   <div>
                     <Label
                       htmlFor="fullName"
-                      className="text-gray-700 mb-2 block"
+                      className="text-neutral mb-2 block"
                     >
                       {required("Full Name")}
                     </Label>
@@ -469,7 +469,7 @@ function HeroOnboardingInner() {
                   <div>
                     <Label
                       htmlFor="dateOfBirth"
-                      className="text-gray-700 mb-2 block"
+                      className="text-neutral mb-2 block"
                     >
                       {required("Date of Birth")}
                     </Label>
@@ -541,7 +541,7 @@ function HeroOnboardingInner() {
                       </p>
                     )}
                     {heroData.dateOfBirth && (
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-neutral-light mt-1">
                         Date selected:{" "}
                         {format(new Date(heroData.dateOfBirth), "PPP")}
                       </p>
@@ -556,7 +556,7 @@ function HeroOnboardingInner() {
                   <div>
                     <Label
                       htmlFor="phoneNumber"
-                      className="text-gray-700 mb-2 block"
+                      className="text-neutral mb-2 block"
                     >
                       {required("Phone Number")}
                     </Label>
@@ -623,7 +623,7 @@ function HeroOnboardingInner() {
             </Button>
           </div>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-neutral-light">
             Already have an account?{" "}
             <Link
               href="/sign-in"

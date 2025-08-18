@@ -42,6 +42,8 @@ type ProfileImageUploadWithUserId = {
     updates: { profileImageIds: string[] };
   }) => Promise<unknown>;
   mode?: "create" | "edit";
+  /** Controls how the internal ImageUploader behaves: local (deferred) or immediate */
+  uploaderMode?: "local" | "immediate";
   uploadImageFn?: (args: {
     userId: string;
     storageId: string;
@@ -60,6 +62,7 @@ export function ProfileImageUpload({
   onImagesChanged,
   onFileSelect,
   mode = "edit",
+  uploaderMode = "immediate",
   className = "",
   profileId,
   isAdmin,
@@ -171,14 +174,8 @@ export function ProfileImageUpload({
       // Only notify if the image IDs actually changed
       if (imageIdsString !== lastNotifiedImageIds.current) {
         lastNotifiedImageIds.current = imageIdsString;
-
-        if (mode === "create") {
-          // In create mode, notify parent with the full image objects
-          onImagesChanged(memoizedOrderedImages);
-        } else {
-          // In edit mode, notify with image IDs
-          onImagesChanged(profileImageIds);
-        }
+        // Always send full image objects so parent can distinguish local vs persisted
+        onImagesChanged(memoizedOrderedImages);
       }
 
       // Show success toast only if uploading and image count increased
@@ -331,9 +328,9 @@ export function ProfileImageUpload({
       <div
         className={`relative flex items-center justify-center ${className || ""}`}
       >
-        <label className="flex flex-col items-center justify-center w-full h-full p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+        <label className="flex flex-col items-center justify-center w-full h-full p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-neutral/10">
           <svg
-            className="w-8 h-8 mb-2 text-gray-500"
+            className="w-8 h-8 mb-2 text-neutral/60"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -346,7 +343,7 @@ export function ProfileImageUpload({
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <p className="text-sm text-gray-500 text-center">
+          <p className="text-sm text-neutral/60 text-center">
             Click to upload or drag and drop
           </p>
           <input
@@ -373,11 +370,11 @@ export function ProfileImageUpload({
   }
   return (
     <div className="space-y-4">
-      {/* Display existing images with drag-and-drop reorder & delete */}
-      {memoizedOrderedImages.length > 0 && (
+      {/* Display existing images with drag-and-drop reorder & delete - DISABLED */}
+      {false && memoizedOrderedImages.length > 0 && (
         <ProfileImageReorder
           images={memoizedOrderedImages}
-          userId={userId}
+          userId={userId || ""}
           onReorder={handleOptimisticReorder}
           onDeleteImage={(id) => deleteImageMutation.mutate(id)}
           onOptimisticDelete={handleOptimisticDelete}
@@ -388,14 +385,14 @@ export function ProfileImageUpload({
       {(memoizedOrderedImages?.length ?? 0) < MAX_IMAGES_PER_USER && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">Add New Photo</h3>
-            <span className="text-xs text-muted-foreground">
+            <h3 className="text-sm font-medium text-neutral">Add New Photo</h3>
+            <span className="text-xs text-neutral/60">
               {memoizedOrderedImages?.length ?? 0} of {MAX_IMAGES_PER_USER}{" "}
               photos
             </span>
           </div>
           <ImageUploader
-            userId={userId}
+            userId={userId || ""}
             orderedImages={memoizedOrderedImages}
             setIsUploading={setIsUploading}
             isUploading={isUploading}
@@ -403,16 +400,17 @@ export function ProfileImageUpload({
             onStartUpload={handleStartUpload}
             onOptimisticUpdate={handleOptimisticUpload}
             className="w-full"
+            mode={uploaderMode}
             {...(isAdminMode ? { customUploadFile: uploadImageFileAdmin } : {})}
           />
           {/* Upload limit indicator */}
           <div className="flex justify-between px-1">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-neutral/60">
               {MAX_IMAGES_PER_USER - (memoizedOrderedImages?.length || 0) === 0
                 ? "Maximum photos uploaded"
                 : `Upload up to ${MAX_IMAGES_PER_USER - (memoizedOrderedImages?.length || 0)} more`}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-neutral/60">
               {MAX_IMAGES_PER_USER - (memoizedOrderedImages?.length || 0)}{" "}
               remaining
             </p>
