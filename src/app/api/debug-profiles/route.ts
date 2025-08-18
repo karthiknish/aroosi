@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import type {
+  QueryDocumentSnapshot,
+  DocumentData,
+} from "firebase-admin/firestore";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +12,8 @@ export async function GET(request: NextRequest) {
     // Check total users
     const allUsers = await db.collection(COLLECTIONS.USERS).limit(10).get();
     results.totalUsers = allUsers.size;
-    results.sampleUsers = allUsers.docs.map(doc => {
+  results.sampleUsers = allUsers.docs.map(
+    (doc: QueryDocumentSnapshot<DocumentData>) => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -18,9 +23,10 @@ export async function GET(request: NextRequest) {
         banned: data.banned,
         hiddenFromSearch: data.hiddenFromSearch,
         age: data.age,
-        city: data.city
+        city: data.city,
       };
-    });
+    }
+  );
     
     // Check onboarding complete users
     const onboardingComplete = await db.collection(COLLECTIONS.USERS)
@@ -44,17 +50,19 @@ export async function GET(request: NextRequest) {
         .limit(10)
         .get();
       results.femaleOnboardedCount = femaleOnboarded.size;
-      results.femaleOnboardedUsers = femaleOnboarded.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          fullName: data.fullName,
-          age: data.age,
-          city: data.city,
-          banned: data.banned,
-          hiddenFromSearch: data.hiddenFromSearch
-        };
-      });
+  results.femaleOnboardedUsers = femaleOnboarded.docs.map(
+    (doc: QueryDocumentSnapshot<DocumentData>) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        fullName: data.fullName,
+        age: data.age,
+        city: data.city,
+        banned: data.banned,
+        hiddenFromSearch: data.hiddenFromSearch,
+      };
+    }
+  );
     } catch (error) {
       results.femaleOnboardedError = (error as Error).message;
     }
