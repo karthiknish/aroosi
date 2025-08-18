@@ -49,7 +49,16 @@ export async function GET(request: NextRequest) {
       return session.errorResponse;
     }
     const userId = String(session.userId);
-    const viewerPlan = session.profile?.subscriptionPlan || "free";
+    const viewerProfile = session.profile;
+    const viewerPlan = viewerProfile?.subscriptionPlan || "free";
+
+    if (!viewerProfile?.isOnboardingComplete) {
+      return errorResponsePublic(
+        "Please finish onboarding to use search.",
+        403,
+        { code: "ONBOARDING_INCOMPLETE" }
+      );
+    }
 
     // Burst limiter
     const burstLimit = checkApiRateLimit(`search:${userId}`, 60, 60_000);
@@ -357,19 +366,44 @@ export async function GET(request: NextRequest) {
       );
       let filtered = all.filter((d: any) => {
         const computeAge = (): number | null => {
-          if (typeof d.age === "number" && !Number.isNaN(d.age)) return d.age;
+          // Prioritize deriving from dateOfBirth (handles Firestore Timestamp / seconds form)
           const dob = d.dateOfBirth;
-          if (!dob) return null;
           let dt: Date | null = null;
-          if (typeof dob === "number") dt = new Date(dob);
-          else if (typeof dob === "string") {
-            const parsed = Date.parse(dob);
-            if (!Number.isNaN(parsed)) dt = new Date(parsed);
+          if (dob) {
+            if (typeof dob === "number") dt = new Date(dob);
+            else if (typeof dob === "string") {
+              const parsed = Date.parse(dob);
+              if (!Number.isNaN(parsed)) dt = new Date(parsed);
+            } else if (typeof dob === "object") {
+              try {
+                if (dob && typeof (dob as any).toDate === "function") {
+                  dt = (dob as any).toDate();
+                } else if (
+                  Object.prototype.hasOwnProperty.call(dob, "seconds") &&
+                  typeof (dob as any).seconds === "number"
+                ) {
+                  dt = new Date((dob as any).seconds * 1000);
+                }
+              } catch {
+                /* ignore */
+              }
+            }
           }
-          if (!dt) return null;
-          const ageMs = Date.now() - dt.getTime();
-          if (ageMs <= 0) return null;
-          return Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
+          if (!dt) {
+            // Fallback: attempt numeric/string 'age'
+            if (typeof d.age === "number" && !Number.isNaN(d.age)) return d.age;
+            if (typeof d.age === "string") {
+              const num = parseInt(d.age, 10);
+              if (!Number.isNaN(num)) return num;
+            }
+            return null;
+          }
+          const now = Date.now();
+          if (dt.getTime() > now) return null; // future DOB invalid
+          const ageMs = now - dt.getTime();
+          const derived = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
+          if (derived < 0 || derived > 150) return null; // sanity bounds
+          return derived;
         };
         if (
           cityFilter &&
@@ -448,27 +482,49 @@ export async function GET(request: NextRequest) {
 
     // Extra age filtering pass for primary query results when age constraints active
     if (typeof ageMin === "number" || typeof ageMax === "number") {
-      const now = Date.now();
-      docs = docs.filter((d: any) => {
-        let derived: number | null = null;
-        if (typeof d.age === "number" && !Number.isNaN(d.age)) {
-          derived = d.age;
-        } else if (d.dateOfBirth) {
-          let dt: Date | null = null;
-          if (typeof d.dateOfBirth === "number") dt = new Date(d.dateOfBirth);
-          else if (typeof d.dateOfBirth === "string") {
-            const parsed = Date.parse(d.dateOfBirth);
+      const derive = (d: any): number | null => {
+        const dob = d.dateOfBirth;
+        let dt: Date | null = null;
+        if (dob) {
+          if (typeof dob === "number") dt = new Date(dob);
+          else if (typeof dob === "string") {
+            const parsed = Date.parse(dob);
             if (!Number.isNaN(parsed)) dt = new Date(parsed);
-          }
-          if (dt) {
-            const ageMs = now - dt.getTime();
-            if (ageMs > 0)
-              derived = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
+          } else if (typeof dob === "object") {
+            try {
+              if (dob && typeof (dob as any).toDate === "function") {
+                dt = (dob as any).toDate();
+              } else if (
+                Object.prototype.hasOwnProperty.call(dob, "seconds") &&
+                typeof (dob as any).seconds === "number"
+              ) {
+                dt = new Date((dob as any).seconds * 1000);
+              }
+            } catch {
+              /* ignore */
+            }
           }
         }
-        if (derived === null) return false; // Exclude if cannot determine age while filtering
-        if (typeof ageMin === "number" && derived < ageMin) return false;
-        if (typeof ageMax === "number" && derived > ageMax) return false;
+        if (!dt) {
+          if (typeof d.age === "number" && !Number.isNaN(d.age)) return d.age;
+          if (typeof d.age === "string") {
+            const num = parseInt(d.age, 10);
+            if (!Number.isNaN(num)) return num;
+          }
+          return null;
+        }
+        const now = Date.now();
+        if (dt.getTime() > now) return null;
+        const ageMs = now - dt.getTime();
+        const derived = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
+        if (derived < 0 || derived > 150) return null;
+        return derived;
+      };
+      docs = docs.filter((d: any) => {
+        const ageVal = derive(d);
+        if (ageVal === null) return false;
+        if (typeof ageMin === "number" && ageVal < ageMin) return false;
+        if (typeof ageMax === "number" && ageVal > ageMax) return false;
         return true;
       });
     }

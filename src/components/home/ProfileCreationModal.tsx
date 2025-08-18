@@ -68,13 +68,13 @@ export function ProfileCreationModal({
 
   const { isAuthenticated } = useAuth();
   React.useEffect(() => {
+    // Removed full page reload on auth-success to preserve pendingImages (local-only before signup).
+    // Auth provider context should react to sign-in and controller effect will finalize profile.
     function handleMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
-      if (
-        (event as any).data?.type === "auth-success" &&
-        (event as any).data?.isAuthenticated
-      ) {
-        window.location.reload();
+      if ((event as any).data?.type === "auth-success") {
+        // No reload; allow in-memory wizard state (including pendingImages) to remain.
+        // Optionally could trigger a lightweight profile refresh via custom event.
       }
     }
     window.addEventListener("message", handleMessage);

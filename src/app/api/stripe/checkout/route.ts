@@ -22,7 +22,13 @@ const ALLOWED_PLAN_IDS = {
 type PublicPlanId = keyof typeof ALLOWED_PLAN_IDS;
 
 interface RequestBody {
-  planId: PublicPlanId;
+  // New canonical field (expected by this route originally)
+  planId?: PublicPlanId;
+  // Backwards-compatible alias used by legacy client util
+  planType?: PublicPlanId;
+  // Optional client-specified redirect overrides (must be validated)
+  successUrl?: string;
+  cancelUrl?: string;
 }
 
 /**
@@ -63,20 +69,30 @@ export async function POST(req: NextRequest) {
     if (!body || typeof body !== "object") {
       return errorResponse("Missing or invalid body", 400);
     }
-    const { planId } = body;
+    // Accept legacy planType alias
+    const planId = (body.planId || body.planType) as PublicPlanId | undefined;
     if (!planId || !isValidPlanId(planId)) {
       return errorResponse("Invalid or missing planId", 400);
     }
 
     // Validate Stripe configuration (price IDs sourced from env for each allowed plan)
-    const priceId =
+    // Resolve price ID with layered fallback: env var first, then constants.priceId
+    const envPriceId =
       planId === "premium"
         ? process.env.STRIPE_PRICE_ID_PREMIUM ||
           process.env.NEXT_PUBLIC_PREMIUM_PRICE_ID
         : process.env.STRIPE_PRICE_ID_PREMIUM_PLUS ||
           process.env.NEXT_PUBLIC_PREMIUM_PLUS_PRICE_ID;
+    const constPriceId =
+      planId === "premium"
+        ? SUBSCRIPTION_PLANS.PREMIUM?.priceId
+        : SUBSCRIPTION_PLANS.PREMIUM_PLUS?.priceId;
+    const priceId = envPriceId || constPriceId;
     if (!priceId) {
-      console.error("Missing Stripe price ID env var for plan", planId);
+      console.error(
+        "Missing Stripe price ID for plan (env + constants empty)",
+        planId
+      );
       return errorResponse("Payment service configuration error", 503);
     }
     if (!stripe) {
@@ -101,6 +117,24 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_APP_URL ||
       (origin && isValidOrigin() ? origin : null) ||
       "http://localhost:3000";
+
+    // Allow client-provided success/cancel overrides if same-origin & well-formed
+    const allowUrl = (u?: string | null) => {
+      if (!u || typeof u !== "string") return null;
+      try {
+        const parsed = new URL(u, baseUrl);
+        // Enforce same origin to prevent open redirect abuse
+        const base = new URL(baseUrl);
+        if (parsed.origin !== base.origin) return null;
+        // Only allow http/https
+        if (!/^https?:$/.test(parsed.protocol)) return null;
+        return parsed.toString();
+      } catch {
+        return null;
+      }
+    };
+    const successUrlOverride = allowUrl(body.successUrl);
+    const cancelUrlOverride = allowUrl(body.cancelUrl);
     // Validate email if provided
     const customerEmail =
       userDoc.email && isValidEmail(userDoc.email) ? userDoc.email : undefined;
@@ -126,8 +160,8 @@ export async function POST(req: NextRequest) {
         email: userDoc.email,
         userId, // Add for double verification in webhook
       },
-      success_url: `${baseUrl}/plans?checkout=success`,
-      cancel_url: `${baseUrl}/plans?checkout=cancel`,
+      success_url: successUrlOverride || `${baseUrl}/plans?checkout=success`,
+      cancel_url: cancelUrlOverride || `${baseUrl}/plans?checkout=cancel`,
       billing_address_collection: "required",
       subscription_data: {
         metadata: {

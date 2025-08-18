@@ -70,14 +70,34 @@ export async function GET(request: NextRequest) {
     }
 
     if (!profile) {
-      console.warn("Subscription status profile not found", {
-        scope: "subscription.status",
-        type: "profile_not_found",
+      // Instead of 404 (which can bubble up as a Next.js not-found), return a safe default
+      console.warn(
+        "Subscription status profile not found - returning default free plan",
+        {
+          scope: "subscription.status",
+          type: "profile_not_found_default_free",
+          correlationId,
+          statusCode: 200,
+          durationMs: Date.now() - startedAt,
+        }
+      );
+      return successResponse({
+        // Canonical new fields
+        plan: "free",
+        isActive: false,
+        expiresAt: null,
+        daysRemaining: 0,
+        isTrial: false,
+        trialEndsAt: null,
+        trialDaysRemaining: 0,
+        boostsRemaining: 0,
+        hasSpotlightBadge: false,
+        spotlightBadgeExpiresAt: null,
         correlationId,
-        statusCode: 404,
-        durationMs: Date.now() - startedAt,
+        // Legacy compatibility fields expected by older clients
+        subscriptionPlan: "free",
+        subscriptionExpiresAt: null,
       });
-      return errorResponse("User profile not found", 404, { correlationId });
     }
 
     // Narrow profile fields safely
@@ -129,6 +149,9 @@ export async function GET(request: NextRequest) {
             ? p.spotlightBadgeExpiresAt
             : null,
         correlationId,
+        // Legacy compatibility
+        subscriptionPlan: plan,
+        subscriptionExpiresAt: expiresAt,
       },
       200
     );

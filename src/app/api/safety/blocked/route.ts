@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
     if ("errorResponse" in authCheck) {
       // Normalize helper response to plain JSON
       const res = authCheck.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = {
+      let status = res.status || 401;
+      let body: any = {
         success: false,
         error: "Authentication failed",
         correlationId,
@@ -32,6 +32,12 @@ export async function GET(request: NextRequest) {
         const txt = await res.text();
         body = txt ? { ...JSON.parse(txt), correlationId } : body;
       } catch {}
+      // If upstream returned 404 User not found, normalise to 401 (no active session) to avoid noisy 404s
+      if (status === 404 && body?.error === "User not found") {
+        status = 401;
+        body.error = "No auth session";
+        body.reason = "user_not_found";
+      }
       console.warn("Safety blocked auth failed", {
         scope: "safety.blocked",
         type: "auth_failed",

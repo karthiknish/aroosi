@@ -210,6 +210,7 @@ export function ProfileImageReorder({
   onReorder,
   onDeleteImage,
   onOptimisticDelete,
+  renderAction,
   loading = false,
   preUpload = false,
 }: Props) {
@@ -527,6 +528,13 @@ export function ProfileImageReorder({
                         }
                       }}
                     />
+                    {typeof renderAction === "function" && (
+                      <div className="pointer-events-none absolute inset-0 flex items-start justify-end p-1">
+                        <div className="pointer-events-auto">
+                          {renderAction(img, idx)}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

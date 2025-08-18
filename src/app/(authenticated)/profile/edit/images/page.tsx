@@ -12,7 +12,11 @@ import type { ImageType } from "@/types/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Profile } from "@/types/profile";
-import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import {
+  showSuccessToast,
+  showErrorToast,
+  showInfoToast,
+} from "@/lib/ui/toast";
 import { updateImageOrder } from "@/lib/utils/imageUtil";
 
 export default function EditProfileImagesPage() {
@@ -25,6 +29,7 @@ export default function EditProfileImagesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // Local image state for optimistic edits
   const [editedImages, setEditedImages] = useState<ImageType[]>([]);
@@ -74,57 +79,142 @@ export default function EditProfileImagesPage() {
     }
   }, []);
 
-  const handleImageDelete = useCallback(async (imageId: string) => {
-    setEditedImages((prev) => prev.filter((img) => img.id !== imageId));
-    // Inform user that physical deletion is not yet implemented
-    showErrorToast("Photo removed from order (original file not deleted yet).");
-  }, []);
+  const handleImageDelete = useCallback(
+    async (imageId: string) => {
+      // Optimistic removal
+      setEditedImages((prev) =>
+        prev.filter((img) => (img.storageId || img.id) !== imageId)
+      );
+      const target = editedImages.find(
+        (i) => (i.storageId || i.id) === imageId
+      );
+      try {
+        if (!target) return;
+        const storageId = target.storageId || target.id;
+        const res = await fetch(
+          `/api/profile-images/firebase?storageId=${encodeURIComponent(storageId)}`,
+          {
+            method: "DELETE",
+            credentials: "include",
+            headers: { Accept: "application/json" },
+          }
+        );
+        if (!res.ok) {
+          throw new Error(
+            (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
+          );
+        }
+        showInfoToast("Photo deleted");
+        // Invalidate caches
+        queryClient.invalidateQueries({
+          queryKey: ["profileImages", profileUserId],
+        });
+        queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      } catch (e: any) {
+        showErrorToast(e?.message || "Failed to delete photo");
+        // Rollback if failure
+        setEditedImages((prev) => {
+          if (prev.some((i) => (i.storageId || i.id) === imageId)) return prev; // already back
+          return [...prev, ...(target ? [target] : [])];
+        });
+      }
+    },
+    [editedImages, profileUserId, queryClient, userId]
+  );
 
   const handleImageReorder = useCallback((newOrder: ImageType[]) => {
     setEditedImages(newOrder);
   }, []);
 
-  // Utility to compare arrays
-  const arraysEqual = (a: string[], b: string[]) =>
-    a.length === b.length && a.every((v, i) => v === b[i]);
+  // Utility to compare arrays + derived change flags
+  const arraysEqual = (a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  };
+  const normalizeIds = (arr: ImageType[]) =>
+    arr.map((img) => img.storageId || img.id);
+  const initialIds = normalizeIds(initialImages);
+  const editedIds = normalizeIds(editedImages);
+  const hasOrderChange = !arraysEqual(initialIds, editedIds);
+  const hasDeletions = initialIds.some((id) => !editedIds.includes(id));
+  const hasAdditions = editedIds.some((id) => !initialIds.includes(id));
+  const hasChanges = hasOrderChange || hasDeletions || hasAdditions;
+
+  // Warn on unload if unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!hasChanges || isUpdating || isAutoSaving) return;
+      e.preventDefault();
+      e.returnValue = "You have unsaved photo changes.";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasChanges, isUpdating, isAutoSaving]);
+
+  // Debounced auto-save for pure reorder changes (no adds/deletes)
+  useEffect(() => {
+    if (!profile) return;
+    if (!hasOrderChange) return;
+    if (hasAdditions || hasDeletions) return; // require manual save when structural change
+    if (isUpdating) return;
+    setIsAutoSaving(true);
+    const t = setTimeout(async () => {
+      try {
+        await updateImageOrder({ userId: profileUserId, imageIds: editedIds });
+        setInitialImages(editedImages); // accept baseline
+        queryClient.invalidateQueries({
+          queryKey: ["profileImages", profile._id],
+        });
+        showInfoToast("Order auto-saved");
+      } catch (e: any) {
+        showErrorToast(e?.message || "Failed to auto-save order");
+      } finally {
+        setIsAutoSaving(false);
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [
+    hasOrderChange,
+    hasAdditions,
+    hasDeletions,
+    editedIds,
+    editedImages,
+    profile,
+    profileUserId,
+    isUpdating,
+    queryClient,
+  ]);
 
   // Persist all changes
   const handleSaveChanges = useCallback(async () => {
     if (!profile) return;
+    if (!hasChanges) {
+      showInfoToast("No changes to save");
+      return;
+    }
     setIsUpdating(true);
-
-    const normalizeIds = (arr: ImageType[]) =>
-      arr.map((img) => img.storageId || img.id);
-    const initialIds = normalizeIds(initialImages);
-    const editedIds = normalizeIds(editedImages);
-
     const deletions = initialIds.filter((id) => !editedIds.includes(id));
     const additions = editedImages.filter(
-      (img) => !initialIds.includes(img.id)
+      (img) => !initialIds.includes(img.storageId || img.id)
     );
 
     try {
       // Delete removed images
-      for (const id of deletions) {
-        // Defer deletion to server-side routes if available; no client util currently.
-        // You may implement a DELETE /api/profile-images/:id endpoint and call it here.
-        // For now, skip client-side delete to avoid type errors and rely on saving new order below.
-      }
+      // Already handled deletions individually via handleImageDelete (optimistic), skip here.
 
       // Metadata now saved server-side during upload; no-op here
 
       // Update order if changed
-      if (!arraysEqual(initialIds, editedIds)) {
-        await updateImageOrder({
-          userId: profileUserId,
-          imageIds: editedIds,
-        });
+      if (hasOrderChange) {
+        await updateImageOrder({ userId: profileUserId, imageIds: editedIds });
       }
 
       await queryClient.invalidateQueries({
         queryKey: ["profileImages", profile._id],
       });
       showSuccessToast("Profile photos updated");
+      setInitialImages(editedImages);
       router.push("/profile");
     } catch (error) {
       console.error("Failed to save image updates:", error);
@@ -134,7 +224,17 @@ export default function EditProfileImagesPage() {
     } finally {
       setIsUpdating(false);
     }
-  }, [profile, initialImages, editedImages, queryClient, router]);
+  }, [
+    profile,
+    hasChanges,
+    hasOrderChange,
+    initialIds,
+    editedIds,
+    editedImages,
+    profileUserId,
+    queryClient,
+    router,
+  ]);
 
   if (profileLoading || imagesLoading) {
     return (
@@ -166,7 +266,7 @@ export default function EditProfileImagesPage() {
         </CardHeader>
         <CardContent>
           <ProfileFormStepImages
-            images={images}
+            images={editedImages}
             onImagesChanged={handleImagesChanged}
             onImageDelete={handleImageDelete}
             onImageReorder={handleImageReorder}
@@ -177,9 +277,33 @@ export default function EditProfileImagesPage() {
             <Button variant="outline" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button onClick={handleSaveChanges} disabled={isUpdating}>
-              {isUpdating ? "Saving..." : "Save"}
+            <Button
+              onClick={handleSaveChanges}
+              disabled={isUpdating || !hasChanges}
+            >
+              {isUpdating
+                ? "Saving..."
+                : isAutoSaving &&
+                    hasOrderChange &&
+                    !hasAdditions &&
+                    !hasDeletions
+                  ? "Auto-saving..."
+                  : hasChanges
+                    ? "Save"
+                    : "No Changes"}
             </Button>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 flex flex-col gap-1">
+            <span>
+              {hasOrderChange ? "Order changed" : "Order unchanged"}
+              {hasAdditions ? " • New photos added" : ""}
+              {hasDeletions ? " • Photos removed" : ""}
+            </span>
+            {isAutoSaving &&
+              !isUpdating &&
+              hasOrderChange &&
+              !hasAdditions &&
+              !hasDeletions && <span>Saving order…</span>}
           </div>
         </CardContent>
       </Card>

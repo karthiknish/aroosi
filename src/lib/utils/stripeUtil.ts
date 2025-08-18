@@ -40,7 +40,13 @@ export async function createCheckoutSession(
         // Cookie-based session; no Authorization header
       },
       credentials: "include",
-      body: JSON.stringify(request),
+      // Send both planType (legacy) and planId (canonical) plus optional URLs for future-proofing
+      body: JSON.stringify({
+        planType: request.planType,
+        planId: request.planType, // server expects lowercase id (premium | premiumPlus)
+        successUrl: request.successUrl,
+        cancelUrl: request.cancelUrl,
+      }),
     });
 
     if (!response.ok) {
@@ -48,7 +54,9 @@ export async function createCheckoutSession(
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    const data = await response.json();
+    const raw = await response.json();
+    // successResponse wraps inside { success: true, data: {...} }
+    const data = raw && raw.success && raw.data ? raw.data : raw;
     return {
       success: true,
       checkoutUrl: data.url,

@@ -1,5 +1,6 @@
 import type { ProfileSearchResult } from "@/app/(authenticated)/search/page";
 import { showErrorToast } from "@/lib/ui/toast";
+import { router } from "next/client";
 import { getJson } from "@/lib/http/client";
 
 // Narrow reusable Result type including server pagination truth
@@ -117,6 +118,24 @@ export async function fetchProfileSearchResults({
   } catch (error) {
     // Handle known statuses via client-thrown error with status (attached in client.ts)
     const status = (error as any)?.status as number | undefined;
+    // Extract server error payload if present for code detection
+    let serverBody: any;
+    try {
+      const raw = (error as any).message?.split("::").pop()?.trim();
+      if (raw && raw.startsWith("{")) serverBody = JSON.parse(raw);
+    } catch {}
+    const code = serverBody?.code;
+    if (code === "ONBOARDING_INCOMPLETE") {
+      showErrorToast("Finish onboarding to start searching.");
+      try {
+        // Redirect user to onboarding (assumed route)
+        // Using window.location to avoid importing client router in non-react context if SSR skipped.
+        if (typeof window !== "undefined") {
+          window.location.href = "/onboarding";
+        }
+      } catch {}
+      return { profiles: [], total: 0, page: 0, pageSize: pageSize ?? 12 };
+    }
     if (status === 429) {
       showErrorToast(
         "Search limit reached for your current plan. Please try later or upgrade."
@@ -136,6 +155,11 @@ export async function fetchProfileSearchResults({
         ? (error as any).message
         : "Failed to fetch search results"
     );
-    return { profiles: [], total: 0, page: Number(page) || 0, pageSize: Number(pageSize) || 12 };
+    return {
+      profiles: [],
+      total: 0,
+      page: Number(page) || 0,
+      pageSize: Number(pageSize) || 12,
+    };
   }
 }
