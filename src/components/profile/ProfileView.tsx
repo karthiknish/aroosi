@@ -256,12 +256,12 @@ const ProfileView: FC<ProfileViewProps> = ({
         <Card className="bg-white rounded-2xl shadow-sm border overflow-hidden">
           <CardHeader className="border-b pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex-1 min-w-[200px]">
-              <p className="text-2xl text-neutral font-semibold tracking-tight mb-1 flex items-center gap-2">
+              <h1 className="text-2xl text-neutral font-semibold tracking-tight mb-1 flex items-center gap-2">
                 My profile
                 {isPremium(plan) && (
                   <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
                 )}
-              </p>
+              </h1>
               <CardDescription className="text-neutral-light text-sm">
                 View and manage your information
               </CardDescription>
