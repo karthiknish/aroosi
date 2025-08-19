@@ -24,6 +24,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useOffline } from "@/hooks/useOffline";
 import { SubscriptionGuard } from "@/components/ui/subscription-guard";
 import { motion } from "framer-motion";
+import React from "react";
 
 function MatchCard({
   match,
@@ -150,9 +151,25 @@ export default function MatchesPage() {
     user?.uid || (profile as any)?._id || (profile as any)?.userId || "";
   const offline = useOffline();
   const [search, setSearch] = useState("");
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Cookie-auth: server authenticates via cookies; pass empty token shim if hook signature still expects it
   const { matches, loading } = useMatches(userId ?? "", "" as string, search);
+  // If the hook toasts errors but returns empty, provide a subtle inline notice once
+  React.useEffect(() => {
+    if (
+      !loading &&
+      Array.isArray(matches) &&
+      matches.length === 0 &&
+      !offline
+    ) {
+      setFetchError(
+        "No matches to display. If this seems wrong, please try again in a moment."
+      );
+    } else {
+      setFetchError(null);
+    }
+  }, [loading, matches, offline]);
 
   if (!userId)
     return (
@@ -247,6 +264,11 @@ export default function MatchesPage() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
+            {fetchError && (
+              <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                {fetchError}
+              </div>
+            )}
             {loading ? (
               <MatchesLoadingSkeleton />
             ) : matches.length === 0 ? (
@@ -271,11 +293,7 @@ export default function MatchesPage() {
             ) : (
               <div className="space-y-6">
                 {matches.map((match, index) => (
-                  <MatchCard
-                    key={match.userId}
-                    match={match}
-                    index={index}
-                  />
+                  <MatchCard key={match.userId} match={match} index={index} />
                 ))}
 
                 {/* Load More Hint */}

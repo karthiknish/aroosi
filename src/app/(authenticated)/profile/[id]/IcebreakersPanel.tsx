@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchIcebreakers,
@@ -35,6 +36,7 @@ export function IcebreakersPanel() {
   const debounceRefs = useRef<
     Record<string, ReturnType<typeof setTimeout> | null>
   >({});
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async ({ id, answer }: { id: string; answer: string }) => {
@@ -162,6 +164,14 @@ export function IcebreakersPanel() {
     }
   }, [questions]);
 
+  // Auto-focus textarea when the current question changes
+  useEffect(() => {
+    if (!current) return;
+    // small timeout to allow UI to settle
+    const t = setTimeout(() => textareaRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, [current?.id]);
+
   const scheduleAutosave = (qid: string) => {
     const current = (answers[qid] || "").trim();
     if (!current || current.length < 3) return;
@@ -210,7 +220,13 @@ export function IcebreakersPanel() {
       </div>
 
       {current ? (
-        <div className="rounded-lg border border-gray-200 bg-white/80 p-4">
+        <motion.div
+          key={current.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18 }}
+          className="rounded-lg border border-gray-200 bg-white/80 p-4"
+        >
           <div className="mb-2 flex items-start justify-between gap-3">
             <p className="text-sm text-gray-800">
               <span className="text-gray-500 mr-2">
@@ -238,6 +254,8 @@ export function IcebreakersPanel() {
                     ...a,
                     [current.id]: `${(a[current.id] || "").trim()}${(a[current.id] || "").trim() ? " " : ""}${s} `,
                   }));
+                  // focus textarea so users can continue typing
+                  setTimeout(() => textareaRef.current?.focus(), 30);
                 }}
               >
                 {s}
@@ -246,6 +264,7 @@ export function IcebreakersPanel() {
           </div>
 
           <Textarea
+            ref={textareaRef}
             value={answers[current.id] || ""}
             onChange={(e) => {
               const val = e.target.value;
@@ -254,6 +273,13 @@ export function IcebreakersPanel() {
                 setEditing((ed) => ({ ...ed, [current.id]: true }));
               }
               scheduleAutosave(current.id);
+            }}
+            onKeyDown={(e) => {
+              // Cmd/Ctrl + Enter triggers Save
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void handleSubmit(current.id);
+              }
             }}
             placeholder="Your answer..."
             maxLength={500}
@@ -268,6 +294,12 @@ export function IcebreakersPanel() {
           <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
             <span>{answers[current.id]?.length || 0}/500</span>
             <div className="flex items-center gap-2">
+              {/* autosave indicator when debounce scheduled */}
+              {current && debounceRefs.current[current.id] ? (
+                <div className="text-xxs text-gray-400 mr-2">
+                  Autosave scheduled…
+                </div>
+              ) : null}
               {(submitted[current.id] || current.answered) && (
                 <Button
                   variant="outline"
@@ -310,7 +342,7 @@ export function IcebreakersPanel() {
                   !(answers[current.id] || "").trim()
                 }
               >
-                {saving[current.id] ? "Saving..." : "Save & Continue"}
+                {saving[current.id] ? "Saving..." : "Save & Continue (⌘↵)"}
               </Button>
             </div>
           </div>
@@ -335,7 +367,7 @@ export function IcebreakersPanel() {
               Next <ChevronsRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
-        </div>
+        </motion.div>
       ) : (
         <div className="rounded-lg border border-gray-200 bg-white/80 p-6 text-center">
           <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-2" />

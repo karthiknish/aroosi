@@ -616,16 +616,12 @@ export default function ProfileDetailPage() {
                         className={`text-xs px-2 py-0.5 rounded-full ${
                           interestStatusData?.status === "pending"
                             ? "bg-amber-100 text-amber-700"
-                            : interestStatusData?.status === "accepted"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-green-100 text-green-700"
+                            : "bg-green-100 text-green-700"
                         }`}
                       >
                         {interestStatusData?.status === "pending"
                           ? "Interest sent"
-                          : interestStatusData?.status === "accepted"
-                            ? "Interest accepted"
-                            : "Mutual interest"}
+                          : "Matched"}
                       </Badge>
                     )}
                   {/* Profile viewers count (own profile + Premium Plus) */}
@@ -1002,22 +998,24 @@ export default function ProfileDetailPage() {
                       </motion.button>
                     ))}
                 </AnimatePresence>
-                {canInteract && interestStatusData?.status === "mutual" && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full shadow font-semibold">
-                    <svg
-                      className="w-5 h-5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M20 6L9 17l-5-5" />
-                    </svg>
-                    Matched
-                  </div>
-                )}
+                {canInteract &&
+                  (interestStatusData?.status === "mutual" ||
+                    interestStatusData?.status === "accepted") && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full shadow font-semibold">
+                      <svg
+                        className="w-5 h-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                      Matched
+                    </div>
+                  )}
                 {/* Heart pop animation overlay */}
                 <AnimatePresence>
                   {showHeartPop && (

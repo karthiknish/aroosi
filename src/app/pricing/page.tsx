@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { fadeInUp, fadeIn, scaleIn } from "@/components/animation/motion";
 import { getPlans, type NormalizedPlan } from "@/lib/utils/stripeUtil";
+import { DEFAULT_PLANS } from "@/lib/constants/plans";
 import {
   Heart,
   Zap,
@@ -139,9 +140,10 @@ export default function PricingPage() {
         if (Array.isArray(data) && data.length) {
           setPlans(data);
         } else {
-          // Fallback to a Free-only card when server has no data
+          // Fallback to a Free-only card when server has no data.
+          // Do not show an error banner; display fallback plans instead.
           setPlans([]);
-          setFetchError("Plans are temporarily unavailable.");
+          setFetchError(null);
         }
       } catch (e) {
         if (!mounted) return;
@@ -156,37 +158,7 @@ export default function PricingPage() {
     };
   }, []);
 
-  // Fallback plans to display when stripe/getPlans is unavailable.
-  const DEFAULT_PLANS: NormalizedPlan[] = [
-    {
-      id: "free",
-      name: "Free",
-      price: 0,
-      currency: "GBP",
-      features: ["Create profile", "Limited searches", "Limited likes"],
-      popular: false,
-    },
-    {
-      id: "premium",
-      name: "Premium",
-      price: 1499,
-      currency: "GBP",
-      features: ["500 searches/day", "Unlimited messages", "Profile Boost"],
-      popular: true,
-    },
-    {
-      id: "premiumPlus",
-      name: "Premium Plus",
-      price: 3999,
-      currency: "GBP",
-      features: [
-        "2000 searches/day",
-        "Unlimited messages",
-        "Spotlight & Boosts",
-      ],
-      popular: false,
-    },
-  ];
+  // Using shared DEFAULT_PLANS from src/lib/constants/plans
 
   const getPlanIcon = (planId: string) => {
     switch (planId) {

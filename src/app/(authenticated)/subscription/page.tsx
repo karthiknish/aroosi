@@ -12,7 +12,7 @@ import {
 } from "@/hooks/useSubscription";
 import { useRouter, useSearchParams } from "next/navigation";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
-import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import CancelSubscriptionButton from "@/components/subscription/CancelSubscriptionButton";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
   createCheckoutSession,
@@ -148,8 +148,8 @@ export default function SubscriptionPage() {
   }, []);
 
   const handleCancel = () => {
-    // open modal handled via state in component UI
-    setShowCancelModal(true);
+    // kept for backward compatibility — SubscriptionCard will call this after local confirmation
+    handleConfirmCancel();
   };
 
   const handleRestore = () => {
@@ -174,12 +174,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  // Confirmation modal state for cancellation
-  const [showCancelModal, setShowCancelModal] = React.useState(false);
-
   const handleConfirmCancel = () => {
-    // Close modal immediately to avoid duplicate actions
-    setShowCancelModal(false);
     cancel(undefined, {
       onSuccess: (data) => {
         showSuccessToast(
@@ -293,14 +288,12 @@ export default function SubscriptionPage() {
                   )}
 
                   {(isPremium || isPremiumPlus) && (
-                    <Button
-                      onClick={handleCancel}
-                      variant="outline"
+                    <CancelSubscriptionButton
+                      onConfirm={handleConfirmCancel}
                       className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors sm:col-span-2"
+                      isLoading={cancelPending}
                       disabled={cancelPending}
-                    >
-                      Cancel Subscription
-                    </Button>
+                    />
                   )}
                 </div>
               </CardContent>
@@ -469,17 +462,7 @@ export default function SubscriptionPage() {
           </motion.aside>
         </div>
 
-        {/* Cancel confirmation modal (themed) */}
-        <ConfirmationModal
-          isOpen={showCancelModal}
-          onClose={() => setShowCancelModal(false)}
-          onConfirm={handleConfirmCancel}
-          title="Cancel subscription?"
-          description="Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period."
-          confirmText="Confirm Cancel"
-          cancelText="Keep Subscription"
-          isLoading={cancelPending}
-        />
+        {/* Confirmation is handled locally by each cancel button */}
       </div>
     </div>
   );

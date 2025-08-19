@@ -201,6 +201,23 @@ const ProfileView: FC<ProfileViewProps> = ({
 
   // Format images for the image reorder component
   const imageList = React.useMemo(() => {
+    // 1) Prefer canonical URLs stored on the profile document
+    if (
+      Array.isArray((profileData as any)?.profileImageUrls) &&
+      (profileData as any).profileImageUrls.length > 0
+    ) {
+      const urls = (profileData as any).profileImageUrls as string[];
+      const ids = Array.isArray((profileData as any).profileImageIds)
+        ? ((profileData as any).profileImageIds as string[])
+        : [];
+      return urls.map((url: string, index: number) => ({
+        id: ids[index] || `url-${index}`,
+        _id: ids[index] || `url-${index}`,
+        url,
+        storageId: ids[index] || "",
+      }));
+    }
+
     if (Array.isArray(images)) {
       const formattedImages = images.map(
         (
@@ -251,7 +268,11 @@ const ProfileView: FC<ProfileViewProps> = ({
     }
 
     return [];
-  }, [images, profileData?.profileImageIds]);
+  }, [
+    images,
+    profileData?.profileImageIds,
+    (profileData as any)?.profileImageUrls,
+  ]);
 
   // Delete profile handler
   const handleDeleteProfile = async () => {
@@ -295,20 +316,20 @@ const ProfileView: FC<ProfileViewProps> = ({
       <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none"></div>
       {/* Subtle SVG background pattern */}
       <div
-        className="absolute inset-0 opacity-[0.03] z-0 pointer-events-none"
+        className="absolute inset-0 opacity-[0.04] z-0 pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23BFA67A' fillOpacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }}
       ></div>
       <div className="max-w-4xl mx-auto relative z-10">
-        <Card className="bg-white/90 rounded-2xl shadow-xl border-0 overflow-hidden">
+        <Card className="bg-white rounded-2xl shadow-sm border overflow-hidden">
           <CardHeader className="border-b pb-4 flex flex-row items-center justify-between gap-2">
             <div>
-              <CardTitle className="text-3xl font-serif mb-4 text-neutral sm:text-4xl font-semibold tracking-tight ">
-                My Profile
-              </CardTitle>
-              <CardDescription className="text-neutral-light">
-                View and manage your information.
+              <p className="text-2xl text-neutral font-semibold tracking-tight mb-1">
+                My profile
+              </p>
+              <CardDescription className="text-neutral-light text-sm">
+                View and manage your information
               </CardDescription>
             </div>
             <div className="flex gap-2 flex-wrap">

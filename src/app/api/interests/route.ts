@@ -60,17 +60,18 @@ async function ensureMatchIfMutual(fromUserId: string, toUserId: string) {
   const reciprocal = reciprocalSnap.exists
     ? (reciprocalSnap.data() as FSInterest)
     : null;
-  if (reciprocal && ["accepted", "reciprocated"].includes(reciprocal.status)) {
-    const existing = await db
-      .collection(COL_MATCHES)
-      .where("user1Id", "in", [fromUserId, toUserId])
-      .where("user2Id", "in", [fromUserId, toUserId])
-      .limit(1)
-      .get();
-    if (existing.empty) {
-      const match = buildMatch(fromUserId, toUserId);
-      await db.collection(COL_MATCHES).add(match);
-    }
+  // Create a match when the recipient accepts an interest. Previously this
+  // required a reciprocal accepted interest; treat recipient acceptance as
+  // sufficient intent to match. Ensure we don't create duplicate matches.
+  const existing = await db
+    .collection(COL_MATCHES)
+    .where("user1Id", "in", [fromUserId, toUserId])
+    .where("user2Id", "in", [fromUserId, toUserId])
+    .limit(1)
+    .get();
+  if (existing.empty) {
+    const match = buildMatch(fromUserId, toUserId);
+    await db.collection(COL_MATCHES).add(match);
   }
 }
 

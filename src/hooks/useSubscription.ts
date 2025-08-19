@@ -16,7 +16,9 @@ export const useSubscriptionStatus = (_providedToken?: string) => {
   let quickRefresh = false;
   if (typeof window !== "undefined") {
     const params = new URLSearchParams(window.location.search);
-    quickRefresh = params.get("checkout") === "success";
+  const checkoutSuccess = params.get("checkout") === "success";
+  const legacySubscriptionSuccess = params.get("subscription") === "success"; // backward compat
+  quickRefresh = checkoutSuccess || legacySubscriptionSuccess;
   }
   return useQuery({
     queryKey: ["subscription", "status"],

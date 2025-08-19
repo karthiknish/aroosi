@@ -8,6 +8,7 @@ import {
   useSubscriptionStatus,
   useSubscriptionGuard,
 } from "@/hooks/useSubscription";
+import { CancelSubscriptionButton } from "./CancelSubscriptionButton";
 // import { formatDistanceToNow } from 'date-fns';
 
 // Narrow the plan key type so TS knows valid indices
@@ -263,15 +264,17 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             >
               Upgrade to Premium Plus
             </Button>
-            <Button onClick={onCancel} variant="outline" className="flex-1">
-              Cancel Subscription
-            </Button>
+            <CancelSubscriptionButton
+              onConfirm={() => onCancel?.()}
+              className="flex-1"
+            />
           </>
         )}
         {!updating && planKey === "premiumPlus" && (
-          <Button onClick={onCancel} variant="outline" className="w-full">
-            Cancel Subscription
-          </Button>
+          <CancelSubscriptionButton
+            onConfirm={() => onCancel?.()}
+            className="w-full"
+          />
         )}
       </div>
     </Card>

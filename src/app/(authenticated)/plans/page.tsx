@@ -20,6 +20,7 @@ import {
   refreshSubscription,
   type NormalizedPlan,
 } from "@/lib/utils/stripeUtil";
+import { DEFAULT_PLANS } from "@/lib/constants/plans";
 import React, { useEffect, useMemo, useState } from "react";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 
@@ -69,16 +70,7 @@ export default function ManagePlansPage() {
       } catch (e) {
         console.error("Failed to load plans:", e);
         if (mounted) {
-          setPlans([
-            {
-              id: "free",
-              name: "Free",
-              price: 0,
-              currency: "GBP",
-              features: [],
-              popular: false,
-            },
-          ]);
+          setPlans(DEFAULT_PLANS);
           setFetchError(
             e instanceof Error ? e.message : "Failed to load plans"
           );
@@ -92,37 +84,7 @@ export default function ManagePlansPage() {
     };
   }, []);
 
-  // Local fallback plans to display when server returns none
-  const DEFAULT_PLANS: NormalizedPlan[] = [
-    {
-      id: "free",
-      name: "Free",
-      price: 0,
-      currency: "GBP",
-      features: ["Create profile", "100 searches/day", "Limited likes"],
-      popular: false,
-    },
-    {
-      id: "premium",
-      name: "Premium",
-      price: 1499,
-      currency: "GBP",
-      features: ["500 searches/day", "Unlimited messages", "Profile Boost"],
-      popular: true,
-    },
-    {
-      id: "premiumPlus",
-      name: "Premium Plus",
-      price: 3999,
-      currency: "GBP",
-      features: [
-        "2000 searches/day",
-        "Unlimited messages",
-        "Spotlight & Boosts",
-      ],
-      popular: false,
-    },
-  ];
+  // Using shared DEFAULT_PLANS from src/lib/constants/plans
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (planId === currentPlan) {
@@ -142,7 +104,9 @@ export default function ManagePlansPage() {
 
       const result = await createCheckoutSession("", {
         planType: planId as "premium" | "premiumPlus",
-        successUrl: `${window.location.origin}/profile?subscription=success`,
+        // Redirect back to plans page using the param the page already watches (checkout=success)
+        // so the post‑checkout refresh effect triggers reliably.
+        successUrl: `${window.location.origin}/plans?checkout=success`,
         cancelUrl: `${window.location.origin}/plans`,
       });
 
