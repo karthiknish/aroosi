@@ -1,5 +1,11 @@
 "use client";
-import React, { RefObject, useCallback, useMemo, useState } from "react";
+import React, {
+  RefObject,
+  useCallback,
+  useMemo,
+  useState,
+  useLayoutEffect,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,6 +50,13 @@ type ComposerProps = {
   toUserId?: string;
   // New: show subtle typing hint under composer
   isOtherTyping?: boolean;
+  replyTo?: {
+    messageId: string;
+    text?: string;
+    type?: "text" | "voice" | "image";
+    fromUserId?: string;
+  };
+  onCancelReply?: () => void;
 };
 
 export default function Composer(props: ComposerProps) {
@@ -69,6 +82,8 @@ export default function Composer(props: ComposerProps) {
     conversationId,
     toUserId,
     isOtherTyping = false,
+    replyTo,
+    onCancelReply,
   } = props;
 
   // Recorder hook
@@ -303,8 +318,30 @@ export default function Composer(props: ComposerProps) {
     </div>
   );
 
+  // Autosize helper for textarea
+  const resize = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }, []);
+
+  useLayoutEffect(() => {
+    if (inputRef?.current) {
+      // @ts-expect-error converting type since ref originally HTMLInputElement
+      resize(inputRef.current as HTMLTextAreaElement);
+    }
+  }, [text, resize, inputRef]);
+
+  const maxChars = 2000;
+  const remaining = maxChars - text.length;
+  const nearingLimit = remaining < 100;
+
   return (
-    <div className="border-t border-secondary-light/30 p-4 bg-base-dark rounded-b-2xl">
+    <div
+      className="border-t border-secondary-light/30 p-4 bg-base-dark rounded-b-2xl"
+      aria-label="Message composer"
+      role="group"
+    >
       {/* Feedback banner */}
       <MessageFeedback
         type={messageFeedback.type}
@@ -325,21 +362,64 @@ export default function Composer(props: ComposerProps) {
           await onSend(text);
         }}
       >
-        <div className="flex-1 relative">
-          <input
-            ref={inputRef}
+        {replyTo && (
+          <div className="absolute -top-14 left-0 right-0 mb-2 flex items-start gap-2 bg-white border border-gray-200 rounded-lg p-2 shadow-sm animate-in fade-in slide-in-from-bottom-1">
+            <div className="flex-1 overflow-hidden">
+              <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                Replying to
+              </p>
+              <p className="text-xs text-gray-700 line-clamp-2 break-words">
+                {replyTo.type === "voice"
+                  ? "Voice message"
+                  : replyTo.text || "(no text)"}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs px-2 -mt-1"
+              onClick={onCancelReply}
+              aria-label="Cancel reply"
+            >
+              ✕
+            </Button>
+          </div>
+        )}
+        <div className="flex-1 relative" aria-live="polite">
+          <textarea
+            ref={inputRef as any}
             value={text}
-            onChange={(e) => onInputChange(e.target.value)}
+            onChange={(e) => {
+              onInputChange(e.target.value);
+              resize(e.target);
+            }}
             onKeyPress={onKeyPress}
             placeholder={
               isBlocked ? "Cannot send messages" : "Type your message…"
             }
             disabled={isSending || isBlocked}
+            rows={1}
+            aria-label="Message input"
+            aria-disabled={isSending || isBlocked}
+            aria-multiline="true"
+            maxLength={maxChars}
             className={cn(
-              "w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 transition-all",
+              "w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-gray-300",
               (isSending || isBlocked) && "opacity-50 cursor-not-allowed"
             )}
           />
+          {/* Character counter */}
+          <div
+            className={cn(
+              "absolute bottom-1 right-10 text-[10px] text-gray-400 select-none",
+              nearingLimit && remaining >= 0 && "text-orange-500",
+              remaining < 0 && "text-red-600"
+            )}
+            aria-live="polite"
+          >
+            {remaining <= 0 ? "Limit" : `${remaining}`}
+          </div>
 
           {/* Emoji picker toggle */}
           <Button
@@ -349,6 +429,7 @@ export default function Composer(props: ComposerProps) {
             onClick={() => setShowPicker(!showPicker)}
             ref={toggleBtnRef}
             className="absolute right-2 top-1/2 transform -translate-y-1/2 text-secondary hover:text-primary transition-colors p-2 h-8 w-8"
+            aria-label={showPicker ? "Close emoji picker" : "Open emoji picker"}
           >
             <Smile className="w-4 h-4" />
           </Button>
@@ -403,6 +484,13 @@ export default function Composer(props: ComposerProps) {
             (!text.trim() || isSending || isBlocked) &&
               "opacity-50 cursor-not-allowed transform-none shadow-none"
           )}
+          aria-label={
+            isBlocked
+              ? "Messaging disabled"
+              : !text.trim()
+                ? "Enter a message to send"
+                : "Send message"
+          }
         >
           {isSending ? (
             <LoadingSpinner size={16} className="text-white" />
@@ -434,6 +522,12 @@ export default function Composer(props: ComposerProps) {
           )}
         </AnimatePresence>
       </form>
+
+      {/* Keyboard shortcuts hint */}
+      <div className="mt-2 text-[11px] text-gray-400 flex items-center gap-3 pl-1 select-none">
+        <span>Press Enter to send</span>
+        <span className="hidden sm:inline">Shift+Enter for newline</span>
+      </div>
 
       {/* Tiny typing hint below composer */}
       <AnimatePresence>

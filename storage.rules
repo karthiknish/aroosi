@@ -3,24 +3,23 @@ service firebase.storage {
   match /b/{bucket}/o {
     // Publicly readable profile images; writes restricted to the owner and valid image types/sizes
     match /users/{userId}/profile-images/{allPaths=**} {
-      allow read: if true;
+      allow read: if true; // Consider restricting if profile privacy needed later
+      // Restrict to common safe image mime types; size cap 5MB (server may enforce tighter per-plan limits)
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource != null
                    && request.resource.size < 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+                   && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)');
     }
 
-    // Voice messages: client-side uploads to voice/ path
+    // DEPRECATED legacy direct client voice uploads. Disable writes to force use of server route.
     match /voice/{userId}/{conversationId}/{allPaths=**} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null
-                   && request.auth.uid == userId
-                   && request.resource != null
-                   && request.resource.size < 20 * 1024 * 1024;
+      allow read: if false; // prevent stale public artifacts; served via signed URLs from new path
+      allow write: if false;
     }
 
-    // Server-managed voice messages: allow reads with auth, server handles writes via Admin SDK
+    // Server-managed voice messages: server writes via Admin SDK (validations enforce plan-based size/duration/mime)
+    // Optional: tighten read to participants only via custom metadata or Firestore lookups in future.
     match /voiceMessages/{conversationId}/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if false; // Server-only via Admin SDK
@@ -32,7 +31,7 @@ service firebase.storage {
       allow write: if request.auth != null
                    && request.resource != null
                    && request.resource.size < 5 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
+                   && request.resource.contentType.matches('image/(jpeg|jpg|png|webp|gif)');
     }
 
     // Message attachments are managed by server (Admin SDK). Disallow client access by default.

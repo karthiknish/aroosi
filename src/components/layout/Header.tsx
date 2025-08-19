@@ -16,6 +16,8 @@ import {
   Heart,
   LogOut,
   BarChart,
+  User as UserIcon,
+  Star,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
@@ -365,6 +367,136 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     </>
   );
 
+  const DesktopIconNav = () => {
+    if (hideLinks) return null;
+    if (!isSignedIn) return null; // show nothing (CTA in mobile drawer only)
+
+    const avatarUrl =
+      (profile?.profileImageUrls && profile.profileImageUrls[0]) || "";
+    const avatarInitial = (profile?.fullName || "?")
+      .trim()
+      .charAt(0)
+      .toUpperCase();
+
+    const iconBtn = (
+      href: string,
+      IconComp: React.ComponentType<any>,
+      label: string,
+      opts: { onClick?: () => void; premiumTint?: boolean } = {}
+    ) => (
+      <Link href={href} onClick={opts.onClick} className="block" key={label}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={label}
+          title={label}
+          className={
+            "h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors" +
+            (opts.premiumTint ? " text-[#BFA67A] hover:text-[#BFA67A]" : "")
+          }
+        >
+          <IconComp className="h-5 w-5" />
+        </Button>
+      </Link>
+    );
+
+    const items: React.ReactNode[] = [];
+    items.push(iconBtn("/search", Search, "Search Profiles"));
+    items.push(iconBtn("/matches", Heart, "Matches"));
+    if (isAdmin) items.push(iconBtn("/admin", Shield, "Admin"));
+    if (profile) {
+      if (isPremium(profile.subscriptionPlan)) {
+        items.push(
+          iconBtn("/premium-settings", Shield, "Premium Settings", {
+            premiumTint: true,
+          })
+        );
+        items.push(
+          <Button
+            key="billing"
+            variant="ghost"
+            size="icon"
+            aria-label="Billing Portal"
+            title="Billing Portal"
+            className="h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors"
+            onClick={async () => {
+              try {
+                const mod = await import("@/lib/api/subscription");
+                const { subscriptionAPI } = mod;
+                const { url } = await subscriptionAPI.openBillingPortal();
+                if (url) window.location.assign(url);
+              } catch {}
+            }}
+          >
+            <LayoutDashboard className="h-5 w-5" />
+          </Button>
+        );
+      } else {
+        // Upgrade CTA icon
+        items.push(
+          <Link href="/subscription" key="upgrade" className="block">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Upgrade"
+              title="Upgrade"
+              className="h-10 w-10 rounded-xl text-pink-600 hover:text-pink-600 hover:bg-pink-50"
+            >
+              <Star className="h-5 w-5" />
+            </Button>
+          </Link>
+        );
+      }
+    }
+    items.push(iconBtn("/usage", BarChart, "Usage"));
+    // Profile avatar
+    items.push(
+      <Link
+        href="/profile"
+        key="profile"
+        className="block"
+        aria-label="Profile"
+        title="Profile"
+      >
+        <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
+          {avatarUrl ? (
+            <AvatarImage
+              src={avatarUrl}
+              alt={profile?.fullName || "Profile"}
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                img.src = ""; // clear to let fallback show
+              }}
+            />
+          ) : null}
+          <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-medium">
+            {avatarInitial || <UserIcon className="h-4 w-4" />}
+          </AvatarFallback>
+        </Avatar>
+      </Link>
+    );
+    // Sign out
+    items.push(
+      <Button
+        key="signout"
+        variant="ghost"
+        size="icon"
+        aria-label="Sign Out"
+        title="Sign Out"
+        className="h-10 w-10 rounded-xl text-gray-600 hover:text-red-600 hover:bg-red-50"
+        onClick={() => signOut()}
+      >
+        <LogOut className="h-5 w-5" />
+      </Button>
+    );
+
+    return (
+      <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
+        {items}
+      </nav>
+    );
+  };
+
   return (
     <>
       <motion.header
@@ -381,10 +513,8 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               </Link>
             </div>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-2">
-              <NavLinks />
-            </nav>
+            {/* Desktop Navigation (icon only) */}
+            <DesktopIconNav />
 
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -417,6 +547,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg"
             >
               <div className="px-4 py-4 flex flex-col space-y-2">
+                {/* Mobile (text + icon) */}
                 <NavLinks onClick={() => setMobileOpen(false)} />
               </div>
             </motion.nav>

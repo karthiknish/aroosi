@@ -20,4 +20,9 @@ export type MatchMessage = {
   type?: "text" | "voice";
   audioStorageId?: string | null;
   duration?: number;
+  // Reply metadata (optional)
+  replyToMessageId?: string;
+  replyToText?: string; // denormalized snippet
+  replyToType?: "text" | "voice" | "image";
+  replyToFromUserId?: string;
 };

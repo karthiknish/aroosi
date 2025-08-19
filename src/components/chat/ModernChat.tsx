@@ -49,6 +49,7 @@ function ModernChat({
     showReportModal,
     messageFeedback,
     error,
+    replyTo,
   } = state;
 
   const {
@@ -73,6 +74,7 @@ function ModernChat({
     handleReportUser,
     onFetchOlder,
     onScrollToBottom,
+    setReplyTo,
     // setMessageFeedback managed inside hook
   } = handlers;
 
@@ -111,6 +113,14 @@ function ModernChat({
         showScrollToBottom={showScrollToBottom}
         otherLastReadAt={messagesState.otherLastReadAt}
         onUnblock={handleBlockUser /* reuse; toggled in dialog elsewhere */}
+        onSelectReply={(m) =>
+          setReplyTo({
+            messageId: m._id,
+            text: (m as any).text,
+            type: (m as any).type || "text",
+            fromUserId: m.fromUserId,
+          })
+        }
       />
 
       <Composer
@@ -138,6 +148,8 @@ function ModernChat({
           (Array.isArray(typingUsers) &&
             typingUsers.length > 0) as unknown as boolean
         }
+        replyTo={replyTo || undefined}
+        onCancelReply={() => setReplyTo(null)}
       />
 
       <ReportModal

@@ -78,6 +78,13 @@ export function useModernChat({
   const [isBlocked, setIsBlocked] = useState(false);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
+  // Reply-to state
+  const [replyTo, setReplyTo] = useState<{
+    messageId: string;
+    text?: string;
+    type?: "text" | "voice" | "image";
+    fromUserId?: string;
+  } | null>(null);
 
   // Feedback state
   const [messageFeedback, setMessageFeedback] = useState<{
@@ -241,7 +248,11 @@ export function useModernChat({
 
         await withRetry(
           () =>
-            sendMessageFs(payload.text, payload.toUserId).catch((err) => {
+            sendMessageFs(
+              payload.text,
+              payload.toUserId,
+              replyTo || undefined
+            ).catch((err) => {
               throw err;
             }),
           3,
@@ -261,6 +272,7 @@ export function useModernChat({
         });
 
         setText("");
+        setReplyTo(null);
         setIsNearBottom(true);
         setTimeout(() => inputRef.current?.focus(), 100);
       } catch (error) {
@@ -372,6 +384,7 @@ export function useModernChat({
       showReportModal,
       messageFeedback,
       error,
+      replyTo,
     },
     messagesState: {
       messages,
@@ -397,6 +410,7 @@ export function useModernChat({
       onFetchOlder: fetchOlder,
       onScrollToBottom: () =>
         scrollToBottomUtil(scrollRef as React.RefObject<HTMLDivElement>, true),
+      setReplyTo,
     },
     presence: otherPresence,
   };

@@ -1,12 +1,17 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { validateConversationId } from "@/lib/utils/messageValidation";
+// Using new centralized validators (conversation + voice)
+import {
+  validateConversationId as legacyConversationIdValidator,
+} from "@/lib/utils/messageValidation";
+import { validateVoiceMessage, validateConversationId } from "@/lib/validation/message";
+import { moderateProfanity } from "@/lib/moderation/profanity";
 import { formatVoiceDuration } from "@/lib/utils/messageUtils";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
 import { buildVoiceMessage, COL_VOICE_MESSAGES } from "@/lib/firestoreSchema";
-import { normalisePlan } from "@/lib/subscription/planLimits";
+import { normalisePlan, getPlanLimits } from "@/lib/subscription/planLimits";
 import { COL_BLOCKS } from "@/lib/firestoreSchema";
 import { successResponse as ok } from "@/lib/apiResponse"; // alias example (avoid accidental shadowing)
 import { v4 as uuidv4 } from "uuid";
@@ -20,12 +25,13 @@ export async function POST(request: NextRequest) {
     const { userId } = session;
 
     // Subscription-aware rate limiting for voice uploads
+    // Standardize feature key to voice_message_sent (align with plan limits & usageEvents)
     const rate = await subscriptionRateLimiter.checkSubscriptionRateLimit(
       request,
-      "" as unknown as string, // cookie-only: no token provided
+      "" as unknown as string,
       userId || "unknown",
-      "voice_upload",
-      60000
+      "voice_message_sent",
+      60_000
     );
     if (!rate.allowed) {
       return errorResponse(
@@ -74,28 +80,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate conversation ID format
-    if (!validateConversationId(conversationId)) {
-      return errorResponse("Invalid conversationId format", 400);
+    // Validate conversation ID format using new validator (fallback to legacy for safety)
+    const convCheck = validateConversationId(conversationId);
+    if (!convCheck.ok) {
+      return errorResponse(convCheck.message || "Invalid conversationId", 400);
+    }
+    // Extra defense: legacy format check (should pass if new ok)
+    if (!legacyConversationIdValidator(conversationId)) {
+      return errorResponse("Invalid conversationId format (legacy)", 400);
     }
 
-    // Validate file type
-    if (!audioFile.type.startsWith("audio/")) {
-      return errorResponse("Invalid file type. Must be audio.", 400);
-    }
+    // Voice validation (plan aware: different duration/size per plan)
+    const profileSnap = await db.collection("users").doc(userId!).get();
+    const planRaw = profileSnap.exists
+      ? (profileSnap.data() as any)?.subscriptionPlan
+      : "free";
+    const plan = normalisePlan(planRaw || "free");
 
-    // Validate file size (limit to 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (audioFile.size > maxSize) {
-      return errorResponse("File too large. Maximum size is 10MB.", 400);
-    }
-
-    // Validate duration (limit to 5 minutes)
-    if (duration <= 0 || duration > 300) {
-      return errorResponse(
-        "Invalid duration. Must be between 1 second and 5 minutes.",
-        400
-      );
+    const voiceValidation = validateVoiceMessage({
+      durationSec: duration,
+      sizeBytes: audioFile.size,
+      mimeType: audioFile.type,
+      plan,
+    });
+    if (!voiceValidation.ok) {
+      return errorResponse(voiceValidation.message || "Invalid audio", 400);
     }
 
     // Verify user is part of this conversation
@@ -123,37 +132,67 @@ export async function POST(request: NextRequest) {
       return errorResponse("Cannot send voice message to this user", 403);
     }
 
-    // Enforce plan-based limits:
-    // free: disallowed
-    // premium: 10 per rolling 24h window
-    // premiumPlus / premium_plus: unlimited
-    // (If plan naming mismatch, normalise to lowercase for comparison.)
-    const profileSnap = await db.collection("users").doc(userId!).get();
-    const planRaw = profileSnap.exists
-      ? (profileSnap.data() as any)?.subscriptionPlan
-      : "free";
-    const plan = normalisePlan(planRaw || "free");
-    if (plan === "free") {
+    // Enforce plan allowance (free plan has 0 allowance per PLAN_LIMITS)
+    const limits = getPlanLimits(plan);
+    const planLimit = limits["voice_message_sent"] ?? 0;
+    if (planLimit === 0) {
       return errorResponse(
-        "Upgrade required to send voice messages (not available on free plan)",
+        "Upgrade required to send voice messages (plan limit is 0)",
         402
       );
     }
-    let canSendVoice = true;
-    if (plan === "premium") {
-      const since = Date.now() - 24 * 60 * 60 * 1000; // last 24h
-      const countSnap = await db
-        .collection(COL_VOICE_MESSAGES)
-        .where("fromUserId", "==", userId)
-        .where("createdAt", ">", since)
-        .get();
-      if (countSnap.size >= 10) canSendVoice = false;
+
+    // Secondary rolling 24h guard (adaptive):
+    // Preserve previous behavior limiting bursts even if monthly quota is large or unlimited.
+    // Only apply if planLimit is unlimited (-1) OR exceeds the dailyBurstCap.
+    const dailyBurstCap = 10;
+    if (plan === "premium" || plan === "premiumPlus") {
+      if (planLimit === -1 || planLimit > dailyBurstCap) {
+        const since = Date.now() - 24 * 60 * 60 * 1000;
+        const countSnap = await db
+          .collection(COL_VOICE_MESSAGES)
+          .where("fromUserId", "==", userId)
+          .where("createdAt", ">", since)
+          .get();
+        if (countSnap.size >= dailyBurstCap) {
+          return errorResponse(
+            `Daily voice message burst limit reached (${dailyBurstCap} / 24h).`,
+            429
+          );
+        }
+      }
     }
-    if (!canSendVoice) {
-      return errorResponse(
-        "Daily voice message limit reached for your plan (10 / 24h). Upgrade for unlimited.",
-        429
+
+    // Monthly quota enforcement using usageEvents collection (mirrors messages/send)
+    try {
+      const feature = "voice_message_sent";
+      const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const usageDocId = `${userId}_${feature}_${monthKey}`;
+      const usageRef = db.collection("usageEvents").doc(usageDocId);
+      const usageSnap = await usageRef.get();
+      const currentCount = usageSnap.exists
+        ? (usageSnap.data() as any).count || 0
+        : 0;
+      const effectiveLimit = planLimit; // from plan limits above
+      if (effectiveLimit !== -1 && currentCount >= effectiveLimit) {
+        return errorResponse("Monthly voice message quota exceeded", 429, {
+          correlationId,
+          feature,
+          limit: effectiveLimit,
+        } as any);
+      }
+      await usageRef.set(
+        {
+          feature,
+          month: monthKey,
+          userId,
+          count: currentCount + 1,
+          updatedAt: Date.now(),
+        },
+        { merge: true }
       );
+    } catch (quotaErr) {
+      console.warn("voice.quotaCheckFailed", quotaErr);
     }
 
     // Upload to Firebase Storage
@@ -182,12 +221,16 @@ export async function POST(request: NextRequest) {
       peaks,
     });
     const docRef = await db.collection(COL_VOICE_MESSAGES).add(vm);
+    // Generate placeholder text & pass through profanity moderation (defensive; placeholder benign but future changes could add metadata)
+    const placeholder = `Voice message (${formatVoiceDuration(duration)})`;
+    const moderated = moderateProfanity(placeholder);
+    const safeText = moderated.clean ? placeholder : moderated.sanitized;
     const message = {
       _id: docRef.id,
       conversationId,
       fromUserId: userId,
       toUserId,
-      text: `Voice message (${formatVoiceDuration(duration)})`,
+      text: safeText,
       type: "voice",
       audioStorageId: storagePath,
       duration,
@@ -220,6 +263,7 @@ export async function POST(request: NextRequest) {
         storageId: storagePath,
         audioUrl: signedUrl,
         correlationId,
+        plan,
         durationMs: Date.now() - startedAt,
       },
       200

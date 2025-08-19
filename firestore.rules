@@ -100,7 +100,16 @@ service cloud.firestore {
         && request.resource.data.toUserId is string
         && request.resource.data.type in ["text", "voice", "image"]
         && (request.resource.data.text is string || request.resource.data.type != "text")
-        && request.resource.data.createdAt is number;
+        && request.resource.data.createdAt is number
+        // Optional reply metadata (all-or-none basic validation)
+        && (
+          !('replyToMessageId' in request.resource.data) || (
+            request.resource.data.replyToMessageId is string &&
+            (!('replyToText' in request.resource.data) || request.resource.data.replyToText is string) &&
+            (!('replyToType' in request.resource.data) || request.resource.data.replyToType in ["text", "voice", "image"]) &&
+            (!('replyToFromUserId' in request.resource.data) || request.resource.data.replyToFromUserId is string)
+          )
+        );
 
       // Allow participants (sender or recipient) to read messages for their conversation.
       allow read: if isSignedIn() && (
@@ -113,6 +122,10 @@ service cloud.firestore {
         && !("text" in request.resource.data)
         && !("fromUserId" in request.resource.data)
         && !("toUserId" in request.resource.data)
+  && !("replyToMessageId" in request.resource.data)
+  && !("replyToText" in request.resource.data)
+  && !("replyToType" in request.resource.data)
+  && !("replyToFromUserId" in request.resource.data)
         && (request.resource.data.readAt is number)
         && (resource.data.readAt == null || request.resource.data.readAt >= resource.data.readAt);
 

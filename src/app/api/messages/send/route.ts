@@ -3,6 +3,13 @@ import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { sendFirebaseMessage } from "@/lib/messages/firebaseMessages";
+import {
+  validateConversationId,
+  validateTextMessage,
+  validateImageMessage,
+} from "@/lib/validation/message";
+import { moderateProfanity } from "@/lib/moderation/profanity";
+import { getPlanLimits, featureRemaining } from "@/lib/subscription/planLimits";
 import { db } from "@/lib/firebaseAdmin";
 
 // ApiResponse envelope type
@@ -57,8 +64,15 @@ export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
     if (!conversationId || !fromUserId || !toUserId) {
       return errorResponse("Missing required fields", 400, { correlationId });
     }
-    const participants = conversationId.split("_");
-    if (!participants.includes(userId)) {
+    const convValidation = validateConversationId(conversationId);
+    if (!convValidation.ok) {
+      return errorResponse(
+        convValidation.message || "Invalid conversation",
+        400,
+        { correlationId }
+      );
+    }
+    if (!convValidation.participants?.includes(userId)) {
       return errorResponse("Unauthorized access to conversation", 403, {
         correlationId,
       });
@@ -83,12 +97,16 @@ export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
     let finalText: string | undefined = text;
 
     if (resolvedType === "text") {
-      if (!text || text.trim() === "") {
-        return errorResponse("Text message cannot be empty", 400, {
+      const textValidation = validateTextMessage({ text: text || "" });
+      if (!textValidation.ok) {
+        return errorResponse(textValidation.message || "Invalid text", 400, {
           correlationId,
         });
       }
-      finalText = text.trim();
+      const moderation = moderateProfanity(textValidation.normalized || "");
+      finalText = moderation.clean
+        ? textValidation.normalized
+        : moderation.sanitized;
     } else if (resolvedType === "voice") {
       if (!audioStorageId) {
         return errorResponse("Voice message missing audioStorageId", 400, {
@@ -101,12 +119,52 @@ export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
         });
       }
     } else if (resolvedType === "image") {
-      if (!audioStorageId) {
-        return errorResponse("Image message missing storageId", 400, {
-          correlationId,
-        });
+      const imgValidation = validateImageMessage({
+        hasStorageId: !!audioStorageId,
+        mimeType: mimeType,
+      });
+      if (!imgValidation.ok) {
+        return errorResponse(
+          imgValidation.message || "Invalid image message",
+          400,
+          { correlationId }
+        );
       }
     }
+    // Monthly quota enforcement AFTER validation, before send
+    try {
+      const feature =
+        resolvedType === "voice" ? "voice_message_sent" : "message_sent";
+      const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const usageDocId = `${userId}_${feature}_${monthKey}`;
+      const usageRef = db.collection("usageEvents").doc(usageDocId);
+      const usageSnap = await usageRef.get();
+      const currentCount = usageSnap.exists
+        ? (usageSnap.data() as any).count || 0
+        : 0;
+      const limits = getPlanLimits(rate.plan || "free");
+      const limit = limits[feature] ?? -1;
+      if (limit !== -1 && currentCount >= limit) {
+        return errorResponse(`Monthly quota exceeded for ${feature}`, 429, {
+          correlationId,
+          feature,
+          limit,
+        });
+      }
+      await usageRef.set(
+        {
+          feature,
+          month: monthKey,
+          userId,
+          count: currentCount + 1,
+          updatedAt: Date.now(),
+        },
+        { merge: true }
+      );
+    } catch (quotaErr) {
+      console.warn("quotaCheckFailed", quotaErr);
+    }
+
     const message = await sendFirebaseMessage({
       conversationId,
       fromUserId,

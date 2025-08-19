@@ -43,13 +43,26 @@ interface MessageData {
   readAt?: number;
   createdAt: number; // required for compatibility with UI expecting createdAt
   _creationTime: number;
+  replyToMessageId?: string;
+  replyToText?: string;
+  replyToType?: "text" | "voice" | "image";
+  replyToFromUserId?: string;
 }
 
 interface UseRealTimeMessagesReturn {
   messages: MessageData[];
   isTyping: Record<string, boolean>;
   isConnected: boolean;
-  sendMessage: (text: string, toUserId: string) => Promise<void>;
+  sendMessage: (
+    text: string,
+    toUserId: string,
+    replyMeta?: {
+      messageId: string;
+      text?: string;
+      type?: "text" | "voice" | "image";
+      fromUserId?: string;
+    }
+  ) => Promise<void>;
   sendVoiceMessage: (
     blob: Blob,
     toUserId: string,
@@ -333,7 +346,16 @@ export function useRealTimeMessages({
 
   // Send a text message directly via Firestore (bypassing REST API)
   const sendMessage = useCallback(
-    async (text: string, toUserId: string) => {
+    async (
+      text: string,
+      toUserId: string,
+      replyMeta?: {
+        messageId: string;
+        text?: string;
+        type?: "text" | "voice" | "image";
+        fromUserId?: string;
+      }
+    ) => {
       if (!userId || !text.trim()) return;
       const trimmed = text.trim();
       try {
@@ -352,6 +374,14 @@ export function useRealTimeMessages({
             createdAt,
             _creationTime: createdAt,
             isRead: false,
+            ...(replyMeta
+              ? {
+                  replyToMessageId: replyMeta.messageId,
+                  replyToText: replyMeta.text,
+                  replyToType: replyMeta.type,
+                  replyToFromUserId: replyMeta.fromUserId,
+                }
+              : {}),
           },
         ]);
         const docRef = await addDoc(collection(db, "messages"), {
@@ -362,6 +392,14 @@ export function useRealTimeMessages({
           type: "text",
           createdAt, // numeric for easier client sorting
           createdAtTs: serverTimestamp(), // optional canonical server timestamp
+          ...(replyMeta
+            ? {
+                replyToMessageId: replyMeta.messageId,
+                replyToText: replyMeta.text,
+                replyToType: replyMeta.type,
+                replyToFromUserId: replyMeta.fromUserId,
+              }
+            : {}),
         });
         // Denormalize lastMessage onto match doc
         try {
@@ -649,6 +687,10 @@ export function useRealTimeMessages({
           readAt: readAtNorm,
           createdAt,
           _creationTime: createdAt,
+          replyToMessageId: d.replyToMessageId,
+          replyToText: d.replyToText,
+          replyToType: d.replyToType,
+          replyToFromUserId: d.replyToFromUserId,
         });
       });
       setOlderMessages((prev) => [...chunk, ...prev]);
