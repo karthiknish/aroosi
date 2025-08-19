@@ -124,14 +124,30 @@ export default function UsagePage() {
         }}
       ></div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <h1 className="text-3xl font-bold mb-8 text-neutral">
-          Usage Analytics
-        </h1>
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2 inline-block">
+            Usage Analytics
+          </h1>
+          <svg
+            className="w-full"
+            height="6"
+            viewBox="0 0 200 6"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0 3C50 0.5 150 0.5 200 3"
+              stroke="#EC4899"
+              strokeWidth="5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
 
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <UsageTracker />
 
-          <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
+          <Card className="bg-white shadow-lg border border-gray-100 z-10">
             <CardHeader>
               <CardTitle className="text-neutral">Usage Distribution</CardTitle>
             </CardHeader>
@@ -172,7 +188,7 @@ export default function UsagePage() {
           </Card>
         </div>
 
-        <Card className="mt-8 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
+        <Card className="mt-8 bg-white shadow-lg border border-gray-100 z-10">
           <CardHeader>
             <CardTitle className="text-neutral">Daily Usage Trends</CardTitle>
           </CardHeader>
@@ -209,7 +225,7 @@ export default function UsagePage() {
         </Card>
 
         {/* Unread aggregate summary */}
-        <Card className="mt-8 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
+        <Card className="mt-8 bg-white shadow-lg border border-gray-100 z-10">
           <CardHeader>
             <CardTitle className="text-neutral">
               Unread Messages Snapshot

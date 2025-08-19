@@ -483,8 +483,8 @@ export default function HomePage() {
                   </motion.p>
                   <div className="rounded-2xl overflow-hidden shadow-xl mt-8">
                     <Image
-                      src="https://images.squarespace-cdn.com/content/v1/585c5fb2893fc01e5ba9e13e/1668548927134-0JMYE59EYVGQ2QE969SS/Afghan+_+Indian+Wedding+Photography+Mississauga+Ontario-14.jpg?format=2500w"
-                      alt="Afghan family gathering"
+                      src="https://i.pinimg.com/1200x/58/05/b5/5805b5cb758ff6ea4e0c7c78c8abb85f.jpg"
+                      alt="Afghan community values"
                       width={500}
                       height={400}
                       className="w-full h-72 object-cover"

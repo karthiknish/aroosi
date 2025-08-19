@@ -554,7 +554,7 @@ export default function ProfileDetailPage() {
           exit="exit"
           className="max-w-4xl w-full mx-auto"
         >
-          <Card className="shadow-xl rounded-2xl overflow-hidden bg-white/90 backdrop-blur-md border-0">
+          <Card className="shadow-xl rounded-2xl overflow-hidden bg-white border-0 z-10">
             <CardHeader className="p-0 relative">
               {/* Unified safety controls */}
               {!isOwnProfile && (

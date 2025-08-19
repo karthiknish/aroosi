@@ -136,7 +136,7 @@ export default function ContactPage() {
           }}
         />
       </Head>
-      <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
+  <div className="relative min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50">
         {/* Decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-32 -right-32 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full opacity-20 blur-3xl" />
@@ -144,7 +144,7 @@ export default function ContactPage() {
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-amber-200 to-yellow-200 rounded-full opacity-10 blur-2xl" />
         </div>
 
-        <div className="relative pt-32 pb-16 px-4">
+  <div className="relative pt-32 pb-16 px-4">
           <div className="max-w-7xl mx-auto">
             {/* Hero Section */}
             <motion.div
@@ -188,7 +188,7 @@ export default function ContactPage() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="max-w-2xl mx-auto"
             >
-              <Card className="bg-white/80 backdrop-blur-sm shadow-xl p-8">
+              <Card className="bg-white shadow-xl p-8 z-10">
                 {isSubmitted ? (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -200,12 +200,10 @@ export default function ContactPage() {
                         <Check className="w-8 h-8 text-green-600" />
                       </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                 <h2 className="text-3xl font-bold text-neutral-800 mb-4">
+                    <h2 className="text-3xl font-bold text-neutral-800 mb-4">
                       Message Sent Successfully!
                     </h2>
-                    <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                 <p className="text-neutral-600 mb-8 max-w-md mx-auto">
+                    <p className="text-neutral-600 mb-8 max-w-md mx-auto">
                       Thank you for reaching out. We&apos;ve received your
                       message and will get back to you within 24 hours.
                     </p>
@@ -222,12 +220,10 @@ export default function ContactPage() {
                 ) : (
                   <>
                     <div className="text-center mb-8">
-                      <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                 <h2 className="text-2xl font-bold text-neutral-800 mb-2">
+                      <h2 className="text-2xl font-bold text-neutral-800 mb-2">
                         Send us a Message
                       </h2>
-                      <p className="text-gray-600">
-                 <p className="text-neutral-600">
+                      <p className="text-neutral-600">
                         Fill out the form below and we&apos;ll get back to you
                         soon
                       </p>
@@ -404,15 +400,14 @@ export default function ContactPage() {
                 )}
               </Card>
             </motion.div>
-          {/* Close the first motion.div before starting the next one */}
-          {/* The next motion.div for the email card follows here */}
+            {/* The next motion.div for the email card follows here */}
             <motion.div
               className="max-w-2xl mx-auto mt-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <Card className="p-6 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 h-full">
+              <Card className="p-6 bg-white hover:shadow-xl transition-all duration-300 h-full z-10">
                 <div className="flex justify-center mb-4">
                   <div className="p-3 rounded-full bg-pink-100 text-pink-600">
                     <Mail className="w-6 h-6" />
@@ -435,7 +430,6 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-    </div>
-  </> 
-}
+    </>
+  );
 }

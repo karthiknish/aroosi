@@ -291,7 +291,7 @@ export default function BlogPage() {
               Array.from({ length: pageSize }).map((_, i) => (
                 <Card
                   key={i}
-                  className="bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden flex flex-col animate-pulse shadow-xl border-0 hover:shadow-2xl transition-all"
+                  className="bg-white rounded-3xl overflow-hidden flex flex-col animate-pulse shadow-xl border-0 hover:shadow-2xl transition-all z-10"
                 >
                   <Skeleton className="w-full h-48 object-cover rounded-t-3xl" />
                   <div className="flex-1 p-6 flex flex-col">
@@ -319,7 +319,8 @@ export default function BlogPage() {
                   className="group block focus:outline-none focus:ring-4 focus:ring-pink-200 rounded-3xl transition-all"
                   tabIndex={0}
                 >
-                  <Card className="h-full hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border-0 bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden flex flex-col group cursor-pointer relative">
+                  {/* Removed duplicate Card tag, only one Card remains below */}
+                  <Card className="h-full hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border-0 bg-white rounded-3xl overflow-hidden flex flex-col group cursor-pointer relative z-10">
                     {/* Enhanced decorative elements */}
                     <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-pink-200 to-rose-300 rounded-full opacity-70 group-hover:opacity-100 transition-opacity z-10" />
                     <div className="absolute top-6 left-6 w-8 h-8 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-full opacity-60 group-hover:scale-110 transition-transform z-10" />

@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
       "storage.googleapis.com",
       // Custom bucket domain variant (if using CNAME / alternate)
       "aroosi-project.firebasestorage.app",
+      // Added for Afghan Community Values homepage image
+      "i.pinimg.com",
     ],
   },
   // Ensure proper transpilation for Safari compatibility

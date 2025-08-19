@@ -88,7 +88,7 @@ export function UsageTracker() {
 
   if (isLoading) {
     return (
-      <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
+      <Card className="bg-white shadow-lg border border-gray-100 z-10">
         <CardContent className="p-6">
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -105,7 +105,7 @@ export function UsageTracker() {
 
   if (error || !usage) {
     return (
-      <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
+      <Card className="bg-white shadow-lg border border-gray-100 z-10">
         <CardContent className="p-6">
           <div className="text-center text-gray-500">
             <AlertCircle className="h-8 w-8 mx-auto mb-2" />
@@ -123,7 +123,7 @@ export function UsageTracker() {
   };
 
   return (
-    <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
+    <Card className="bg-white shadow-lg border border-gray-100 z-10">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Usage Tracker</CardTitle>

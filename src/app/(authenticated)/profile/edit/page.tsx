@@ -412,10 +412,26 @@ export default function EditProfilePage() {
       {/* Decorative pink circle background */}
       <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
 
-      {/* Page title */}
-      <h1 className="text-3xl font-serif font-bold text-center text-pink-700 mb-8 z-10">
-        Edit Profile
-      </h1>
+
+      {/* Page title with pink wavy underline */}
+      <div className="relative w-fit mx-auto mb-8 z-10">
+        <h1 className="text-4xl sm:text-5xl font-serif font-bold text-primary mb-2 text-left">
+          Edit Profile
+        </h1>
+        <svg
+          viewBox="0 0 200 12"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="absolute left-0 top-full w-[140px] sm:w-[200px] h-[12px]"
+        >
+          <path
+            d="M2 6c40-8 80 8 120 0s38-8 76 0"
+            stroke="#EC4899"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
 
       <div className="flex justify-center z-10">
         <div className="w-full max-w-3xl bg-white shadow-xl rounded-xl p-6 md:p-8">
