@@ -88,9 +88,11 @@ export default function ProfileEditSimpleForm({
       z.object({
         // Basic info
         fullName: EnhancedValidationSchemas.basicInfo.shape.fullName.optional(),
-        dateOfBirth: EnhancedValidationSchemas.basicInfo.shape.dateOfBirth.optional(),
+        dateOfBirth:
+          EnhancedValidationSchemas.basicInfo.shape.dateOfBirth.optional(),
         gender: EnhancedValidationSchemas.basicInfo.shape.gender.optional(),
-        preferredGender: EnhancedValidationSchemas.basicInfo.shape.preferredGender.optional(),
+        preferredGender:
+          EnhancedValidationSchemas.basicInfo.shape.preferredGender.optional(),
         // Location
         country: EnhancedValidationSchemas.location.shape.country.optional(),
         city: EnhancedValidationSchemas.location.shape.city.optional(),
@@ -106,26 +108,40 @@ export default function ProfileEditSimpleForm({
             const cm = Number(match[1]);
             return cm >= 100 && cm <= 250;
           }, "Height must be between 100–250 cm"),
-        maritalStatus: z.enum(["single", "divorced", "widowed", "annulled"]).optional(),
+        maritalStatus: z
+          .enum(["single", "divorced", "widowed", "annulled"])
+          .optional(),
         // Lifestyle
-        diet: z.enum(["vegetarian", "non-vegetarian", "halal", "other"]).optional(),
-        smoking: z.enum(["no", "occasionally", "yes"]).optional(),
-        drinking: z.enum(["no", "occasionally", "yes"]).optional(),
+        diet: z
+          .enum(["vegetarian", "non-vegetarian", "vegan", "halal", "kosher"])
+          .optional(),
+        smoking: z
+          .enum(["never", "occasionally", "regularly", "socially"])
+          .optional(),
+        drinking: z
+          .enum(["never", "occasionally", "socially", "regularly"])
+          .optional(),
         physicalStatus: z.enum(["normal", "differently-abled"]).optional(),
         // Professional
-        education: EnhancedValidationSchemas.professional.shape.education.optional(),
-        occupation: EnhancedValidationSchemas.professional.shape.occupation.optional(),
+        education:
+          EnhancedValidationSchemas.professional.shape.education.optional(),
+        occupation:
+          EnhancedValidationSchemas.professional.shape.occupation.optional(),
         annualIncome: z
           .union([z.string(), z.number()])
           .optional()
           .refine((val) => {
             if (val === undefined || val === "") return true;
-            const n = typeof val === "number" ? val : Number(String(val).replace(/[^\d.-]/g, ""));
+            const n =
+              typeof val === "number"
+                ? val
+                : Number(String(val).replace(/[^\d.-]/g, ""));
             return Number.isFinite(n) && n >= 0 && n <= 999999999;
           }, "Please enter a valid annual income"),
         // About & Contact
         aboutMe: EnhancedValidationSchemas.aboutMe.shape.aboutMe.optional(),
-        phoneNumber: EnhancedValidationSchemas.aboutMe.shape.phoneNumber.optional(),
+        phoneNumber:
+          EnhancedValidationSchemas.aboutMe.shape.phoneNumber.optional(),
         // Preferences
         partnerPreferenceAgeMin: z
           .union([z.string(), z.number()])
@@ -133,7 +149,7 @@ export default function ProfileEditSimpleForm({
           .refine((v) => {
             if (v === undefined || v === "") return true;
             const n = Number(v);
-            return Number.isFinite(n) && n >= 18 && n <= 99;
+            return Number.isFinite(n) && n >= 18 && n <= 120;
           }, "Min age must be between 18 and 99"),
         partnerPreferenceAgeMax: z
           .union([z.string(), z.number()])
@@ -141,14 +157,18 @@ export default function ProfileEditSimpleForm({
           .refine((v) => {
             if (v === undefined || v === "") return true;
             const n = Number(v);
-            return Number.isFinite(n) && n >= 18 && n <= 99;
-          }, "Max age must be between 18 and 99"),
+            return Number.isFinite(n) && n >= 18 && n <= 120;
+          }, "Max age must be between 18 and 120"),
         partnerPreferenceCity: z
           .union([z.array(z.string()), z.string()])
           .optional()
           .refine((v) => {
             if (!v) return true;
-            const arr = Array.isArray(v) ? v : String(v).split(",").map((s) => s.trim());
+            const arr = Array.isArray(v)
+              ? v
+              : String(v)
+                  .split(",")
+                  .map((s) => s.trim());
             return arr.every((s) => s.length > 0 && s.length <= 50);
           }, "Preferred cities must be non-empty names"),
       }),
@@ -156,7 +176,9 @@ export default function ProfileEditSimpleForm({
   );
 
   // Error aggregation state for ErrorSummary
-  const [summaryErrors, setSummaryErrors] = useState<Record<string, string>>({});
+  const [summaryErrors, setSummaryErrors] = useState<Record<string, string>>(
+    {}
+  );
   const [isValidating, setIsValidating] = useState(false);
 
   const validateAll = useMemo(
@@ -222,6 +244,11 @@ export default function ProfileEditSimpleForm({
   useEffect(() => {
     if (initialValues && Object.keys(initialValues).length) {
       form.reset(initialValues);
+      // Normalize legacy values for parity with onboarding
+      const pg = (initialValues as any).preferredGender;
+      if (pg === "any") {
+        setValue("preferredGender", "both" as any, { shouldDirty: false });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
@@ -265,7 +292,10 @@ export default function ProfileEditSimpleForm({
         (data as any).phoneNumber = normalizedPhone;
 
         // Normalize partnerPreferenceCity if comma-separated string entered in helper input
-        if (preferredCitiesInput && Array.isArray(data.partnerPreferenceCity) === false) {
+        if (
+          preferredCitiesInput &&
+          Array.isArray(data.partnerPreferenceCity) === false
+        ) {
           const parsed = String(preferredCitiesInput)
             .split(",")
             .map((s) => s.trim())
@@ -279,15 +309,27 @@ export default function ProfileEditSimpleForm({
     >
       {/* Top validation UI parity with onboarding */}
       <div className="pt-2">
-        <SimpleProgress current={Object.keys(summaryErrors).length === 0 ? 1 : 0} total={1} />
+        <SimpleProgress
+          current={Object.keys(summaryErrors).length === 0 ? 1 : 0}
+          total={1}
+        />
         <div className="mt-3">
           <ErrorSummary
             isValid={Object.keys(summaryErrors).length === 0}
             progress={Object.keys(summaryErrors).length === 0 ? 100 : 0}
             requiredFields={[
-              "fullName","dateOfBirth","gender","preferredGender",
-              "country","city","height","maritalStatus",
-              "education","occupation","aboutMe","phoneNumber"
+              "fullName",
+              "dateOfBirth",
+              "gender",
+              "preferredGender",
+              "country",
+              "city",
+              "height",
+              "maritalStatus",
+              "education",
+              "occupation",
+              "aboutMe",
+              "phoneNumber",
             ]}
             completedFields={Object.keys(getValues() || {}).filter((k) => {
               const v = (getValues() as any)[k];
@@ -303,6 +345,22 @@ export default function ProfileEditSimpleForm({
       {/* Basic Information (keep existing step component) */}
       <FormSection title="Basic Information">
         <ProfileFormStepBasicInfo form={form} cmToFeetInches={cmToFeetInches} />
+        {/* Profile For (parity with onboarding) */}
+        <ValidatedSelect
+          label="Profile For"
+          field="profileFor"
+          step={1 as any}
+          value={(watch("profileFor") as string) ?? "self"}
+          onValueChange={(v) =>
+            setValue("profileFor", v as any, { shouldDirty: true })
+          }
+          options={[
+            { value: "self", label: "Myself" },
+            { value: "friend", label: "Friend" },
+            { value: "family", label: "Family" },
+          ]}
+          placeholder="Who is this profile for?"
+        />
       </FormSection>
 
       {/* Location & Physical - align with ProfileCreationModal Step 2 */}
@@ -314,7 +372,9 @@ export default function ProfileEditSimpleForm({
             field="country"
             step={2 as any}
             value={watch("country") as string}
-            onValueChange={(v) => setValue("country", v as any, { shouldDirty: true })}
+            onValueChange={(v) =>
+              setValue("country", v as any, { shouldDirty: true })
+            }
             options={countries.map((c) => ({ value: c, label: c }))}
             placeholder="Select country"
           />
@@ -326,7 +386,9 @@ export default function ProfileEditSimpleForm({
           field="city"
           step={2 as any}
           value={(watch("city") as string) ?? ""}
-          onValueChange={(v) => setValue("city", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("city", v as any, { shouldDirty: true })
+          }
           placeholder="Enter your city"
           required
           hint="Enter the city where you currently live"
@@ -344,11 +406,16 @@ export default function ProfileEditSimpleForm({
                 ? `${String(watch("height")).trim()} cm`
                 : ((watch("height") as string) ?? "")
             }
-            onValueChange={(v) => setValue("height", v as any, { shouldDirty: true })}
+            onValueChange={(v) =>
+              setValue("height", v as any, { shouldDirty: true })
+            }
             options={Array.from({ length: 198 - 137 + 1 }, (_, i) => {
               const cm = 137 + i;
               const normalized = `${cm} cm`;
-              return { value: normalized, label: `${cmToFeetInches(cm)} (${cm} cm)` };
+              return {
+                value: normalized,
+                label: `${cmToFeetInches(cm)} (${cm} cm)`,
+              };
             })}
             placeholder="Select height"
           />
@@ -360,7 +427,9 @@ export default function ProfileEditSimpleForm({
           field="maritalStatus"
           step={2 as any}
           value={(watch("maritalStatus") as string) ?? ""}
-          onValueChange={(v) => setValue("maritalStatus", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("maritalStatus", v as any, { shouldDirty: true })
+          }
           options={[
             { value: "single", label: "Single" },
             { value: "divorced", label: "Divorced" },
@@ -377,7 +446,9 @@ export default function ProfileEditSimpleForm({
           field="physicalStatus"
           step={2 as any}
           value={(watch("physicalStatus") as string) ?? ""}
-          onValueChange={(v) => setValue("physicalStatus", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("physicalStatus", v as any, { shouldDirty: true })
+          }
           options={[
             { value: "normal", label: "Normal" },
             { value: "differently-abled", label: "Differently Abled" },
@@ -394,8 +465,13 @@ export default function ProfileEditSimpleForm({
           field="motherTongue"
           step={3 as any}
           value={(watch("motherTongue") as string) ?? ""}
-          onValueChange={(v) => setValue("motherTongue", v as any, { shouldDirty: true })}
-          options={MOTHER_TONGUE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          onValueChange={(v) =>
+            setValue("motherTongue", v as any, { shouldDirty: true })
+          }
+          options={MOTHER_TONGUE_OPTIONS.map((o) => ({
+            value: o.value,
+            label: o.label,
+          }))}
           placeholder="Select language"
         />
 
@@ -405,8 +481,13 @@ export default function ProfileEditSimpleForm({
           field="religion"
           step={3 as any}
           value={(watch("religion") as string) ?? ""}
-          onValueChange={(v) => setValue("religion", v as any, { shouldDirty: true })}
-          options={RELIGION_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          onValueChange={(v) =>
+            setValue("religion", v as any, { shouldDirty: true })
+          }
+          options={RELIGION_OPTIONS.map((o) => ({
+            value: o.value,
+            label: o.label,
+          }))}
           placeholder="Select religion"
         />
 
@@ -416,8 +497,13 @@ export default function ProfileEditSimpleForm({
           field="ethnicity"
           step={3 as any}
           value={(watch("ethnicity") as string) ?? ""}
-          onValueChange={(v) => setValue("ethnicity", v as any, { shouldDirty: true })}
-          options={ETHNICITY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          onValueChange={(v) =>
+            setValue("ethnicity", v as any, { shouldDirty: true })
+          }
+          options={ETHNICITY_OPTIONS.map((o) => ({
+            value: o.value,
+            label: o.label,
+          }))}
           placeholder="Select ethnicity"
         />
 
@@ -427,12 +513,15 @@ export default function ProfileEditSimpleForm({
           field="diet"
           step={3 as any}
           value={(watch("diet") as string) ?? ""}
-          onValueChange={(v) => setValue("diet", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("diet", v as any, { shouldDirty: true })
+          }
           options={[
             { value: "vegetarian", label: "Vegetarian" },
             { value: "non-vegetarian", label: "Non-Vegetarian" },
-            { value: "halal", label: "Halal Only" },
-            { value: "other", label: "Other" },
+            { value: "vegan", label: "Vegan" },
+            { value: "halal", label: "Halal" },
+            { value: "kosher", label: "Kosher" },
           ]}
           placeholder="Select diet preference"
         />
@@ -443,11 +532,14 @@ export default function ProfileEditSimpleForm({
           field="smoking"
           step={3 as any}
           value={(watch("smoking") as string) ?? ""}
-          onValueChange={(v) => setValue("smoking", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("smoking", v as any, { shouldDirty: true })
+          }
           options={[
-            { value: "no", label: "No" },
+            { value: "never", label: "Never" },
             { value: "occasionally", label: "Occasionally" },
-            { value: "yes", label: "Yes" },
+            { value: "regularly", label: "Regularly" },
+            { value: "socially", label: "Socially" },
           ]}
           placeholder="Select smoking preference"
         />
@@ -458,11 +550,14 @@ export default function ProfileEditSimpleForm({
           field="drinking"
           step={3 as any}
           value={(watch("drinking") as string) ?? ""}
-          onValueChange={(v) => setValue("drinking", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("drinking", v as any, { shouldDirty: true })
+          }
           options={[
-            { value: "no", label: "No" },
+            { value: "never", label: "Never" },
             { value: "occasionally", label: "Occasionally" },
-            { value: "yes", label: "Yes" },
+            { value: "socially", label: "Socially" },
+            { value: "regularly", label: "Regularly" },
           ]}
           placeholder="Select drinking preference"
         />
@@ -475,7 +570,9 @@ export default function ProfileEditSimpleForm({
           field="education"
           step={4 as any}
           value={(watch("education") as string) ?? ""}
-          onValueChange={(v) => setValue("education", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("education", v as any, { shouldDirty: true })
+          }
           placeholder="e.g. Bachelor's, Master's"
           required
         />
@@ -485,7 +582,9 @@ export default function ProfileEditSimpleForm({
           field="occupation"
           step={4 as any}
           value={(watch("occupation") as string) ?? ""}
-          onValueChange={(v) => setValue("occupation", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("occupation", v as any, { shouldDirty: true })
+          }
           placeholder="Occupation"
           required
         />
@@ -495,7 +594,9 @@ export default function ProfileEditSimpleForm({
           field="annualIncome"
           step={4 as any}
           value={String((watch("annualIncome") as any) ?? "")}
-          onValueChange={(v) => setValue("annualIncome", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("annualIncome", v as any, { shouldDirty: true })
+          }
           placeholder="e.g. £30,000"
         />
       </FormSection>
@@ -507,7 +608,9 @@ export default function ProfileEditSimpleForm({
           field="aboutMe"
           step={4 as any}
           value={(watch("aboutMe") as string) ?? ""}
-          onValueChange={(v) => setValue("aboutMe", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("aboutMe", v as any, { shouldDirty: true })
+          }
           placeholder="Tell us a little about yourself..."
           rows={4}
           required
@@ -518,11 +621,13 @@ export default function ProfileEditSimpleForm({
           field="preferredGender"
           step={5 as any}
           value={(watch("preferredGender") as string) ?? ""}
-          onValueChange={(v) => setValue("preferredGender", v as any, { shouldDirty: true })}
+          onValueChange={(v) =>
+            setValue("preferredGender", v as any, { shouldDirty: true })
+          }
           options={[
             { value: "male", label: "Male" },
             { value: "female", label: "Female" },
-            { value: "any", label: "Any" },
+            { value: "both", label: "Both" },
             { value: "other", label: "Other" },
           ]}
           placeholder="Select preferred gender"
@@ -542,9 +647,13 @@ export default function ProfileEditSimpleForm({
             }
             type="number"
             onValueChange={(v) =>
-              setValue("partnerPreferenceAgeMin", (v === "" ? "" : Number(v)) as any, {
-                shouldDirty: true,
-              })
+              setValue(
+                "partnerPreferenceAgeMin",
+                (v === "" ? "" : Number(v)) as any,
+                {
+                  shouldDirty: true,
+                }
+              )
             }
             className="w-24"
             placeholder="18"
@@ -561,12 +670,16 @@ export default function ProfileEditSimpleForm({
             }
             type="number"
             onValueChange={(v) =>
-              setValue("partnerPreferenceAgeMax", (v === "" ? "" : Number(v)) as any, {
-                shouldDirty: true,
-              })
+              setValue(
+                "partnerPreferenceAgeMax",
+                (v === "" ? "" : Number(v)) as any,
+                {
+                  shouldDirty: true,
+                }
+              )
             }
             className="w-24"
-            placeholder="99"
+            placeholder="120"
           />
         </div>
 
@@ -579,8 +692,13 @@ export default function ProfileEditSimpleForm({
           onValueChange={(raw) => {
             const str = String(raw);
             setPreferredCitiesInput(str);
-            const parsed = str.split(",").map((s) => s.trim()).filter(Boolean);
-            setValue("partnerPreferenceCity", parsed as any, { shouldDirty: true });
+            const parsed = str
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            setValue("partnerPreferenceCity", parsed as any, {
+              shouldDirty: true,
+            });
           }}
           placeholder="e.g. London, Kabul"
           hint="Comma-separated list"

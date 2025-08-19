@@ -24,13 +24,14 @@ export function mapProfileToFormValues(
       const g = typeof p.gender === "string" ? p.gender.toLowerCase() : "";
       return (
         ["male", "female", "non-binary", "prefer-not-to-say", "other"].includes(
-          g,
+          g
         )
           ? g
           : "other"
       ) as Gender;
     })(),
-    city: p.city ? String(p.city).toLowerCase() : "",
+    // Preserve casing for city to match what the user entered during signup
+    city: p.city ? String(p.city) : "",
     partnerPreferenceAgeMin:
       p.partnerPreferenceAgeMin !== undefined &&
       p.partnerPreferenceAgeMin !== null
