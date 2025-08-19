@@ -796,10 +796,10 @@ export default function SearchProfilesPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-medium text-gray-700 mb-2">
+              <h3 className="text-xl font-medium text-neutral-700 mb-2">
                 No profiles found
               </h3>
-              <p className="text-gray-500 max-w-md mx-auto">
+              <p className="text-neutral-500 max-w-md mx-auto">
                 {city ||
                 country !== "any" ||
                 ageMin ||
@@ -912,7 +912,7 @@ export default function SearchProfilesPage() {
                           </div>
                         )}
                         <CardContent className="flex-1 flex flex-col items-center justify-center p-4">
-                          <div className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-1">
+                          <div className="text-xl font-bold text-neutral-900 mb-1 flex items-center gap-1">
                             {typeof p.fullName === "string" ? p.fullName : ""}
                             {isPremium(p.subscriptionPlan) && (
                               <BadgeCheck className="w-4 h-4 text-[#BFA67A]" />
@@ -926,7 +926,7 @@ export default function SearchProfilesPage() {
                             ) : null}
                           </div>
                           <div
-                            className="text-sm text-gray-600 mb-1"
+                            className="text-sm text-neutral-600 mb-1"
                             style={{
                               fontFamily: "Nunito Sans, Arial, sans-serif",
                             }}
@@ -934,7 +934,7 @@ export default function SearchProfilesPage() {
                             {typeof p.city === "string" ? p.city : "-"}
                           </div>
                           <div
-                            className="text-sm text-gray-600 mb-1"
+                            className="text-sm text-neutral-600 mb-1"
                             style={{
                               fontFamily: "Nunito Sans, Arial, sans-serif",
                             }}
@@ -962,7 +962,7 @@ export default function SearchProfilesPage() {
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-4 mt-10">
                   <button
-                    className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+                    className="px-4 py-2 rounded bg-gray-200 text-neutral-700 disabled:opacity-50"
                     onClick={() => setPage((p) => Math.max(0, p - 1))}
                     disabled={page === 0}
                   >

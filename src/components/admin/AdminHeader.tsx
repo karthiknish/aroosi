@@ -68,10 +68,10 @@ export function AdminHeader({
           </Button>
 
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-neutral-900">
               {getPageTitle(currentPath)}
             </h1>
-            <nav className="flex items-center space-x-1 text-sm text-gray-500">
+            <nav className="flex items-center space-x-1 text-sm text-neutral-500">
               {breadcrumbs.map((crumb, index) => (
                 <div key={crumb.href} className="flex items-center">
                   {index > 0 && <span className="mx-2">/</span>}
@@ -112,7 +112,7 @@ export function AdminHeader({
               <div className="flex items-center justify-start gap-2 p-3 border-b">
                 <div className="flex flex-col space-y-1 leading-none">
                   <p className="font-medium text-sm">{profile?.fullName}</p>
-                  <p className="w-[200px] truncate text-xs text-gray-500">
+                  <p className="w-[200px] truncate text-xs text-neutral-500">
                     {profile?.email}
                   </p>
                 </div>

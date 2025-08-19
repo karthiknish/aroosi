@@ -396,10 +396,10 @@ export default function EditProfilePage() {
   if (!isSignedIn && typeof window !== "undefined") {
     return (
       <div className="flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
+        <h2 className="text-2xl font-bold text-neutral-800 mb-2">
           Please Sign In
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-neutral-600 mb-6">
           You need to be signed in to view this page.
         </p>
         <Button onClick={() => router.push("/sign-in")}>Sign In</Button>

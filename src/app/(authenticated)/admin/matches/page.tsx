@@ -219,7 +219,7 @@ export default function AdminMatchesPage() {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <UserCircle className="w-7 h-7 text-gray-400" />
+                                <UserCircle className="w-7 h-7 text-neutral-400" />
                               </div>
                             )}
                           </div>
@@ -270,11 +270,11 @@ export default function AdminMatchesPage() {
                             <div className="font-medium text-sm truncate">
                               {right?.fullName || "Unnamed"}
                             </div>
-                            <div className="text-xs text-gray-500 truncate">
+                            <div className="text-xs text-neutral-500 truncate">
                               {(right?.city || "").toString()}{" "}
                               {rightAge ? `• ${rightAge}` : ""}
                             </div>
-                            <div className="text-[11px] text-gray-400 truncate">
+                            <div className="text-[11px] text-neutral-400 truncate">
                               {right?.occupation || ""}
                             </div>
                           </div>

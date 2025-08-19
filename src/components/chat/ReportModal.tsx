@@ -205,7 +205,7 @@ export default function ReportModal({
               <div>
                 <h2
                   id="report-dialog-title"
-                  className="text-lg font-semibold text-gray-900"
+                  className="text-lg font-semibold text-neutral-900"
                 >
                   {step === "confirmBlock"
                     ? "Block user"
@@ -215,7 +215,7 @@ export default function ReportModal({
                 </h2>
                 <p
                   id="report-dialog-desc"
-                  className="text-sm text-gray-600 mt-0.5"
+                  className="text-sm text-neutral-600 mt-0.5"
                 >
                   {step === "confirmBlock"
                     ? "Blocking prevents all future messages. They will not be notified."
@@ -239,11 +239,11 @@ export default function ReportModal({
                       aria-pressed={reason === r.value}
                       onClick={() => setReason(r.value)}
                     >
-                      <span className="font-medium text-gray-800">
+                      <span className="font-medium text-neutral-800">
                         {r.label}
                       </span>
                       {r.helper && (
-                        <span className="block text-[11px] text-gray-500 mt-0.5">
+                        <span className="block text-[11px] text-neutral-500 mt-0.5">
                           {r.helper}
                         </span>
                       )}
@@ -253,10 +253,10 @@ export default function ReportModal({
                 <div className="space-y-1">
                   <label
                     htmlFor="report-description"
-                    className="text-sm font-medium text-gray-800 flex items-center justify-between"
+                    className="text-sm font-medium text-neutral-800 flex items-center justify-between"
                   >
                     Additional details
-                    <span className="text-xs font-normal text-gray-400">
+                    <span className="text-xs font-normal text-neutral-400">
                       Optional{" "}
                       {reason === "other" ? "(required for 'Other')" : ""}
                     </span>
@@ -280,7 +280,7 @@ export default function ReportModal({
                       className={
                         description.length > 480
                           ? "text-amber-600"
-                          : "text-gray-400"
+                          : "text-neutral-400"
                       }
                     >
                       {description.length}/500
@@ -323,7 +323,7 @@ export default function ReportModal({
                     {error}
                   </div>
                 )}
-                <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                <ul className="list-disc pl-5 text-sm text-neutral-600 space-y-1">
                   <li>You won&apos;t receive messages from this user</li>
                   <li>You can unblock them later from settings</li>
                   <li>They are not notified that you blocked them</li>
@@ -361,7 +361,7 @@ export default function ReportModal({
                 ref={firstFieldRef as any}
               >
                 <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto" />
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-neutral-700">
                   {announced || "Action completed successfully."}
                 </p>
                 <Button onClick={onClose} className="mt-2" variant="outline">

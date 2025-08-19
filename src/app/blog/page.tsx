@@ -211,7 +211,7 @@ export default function BlogPage() {
 
           {/* Enhanced wavy underline */}
 
-          <p className="text-xl text-gray-700 max-w-3xl mx-auto mb-8 leading-relaxed">
+          <p className="text-xl text-neutral-700 max-w-3xl mx-auto mb-8 leading-relaxed">
             Discover inspiring stories, expert advice, and cultural insights to
             guide your journey towards finding your perfect Afghan life partner.
           </p>
@@ -266,7 +266,7 @@ export default function BlogPage() {
             ))}
           </div>
 
-          <div className="inline-flex items-center px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-pink-200 text-sm text-gray-600 shadow-sm">
+          <div className="inline-flex items-center px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-pink-200 text-sm text-neutral-600 shadow-sm">
             <span className="font-medium text-pink-600">
               {filteredPosts.length}
             </span>
@@ -345,11 +345,11 @@ export default function BlogPage() {
                     )}
 
                     <CardHeader className="flex-1 p-6">
-                      <CardTitle className="text-lg font-serif font-semibold text-gray-800 mb-3 line-clamp-2 group-hover:text-pink-600 transition-colors">
+                      <CardTitle className="text-lg font-serif font-semibold text-neutral-800 mb-3 line-clamp-2 group-hover:text-pink-600 transition-colors">
                         {post.title}
                       </CardTitle>
 
-                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                      <div className="flex items-center gap-2 text-sm text-neutral-500 mb-3">
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -375,7 +375,7 @@ export default function BlogPage() {
                         </span>
                       </div>
 
-                      <p className="text-gray-600 text-sm line-clamp-3 mb-4 leading-relaxed">
+                      <p className="text-neutral-600 text-sm line-clamp-3 mb-4 leading-relaxed">
                         {post.excerpt}
                       </p>
 
@@ -390,7 +390,7 @@ export default function BlogPage() {
                             </span>
                           ))}
                           {post.categories.length > 2 && (
-                            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                            <span className="px-3 py-1 bg-gray-100 text-neutral-600 rounded-full text-xs font-medium">
                               +{post.categories.length - 2}
                             </span>
                           )}

@@ -161,20 +161,20 @@ export default function ContactPage() {
               >
                 Get in Touch
               </h1>
-              <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+              <p className="text-lg sm:text-xl text-neutral-600 mb-8 max-w-3xl mx-auto leading-relaxed">
                 Have a question or need assistance? We&apos;re here to help.
                 Reach out to us and we&apos;ll respond as quickly as possible.
               </p>
               <div className="flex justify-center space-x-8 text-sm text-gray-500">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 text-neutral-500">
                   <Clock className="w-4 h-4 text-green-500" />
                   24/7 Support
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 text-neutral-500">
                   <MessageSquare className="w-4 h-4 text-green-500" />
                   Quick Response
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 text-neutral-500">
                   <Check className="w-4 h-4 text-green-500" />
                   Friendly Team
                 </span>
@@ -201,9 +201,11 @@ export default function ContactPage() {
                       </div>
                     </div>
                     <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                 <h2 className="text-3xl font-bold text-neutral-800 mb-4">
                       Message Sent Successfully!
                     </h2>
                     <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                 <p className="text-neutral-600 mb-8 max-w-md mx-auto">
                       Thank you for reaching out. We&apos;ve received your
                       message and will get back to you within 24 hours.
                     </p>
@@ -221,9 +223,11 @@ export default function ContactPage() {
                   <>
                     <div className="text-center mb-8">
                       <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                 <h2 className="text-2xl font-bold text-neutral-800 mb-2">
                         Send us a Message
                       </h2>
                       <p className="text-gray-600">
+                 <p className="text-neutral-600">
                         Fill out the form below and we&apos;ll get back to you
                         soon
                       </p>
@@ -240,7 +244,7 @@ export default function ContactPage() {
                         <div>
                           <Label
                             htmlFor="name"
-                            className="block text-sm font-medium text-gray-700 mb-2"
+                            className="block text-sm font-medium text-neutral-700 mb-2"
                           >
                             Full Name{" "}
                             <span
@@ -275,7 +279,7 @@ export default function ContactPage() {
                         <div>
                           <Label
                             htmlFor="email"
-                            className="block text-sm font-medium text-gray-700 mb-2"
+                            className="block text-sm font-medium text-neutral-700 mb-2"
                           >
                             Email Address{" "}
                             <span
@@ -312,7 +316,7 @@ export default function ContactPage() {
                       <div>
                         <Label
                           htmlFor="subject"
-                          className="block text-sm font-medium text-gray-700 mb-2"
+                          className="block text-sm font-medium text-neutral-700 mb-2"
                         >
                           Subject{" "}
                           <span className="text-red-500" aria-label="required">
@@ -344,7 +348,7 @@ export default function ContactPage() {
                       <div>
                         <Label
                           htmlFor="message"
-                          className="block text-sm font-medium text-gray-700 mb-2"
+                          className="block text-sm font-medium text-neutral-700 mb-2"
                         >
                           Message{" "}
                           <span className="text-red-500" aria-label="required">
@@ -400,6 +404,8 @@ export default function ContactPage() {
                 )}
               </Card>
             </motion.div>
+          {/* Close the first motion.div before starting the next one */}
+          {/* The next motion.div for the email card follows here */}
             <motion.div
               className="max-w-2xl mx-auto mt-4"
               initial={{ opacity: 0, y: 20 }}
@@ -412,10 +418,10 @@ export default function ContactPage() {
                     <Mail className="w-6 h-6" />
                   </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2 text-center">
+                <h3 className="text-xl font-semibold text-neutral-800 mb-2 text-center">
                   Email Us
                 </h3>
-                <p className="text-gray-600 text-center mb-4">
+                <p className="text-neutral-600 text-center mb-4">
                   Send us an email anytime
                 </p>
                 <a
@@ -429,6 +435,7 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-    </>
-  );
+    </div>
+  </> 
+}
 }

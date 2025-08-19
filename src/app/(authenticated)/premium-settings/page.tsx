@@ -299,12 +299,12 @@ export default function PremiumSettingsPage() {
           className="text-center mb-8"
         >
           <div className="flex items-center justify-center gap-3 mb-2">
-            <h2 className="text-xl md:text-2xl font-semibold leading-tight text-gray-900">
+            <h2 className="text-xl md:text-2xl font-semibold leading-tight text-neutral-900">
               Premium Settings
             </h2>
             {getSubscriptionBadge(profile.subscriptionPlan as SubscriptionPlan)}
           </div>
-          <p className="text-sm text-gray-600 max-w-xl mx-auto">
+          <p className="text-sm text-neutral-600 max-w-xl mx-auto">
             Manage your premium features and preferences
           </p>
         </motion.div>
@@ -350,13 +350,13 @@ export default function PremiumSettingsPage() {
                       </div>
                       <div className="flex flex-col">
                         {/* Renewal / expiry emphasis */}
-                        <span className="text-sm text-gray-700">
+                        <span className="text-sm text-neutral-700">
                           {profile.subscriptionExpiresAt
                             ? `Renews ${new Date(profile.subscriptionExpiresAt as number).toLocaleDateString()}`
                             : "Active subscription"}
                         </span>
                         {profile.subscriptionExpiresAt && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-neutral-500">
                             {(() => {
                               const ms =
                                 (profile.subscriptionExpiresAt as number) -
@@ -456,7 +456,7 @@ export default function PremiumSettingsPage() {
                             <p className="text-xl text-neutral">
                               {feature.title}
                             </p>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-neutral-600">
                               {feature.description}
                             </p>
                           </div>
@@ -549,7 +549,7 @@ export default function PremiumSettingsPage() {
                             <p className="text-xl text-neutral">
                               {feature.title}
                             </p>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-neutral-600">
                               {feature.description}
                             </p>
                           </div>
@@ -617,7 +617,7 @@ export default function PremiumSettingsPage() {
                       transition={{ delay: 0.5 }}
                       className="mt-6 p-5 rounded-lg bg-white border"
                     >
-                      <p className="text-sm text-gray-800 mb-3">
+                      <p className="text-sm text-neutral-800 mb-3">
                         Unlock Premium Plus features like profile boost, viewer
                         tracking, and premium filters.
                       </p>
@@ -683,7 +683,7 @@ export default function PremiumSettingsPage() {
             >
               <Card className="shadow-sm border rounded-lg bg-white">
                 <CardContent className="p-5">
-                  <h3 className="font-medium text-base mb-3 text-gray-800 flex items-center gap-2">
+                  <h3 className="font-medium text-base mb-3 text-neutral-800 flex items-center gap-2">
                     <Heart className="h-5 w-5 text-pink-500" />
                     Premium Benefits
                   </h3>

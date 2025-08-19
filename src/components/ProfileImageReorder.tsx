@@ -105,7 +105,7 @@ const SortableImageBase = ({
         role="presentation"
         aria-hidden="true"
       >
-        <Grip className="w-4 h-4 text-gray-400" />
+        <Grip className="w-4 h-4 text-neutral-400" />
       </div>
       {/* Set as main (move to index 0) */}
       {onSetMain && imageIndex !== 0 && (
@@ -115,7 +115,7 @@ const SortableImageBase = ({
             e.stopPropagation();
             onSetMain(dndId);
           }}
-          className="absolute left-1 bottom-1 bg-white/85 text-gray-800 border border-gray-300 rounded px-1.5 py-0.5 text-[11px] hover:bg-white z-20"
+          className="absolute left-1 bottom-1 bg-white/85 text-neutral-800 border border-gray-300 rounded px-1.5 py-0.5 text-[11px] hover:bg-white z-20"
           aria-label="Set as main"
         >
           Set main
@@ -126,7 +126,7 @@ const SortableImageBase = ({
       )}
       {error ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-100 rounded-lg border border-gray-200 gap-2">
-          <span className="text-gray-500 text-xs">Failed to load image</span>
+          <span className="text-neutral-500 text-xs">Failed to load image</span>
           <button
             type="button"
             onClick={(e) => {
@@ -454,7 +454,9 @@ export function ProfileImageReorder({
 
   if (!images || images.length === 0) {
     return (
-      <div className="text-center py-6 text-gray-500">No images to display</div>
+      <div className="text-center py-6 text-neutral-500">
+        No images to display
+      </div>
     );
   }
 
@@ -597,7 +599,9 @@ export function ProfileImageReorder({
       {isReordering && (
         <div className="flex items-center gap-2">
           <LoadingSpinner size={20} />
-          <span className="text-sm text-gray-600">Updating image order...</span>
+          <span className="text-sm text-neutral-600">
+            Updating image order...
+          </span>
         </div>
       )}
       {error && (

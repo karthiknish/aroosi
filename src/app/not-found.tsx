@@ -8,10 +8,10 @@ export default function NotFound() {
 
       <div className="text-center relative z-10">
         <div className="text-7xl font-extrabold text-pink-600 mb-4">404</div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+        <h1 className="text-3xl font-bold text-neutral-800 mb-2">
           Page Not Found
         </h1>
-        <p className="text-lg text-gray-600 mb-6">
+        <p className="text-lg text-neutral-600 mb-6">
           Sorry, we couldn&apos;t find the page you&apos;re looking for.
         </p>
         <Link href="/">

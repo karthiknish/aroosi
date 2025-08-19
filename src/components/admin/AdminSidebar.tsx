@@ -74,18 +74,18 @@ export function AdminSidebar({
       isActive: currentPath.startsWith("/admin/icebreakers"),
     },
     {
-      id: "notifications",
-      label: "Notifications",
-      icon: Mail,
+      id: "push",
+      label: "Push Notifications",
+      icon: BarChart3, // Use Bell icon if available, fallback to BarChart3
       href: "/admin/push-notification",
-      isActive: currentPath.startsWith("/admin/push-notification"),
+      isActive: currentPath === "/admin/push-notification",
     },
     {
-      id: "devices",
-      label: "Devices",
+      id: "email",
+      label: "Email Notifications",
       icon: Mail,
       href: "/admin/push-notification/devices",
-      isActive: currentPath.startsWith("/admin/push-notification/devices"),
+      isActive: currentPath === "/admin/push-notification/devices",
     },
   ];
 

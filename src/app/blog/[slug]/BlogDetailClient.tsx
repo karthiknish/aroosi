@@ -225,10 +225,10 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
                 <h3 className="font-medium group-hover:text-pink-600 line-clamp-2 mb-1 font-serif">
                   {r.title}
                 </h3>
-                <p className="text-sm text-gray-600 line-clamp-3 mb-2">
+                <p className="text-sm text-neutral-600 line-clamp-3 mb-2">
                   {r.excerpt}
                 </p>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-neutral-500">
                   {r.createdAt
                     ? new Date(r.createdAt).toLocaleDateString()
                     : ""}

@@ -83,7 +83,9 @@ export const FormField: React.FC<FormFieldProps> = ({
         className="mt-1"
       />
     )}
-    {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+    {description && (
+      <p className="text-xs text-neutral-500 mt-1">{description}</p>
+    )}
     {form.formState.errors[name] && (
       <p className="text-sm text-red-600 mt-1">
         {form.formState.errors[name]?.message as string}
@@ -260,7 +262,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
                       "w-full justify-start text-left font-normal mt-1 data-[empty=true]:text-muted-foreground",
                       !selectedDate && "text-muted-foreground",
                       errors[name] &&
-                        "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500",
+                        "ring-1 ring-pink-500 border-pink-500 focus-visible:ring-pink-500"
                     )}
                     disabled={form.formState.isSubmitting}
                   >
@@ -305,7 +307,7 @@ export const FormDateField: React.FC<FormDateFieldProps> = ({
         />
       </div>
       {description && (
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
+        <p className="text-xs text-neutral-500 mt-1">{description}</p>
       )}
       {errors[name] && (
         <p className="text-sm text-red-600 mt-1">

@@ -92,13 +92,15 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
   className = "",
 }) => {
   const displayValue = value == null || value === "" ? "-" : String(value);
-  const textClass = isSubtle ? "text-sm text-gray-500" : "text-md text-neutral";
+  const textClass = isSubtle
+    ? "text-sm text-neutral-500"
+    : "text-md text-neutral";
 
   return (
     <div
-      className={`py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-gray-100 last:border-b-0 ${className}`}
+      className={`py-3 sm:grid sm:grid-cols-3 sm:gap-6 border-b border-neutral-100 last:border-b-0 ${className}`}
     >
-      <dt className="text-sm font-medium text-gray-500 flex items-center gap-2">
+      <dt className="text-sm font-medium text-neutral-500 flex items-center gap-2">
         {icon}
         {label}
       </dt>
@@ -125,7 +127,7 @@ const DisplaySection: React.FC<DisplaySectionProps> = ({
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-gray-100" : ""} ${
+      className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-neutral-100" : ""} ${
       fullWidth ? "w-full" : ""
     } first:border-t-0 first:pt-0 ${className}`}
   >
@@ -408,15 +410,15 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </div>
                     ) : (
                       <div className="w-full">
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-white/60">
+                        <div className="border-2 border-dashed border-neutral-300 rounded-xl p-6 text-center bg-white/60">
                           <div className="flex flex-col items-center gap-2">
-                            <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                              <Camera className="h-6 w-6 text-gray-400" />
+                            <div className="h-12 w-12 rounded-full bg-neutral-100 flex items-center justify-center">
+                              <Camera className="h-6 w-6 text-neutral-400" />
                             </div>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-neutral-600">
                               You haven’t added any photos yet
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-neutral-500">
                               Add 2–6 clear photos to get more matches
                             </p>
                             <div className="flex gap-2 mt-2">
@@ -814,12 +816,12 @@ const ProfileView: FC<ProfileViewProps> = ({
                 <DialogTitle className="text-xl font-semibold text-red-700">
                   Delete your profile?
                 </DialogTitle>
-                <p className="text-sm text-gray-600 leading-relaxed">
+                <p className="text-sm text-neutral-600 leading-relaxed">
                   This will permanently remove your profile, photos, matches,
                   messages and preferences. You will not be able to recover this
                   data once deleted.
                 </p>
-                <ul className="mt-2 list-disc list-inside text-xs text-gray-500 space-y-1">
+                <ul className="mt-2 list-disc list-inside text-xs text-neutral-500 space-y-1">
                   <li>Photos & messages are permanently erased</li>
                   <li>Conversations & matches will be lost</li>
                   <li>
@@ -834,7 +836,7 @@ const ProfileView: FC<ProfileViewProps> = ({
               </div>
             </div>
           </div>
-          <div className="px-6 pb-6 pt-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
+          <div className="px-6 pb-6 pt-4 bg-neutral-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}

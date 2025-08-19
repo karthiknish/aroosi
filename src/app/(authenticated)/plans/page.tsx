@@ -174,7 +174,6 @@ export default function ManagePlansPage() {
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
-                        strokeLinecap="round"
                         strokeLinejoin="round"
                       >
                         <path d="M20 6L9 17l-5-5" />
@@ -332,7 +331,7 @@ export default function ManagePlansPage() {
                                 currency: (plan as any).currency || "GBP",
                               }).format(Number((plan as any).price || 0) / 100)}
                         </span>
-                        <span className="text-gray-500 ml-1">/ month</span>
+                        <span className="text-neutral-500 ml-1">/ month</span>
                       </div>
 
                       {plan.id !== "free" && (
@@ -355,7 +354,7 @@ export default function ManagePlansPage() {
                                     : "text-amber-500"
                               }`}
                             />
-                            <span className="text-sm text-gray-700">
+                            <span className="text-sm text-neutral-700">
                               {feature}
                             </span>
                           </li>
@@ -441,11 +440,11 @@ export default function ManagePlansPage() {
           ) : null}
           {/* Footer info */}
           <div className="text-center mt-16 space-y-4">
-            <p className="text-gray-600">
+            <p className="text-neutral-600">
               All plans include secure payment processing and can be cancelled
               anytime.
             </p>
-            <div className="flex justify-center space-x-8 text-sm text-gray-500">
+            <div className="flex justify-center space-x-8 text-sm text-neutral-500">
               <span>💳 Secure payments with Stripe</span>
               <span>🔒 Cancel anytime</span>
               <span>📧 Email support included</span>

@@ -307,7 +307,7 @@ export default function AdminProfilePage() {
       {/* Empty-state or Grid */}
       {filteredProfiles.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center gap-4 py-8">
-          <div className="text-gray-500">
+          <div className="text-neutral-500">
             No profiles match your search/filter.
           </div>
           {!loading && (
@@ -339,7 +339,7 @@ export default function AdminProfilePage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <UserX className="w-10 h-10 text-gray-300" />
+                  <UserX className="w-10 h-10 text-neutral-300" />
                 )}
               </div>
 
@@ -351,7 +351,7 @@ export default function AdminProfilePage() {
                 <div className="text-sm text-muted-foreground truncate">
                   {profile.city}
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-neutral-400">
                   Age: {getAge(profile.dateOfBirth)}
                 </div>
               </div>
@@ -409,7 +409,7 @@ export default function AdminProfilePage() {
                   router.push(`/admin/profile/edit?id=${profile._id}`)
                 }
               >
-                <Pencil className="w-5 h-5 text-gray-600" />
+                <Pencil className="w-5 h-5 text-neutral-600" />
               </button>
             </div>
           ))}
@@ -447,11 +447,11 @@ export default function AdminProfilePage() {
                   <DialogTitle className="text-xl font-semibold text-red-700">
                     Delete profile?
                   </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+                  <DialogDescription className="text-sm text-neutral-600 leading-relaxed">
                     This will permanently remove the user profile, their photos,
                     matches and messages. This action cannot be undone.
                   </DialogDescription>
-                  <ul className="mt-2 list-disc list-inside text-xs text-gray-500 space-y-1">
+                  <ul className="mt-2 list-disc list-inside text-xs text-neutral-500 space-y-1">
                     <li>User data & content removed</li>
                     <li>Cannot be restored later</li>
                     <li>Use ban instead if you may reverse later</li>

@@ -205,7 +205,7 @@ export default function SubscriptionPage() {
           >
             Subscription Management
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
             Unlock premium features and find your perfect match faster
           </p>
         </motion.div>
@@ -307,7 +307,7 @@ export default function SubscriptionPage() {
             transition={{ delay: 0.2 }}
             className="space-y-6 order-1 xl:order-2 xl:sticky xl:top-6 self-start"
           >
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            <h2 className="text-2xl font-bold text-neutral-800 mb-4">
               Available Plans
             </h2>
 
@@ -351,18 +351,18 @@ export default function SubscriptionPage() {
                           >
                             <Icon className="h-8 w-8 text-white" />
                           </div>
-                          <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                          <h3 className="text-2xl font-bold text-neutral-800 mb-2">
                             {plan.name}
                           </h3>
                           <div className="flex items-baseline justify-center gap-1 mb-2">
                             <span className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
                               {plan.price}
                             </span>
-                            <span className="text-gray-500 text-sm">
+                            <span className="text-neutral-500 text-sm">
                               /{plan.billing}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-neutral-600">
                             {plan.description}
                           </p>
                         </div>
@@ -378,7 +378,7 @@ export default function SubscriptionPage() {
                                 <div className="flex-shrink-0 mt-0.5">
                                   <FeatureIcon className="h-4 w-4 text-pink-500" />
                                 </div>
-                                <span className="text-gray-700">
+                                <span className="text-neutral-700">
                                   {feature.text}
                                 </span>
                               </li>
@@ -426,32 +426,32 @@ export default function SubscriptionPage() {
             >
               <Card className="bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 border-0 shadow-lg">
                 <CardContent className="p-6">
-                  <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
+                  <h3 className="font-bold text-lg mb-4 text-neutral-800 flex items-center gap-2">
                     <Heart className="h-5 w-5 text-pink-500" />
                     Why Upgrade?
                   </h3>
                   <ul className="space-y-3 text-sm">
                     <li className="flex items-start gap-3">
                       <MessageCircle className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
+                      <span className="text-neutral-700">
                         Connect with unlimited matches through messaging
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
                       <Search className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
+                      <span className="text-neutral-700">
                         Find your perfect match with advanced filters
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
                       <Rocket className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
+                      <span className="text-neutral-700">
                         Boost your profile to get 10x more visibility
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
                       <Eye className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">
+                      <span className="text-neutral-700">
                         Know who&apos;s interested with profile view tracking
                       </span>
                     </li>

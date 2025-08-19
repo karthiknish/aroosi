@@ -126,7 +126,7 @@ function ResetPasswordInner() {
           transition={{ duration: 0.3 }}
           className="bg-white/90 rounded-2xl shadow-xl p-8"
         >
-          <div className="mb-4 text-sm text-gray-600">
+          <div className="mb-4 text-sm text-neutral-600">
             Enter the reset code from your email, then choose a new password.
           </div>
           {success && (
@@ -143,7 +143,7 @@ function ResetPasswordInner() {
           <div className="mb-4">
             <label
               htmlFor="code"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-neutral-700 mb-1"
             >
               Reset Code
             </label>
@@ -159,7 +159,7 @@ function ResetPasswordInner() {
           <div className="mb-4">
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-neutral-700 mb-1"
             >
               New Password
             </label>
@@ -176,7 +176,7 @@ function ResetPasswordInner() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
                 onClick={() => setShowPwd((v) => !v)}
                 aria-label={showPwd ? "Hide password" : "Show password"}
               >
@@ -192,7 +192,7 @@ function ResetPasswordInner() {
           <div className="mb-6">
             <label
               htmlFor="confirm"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-neutral-700 mb-1"
             >
               Confirm New Password
             </label>
@@ -209,7 +209,7 @@ function ResetPasswordInner() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
                 onClick={() => setShowConf((v) => !v)}
                 aria-label={
                   showConf ? "Hide confirm password" : "Show confirm password"

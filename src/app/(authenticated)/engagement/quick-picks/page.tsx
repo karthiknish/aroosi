@@ -156,8 +156,8 @@ export default function QuickPicksPage() {
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-3">
-          <div className="text-sm text-gray-600">Daily Quick Picks</div>
-          <div className="text-xs text-gray-500">
+          <div className="text-sm text-neutral-600">Daily Quick Picks</div>
+          <div className="text-xs text-neutral-500">
             {Math.min(index + 1, userIds.length)} / {userIds.length} shown •
             Limit {dailyLimit} ({subscription?.plan || "free"})
           </div>
@@ -217,7 +217,7 @@ export default function QuickPicksPage() {
                         {p.fullName || "Member"}
                       </Link>
                     </div>
-                    <div className="text-xs text-gray-600">
+                    <div className="text-xs text-neutral-600">
                       {(p as any).city || ""}
                     </div>
                     {Array.isArray(iceQs) && iceQs.length > 0 && (
@@ -251,7 +251,7 @@ export default function QuickPicksPage() {
         </div>
 
         {userIds.length === 0 && (
-          <div className="text-sm text-gray-700 text-center mt-4">
+          <div className="text-sm text-neutral-700 text-center mt-4">
             You&apos;re all caught up!
           </div>
         )}

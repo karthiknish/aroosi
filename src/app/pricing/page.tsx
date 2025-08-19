@@ -274,11 +274,11 @@ export default function PricingPage() {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent leading-tight font-serif">
               Simple, Transparent Pricing
             </h1>
-            <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl text-neutral-600 mb-8 max-w-3xl mx-auto leading-relaxed">
               Choose the perfect plan for your journey to finding love. Start
               with our free plan or unlock premium features with a 30-day trial.
             </p>
-            <div className="flex justify-center space-x-8 text-sm text-gray-500 mb-8">
+            <div className="flex justify-center space-x-8 text-sm text-neutral-500 mb-8">
               <span className="flex items-center gap-1">
                 <Check className="w-4 h-4 text-green-500" />
                 30-day free trial
@@ -457,7 +457,7 @@ export default function PricingPage() {
 
           {/* Indicative pricing note for SEO and expectations */}
           <div className="max-w-6xl mx-auto px-4 -mt-12 mb-8">
-            <p className="text-xs text-gray-500 text-center">
+            <p className="text-xs text-neutral-500 text-center">
               Prices shown are indicative and may change. The Plans page
               reflects the latest live prices.
             </p>
@@ -471,10 +471,10 @@ export default function PricingPage() {
             className="mb-20"
           >
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4 text-gray-800 font-serif">
+              <h2 className="text-3xl font-bold mb-4 text-neutral-800 font-serif">
                 Compare All Features
               </h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <p className="text-neutral-600 max-w-2xl mx-auto">
                 See exactly what&apos;s included in each plan to find the
                 perfect fit for your needs.
               </p>
@@ -485,7 +485,7 @@ export default function PricingPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gradient-to-r from-pink-50 to-rose-50">
-                      <th className="py-6 px-6 text-left font-semibold text-gray-800 border-b border-gray-200">
+                      <th className="py-6 px-6 text-left font-semibold text-neutral-800 border-b border-gray-200">
                         Features
                       </th>
                       <th className="py-6 px-6 font-serif text-center font-semibold text-green-600 border-b border-gray-200 min-w-[120px] bg-green-50">
@@ -517,7 +517,7 @@ export default function PricingPage() {
                           ) : row.free === false ? (
                             <X className="w-5 h-5 text-gray-300 mx-auto" />
                           ) : (
-                            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="text-sm text-neutral-500 bg-gray-100 px-2 py-1 rounded-full">
                               {row.free}
                             </span>
                           )}
@@ -528,7 +528,7 @@ export default function PricingPage() {
                           ) : row.premium === false ? (
                             <X className="w-5 h-5 text-gray-300 mx-auto" />
                           ) : (
-                            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="text-sm text-neutral-500 bg-gray-100 px-2 py-1 rounded-full">
                               {row.premium}
                             </span>
                           )}
@@ -539,7 +539,7 @@ export default function PricingPage() {
                           ) : row.plus === false ? (
                             <X className="w-5 h-5 text-gray-300 mx-auto" />
                           ) : (
-                            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="text-sm text-neutral-500 bg-gray-100 px-2 py-1 rounded-full">
                               {row.plus}
                             </span>
                           )}
@@ -560,10 +560,10 @@ export default function PricingPage() {
             className="max-w-4xl mx-auto mb-20"
           >
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4 text-gray-800 font-serif">
+              <h2 className="text-3xl font-bold mb-4 text-neutral-800 font-serif">
                 Frequently Asked Questions
               </h2>
-              <p className="text-gray-600">
+              <p className="text-neutral-600">
                 Have questions? We&apos;ve got answers to help you choose the
                 right plan.
               </p>
@@ -578,13 +578,13 @@ export default function PricingPage() {
                   transition={{ duration: 0.4, delay: 0.7 + i * 0.1 }}
                   className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow"
                 >
-                  <div className="font-semibold text-gray-800 mb-3 flex items-start gap-2">
+                  <div className="font-semibold text-neutral-800 mb-3 flex items-start gap-2">
                     <div className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-pink-600 text-sm font-bold">?</span>
                     </div>
                     {faq.q}
                   </div>
-                  <div className="text-gray-600 leading-relaxed pl-8">
+                  <div className="text-neutral-600 leading-relaxed pl-8">
                     {faq.a}
                   </div>
                 </motion.div>

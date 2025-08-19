@@ -131,12 +131,12 @@ export function ProfileCreationModal({
             </DialogTitle>
             <DialogTitle
               aria-hidden="true"
-              className="text-2xl font-bold text-gray-900"
+              className="text-2xl font-bold text-neutral-900"
             >
               Find Your Perfect Match
             </DialogTitle>
             {step < 5 && (
-              <p id="profile-modal-desc" className="text-gray-600 mt-2">
+              <p id="profile-modal-desc" className="text-neutral-600 mt-2">
                 Join thousands of Afghan singles finding love
               </p>
             )}
