@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       "checkout.session.completed",
       "customer.subscription.deleted",
       "customer.subscription.updated",
+      "customer.subscription.created",
       "invoice.paid",
     ]);
     const sig = req.headers.get("stripe-signature");
@@ -542,6 +543,79 @@ export async function POST(req: NextRequest) {
           console.error("Stripe subscription.updated Firestore sync failed", {
             correlationId,
             subscriptionId: sub.id,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+        break;
+      }
+      case "customer.subscription.created": {
+        const sub = event.data.object as Stripe.Subscription;
+        if (!sub || !sub.id) {
+          console.warn("Stripe webhook invalid subscription.created object", {
+            scope: "stripe.webhook",
+            type: "validation_error",
+            correlationId,
+          });
+          break;
+        }
+        try {
+          // Derive planId similar to subscription.updated handler
+          const planPrice = sub.items?.data?.[0]?.price;
+          const planNickname = (
+            planPrice?.nickname ||
+            planPrice?.id ||
+            ""
+          ).toLowerCase();
+          let planId: "premium" | "premiumPlus" | undefined;
+          if (/(premium_plus|premium\+|plus)/.test(planNickname))
+            planId = "premiumPlus";
+          else if (/premium/.test(planNickname)) planId = "premium";
+          if (
+            sub.metadata?.planId &&
+            ["premium", "premiumPlus"].includes(sub.metadata.planId)
+          ) {
+            planId = sub.metadata.planId as any;
+          }
+          const email = (sub.metadata?.email || sub.metadata?.userEmail) as
+            | string
+            | undefined;
+          if (!email) {
+            console.warn("Stripe subscription.created missing email metadata", {
+              subscriptionId: sub.id,
+              correlationId,
+            });
+          }
+          if (email && planId) {
+            const snap = await db
+              .collection(COLLECTIONS.USERS)
+              .where("email", "==", email.toLowerCase())
+              .limit(1)
+              .get();
+            if (!snap.empty) {
+              await snap.docs[0].ref.set(
+                {
+                  subscriptionPlan: planId,
+                  subscriptionExpiresAt: sub.current_period_end
+                    ? sub.current_period_end * 1000
+                    : null,
+                  stripeSubscriptionId: sub.id,
+                  stripeCustomerId:
+                    typeof sub.customer === "string" ? sub.customer : undefined,
+                  updatedAt: Date.now(),
+                },
+                { merge: true }
+              );
+              console.info("Stripe subscription.created synced", {
+                correlationId,
+                subscriptionId: sub.id,
+                planId,
+              });
+            }
+          }
+          await markProcessed(event.id, event.type);
+        } catch (e) {
+          console.error("Stripe subscription.created Firestore sync failed", {
+            correlationId,
             error: e instanceof Error ? e.message : String(e),
           });
         }

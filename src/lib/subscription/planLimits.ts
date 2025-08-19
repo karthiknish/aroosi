@@ -65,14 +65,11 @@ export const PLAN_LIMITS: PlanLimits = {
 };
 
 export function normalisePlan(plan: string | undefined | null): string {
-  if (!plan) return 'free';
+  if (!plan) return "free";
   const p = plan.trim().toLowerCase();
-  if (p === "premium_plus" || p === "premiumplus") return "premiumPlus";
-  if (p === "premiumplus") return "premiumPlus";
   if (p === "premium") return "premium";
-  if (p === "premiumplus") return "premiumPlus";
-  // If already exact key match (free, premium, premiumplus alias handled) return original canonical keys
-  if (p === "premiumplus") return "premiumPlus";
+  if (p === "premium_plus" || p === "premiumplus") return "premiumPlus";
+  // canonical keys already: free, premiumplus (alias), premium, premiumplus->premiumPlus handled
   return p;
 }
 

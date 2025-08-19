@@ -72,8 +72,8 @@ export default function MyShortlistsPage() {
   const onSaveNote = async (userId: string) => {
     try {
       const text = notes[userId] || "";
-      const res = await setNote(userId, text);
-      if (res.success) showSuccessToast("Note saved");
+  const ok = await setNote(userId, text);
+  if (ok) showSuccessToast("Note saved");
     } catch (e: any) {
       showErrorToast(e?.message ?? "Failed to save note");
     }

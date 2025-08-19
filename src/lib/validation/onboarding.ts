@@ -120,13 +120,16 @@ export const EnhancedValidationSchemas = {
       .refine(
         (text) => {
           if (!text) return false;
-          // Normalize non-breaking spaces and other odd whitespace, trim,
-          // split on any sequence of whitespace, then filter empty tokens.
+          // Normalize whitespace (including NBSP) & trim
           const normalized = String(text)
             .replace(/\u00A0/g, " ")
             .trim();
-          const words = normalized.split(/\s+/).filter(Boolean);
-          return words.length >= 10;
+          // Split on whitespace then strip leading/trailing punctuation from each token
+          const tokens = normalized
+            .split(/\s+/)
+            .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
+            .filter((w) => w.length > 0);
+          return tokens.length >= 10;
         },
         {
           message: "About me must contain at least 10 words",

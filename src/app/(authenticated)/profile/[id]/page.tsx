@@ -908,7 +908,9 @@ export default function ProfileDetailPage() {
                 <AnimatePresence>
                   {!isOwnProfile &&
                     canInteract &&
-                    interestStatusData?.status !== "mutual" &&
+                    !["mutual", "accepted"].includes(
+                      interestStatusData?.status || ""
+                    ) &&
                     (interestLoading ? (
                       <div className="flex items-center justify-center">
                         <Skeleton className="w-16 h-16 rounded-full" />
@@ -999,8 +1001,9 @@ export default function ProfileDetailPage() {
                     ))}
                 </AnimatePresence>
                 {canInteract &&
-                  (interestStatusData?.status === "mutual" ||
-                    interestStatusData?.status === "accepted") && (
+                  ["mutual", "accepted"].includes(
+                    interestStatusData?.status || ""
+                  ) && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-full shadow font-semibold">
                       <svg
                         className="w-5 h-5"

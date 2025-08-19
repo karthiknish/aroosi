@@ -22,30 +22,51 @@ import {
 } from "@/lib/utils/stripeUtil";
 import { DEFAULT_PLANS } from "@/lib/constants/plans";
 import React, { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 
 type PlanId = "free" | "premium" | "premiumPlus" | string;
 
 export default function ManagePlansPage() {
   const { profile, refreshUser } = useAuthContext();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState<string | null>(null);
   const [plans, setPlans] = useState<NormalizedPlan[] | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const currentPlan = ((profile as { subscriptionPlan?: string })
     ?.subscriptionPlan || "free") as PlanId;
   // If redirected back from checkout success, proactively refresh profile
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
-      if (url.searchParams.get("checkout") === "success") {
+      const wasSuccess = url.searchParams.get("checkout") === "success";
+      if (wasSuccess) {
+        setCheckoutSuccess(true);
         // Kick off a background refresh of the user profile to pull new plan
         refreshUser?.();
-        // Also call server-side reconciliation endpoint as a fallback if needed
         void refreshSubscription();
+        // Force immediate revalidation of subscription queries (status & usage)
+        queryClient
+          .invalidateQueries({ queryKey: ["subscription", "status"] })
+          .catch(() => {});
+        queryClient
+          .invalidateQueries({ queryKey: ["subscription", "usage"] })
+          .catch(() => {});
+        showSuccessToast("Subscription upgraded successfully!");
+        // Strip the query param without a navigation
+        url.searchParams.delete("checkout");
+        window.history.replaceState(
+          {},
+          document.title,
+          url.pathname + url.search + url.hash
+        );
       }
-    } catch {}
-  }, [refreshUser]);
+    } catch {
+      /* ignore */
+    }
+  }, [refreshUser, queryClient]);
 
   // Derived flags
   const hasAnyPaidPlan = useMemo(() => isPremium(currentPlan), [currentPlan]);
@@ -142,6 +163,36 @@ export default function ManagePlansPage() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-20">
+            {checkoutSuccess && (
+              <div className="mb-6 max-w-xl mx-auto">
+                <div className="relative overflow-hidden rounded-xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5">
+                      <svg
+                        className="w-5 h-5 text-green-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-green-700">
+                        Subscription updated
+                      </p>
+                      <p className="text-sm text-green-700/80">
+                        Your premium features will unlock shortly. Enjoy your
+                        new plan!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <h1
               className="text-4xl font-serif sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent"
               style={{ lineHeight: "1.7" }}

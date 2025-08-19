@@ -80,7 +80,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
 
   const config = getPlanConfig();
   const isExpiringSoon = status.daysRemaining > 0 && status.daysRemaining <= 7;
-  const isTrial = Boolean(status.isTrial);
+    const isTrial = false; // trials currently disabled server-side
 
   if (compact) {
     return (
@@ -91,14 +91,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
           <Badge className={`${config.color} text-white text-xs`}>
             {config.name}
           </Badge>
-          {isTrial && (
-            <Badge
-              variant="outline"
-              className="text-emerald-600 border-emerald-600 text-xs"
-            >
-              Trial
-            </Badge>
-          )}
+            {/* Trial badge removed (trials disabled) */}
           {/* Spotlight badge presence is not part of SubscriptionStatusResponse; show for Plus by convention */}
           {status.plan === "premiumPlus" && (
             <Badge
@@ -108,17 +101,11 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
               ✨
             </Badge>
           )}
-          {isTrial ? (
-            <span className="text-xs text-emerald-600 font-medium">
-              Trial ends in {status.trialDaysRemaining ?? 0} days
-            </span>
-          ) : (
-            isExpiringSoon && (
+            {isExpiringSoon && (
               <span className="text-xs text-yellow-600 font-medium">
                 Expires in {status.daysRemaining} days
               </span>
-            )
-          )}
+            )}
         </div>
 
         <Button
