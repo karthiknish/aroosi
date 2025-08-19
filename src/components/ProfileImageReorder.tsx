@@ -394,9 +394,13 @@ export function ProfileImageReorder({
           return;
         }
 
-        await updateImageOrder({ userId, imageIds: storageIds });
-
-        showSuccessToast("Image order updated successfully");
+        const result = await updateImageOrder({ userId, imageIds: storageIds });
+        showSuccessToast("Photos reordered");
+        if (result?.correlationId) {
+          try {
+            (window as any).__lastImageOrderCid = result.correlationId;
+          } catch {}
+        }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to update image order";
@@ -518,11 +522,17 @@ export function ProfileImageReorder({
                               const newOrderIds = reordered.map((im) =>
                                 im.storageId ? im.storageId : String(im.id)
                               );
-                              await updateImageOrder({
+                              const resp = await updateImageOrder({
                                 userId,
                                 imageIds: newOrderIds,
                               });
-                              showSuccessToast("Set as main");
+                              showSuccessToast("Main photo updated");
+                              if (resp?.correlationId) {
+                                try {
+                                  (window as any).__lastImageOrderCid =
+                                    resp.correlationId;
+                                } catch {}
+                              }
                             } catch (e) {
                               const msg =
                                 e instanceof Error

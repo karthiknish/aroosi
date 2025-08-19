@@ -252,104 +252,125 @@ const ProfileView: FC<ProfileViewProps> = ({
       ></div>
       <div className="max-w-4xl mx-auto relative z-10">
         <Card className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-          <CardHeader className="border-b pb-4 flex flex-row items-center justify-between gap-2">
-            <div>
-              <p className="text-2xl text-neutral font-semibold tracking-tight mb-1">
+          <CardHeader className="border-b pb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-2xl text-neutral font-semibold tracking-tight mb-1 flex items-center gap-2">
                 My profile
+                {isPremium(plan) && (
+                  <BadgeCheck className="w-5 h-5 text-[#BFA67A]" />
+                )}
               </p>
               <CardDescription className="text-neutral-light text-sm">
                 View and manage your information
               </CardDescription>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {isPremiumPlus(plan) ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-amber-700 border-amber-400"
-                  onClick={async () => {
-                    try {
-                      const boosted =
-                        !!profileData.boostedUntil &&
-                        (profileData.boostedUntil as number) > Date.now();
-                      if (boosted) {
-                        router.push("/premium-settings");
-                        return;
-                      }
-                      const result = await boostProfile(currentUserId);
+            <div className="w-full lg:w-auto flex flex-wrap items-stretch gap-2">
+              {/* Primary actions cluster */}
+              <div className="flex flex-1 lg:flex-none flex-wrap gap-2">
+                {isPremiumPlus(plan) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-amber-700 border-amber-400"
+                    onClick={async () => {
                       try {
-                        const { showSuccessToast, showErrorToast } =
-                          await import("@/lib/ui/toast");
-                        if (result.success) {
-                          showSuccessToast(
-                            `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
-                          );
-                        } else {
-                          showErrorToast(result.message || "Boost failed");
+                        const boosted =
+                          !!profileData.boostedUntil &&
+                          (profileData.boostedUntil as number) > Date.now();
+                        if (boosted) {
+                          router.push("/premium-settings");
+                          return;
                         }
-                      } catch {}
-                      // Refresh to reflect boosted state ribbon/badges
-                      router.refresh?.();
-                    } catch (e) {
-                      try {
-                        const { showErrorToast } = await import(
-                          "@/lib/ui/toast"
-                        );
-                        showErrorToast(e as Error, "Boost failed");
-                      } catch {
-                        console.warn("Boost failed", e);
+                        const result = await boostProfile(currentUserId);
+                        try {
+                          const { showSuccessToast, showErrorToast } =
+                            await import("@/lib/ui/toast");
+                          if (result.success) {
+                            showSuccessToast(
+                              `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
+                            );
+                          } else {
+                            showErrorToast(result.message || "Boost failed");
+                          }
+                        } catch {}
+                        // Refresh to reflect boosted state ribbon/badges
+                        router.refresh?.();
+                      } catch (e) {
+                        try {
+                          const { showErrorToast } = await import(
+                            "@/lib/ui/toast"
+                          );
+                          showErrorToast(e as Error, "Boost failed");
+                        } catch {
+                          console.warn("Boost failed", e);
+                        }
+                        // Quota/rate-limits or any error -> send user to settings for context
+                        router.push("/premium-settings");
                       }
-                      // Quota/rate-limits or any error -> send user to settings for context
-                      router.push("/premium-settings");
-                    }
-                  }}
-                  title="Profile Boost is available on Premium Plus."
-                >
-                  Boost Profile
-                </Button>
-              ) : (
+                    }}
+                    title="Profile Boost is available on Premium Plus."
+                  >
+                    Boost Profile
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-amber-700 border-amber-400"
+                    onClick={() => router.push("/subscription")}
+                    title="Upgrade to Premium Plus to boost your profile"
+                  >
+                    Upgrade to Premium Plus to boost
+                  </Button>
+                )}
                 <Button
-                  size="sm"
+                  onClick={() => {
+                    refreshProfileLocalStorage();
+                    router.push("/profile/edit");
+                  }}
                   variant="outline"
-                  className="text-amber-700 border-amber-400"
-                  onClick={() => router.push("/subscription")}
-                  title="Upgrade to Premium Plus to boost your profile"
+                  size="sm"
+                  className="border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700 flex items-center gap-1.5 rounded-full px-4"
+                  title="Edit Profile Details"
                 >
-                  Upgrade to Premium Plus to boost
+                  <Edit3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Edit Profile</span>
                 </Button>
-              )}
-              <Button
-                onClick={() => {
-                  refreshProfileLocalStorage();
-                  router.push("/profile/edit");
-                }}
-                variant="outline"
-                className="border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700"
-              >
-                <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
-              </Button>
-              <Button
-                onClick={() => router.push("/profile/edit/images")}
-                variant="outline"
-                className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-              >
-                <Camera className="mr-2 h-4 w-4" /> Edit Photos
-              </Button>
-              <Button
-                onClick={() => router.push("/usage")}
-                variant="outline"
-                className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
-              >
-                <BarChart className="mr-2 h-4 w-4" /> Usage
-              </Button>
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => setShowDeleteDialog(true)}
-                variant="destructive"
-                disabled={deleteLoading}
-              >
-                Delete Profile
-              </Button>
+                <Button
+                  onClick={() => router.push("/profile/edit/images")}
+                  variant="outline"
+                  size="sm"
+                  className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-1.5 rounded-full px-4"
+                  title="Manage Photos"
+                >
+                  <Camera className="h-4 w-4" />
+                  <span className="hidden sm:inline">Photos</span>
+                </Button>
+                <Button
+                  onClick={() => router.push("/usage")}
+                  variant="outline"
+                  size="sm"
+                  className="border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700 flex items-center gap-1.5 rounded-full px-4"
+                  title="Usage Analytics"
+                >
+                  <BarChart className="h-4 w-4" />
+                  <span className="hidden sm:inline">Usage</span>
+                </Button>
+              </div>
+              {/* Destructive / secondary cluster */}
+              <div className="flex gap-2">
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white rounded-full px-4"
+                  onClick={() => setShowDeleteDialog(true)}
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleteLoading}
+                  title="Delete Profile"
+                >
+                  <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Del</span>
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-6 sm:p-8">

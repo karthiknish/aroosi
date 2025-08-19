@@ -18,14 +18,20 @@ export async function updateImageOrder(args: {
   profileId?: string;
   userId?: string; // backward-compat: will be mapped to profileId
   imageIds: string[];
-}): Promise<{ ok: true }> {
-  // POST new order to server using canonical payload { profileId, imageIds }
+  skipUrlReorder?: boolean;
+  rebuildUrls?: boolean;
+}): Promise<{ ok: true; correlationId?: string }> {
   const profileId = args.profileId || args.userId;
-  await postJson("/api/profile-images/order", {
+  const res = await postJson<{
+    success?: boolean;
+    correlationId?: string;
+  }>("/api/profile-images/order", {
     profileId,
     imageIds: args.imageIds,
+    skipUrlReorder: args.skipUrlReorder,
+    rebuildUrls: args.rebuildUrls,
   });
-  return { ok: true };
+  return { ok: true, correlationId: res?.correlationId };
 }
 
 // Provide an object wrapper to ease spying in tests without redefining the function

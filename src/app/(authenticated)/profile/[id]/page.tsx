@@ -432,8 +432,7 @@ export default function ProfileDetailPage() {
                     initial="hidden"
                     animate="visible"
                     exit="exit"
-                    className="relative w-full"
-                    style={{ aspectRatio: "1 / 1" }}
+                    className="relative w-full aspect-[4/5] md:aspect-[4/3] md:max-h-[520px] overflow-hidden"
                   >
                     {/* Left Arrow */}
                     {imagesToShow.length > 1 && (
@@ -457,7 +456,7 @@ export default function ProfileDetailPage() {
                           : "Profile"
                       }
                       fill
-                      className="object-cover object-center"
+                      className="object-cover object-center select-none"
                       priority
                       sizes="(max-width: 768px) 100vw, 768px"
                       onError={(
@@ -469,6 +468,95 @@ export default function ProfileDetailPage() {
                         }
                       }}
                     />
+                    {/* Mobile overlay (Tinder-style) */}
+                    <div className="md:hidden absolute inset-x-0 bottom-0 pt-24 pb-5 px-4 bg-gradient-to-t from-black/75 via-black/25 to-transparent flex flex-col gap-2 text-white">
+                      <div className="flex items-end justify-between">
+                        <div className="flex flex-col gap-1">
+                          <h1 className="text-2xl font-semibold drop-shadow flex items-center gap-2">
+                            {profile?.fullName || "-"}
+                            {compatData?.score != null && (
+                              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/90 text-white">
+                                {compatData.score}%
+                              </span>
+                            )}
+                          </h1>
+                          <div className="text-sm text-gray-100 flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              {profile?.city || "-"}
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {calculateAge(profile?.dateOfBirth || "") || "-"}
+                            </span>
+                          </div>
+                        </div>
+                        {!isOwnProfile && canInteract && (
+                          <motion.button
+                            key={
+                              alreadySentInterest
+                                ? "withdraw-mobile"
+                                : "express-mobile"
+                            }
+                            className={`flex items-center justify-center rounded-full w-14 h-14 shadow-lg border backdrop-blur bg-white/90 active:scale-95 transition ${
+                              alreadySentInterest
+                                ? "border-accent-200 text-primary"
+                                : "bg-primary text-white border-primary"
+                            }`}
+                            variants={buttonVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="hidden"
+                            whileTap="tap"
+                            onClick={() => {
+                              if (missingInteractionIds) return;
+                              handleToggleInterest();
+                            }}
+                            title={
+                              alreadySentInterest
+                                ? "Withdraw Interest"
+                                : "Express Interest"
+                            }
+                            aria-label={
+                              alreadySentInterest
+                                ? "Withdraw Interest"
+                                : "Express Interest"
+                            }
+                            disabled={
+                              loadingInterestStatus ||
+                              mutationPending ||
+                              missingInteractionIds
+                            }
+                          >
+                            {mutationPending ? (
+                              <svg
+                                className="w-6 h-6 animate-spin"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                  fill="none"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                />
+                              </svg>
+                            ) : alreadySentInterest ? (
+                              <HeartOff className="w-7 h-7 text-primary" />
+                            ) : (
+                              <Heart className="w-7 h-7" />
+                            )}
+                          </motion.button>
+                        )}
+                      </div>
+                    </div>
                     {/* Right Arrow */}
                     {imagesToShow.length > 1 && (
                       <button
@@ -493,8 +581,7 @@ export default function ProfileDetailPage() {
                     initial="hidden"
                     animate="visible"
                     exit="exit"
-                    className="w-full"
-                    style={{ aspectRatio: "1 / 1" }}
+                    className="w-full aspect-[4/5] md:aspect-[4/3] md:max-h-[520px]"
                   >
                     <div className="w-full h-full flex items-center justify-center bg-gray-100">
                       <Image
@@ -509,44 +596,23 @@ export default function ProfileDetailPage() {
                 )}
               </AnimatePresence>
             </CardHeader>
-            <CardContent className="p-10 font-nunito bg-transparent">
+            <CardContent className="p-6 md:p-10 font-nunito bg-transparent">
               {/* Mini photo strip */}
               {imagesToShow.length > 1 && (
-                <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="hidden md:flex items-center justify-center gap-2 mb-6">
                   {imagesToShow.map((url, i) => (
                     <button
                       key={`${url}-${i}`}
                       type="button"
-                      className={`w-12 h-12 rounded-md overflow-hidden border ${i === currentImageIdx ? "ring-2 ring-primary" : ""}`}
+                      className={`w-14 h-14 rounded-lg overflow-hidden border ${i === currentImageIdx ? "ring-2 ring-primary" : ""}`}
                       onClick={() => setCurrentImageIdx(i)}
                     >
                       <Image
                         src={url}
                         alt="thumb"
-                        width={48}
-                        height={48}
-                        className="w-12 h-12 object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Mini photo strip */}
-              {imagesToShow.length > 1 && (
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  {imagesToShow.map((url, i) => (
-                    <button
-                      key={`${url}-${i}`}
-                      type="button"
-                      className={`w-12 h-12 rounded-md overflow-hidden border ${i === currentImageIdx ? "ring-2 ring-primary" : ""}`}
-                      onClick={() => setCurrentImageIdx(i)}
-                    >
-                      <Image
-                        src={url}
-                        alt="thumb"
-                        width={48}
-                        height={48}
-                        className="w-12 h-12 object-cover"
+                        width={56}
+                        height={56}
+                        className="w-full h-full object-cover"
                       />
                     </button>
                   ))}
@@ -597,7 +663,7 @@ export default function ProfileDetailPage() {
                   y: 0,
                   transition: { delay: 0.15, duration: 0.5 },
                 }}
-                className="flex flex-col items-center mb-8"
+                className="hidden md:flex flex-col items-center mb-8"
               >
                 <div
                   className="flex items-center gap-2 text-4xl font-serif font-bold text-primary mb-1 flex-wrap"
@@ -904,7 +970,7 @@ export default function ProfileDetailPage() {
               {/* Icebreakers (own profile) */}
               {isOwnProfile && <IcebreakersPanel />}
 
-              <div className="flex justify-center gap-8 mt-8 mb-2 relative">
+              <div className="hidden md:flex justify-center gap-8 mt-8 mb-2 relative">
                 <AnimatePresence>
                   {!isOwnProfile &&
                     canInteract &&
