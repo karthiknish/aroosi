@@ -176,7 +176,6 @@ export default function ManagePlansPage() {
               </div>
             )}
           </div>
-
           {/* Plans Grid */}
           <div className="grid gap-8 lg:grid-cols-3 max-w-6xl mx-auto pt-6">
             {isFetching && (
@@ -388,40 +387,35 @@ export default function ManagePlansPage() {
                 </div>
               );
             })}
-          </div>;
-
-          {
-            /* Manage billing for paid users - single, deduped button below grid */
-          }
-          {
-            hasAnyPaidPlan ? (
-              <div className="max-w-6xl mx-auto pt-4">
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      // Use Subscription API helper which returns a typed { url }
-                      const mod = await import("@/lib/api/subscription");
-                      const { subscriptionAPI } = mod;
-                      const { url } = await subscriptionAPI.openBillingPortal();
-                      if (url) {
-                        window.location.assign(url);
-                      } else {
-                        showErrorToast("Unable to open billing portal");
-                      }
-                    } catch (e: any) {
-                      showErrorToast(
-                        e?.message || "Unable to open billing portal"
-                      );
+          </div>
+          ;
+          {/* Manage billing for paid users - single, deduped button below grid */}
+          {hasAnyPaidPlan ? (
+            <div className="max-w-6xl mx-auto pt-4">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    // Use Subscription API helper which returns a typed { url }
+                    const mod = await import("@/lib/api/subscription");
+                    const { subscriptionAPI } = mod;
+                    const { url } = await subscriptionAPI.openBillingPortal();
+                    if (url) {
+                      window.location.assign(url);
+                    } else {
+                      showErrorToast("Unable to open billing portal");
                     }
-                  }}
-                >
-                  Manage billing
-                </Button>
-              </div>
-            ) : null;
-          }
-
+                  } catch (e: any) {
+                    showErrorToast(
+                      e?.message || "Unable to open billing portal"
+                    );
+                  }
+                }}
+              >
+                Manage billing
+              </Button>
+            </div>
+          ) : null}
           {/* Footer info */}
           <div className="text-center mt-16 space-y-4">
             <p className="text-gray-600">

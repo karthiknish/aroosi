@@ -1,4 +1,5 @@
 import { postJson } from "@/lib/http/client";
+import { putJson } from "@/lib/http/client";
 // Firebase Storage migration helpers
 import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 import { auth, storage } from "@/lib/firebase";
@@ -173,6 +174,13 @@ export function uploadProfileImageWithProgressCancellable(
   const promise = uploadViaFirebaseStorage(file, onProgress, controller.signal);
   const cancel = () => controller.abort();
   return { promise, cancel };
+}
+
+/**
+ * Promote an image to be the main image (first in order) for the current user
+ */
+export async function setMainProfileImage(imageId: string): Promise<void> {
+  await putJson("/api/profile-images/main", { imageId });
 }
 
 // ------------------------------------------------------------

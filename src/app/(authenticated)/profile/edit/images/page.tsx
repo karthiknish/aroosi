@@ -21,6 +21,7 @@ import {
   updateImageOrder,
   uploadProfileImageWithProgressCancellable,
   deleteImageById,
+  setMainProfileImage,
 } from "@/lib/utils/imageUtil";
 import { DuplicateSession } from "@/lib/utils/imageUploadHelpers";
 
@@ -468,6 +469,17 @@ export default function EditProfileImagesPage() {
 
       // Metadata now saved server-side during upload; no-op here
 
+      // If there was no prior order, set main image using first persisted id
+      if (!Array.isArray(initialIds) || initialIds.length === 0) {
+        if (validEditedIds[0]) {
+          try {
+            await setMainProfileImage(validEditedIds[0]);
+          } catch (err) {
+            // non-fatal, will still try to update order below
+          }
+        }
+      }
+
       // Update order if changed
       if (hasOrderChange) {
         await updateImageOrder({
@@ -479,6 +491,7 @@ export default function EditProfileImagesPage() {
       await queryClient.invalidateQueries({
         queryKey: ["profileImages", profile._id],
       });
+      await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
       const hadErrors = Object.values(uploadStates).some(
         (s) => s.status === "error"
       );
