@@ -1,5 +1,28 @@
-// Basic blog sanitization helpers migrated from Convex utilities
-// NOTE: For rich HTML content, a more robust sanitizer (e.g. DOMPurify) should be applied server-side.
+// Blog sanitization helpers.
+// We now integrate DOMPurify server-side (with JSDOM) for strong XSS protection of rich HTML content.
+// Falls back to a light heuristic sanitizer if DOMPurify initialization fails for any reason.
+
+let domPurifyInstance: any | null = null;
+
+// Initialize once at module load (server-side only). Using top-level await keeps API synchronous for callers.
+if (typeof window === "undefined") {
+  try {
+    const [{ default: createDOMPurify }, { JSDOM }] = await Promise.all([
+      import("dompurify"),
+      import("jsdom"),
+    ]);
+    const { window: jsdomWindow } = new JSDOM("<div></div>");
+  // JSDOM's window isn't the full browser global; cast loosely for DOMPurify which accepts a WindowLike
+  domPurifyInstance = createDOMPurify(jsdomWindow as unknown as any);
+    domPurifyInstance.setConfig({ USE_PROFILES: { html: true } });
+  } catch {
+    domPurifyInstance = null; // Fallback heuristic will apply
+  }
+}
+
+function getDOMPurify() {
+  return domPurifyInstance;
+}
 
 const SLUG_MAX = 120;
 const TITLE_MAX = 300;
@@ -31,9 +54,33 @@ export function sanitizeBlogExcerpt(excerpt: string) {
 }
 
 export function sanitizeBlogContent(html: string) {
-  // Minimal sanitation: strip script/style tags. For production, integrate a full HTML sanitizer.
-  let out = String(html || "");
-  out = out.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
-  out = out.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-  return out.trim();
+  const dirty = String(html || "");
+  if (!dirty.trim()) return "";
+  const purifier = getDOMPurify();
+  let cleaned: string;
+  if (purifier) {
+    try {
+      cleaned = purifier.sanitize(dirty, {
+        // Allow common formatting but disallow style & iframe by default; we post-filter selective iframes.
+        FORBID_TAGS: ["style", "script"],
+        // Keep data attributes off to reduce attack surface
+        ALLOW_DATA_ATTR: false,
+      });
+    } catch {
+      cleaned = dirty; // fallback to heuristic path below
+    }
+  } else {
+    cleaned = dirty;
+  }
+  // Post-filter: remove iframes except trusted video providers (YouTube/Vimeo)
+  cleaned = cleaned.replace(
+    /<iframe[^>]*src=("|')(?!https?:\/\/(www\.)?(youtube\.com|youtu\.be|player\.vimeo\.com)\/)[^>]*>[\s\S]*?<\/iframe>/gi,
+    ""
+  );
+  // Remove inline event handlers & javascript: schemes as an extra defensive layer.
+  cleaned = cleaned.replace(/ on[a-z]+\s*=\s*("|')(?:[^"']*)("')/gi, "");
+  cleaned = cleaned.replace(/javascript:/gi, "");
+  // Trim extremely large base64 payloads
+  cleaned = cleaned.replace(/data:[^;]+;base64,[A-Za-z0-9+/=]{500,}/g, "");
+  return cleaned.trim();
 }

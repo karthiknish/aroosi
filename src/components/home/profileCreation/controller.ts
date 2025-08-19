@@ -594,6 +594,9 @@ export function useProfileCreationController(params: {
     handleBack,
     handleInputChange,
     handleProfileImagesChange,
+    // Expose submission state for UI overlays
+    isSubmitting,
+    hasSubmittedProfile,
   } as const;
 }
 

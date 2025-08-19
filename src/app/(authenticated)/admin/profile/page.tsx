@@ -70,7 +70,7 @@ export default function AdminProfilePage() {
   const [status, setStatus] = useState<"all" | "active" | "banned">("all");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
-  const [viewId, setViewId] = useState<string | null>(null);
+  // view modal removed; using dedicated route /admin/profile/[id]
   const router = useRouter();
 
   // Server-driven params (internal only; no UI controls yet)
@@ -377,7 +377,7 @@ export default function AdminProfilePage() {
                   size="icon"
                   variant="ghost"
                   title="View"
-                  onClick={() => setViewId(profile._id)}
+                  onClick={() => router.push(`/admin/profile/${profile._id}`)}
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
@@ -416,15 +416,7 @@ export default function AdminProfilePage() {
         </div>
       )}
 
-      {/* View Modal */}
-      {viewId && (
-        <Dialog open={!!viewId} onOpenChange={() => setViewId(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogTitle>Profile Details</DialogTitle>
-            {/* TODO: Add Profile details content or component here */}
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* View Modal removed in favor of dedicated /admin/profile/[id] page */}
 
       {/* Confirm Delete Dialog */}
       {confirmDeleteId && (
@@ -432,24 +424,55 @@ export default function AdminProfilePage() {
           open={!!confirmDeleteId}
           onOpenChange={() => setConfirmDeleteId(null)}
         >
-          <DialogContent>
-            <DialogTitle>Delete Profile</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this profile? This action cannot
-              be undone.
-            </DialogDescription>
-            <div className="flex justify-end gap-2 mt-4">
+          <DialogContent className="bg-white p-0 sm:max-w-md overflow-hidden rounded-xl border shadow-lg">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.6}
+                    stroke="currentColor"
+                    className="h-7 w-7 text-red-600"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21.75H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                    />
+                  </svg>
+                </div>
+                <div className="space-y-2">
+                  <DialogTitle className="text-xl font-semibold text-red-700">
+                    Delete profile?
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-gray-600 leading-relaxed">
+                    This will permanently remove the user profile, their photos,
+                    matches and messages. This action cannot be undone.
+                  </DialogDescription>
+                  <ul className="mt-2 list-disc list-inside text-xs text-gray-500 space-y-1">
+                    <li>User data & content removed</li>
+                    <li>Cannot be restored later</li>
+                    <li>Use ban instead if you may reverse later</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-6 pt-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
               <Button
                 variant="outline"
                 onClick={() => setConfirmDeleteId(null)}
+                className="bg-white"
               >
                 Cancel
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => onDelete(confirmDeleteId)}
+                className="shadow-sm"
               >
-                Delete
+                Delete Permanently
               </Button>
             </div>
           </DialogContent>

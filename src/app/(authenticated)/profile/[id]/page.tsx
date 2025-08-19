@@ -391,7 +391,40 @@ export default function ProfileDetailPage() {
           name="description"
           content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans worldwide.`}
         />
-        {/* ... other meta tags ... */}
+        <meta
+          property="og:title"
+          content={
+            profile?.fullName
+              ? `${profile.fullName}'s Profile | Aroosi`
+              : "View Profile | Aroosi"
+          }
+        />
+        <meta
+          property="og:description"
+          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans worldwide.`}
+        />
+        <meta
+          property="og:image"
+          content={mainProfileImageUrl || "/logo.png"}
+        />
+        <meta property="og:type" content="profile" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content={
+            profile?.fullName
+              ? `${profile.fullName}'s Profile | Aroosi`
+              : "View Profile | Aroosi"
+          }
+        />
+        <meta
+          name="twitter:description"
+          content={`View ${profile?.fullName || "user"}'s detailed profile on Aroosi, the trusted Afghan matrimony platform for Afghans worldwide.`}
+        />
+        <meta
+          name="twitter:image"
+          content={mainProfileImageUrl || "/logo.png"}
+        />
       </Head>
       <div className="relative w-full overflow-hidden bg-base-light py-16 px-4 flex items-center justify-center overflow-x-hidden">
         {/* Decorative color pop circles */}

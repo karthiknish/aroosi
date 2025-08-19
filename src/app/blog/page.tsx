@@ -330,6 +330,15 @@ export default function BlogPage() {
                           src={post.imageUrl}
                           alt={post.title}
                           className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-700"
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (!el.dataset.fallback) {
+                              el.dataset.fallback = "1";
+                              el.src = "/placeholder.jpg";
+                            }
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </div>

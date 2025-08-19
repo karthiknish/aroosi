@@ -50,9 +50,22 @@ export async function GET(req: NextRequest) {
     const result = await getProfileById(id);
 
     if (!result) {
+      console.info("Admin profile GET not_found", {
+        scope: "admin.profile",
+        type: "not_found",
+        correlationId,
+        profileId: id,
+        statusCode: 404,
+        durationMs: Date.now() - startedAt,
+      });
       return NextResponse.json(
-        { error: "Failed to fetch profile", correlationId },
-        { status: 500 }
+        { success: false, error: "Profile not found", correlationId },
+        {
+          status: 404,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
       );
     }
 
@@ -63,9 +76,17 @@ export async function GET(req: NextRequest) {
       statusCode: 200,
       durationMs: Date.now() - startedAt,
     });
+    const nocache = searchParams.get("nocache") === "true";
     return NextResponse.json(
       { success: true, profile: result, correlationId },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": nocache
+            ? "no-store"
+            : "private, max-age=30, stale-while-revalidate=120",
+        },
+      }
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

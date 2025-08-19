@@ -1,22 +1,27 @@
 "use client";
 
 import { Suspense, useCallback, useMemo, useState } from "react";
+import Head from "next/head";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
+import {
+  getAuth,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
+} from "firebase/auth";
 
 function ResetPasswordInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const emailFromQuery = useMemo(() => params.get("email") || "", [params]);
   const oobCode = useMemo(() => params.get("oobCode") || "", [params]);
-
-  const [email, setEmail] = useState<string>(emailFromQuery);
+  // Email is optional in query; not strictly needed for Firebase password reset but can be shown.
+  const emailFromQuery = useMemo(() => params.get("email") || "", [params]);
+  const [email] = useState<string>(emailFromQuery);
   const [code, setCode] = useState<string>(oobCode);
   const [password, setPassword] = useState<string>("");
   const [confirm, setConfirm] = useState<string>("");
@@ -37,12 +42,8 @@ function ResetPasswordInner() {
       const pwd = String(password || "");
       const conf = String(confirm || "");
 
-      if (!safeEmail) {
-        setError("Please enter your email address.");
-        return;
-      }
       if (!otp) {
-        setError("Enter the reset code from your email.");
+        setError("Reset code is required.");
         return;
       }
       if (pwd.length < 12) {
@@ -67,20 +68,17 @@ function ResetPasswordInner() {
       setSubmitting(true);
       try {
         const auth = getAuth();
-        
-        // First verify the code is valid
-        await verifyPasswordResetCode(auth, otp);
-        
-        // Then reset the password
-        await confirmPasswordReset(auth, otp, pwd);
-        
+        await verifyPasswordResetCode(auth, otp); // ensure code valid
+        await confirmPasswordReset(auth, otp, pwd); // perform reset
+
         const msg = "Password reset successfully. Redirecting to sign-in...";
         setSuccess(msg);
         setSubmitting(true); // Keep loader visible during redirect
         showSuccessToast(msg);
         setTimeout(() => router.push("/sign-in"), 900);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to reset password";
+        const msg =
+          err instanceof Error ? err.message : "Failed to reset password";
         const finalMsg =
           msg.includes("too_many_requests") || msg.includes("429")
             ? "Too many requests. Please try again later."
@@ -91,7 +89,7 @@ function ResetPasswordInner() {
         setSubmitting(false);
       }
     },
-    [email, code, password, confirm, router]
+    [code, password, confirm, router]
   );
 
   return (
@@ -156,29 +154,6 @@ function ResetPasswordInner() {
               onChange={(e) => setCode(e.currentTarget.value)}
               required
             />
-          </div>
-
-          <div className="mb-4">
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input
-                id="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.currentTarget.value)}
-                required
-                className="pl-10"
-              />
-            </div>
           </div>
 
           <div className="mb-4">
@@ -261,8 +236,33 @@ function ResetPasswordInner() {
 export default function ResetPasswordPage() {
   // Wrap client navigation/searchParams usage with Suspense per Next.js guidance.
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
-      <ResetPasswordInner />
-    </Suspense>
+    <>
+      <Head>
+        <title>Reset Password | Aroosi</title>
+        <meta
+          name="description"
+          content="Reset your Aroosi account password securely. Enter your email and reset code to set a new password."
+        />
+        <meta property="og:title" content="Reset Password | Aroosi" />
+        <meta
+          property="og:description"
+          content="Reset your Aroosi account password securely. Enter your email and reset code to set a new password."
+        />
+        <meta property="og:image" content="/logo.png" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Reset Password | Aroosi" />
+        <meta
+          name="twitter:description"
+          content="Reset your Aroosi account password securely. Enter your email and reset code to set a new password."
+        />
+        <meta name="twitter:image" content="/logo.png" />
+        <link rel="canonical" href="https://aroosi.app/reset-password" />
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
+      <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+        <ResetPasswordInner />
+      </Suspense>
+    </>
   );
 }

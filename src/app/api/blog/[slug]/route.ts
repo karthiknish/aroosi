@@ -37,7 +37,21 @@ export async function GET(req: NextRequest) {
       .get();
     if (snap.empty) return errorResponse("Not found", 404);
     const doc = snap.docs[0];
-    return successResponse({ _id: doc.id, ...doc.data() });
+    const data = { _id: doc.id, ...doc.data() } as any;
+    // Derive weak ETag from updatedAt/createdAt + id
+    const ts = data.updatedAt || data.createdAt || 0;
+    const etag = `W/"${doc.id}:${ts}"`;
+    const ifNone = req.headers.get("if-none-match");
+    if (ifNone && ifNone === etag) {
+      return new Response(null, { status: 304, headers: { ETag: etag } });
+    }
+    const res = successResponse(data);
+    res.headers.set("ETag", etag);
+    res.headers.set(
+      "Cache-Control",
+      "public, max-age=120, stale-while-revalidate=300"
+    );
+    return res;
   } catch (e) {
     return errorResponse(
       (e as Error).message || "Failed to fetch blog post",

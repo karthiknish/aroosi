@@ -13,9 +13,15 @@ const COLLECTION = "blogPosts";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") || "0", 10);
-  const pageSize = parseInt(searchParams.get("pageSize") || "6", 10);
+  const pageRaw = parseInt(searchParams.get("page") || "0", 10);
+  const page = isNaN(pageRaw) || pageRaw < 0 ? 0 : Math.min(pageRaw, 1000);
+  const pageSizeRaw = parseInt(searchParams.get("pageSize") || "6", 10);
+  const pageSize =
+    isNaN(pageSizeRaw) || pageSizeRaw <= 0 ? 6 : Math.min(pageSizeRaw, 24);
   const category = searchParams.get("category") || undefined;
+  const qRaw = searchParams.get("q");
+  const q =
+    qRaw && qRaw.trim().length > 1 ? qRaw.trim().toLowerCase() : undefined;
 
   try {
     let query: any = db.collection(COLLECTION);
@@ -37,8 +43,21 @@ export async function GET(req: NextRequest) {
     if (offset > 0) query = query.offset(offset);
     query = query.limit(pageSize);
     const snap = await query.get();
-    const posts = snap.docs.map((d: any) => ({ _id: d.id, ...d.data() }));
-    return successResponse({ posts, total, page, pageSize });
+    let posts = snap.docs.map((d: any) => ({ _id: d.id, ...d.data() }));
+    if (q) {
+      // Lightweight server-side filtering (Firestore full-text alternative pending Algolia/Elastic integration)
+      posts = posts.filter((p: any) => {
+        const title = (p.title || "").toLowerCase();
+        const excerpt = (p.excerpt || "").toLowerCase();
+        return title.includes(q) || excerpt.includes(q);
+      });
+    }
+    const res = successResponse({ posts, total, page, pageSize });
+    res.headers.set(
+      "Cache-Control",
+      "public, max-age=60, stale-while-revalidate=120"
+    );
+    return res;
   } catch (e) {
     return errorResponse(
       (e as Error).message || "Failed to fetch blog posts",

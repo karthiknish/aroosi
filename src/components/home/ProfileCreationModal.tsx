@@ -58,6 +58,8 @@ export function ProfileCreationModal({
     handleBack,
     handleInputChange,
     handleProfileImagesChange,
+    isSubmitting,
+    hasSubmittedProfile,
   } = useProfileCreationController({ isOpen, onClose, initialData, router });
 
   const required = (label: string) => (
@@ -103,6 +105,19 @@ export function ProfileCreationModal({
         aria-describedby="profile-modal-desc"
       >
         <div className="relative">
+          {isSubmitting && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm gap-4">
+              <div
+                className="w-10 h-10 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin"
+                aria-label="Submitting profile"
+              />
+              <p className="text-sm font-medium text-pink-700">
+                {hasSubmittedProfile
+                  ? "Finalizing your profile..."
+                  : "Submitting..."}
+              </p>
+            </div>
+          )}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
             <div
               className="h-full bg-pink-600 transition-all duration-300"

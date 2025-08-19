@@ -791,19 +791,55 @@ const ProfileView: FC<ProfileViewProps> = ({
         </Card>
       </div>
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Profile?</DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            Are you sure you want to delete your profile? This action cannot be
-            undone.
+        <DialogContent className="bg-white p-0 sm:max-w-md overflow-hidden rounded-xl border shadow-lg">
+          <div className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.6}
+                  stroke="currentColor"
+                  className="h-7 w-7 text-red-600"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21.75H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                  />
+                </svg>
+              </div>
+              <div className="space-y-2">
+                <DialogTitle className="text-xl font-semibold text-red-700">
+                  Delete your profile?
+                </DialogTitle>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  This will permanently remove your profile, photos, matches,
+                  messages and preferences. You will not be able to recover this
+                  data once deleted.
+                </p>
+                <ul className="mt-2 list-disc list-inside text-xs text-gray-500 space-y-1">
+                  <li>Photos & messages are permanently erased</li>
+                  <li>Conversations & matches will be lost</li>
+                  <li>
+                    You can create a new account later, but data won’t return
+                  </li>
+                </ul>
+                {deleteError && (
+                  <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1">
+                    {deleteError}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <DialogFooter>
+          <div className="px-6 pb-6 pt-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-2 sm:justify-end">
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => setShowDeleteDialog(false)}
               disabled={deleteLoading}
+              className="bg-white"
             >
               Cancel
             </Button>
@@ -811,10 +847,11 @@ const ProfileView: FC<ProfileViewProps> = ({
               variant="destructive"
               onClick={handleDeleteProfile}
               disabled={deleteLoading}
+              className="shadow-sm"
             >
-              {deleteLoading ? "Deleting..." : "Delete"}
+              {deleteLoading ? "Deleting..." : "Delete Permanently"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

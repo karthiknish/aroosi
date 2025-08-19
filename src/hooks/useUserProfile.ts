@@ -578,6 +578,24 @@ export function useUserProfile() {
           cleaned
         );
 
+        // Hard enforce onboarding completion on initial signup (idempotent)
+        try {
+          if (!profile?.isOnboardingComplete) {
+            await setDoc(
+              doc(db, "users", userCredential.user.uid),
+              { isOnboardingComplete: true, updatedAt: serverTimestamp() },
+              { merge: true }
+            );
+            profile.isOnboardingComplete = true as any;
+          }
+        } catch (e) {
+          // Non-fatal: proceed even if this merge fails; downstream flows will recompute
+          if (process.env.NODE_ENV !== "production") {
+            // eslint-disable-next-line no-console
+            console.warn("Failed to force isOnboardingComplete true on signup", e);
+          }
+        }
+
         if (typeof window !== "undefined") {
           setAuthTokenCookie().catch(() => {});
         }
@@ -586,7 +604,7 @@ export function useUserProfile() {
           profile: profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete: profile?.isOnboardingComplete ?? true,
+          isOnboardingComplete: true, // guarantee true immediately post-signup
           isAdmin: profile?.role === "admin" || false,
           error: null,
         });
@@ -637,24 +655,41 @@ export function useUserProfile() {
       setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
-      // Do not auto-create profile; allow onboarding flow to collect mandatory fields first
       const profile = await fetchUserProfile(cred.user.uid);
       if (typeof window !== "undefined") {
         setAuthTokenCookie().catch(() => {});
       }
+      // If no profile doc yet, treat as onboarding-incomplete (used for Google signup flow)
+      const onboardingComplete = profile?.isOnboardingComplete ?? false;
       setAuthState({
         user: cred.user,
         profile: profile,
         isLoading: false,
         isAuthenticated: true,
-        isOnboardingComplete: profile?.isOnboardingComplete ?? true,
+        isOnboardingComplete: onboardingComplete,
         isAdmin: profile?.role === "admin" || false,
         error: null,
       });
       return { success: true };
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
-      const errorMessage = err.message || "Google sign in failed";
+      let errorMessage = "Google sign in failed";
+      switch (err.code) {
+        case "auth/popup-closed-by-user":
+          errorMessage = "Google sign in cancelled";
+          break;
+        case "auth/popup-blocked":
+          errorMessage = "Popup blocked by browser";
+          break;
+        case "auth/cancelled-popup-request":
+          errorMessage = "Popup closed before completion";
+          break;
+        case "auth/network-request-failed":
+          errorMessage = "Network error. Check your connection.";
+          break;
+        default:
+          errorMessage = err.message || errorMessage;
+      }
       setAuthState((prev) => ({
         ...prev,
         isLoading: false,
@@ -662,7 +697,7 @@ export function useUserProfile() {
       }));
       return { success: false, error: errorMessage };
     }
-  }, [createOrUpdateUserProfile, fetchUserProfile]);
+  }, [fetchUserProfile]);
 
   // Google sign-in that blocks if no existing profile document is present.
   const signInWithGoogleExistingOnly =
@@ -852,8 +887,8 @@ export function useUserProfile() {
     updateUserProfile,
     hasRole,
     hasPermission,
-    signInWithGoogle,
-      signInWithGoogleExistingOnly,
+  signInWithGoogle,
+  signInWithGoogleExistingOnly,
     sendEmailVerification: sendVerificationEmail,
     completeGoogleSignup: async (profileData: ProfileUpdates) => {
       try {

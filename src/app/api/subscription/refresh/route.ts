@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     try {
       const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
       // Infer planId using centralized helper (metadata > price id/nickname)
-      let planId = inferPlanFromSubscription(sub) || "free";
+      const planId = inferPlanFromSubscription(sub) || "free";
       await userSnap.ref.set(
         {
           subscriptionPlan: planId,

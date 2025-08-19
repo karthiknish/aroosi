@@ -596,7 +596,7 @@ export async function POST(req: NextRequest) {
           const email = (sub.metadata?.email ||
             invoice.customer_email ||
             invoiceAny.customer_details?.email) as string | undefined;
-          let planId: "premium" | "premiumPlus" | undefined =
+          const planId: "premium" | "premiumPlus" | undefined =
             inferPlanFromSubscription(sub) || undefined;
           if (email && planId) {
             const snap = await db
