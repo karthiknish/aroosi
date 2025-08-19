@@ -192,16 +192,26 @@ export default function AdminCreateMatchPage() {
                 {leftResults.map((p) => {
                   const age = ageFromDob(p.dateOfBirth as any);
                   return (
-                    <li
-                      key={p._id}
-                      className="p-3 border rounded cursor-pointer hover:bg-gray-50 flex items-center gap-3 text-sm"
-                      onClick={() => setLeftSelected(p)}
-                    >
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="font-medium truncate">{p.fullName || "(No name)"}</span>
-                        <span className="text-xs text-gray-500 truncate">{p.email || "(No email)"}</span>
-                        <span className="text-[11px] text-gray-400 truncate">{age ? `${age} • ` : ""}{p.city || ""}</span>
-                      </div>
+                    <li key={p._id} className="list-none">
+                      <button
+                        type="button"
+                        onClick={() => setLeftSelected(p)}
+                        className="w-full text-left p-3 border rounded hover:bg-gray-50 flex items-center gap-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                        aria-label={`Select profile ${p.fullName || p.email || p._id}`}
+                      >
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="font-medium truncate">
+                            {p.fullName || "(No name)"}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate">
+                            {p.email || "(No email)"}
+                          </span>
+                          <span className="text-[11px] text-gray-400 truncate">
+                            {age ? `${age} • ` : ""}
+                            {p.city || ""}
+                          </span>
+                        </div>
+                      </button>
                     </li>
                   );
                 })}
@@ -262,16 +272,26 @@ export default function AdminCreateMatchPage() {
                 {rightResults.map((p) => {
                   const age = ageFromDob(p.dateOfBirth as any);
                   return (
-                    <li
-                      key={p._id}
-                      className="p-3 border rounded cursor-pointer hover:bg-gray-50 flex items-center gap-3 text-sm"
-                      onClick={() => setRightSelected(p)}
-                    >
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="font-medium truncate">{p.fullName || "(No name)"}</span>
-                        <span className="text-xs text-gray-500 truncate">{p.email || "(No email)"}</span>
-                        <span className="text-[11px] text-gray-400 truncate">{age ? `${age} • ` : ""}{p.city || ""}</span>
-                      </div>
+                    <li key={p._id} className="list-none">
+                      <button
+                        type="button"
+                        onClick={() => setRightSelected(p)}
+                        className="w-full text-left p-3 border rounded hover:bg-gray-50 flex items-center gap-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                        aria-label={`Select profile ${p.fullName || p.email || p._id}`}
+                      >
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="font-medium truncate">
+                            {p.fullName || "(No name)"}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate">
+                            {p.email || "(No email)"}
+                          </span>
+                          <span className="text-[11px] text-gray-400 truncate">
+                            {age ? `${age} • ` : ""}
+                            {p.city || ""}
+                          </span>
+                        </div>
+                      </button>
                     </li>
                   );
                 })}
