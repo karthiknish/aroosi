@@ -117,9 +117,21 @@ export const EnhancedValidationSchemas = {
       .string()
       .min(50, "About me must be at least 50 characters")
       .max(2000, "About me must be less than 2000 characters")
-      .refine((text) => text.trim().split(/\s+/).length >= 10, {
-        message: "About me must contain at least 10 words",
-      }),
+      .refine(
+        (text) => {
+          if (!text) return false;
+          // Normalize non-breaking spaces and other odd whitespace, trim,
+          // split on any sequence of whitespace, then filter empty tokens.
+          const normalized = String(text)
+            .replace(/\u00A0/g, " ")
+            .trim();
+          const words = normalized.split(/\s+/).filter(Boolean);
+          return words.length >= 10;
+        },
+        {
+          message: "About me must contain at least 10 words",
+        }
+      ),
 
     phoneNumber: z
       .string()

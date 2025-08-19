@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { sendPushNotification } from "@/lib/pushNotificationApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -21,9 +21,11 @@ export default function PushNotificationAdminPage() {
   const [dryRun, setDryRun] = useState(true);
   const [segments, setSegments] = useState<string[]>(["Subscribed Users"]);
   const [maxAudience, setMaxAudience] = useState<number>(100000);
+  const [confirmLive, setConfirmLive] = useState<boolean>(false);
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) return;
+    if (!dryRun && !confirmLive) return; // guard live send without confirm
     setSending(true);
     try {
       // Server reads HttpOnly cookies for admin authorization
@@ -32,7 +34,7 @@ export default function PushNotificationAdminPage() {
         message: message.trim(),
         url: url.trim() || undefined,
         dryRun,
-        confirm: !dryRun,
+        confirm: !dryRun && confirmLive,
         audience: segments,
         maxAudience,
       } as any);
@@ -40,6 +42,27 @@ export default function PushNotificationAdminPage() {
       setSending(false);
     }
   };
+
+  const presets = useMemo(
+    () => [
+      {
+        name: "Promo",
+        title: "Limited-time offer!",
+        message: "Upgrade to Premium today and save 30%",
+      },
+      {
+        name: "Reminder",
+        title: "Complete your profile",
+        message: "Add more details to get better matches",
+      },
+      {
+        name: "Breaking News",
+        title: "New feature released",
+        message: "Check out the latest updates in Aroosi",
+      },
+    ],
+    []
+  );
 
   return (
     <Card className="max-w-3xl">
@@ -53,6 +76,22 @@ export default function PushNotificationAdminPage() {
         <div className="rounded-md bg-blue-50 text-blue-800 text-sm p-3">
           Use Dry Run to preview the payload and audience selection without
           sending.
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {presets.map((p) => (
+            <Button
+              key={p.name}
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setTitle(p.title);
+                setMessage(p.message);
+              }}
+              title={`Apply ${p.name} preset`}
+            >
+              {p.name}
+            </Button>
+          ))}
         </div>
         <div className="space-y-2">
           <label htmlFor="push-title" className="block text-sm font-medium">
@@ -92,27 +131,25 @@ export default function PushNotificationAdminPage() {
           <div className="space-y-2">
             <Label className="text-sm">Audience Segments</Label>
             <div className="flex flex-wrap gap-2">
-              {["Subscribed Users", "Active Users", "Engaged Last 30d"].map(
-                (seg) => {
-                  const active = segments.includes(seg);
-                  return (
-                    <Button
-                      key={seg}
-                      variant={active ? "default" : "outline"}
-                      size="sm"
-                      onClick={() =>
-                        setSegments((prev) =>
-                          prev.includes(seg)
-                            ? prev.filter((s) => s !== seg)
-                            : [...prev, seg]
-                        )
-                      }
-                    >
-                      {seg}
-                    </Button>
-                  );
-                }
-              )}
+              {["Subscribed Users", "Active 7d", "Inactive 30d"].map((seg) => {
+                const active = segments.includes(seg);
+                return (
+                  <Button
+                    key={seg}
+                    variant={active ? "default" : "outline"}
+                    size="sm"
+                    onClick={() =>
+                      setSegments((prev) =>
+                        prev.includes(seg)
+                          ? prev.filter((s) => s !== seg)
+                          : [...prev, seg]
+                      )
+                    }
+                  >
+                    {seg}
+                  </Button>
+                );
+              })}
             </div>
           </div>
           <div className="space-y-2">
@@ -134,10 +171,28 @@ export default function PushNotificationAdminPage() {
           <Switch id="dryRun" checked={dryRun} onCheckedChange={setDryRun} />
           <Label htmlFor="dryRun">Dry run (preview only)</Label>
         </div>
+        {!dryRun && (
+          <div className="flex items-center gap-3">
+            <Switch
+              id="confirmLive"
+              checked={confirmLive}
+              onCheckedChange={setConfirmLive}
+            />
+            <Label htmlFor="confirmLive">
+              I confirm this live send to selected segments
+            </Label>
+          </div>
+        )}
+        {!dryRun && !confirmLive && (
+          <div className="text-sm text-red-600">
+            Confirmation is required for live sends. Toggle the confirmation
+            switch above.
+          </div>
+        )}
 
         <div className="rounded-md border p-3 text-sm bg-gray-50">
           <div className="font-medium mb-1">Preview</div>
-          <pre className="whitespace-pre-wrap break-words">
+          <pre className="whitespace-pre-wrap break-words text-xs">
             {JSON.stringify(
               {
                 title: title.trim() || "(none)",
@@ -145,14 +200,27 @@ export default function PushNotificationAdminPage() {
                 url: url.trim() || undefined,
                 audience: segments,
                 dryRun,
+                confirm: !dryRun && confirmLive,
                 maxAudience,
               },
               null,
               2
             )}
           </pre>
+          <div className="text-xs text-gray-500 mt-2">
+            Estimated audience depends on provider segmentation; use Dry Run to
+            verify payload.
+          </div>
         </div>
-        <Button onClick={handleSend} disabled={sending || !title || !message}>
+        <Button
+          onClick={handleSend}
+          disabled={
+            sending ||
+            !title.trim() ||
+            !message.trim() ||
+            (!dryRun && !confirmLive)
+          }
+        >
           {sending
             ? dryRun
               ? "Previewing..."

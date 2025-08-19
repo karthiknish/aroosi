@@ -38,11 +38,13 @@ export async function GET(request: NextRequest) {
         body.error = "No auth session";
         body.reason = "user_not_found";
       }
+      // Include the parsed upstream auth error body to aid debugging (e.g. missing cookie, invalid token)
       console.warn("Safety blocked auth failed", {
         scope: "safety.blocked",
         type: "auth_failed",
         correlationId,
         statusCode: status,
+        authErrorBody: body,
         durationMs: Date.now() - startedAt,
       });
       return json(body, status);

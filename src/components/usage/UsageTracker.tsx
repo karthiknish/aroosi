@@ -205,13 +205,15 @@ export function UsageTracker() {
         {usage.plan === "free" && (
           <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
             <p className="text-sm text-blue-800 mb-2 font-medium">
-              Upgrade to Premium to unlock unlimited messaging, advanced search,
-              and voice messages.
+              Upgrade to Premium to increase your daily limits and unlock
+              advanced features like voice messages and profile boosts.
             </p>
             <ul className="text-xs text-blue-700 list-disc ml-4 mb-3 space-y-1">
-              <li>Unlimited messages & searches</li>
-              <li>More daily interests</li>
-              <li>Access profile boosts & Spotlight (Plus)</li>
+              <li>Free: 100 searches/day (current)</li>
+              <li>Premium: 500 searches/day</li>
+              <li>
+                Premium Plus: 2000 searches/day, plus Spotlight and boosts
+              </li>
             </ul>
             <Link href="/pricing">
               <Button

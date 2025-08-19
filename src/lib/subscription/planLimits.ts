@@ -21,7 +21,9 @@ export const PLAN_LIMITS: PlanLimits = {
   free: {
     message_sent: 5,
     profile_view: 50,
-    search_performed: 20,
+    // Increased per request: free users previously had 20 searches/day;
+    // bumping to 100 as requested.
+    search_performed: 100,
     interest_sent: 3,
     profile_boost_used: 0,
     voice_message_sent: 0,
@@ -31,7 +33,8 @@ export const PLAN_LIMITS: PlanLimits = {
   premium: {
     message_sent: -1,
     profile_view: 50,
-    search_performed: -1,
+    // Set finite search limits for paid tiers per request
+    search_performed: 500,
     interest_sent: -1,
     profile_boost_used: 1,
     voice_message_sent: 10,
@@ -41,7 +44,7 @@ export const PLAN_LIMITS: PlanLimits = {
   premiumPlus: {
     message_sent: -1,
     profile_view: -1,
-    search_performed: -1,
+    search_performed: 2000,
     interest_sent: -1,
     profile_boost_used: -1,
     voice_message_sent: -1,
@@ -52,7 +55,7 @@ export const PLAN_LIMITS: PlanLimits = {
   premium_plus: {
     message_sent: -1,
     profile_view: -1,
-    search_performed: -1,
+    search_performed: 2000,
     interest_sent: -1,
     profile_boost_used: -1,
     voice_message_sent: -1,

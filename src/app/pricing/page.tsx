@@ -156,6 +156,38 @@ export default function PricingPage() {
     };
   }, []);
 
+  // Fallback plans to display when stripe/getPlans is unavailable.
+  const DEFAULT_PLANS: NormalizedPlan[] = [
+    {
+      id: "free",
+      name: "Free",
+      price: 0,
+      currency: "GBP",
+      features: ["Create profile", "Limited searches", "Limited likes"],
+      popular: false,
+    },
+    {
+      id: "premium",
+      name: "Premium",
+      price: 1499,
+      currency: "GBP",
+      features: ["500 searches/day", "Unlimited messages", "Profile Boost"],
+      popular: true,
+    },
+    {
+      id: "premiumPlus",
+      name: "Premium Plus",
+      price: 3999,
+      currency: "GBP",
+      features: [
+        "2000 searches/day",
+        "Unlimited messages",
+        "Spotlight & Boosts",
+      ],
+      popular: false,
+    },
+  ];
+
   const getPlanIcon = (planId: string) => {
     switch (planId) {
       case "free":
@@ -323,19 +355,8 @@ export default function PricingPage() {
                 No plans to display.
               </div>
             )}
-            {(plans && plans.length
-              ? plans
-              : [
-                  {
-                    id: "free",
-                    name: "Free",
-                    price: 0,
-                    currency: "GBP",
-                    features: [],
-                    popular: false,
-                  },
-                ]
-            ).map((plan) => {
+            {/* Ensure we always show Free, Premium and Premium Plus as a fallback */}
+            {(plans && plans.length ? plans : DEFAULT_PLANS).map((plan) => {
               const isPopular = plan.popular || plan.id === "premium";
 
               return (

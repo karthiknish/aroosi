@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
@@ -35,7 +36,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     profile: rawProfile,
     isLoaded,
   } = useAuthContext();
-  const profile = rawProfile as { subscriptionPlan?: string } | null;
+  const profile = rawProfile as {
+    subscriptionPlan?: string;
+    profileImageUrls?: string[];
+    fullName?: string;
+  } | null;
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   // Close mobile menu on route change
@@ -135,23 +140,6 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               )}
 
               <motion.div
-                custom={1}
-                variants={navItemVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                <Link href="/profile" onClick={onClick} className="block">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
-                  >
-                    <LayoutDashboard className="h-5 w-5 mr-2" />
-                    <span>My Profile</span>
-                  </Button>
-                </Link>
-              </motion.div>
-
-              <motion.div
                 custom={1.5}
                 variants={navItemVariants}
                 initial="hidden"
@@ -205,7 +193,8 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                         try {
                           const mod = await import("@/lib/api/subscription");
                           const { subscriptionAPI } = mod;
-                          const { url } = await subscriptionAPI.openBillingPortal();
+                          const { url } =
+                            await subscriptionAPI.openBillingPortal();
                           if (url) {
                             window.location.assign(url);
                           }
@@ -229,7 +218,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   initial="hidden"
                   animate="visible"
                 >
-                  <Link href="/subscription" onClick={onClick} className="block">
+                  <Link
+                    href="/subscription"
+                    onClick={onClick}
+                    className="block"
+                  >
                     <Button className="w-full justify-start bg-pink-600 hover:bg-pink-700 text-white">
                       <span>Upgrade</span>
                     </Button>
@@ -253,7 +246,34 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   </Button>
                 </Link>
               </motion.div>
-
+              <motion.div
+                custom={2}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="flex items-center gap-2 px-2 py-1 rounded">
+                  <Link href="/profile" onClick={onClick} className="block">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={
+                          (profile?.profileImageUrls &&
+                            profile.profileImageUrls[0]) ||
+                          "/placeholder.jpg"
+                        }
+                        alt={profile?.fullName || "Profile"}
+                        onError={(e) => {
+                          const img = e.currentTarget as HTMLImageElement;
+                          if (img.src.indexOf("placeholder.jpg") === -1) {
+                            img.src = "/placeholder.jpg";
+                          }
+                        }}
+                      />
+                      <AvatarFallback />
+                    </Avatar>
+                  </Link>
+                </div>
+              </motion.div>
               <motion.div
                 custom={2}
                 variants={navItemVariants}

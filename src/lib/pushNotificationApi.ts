@@ -31,7 +31,14 @@ export async function sendPushNotification(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+      const provider = (errorData as any)?.providerError;
+      const providerMsg =
+        provider?.errors?.[0]?.message || provider?.error || provider?.message;
+      const msg =
+        (errorData as any)?.error ||
+        (providerMsg ? `Provider: ${providerMsg}` : undefined) ||
+        `HTTP ${response.status}`;
+      throw new Error(msg);
     }
 
     showSuccessToast(

@@ -6,6 +6,7 @@ import { UserProfileProvider } from "@/components/UserProfileProvider";
 import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
 import RouteTransition from "@/components/RouteTransition";
+import RouteLoader from "@/components/RouteLoader";
 import { analytics } from "@/lib/analytics";
 
 // Removed Next.js Metadata/Viewport exports; using explicit <head> tags instead.
@@ -89,6 +90,7 @@ export default function RootLayout({
         <ReactQueryProvider>
           <UserProfileProvider>
             <ClientRoot>
+              <RouteLoader />
               <RouteTransition>{children}</RouteTransition>
             </ClientRoot>
           </UserProfileProvider>

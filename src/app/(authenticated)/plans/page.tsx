@@ -58,20 +58,9 @@ export default function ManagePlansPage() {
         // Fetch from server endpoint via util; normalize on server ensures minor units + currency
         const data = await getPlans();
         if (mounted) {
-          // Ensure at least Free exists as a fallback
-          const safe =
-            Array.isArray(data) && data.length > 0
-              ? data
-              : [
-                  {
-                    id: "free",
-                    name: "Free",
-                    price: 0,
-                    currency: "GBP",
-                    features: [],
-                    popular: false,
-                  },
-                ];
+          // Ensure at least Free/Premium/Premium Plus exist as a fallback
+          const safe: NormalizedPlan[] =
+            Array.isArray(data) && data.length > 0 ? data : DEFAULT_PLANS;
           setPlans(safe);
           if (!data || data.length === 0) {
             setFetchError("No plans available at the moment.");
@@ -102,6 +91,38 @@ export default function ManagePlansPage() {
       mounted = false;
     };
   }, []);
+
+  // Local fallback plans to display when server returns none
+  const DEFAULT_PLANS: NormalizedPlan[] = [
+    {
+      id: "free",
+      name: "Free",
+      price: 0,
+      currency: "GBP",
+      features: ["Create profile", "100 searches/day", "Limited likes"],
+      popular: false,
+    },
+    {
+      id: "premium",
+      name: "Premium",
+      price: 1499,
+      currency: "GBP",
+      features: ["500 searches/day", "Unlimited messages", "Profile Boost"],
+      popular: true,
+    },
+    {
+      id: "premiumPlus",
+      name: "Premium Plus",
+      price: 3999,
+      currency: "GBP",
+      features: [
+        "2000 searches/day",
+        "Unlimited messages",
+        "Spotlight & Boosts",
+      ],
+      popular: false,
+    },
+  ];
 
   const handleSelectPlan = async (planId: PlanId) => {
     if (planId === currentPlan) {
@@ -204,20 +225,7 @@ export default function ManagePlansPage() {
                 No plans to display.
               </div>
             )}
-            {(plans && plans.length
-              ? plans
-              : [
-                  // Defensive minimal fallback to avoid render crash if server returns nothing
-                  {
-                    id: "free",
-                    name: "Free",
-                    price: 0,
-                    currency: "GBP",
-                    features: [],
-                    popular: false,
-                  },
-                ]
-            ).map((plan) => {
+            {(plans && plans.length ? plans : DEFAULT_PLANS).map((plan) => {
               const selected = isCurrent(plan.id);
               const isPopular = plan.popular || plan.id === "premium";
               const isLoading = loading === plan.id;

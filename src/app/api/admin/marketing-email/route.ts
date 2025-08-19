@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       dryRun,
       confirm,
       maxAudience,
+      sendToAll,
       subject,
       body: customBody,
       preheader,
@@ -77,6 +78,7 @@ export async function POST(request: Request) {
       // deprecated isProfileComplete?: string;
       page?: number;
       pageSize?: number;
+      sendToAll?: boolean;
       sortBy?: string;
       sortDir?: string;
     };
@@ -100,49 +102,78 @@ export async function POST(request: Request) {
 
     // Audience selection with filtering + pagination
     const primaryLimit = Math.min(effectiveMax, 5000); // guard
-    let queryRef: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> =
-      db.collection("users");
-    if (plan) queryRef = queryRef.where("subscriptionPlan", "==", plan);
-    if (banned === "true") queryRef = queryRef.where("banned", "==", true);
-    // Sorting (fallback createdAt)
     const sortField = ["createdAt", "updatedAt", "subscriptionPlan"].includes(
       String(sortBy)
     )
       ? (sortBy as string)
       : "createdAt";
     const dir = String(sortDir).toLowerCase() === "asc" ? "asc" : "desc";
-    try {
-      queryRef = queryRef.orderBy(sortField, dir as any);
-    } catch {}
-    const usersSnap = await queryRef.limit(primaryLimit).get();
-    let profiles = usersSnap.docs.map(
-      (
-        d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
-      ) => {
-        const u = d.data() as Record<string, any>;
-        return {
-          email: u.email,
-          fullName: u.fullName,
-          aboutMe: u.aboutMe,
-          profileImageUrls: Array.isArray(u.profileImageUrls)
-            ? (u.profileImageUrls as string[])
-            : [],
-          images: u.images,
-          interests: u.interests,
-          isOnboardingComplete: !!u.isOnboardingComplete,
-          subscriptionPlan: u.subscriptionPlan,
-          banned: !!u.banned,
-          createdAt: u.createdAt,
-          updatedAt: u.updatedAt,
-        } as Partial<Profile> & {
-          email?: string;
-          banned?: boolean;
-          subscriptionPlan?: string;
-          createdAt?: number;
-          updatedAt?: number;
-        };
+
+    // Helper to map user doc to profile-like object
+    const mapDoc = (
+      d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
+    ) => {
+      const u = d.data() as Record<string, any>;
+      return {
+        email: u.email,
+        fullName: u.fullName,
+        aboutMe: u.aboutMe,
+        profileImageUrls: Array.isArray(u.profileImageUrls)
+          ? (u.profileImageUrls as string[])
+          : [],
+        images: u.images,
+        interests: u.interests,
+        isOnboardingComplete: !!u.isOnboardingComplete,
+        subscriptionPlan: u.subscriptionPlan,
+        banned: !!u.banned,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      } as Partial<Profile> & {
+        email?: string;
+        banned?: boolean;
+        subscriptionPlan?: string;
+        createdAt?: number;
+        updatedAt?: number;
+      };
+    };
+
+    let profiles: Array<Partial<Profile> & { email?: string }>;
+    // If sendToAll is requested, paginate through users using cursors
+    if (sendToAll) {
+      profiles = [];
+      let last: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+      let fetched = 0;
+      while (fetched < effectiveMax) {
+        let q: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> =
+          db.collection("users");
+        if (plan) q = q.where("subscriptionPlan", "==", plan);
+        if (banned === "true") q = q.where("banned", "==", true);
+        try {
+          q = q.orderBy(sortField, dir as any);
+        } catch {}
+        q = q.limit(Math.min(500, effectiveMax - fetched));
+        if (last) q = q.startAfter(last);
+        const snap = await q.get();
+        if (snap.empty) break;
+        for (const d of snap.docs) {
+          profiles.push(mapDoc(d));
+          fetched += 1;
+          if (fetched >= effectiveMax) break;
+        }
+        last = snap.docs[snap.docs.length - 1];
+        if (snap.docs.length < 1) break;
       }
-    );
+    } else {
+      let queryRef: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> =
+        db.collection("users");
+      if (plan) queryRef = queryRef.where("subscriptionPlan", "==", plan);
+      if (banned === "true") queryRef = queryRef.where("banned", "==", true);
+      try {
+        queryRef = queryRef.orderBy(sortField, dir as any);
+      } catch {}
+      const usersSnap = await queryRef.limit(primaryLimit).get();
+      profiles = usersSnap.docs.map(mapDoc);
+    }
     const term = (search || "").trim().toLowerCase();
     if (term) {
       profiles = profiles.filter(

@@ -255,8 +255,8 @@ export default function MessagesList(props: MessagesListProps) {
                         className={cn(
                           "max-w-[280px] px-4 py-3 rounded-2xl shadow-sm text-sm break-words",
                           isCurrentUser
-                            ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-md"
-                            : "bg-base-light/60 text-gray-900 rounded-bl-md border border-gray-200"
+                            ? "bg-base text-neutral-900 rounded-br-md border border-gray-200"
+                            : "bg-base text-gray-900 rounded-bl-md border border-gray-200"
                         )}
                       >
                         {isVoice ? (
@@ -274,7 +274,7 @@ export default function MessagesList(props: MessagesListProps) {
                           className={cn(
                             "text-xs mt-2 flex items-center gap-1",
                             isCurrentUser
-                              ? "text-purple-100 justify-end"
+                              ? "text-gray-500 justify-end"
                               : "text-gray-500"
                           )}
                         >

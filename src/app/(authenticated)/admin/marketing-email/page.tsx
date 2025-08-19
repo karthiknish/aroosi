@@ -41,6 +41,7 @@ export default function MarketingEmailAdminPage() {
   const [sending, setSending] = useState(false);
   const [dryRun, setDryRun] = useState(true);
   const [maxAudience, setMaxAudience] = useState<number>(500);
+  const [sendToAll, setSendToAll] = useState<boolean>(false);
   // const [preview, setPreview] = useState<string>("");
   const [mode, setMode] = useState<"template" | "custom">("template");
   const [useEditor, setUseEditor] = useState<boolean>(true);
@@ -74,6 +75,7 @@ export default function MarketingEmailAdminPage() {
         confirm: !dryRun,
         dryRun,
         maxAudience,
+        sendToAll,
         abTest:
           abEnabled && abSubjectA && abSubjectB
             ? {
@@ -259,7 +261,18 @@ export default function MarketingEmailAdminPage() {
               onChange={(e) =>
                 setMaxAudience(parseInt(e.target.value || "0", 10))
               }
+              disabled={sendToAll}
             />
+          </div>
+          <div className="col-span-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={sendToAll}
+                onChange={(e) => setSendToAll(e.target.checked)}
+              />
+              Send to all users (ignores Max audience)
+            </label>
           </div>
           <div className="col-span-2 border-t pt-3">
             <label className="flex items-center gap-2 text-sm mb-2">

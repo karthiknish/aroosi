@@ -134,42 +134,48 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
   }
 
   return (
-    <Card className={`p-4 ${config.bgColor} ${config.borderColor} ${className}`}>
+    <Card
+      className={`p-4 ${config.bgColor} ${config.borderColor} ${className}`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Badge className={`${config.color} text-white`}>
-            {config.name}
-          </Badge>
+          <Badge className={`${config.color} text-white`}>{config.name}</Badge>
           {/* Spotlight indicator derived from plan (not part of status payload) */}
-          {status.plan === 'premiumPlus' && (
-            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+          {status.plan === "premiumPlus" && (
+            <Badge
+              variant="outline"
+              className="text-yellow-600 border-yellow-600"
+            >
               ✨ Spotlight
             </Badge>
           )}
         </div>
-        
-        {status.plan !== 'free' && status.expiresAt && (
+
+        {status.plan !== "free" && status.expiresAt && (
           <span className="text-sm text-gray-600">
-            {status.daysRemaining > 0 ? `${status.daysRemaining} days left` : 'Expired'}
+            {status.daysRemaining > 0
+              ? `${status.daysRemaining} days left`
+              : "Expired"}
           </span>
         )}
       </div>
 
-      {status.plan === 'free' && (
+      {status.plan === "free" && (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Unlock premium features like unlimited messaging, profile boost, and more.
+            Unlock premium features like unlimited messaging, profile boost, and
+            more.
           </p>
           <div className="flex gap-2">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={handleUpgrade}
-              className="flex-1"
+              className="flex-1 bg-accent text-white hover:brightness-95"
             >
               Upgrade to Premium
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={handleUpgrade}
               variant="outline"
               className="flex-1"
@@ -180,32 +186,32 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
         </div>
       )}
 
-      {status.plan === 'premium' && (
+      {status.plan === "premium" && (
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span>Status:</span>
-            <span className={isActive ? 'text-green-600' : 'text-red-600'}>
-              {isActive ? 'Active' : 'Inactive'}
+            <span className={isActive ? "text-green-600" : "text-red-600"}>
+              {isActive ? "Active" : "Inactive"}
             </span>
           </div>
-          
+
           {isExpiringSoon && (
             <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
               Your subscription expires in {status.daysRemaining} days
             </div>
           )}
-          
+
           <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              onClick={() => router.push('/subscription')}
+            <Button
+              size="sm"
+              onClick={() => router.push("/subscription")}
               variant="outline"
               className="flex-1"
             >
               Upgrade to Plus
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={handleManage}
               variant="outline"
               className="flex-1"
@@ -216,13 +222,13 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
         </div>
       )}
 
-      {status.plan === 'premiumPlus' && (
+      {status.plan === "premiumPlus" && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex justify-between">
               <span>Status:</span>
-              <span className={isActive ? 'text-green-600' : 'text-red-600'}>
-                {isActive ? 'Active' : 'Inactive'}
+              <span className={isActive ? "text-green-600" : "text-red-600"}>
+                {isActive ? "Active" : "Inactive"}
               </span>
             </div>
             {/* boostsRemaining is not part of SubscriptionStatusResponse; remove to keep types and data aligned */}
@@ -231,15 +237,15 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
               <span className="font-medium">Includes profile boosts</span>
             </div>
           </div>
-          
+
           {isExpiringSoon && (
             <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
               Your subscription expires in {status.daysRemaining} days
             </div>
           )}
-          
-          <Button 
-            size="sm" 
+
+          <Button
+            size="sm"
             onClick={handleManage}
             variant="outline"
             className="w-full"

@@ -16,6 +16,7 @@ export async function sendMarketingEmail(
     confirm?: boolean;
     dryRun?: boolean;
     maxAudience?: number;
+    sendToAll?: boolean;
     params?: Record<string, unknown>;
     abTest?: { subjects: [string, string]; ratio?: number };
   }
@@ -31,14 +32,14 @@ export async function sendMarketingEmail(
   }>
 > {
   try {
-  const response = await fetchWithFirebaseAuth("/api/admin/marketing-email", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // Cookie-based session; no Authorization header
-    },
-    body: JSON.stringify(payload),
-  });
+    const response = await fetchWithFirebaseAuth("/api/admin/marketing-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Cookie-based session; no Authorization header
+      },
+      body: JSON.stringify(payload),
+    });
 
     const data = await response.json().catch(() => ({}));
 
@@ -55,6 +56,31 @@ export async function sendMarketingEmail(
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to send emails";
+    showErrorToast(errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+export async function listEmailTemplates(): Promise<
+  ApiResponse<{
+    templates: Array<{ key: string; label: string; category: string }>;
+  }>
+> {
+  try {
+    const response = await fetchWithFirebaseAuth("/api/admin/email/templates", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((data as any)?.error || `HTTP ${response.status}`);
+    }
+    return { success: true, data } as any;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch templates";
     showErrorToast(errorMessage);
     return { success: false, error: errorMessage };
   }

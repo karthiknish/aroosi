@@ -64,7 +64,7 @@ export function SubscriptionGuard({
         return {
           icon: <Crown className="w-6 h-6 text-purple-500" />,
           badge: (
-            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+            <Badge className="bg-accent text-white">
               <Crown className="w-3 h-3 mr-1" />
               Premium Required
             </Badge>
@@ -73,8 +73,7 @@ export function SubscriptionGuard({
           description:
             "This feature is available to Premium and Premium Plus subscribers.",
           buttonText: "Upgrade to Premium",
-          buttonClass:
-            "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600",
+          buttonClass: "bg-accent text-white hover:brightness-95",
         };
       case "premiumPlus":
         return {

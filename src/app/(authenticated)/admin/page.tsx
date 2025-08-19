@@ -78,15 +78,59 @@ export default function AdminPage() {
       try {
         if (matchesRes.ok) {
           const mJson = await matchesRes.json();
-          (mJson.matches || []).slice(0, 5).forEach((m: any) =>
-            activities.push({
-              id: `match_${m.id}`,
-              type: "match",
-              title: "New Match",
-              description: `${m.userA || m.a || "User A"} & ${m.userB || m.b || "User B"}`,
-              timestamp: new Date(m.createdAt || Date.now()),
-            })
-          );
+          const raw = (mJson?.matches || []) as any[];
+          // Handle two shapes:
+          // 1) Edge list: { id, userA, userB, createdAt }
+          // 2) Grouped: { profileId, matches: [{ _id, fullName, ... }] }
+          raw.slice(0, 5).forEach((item: any) => {
+            if (item && Array.isArray(item.matches) && item.profileId) {
+              // Create one representative activity per group using first pair
+              const partner = item.matches[0] || {};
+              const left = item.profileId;
+              const right = partner._id || partner.id || "unknown";
+              const nameA =
+                partner._rootName ||
+                item.rootName ||
+                left?.slice?.(-6) ||
+                "User A";
+              const nameB =
+                partner.fullName ||
+                partner.name ||
+                right?.slice?.(-6) ||
+                "User B";
+              const id = `match_${left}_${right}`;
+              activities.push({
+                id,
+                type: "match",
+                title: "New Match",
+                description: `${nameA} & ${nameB}`,
+                timestamp: new Date(
+                  item.createdAt || partner.createdAt || Date.now()
+                ),
+              });
+            } else {
+              const id = item?.id
+                ? String(item.id)
+                : `${item?.user1Id || item?.a || "x"}_${item?.user2Id || item?.b || "y"}`;
+              const nameA =
+                item?.userA ||
+                item?.a ||
+                item?.user1Name ||
+                (item?.user1Id ? String(item.user1Id).slice(-6) : "User A");
+              const nameB =
+                item?.userB ||
+                item?.b ||
+                item?.user2Name ||
+                (item?.user2Id ? String(item.user2Id).slice(-6) : "User B");
+              activities.push({
+                id: `match_${id}`,
+                type: "match",
+                title: "New Match",
+                description: `${nameA} & ${nameB}`,
+                timestamp: new Date(item?.createdAt || Date.now()),
+              });
+            }
+          });
         }
       } catch {}
       try {

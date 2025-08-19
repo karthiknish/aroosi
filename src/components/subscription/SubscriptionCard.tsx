@@ -243,14 +243,13 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           <>
             <Button
               onClick={() => onUpgrade?.("premium")}
-              className="flex-1"
-              variant="outline"
+              className="flex-1 bg-accent text-white hover:brightness-95"
             >
               Upgrade to Premium
             </Button>
             <Button
               onClick={() => onUpgrade?.("premiumPlus")}
-              className="flex-1"
+              className="flex-1 bg-accent text-white hover:brightness-95"
             >
               Get Premium Plus
             </Button>
@@ -260,7 +259,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
           <>
             <Button
               onClick={() => onUpgrade?.("premiumPlus")}
-              className="flex-1"
+              className="flex-1 bg-accent text-white hover:brightness-95"
             >
               Upgrade to Premium Plus
             </Button>

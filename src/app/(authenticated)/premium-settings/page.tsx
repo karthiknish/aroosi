@@ -287,22 +287,25 @@ export default function PremiumSettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-rose-50">
+    <div className="relative min-h-screen bg-white overflow-hidden">
+      {/* Decorative pink SVG-like blobs */}
+      <div className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full bg-pink-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -left-24 w-[30rem] h-[30rem] rounded-full bg-rose-200/30 blur-3xl" />
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-8"
         >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <h1 className="text-4xl md:text-5xl font-bold leading-[1.4] bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <h2 className="text-xl md:text-2xl font-semibold leading-tight text-gray-900">
               Premium Settings
-            </h1>
+            </h2>
             {getSubscriptionBadge(profile.subscriptionPlan as SubscriptionPlan)}
           </div>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Manage your premium features and subscription preferences
+          <p className="text-sm text-gray-600 max-w-xl mx-auto">
+            Manage your premium features and preferences
           </p>
         </motion.div>
 
@@ -315,28 +318,25 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="overflow-hidden shadow-lg border-0">
-                <div className="bg-gradient-to-r from-pink-600 to-rose-600 p-1">
-                  <CardHeader className="bg-white rounded-t-lg">
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <Crown className="w-5 h-5 text-pink-600" />
-                      Subscription Status
-                    </CardTitle>
-                    <CardDescription>
-                      Your current plan and subscription details
-                    </CardDescription>
-                  </CardHeader>
-                </div>
-                <CardContent className="p-6">
+              <Card className="overflow-hidden shadow-sm border rounded-lg">
+                <CardHeader className="rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Crown className="w-5 h-5 text-pink-600" />
+                    Subscription Status
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Current plan and subscription details
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-5">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="flex items-center gap-3">
                       {/* Highlighted current plan badge */}
                       <div
-                        className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2
-                        ${
+                        className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2 ${
                           profile.subscriptionPlan === "premiumPlus"
                             ? "bg-amber-100 text-amber-700"
-                            : "bg-pink-100 text-pink-700"
+                            : "bg-neutral-100 text-neutral-800"
                         }`}
                       >
                         {profile.subscriptionPlan === "premiumPlus" ? (
@@ -428,14 +428,14 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="shadow-lg border-0">
+              <Card className="shadow-sm border rounded-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <Crown className="w-5 h-5 text-pink-500" />
                     Premium Features
                   </CardTitle>
-                  <CardDescription>
-                    Features included with your Premium subscription
+                  <CardDescription className="text-xs">
+                    Features included with your subscription
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -446,16 +446,16 @@ export default function PremiumSettingsPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + index * 0.05 }}
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg hover:shadow-md transition-shadow"
+                        className="flex items-center justify-between p-4 rounded-lg hover:shadow-md transition-shadow bg-white"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-white rounded-full shadow-sm">
                             {feature.icon}
                           </div>
                           <div>
-                            <h3 className="font-medium text-gray-800">
+                            <p className="text-xl text-neutral">
                               {feature.title}
-                            </h3>
+                            </p>
                             <p className="text-sm text-gray-600">
                               {feature.description}
                             </p>
@@ -506,20 +506,21 @@ export default function PremiumSettingsPage() {
 
             {/* Premium Plus Features */}
             <motion.div
+              className="bg-white"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="shadow-lg border-0">
+              <Card className="shadow-sm bg-white border rounded-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <Rocket className="w-5 h-5 text-pink-600" />
                     Premium Plus Features
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs">
                     {isPremiumPlus
-                      ? "Exclusive features for Premium Plus subscribers"
-                      : "Upgrade to Premium Plus to unlock these features"}
+                      ? "Exclusive for Premium Plus"
+                      : "Upgrade to unlock these"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -532,7 +533,7 @@ export default function PremiumSettingsPage() {
                         transition={{ delay: 0.4 + index * 0.05 }}
                         className={`flex items-center justify-between p-4 rounded-lg transition-all ${
                           feature.available
-                            ? "bg-gradient-to-r from-pink-50 to-rose-50 hover:shadow-md"
+                            ? "bg-white hover:shadow-md"
                             : "bg-gray-50 opacity-60"
                         }`}
                       >
@@ -545,9 +546,9 @@ export default function PremiumSettingsPage() {
                             {feature.icon}
                           </div>
                           <div>
-                            <h3 className="font-medium text-gray-800">
+                            <p className="text-xl text-neutral">
                               {feature.title}
-                            </h3>
+                            </p>
                             <p className="text-sm text-gray-600">
                               {feature.description}
                             </p>
@@ -614,18 +615,15 @@ export default function PremiumSettingsPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 }}
-                      className="mt-6 p-6 bg-gradient-to-br from-pink-100 via-rose-100 to-rose-100 rounded-lg"
+                      className="mt-6 p-5 rounded-lg bg-white border"
                     >
-                      <p className="text-sm font-semibold text-pink-800 mb-2">
-                        Unlock Premium Plus Features
-                      </p>
-                      <p className="text-sm text-gray-700 mb-4">
-                        Get access to advanced features like profile boost,
-                        viewer tracking, and premium filters.
+                      <p className="text-sm text-gray-800 mb-3">
+                        Unlock Premium Plus features like profile boost, viewer
+                        tracking, and premium filters.
                       </p>
                       <Button
                         onClick={() => handleNavigate("/subscription")}
-                        className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white"
+                        className="w-full bg-pink-600 hover:bg-pink-700 text-white"
                       >
                         Upgrade to Premium Plus
                       </Button>
@@ -644,13 +642,13 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="shadow-lg border-0 bg-gradient-to-br from-pink-50 to-rose-50">
+              <Card className="shadow-sm bg-white border rounded-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <BarChart className="w-5 h-5 text-pink-600" />
                     Usage Tracking
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs">
                     Monitor your feature usage and limits
                   </CardDescription>
                 </CardHeader>
@@ -683,13 +681,13 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="shadow-lg border-0 bg-gradient-to-br from-pink-50 via-rose-50 to-rose-50">
-                <CardContent className="p-6">
-                  <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
+              <Card className="shadow-sm border rounded-lg bg-white">
+                <CardContent className="p-5">
+                  <h3 className="font-medium text-base mb-3 text-gray-800 flex items-center gap-2">
                     <Heart className="h-5 w-5 text-pink-500" />
                     Premium Benefits
                   </h3>
-                  <ul className="space-y-3 text-sm">
+                  <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-3">
                       <MessageCircle className="h-4 w-4 text-pink-500 flex-shrink-0 mt-0.5" />
                       <span className="text-gray-700">
@@ -725,7 +723,7 @@ export default function PremiumSettingsPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Card className="shadow-lg border-0">
+              <Card className="shadow-sm border rounded-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Sparkles className="w-5 h-5 text-pink-600" />

@@ -124,14 +124,16 @@ export default function UsagePage() {
         }}
       ></div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <h1 className="text-3xl font-bold mb-8">Usage Analytics</h1>
+        <h1 className="text-3xl font-bold mb-8 text-neutral">
+          Usage Analytics
+        </h1>
 
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <UsageTracker />
 
           <Card className="bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
             <CardHeader>
-              <CardTitle>Usage Distribution</CardTitle>
+              <CardTitle className="text-neutral">Usage Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -172,7 +174,7 @@ export default function UsagePage() {
 
         <Card className="mt-8 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
           <CardHeader>
-            <CardTitle>Daily Usage Trends</CardTitle>
+            <CardTitle className="text-neutral">Daily Usage Trends</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -209,7 +211,9 @@ export default function UsagePage() {
         {/* Unread aggregate summary */}
         <Card className="mt-8 bg-white/95 backdrop-blur-sm shadow-lg border border-gray-100">
           <CardHeader>
-            <CardTitle>Unread Messages Snapshot</CardTitle>
+            <CardTitle className="text-neutral">
+              Unread Messages Snapshot
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {unreadCounts ? (

@@ -95,10 +95,11 @@ export function useRealTimeMessages({
 
   const PAGE_SIZE = 50;
 
-  // Firestore real-time subscription for messages
+  // Firestore real-time subscription for messages with retry on transient errors
   useEffect(() => {
     if (!userId || !conversationId) return;
-    setIsConnected(true);
+    setIsConnected(false);
+    setError(null);
     const msgsRef = collection(db, "messages");
     const q = query(
       msgsRef,
@@ -106,69 +107,123 @@ export function useRealTimeMessages({
       orderBy("createdAt", "desc"),
       fsLimit(PAGE_SIZE)
     );
-    unsubMessagesRef.current = onSnapshot(
-      q,
-      (snap) => {
-        const list: MessageData[] = [];
-        snap.forEach((docSnap) => {
-          const d: any = docSnap.data();
-          // Normalize Firestore Timestamp -> number
-          const createdAt =
-            d.createdAt instanceof Timestamp
-              ? d.createdAt.toMillis()
-              : d.createdAt || Date.now();
-          const readAtNorm =
-            d.readAt instanceof Timestamp ? d.readAt.toMillis() : d.readAt;
-          list.push({
-            _id: d.id || docSnap.id,
-            conversationId: d.conversationId,
-            fromUserId: d.fromUserId,
-            toUserId: d.toUserId,
-            text: d.text || "",
-            type: d.type || "text",
-            audioStorageId: d.audioStorageId,
-            duration: d.duration,
-            fileSize: d.fileSize,
-            mimeType: d.mimeType,
-            isRead: !!readAtNorm,
-            readAt: readAtNorm,
-            createdAt,
-            _creationTime: createdAt,
-          });
-        });
-        // list currently descending -> reverse to ascending for UI
-        const ascWindow = list.reverse();
-        setWindowMessages(ascWindow);
-        // Determine if more older messages exist (cheap probe)
-        (async () => {
-          try {
-            if (ascWindow.length === 0) {
-              setHasMore(false);
-              return;
-            }
-            const oldest = ascWindow[0].createdAt;
-            const probeQ = query(
-              msgsRef,
-              where("conversationId", "==", conversationId),
-              orderBy("createdAt", "asc"),
-              where("createdAt", "<", oldest),
-              fsLimit(1)
-            );
-            const probeSnap = await getDocs(probeQ);
-            setHasMore(!probeSnap.empty);
-          } catch {
-            /* ignore */
-          }
-        })();
-      },
-      (err) => {
-        console.error("Firestore messages subscription error", err);
-        setError("Realtime messages failed");
-        setIsConnected(false);
+
+    let retryCount = 0;
+    const maxRetries = 5;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const subscribe = () => {
+      // If offline, delay subscription until back online
+      if (typeof window !== "undefined" && !navigator.onLine) {
+        setError("You are offline. Retrying…");
+        retryTimer = setTimeout(subscribe, 1500);
+        return;
       }
-    );
+      unsubMessagesRef.current = onSnapshot(
+        q,
+        (snap) => {
+          retryCount = 0; // reset on success
+          setIsConnected(true);
+          setError(null);
+          const list: MessageData[] = [];
+          snap.forEach((docSnap) => {
+            const d: any = docSnap.data();
+            // Normalize Firestore Timestamp -> number
+            const createdAt =
+              d.createdAt instanceof Timestamp
+                ? d.createdAt.toMillis()
+                : d.createdAt || Date.now();
+            const readAtNorm =
+              d.readAt instanceof Timestamp ? d.readAt.toMillis() : d.readAt;
+            list.push({
+              _id: d.id || docSnap.id,
+              conversationId: d.conversationId,
+              fromUserId: d.fromUserId,
+              toUserId: d.toUserId,
+              text: d.text || "",
+              type: d.type || "text",
+              audioStorageId: d.audioStorageId,
+              duration: d.duration,
+              fileSize: d.fileSize,
+              mimeType: d.mimeType,
+              isRead: !!readAtNorm,
+              readAt: readAtNorm,
+              createdAt,
+              _creationTime: createdAt,
+            });
+          });
+          // list currently descending -> reverse to ascending for UI
+          const ascWindow = list.reverse();
+          setWindowMessages(ascWindow);
+          // Determine if more older messages exist (cheap probe)
+          (async () => {
+            try {
+              if (ascWindow.length === 0) {
+                setHasMore(false);
+                return;
+              }
+              const oldest = ascWindow[0].createdAt;
+              const probeQ = query(
+                msgsRef,
+                where("conversationId", "==", conversationId),
+                orderBy("createdAt", "asc"),
+                where("createdAt", "<", oldest),
+                fsLimit(1)
+              );
+              const probeSnap = await getDocs(probeQ);
+              setHasMore(!probeSnap.empty);
+            } catch {
+              /* ignore */
+            }
+          })();
+        },
+        (err) => {
+          console.error("Firestore messages subscription error", err);
+          // Provide human-friendly error text and suggestions
+          const code = (err as any)?.code as string | undefined;
+          const msg = (err as any)?.message as string | undefined;
+          if (code === "permission-denied") {
+            setError("Permission denied. Please sign in again.");
+          } else if (
+            code === "failed-precondition" &&
+            msg &&
+            /index/i.test(msg)
+          ) {
+            setError("Missing Firestore index. An admin must deploy indexes.");
+          } else if (typeof window !== "undefined" && !navigator.onLine) {
+            setError("You are offline. Retrying…");
+          } else {
+            setError("Realtime messages failed");
+          }
+          setIsConnected(false);
+          // Retry for transient errors (network, unavailable). Exponential backoff.
+          if (retryCount < maxRetries) {
+            retryCount += 1;
+            const base = 1000 * Math.pow(2, retryCount - 1);
+            const jitter = Math.floor(Math.random() * 250);
+            const delay = base + jitter;
+            console.info(
+              "Retrying messages subscription in ms:",
+              delay,
+              "attempt:",
+              retryCount + 1
+            );
+            retryTimer = setTimeout(() => {
+              // unsubscribe previous and resubscribe
+              try {
+                unsubMessagesRef.current?.();
+              } catch {}
+              subscribe();
+            }, delay);
+          }
+        }
+      );
+    };
+
+    subscribe();
     return () => {
       unsubMessagesRef.current?.();
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, [userId, conversationId]);
 

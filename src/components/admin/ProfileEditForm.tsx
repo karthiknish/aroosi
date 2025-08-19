@@ -5,6 +5,15 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { ProfileFormValues } from "@/types/profile";
@@ -420,12 +429,52 @@ export default function ProfileEditForm({
           <label className="block font-medium" htmlFor="dateOfBirth">
             Date of Birth
           </label>
-          <input
-            id="dateOfBirth"
-            type="date"
-            {...register("dateOfBirth")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="YYYY-MM-DD"
+          <Controller
+            name="dateOfBirth"
+            control={control}
+            render={({ field }) => (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal bg-white",
+                      !field.value && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {field.value ? (
+                      format(new Date(field.value as string), "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-white" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={
+                      field.value ? new Date(field.value as string) : undefined
+                    }
+                    onSelect={(date) => {
+                      if (!date || isNaN(date.getTime())) return;
+                      field.onChange(format(date, "yyyy-MM-dd"));
+                    }}
+                    disabled={(date) => {
+                      const today = new Date();
+                      const minDate = new Date(
+                        today.getFullYear() - 18,
+                        today.getMonth(),
+                        today.getDate()
+                      );
+                      return date > minDate || date < new Date("1900-01-01");
+                    }}
+                    captionLayout="dropdown"
+                    defaultMonth={new Date(2000, 0, 1)}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
           />
           {errors.dateOfBirth && (
             <p className="text-red-600 text-sm">{errors.dateOfBirth.message}</p>

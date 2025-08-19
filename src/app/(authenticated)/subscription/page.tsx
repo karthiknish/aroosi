@@ -12,6 +12,7 @@ import {
 } from "@/hooks/useSubscription";
 import { useRouter, useSearchParams } from "next/navigation";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import {
   createCheckoutSession,
@@ -147,23 +148,8 @@ export default function SubscriptionPage() {
   }, []);
 
   const handleCancel = () => {
-    if (
-      confirm(
-        "Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period."
-      )
-    ) {
-      cancel(undefined, {
-        onSuccess: (data) => {
-          showSuccessToast(
-            data.message ||
-              "Cancellation requested. Your plan will remain active until the end of the billing period."
-          );
-        },
-        onError: (error) => {
-          showErrorToast(error, "Failed to request cancellation");
-        },
-      });
-    }
+    // open modal handled via state in component UI
+    setShowCancelModal(true);
   };
 
   const handleRestore = () => {
@@ -186,6 +172,25 @@ export default function SubscriptionPage() {
     } catch (err) {
       showErrorToast(err, "Failed to open billing portal");
     }
+  };
+
+  // Confirmation modal state for cancellation
+  const [showCancelModal, setShowCancelModal] = React.useState(false);
+
+  const handleConfirmCancel = () => {
+    // Close modal immediately to avoid duplicate actions
+    setShowCancelModal(false);
+    cancel(undefined, {
+      onSuccess: (data) => {
+        showSuccessToast(
+          data.message ||
+            "Cancellation requested. Your plan will remain active until the end of the billing period."
+        );
+      },
+      onError: (error) => {
+        showErrorToast(error, "Failed to request cancellation");
+      },
+    });
   };
 
   return (
@@ -463,6 +468,18 @@ export default function SubscriptionPage() {
             </motion.div>
           </motion.aside>
         </div>
+
+        {/* Cancel confirmation modal (themed) */}
+        <ConfirmationModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleConfirmCancel}
+          title="Cancel subscription?"
+          description="Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period."
+          confirmText="Confirm Cancel"
+          cancelText="Keep Subscription"
+          isLoading={cancelPending}
+        />
       </div>
     </div>
   );
