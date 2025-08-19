@@ -21,6 +21,7 @@ import {
 import { useAdminProfileImages } from "@/hooks/useAdminProfileImages";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { useProfileImages } from "@/hooks/useProfileImages";
+import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
 
 // Types
 // Note: Upload responses are handled internally by ImageUploader and utilities
@@ -137,21 +138,33 @@ export function ProfileImageUpload({
 
   // Memoize the ordered images with proper typing first
   const memoizedOrderedImages = useMemo(() => {
+    // Base set depending on mode and admin/user context
+    let base: ImageType[] = [];
     if (mode === "create") {
-      return [...localImages, ...optimisticImages];
+      base = [...localImages];
+    } else if (authIsAdmin) {
+      base = (adminImages as any[]) || [];
+    } else {
+      base = userImages.map((i) => ({
+        id: i.storageId || i.url,
+        url: i.url,
+        storageId: i.storageId,
+      })) as any[];
     }
-    const baseImages = authIsAdmin
-      ? adminImages
-      : userImages.map((i) => ({
-          id: i.storageId || i.url,
-          url: i.url,
-          storageId: i.storageId,
-        }));
-    const validImages = (baseImages || []).filter(
-      (img: any): img is ImageType => Boolean(img?.url && img.id)
-    );
-    // Combine server images with optimistic updates
-    return [...validImages, ...optimisticImages];
+    // Normalize to ensure consistent url/id/storageId shapes
+    const normalized = normalizeProfileImages({
+      rawImages: base as any[],
+      profileImageUrls: undefined,
+      profileImageIds: undefined,
+    });
+    // Append optimistic images (already in ImageType shape)
+    const optimistic = optimisticImages.map((o) => ({
+      id: o.id,
+      _id: o.id,
+      url: o.url,
+      storageId: (o as any).storageId || o.id,
+    }));
+    return [...normalized, ...optimistic];
   }, [
     mode,
     localImages,

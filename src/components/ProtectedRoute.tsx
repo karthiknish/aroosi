@@ -18,6 +18,8 @@ interface ProtectedRouteProps {
   requireAuth?: boolean;
   requireOnboardingComplete?: boolean; // currently not enforced
   redirectTo?: string;
+  /** @deprecated use requireOnboardingComplete; kept for backward compatibility with older tests */
+  requireProfileComplete?: boolean;
 }
 
 // Plan-gated routes (module scope to keep useEffect deps stable)
@@ -31,6 +33,7 @@ function ProtectedRouteInner({
   requireAuth = true,
   requireOnboardingComplete = false,
   redirectTo,
+  requireProfileComplete,
 }: ProtectedRouteProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -207,9 +210,11 @@ function ProtectedRouteInner({
         }
       }
 
-      // Enforce onboarding/profile completeness when requested
-      if (requireOnboardingComplete && !isOnboardingComplete) {
-        // Allow access if already on onboarding or create-profile routes
+      // Enforce onboarding/profile completeness when requested via either prop
+      const needsOnboarding =
+        (requireOnboardingComplete || requireProfileComplete) &&
+        !isOnboardingComplete;
+      if (needsOnboarding) {
         if (!isOnboardingRoute && !isCreateProfileRoute) {
           void handleNavigation("/", "Please finish onboarding to continue.");
           return;
@@ -226,6 +231,7 @@ function ProtectedRouteInner({
     isPublicRoute,
     requireAuth,
     requireOnboardingComplete,
+    requireProfileComplete,
     isOnboardingRoute,
     isCreateProfileRoute,
     isProfileEditRoute,

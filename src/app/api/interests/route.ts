@@ -9,8 +9,10 @@ import {
   buildMatch,
   COL_MATCHES,
   FSInterest,
+  deterministicMatchId,
 } from "@/lib/firestoreSchema";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import {
   applySecurityHeaders,
   validateSecurityRequirements,
@@ -52,27 +54,22 @@ async function loadUser(userId: string) {
   return { id: doc.id, ...(doc.data() as any) };
 }
 async function ensureMatchIfMutual(fromUserId: string, toUserId: string) {
-  const reciprocalId = interestId(toUserId, fromUserId);
-  const reciprocalSnap = await db
-    .collection(COL_INTERESTS)
-    .doc(reciprocalId)
-    .get();
-  const reciprocal = reciprocalSnap.exists
-    ? (reciprocalSnap.data() as FSInterest)
-    : null;
-  // Create a match when the recipient accepts an interest. Previously this
-  // required a reciprocal accepted interest; treat recipient acceptance as
-  // sufficient intent to match. Ensure we don't create duplicate matches.
-  const existing = await db
-    .collection(COL_MATCHES)
-    .where("user1Id", "in", [fromUserId, toUserId])
-    .where("user2Id", "in", [fromUserId, toUserId])
-    .limit(1)
-    .get();
-  if (existing.empty) {
-    const match = buildMatch(fromUserId, toUserId);
-    await db.collection(COL_MATCHES).add(match);
-  }
+  // Single acceptance now forms a match; still ensure idempotency
+  const matchDocId = deterministicMatchId(fromUserId, toUserId);
+  const existingDoc = await db.collection(COL_MATCHES).doc(matchDocId).get();
+  if (existingDoc.exists) return;
+  const match = buildMatch(fromUserId, toUserId);
+  await db.collection(COL_MATCHES).doc(matchDocId).set(match, { merge: true });
+}
+
+async function isBlocked(a: string, b: string) {
+  // Check if either direction has a block document (blocker_blocked)
+  const blockId1 = `${a}_${b}`;
+  const blockId2 = `${b}_${a}`;
+  const snap1 = await db.collection("blocks").doc(blockId1).get();
+  if (snap1.exists) return true;
+  const snap2 = await db.collection("blocks").doc(blockId2).get();
+  return snap2.exists;
 }
 
 export async function POST(req: NextRequest) {
@@ -104,11 +101,28 @@ export async function POST(req: NextRequest) {
   const data = parsed.data;
   const now = Date.now();
   try {
+    // Basic write rate limiting per user (e.g. 30 interest mutations per 10 minutes)
+    const rl = checkApiRateLimit(
+      `interest_write_${auth.userId}`,
+      30,
+      10 * 60 * 1000
+    );
+    if (!rl.allowed) {
+      return applySecurityHeaders(errorResponse("Rate limit exceeded", 429));
+    }
     if (data.action === "send") {
       if (data.toUserId === auth.userId)
         return applySecurityHeaders(
           errorResponse("Cannot send interest to self", 400)
         );
+      if (await isBlocked(auth.userId, data.toUserId)) {
+        return applySecurityHeaders(
+          errorResponse(
+            "Cannot send interest (one of the users is blocked)",
+            403
+          )
+        );
+      }
       const docId = interestId(auth.userId, data.toUserId);
       const ref = db.collection(COL_INTERESTS).doc(docId);
       const existing = await ref.get();
@@ -116,6 +130,22 @@ export async function POST(req: NextRequest) {
         return applySecurityHeaders(
           errorResponse("Interest already sent", 409)
         );
+      // Guard against extremely rapid duplicate writes from race conditions: re-check inverse direction
+      const inverseId = interestId(data.toUserId, auth.userId);
+      const inverseSnap = await db
+        .collection(COL_INTERESTS)
+        .doc(inverseId)
+        .get();
+      if (inverseSnap.exists) {
+        const inverse = inverseSnap.data() as FSInterest;
+        if (inverse.status === "accepted") {
+          // Other side already accepted you; create match immediately & short-circuit
+          await ensureMatchIfMutual(auth.userId, data.toUserId);
+          return applySecurityHeaders(
+            successResponse({ success: true, alreadyMatched: true })
+          );
+        }
+      }
       const fromUser = await loadUser(auth.userId);
       const toUser = await loadUser(data.toUserId);
       const interest = buildInterest({
@@ -139,6 +169,11 @@ export async function POST(req: NextRequest) {
         return applySecurityHeaders(
           errorResponse("Not authorized to respond to this interest", 403)
         );
+      if (await isBlocked(interest.fromUserId, interest.toUserId)) {
+        return applySecurityHeaders(
+          errorResponse("Cannot respond to blocked interest", 403)
+        );
+      }
       const updates: Partial<FSInterest> = {
         status: data.status,
         updatedAt: now,

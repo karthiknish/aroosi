@@ -857,6 +857,12 @@ export function useUserProfile() {
     // aliases
     isLoaded: !authState.isLoading,
     isSignedIn: authState.isAuthenticated,
+    // Backward compatibility: some legacy tests expect isProfileComplete
+    // Use isOnboardingComplete as the source of truth.
+    // (Type already may not include it; we cast for legacy access.)
+    ...( {
+      isProfileComplete: authState.isOnboardingComplete,
+    } as any ),
     refreshProfile,
     refreshUser: refreshProfile,
     signIn,

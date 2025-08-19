@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -34,7 +34,10 @@ import { Profile } from "@/types/profile";
 // Lazy-load heavier image reorder component to reduce initial JS
 import dynamic from "next/dynamic";
 const ProfileImageReorder = dynamic(
-  () => import("@/components/ProfileImageReorder").then(m => m.ProfileImageReorder),
+  () =>
+    import("@/components/ProfileImageReorder").then(
+      (m) => m.ProfileImageReorder
+    ),
   { ssr: false }
 );
 import { planDisplayName } from "@/lib/utils/plan";
@@ -52,6 +55,7 @@ import { deleteProfile } from "@/lib/utils/profileApi";
 import { boostProfile, activateSpotlight } from "@/lib/profile/userProfileApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { PremiumFeatureGuard } from "@/components/subscription/PremiumFeatureGuard";
+import { normalizeProfileImages } from "@/lib/images/profileImageUtils";
 // Re-export types for backward compatibility
 type ApiImage = unknown;
 type MappedImage = unknown;
@@ -109,9 +113,7 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
   );
 };
 
-/**
- * Section component for grouping related profile information
- */
+// Section component
 const DisplaySection: React.FC<DisplaySectionProps> = ({
   title,
   children,
@@ -157,7 +159,6 @@ const ProfileView: FC<ProfileViewProps> = ({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
-  // Cookie-auth: token is no longer exposed in AuthContext
   const { user: authUser, profile: authProfile } = useAuthContext();
   const currentUserId =
     authUser?.uid ||
@@ -165,7 +166,6 @@ const ProfileView: FC<ProfileViewProps> = ({
     (authProfile as any)?.userId ||
     "";
 
-  // Normalize plan once (backend also normalizes) to avoid alias divergence
   const plan = normalisePlan(profileData.subscriptionPlan as any);
   const activeSpotlight = Boolean(
     profileData.hasSpotlightBadge &&
@@ -173,7 +173,6 @@ const ProfileView: FC<ProfileViewProps> = ({
       profileData.spotlightBadgeExpiresAt > Date.now()
   );
 
-  // Format annual income (GBP by default)
   const formatCurrency = (v?: string | number) => {
     if (v === undefined || v === null || v === "") return "-";
     const n =
@@ -194,111 +193,41 @@ const ProfileView: FC<ProfileViewProps> = ({
     try {
       await openBillingPortal();
     } catch {
-      // Fallback to subscription page if portal not available
       router.push("/subscription");
     }
   };
 
-  // Format images for the image reorder component
-  const imageList = React.useMemo(() => {
-    // 1) Prefer canonical URLs stored on the profile document
-    if (
-      Array.isArray((profileData as any)?.profileImageUrls) &&
-      (profileData as any).profileImageUrls.length > 0
-    ) {
-      const urls = (profileData as any).profileImageUrls as string[];
-      const ids = Array.isArray((profileData as any).profileImageIds)
-        ? ((profileData as any).profileImageIds as string[])
-        : [];
-      return urls.map((url: string, index: number) => ({
-        id: ids[index] || `url-${index}`,
-        _id: ids[index] || `url-${index}`,
-        url,
-        storageId: ids[index] || "",
-      }));
-    }
+  const imageList = useMemo(
+    () =>
+      normalizeProfileImages({
+        rawImages: Array.isArray(images) ? (images as any[]) : undefined,
+        profileImageUrls: (profileData as any)?.profileImageUrls,
+        profileImageIds: profileData?.profileImageIds,
+      }),
+    [
+      images,
+      profileData?.profileImageIds,
+      (profileData as any)?.profileImageUrls,
+    ]
+  );
 
-    if (Array.isArray(images)) {
-      const formattedImages = images.map(
-        (
-          img: string | { _id: string; url?: string; storageId?: string },
-          index: number
-        ) => {
-          const imageId =
-            typeof img === "string" ? img : img._id || `img-${index}`;
-          let imageUrl =
-            typeof img === "string"
-              ? `/api/profile/image/${img}`
-              : img.url || `/api/profile/image/${imageId}`;
-
-          // Ensure URL is absolute if it's not already
-          if (
-            imageUrl &&
-            !imageUrl.startsWith("http") &&
-            !imageUrl.startsWith("blob:") &&
-            !imageUrl.startsWith("data:")
-          ) {
-            imageUrl = new URL(imageUrl, window.location.origin).toString();
-          }
-
-          return {
-            id: imageId,
-            _id: imageId,
-            url: imageUrl,
-            storageId:
-              typeof img === "string" ? img : img.storageId || img._id || "",
-          };
-        }
-      );
-      return formattedImages;
-    }
-
-    if (
-      Array.isArray(profileData?.profileImageIds) &&
-      profileData.profileImageIds.length > 0
-    ) {
-      return profileData.profileImageIds
-        .filter((id): id is string => typeof id === "string")
-        .map((id) => ({
-          id,
-          _id: id,
-          url: `/api/profile/image/${id}`,
-          storageId: id,
-        }));
-    }
-
-    return [];
-  }, [
-    images,
-    profileData?.profileImageIds,
-    (profileData as any)?.profileImageUrls,
-  ]);
-
-  // Delete profile handler
   const handleDeleteProfile = async () => {
     setDeleteError(null);
     setDeleteLoading(true);
     try {
-      // Cookie-auth: server reads session from cookies
       await deleteProfile();
       router.push("/");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setDeleteError(err.message);
-      } else if (typeof err === "string") {
-        setDeleteError(err);
-      } else {
-        setDeleteError("An error occurred while deleting your profile.");
-      }
+      if (err instanceof Error) setDeleteError(err.message);
+      else if (typeof err === "string") setDeleteError(err);
+      else setDeleteError("An error occurred while deleting your profile.");
     } finally {
       setDeleteLoading(false);
       setShowDeleteDialog(false);
     }
   };
 
-  // Utility to refresh localStorage values (customize keys as needed)
   function refreshProfileLocalStorage() {
-    // Only update 'onboarding' key, do not save 'profile' or any _id/userId
     if (profileData && profileData.isOnboardingComplete !== undefined) {
       localStorage.setItem(
         "onboarding",

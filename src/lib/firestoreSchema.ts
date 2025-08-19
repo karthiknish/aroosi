@@ -163,7 +163,21 @@ export const buildImageMeta = (p: Omit<FSImageMeta,'createdAt'|'id'>): FSImageMe
 
 // matches (added to support mutual interest match creation during migration)
 export interface FSMatch { id?: string; user1Id: string; user2Id: string; status: 'matched'; createdAt: TimestampMillis; conversationId: string; lastMessageText?: string; lastMessageAt?: TimestampMillis; }
-export const buildMatch = (userA: string, userB: string): FSMatch => { const createdAt=Date.now(); const sorted=[userA,userB].sort(); return { user1Id: sorted[0], user2Id: sorted[1], status:'matched', createdAt, conversationId: `${sorted[0]}_${sorted[1]}` }; };
+export function deterministicMatchId(userA: string, userB: string): string {
+  const sorted = [userA, userB].sort();
+  return `${sorted[0]}__${sorted[1]}`; // double underscore to avoid accidental collisions
+}
+export const buildMatch = (userA: string, userB: string): FSMatch => {
+  const createdAt = Date.now();
+  const sorted = [userA, userB].sort();
+  return {
+    user1Id: sorted[0],
+    user2Id: sorted[1],
+    status: "matched",
+    createdAt,
+    conversationId: `${sorted[0]}_${sorted[1]}`,
+  };
+};
 export const COL_MATCHES = 'matches';
 
 // notes (private engagement notes)

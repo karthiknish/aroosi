@@ -163,12 +163,24 @@ const SortableImageBase = ({
           onClick={() => setModalState({ open: true, index: imageIndex })}
         >
           <img
-            src={img.url}
+            src={img.url.split("#")[0]}
             alt="Profile"
             loading="lazy"
             className={"w-full h-full object-cover"}
             onLoad={() => setLoaded(true)}
-            onError={() => setError(true)}
+            onError={(e) => {
+              // Attempt fallback using alt url encoded after hash (#alt=...)
+              try {
+                const hash = img.url.includes("#") ? img.url.split("#")[1] : "";
+                const params = new URLSearchParams(hash);
+                const alt = params.get("alt");
+                if (alt && (e.target as HTMLImageElement).src !== alt) {
+                  (e.target as HTMLImageElement).src = alt;
+                  return;
+                }
+              } catch {}
+              setError(true);
+            }}
           />
         </button>
       )}
