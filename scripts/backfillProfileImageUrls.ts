@@ -9,7 +9,23 @@
 import { adminStorage, db } from "../src/lib/firebaseAdmin";
 
 async function run() {
-  const bucketName = adminStorage.bucket().name;
+  let bucketName: string | undefined;
+  try {
+    bucketName = adminStorage.bucket().name;
+  } catch (e) {
+    bucketName =
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+      (process.env.GCLOUD_PROJECT
+        ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+        : undefined);
+    if (!bucketName) {
+      console.error(
+        "[backfill] No storage bucket configured (admin SDK has no default bucket and no env fallback). Exiting."
+      );
+      process.exit(2);
+    }
+  }
   const usersSnap = await db.collection("users").get();
   let updated = 0;
   for (const doc of usersSnap.docs) {

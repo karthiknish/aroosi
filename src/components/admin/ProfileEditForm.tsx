@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -42,14 +42,23 @@ const profileSchema = z.object({
   education: z.string().min(1, "Education is required"),
   occupation: z.string().min(1, "Occupation is required"),
   annualIncome: z.union([z.string(), z.number()]),
-  diet: z.string().min(1, "Diet is required"),
-  smoking: z.string().min(1, "Smoking is required"),
-  drinking: z.string().min(1, "Drinking is required"),
-  physicalStatus: z.string().min(1, "Physical status is required"),
+  // Parity with onboarding/ProfileCreationModal
+  diet: z
+    .enum(["vegetarian", "non-vegetarian", "vegan", "halal", "kosher"])
+    .or(z.literal("")),
+  smoking: z
+    .enum(["never", "occasionally", "regularly", "socially"])
+    .or(z.literal("")),
+  drinking: z
+    .enum(["never", "occasionally", "socially", "regularly"])
+    .or(z.literal("")),
+  physicalStatus: z.enum(["normal", "differently-abled"]).or(z.literal("")),
   partnerPreferenceAgeMin: z.union([z.string(), z.number()]),
   partnerPreferenceAgeMax: z.union([z.string(), z.number()]),
   partnerPreferenceCity: z.union([z.string(), z.array(z.string())]),
-  preferredGender: z.string(),
+  preferredGender: z
+    .enum(["male", "female", "both", "other"])
+    .or(z.literal("")),
   profileFor: z.string(),
 
   // Hardened subscription fields
@@ -111,16 +120,108 @@ export default function ProfileEditForm({
   imagesLoading,
   matches = [],
 }: Props) {
+  // Normalize incoming initial values so all expected fields exist with a safe type.
+  const normalizedInitialValues = useMemo(() => {
+    const iv = initialValues || {};
+    const safe = <T, D>(val: T | undefined | null, def: D): T | D =>
+      val === undefined || val === null ? def : (val as any);
+    const anyIv = iv as any; // allow access to extended fields not in ProfileFormValues
+    // Map legacy values to onboarding equivalents (e.g., preferredGender: any -> both)
+    const clamp = (v: any, allowed: string[], empty = "") =>
+      allowed.includes(String(v)) ? String(v) : empty;
+    const preferred =
+      (iv as any).preferredGender === "any" ? "both" : iv.preferredGender;
+    const dietClamped = clamp(
+      iv.diet,
+      ["vegetarian", "non-vegetarian", "vegan", "halal", "kosher", ""],
+      ""
+    );
+    const smokingClamped = clamp(
+      iv.smoking,
+      ["never", "occasionally", "regularly", "socially", ""],
+      ""
+    );
+    const drinkingClamped = clamp(
+      iv.drinking,
+      ["never", "occasionally", "socially", "regularly", ""],
+      ""
+    );
+    const physicalClamped = clamp(
+      iv.physicalStatus,
+      ["normal", "differently-abled", ""],
+      ""
+    );
+    return {
+      fullName: safe(iv.fullName, ""),
+      dateOfBirth: safe(iv.dateOfBirth, ""),
+      gender: safe(iv.gender, ""),
+      city: safe(iv.city, ""),
+      country: safe(iv.country, ""),
+      phoneNumber: safe(iv.phoneNumber, ""),
+      aboutMe: safe(iv.aboutMe, ""),
+      height: safe(iv.height, ""),
+      maritalStatus: safe(iv.maritalStatus, ""),
+      education: safe(iv.education, ""),
+      occupation: safe(iv.occupation, ""),
+      annualIncome: safe(iv.annualIncome, ""),
+      diet: dietClamped,
+      smoking: smokingClamped,
+      drinking: drinkingClamped,
+      physicalStatus: physicalClamped,
+      partnerPreferenceAgeMin: safe(iv.partnerPreferenceAgeMin, ""),
+      partnerPreferenceAgeMax: safe(iv.partnerPreferenceAgeMax, ""),
+      partnerPreferenceCity: safe(iv.partnerPreferenceCity, ""),
+      preferredGender: safe(preferred as any, ""),
+      profileFor: safe(iv.profileFor, "self"),
+      subscriptionPlan: safe(iv.subscriptionPlan, "free"),
+      // Extended admin-only fields (not part of narrow ProfileFormValues type yet)
+      subscriptionExpiresAt: anyIv.subscriptionExpiresAt,
+      hideFromFreeUsers: anyIv.hideFromFreeUsers ?? false,
+      motherTongue: safe(iv.motherTongue, ""),
+      religion: safe(iv.religion, ""),
+      ethnicity: safe(iv.ethnicity, ""),
+    } as Partial<ProfileFormValues>;
+  }, [initialValues]);
+
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
-    defaultValues: initialValues,
+    defaultValues: normalizedInitialValues as any,
     mode: "onChange",
   });
+
+  // Ensure that if `initialValues` arrives/changes after mount (async fetch),
+  // the form is reset to reflect those values. useForm's defaultValues only
+  // applies on first render.
+  useEffect(() => {
+    if (
+      normalizedInitialValues &&
+      Object.keys(normalizedInitialValues).length > 0
+    ) {
+      try {
+        reset(normalizedInitialValues as any, { keepDirty: false });
+
+        if (process.env.NODE_ENV !== "production") {
+          // eslint-disable-next-line no-console
+          console.debug(
+            "[ProfileEditForm] Reset with values",
+            normalizedInitialValues
+          );
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "ProfileEditForm: failed to reset form with normalizedInitialValues",
+          e
+        );
+      }
+    }
+  }, [normalizedInitialValues, reset]);
 
   // Country options
   const countries = useMemo(() => COUNTRIES.map((c) => c.name).sort(), []);
@@ -236,8 +337,10 @@ export default function ProfileEditForm({
 
   return (
     <form
-      className="space-y-8 bg-white p-8 rounded-lg shadow-lg"
-      onSubmit={handleSubmit((values) => onSubmit(values as ProfileFormValues))}
+      className="space-y-8 bg-white p-4 sm:p-6 lg:p-8 rounded-lg shadow-lg"
+      onSubmit={handleSubmit((values) =>
+        onSubmit(values as unknown as ProfileFormValues)
+      )}
       autoComplete="off"
     >
       <h2 className="text-2xl font-bold mb-4">Edit Profile (Admin)</h2>
@@ -268,7 +371,7 @@ export default function ProfileEditForm({
               loading={imagesLoading}
             />
           )}
-          <div className="flex items-center gap-4 mt-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 mt-2">
             <label htmlFor="profile-image-upload" className="block">
               <span className="sr-only">Upload image</span>
             </label>
@@ -293,9 +396,9 @@ export default function ProfileEditForm({
         </div>
       )}
       {/* Form Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Personal Info */}
-        <div className="col-span-2 mb-2">
+        <div className="md:col-span-2 mb-2">
           <h3 className="text-lg font-semibold mb-2">Personal Information</h3>
         </div>
 
@@ -503,12 +606,18 @@ export default function ProfileEditForm({
           <label className="block font-medium" htmlFor="diet">
             Diet
           </label>
-          <input
+          <select
             id="diet"
             {...register("diet")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Diet"
-          />
+            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
+          >
+            <option value="">(Unspecified)</option>
+            <option value="vegetarian">Vegetarian</option>
+            <option value="non-vegetarian">Non-Vegetarian</option>
+            <option value="vegan">Vegan</option>
+            <option value="halal">Halal</option>
+            <option value="kosher">Kosher</option>
+          </select>
           {errors.diet && (
             <p className="text-red-600 text-sm">{errors.diet.message}</p>
           )}
@@ -517,12 +626,17 @@ export default function ProfileEditForm({
           <label className="block font-medium" htmlFor="smoking">
             Smoking
           </label>
-          <input
+          <select
             id="smoking"
             {...register("smoking")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Smoking"
-          />
+            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
+          >
+            <option value="">(Unspecified)</option>
+            <option value="never">Never</option>
+            <option value="occasionally">Occasionally</option>
+            <option value="regularly">Regularly</option>
+            <option value="socially">Socially</option>
+          </select>
           {errors.smoking && (
             <p className="text-red-600 text-sm">{errors.smoking.message}</p>
           )}
@@ -531,12 +645,17 @@ export default function ProfileEditForm({
           <label className="block font-medium" htmlFor="drinking">
             Drinking
           </label>
-          <input
+          <select
             id="drinking"
             {...register("drinking")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Drinking"
-          />
+            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
+          >
+            <option value="">(Unspecified)</option>
+            <option value="never">Never</option>
+            <option value="occasionally">Occasionally</option>
+            <option value="socially">Socially</option>
+            <option value="regularly">Regularly</option>
+          </select>
           {errors.drinking && (
             <p className="text-red-600 text-sm">{errors.drinking.message}</p>
           )}
@@ -545,12 +664,15 @@ export default function ProfileEditForm({
           <label className="block font-medium" htmlFor="physicalStatus">
             Physical Status
           </label>
-          <input
+          <select
             id="physicalStatus"
             {...register("physicalStatus")}
-            className="form-input w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
-            placeholder="Physical status"
-          />
+            className="form-select w-full rounded-md border-gray-300 focus:ring-pink-500 focus:border-pink-500"
+          >
+            <option value="">(Unspecified)</option>
+            <option value="normal">Normal</option>
+            <option value="differently-abled">Differently Abled</option>
+          </select>
           {errors.physicalStatus && (
             <p className="text-red-600 text-sm">
               {errors.physicalStatus.message}
@@ -624,7 +746,7 @@ export default function ProfileEditForm({
           >
             <option value="male">Male</option>
             <option value="female">Female</option>
-            <option value="any">Any</option>
+            <option value="both">Both</option>
             <option value="other">Other</option>
             <option value="">(Unspecified)</option>
           </select>
@@ -896,23 +1018,20 @@ function SubscriptionExpiryPreview({
 }: {
   control: ReturnType<typeof useForm>["control"];
 }) {
-  const [value, setValue] = React.useState<number | null>(null);
+  // Use react-hook-form's public useWatch to observe the subscriptionExpiresAt value.
+  const raw = useWatch({ control, name: "subscriptionExpiresAt" }) as
+    | number
+    | string
+    | null
+    | undefined;
 
-  React.useEffect(() => {
-    const sub = (control as any)._subjects.values.subscribe(
-      ({ values }: any) => {
-        const raw = values?.subscriptionExpiresAt;
-        const num =
-          raw === undefined || raw === null
-            ? null
-            : typeof raw === "string"
-              ? Number(raw)
-              : raw;
-        setValue(Number.isFinite(num as number) ? (num as number) : null);
-      }
-    );
-    return () => sub?.unsubscribe?.();
-  }, [control]);
+  const num =
+    raw === undefined || raw === null
+      ? null
+      : typeof raw === "string"
+        ? Number(raw)
+        : raw;
+  const value = Number.isFinite(num as number) ? (num as number) : null;
 
   if (!value) {
     return (
@@ -935,7 +1054,6 @@ function SubscriptionExpiryPreview({
           ? `Days remaining: ${diffDays}`
           : `Expired ${Math.abs(diffDays)} day(s) ago`}
       </div>
-      {/* Spotlight badge expiry preview (placeholder if applicable) */}
       <div className="italic opacity-80">
         Spotlight badge expiry: not available for this profile
       </div>

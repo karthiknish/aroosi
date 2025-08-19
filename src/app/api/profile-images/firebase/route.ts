@@ -8,17 +8,32 @@ import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
 
 async function listImages(user: AuthenticatedUser) {
-  const bucket = adminStorage.bucket();
-  const [files] = await bucket.getFiles({
+  // Resolve bucket defensively: adminStorage.bucket() may throw if no default bucket
+  // configured when initializing firebase-admin. Fall back to env-derived bucket.
+  let bucket: any;
+  try {
+    bucket = adminStorage.bucket();
+  } catch (e) {
+    const fallbackName =
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+      (process.env.GCLOUD_PROJECT
+        ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+        : undefined);
+    if (!fallbackName) throw e;
+    bucket = adminStorage.bucket(fallbackName);
+  }
+  const [filesRaw] = await bucket.getFiles({
     prefix: `users/${user.id}/profile-images/`,
   });
+  const files: any[] = Array.isArray(filesRaw) ? filesRaw : [];
   const images = await Promise.all(
     files
-      .filter((f) => !f.name.endsWith("/"))
-      .map(async (f) => {
+      .filter((f: any) => !f.name.endsWith("/"))
+      .map(async (f: any) => {
         const [meta] = await f.getMetadata();
         return {
-          url: `https://storage.googleapis.com/${bucket.name}/${f.name}`,
+          url: `https://storage.googleapis.com/${bucket.name || process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/${f.name}`,
           storageId: f.name,
           fileName: meta.name,
           size: Number(meta.size || 0),
@@ -73,8 +88,18 @@ export const POST = withFirebaseAuth(
         .doc(user.id)
         .collection("images");
       const imageId = storageId.split("/").pop() || storageId;
-      // Always derive bucket name from admin SDK to avoid misconfigured env like *.firebasestorage.app
-      const resolvedBucketName = adminStorage.bucket().name; // e.g. aroosi-project.appspot.com
+      // Always derive bucket name from admin SDK where possible, otherwise fall back to env
+      let resolvedBucketName: string | undefined;
+      try {
+        resolvedBucketName = adminStorage.bucket().name;
+      } catch (e) {
+        resolvedBucketName =
+          process.env.FIREBASE_STORAGE_BUCKET ||
+          process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+          (process.env.GCLOUD_PROJECT
+            ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+            : undefined);
+      }
       const publicUrl = `https://storage.googleapis.com/${resolvedBucketName}/${storageId}`;
       await imagesCol.doc(imageId).set(
         {
@@ -151,7 +176,19 @@ export const DELETE = withFirebaseAuth(
           { status: 403 }
         );
       }
-      const file = adminStorage.bucket().file(storageId);
+      let file: any;
+      try {
+        file = adminStorage.bucket().file(storageId);
+      } catch (e) {
+        const fallbackName =
+          process.env.FIREBASE_STORAGE_BUCKET ||
+          process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+          (process.env.GCLOUD_PROJECT
+            ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+            : undefined);
+        if (!fallbackName) throw e;
+        file = adminStorage.bucket(fallbackName).file(storageId);
+      }
       await file.delete({ ignoreNotFound: true });
       const imageId = storageId.split("/").pop() || storageId;
       await db

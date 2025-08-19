@@ -21,19 +21,32 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_IMAGES_PER_USER = 5;
 
 async function listUserImages(user: AuthenticatedUser) {
-  const bucket = adminStorage.bucket();
-  const [files] = await bucket.getFiles({
+  let bucket: any;
+  try {
+    bucket = adminStorage.bucket();
+  } catch (e) {
+    const fallback =
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+      (process.env.GCLOUD_PROJECT
+        ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+        : undefined);
+    if (!fallback) throw e;
+    bucket = adminStorage.bucket(fallback);
+  }
+  const [filesRaw] = await bucket.getFiles({
     prefix: `users/${user.id}/profile-images/`,
   });
+  const files: any[] = Array.isArray(filesRaw) ? filesRaw : [];
   return Promise.all(
     files
-      .filter((f) => !f.name.endsWith("/"))
-      .map(async (f) => {
+      .filter((f: any) => !f.name.endsWith("/"))
+      .map(async (f: any) => {
         const [meta] = await f.getMetadata();
         return {
           storageId: f.name,
           fileName: meta.name,
-          url: `https://storage.googleapis.com/${bucket.name}/${f.name}`,
+          url: `https://storage.googleapis.com/${bucket.name || process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/${f.name}`,
           size: Number(meta.size || 0),
           uploadedAt: meta.metadata?.uploadedAt || meta.timeCreated,
           contentType: meta.contentType || null,
@@ -128,6 +141,18 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
     } catch {}
 
     const imageId = String(storageId).split("/").pop() || String(storageId);
+    // Resolve bucket name defensively for the public URL
+    let resolvedBucketName: string | undefined;
+    try {
+      resolvedBucketName = adminStorage.bucket().name;
+    } catch (e) {
+      resolvedBucketName =
+        process.env.FIREBASE_STORAGE_BUCKET ||
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+        (process.env.GCLOUD_PROJECT
+          ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+          : undefined);
+    }
     await db
       .collection("users")
       .doc(user.id)
@@ -139,7 +164,7 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
           fileName,
           contentType,
           size,
-          url: `https://storage.googleapis.com/${adminStorage.bucket().name}/${storageId}`,
+          url: `https://storage.googleapis.com/${resolvedBucketName}/${storageId}`,
           uploadedAt: new Date().toISOString(),
         },
         { merge: true }
@@ -190,7 +215,19 @@ export const DELETE = withFirebaseAuth(async (user, req: NextRequest) => {
         { status: 403, headers: { "Content-Type": "application/json" } }
       );
     }
-    const fileRef = adminStorage.bucket().file(storageId);
+    let fileRef: any;
+    try {
+      fileRef = adminStorage.bucket().file(storageId);
+    } catch (e) {
+      const fallback =
+        process.env.FIREBASE_STORAGE_BUCKET ||
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+        (process.env.GCLOUD_PROJECT
+          ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+          : undefined);
+      if (!fallback) throw e;
+      fileRef = adminStorage.bucket(fallback).file(storageId);
+    }
     await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
     const imageId = storageId.split("/").pop() || storageId;
     await db

@@ -70,30 +70,47 @@ function renderProgress(processed: number, total: number, updated: number, start
   if (processed === total) process.stdout.write('\n');
 }
 
-async function processDoc(doc: FirebaseFirestore.QueryDocumentSnapshot, bucketName: string) {
+async function processDoc(
+  doc: FirebaseFirestore.QueryDocumentSnapshot,
+  bucketName?: string
+) {
   const data = doc.data() as any;
-  const imagesCol = doc.ref.collection('images');
+  const imagesCol = doc.ref.collection("images");
   const imagesSnap = await imagesCol.get();
   if (imagesSnap.empty) return { needsUpdate: false };
   const images = imagesSnap.docs
-    .map(d => d.data() as any)
-    .filter(img => img && typeof img.storageId === 'string');
+    .map((d) => d.data() as any)
+    .filter((img) => img && typeof img.storageId === "string");
   if (!images.length) return { needsUpdate: false };
 
-  const storageIds = images.map(i => i.storageId);
-  const urls = images.map(i => i.url || `https://storage.googleapis.com/${bucketName}/${i.storageId}`);
+  const storageIds = images.map((i) => i.storageId);
+  const urls = images.map(
+    (i) =>
+      i.url || `https://storage.googleapis.com/${bucketName}/${i.storageId}`
+  );
 
-  const existingIds: string[] = Array.isArray(data.profileImageIds) ? data.profileImageIds : [];
-  const existingUrls: string[] = Array.isArray(data.profileImageUrls) ? data.profileImageUrls : [];
+  const existingIds: string[] = Array.isArray(data.profileImageIds)
+    ? data.profileImageIds
+    : [];
+  const existingUrls: string[] = Array.isArray(data.profileImageUrls)
+    ? data.profileImageUrls
+    : [];
 
   let needsUpdate = false;
-  if (storageIds.length !== existingIds.length || storageIds.some((id, i) => existingIds[i] !== id)) {
+  if (
+    storageIds.length !== existingIds.length ||
+    storageIds.some((id, i) => existingIds[i] !== id)
+  ) {
     needsUpdate = true;
   } else if (urls.some((u, i) => existingUrls[i] !== u)) {
     needsUpdate = true;
   }
   if (!needsUpdate) return { needsUpdate: false };
-  const payload = { profileImageIds: storageIds, profileImageUrls: urls, updatedAt: Date.now() };
+  const payload = {
+    profileImageIds: storageIds,
+    profileImageUrls: urls,
+    updatedAt: Date.now(),
+  };
   return { needsUpdate: true, payload };
 }
 
@@ -104,7 +121,23 @@ async function run() {
   const snap = await usersCol.get();
   const total = snap.size;
   console.log(`Fetched ${total} user documents.`);
-  const bucketName = adminStorage.bucket().name;
+  let bucketName: string | undefined;
+  try {
+    bucketName = adminStorage.bucket().name;
+  } catch (e) {
+    bucketName =
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+      (process.env.GCLOUD_PROJECT
+        ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+        : undefined);
+    if (!bucketName) {
+      console.error(
+        "[backfill] No storage bucket configured (admin SDK has no default bucket and no env fallback). Exiting."
+      );
+      process.exit(2);
+    }
+  }
 
   let updated = 0;
   let processed = 0;

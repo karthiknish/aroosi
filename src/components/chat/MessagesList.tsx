@@ -256,7 +256,7 @@ export default function MessagesList(props: MessagesListProps) {
                           "max-w-[280px] px-4 py-3 rounded-2xl shadow-sm text-sm break-words",
                           isCurrentUser
                             ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-md"
-                            : "bg-white text-gray-900 rounded-bl-md border border-gray-200"
+                            : "bg-base-light/60 text-gray-900 rounded-bl-md border border-gray-200"
                         )}
                       >
                         {isVoice ? (

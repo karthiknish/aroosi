@@ -135,13 +135,45 @@ export async function GET(req: NextRequest) {
     log("Request completed successfully", { duration: `${duration}ms` });
 
     // Normalize: guarantee each image has a url. If missing, construct from bucket + storageId/id.
-    const bucketName = (
-      await import("@/lib/firebaseAdmin")
-    ).adminStorage.bucket().name;
+    // Be defensive: adminStorage.bucket() will throw if no default bucket was configured when
+    // initializing firebase-admin. Prefer explicit env vars or derived project bucket names.
+    const adminMod = await import("@/lib/firebaseAdmin");
+    const adminStorage = adminMod.adminStorage;
+    let bucketName: string | undefined;
+    try {
+      // Try to read the default bucket configured on the admin SDK (may throw if unset)
+      const defaultBucket =
+        typeof adminStorage.bucket === "function"
+          ? adminStorage.bucket()
+          : undefined;
+      if (defaultBucket && (defaultBucket as any).name) {
+        bucketName = (defaultBucket as any).name;
+      }
+    } catch (e) {
+      // No default bucket configured; we'll fall back to env-derived names below.
+      if (debug)
+        console.warn(
+          `[${requestId}] adminStorage has no default bucket:`,
+          (e as Error).message
+        );
+    }
+
+    // Env fallbacks (common in local/dev): explicit bucket env or public NEXT envs used by client
+    bucketName =
+      bucketName ||
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+      (process.env.GCLOUD_PROJECT
+        ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+        : undefined) ||
+      (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`
+        : undefined);
+
     const normalized = (images as any[]).map((img) => {
       const storageId = img.storageId || img.id || null;
       let url = img.url || null;
-      if (!url && storageId) {
+      if (!url && storageId && bucketName) {
         // Ensure no leading slash duplication
         url = `https://storage.googleapis.com/${bucketName}/${storageId}`;
       }

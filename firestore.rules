@@ -91,6 +91,58 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Realtime chat messages
+    match /messages/{messageId} {
+      // Allow authenticated users to create messages they are the sender of.
+      allow create: if isSignedIn()
+        && request.resource.data.fromUserId == request.auth.uid
+        && request.resource.data.conversationId is string
+        && request.resource.data.toUserId is string
+        && request.resource.data.type in ["text", "voice", "image"]
+        && (request.resource.data.text is string || request.resource.data.type != "text")
+        && request.resource.data.createdAt is number;
+
+      // Allow participants (sender or recipient) to read messages for their conversation.
+      allow read: if isSignedIn() && (
+        resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid
+      );
+
+      // Allow recipient to mark a message as read by updating only `readAt` to a newer timestamp.
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.toUserId
+        && !("text" in request.resource.data)
+        && !("fromUserId" in request.resource.data)
+        && !("toUserId" in request.resource.data)
+        && (request.resource.data.readAt is number)
+        && (resource.data.readAt == null || request.resource.data.readAt >= resource.data.readAt);
+
+      // Prevent client deletes
+      allow delete: if false;
+    }
+
+    // Message receipts (idempotent per user/message)
+    match /messageReceipts/{receiptId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow the owning user to upsert their receipt (mark delivered/read). Server-only writes remain possible via admin SDK.
+      allow create, update: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.messageId is string
+        && request.resource.data.status in ["delivered", "read"]
+        && request.resource.data.updatedAt is number;
+      allow delete: if false;
+    }
+
+    // Typing indicators: ephemeral docs under typingIndicators/{conversationId}/users/{userId}
+    match /typingIndicators/{conversationId}/users/{userId} {
+      // Only the user may write their own typing indicator
+      allow create, update: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.isTyping is bool
+        && request.resource.data.updatedAt is number;
+      // Participants may read typing indicators for their conversation (requires a backend check to verify membership if needed).
+      allow read: if isSignedIn();
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

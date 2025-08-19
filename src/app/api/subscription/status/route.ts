@@ -4,6 +4,10 @@ import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { normalisePlan } from "@/lib/subscription/planLimits";
 import { requireSession } from "@/app/api/_utils/auth";
 
+// Ensure this endpoint is always resolved at runtime in production
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 /**
  * Normalize subscription status response and avoid wrappers that might cause 404/rewrites.
  * Accepts optional query params: profileId, userId

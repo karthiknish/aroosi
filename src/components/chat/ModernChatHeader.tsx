@@ -34,15 +34,23 @@ export default function ModernChatHeader({
     return `Last seen ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   })();
   return (
-    <div className={`bg-gradient-to-r from-primary to-secondary text-white p-4 rounded-t-2xl ${className}`}>
+    // Use a warmer gradient (secondary -> accent) to improve contrast and match updated UI
+    <div
+      className={`bg-primary text-white px-4 py-3 rounded-t-2xl ${className}`}
+    >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative flex-shrink-0">
             <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
               {matchUserAvatarUrl ? (
-                <AvatarImage src={matchUserAvatarUrl} alt={matchUserName || "User"} />
+                <AvatarImage
+                  src={matchUserAvatarUrl}
+                  alt={matchUserName || "User"}
+                />
               ) : (
-                <AvatarFallback>{matchUserName ? matchUserName[0] : "U"}</AvatarFallback>
+                <AvatarFallback>
+                  {matchUserName ? matchUserName[0] : "U"}
+                </AvatarFallback>
               )}
             </Avatar>
             <span
@@ -50,21 +58,27 @@ export default function ModernChatHeader({
                 connectionStatus === "connected"
                   ? "bg-green-400"
                   : connectionStatus === "connecting"
-                  ? "bg-yellow-400"
-                  : "bg-gray-400"
+                    ? "bg-yellow-400"
+                    : "bg-gray-400"
               }`}
             />
           </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-base leading-tight">{matchUserName || "User"}</span>
-            <span className="text-xs text-white/80 capitalize">{lastSeenLabel}</span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-base leading-tight truncate max-w-full">
+              {matchUserName || "User"}
+            </span>
+            <span className="text-xs text-white/80 capitalize truncate">
+              {lastSeenLabel}
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {isPremium(subscriptionPlan) && (
-            <div className="text-xs bg-white/15 backdrop-blur px-2 py-1 rounded-full flex items-center gap-1">
+            <div className="text-xs bg-white/15 backdrop-blur px-2 py-0.5 rounded-full flex items-center gap-1 max-w-[10rem] truncate">
               <Crown className="w-3 h-3" />
-              <span className="truncate max-w-[90px]">{planDisplayName(subscriptionPlan)}</span>
+              <span className="truncate">
+                {planDisplayName(subscriptionPlan)}
+              </span>
             </div>
           )}
           <Button
