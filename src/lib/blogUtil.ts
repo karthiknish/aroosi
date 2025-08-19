@@ -244,13 +244,16 @@ export async function convertAiTextToHtml({
   text: string;
   type: "excerpt" | "category";
 }): Promise<string> {
+  const trimmed = (text || "").trim();
+  // Avoid hitting API (which returns 400) if no meaningful input yet
+  if (!trimmed || trimmed.length < 5) return "";
   const res = await fetch("/api/convert-ai-text-to-html", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       // Cookie-based session; no Authorization header
     },
-    body: JSON.stringify({ text, type }),
+    body: JSON.stringify({ text: trimmed, type }),
     cache: "no-store",
   });
   const data = await res.json();

@@ -205,7 +205,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             Image URL is required.
           </div>
         )}
-        {imageUrl && (
+        {imageUrl && /^https?:\/\/(images\.)?pexels\.com\//.test(imageUrl) && (
           <img
             src={imageUrl}
             alt="Preview"
