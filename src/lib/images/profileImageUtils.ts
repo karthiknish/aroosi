@@ -15,12 +15,12 @@ export interface NormalizedProfileImage {
 // Resolve bucket name once per call (avoid throwing on admin SDK absence in browser)
 export function getPublicBucketName(): string | undefined {
   // Prefer explicit NEXT_PUBLIC bucket env
-  let bucket =
+  const bucket =
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
     (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
       ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`
       : undefined);
-  if (!bucket) return undefined;
+  if (!bucket) return undefined; // explicit undefined maintains return type
   // NOTE: We intentionally no longer rewrite buckets ending in .firebasestorage.app
   // because the project explicitly wants to keep using that custom bucket name.
   // (Previously we normalized to .appspot.com.)
@@ -34,15 +34,23 @@ export function buildProfileImageUrl(idOrPath: string): string {
   if (/^(https?:|blob:|data:)/i.test(idOrPath)) {
     try {
       // Fix cases like https://storage.googleapis.com/your-project.firebasestorage.app/...
-  // (Do NOT mutate the bucket domain if user intentionally uses .firebasestorage.app)
-  if (false && /storage\.googleapis\.com\/.+\.firebasestorage\.app\//i.test(idOrPath)) {
+      // (Do NOT mutate the bucket domain if user intentionally uses .firebasestorage.app)
+      if (
+        false &&
+        /storage\.googleapis\.com\/.+\.firebasestorage\.app\//i.test(idOrPath)
+      ) {
         return idOrPath.replace(
           /(storage\.googleapis\.com\/[^/]+)\.firebasestorage\.app\//i,
           (_m, p1) => `${p1}.appspot.com/`
         );
       }
       // Fix firebase REST style with malformed bucket
-  if (false && /firebasestorage\.googleapis\.com\/v0\/b\/.+\.firebasestorage\.app\//i.test(idOrPath)) {
+      if (
+        false &&
+        /firebasestorage\.googleapis\.com\/v0\/b\/.+\.firebasestorage\.app\//i.test(
+          idOrPath
+        )
+      ) {
         return idOrPath.replace(
           /(firebasestorage\.googleapis\.com\/v0\/b\/[^/]+)\.firebasestorage\.app\//i,
           (_m, p1) => `${p1}.appspot.com/`
@@ -69,9 +77,9 @@ function sanitizeLegacyAbsoluteUrl(url: string): string {
   if (!url) return url;
   try {
     if (!/^(https?:)/i.test(url)) return url;
-    let out = url;
+    const out = url;
     // Fix malformed bucket domain
-  // Do NOT rewrite .firebasestorage.app domains anymore.
+    // Do NOT rewrite .firebasestorage.app domains anymore.
     // If it's a direct GCS URL, rebuild into REST primary (#alt=direct)
     const m = out.match(/^https:\/\/storage\.googleapis\.com\/([^/]+)\/(.+)$/i);
     if (m) {
@@ -82,16 +90,19 @@ function sanitizeLegacyAbsoluteUrl(url: string): string {
       )}?alt=media#alt=${encodeURIComponent(out)}`;
     }
     // If it's already REST but lacks an alt fallback, we can append a direct alt
-    if (/firebasestorage\.googleapis\.com\/v0\/b\//i.test(out) && !/#alt=/.test(out)) {
+    if (
+      /firebasestorage\.googleapis\.com\/v0\/b\//i.test(out) &&
+      !/#alt=/.test(out)
+    ) {
       try {
         const u = new URL(out);
         const bucketMatch = out.match(/v0\/b\/([^/]+)\/o\//);
         const bucket = bucketMatch?.[1];
-        const objectPathEncoded = u.pathname.split('/o/')[1] || '';
+        const objectPathEncoded = u.pathname.split("/o/")[1] || "";
         const objectPath = decodeURIComponent(objectPathEncoded);
         if (bucket && objectPath) {
           const direct = `https://storage.googleapis.com/${bucket}/${objectPath}`;
-            return out + `#alt=${encodeURIComponent(direct)}`;
+          return out + `#alt=${encodeURIComponent(direct)}`;
         }
       } catch {}
     }

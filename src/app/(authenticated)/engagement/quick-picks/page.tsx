@@ -168,14 +168,18 @@ export default function QuickPicksPage() {
           )}
         </div>
 
+        {/* Swipe interaction container (pointer events only; not keyboard interactive) */}
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
         <div
           className="relative h-[420px] select-none"
-          role="application"
-          tabIndex={0}
-          onTouchStart={(e) => handleStart(e.changedTouches[0].clientX)}
-          onTouchEnd={(e) => handleEnd(e.changedTouches[0].clientX)}
-          onMouseDown={(e) => handleStart(e.clientX)}
-          onMouseUp={(e) => handleEnd(e.clientX)}
+          aria-label="Swipe card deck"
+          aria-roledescription="Swipe area"
+          onPointerDown={(e) =>
+            typeof e.clientX === "number" && handleStart(e.clientX)
+          }
+          onPointerUp={(e) =>
+            typeof e.clientX === "number" && handleEnd(e.clientX)
+          }
         >
           {nextCards.map((p, i) => {
             if (!p) return null;
