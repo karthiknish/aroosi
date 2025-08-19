@@ -135,6 +135,17 @@ export default function SubscriptionPage() {
     }
   };
 
+  // If redirected back after checkout success on this page, ask backend to refresh
+  React.useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("checkout") === "success") {
+      fetch("/api/subscription/refresh", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {});
+    }
+  }, []);
+
   const handleCancel = () => {
     if (
       confirm(

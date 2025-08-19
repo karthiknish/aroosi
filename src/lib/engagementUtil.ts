@@ -58,16 +58,22 @@ export async function enrichProfiles(userIds: string[]): Promise<QuickPickProfil
   return postJson("/api/engagement/profiles", { userIds });
 }
 
-export async function fetchIcebreakers(): Promise<
-  Array<{ id: string; text: string; answered?: boolean }>
-> {
+export type Icebreaker = {
+  id: string;
+  text: string;
+  answered?: boolean;
+  answer?: string;
+};
+
+export async function fetchIcebreakers(): Promise<Icebreaker[]> {
   const res = await getJson<{
     success: boolean;
-    data?: Array<{ id: string; text: string; answered?: boolean }>;
+    data?: Icebreaker[];
   }>("/api/icebreakers");
-  // Some older clients expected plain array; support both
-  if (Array.isArray((res as any).data)) return (res as any).data;
-  if (Array.isArray(res)) return res as any;
+  // Support both enveloped and plain array responses
+  if (Array.isArray((res as any).data))
+    return (res as any).data as Icebreaker[];
+  if (Array.isArray(res)) return res as unknown as Icebreaker[];
   return [];
 }
 

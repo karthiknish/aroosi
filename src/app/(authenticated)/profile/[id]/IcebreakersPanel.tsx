@@ -1,8 +1,12 @@
 "use client";
 
 import { useRef, useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { fetchIcebreakers, answerIcebreaker } from "@/lib/engagementUtil";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  fetchIcebreakers,
+  answerIcebreaker,
+  Icebreaker,
+} from "@/lib/engagementUtil";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +19,7 @@ import {
 } from "lucide-react";
 
 export function IcebreakersPanel() {
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["icebreakers", "today"],
     queryFn: fetchIcebreakers,
@@ -36,7 +41,11 @@ export function IcebreakersPanel() {
       const res = await answerIcebreaker(id, answer);
       return res;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Ensure server-reflected answered flags are synced
+      await queryClient.invalidateQueries({
+        queryKey: ["icebreakers", "today"],
+      });
       showSuccessToast("Answer saved");
     },
     onError: (e: unknown) => {
@@ -47,10 +56,7 @@ export function IcebreakersPanel() {
   const mutationPending = isPending;
 
   const questions = useMemo(
-    () =>
-      Array.isArray(data)
-        ? (data as Array<{ id: string; text: string; answered?: boolean }>)
-        : [],
+    () => (Array.isArray(data) ? (data as Icebreaker[]) : []),
     [data]
   );
   const visibleQuestions = useMemo(
@@ -111,6 +117,8 @@ export function IcebreakersPanel() {
       await mutateAsync({ id: qid, answer: val });
       setSubmitted((s) => ({ ...s, [qid]: true }));
       setEditing((e) => ({ ...e, [qid]: false }));
+      // Advance to next question automatically if available
+      setIndex((i) => Math.min(i + 1, Math.max(total - 1, 0)));
     } finally {
       setSaving((m) => ({ ...m, [qid]: false }));
     }
@@ -132,6 +140,27 @@ export function IcebreakersPanel() {
       showErrorToast("Couldn't copy. Please copy manually.");
     }
   };
+
+  // Prefill answers with any server-provided saved answer
+  useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const q of questions) {
+      if (q.answer && typeof q.answer === "string") {
+        map[q.id] = q.answer;
+      }
+    }
+    if (Object.keys(map).length > 0) {
+      setAnswers((prev) => ({ ...map, ...prev }));
+    }
+    // also mark submitted for answered ones so UI shows saved state
+    const sub: Record<string, boolean> = {};
+    for (const q of questions) {
+      if (q.answered) sub[q.id] = true;
+    }
+    if (Object.keys(sub).length > 0) {
+      setSubmitted((prev) => ({ ...sub, ...prev }));
+    }
+  }, [questions]);
 
   const scheduleAutosave = (qid: string) => {
     const current = (answers[qid] || "").trim();
@@ -243,9 +272,14 @@ export function IcebreakersPanel() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    setEditing((e) => ({ ...e, [current.id]: !e[current.id] }))
-                  }
+                  onClick={() => {
+                    if (editing[current.id]) {
+                      // If toggling from Edit -> Done, save immediately
+                      void handleSubmit(current.id);
+                    } else {
+                      setEditing((e) => ({ ...e, [current.id]: true }));
+                    }
+                  }}
                   disabled={saving[current.id]}
                 >
                   {editing[current.id] ? "Done" : "Edit"}

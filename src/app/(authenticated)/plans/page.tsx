@@ -14,21 +14,38 @@ import {
 } from "lucide-react";
 import { showErrorToast, showInfoToast, showSuccessToast } from "@/lib/ui/toast";
 // Source of truth: fetch normalized plans from server only (no client constants)
-import { createCheckoutSession, getPlans, type NormalizedPlan } from "@/lib/utils/stripeUtil";
+import {
+  createCheckoutSession,
+  getPlans,
+  refreshSubscription,
+  type NormalizedPlan,
+} from "@/lib/utils/stripeUtil";
 import React, { useEffect, useMemo, useState } from "react";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 
 type PlanId = "free" | "premium" | "premiumPlus" | string;
 
 export default function ManagePlansPage() {
-  const { profile } = useAuthContext();
+  const { profile, refreshUser } = useAuthContext();
   const [loading, setLoading] = useState<string | null>(null);
   const [plans, setPlans] = useState<NormalizedPlan[] | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const currentPlan = ((profile as { subscriptionPlan?: string })
-      ?.subscriptionPlan || "free") as PlanId;
-  
+    ?.subscriptionPlan || "free") as PlanId;
+  // If redirected back from checkout success, proactively refresh profile
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("checkout") === "success") {
+        // Kick off a background refresh of the user profile to pull new plan
+        refreshUser?.();
+        // Also call server-side reconciliation endpoint as a fallback if needed
+        void refreshSubscription();
+      }
+    } catch {}
+  }, [refreshUser]);
+
   // Derived flags
   const hasAnyPaidPlan = useMemo(() => isPremium(currentPlan), [currentPlan]);
 
@@ -42,7 +59,19 @@ export default function ManagePlansPage() {
         const data = await getPlans();
         if (mounted) {
           // Ensure at least Free exists as a fallback
-          const safe = Array.isArray(data) && data.length > 0 ? data : [{ id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false }];
+          const safe =
+            Array.isArray(data) && data.length > 0
+              ? data
+              : [
+                  {
+                    id: "free",
+                    name: "Free",
+                    price: 0,
+                    currency: "GBP",
+                    features: [],
+                    popular: false,
+                  },
+                ];
           setPlans(safe);
           if (!data || data.length === 0) {
             setFetchError("No plans available at the moment.");
@@ -51,8 +80,19 @@ export default function ManagePlansPage() {
       } catch (e) {
         console.error("Failed to load plans:", e);
         if (mounted) {
-          setPlans([{ id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false }]);
-          setFetchError(e instanceof Error ? e.message : "Failed to load plans");
+          setPlans([
+            {
+              id: "free",
+              name: "Free",
+              price: 0,
+              currency: "GBP",
+              features: [],
+              popular: false,
+            },
+          ]);
+          setFetchError(
+            e instanceof Error ? e.message : "Failed to load plans"
+          );
         }
       } finally {
         if (mounted) setIsFetching(false);
@@ -117,7 +157,10 @@ export default function ManagePlansPage() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-20">
-            <h1 className="text-4xl font-serif sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent leading-tight">
+            <h1
+              className="text-4xl font-serif sm:text-5xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent"
+              style={{ lineHeight: "1.7" }}
+            >
               Find Your Perfect Match
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -128,7 +171,8 @@ export default function ManagePlansPage() {
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
                 <Check className="w-4 h-4" />
                 You&apos;re currently on{" "}
-                {plans?.find((p: NormalizedPlan) => p.id === currentPlan)?.name || String(currentPlan)}
+                {plans?.find((p: NormalizedPlan) => p.id === currentPlan)
+                  ?.name || String(currentPlan)}
               </div>
             )}
           </div>
@@ -137,7 +181,7 @@ export default function ManagePlansPage() {
           <div className="grid gap-8 lg:grid-cols-3 max-w-6xl mx-auto pt-6">
             {isFetching && (
               <>
-                {[0,1,2].map((i) => (
+                {[0, 1, 2].map((i) => (
                   <Card key={i} className="mx-4 p-6 animate-pulse">
                     <div className="h-6 w-28 bg-gray-200 rounded mb-4" />
                     <div className="h-8 w-40 bg-gray-200 rounded mb-6" />
@@ -152,15 +196,29 @@ export default function ManagePlansPage() {
               </>
             )}
             {!isFetching && fetchError && (
-              <div className="lg:col-span-3 text-center text-sm text-red-600">{fetchError}</div>
+              <div className="lg:col-span-3 text-center text-sm text-red-600">
+                {fetchError}
+              </div>
             )}
-            {(!isFetching && (!plans || plans.length === 0)) && (
-              <div className="lg:col-span-3 text-center text-sm text-gray-600">No plans to display.</div>
+            {!isFetching && (!plans || plans.length === 0) && (
+              <div className="lg:col-span-3 text-center text-sm text-gray-600">
+                No plans to display.
+              </div>
             )}
-            {(plans && plans.length ? plans : [
-              // Defensive minimal fallback to avoid render crash if server returns nothing
-              { id: "free", name: "Free", price: 0, currency: "GBP", features: [], popular: false },
-            ]).map((plan) => {
+            {(plans && plans.length
+              ? plans
+              : [
+                  // Defensive minimal fallback to avoid render crash if server returns nothing
+                  {
+                    id: "free",
+                    name: "Free",
+                    price: 0,
+                    currency: "GBP",
+                    features: [],
+                    popular: false,
+                  },
+                ]
+            ).map((plan) => {
               const selected = isCurrent(plan.id);
               const isPopular = plan.popular || plan.id === "premium";
               const isLoading = loading === plan.id;
@@ -294,7 +352,13 @@ export default function ManagePlansPage() {
                         onClick={() => handleSelectPlan(plan.id)}
                         aria-disabled={selected || isLoading}
                         aria-busy={isLoading}
-                        title={selected ? "Current plan" : plan.id === "free" ? "Choose Free" : `Choose ${plan.name}`}
+                        title={
+                          selected
+                            ? "Current plan"
+                            : plan.id === "free"
+                              ? "Choose Free"
+                              : `Choose ${plan.name}`
+                        }
                       >
                         {isLoading ? (
                           <div className="flex items-center gap-2">
@@ -324,33 +388,39 @@ export default function ManagePlansPage() {
                 </div>
               );
             })}
-          </div>
+          </div>;
 
-          {/* Manage billing for paid users - single, deduped button below grid */}
-          {hasAnyPaidPlan ? (
-            <div className="max-w-6xl mx-auto pt-4">
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    // Use Subscription API helper which returns a typed { url }
-                    const mod = await import("@/lib/api/subscription");
-                    const { subscriptionAPI } = mod;
-                    const { url } = await subscriptionAPI.openBillingPortal();
-                    if (url) {
-                      window.location.assign(url);
-                    } else {
-                      showErrorToast("Unable to open billing portal");
+          {
+            /* Manage billing for paid users - single, deduped button below grid */
+          }
+          {
+            hasAnyPaidPlan ? (
+              <div className="max-w-6xl mx-auto pt-4">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      // Use Subscription API helper which returns a typed { url }
+                      const mod = await import("@/lib/api/subscription");
+                      const { subscriptionAPI } = mod;
+                      const { url } = await subscriptionAPI.openBillingPortal();
+                      if (url) {
+                        window.location.assign(url);
+                      } else {
+                        showErrorToast("Unable to open billing portal");
+                      }
+                    } catch (e: any) {
+                      showErrorToast(
+                        e?.message || "Unable to open billing portal"
+                      );
                     }
-                  } catch (e: any) {
-                    showErrorToast(e?.message || "Unable to open billing portal");
-                  }
-                }}
-              >
-                Manage billing
-              </Button>
-            </div>
-          ) : null}
+                  }}
+                >
+                  Manage billing
+                </Button>
+              </div>
+            ) : null;
+          }
 
           {/* Footer info */}
           <div className="text-center mt-16 space-y-4">

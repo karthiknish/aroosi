@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       .collection("userIcebreakerAnswers")
       .where("userId", "==", userId)
       .get();
-    const answeredSet = new Set<string>();
+    const answeredMap = new Map<string, string>();
     answersSnap.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
       const data = doc.data() as any;
       if (
@@ -99,12 +99,18 @@ export async function GET(req: NextRequest) {
         typeof data.createdAt === "number" &&
         data.createdAt >= since
       ) {
-        answeredSet.add(String(data.questionId));
+        const qid = String(data.questionId);
+        const ans = typeof data.answer === "string" ? data.answer : "";
+        answeredMap.set(qid, ans);
       }
     });
     return applySecurityHeaders(
       successResponse(
-        picked.map((q) => ({ ...q, answered: answeredSet.has(q.id) }))
+        picked.map((q) => ({
+          ...q,
+          answered: answeredMap.has(q.id),
+          answer: answeredMap.get(q.id) || undefined,
+        }))
       )
     );
   } catch (e) {

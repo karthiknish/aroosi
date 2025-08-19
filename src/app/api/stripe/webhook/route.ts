@@ -220,8 +220,10 @@ export async function POST(req: NextRequest) {
           session.metadata.email ||
           (session as any).customer_email ||
           (session as any).customer_details?.email;
+        const metaUserId = (session.metadata.userId ||
+          (session.metadata as any).user_id) as string | undefined;
 
-        if (!planId || !email) {
+        if (!planId || (!email && !metaUserId)) {
           console.warn("Stripe webhook missing metadata in checkout session", {
             scope: "stripe.webhook",
             type: "validation_error",
@@ -230,6 +232,7 @@ export async function POST(req: NextRequest) {
             durationMs: Date.now() - startedAt,
             sessionId: session.id,
             hasEmail: !!email,
+            hasUserId: !!metaUserId,
           });
           logSecurityEvent(
             "VALIDATION_FAILED",
@@ -270,13 +273,23 @@ export async function POST(req: NextRequest) {
 
         try {
           // Update user doc in Firestore by email
-          const snap = await db
-            .collection(COLLECTIONS.USERS)
-            .where("email", "==", email.toLowerCase())
-            .limit(1)
-            .get();
-          if (!snap.empty) {
-            const userRef = snap.docs[0].ref;
+          let userRef: FirebaseFirestore.DocumentReference | null = null;
+          if (email) {
+            const snap = await db
+              .collection(COLLECTIONS.USERS)
+              .where("email", "==", email.toLowerCase())
+              .limit(1)
+              .get();
+            if (!snap.empty) {
+              userRef = snap.docs[0].ref;
+            }
+          }
+          if (!userRef && metaUserId) {
+            const ref = db.collection(COLLECTIONS.USERS).doc(metaUserId);
+            const doc = await ref.get();
+            if (doc.exists) userRef = ref;
+          }
+          if (userRef) {
             // Derive expiration from subscription if present
             let expiresAt: number | null = null;
             if (session.subscription) {
@@ -320,10 +333,14 @@ export async function POST(req: NextRequest) {
               );
             }
           } else {
-            console.warn("Stripe webhook: user email not found in Firestore", {
-              email,
-              correlationId,
-            });
+            console.warn(
+              "Stripe webhook: user not found for checkout completion",
+              {
+                email,
+                userId: metaUserId,
+                correlationId,
+              }
+            );
           }
 
           console.info("Stripe webhook subscription updated", {

@@ -64,7 +64,9 @@ export async function createCheckoutSession(
   } catch (error) {
     console.error("Failed to create checkout session:", error);
     const errorMessage =
-      error instanceof Error ? error.message : "Failed to create checkout session";
+      error instanceof Error
+        ? error.message
+        : "Failed to create checkout session";
     showErrorToast(errorMessage);
 
     return {
@@ -84,7 +86,7 @@ export async function getPlans(): Promise<NormalizedPlan[]> {
       method: "GET",
       credentials: "include",
       headers: {
-        "Accept": "application/json",
+        Accept: "application/json",
       },
     });
     if (!res.ok) {
@@ -96,7 +98,9 @@ export async function getPlans(): Promise<NormalizedPlan[]> {
   } catch (error) {
     console.error("Failed to load subscription plans:", error);
     const msg =
-      error instanceof Error ? error.message : "Failed to load subscription plans";
+      error instanceof Error
+        ? error.message
+        : "Failed to load subscription plans";
     showErrorToast(msg);
     return [];
   }
@@ -130,5 +134,24 @@ export async function openBillingPortal(): Promise<void> {
     const msg =
       error instanceof Error ? error.message : "Failed to open billing portal";
     showErrorToast(msg);
+  }
+}
+
+export async function refreshSubscription(): Promise<{ success: boolean }> {
+  try {
+    const res = await fetch("/api/subscription/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}) as any);
+      throw new Error(err?.error || `HTTP ${res.status}`);
+    }
+    return { success: true };
+  } catch (e) {
+    const msg =
+      e instanceof Error ? e.message : "Failed to refresh subscription";
+    showErrorToast(msg);
+    return { success: false };
   }
 }
