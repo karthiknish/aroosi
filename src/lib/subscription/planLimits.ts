@@ -19,7 +19,10 @@ export interface PlanLimits { [plan: string]: PlanLimitMap; }
 
 export const PLAN_LIMITS: PlanLimits = {
   free: {
-    message_sent: 5,
+    // Increased per request: free users now get a higher monthly text message allowance
+    // (was 5 previously). Adjust this single source of truth to scale everywhere
+    // server-side quota enforcement & usage UI reference this constant.
+    message_sent: 20,
     profile_view: 50,
     // Increased per request: free users previously had 20 searches/day;
     // bumping to 100 as requested.

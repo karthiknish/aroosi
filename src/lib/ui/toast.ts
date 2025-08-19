@@ -202,6 +202,39 @@ export function showSuccessToast(message: string) {
   });
 }
 
+// Success toast with an inline action (e.g. Undo)
+export function showUndoToast(
+  message: string,
+  onUndo: () => void | Promise<void>,
+  actionLabel = "Undo",
+  duration = 6000
+) {
+  toast.success(message, {
+    style: {
+      background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+      color: "#ffffff",
+      border: "1px solid #34D399",
+      borderRadius: "0.75rem",
+      fontSize: "14px",
+      fontWeight: "500",
+      padding: "16px 20px",
+      boxShadow: "0 6px 16px rgba(4, 120, 87, 0.25)",
+    },
+    duration,
+    action: {
+      label: actionLabel,
+      onClick: () => {
+        try {
+          const r = onUndo();
+          if (r instanceof Promise) r.catch((e) => console.error("Undo failed", e));
+        } catch (e) {
+          console.error("Undo failed", e);
+        }
+      },
+    },
+  });
+}
+
 // Informational toast (e.g., prompts or neutral messages)
 export function showInfoToast(message: string) {
   toast.info(message, {

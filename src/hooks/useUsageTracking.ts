@@ -14,7 +14,10 @@ type Feature =
   | "search_performed"
   | "interest_sent"
   | "profile_boost_used"
-  | "voice_message_sent";
+  | "voice_message_sent"
+  | "user_block"
+  | "user_unblock"
+  | "user_report";
 
 interface TrackUsageParams {
   feature: Feature;
@@ -22,6 +25,7 @@ interface TrackUsageParams {
     targetUserId?: string;
     searchQuery?: string;
     messageType?: string;
+    reason?: string;
   };
 }
 

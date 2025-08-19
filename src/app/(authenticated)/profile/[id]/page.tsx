@@ -2,7 +2,11 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { showErrorToast } from "@/lib/ui/toast";
+import {
+  showErrorToast,
+  showSuccessToast,
+  showUndoToast,
+} from "@/lib/ui/toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   UserCircle,
@@ -41,7 +45,7 @@ import { recordProfileView } from "@/lib/utils/profileApi";
 import type { Profile } from "@/types/profile";
 import { ErrorState } from "@/components/ui/error-state";
 import { useOffline } from "@/hooks/useOffline";
-import { SafetyActionButton } from "@/components/safety/SafetyActionButton";
+// Legacy SafetyActionButton replaced by unified ReportModal (chat parity)
 import { BlockedUserBanner } from "@/components/safety/BlockedUserBanner";
 import { useBlockStatus } from "@/hooks/useSafety";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
@@ -58,6 +62,14 @@ import { ProfileActions } from "@/components/profile/ProfileActions";
 import { IcebreakersPanel } from "./IcebreakersPanel";
 import { fetchIcebreakers } from "@/lib/engagementUtil";
 import { getJson } from "@/lib/http/client";
+import ReportModal from "@/components/chat/ReportModal";
+import {
+  blockUserUtil,
+  reportUserUtil,
+  unblockUserUtil,
+  ReportReason,
+  handleErrorUtil,
+} from "@/lib/chat/utils";
 
 export default function ProfileDetailPage() {
   const params = useParams();
@@ -171,11 +183,102 @@ export default function ProfileDetailPage() {
 
   // Removed legacy duplicated interest/status logic block after hook integration.
 
-  // Check if user is blocked
+  // Check if user is blocked (remote) & maintain local optimistic state
   const { data: blockStatus } = useBlockStatus(toUserId);
-  const isBlocked = blockStatus?.isBlocked || false;
+  const isBlockedRemote = blockStatus?.isBlocked || false;
   const isBlockedBy = blockStatus?.isBlockedBy || false;
+  const [isBlocked, setIsBlocked] = useState<boolean>(isBlockedRemote);
+  useEffect(() => setIsBlocked(isBlockedRemote), [isBlockedRemote]);
   const canInteract = !isBlocked && !isBlockedBy;
+  const [showReportModal, setShowReportModal] = useState(false);
+
+  // Moderation handlers (parity with chat modal)
+  const handleBlockUser = async () => {
+    try {
+      await blockUserUtil({
+        matchUserId: userId,
+        setIsBlocked,
+        setShowReportModal,
+      });
+      trackUsage({
+        feature: "user_block" as any,
+        metadata: { targetUserId: userId },
+      });
+      showSuccessToast("User has been blocked");
+    } catch (err) {
+      const mapped = handleErrorUtil(err);
+      console.error("Error blocking user (profile page):", mapped.message);
+      if (mapped.type === "RATE_LIMITED")
+        showErrorToast(null, "Too many actions. Please wait and try again.");
+      else showErrorToast(null, "Failed to block user");
+    }
+  };
+
+  const handleUnblockUser = async () => {
+    try {
+      await unblockUserUtil({
+        matchUserId: userId,
+        setIsBlocked,
+        setShowReportModal,
+      });
+      trackUsage({
+        feature: "user_unblock" as any,
+        metadata: { targetUserId: userId },
+      });
+      showUndoToast("User unblocked", async () => {
+        try {
+          await blockUserUtil({
+            matchUserId: userId,
+            setIsBlocked,
+            setShowReportModal,
+          });
+          trackUsage({
+            feature: "user_block" as any,
+            metadata: { targetUserId: userId },
+          });
+          showSuccessToast("User re-blocked");
+        } catch (e) {
+          const mapped2 = handleErrorUtil(e);
+          console.error("Undo block failed (profile page):", mapped2.message);
+          showErrorToast(null, "Failed to re-block user");
+        }
+      });
+    } catch (err) {
+      const mapped = handleErrorUtil(err);
+      console.error("Error unblocking user (profile page):", mapped.message);
+      if (mapped.type === "RATE_LIMITED")
+        showErrorToast(null, "Too many actions. Please wait and try again.");
+      else showErrorToast(null, "Failed to unblock user");
+    }
+  };
+
+  const handleReportUser = async (
+    reason: ReportReason,
+    description: string
+  ) => {
+    try {
+      await reportUserUtil({
+        matchUserId: userId,
+        reason,
+        description,
+        setShowReportModal,
+      });
+      trackUsage({
+        feature: "user_report" as any,
+        metadata: { targetUserId: userId, reason },
+      });
+      showSuccessToast("Report submitted successfully");
+    } catch (err) {
+      const mapped = handleErrorUtil(err);
+      console.error("Error reporting user (profile page):", mapped.message);
+      if (mapped.type === "RATE_LIMITED")
+        showErrorToast(
+          null,
+          "Too many reports. Please slow down and try later."
+        );
+      else showErrorToast(null, "Failed to submit report");
+    }
+  };
 
   // Removed legacy Convex ID shape validation (no longer applicable after Firebase migration)
   const invalidIdError: string | null = null;
@@ -382,6 +485,12 @@ export default function ProfileDetailPage() {
 
   return (
     <>
+      <ReportModal
+        open={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onBlockUser={handleBlockUser}
+        onReportUser={handleReportUser}
+      />
       <Head>
         <title>
           {profile?.fullName ? `${profile.fullName}'s Profile` : "View Profile"}{" "}
@@ -447,14 +556,25 @@ export default function ProfileDetailPage() {
         >
           <Card className="shadow-xl rounded-2xl overflow-hidden bg-white/90 backdrop-blur-md border-0">
             <CardHeader className="p-0 relative">
-              {/* Safety Action Button */}
+              {/* Unified safety controls */}
               {!isOwnProfile && (
-                <div className="absolute top-4 right-4 z-20">
-                  <SafetyActionButton
-                    userId={userId}
-                    userName={profile?.fullName}
-                    variant="icon"
-                  />
+                <div className="absolute top-4 right-4 z-20 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReportModal(true)}
+                    className="bg-white/95 hover:bg-white text-gray-700 border border-gray-200 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  >
+                    Safety
+                  </button>
+                  {isBlocked && (
+                    <button
+                      type="button"
+                      onClick={handleUnblockUser}
+                      className="bg-white/95 hover:bg-white text-gray-700 border border-gray-200 shadow-sm rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      Unblock
+                    </button>
+                  )}
                 </div>
               )}
               <AnimatePresence>
@@ -657,6 +777,7 @@ export default function ProfileDetailPage() {
                   isBlocked={isBlocked}
                   isBlockedBy={isBlockedBy}
                   userName={profile?.fullName}
+                  onUnblock={handleUnblockUser}
                   className="mb-6"
                 />
               )}

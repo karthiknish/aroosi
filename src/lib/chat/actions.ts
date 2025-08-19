@@ -104,3 +104,10 @@ export async function reportUserAction(
 export async function blockUserAction(matchUserId: string) {
   await safetyAPI.blockUser(null, matchUserId as any);
 }
+
+/**
+ * Unblock a previously blocked user.
+ */
+export async function unblockUserAction(matchUserId: string) {
+  await safetyAPI.unblockUser(null, matchUserId as any);
+}

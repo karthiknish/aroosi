@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { searchImages } from "@/lib/utils/imageSearchUtil";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
@@ -182,7 +182,7 @@ export function PexelsImageModal({
             </span>
           </div>
         </DialogHeader>
-        <div className="p-4" onKeyDown={handleKeyDown}>
+  <div className="p-4">
           <form
             onSubmit={handleSearch}
             className="flex gap-2 mb-3"
@@ -262,6 +262,8 @@ export function PexelsImageModal({
           ref={gridRef}
           role="listbox"
           aria-label="Search results"
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
         >
           {results.map((img, idx) => (
             <button

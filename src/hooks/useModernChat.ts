@@ -6,14 +6,25 @@ import { useTypingIndicators } from "@/hooks/useTypingIndicators";
 import { getPresence, heartbeat } from "@/lib/api/conversation";
 import { useDeliveryReceipts } from "@/hooks/useDeliveryReceipts";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
-import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import {
+  showErrorToast,
+  showSuccessToast,
+  showUndoToast,
+  showWarningToast,
+  showInfoToast,
+} from "@/lib/ui/toast";
 import {
   handleScrollUtil,
   scrollToBottomUtil,
   handleErrorUtil,
   withRetry,
 } from "@/lib/chat/utils";
-import { blockUserUtil, reportUserUtil, ReportReason } from "@/lib/chat/utils";
+import {
+  blockUserUtil,
+  reportUserUtil,
+  unblockUserUtil,
+  ReportReason,
+} from "@/lib/chat/utils";
 
 type UseModernChatArgs = {
   conversationId: string;
@@ -246,23 +257,67 @@ export function useModernChat({
         const tempId = `tmp-${Date.now()}`;
         markMessageAsPending(tempId);
 
-        await withRetry(
-          () =>
-            sendMessageFs(
-              payload.text,
-              payload.toUserId,
-              replyTo || undefined
-            ).catch((err) => {
-              throw err;
-            }),
-          3,
-          (err, attempt) => {
-            const msg =
-              err instanceof Error ? err.message : String(err ?? "Unknown");
-            console.warn(`Message send attempt ${attempt} failed:`, msg);
-            if (attempt < 3) showErrorToast(null, `Retrying... (${attempt}/3)`);
+        let lastError: unknown;
+        try {
+          await withRetry(
+            () =>
+              sendMessageFs(
+                payload.text,
+                payload.toUserId,
+                replyTo || undefined
+              ).catch((err) => {
+                throw err;
+              }),
+            3,
+            (err, attempt) => {
+              lastError = err;
+              const msg =
+                err instanceof Error ? err.message : String(err ?? "Unknown");
+              console.warn(`Message send attempt ${attempt} failed:`, msg);
+              if (attempt < 3)
+                showErrorToast(null, `Retrying... (${attempt}/3)`);
+            }
+          );
+        } catch (err) {
+          // Detect quota exceeded server message and surface friendlier CTA
+          const rawMsg =
+            err instanceof Error ? err.message : String(err ?? "Unknown");
+          if (/quota exceeded/i.test(rawMsg) || /429/.test(rawMsg)) {
+            // If subscription status is known & free plan, tailor message
+            const plan = subscriptionStatus.data?.plan || "free";
+            if (plan === "free") {
+              showWarningToast(
+                "You've reached your free monthly message limit. Upgrade for unlimited messaging."
+              );
+            } else {
+              showWarningToast(
+                "You've reached your monthly message limit for this plan. Manage your subscription."
+              );
+            }
+          } else {
+            showErrorToast(err, "Failed to send message");
           }
-        );
+          markMessageAsSent(tempId); // remove pending visual even on failure to avoid stuck state
+          setIsSending(false);
+          return;
+        }
+
+        // Proactive soft warning when approaching 80% of quota for free users
+        try {
+          const plan = subscriptionStatus.data?.plan || "free";
+          if (plan === "free") {
+            // We don't have immediate usage count here without another fetch; rely on heuristic: message_sent increments from server.
+            // Optionally we could fetch usage endpoint after every 5 sends; keep lightweight: warn on 15th message (75%) of new 20 limit).
+            const sentCount = messages.filter(
+              (m) => m.fromUserId === currentUserId
+            ).length;
+            if (sentCount === 15) {
+              showInfoToast(
+                "You're nearing the free message limit. Upgrade to keep the conversation going."
+              );
+            }
+          }
+        } catch {}
 
         markMessageAsSent(tempId);
 
@@ -335,18 +390,49 @@ export function useModernChat({
 
   const handleBlockUser = useCallback(async () => {
     try {
-      await blockUserUtil({
-        matchUserId,
-        setIsBlocked,
-        setShowReportModal,
-      });
+      await blockUserUtil({ matchUserId, setIsBlocked, setShowReportModal });
       showSuccessToast("User has been blocked");
+      trackUsage({
+        feature: "user_block",
+        metadata: { targetUserId: matchUserId },
+      });
     } catch (err) {
       const mapped = handleErrorUtil(err);
       console.error("Error blocking user:", mapped.message);
       showErrorToast(null, "Failed to block user");
     }
-  }, [matchUserId]);
+  }, [matchUserId, trackUsage]);
+
+  const handleUnblockUser = useCallback(async () => {
+    try {
+      await unblockUserUtil({ matchUserId, setIsBlocked, setShowReportModal });
+      trackUsage({
+        feature: "user_unblock",
+        metadata: { targetUserId: matchUserId },
+      });
+      showUndoToast("User unblocked", async () => {
+        try {
+          await blockUserUtil({
+            matchUserId,
+            setIsBlocked,
+            setShowReportModal,
+          });
+          trackUsage({
+            feature: "user_block",
+            metadata: { targetUserId: matchUserId },
+          });
+          showSuccessToast("User re-blocked");
+        } catch (error) {
+          const mapped = handleErrorUtil(error);
+          showErrorToast(null, mapped.message);
+        }
+      });
+    } catch (err) {
+      const mapped = handleErrorUtil(err);
+      console.error("Error unblocking user:", mapped.message);
+      showErrorToast(null, "Failed to unblock user");
+    }
+  }, [matchUserId, trackUsage]);
 
   const handleReportUser = useCallback(
     async (reason: ReportReason, description: string) => {
@@ -357,6 +443,10 @@ export function useModernChat({
           description,
           setShowReportModal,
         });
+        trackUsage({
+          feature: "user_report",
+          metadata: { targetUserId: matchUserId, reason },
+        });
         showSuccessToast("Report submitted successfully");
       } catch (err) {
         const mapped = handleErrorUtil(err);
@@ -364,7 +454,7 @@ export function useModernChat({
         showErrorToast(null, "Failed to submit report");
       }
     },
-    [matchUserId, setShowReportModal]
+    [matchUserId, setShowReportModal, trackUsage]
   );
 
   // Public API
@@ -406,6 +496,7 @@ export function useModernChat({
       handleInputChange,
       handleKeyPress,
       handleBlockUser,
+      handleUnblockUser,
       handleReportUser,
       onFetchOlder: fetchOlder,
       onScrollToBottom: () =>

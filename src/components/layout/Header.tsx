@@ -22,6 +22,12 @@ import {
 import { usePathname } from "next/navigation";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
@@ -384,20 +390,24 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
       label: string,
       opts: { onClick?: () => void; premiumTint?: boolean } = {}
     ) => (
-      <Link href={href} onClick={opts.onClick} className="block" key={label}>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={label}
-          title={label}
-          className={
-            "h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors" +
-            (opts.premiumTint ? " text-[#BFA67A] hover:text-[#BFA67A]" : "")
-          }
-        >
-          <IconComp className="h-5 w-5" />
-        </Button>
-      </Link>
+      <Tooltip key={label}>
+        <TooltipTrigger asChild>
+          <Link href={href} onClick={opts.onClick} className="block">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={label}
+              className={
+                "h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors" +
+                (opts.premiumTint ? " text-[#BFA67A] hover:text-[#BFA67A]" : "")
+              }
+            >
+              <IconComp className="h-5 w-5" />
+            </Button>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
     );
 
     const items: React.ReactNode[] = [];
@@ -412,88 +422,99 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           })
         );
         items.push(
-          <Button
-            key="billing"
-            variant="ghost"
-            size="icon"
-            aria-label="Billing Portal"
-            title="Billing Portal"
-            className="h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors"
-            onClick={async () => {
-              try {
-                const mod = await import("@/lib/api/subscription");
-                const { subscriptionAPI } = mod;
-                const { url } = await subscriptionAPI.openBillingPortal();
-                if (url) window.location.assign(url);
-              } catch {}
-            }}
-          >
-            <LayoutDashboard className="h-5 w-5" />
-          </Button>
+          <Tooltip key="billing">
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Billing Portal"
+                className="h-10 w-10 rounded-xl text-gray-600 hover:text-primary hover:bg-pink-50 transition-colors"
+                onClick={async () => {
+                  try {
+                    const mod = await import("@/lib/api/subscription");
+                    const { subscriptionAPI } = mod;
+                    const { url } = await subscriptionAPI.openBillingPortal();
+                    if (url) window.location.assign(url);
+                  } catch {}
+                }}
+              >
+                <LayoutDashboard className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Billing Portal</TooltipContent>
+          </Tooltip>
         );
       } else {
         // Upgrade CTA icon
         items.push(
-          <Link href="/subscription" key="upgrade" className="block">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Upgrade"
-              title="Upgrade"
-              className="h-10 w-10 rounded-xl text-pink-600 hover:text-pink-600 hover:bg-pink-50"
-            >
-              <Star className="h-5 w-5" />
-            </Button>
-          </Link>
+          <Tooltip key="upgrade">
+            <TooltipTrigger asChild>
+              <Link href="/subscription" className="block">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Upgrade"
+                  className="h-10 w-10 rounded-xl text-pink-600 hover:text-pink-600 hover:bg-pink-50"
+                >
+                  <Star className="h-5 w-5" />
+                </Button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Upgrade</TooltipContent>
+          </Tooltip>
         );
       }
     }
     items.push(iconBtn("/usage", BarChart, "Usage"));
     // Profile avatar
     items.push(
-      <Link
-        href="/profile"
-        key="profile"
-        className="block"
-        aria-label="Profile"
-        title="Profile"
-      >
-        <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
-          {avatarUrl ? (
-            <AvatarImage
-              src={avatarUrl}
-              alt={profile?.fullName || "Profile"}
-              onError={(e) => {
-                const img = e.currentTarget as HTMLImageElement;
-                img.src = ""; // clear to let fallback show
-              }}
-            />
-          ) : null}
-          <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-medium">
-            {avatarInitial || <UserIcon className="h-4 w-4" />}
-          </AvatarFallback>
-        </Avatar>
-      </Link>
+      <Tooltip key="profile">
+        <TooltipTrigger asChild>
+          <Link href="/profile" className="block" aria-label="Profile">
+            <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
+              {avatarUrl ? (
+                <AvatarImage
+                  src={avatarUrl}
+                  alt={profile?.fullName || "Profile"}
+                  onError={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    img.src = ""; // clear to let fallback show
+                  }}
+                />
+              ) : null}
+              <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-medium">
+                {avatarInitial || <UserIcon className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent>Profile</TooltipContent>
+      </Tooltip>
     );
     // Sign out
     items.push(
-      <Button
-        key="signout"
-        variant="ghost"
-        size="icon"
-        aria-label="Sign Out"
-        title="Sign Out"
-        className="h-10 w-10 rounded-xl text-gray-600 hover:text-red-600 hover:bg-red-50"
-        onClick={() => signOut()}
-      >
-        <LogOut className="h-5 w-5" />
-      </Button>
+      <Tooltip key="signout">
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Sign Out"
+            className="h-10 w-10 rounded-xl text-gray-600 hover:text-red-600 hover:bg-red-50"
+            onClick={() => signOut()}
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Sign Out</TooltipContent>
+      </Tooltip>
     );
 
     return (
-      <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
-        {items}
-      </nav>
+      <TooltipProvider delayDuration={200} skipDelayDuration={0}>
+        <nav className="hidden md:flex items-center gap-1" aria-label="Primary">
+          {items}
+        </nav>
+      </TooltipProvider>
     );
   };
 

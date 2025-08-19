@@ -179,6 +179,7 @@ async function loadActions() {
   return {
     blockUserAction: actions.blockUserAction,
     reportUserAction: actions.reportUserAction,
+    unblockUserAction: actions.unblockUserAction,
   };
 }
 
@@ -203,4 +204,19 @@ export async function reportUserUtil(params: ReportUserParams): Promise<void> {
   const { reportUserAction } = await loadActions();
   await reportUserAction(matchUserId, reason, description);
   setShowReportModal(false);
+}
+
+/** Optimistically unblock a user */
+export async function unblockUserUtil(params: BlockUserParams): Promise<void> {
+  const { matchUserId, setIsBlocked } = params;
+  const { unblockUserAction } = await loadActions();
+  // optimistic update
+  setIsBlocked(false);
+  try {
+    await unblockUserAction(matchUserId);
+  } catch (e) {
+    // revert on failure
+    setIsBlocked(true);
+    throw e;
+  }
 }
