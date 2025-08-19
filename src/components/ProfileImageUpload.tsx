@@ -404,6 +404,22 @@ export function ProfileImageUpload({
               photos
             </span>
           </div>
+          {memoizedOrderedImages.length === 0 && (
+            <div className="rounded-lg border border-dashed border-neutral/30 p-3 text-xs text-neutral/60">
+              <p className="font-medium text-neutral mb-1">
+                Tips for great profile photos
+              </p>
+              <ul className="list-disc ml-4 space-y-1">
+                <li>Use a clear, well-lit photo of just you.</li>
+                <li>Avoid heavy filters or group shots.</li>
+                <li>Square (1:1) crops look best in listings.</li>
+                <li>
+                  Minimum size 512×512px. Larger images are automatically
+                  optimized.
+                </li>
+              </ul>
+            </div>
+          )}
           <ImageUploader
             userId={userId || ""}
             orderedImages={memoizedOrderedImages}

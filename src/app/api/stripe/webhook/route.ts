@@ -5,6 +5,11 @@ import { Notifications } from "@/lib/notify";
 import { logSecurityEvent } from "@/lib/utils/securityHeaders";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import Stripe from "stripe";
+import {
+  inferPlanFromSubscription,
+  normaliseInternalPlan,
+  getStripePlanMapping,
+} from "@/lib/subscription/stripePlanMapping";
 
 // Disable automatic body parsing in Next.js (app router) by reading raw body via req.text()
 export const runtime = "nodejs";
@@ -212,10 +217,8 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        const planId = session.metadata.planId as
-          | "premium"
-          | "premiumPlus"
-          | undefined;
+        const planId =
+          normaliseInternalPlan(session.metadata.planId as any) || undefined;
         // Prefer explicit metadata email; fallback to session.customer_email then customer_details.email
         const email =
           session.metadata.email ||
@@ -293,46 +296,31 @@ export async function POST(req: NextRequest) {
           if (userRef) {
             // Derive expiration from subscription if present
             let expiresAt: number | null = null;
+            let stripeSubscriptionId: string | undefined;
             if (session.subscription) {
               try {
                 const sub = await stripe.subscriptions.retrieve(
                   session.subscription as string
                 );
                 expiresAt = sub.current_period_end * 1000;
-                await userRef.set(
-                  {
-                    subscriptionPlan: planId,
-                    subscriptionExpiresAt: expiresAt,
-                    stripeCustomerId: session.customer as string | undefined,
-                    stripeSubscriptionId: sub.id,
-                    updatedAt: Date.now(),
-                  },
-                  { merge: true }
-                );
+                stripeSubscriptionId = sub.id;
               } catch (subErr) {
                 console.warn(
                   "Failed to retrieve subscription for expiration",
                   subErr
                 );
-                await userRef.set(
-                  {
-                    subscriptionPlan: planId,
-                    updatedAt: Date.now(),
-                    stripeCustomerId: session.customer as string | undefined,
-                  },
-                  { merge: true }
-                );
               }
-            } else {
-              await userRef.set(
-                {
-                  subscriptionPlan: planId,
-                  updatedAt: Date.now(),
-                  stripeCustomerId: session.customer as string | undefined,
-                },
-                { merge: true }
-              );
             }
+            await userRef.set(
+              {
+                subscriptionPlan: planId,
+                subscriptionExpiresAt: expiresAt,
+                stripeCustomerId: session.customer as string | undefined,
+                stripeSubscriptionId,
+                updatedAt: Date.now(),
+              },
+              { merge: true }
+            );
           } else {
             console.warn(
               "Stripe webhook: user not found for checkout completion",
@@ -483,24 +471,7 @@ export async function POST(req: NextRequest) {
           });
           break;
         }
-        const planPrice = sub.items?.data?.[0]?.price;
-        const planNickname = (
-          planPrice?.nickname ||
-          planPrice?.id ||
-          ""
-        ).toLowerCase();
-        // Attempt to infer our internal planId from price nickname/id mapping
-        let planId: "premium" | "premiumPlus" | undefined;
-        if (/(premium_plus|premium\+|plus)/.test(planNickname))
-          planId = "premiumPlus";
-        else if (/premium/.test(planNickname)) planId = "premium";
-        // Accept metadata override if present
-        if (
-          sub.metadata?.planId &&
-          ["premium", "premiumPlus"].includes(sub.metadata.planId)
-        ) {
-          planId = sub.metadata.planId as any;
-        }
+        const planId = inferPlanFromSubscription(sub) || undefined;
         const email = (sub.metadata?.email || sub.metadata?.userEmail) as
           | string
           | undefined;
@@ -560,22 +531,7 @@ export async function POST(req: NextRequest) {
         }
         try {
           // Derive planId similar to subscription.updated handler
-          const planPrice = sub.items?.data?.[0]?.price;
-          const planNickname = (
-            planPrice?.nickname ||
-            planPrice?.id ||
-            ""
-          ).toLowerCase();
-          let planId: "premium" | "premiumPlus" | undefined;
-          if (/(premium_plus|premium\+|plus)/.test(planNickname))
-            planId = "premiumPlus";
-          else if (/premium/.test(planNickname)) planId = "premium";
-          if (
-            sub.metadata?.planId &&
-            ["premium", "premiumPlus"].includes(sub.metadata.planId)
-          ) {
-            planId = sub.metadata.planId as any;
-          }
+          const planId = inferPlanFromSubscription(sub) || undefined;
           const email = (sub.metadata?.email || sub.metadata?.userEmail) as
             | string
             | undefined;
@@ -640,15 +596,8 @@ export async function POST(req: NextRequest) {
           const email = (sub.metadata?.email ||
             invoice.customer_email ||
             invoiceAny.customer_details?.email) as string | undefined;
-          let planId: "premium" | "premiumPlus" | undefined = sub.metadata
-            ?.planId as any;
-          if (!planId) {
-            const priceNickname =
-              sub.items?.data?.[0]?.price?.nickname?.toLowerCase() || "";
-            if (/(premium_plus|premium\+|plus)/.test(priceNickname))
-              planId = "premiumPlus";
-            else if (/premium/.test(priceNickname)) planId = "premium";
-          }
+          let planId: "premium" | "premiumPlus" | undefined =
+            inferPlanFromSubscription(sub) || undefined;
           if (email && planId) {
             const snap = await db
               .collection(COLLECTIONS.USERS)
@@ -729,7 +678,10 @@ export async function POST(req: NextRequest) {
       req
     );
 
-    return NextResponse.json({ error: "Webhook processing failed", correlationId }, { status: 500 });
+    return NextResponse.json(
+      { error: "Webhook processing failed", correlationId },
+      { status: 500 }
+    );
   }
 }
 

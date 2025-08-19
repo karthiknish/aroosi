@@ -3,6 +3,10 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { stripe } from "@/lib/stripe";
 import { requireSession } from "@/app/api/_utils/auth";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import {
+  checkApiRateLimit,
+  logSecurityEvent,
+} from "@/lib/utils/securityHeaders";
 // Profile type removed as it's not used
 
 export async function POST(request: NextRequest) {
@@ -13,6 +17,21 @@ export async function POST(request: NextRequest) {
     if ("errorResponse" in session) return session.errorResponse;
     const { userId } = session;
     console.info("subscription.cancel.request", { userId, correlationId });
+
+    // Rate limit cancellations: at most 3 attempts / hour / user
+    const rl = checkApiRateLimit(
+      `subscription_cancel_${userId}`,
+      3,
+      60 * 60 * 1000
+    );
+    if (!rl.allowed) {
+      logSecurityEvent(
+        "RATE_LIMIT_EXCEEDED",
+        { endpoint: "subscription/cancel", userId, correlationId },
+        request
+      );
+      return errorResponse("Rate limit exceeded", 429);
+    }
 
     // Fetch user doc
     const snap = await db.collection(COLLECTIONS.USERS).doc(userId).get();
@@ -47,12 +66,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let updatedStripeSub: any = null;
     try {
-      await stripe.subscriptions.cancel(stripeSubscriptionId);
-      console.info("subscription.cancel.success", {
+      // Retrieve current subscription state first (idempotent safety)
+      const current = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      if (current.cancel_at_period_end) {
+        console.info("subscription.cancel.already_scheduled", {
+          userId,
+          stripeSubscriptionId,
+          current_period_end: current.current_period_end,
+          correlationId,
+        });
+        return successResponse({
+          message: "Cancellation already scheduled at period end.",
+          accessUntil: current.current_period_end * 1000,
+          plan: profile.subscriptionPlan,
+          scheduled: true,
+          correlationId,
+        });
+      }
+      updatedStripeSub = await stripe.subscriptions.update(
+        stripeSubscriptionId,
+        {
+          cancel_at_period_end: true,
+        }
+      );
+      console.info("subscription.cancel.scheduled", {
         userId,
         stripeSubscriptionId,
         correlationId,
+        period_end: updatedStripeSub.current_period_end,
         durationMs: Date.now() - startedAt,
       });
     } catch (stripeError) {
@@ -67,7 +110,7 @@ export async function POST(request: NextRequest) {
         durationMs: Date.now() - startedAt,
       });
       return errorResponse(
-        "Failed to cancel Stripe subscription. Please try again or contact support.",
+        "Failed to schedule subscription cancellation. Please try again or contact support.",
         500,
         {
           details:
@@ -79,11 +122,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const accessUntil =
+      (updatedStripeSub?.current_period_end ||
+        profile.subscriptionExpiresAt ||
+        0) * 1000;
     const response = successResponse({
       message:
-        "Your subscription cancellation is being processed. You will retain premium access until the end of your billing period.",
+        "Your subscription will end at the conclusion of the current billing period.",
       plan: profile.subscriptionPlan,
-      accessUntil: profile.subscriptionExpiresAt,
+      accessUntil,
+      scheduled: true,
       correlationId,
     });
     return response;

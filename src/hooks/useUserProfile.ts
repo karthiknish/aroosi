@@ -31,13 +31,6 @@ import {
   ONBOARDING_REQUIRED_FIELDS,
 } from "@/lib/userProfile/calculations";
 
-// Minimal required fields for onboarding completion
-const REQUIRED_ONBOARDING_FIELDS: (keyof ProfileUpdates)[] = [
-  ...(ONBOARDING_REQUIRED_FIELDS as (keyof ProfileUpdates &
-    keyof typeof ONBOARDING_REQUIRED_FIELDS)[]),
-  "height", // ensure height present (calculations also allow heightCm)
-];
-
 // Deprecated local implementation replaced by shared calculation helper
 const isOnboardingDone = (obj: Record<string, any> | undefined | null) =>
   isOnboardingEssentialComplete(obj || {});
@@ -201,7 +194,8 @@ export function useUserProfile() {
           ...(additionalData || {}),
         };
         const initialCompletion = calculateProfileCompletion(prospective);
-        const initialOnboarding = isOnboardingDone(prospective);
+        // Force onboarding complete by default
+        const initialOnboarding = true;
 
         const baseData: Record<string, unknown> = {
           ...prospective,
@@ -251,7 +245,7 @@ export function useUserProfile() {
         try {
           if (prof) {
             const recalculatedPct = calculateProfileCompletion(prof);
-            const onboardingNow = isOnboardingDone(prof);
+            const onboardingNow = true; // keep forced true
             const needsUpdate =
               prof.profileCompletionPercentage !== recalculatedPct ||
               prof.isOnboardingComplete !== onboardingNow;
@@ -354,10 +348,7 @@ export function useUserProfile() {
           profileCompletionPercentage,
         };
 
-        if (
-          !prospective.isOnboardingComplete &&
-          isOnboardingDone(prospective)
-        ) {
+        if (!prospective.isOnboardingComplete) {
           updateData.isOnboardingComplete = true;
         }
 
@@ -393,9 +384,7 @@ export function useUserProfile() {
           profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete:
-            profile?.isOnboardingComplete ||
-            isOnboardingDone(profile || undefined),
+          isOnboardingComplete: profile?.isOnboardingComplete ?? true,
           isAdmin: profile?.role === "admin" || false,
           error: null,
         });
@@ -478,9 +467,7 @@ export function useUserProfile() {
           profile: profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete:
-            profile?.isOnboardingComplete ||
-            isOnboardingDone(profile || undefined),
+          isOnboardingComplete: profile?.isOnboardingComplete ?? true,
           isAdmin: profile?.role === "admin" || false,
           error: null,
         });
@@ -599,9 +586,7 @@ export function useUserProfile() {
           profile: profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete:
-            profile?.isOnboardingComplete ||
-            isOnboardingDone(profile || undefined),
+          isOnboardingComplete: profile?.isOnboardingComplete ?? true,
           isAdmin: profile?.role === "admin" || false,
           error: null,
         });
@@ -662,9 +647,7 @@ export function useUserProfile() {
         profile: profile,
         isLoading: false,
         isAuthenticated: true,
-        isOnboardingComplete:
-          profile?.isOnboardingComplete ||
-          isOnboardingDone(profile || undefined),
+        isOnboardingComplete: profile?.isOnboardingComplete ?? true,
         isAdmin: profile?.role === "admin" || false,
         error: null,
       });
@@ -726,8 +709,7 @@ export function useUserProfile() {
           profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete:
-            profile.isOnboardingComplete || isOnboardingDone(profile),
+          isOnboardingComplete: profile.isOnboardingComplete ?? true,
           isAdmin: profile.role === "admin" || false,
           error: null,
         });
@@ -821,9 +803,7 @@ export function useUserProfile() {
       setAuthState((prev) => ({
         ...prev,
         profile: profile,
-        isOnboardingComplete:
-          profile?.isOnboardingComplete ||
-          isOnboardingDone(profile || undefined),
+        isOnboardingComplete: profile?.isOnboardingComplete ?? true,
         isAdmin: profile?.role === "admin" || false,
       }));
     } catch (error) {
@@ -888,17 +868,18 @@ export function useUserProfile() {
         }
         // Validate required onboarding fields
         const missing: string[] = [];
-        for (const key of REQUIRED_ONBOARDING_FIELDS) {
-          const v = (profileData as any)[key];
-          if (
-            v === undefined ||
-            v === null ||
-            (typeof v === "string" && v.trim() === "") ||
-            (Array.isArray(v) && v.length === 0)
-          ) {
-            missing.push(String(key));
-          }
-        }
+  for (const key of ONBOARDING_REQUIRED_FIELDS as (keyof ProfileUpdates &
+    keyof typeof ONBOARDING_REQUIRED_FIELDS)[]) {
+    const v = (profileData as any)[key];
+    if (
+      v === undefined ||
+      v === null ||
+      (typeof v === "string" && v.trim() === "") ||
+      (Array.isArray(v) && v.length === 0)
+    ) {
+      missing.push(String(key));
+    }
+  }
         if (missing.length) {
           return {
             success: false,

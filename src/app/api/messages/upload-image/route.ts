@@ -6,6 +6,11 @@ import {
   uploadMessageImage,
   sendFirebaseMessage,
 } from "@/lib/messages/firebaseMessages";
+import {
+  validateImageUpload,
+  sanitizeFileName,
+  sliceHead,
+} from "@/lib/validation/image";
 
 // Accepts multipart/form-data with fields:
 // - image: File (required)
@@ -55,7 +60,7 @@ export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
       (formData.get("conversationId") as string | null) || "";
     const fromUserId = (formData.get("fromUserId") as string | null) || "";
     const toUserId = (formData.get("toUserId") as string | null) || "";
-    const fileName =
+    const rawFileName =
       (formData.get("fileName") as string | null) || image?.name || "image";
     const contentType =
       (formData.get("contentType") as string | null) ||
@@ -87,9 +92,35 @@ export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
       });
     }
 
-    // Build bytes for upload
+    // Build bytes for upload (we also slice a head for signature sniff)
     const arrayBuffer = await image.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
+    const head = sliceHead(bytes, 256);
+
+    // Plan-aware validation (we already derived plan from rate limiter response)
+    const plan = rate.plan as any;
+    const validation = validateImageUpload({
+      fileSize: image.size,
+      providedMime: contentType,
+      plan,
+      headBytes: head,
+    });
+    if (!validation.ok) {
+      return errorResponse(validation.message || "Invalid image upload", 400, {
+        correlationId,
+        errorCode: validation.errorCode,
+        limitBytes: validation.limitBytes,
+        plan: validation.plan,
+        allowedMimes: validation.allowedMimes,
+        detectedMime: validation.detectedMime,
+        size: image.size,
+        width: validation.width,
+        height: validation.height,
+      });
+    }
+
+    // Sanitize filename after validation
+    const fileName = sanitizeFileName(rawFileName);
 
     // Upload image to Firebase Storage
     const { storageId } = await uploadMessageImage({
@@ -117,6 +148,11 @@ export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
         storageId,
         correlationId,
         durationMs: Date.now() - startedAt,
+        plan,
+        size: image.size,
+        mime: contentType,
+        width: validation.width,
+        height: validation.height,
       },
       200
     );

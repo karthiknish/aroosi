@@ -24,8 +24,11 @@ export async function createOrUpdateUserProfile(
       age--;
     }
   }
-  const profileCompletionPercentage = calculateProfileCompletion({ ...data, age });
-  const onboardingDone = isOnboardingEssentialComplete({ ...data });
+  const profileCompletionPercentage = calculateProfileCompletion({
+    ...data,
+    age,
+  });
+  const onboardingDone = true; // forced onboarding completion
   const userProfile: UserProfile = {
     id: uid,
     uid,
@@ -146,10 +149,17 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
     }
   }
   const existingDoc = await userRef.get();
-  const existingProfile = existingDoc.exists ? ( { id: existingDoc.id, ...existingDoc.data() } as UserProfile) : undefined;
-  const merged = { ...existingProfile, ...data, age: age || data.age || existingProfile?.age, updatedAt: now };
+  const existingProfile = existingDoc.exists
+    ? ({ id: existingDoc.id, ...existingDoc.data() } as UserProfile)
+    : undefined;
+  const merged = {
+    ...existingProfile,
+    ...data,
+    age: age || data.age || existingProfile?.age,
+    updatedAt: now,
+  };
   const profileCompletionPercentage = calculateProfileCompletion(merged);
-  const onboardingDone = isOnboardingEssentialComplete(merged);
+  const onboardingDone = true; // forced onboarding completion
   const updateData = {
     ...data,
     age: age || data.age,

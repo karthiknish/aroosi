@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
 
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,35 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
-import { uploadProfileImage } from "@/lib/utils/imageUtil";
+import { uploadProfileImageWithProgress } from "@/lib/utils/imageUtil";
 import {
   computeFileHash,
   DuplicateSession,
 } from "@/lib/utils/imageUploadHelpers";
+import { planDisplayName } from "@/lib/utils/subscriptionRateLimit";
+
+// Client-side mirror of server limits (bytes) for UX guidance.
+const CLIENT_PLAN_SIZE_LIMITS: Record<string, number> = {
+  free: 2 * 1024 * 1024,
+  premium: 5 * 1024 * 1024,
+  premiumPlus: 10 * 1024 * 1024,
+};
+const FALLBACK_MAX = 5 * 1024 * 1024;
+
+async function fetchSubscriptionPlan(): Promise<string> {
+  try {
+    const res = await fetch("/api/subscription/status", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      credentials: "include",
+    });
+    if (!res.ok) return "free";
+    const json = await res.json().catch(() => ({}));
+    return (json.subscriptionPlan || json.plan || "free") as string;
+  } catch {
+    return "free";
+  }
+}
 
 type ImageUploaderMode = "local" | "immediate";
 
@@ -126,6 +150,26 @@ export function ImageUploader({
   const [rotate, setRotate] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isClient, setIsClient] = useState(typeof window !== "undefined");
+  const [plan, setPlan] = useState<string>("free");
+  const [maxSizeBytes, setMaxSizeBytes] = useState<number>(
+    CLIENT_PLAN_SIZE_LIMITS.free
+  );
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [statusMessage, setStatusMessage] = useState<string>("");
+  const liveRegionRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch subscription plan once on mount
+  useEffect(() => {
+    let active = true;
+    fetchSubscriptionPlan().then((p) => {
+      if (!active) return;
+      setPlan(p);
+      setMaxSizeBytes(CLIENT_PLAN_SIZE_LIMITS[p] || FALLBACK_MAX);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => setIsClient(true), []);
 
@@ -149,7 +193,10 @@ export function ImageUploader({
 
       // Extra guard: ensure MIME starts with image/
       if (!file.type.startsWith("image/")) {
-        showErrorToast(null, "Only image files are allowed (JPG, PNG, WebP)");
+        showErrorToast(
+          null,
+          "Only image files are allowed (JPG, PNG, WebP, HEIC)"
+        );
         return;
       }
 
@@ -200,8 +247,10 @@ export function ImageUploader({
       "image/jpeg": [],
       "image/png": [],
       "image/webp": [],
+      "image/heic": [],
+      "image/heif": [],
     },
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: maxSizeBytes,
     multiple: false,
     disabled: disabled || isUploading,
   });
@@ -270,8 +319,11 @@ export function ImageUploader({
 
       if (isLocalMode) {
         // Preflight: size and dimension checks, duplicate session detection
-        if (file.size > 5 * 1024 * 1024) {
-          showErrorToast(null, "Image is too large (max 5MB)");
+        if (file.size > maxSizeBytes) {
+          showErrorToast(
+            null,
+            `Image is too large (max ${Math.round(maxSizeBytes / 1024 / 1024)}MB)`
+          );
           return;
         }
         try {
@@ -311,6 +363,7 @@ export function ImageUploader({
 
         // Use custom uploader if provided (e.g., admin flow)
         if (customUploadFile) {
+          setUploadProgress(10);
           await customUploadFile(file);
           showSuccessToast("Image uploaded successfully");
           await fetchImages();
@@ -321,10 +374,26 @@ export function ImageUploader({
           };
         }
 
-        // Immediate upload: use canonical utility to upload via multipart endpoint
-        console.log("[ImageUploader] Starting upload for file:", file.name);
-        const json = await uploadProfileImage(file);
-        console.log("[ImageUploader] Upload result:", json);
+        // Immediate upload with progress
+        setStatusMessage("Uploading...");
+        setUploadProgress(0);
+        console.log("[ImageUploader] Starting upload for file:", file.name, {
+          plan,
+          maxSizeBytes,
+        });
+        const json = await uploadProfileImageWithProgress(
+          file,
+          (loaded, total) => {
+            const pct =
+              total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 0;
+            setUploadProgress(pct);
+            if (liveRegionRef.current) {
+              liveRegionRef.current.textContent = `Uploading ${pct}%`;
+            }
+          }
+        );
+        setUploadProgress(100);
+        setStatusMessage("Processing...");
 
         // Optimistic update
         if (onOptimisticUpdate && json?.imageId) {
@@ -349,6 +418,7 @@ export function ImageUploader({
 
         // Show success message
         showSuccessToast("Image uploaded successfully");
+        setStatusMessage("Upload complete");
 
         // Return the result so the parent component can handle it
         return mutationResult;
@@ -360,6 +430,8 @@ export function ImageUploader({
         throw error;
       } finally {
         setIsUploading(false);
+        setUploadProgress(0);
+        setStatusMessage("");
       }
     },
     [
@@ -373,6 +445,8 @@ export function ImageUploader({
       onOptimisticUpdate,
       mode,
       getImageDimensions,
+      plan,
+      maxSizeBytes,
     ]
   );
 
@@ -397,16 +471,26 @@ export function ImageUploader({
         >
           {isUploading ? (
             <div className="flex flex-col items-center justify-center space-y-3 w-full">
-              <Skeleton className="w-8 h-8 rounded-full" />
-              <div className="w-full space-y-2">
-                <Skeleton className="h-4 w-1/2 rounded" />
-                <div className="w-full bg-muted rounded-full h-1.5">
-                  <div
-                    className="bg-primary h-1.5 rounded-full animate-pulse"
-                    style={{ width: "70%" }}
-                  ></div>
+              <div className="w-10 h-10 relative">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-primary">
+                  {uploadProgress > 0 ? `${uploadProgress}%` : ""}
+                </span>
+              </div>
+              <div className="w-full space-y-3">
+                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                  <span>{statusMessage || "Uploading"}</span>
+                  <span>{uploadProgress}%</span>
                 </div>
-                <Skeleton className="h-3 w-1/3 rounded" />
+                <div className="w-full bg-muted/60 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all duration-150"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <div className="text-[11px] text-neutral/50">
+                  Please keep this tab open until processing finishes.
+                </div>
               </div>
             </div>
           ) : isDragActive ? (
@@ -432,14 +516,36 @@ export function ImageUploader({
                 <p className="text-sm font-medium text-foreground">
                   Drag & drop a photo
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  or click to browse. Max 5MB (JPG, PNG, WebP)
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  or click to browse. Max{" "}
+                  {Math.round(maxSizeBytes / 1024 / 1024)}MB per image (
+                  {planDisplayName(plan)} plan).
+                  <br />
+                  JPG, PNG, WebP{plan !== "free" ? ", HEIC" : ""}. Minimum
+                  512×512px.
                 </p>
+                {plan === "free" && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-500">
+                    Upgrade for higher size limits & HEIC support.
+                  </p>
+                )}
               </div>
             </div>
           )}
         </div>
+        <div className="absolute top-2 left-2">
+          <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-medium tracking-wide">
+            {planDisplayName(plan)}
+          </span>
+        </div>
       </div>
+
+      <div
+        ref={liveRegionRef}
+        role="status"
+        aria-live="polite"
+        className="sr-only"
+      />
 
       <Dialog open={isCropping} onOpenChange={setIsCropping}>
         <DialogContent className="max-w-2xl bg-white">

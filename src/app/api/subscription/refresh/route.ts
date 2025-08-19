@@ -3,6 +3,7 @@ import { requireSession } from "@/app/api/_utils/auth";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { stripe } from "@/lib/stripe";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
+import { inferPlanFromSubscription } from "@/lib/subscription/stripePlanMapping";
 
 /**
  * Manual subscription refresh endpoint.
@@ -29,18 +30,14 @@ export async function POST(req: NextRequest) {
 
     try {
       const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-      // Infer planId from metadata or price nickname
-      let planId: "premium" | "premiumPlus" | "free" = (sub.metadata?.planId as any) || "free";
-      if (!planId) {
-        const priceNickname = sub.items?.data?.[0]?.price?.nickname?.toLowerCase() || "";
-        if (/(premium_plus|premium\+|plus)/.test(priceNickname)) planId = "premiumPlus";
-        else if (/premium/.test(priceNickname)) planId = "premium";
-      }
+      // Infer planId using centralized helper (metadata > price id/nickname)
+      let planId = inferPlanFromSubscription(sub) || "free";
       await userSnap.ref.set(
         {
           subscriptionPlan: planId,
           subscriptionExpiresAt: sub.current_period_end * 1000,
-          stripeCustomerId: typeof sub.customer === "string" ? sub.customer : undefined,
+          stripeCustomerId:
+            typeof sub.customer === "string" ? sub.customer : undefined,
           updatedAt: Date.now(),
         },
         { merge: true }

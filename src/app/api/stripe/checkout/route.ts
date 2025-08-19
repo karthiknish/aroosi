@@ -9,6 +9,11 @@ import {
 } from "@/lib/utils/securityHeaders";
 
 import { SUBSCRIPTION_PLANS } from "../../../../constants";
+import {
+  getStripePlanMapping,
+  normaliseInternalPlan,
+  debugStripePlanContext,
+} from "@/lib/subscription/stripePlanMapping";
 
 /**
  * Server-side canonical mapping of allowed public planIds to server constants.
@@ -75,24 +80,16 @@ export async function POST(req: NextRequest) {
       return errorResponse("Invalid or missing planId", 400);
     }
 
-    // Validate Stripe configuration (price IDs sourced from env for each allowed plan)
-    // Resolve price ID with layered fallback: env var first, then constants.priceId
-    const envPriceId =
-      planId === "premium"
-        ? process.env.STRIPE_PRICE_ID_PREMIUM ||
-          process.env.NEXT_PUBLIC_PREMIUM_PRICE_ID
-        : process.env.STRIPE_PRICE_ID_PREMIUM_PLUS ||
-          process.env.NEXT_PUBLIC_PREMIUM_PLUS_PRICE_ID;
-    const constPriceId =
-      planId === "premium"
-        ? SUBSCRIPTION_PLANS.PREMIUM?.priceId
-        : SUBSCRIPTION_PLANS.PREMIUM_PLUS?.priceId;
-    const priceIdSource = envPriceId
-      ? "env"
-      : constPriceId
+    // Validate Stripe configuration (use centralized mapping helper)
+    const mapping = getStripePlanMapping();
+    const priceId =
+      planId === "premium" ? mapping.premium : mapping.premiumPlus;
+    const priceIdSource = priceId
+      ? priceId === SUBSCRIPTION_PLANS.PREMIUM?.priceId ||
+        priceId === SUBSCRIPTION_PLANS.PREMIUM_PLUS?.priceId
         ? "constants"
-        : "none";
-    const priceId = envPriceId || constPriceId;
+        : "env"
+      : "none";
     if (!priceId) {
       console.error(
         "Missing Stripe price ID for plan (env + constants empty)",
@@ -153,37 +150,38 @@ export async function POST(req: NextRequest) {
       baseUrl,
       successUrlOverride: !!successUrlOverride,
       cancelUrlOverride: !!cancelUrlOverride,
+      mappingContext: debugStripePlanContext(),
     });
     // Create Stripe checkout session with security considerations
     // Reuse existing customer if known
     const stripeSession = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      ...(userDoc.stripeCustomerId
-        ? { customer: userDoc.stripeCustomerId }
-        : { customer_email: customerEmail }),
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+    mode: "subscription",
+    payment_method_types: ["card"],
+    ...(userDoc.stripeCustomerId
+      ? { customer: userDoc.stripeCustomerId }
+      : { customer_email: customerEmail }),
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      planId,
+      email: userDoc.email,
+      userId, // Add for double verification in webhook
+    },
+    success_url: successUrlOverride || `${baseUrl}/plans?checkout=success`,
+    cancel_url: cancelUrlOverride || `${baseUrl}/plans?checkout=cancel`,
+    billing_address_collection: "required",
+    subscription_data: {
       metadata: {
         planId,
         email: userDoc.email,
-        userId, // Add for double verification in webhook
+        userId,
       },
-      success_url: successUrlOverride || `${baseUrl}/plans?checkout=success`,
-      cancel_url: cancelUrlOverride || `${baseUrl}/plans?checkout=cancel`,
-      billing_address_collection: "required",
-      subscription_data: {
-        metadata: {
-          planId,
-          email: userDoc.email,
-          userId,
-        },
-      },
-    });
+    },
+  });
     if (!stripeSession || !stripeSession.url) {
       console.error("stripe.checkout.failed_to_create", { userId, planId });
       return errorResponse("Failed to create checkout session", 500);

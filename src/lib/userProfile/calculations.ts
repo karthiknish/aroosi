@@ -49,9 +49,13 @@ const CATEGORIES: CategorySpec[] = [
     weight: 15,
     fields: ['profileImageUrls'],
     scorer: (p) => {
-      const imgs = Array.isArray(p.profileImageUrls) ? p.profileImageUrls.filter(isNonEmpty) : [];
-      if (imgs.length === 0) return 0; // no images => 0
-      if (imgs.length >= 3) return 1; // 3+ images => full credit
+      // Support migration variants: profileImageUrls, profileImageIds, images subcollection count (stored as profileImageIds list)
+      const fromUrls = Array.isArray(p.profileImageUrls) ? p.profileImageUrls : [];
+      const fromIds = Array.isArray((p as any).profileImageIds) ? (p as any).profileImageIds : [];
+      const merged = (fromUrls.length ? fromUrls : fromIds).filter(isNonEmpty);
+      const count = merged.length;
+      if (count === 0) return 0;
+      if (count >= 3) return 1;
       return 0.6; // 1-2 images => partial credit
     },
   },
@@ -84,10 +88,12 @@ export function calculateProfileCompletion(
 // Helper to derive onboarding completion from same core required subset (single source of truth)
 // Canonical list of required fields for declaring onboarding complete.
 // Keep this single source of truth in sync with UI onboarding forms.
+// NOTE: 'religion' removed from required set (was causing unnecessary onboarding blocking); 'preferredGender' added.
 export const ONBOARDING_REQUIRED_FIELDS: (keyof UserProfile)[] = [
   'fullName',
   'dateOfBirth',
   'gender',
+  'preferredGender',
   'profileFor',
   'phoneNumber',
   'country',
@@ -95,9 +101,8 @@ export const ONBOARDING_REQUIRED_FIELDS: (keyof UserProfile)[] = [
   'maritalStatus',
   'education',
   'occupation',
-  'religion',
   'aboutMe',
-  // height handled specially (height or heightCm acceptable)
+  // Height handled specially (height or heightCm acceptable)
 ];
 
 export function isOnboardingEssentialComplete(
@@ -113,4 +118,13 @@ export function isOnboardingEssentialComplete(
     isNonEmpty((profile as any).heightCm);
   if (!hasHeight) return false;
   return true;
+}
+
+// Helper for external modules to compute current image count (supports legacy/migrated shapes)
+export function getProfileImageCount(profile: Partial<UserProfile>): number {
+  const urls = Array.isArray(profile.profileImageUrls) ? profile.profileImageUrls : [];
+  const ids = Array.isArray((profile as any).profileImageIds) ? (profile as any).profileImageIds : [];
+  if (urls.length) return urls.filter(isNonEmpty).length;
+  if (ids.length) return ids.filter(isNonEmpty).length;
+  return 0;
 }
