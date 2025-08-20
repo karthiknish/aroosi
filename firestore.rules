@@ -13,27 +13,7 @@ service cloud.firestore {
           resource == null ||
           request.resource.data.profileCompletionPercentage >= resource.data.profileCompletionPercentage
         ) &&
-        (
-          // If isOnboardingComplete not being touched, allow
-          !('isOnboardingComplete' in request.resource.data) ||
-          // Create with explicit false allowed
-          (resource == null && request.resource.data.isOnboardingComplete == false) ||
-          // Once true, must remain true
-          (resource != null && resource.data.isOnboardingComplete == true && request.resource.data.isOnboardingComplete == true) ||
-          // Transition false (or unset) -> true requires essentials
-          ((resource == null || resource.data.isOnboardingComplete != true) &&
-            request.resource.data.isOnboardingComplete == true &&
-            request.resource.data.fullName is string && request.resource.data.fullName.size() > 0 &&
-            request.resource.data.dateOfBirth is string && request.resource.data.dateOfBirth.size() > 0 &&
-            request.resource.data.gender is string && request.resource.data.gender.size() > 0 &&
-            request.resource.data.city is string && request.resource.data.city.size() > 0 &&
-            request.resource.data.country is string && request.resource.data.country.size() > 0 &&
-            request.resource.data.maritalStatus is string && request.resource.data.maritalStatus.size() > 0 &&
-            request.resource.data.education is string && request.resource.data.education.size() > 0 &&
-            request.resource.data.occupation is string && request.resource.data.occupation.size() > 0 &&
-            request.resource.data.religion is string && request.resource.data.religion.size() > 0 &&
-            request.resource.data.aboutMe is string && request.resource.data.aboutMe.size() > 0)
-        );
+  true;
     }
 
     match /blocks/{blockId} {

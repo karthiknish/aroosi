@@ -716,7 +716,6 @@ export { useProfileCreationController } from "./profileCreation/controller";
         try {
           updateContextData({
             isProfileComplete: true,
-            isOnboardingComplete: true,
           });
         } catch {}
         showSuccessToast("Profile created successfully!");

@@ -466,11 +466,7 @@ export function useProfileCreationController(params: {
           if (typeof window !== "undefined")
             window.localStorage.removeItem("PROFILE_CREATION");
         } catch {}
-        try {
-          updateContextData({
-            isOnboardingComplete: true,
-          });
-        } catch {}
+        // isOnboardingComplete deprecated – no longer updating context flag
         // Attempt to remove onboardingPartial from Firestore to avoid stale data
         try {
           if (userId) {

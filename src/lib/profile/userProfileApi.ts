@@ -97,7 +97,6 @@ export async function fetchUserProfile(
         preferredGender: (profileData.preferredGender as any) || "any",
         profileImageIds: profileData.profileImageIds || [],
         profileImageUrls: profileData.profileImageUrls || [],
-        isOnboardingComplete: true,
         isApproved: profileData.isApproved,
         hideFromFreeUsers: profileData.hideFromFreeUsers,
         banned: !!profileData.banned,

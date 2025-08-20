@@ -50,9 +50,6 @@ export interface Profile {
   preferredGender: PreferredGender;
   profileImageIds?: string[];
   profileImageUrls?: string[];
-  /** @deprecated Replaced by isOnboardingComplete + completion percentage */
-  isProfileComplete?: boolean;
-  isOnboardingComplete: boolean;
   /** Derived percentage (0-100) of profile completion */
   profileCompletionPercentage?: number;
   isApproved?: boolean;
@@ -112,10 +109,7 @@ export interface ProfileFormValues {
   partnerPreferenceCity: string[] | string;
   preferredGender: string;
   profileImageIds?: string[];
-  isProfileComplete?: boolean;
-  isOnboardingComplete?: boolean;
   profileCompletionPercentage?: number;
-
   banned?: boolean;
   createdAt?: number;
   updatedAt?: number;

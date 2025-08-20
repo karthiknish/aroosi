@@ -113,7 +113,6 @@ export interface ProfileData {
   fullName: string;
   city?: string;
   dateOfBirth?: string;
-  isOnboardingComplete?: boolean;
   profileCompletionPercentage?: number;
   hiddenFromSearch?: boolean;
   boostedUntil?: number;
@@ -170,7 +169,7 @@ export default function SearchProfilesPage() {
     setEthnicity(params.get("ethnicity") ?? "any");
     setMotherTongue(params.get("motherTongue") ?? "any");
     setLanguage(params.get("language") ?? "any");
-  // Intentionally ignore any preferredGender query param: filtering is automatic from user profile
+    // Intentionally ignore any preferredGender query param: filtering is automatic from user profile
     const pageParam = params.get("page");
     setPage(pageParam ? Math.max(0, Number(pageParam) || 0) : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -472,10 +471,7 @@ export default function SearchProfilesPage() {
   // Only show users with a complete profile and not hidden from search
   const publicProfiles = React.useMemo(() => {
     if (!profiles) return [];
-    return profiles.filter(
-      (u: ProfileSearchResult) =>
-        u.profile && u.profile.isOnboardingComplete === true
-    );
+    return profiles.filter((u: ProfileSearchResult) => !!u.profile);
   }, [profiles]);
 
   // Get current user from auth context
@@ -502,7 +498,7 @@ export default function SearchProfilesPage() {
   const filtered = useMemo(() => {
     return (publicProfiles || []).filter((u: ProfileSearchResult) => {
       const p = u.profile;
-      if (!p?.isOnboardingComplete) return false;
+          // isOnboardingComplete removed
 
       // Hide blocked users from search results
       if (blockedUserIds.includes(u.userId)) return false;

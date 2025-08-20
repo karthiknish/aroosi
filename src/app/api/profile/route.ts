@@ -456,14 +456,13 @@ export const POST = withFirebaseAuth(async (user: any, req: NextRequest) => {
     );
 
     const now = Date.now();
-    const newProfileData = {
-      ...convexProfileData,
-      createdAt: now,
-      updatedAt: now,
-      userId,
-      email: profileData.email,
-      isOnboardingComplete: true,
-    } as any;
+  const newProfileData = {
+    ...convexProfileData,
+    createdAt: now,
+    updatedAt: now,
+    userId,
+    email: profileData.email,
+  } as any;
     await db
       .collection("users")
       .doc(userId)

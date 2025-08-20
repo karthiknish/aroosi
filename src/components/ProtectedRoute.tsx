@@ -45,7 +45,6 @@ function ProtectedRouteInner({
   const {
     isLoaded,
     isSignedIn,
-    isOnboardingComplete,
     profile: rawProfile,
     refreshUser,
   } = useAuthContext();
@@ -60,7 +59,6 @@ function ProtectedRouteInner({
   // Client-only flag to avoid hydration mismatch
   useEffect(() => setIsClient(true), []);
 
-  // Memoized route checks
   const {
     isPublicRoute,
     isOnboardingRoute,
@@ -141,7 +139,6 @@ function ProtectedRouteInner({
         path: pathname,
         isLoaded,
         isSignedIn,
-        isOnboardingComplete,
         requireOnboardingComplete,
         userPlan,
       });
@@ -211,21 +208,12 @@ function ProtectedRouteInner({
       }
 
       // Enforce onboarding/profile completeness when requested via either prop
-      const needsOnboarding =
-        (requireOnboardingComplete || requireProfileComplete) &&
-        !isOnboardingComplete;
-      if (needsOnboarding) {
-        if (!isOnboardingRoute && !isCreateProfileRoute) {
-          void handleNavigation("/", "Please finish onboarding to continue.");
-          return;
-        }
-      }
+      // onboarding completion gating removed
     }
   }, [
     authDisabled,
     isLoaded,
     isSignedIn,
-    isOnboardingComplete,
     pathname,
     searchParams,
     isPublicRoute,

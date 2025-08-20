@@ -41,7 +41,6 @@ export interface AuthState {
   profile: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  isOnboardingComplete: boolean;
   isAdmin: boolean;
   error: string | null;
 }
@@ -154,7 +153,6 @@ export function useUserProfile() {
     profile: null,
     isLoading: true,
     isAuthenticated: false,
-    isOnboardingComplete: false,
     isAdmin: false,
     error: null,
   });
@@ -197,76 +195,70 @@ export function useUserProfile() {
         // Derive onboarding completion from essential fields instead of forcing true
         const initialOnboarding = isOnboardingEssentialComplete(prospective);
 
-  const baseData: Record<string, unknown> = {
-    ...prospective,
-    // Explicit initial values (rules updated to allow these on create)
-    isOnboardingComplete: initialOnboarding,
-    profileCompletionPercentage: initialCompletion,
-    updatedAt: serverTimestamp(),
-    lastLoginAt: serverTimestamp(),
-  };
+        const baseData: Record<string, unknown> = {
+          ...prospective,
+          // Explicit initial values (rules updated to allow these on create)
+          profileCompletionPercentage: initialCompletion,
+          updatedAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
+        };
 
-  // Use setDoc with merge to avoid race & simplify rules evaluation.
-  await setDoc(
-    userRef,
-    {
-      createdAt: serverTimestamp(),
-      ...baseData,
-    },
-    { merge: true }
-  );
-
-  // Retry read-after-write a few times (rarely needed but avoids transient nulls).
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  let prof: UserProfile | null = null;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    prof = await fetchUserProfile(firebaseUser.uid);
-    if (prof) break;
-    await sleep(50 * Math.pow(2, attempt)); // 50,100,200,400,800
-  }
-  if (!prof) {
-    // Fallback: synthesize minimal profile without throwing to avoid breaking signup UX.
-    console.warn(
-      "[createOrUpdateUserProfile] Fallback profile synthesis after retries failed"
-    );
-    return {
-      id: firebaseUser.uid,
-      uid: firebaseUser.uid,
-      email: firebaseUser.email || "",
-      emailVerified: firebaseUser.emailVerified,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      role: "user",
-      isOnboardingComplete: false,
-      profileCompletionPercentage: 0,
-    } as UserProfile;
-  }
-  // Post-create: recalc completion & onboarding in case of server merges or defaults
-  try {
-    if (prof) {
-      const recalculatedPct = calculateProfileCompletion(prof);
-      const onboardingNow = isOnboardingEssentialComplete(prof);
-      const needsUpdate =
-        prof.profileCompletionPercentage !== recalculatedPct ||
-        prof.isOnboardingComplete !== onboardingNow;
-      if (needsUpdate) {
+        // Use setDoc with merge to avoid race & simplify rules evaluation.
         await setDoc(
           userRef,
           {
-            profileCompletionPercentage: recalculatedPct,
-            isOnboardingComplete: onboardingNow,
-            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            ...baseData,
           },
           { merge: true }
         );
-        prof = {
-          ...prof,
-          profileCompletionPercentage: recalculatedPct,
-          isOnboardingComplete: onboardingNow,
-        } as UserProfile;
-      }
-    }
-  } catch {}
+
+        // Retry read-after-write a few times (rarely needed but avoids transient nulls).
+        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        let prof: UserProfile | null = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          prof = await fetchUserProfile(firebaseUser.uid);
+          if (prof) break;
+          await sleep(50 * Math.pow(2, attempt)); // 50,100,200,400,800
+        }
+        if (!prof) {
+          // Fallback: synthesize minimal profile without throwing to avoid breaking signup UX.
+          console.warn(
+            "[createOrUpdateUserProfile] Fallback profile synthesis after retries failed"
+          );
+          return {
+            id: firebaseUser.uid,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || "",
+            emailVerified: firebaseUser.emailVerified,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            role: "user",
+            profileCompletionPercentage: 0,
+          } as UserProfile;
+        }
+        // Post-create: recalc completion & onboarding in case of server merges or defaults
+        try {
+          if (prof) {
+            const recalculatedPct = calculateProfileCompletion(prof);
+            const needsUpdate =
+              prof.profileCompletionPercentage !== recalculatedPct;
+            if (needsUpdate) {
+              await setDoc(
+                userRef,
+                {
+                  profileCompletionPercentage: recalculatedPct,
+                  updatedAt: serverTimestamp(),
+                },
+                { merge: true }
+              );
+              prof = {
+                ...prof,
+                profileCompletionPercentage: recalculatedPct,
+              } as UserProfile;
+            }
+          }
+        } catch {}
         return prof as UserProfile;
       } catch (error) {
         console.error("Error creating/updating user profile:", error);
@@ -348,9 +340,7 @@ export function useUserProfile() {
           profileCompletionPercentage,
         };
 
-        if (!prospective.isOnboardingComplete) {
-          updateData.isOnboardingComplete = true;
-        }
+        // onboarding flag removed
 
         await setDoc(userRef, updateData, { merge: true });
 
@@ -384,7 +374,6 @@ export function useUserProfile() {
           profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete: profile?.isOnboardingComplete ?? true,
           isAdmin: profile?.role === "admin" || false,
           error: null,
         });
@@ -394,7 +383,6 @@ export function useUserProfile() {
           profile: null,
           isLoading: false,
           isAuthenticated: false,
-          isOnboardingComplete: false,
           isAdmin: false,
           error: null,
         });
@@ -467,7 +455,6 @@ export function useUserProfile() {
           profile: profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete: profile?.isOnboardingComplete ?? true,
           isAdmin: profile?.role === "admin" || false,
           error: null,
         });
@@ -602,7 +589,7 @@ export function useUserProfile() {
           profile: profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete: profile?.isOnboardingComplete ?? false,
+          // onboarding flag removed
           isAdmin: profile?.role === "admin" || false,
           error: null,
         });
@@ -658,13 +645,13 @@ export function useUserProfile() {
         setAuthTokenCookie().catch(() => {});
       }
       // If no profile doc yet, treat as onboarding-incomplete (used for Google signup flow)
-      const onboardingComplete = profile?.isOnboardingComplete ?? false;
+      const onboardingComplete = true;
       setAuthState({
         user: cred.user,
         profile: profile,
         isLoading: false,
         isAuthenticated: true,
-        isOnboardingComplete: onboardingComplete,
+        // onboarding flag removed
         isAdmin: profile?.role === "admin" || false,
         error: null,
       });
@@ -723,7 +710,7 @@ export function useUserProfile() {
             profile: null,
             isLoading: false,
             isAuthenticated: false,
-            isOnboardingComplete: false,
+            // onboarding flag removed
             isAdmin: false,
             error:
               "No account exists for this Google email. Please sign up first.",
@@ -742,7 +729,7 @@ export function useUserProfile() {
           profile,
           isLoading: false,
           isAuthenticated: true,
-          isOnboardingComplete: profile.isOnboardingComplete ?? true,
+          // onboarding flag removed
           isAdmin: profile.role === "admin" || false,
           error: null,
         });
@@ -785,7 +772,7 @@ export function useUserProfile() {
         profile: null,
         isLoading: false,
         isAuthenticated: false,
-        isOnboardingComplete: false,
+        // onboarding flag removed
         isAdmin: false,
         error: null,
       });
@@ -836,7 +823,7 @@ export function useUserProfile() {
       setAuthState((prev) => ({
         ...prev,
         profile: profile,
-        isOnboardingComplete: profile?.isOnboardingComplete ?? true,
+        // onboarding flag removed
         isAdmin: profile?.role === "admin" || false,
       }));
     } catch (error) {
@@ -871,11 +858,9 @@ export function useUserProfile() {
     isLoaded: !authState.isLoading,
     isSignedIn: authState.isAuthenticated,
     // Backward compatibility: some legacy tests expect isProfileComplete
-    // Use isOnboardingComplete as the source of truth.
+    // onboarding flag removed
     // (Type already may not include it; we cast for legacy access.)
-    ...( {
-      isProfileComplete: authState.isOnboardingComplete,
-    } as any ),
+    // isProfileComplete alias removed
     refreshProfile,
     refreshUser: refreshProfile,
     signIn,
@@ -885,8 +870,8 @@ export function useUserProfile() {
     updateUserProfile,
     hasRole,
     hasPermission,
-  signInWithGoogle,
-  signInWithGoogleExistingOnly,
+    signInWithGoogle,
+    signInWithGoogleExistingOnly,
     sendEmailVerification: sendVerificationEmail,
     completeGoogleSignup: async (profileData: ProfileUpdates) => {
       try {
@@ -901,18 +886,18 @@ export function useUserProfile() {
         }
         // Validate required onboarding fields
         const missing: string[] = [];
-  for (const key of ONBOARDING_REQUIRED_FIELDS as (keyof ProfileUpdates &
-    keyof typeof ONBOARDING_REQUIRED_FIELDS)[]) {
-    const v = (profileData as any)[key];
-    if (
-      v === undefined ||
-      v === null ||
-      (typeof v === "string" && v.trim() === "") ||
-      (Array.isArray(v) && v.length === 0)
-    ) {
-      missing.push(String(key));
-    }
-  }
+        for (const key of ONBOARDING_REQUIRED_FIELDS as (keyof ProfileUpdates &
+          keyof typeof ONBOARDING_REQUIRED_FIELDS)[]) {
+          const v = (profileData as any)[key];
+          if (
+            v === undefined ||
+            v === null ||
+            (typeof v === "string" && v.trim() === "") ||
+            (Array.isArray(v) && v.length === 0)
+          ) {
+            missing.push(String(key));
+          }
+        }
         if (missing.length) {
           return {
             success: false,
@@ -962,8 +947,7 @@ export function useUserProfile() {
         setAuthState((prev) => ({
           ...prev,
           profile,
-          isOnboardingComplete:
-            profile.isOnboardingComplete || isOnboardingDone(profile),
+          // onboarding flag removed
         }));
         return { success: true };
       } catch (e: any) {

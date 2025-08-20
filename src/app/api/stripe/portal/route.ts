@@ -9,6 +9,30 @@ import {
 } from "@/lib/utils/securityHeaders";
 import { validateSameOriginUrl } from "@/lib/validation/common";
 
+// Shared origin allowlist logic (could be factored to util)
+const PORTAL_ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
+  [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.APP_BASE_URL,
+    process.env.VERCEL_URL && !process.env.VERCEL_URL.startsWith("http")
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.VERCEL_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]
+    .filter(Boolean)
+    .map((u) => {
+      try { return new URL(u as string).origin; } catch { return null; }
+    })
+    .filter(Boolean) as string[]
+);
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  try { return PORTAL_ALLOWED_ORIGINS.has(new URL(origin).origin); } catch { return false; }
+}
+
 /**
  * POST /api/stripe/portal
  * Creates a Stripe Billing Portal session and returns { url }
@@ -26,6 +50,22 @@ export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
+    const originHeader = req.headers.get("origin");
+    const refererHeader = req.headers.get("referer");
+    const candidateOrigin =
+      originHeader ||
+      (refererHeader
+        ? (() => {
+            try {
+              return new URL(refererHeader).origin;
+            } catch {
+              return null;
+            }
+          })()
+        : null);
+    if (!isAllowedOrigin(candidateOrigin)) {
+      return errorResponse("Origin not allowed", 403);
+    }
     // Require cookie/JWT auth (same pattern as checkout)
     const authSession = await requireSession(req);
     if ("errorResponse" in authSession) return authSession.errorResponse;
@@ -70,10 +110,26 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_BILLING_PORTAL_RETURN_URL || `${baseUrl}/plans`;
     const cleanedReturnDefault =
       validateSameOriginUrl(defaultReturn, baseUrl) || `${baseUrl}/plans`;
-    const cleanedReturnOverride =
+    const cleanedReturnOverrideRaw =
       typeof requestedReturnUrl === "string"
         ? validateSameOriginUrl(requestedReturnUrl, baseUrl)
         : undefined;
+    const ALLOWED_RETURN_PATH_PREFIXES = ["/plans", "/billing"]; // tighten
+    const cleanedReturnOverride = (() => {
+      if (!cleanedReturnOverrideRaw) return undefined;
+      try {
+        const u = new URL(cleanedReturnOverrideRaw);
+        if (
+          !ALLOWED_RETURN_PATH_PREFIXES.some(
+            (p) => u.pathname === p || u.pathname.startsWith(p + "/")
+          )
+        )
+          return undefined;
+        return u.toString();
+      } catch {
+        return undefined;
+      }
+    })();
     const cleanedReturn = cleanedReturnOverride || cleanedReturnDefault;
 
     // Fetch Stripe related identifiers for this user from Firestore

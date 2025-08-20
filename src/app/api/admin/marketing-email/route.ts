@@ -123,7 +123,6 @@ export async function POST(request: Request) {
           : [],
         images: u.images,
         interests: u.interests,
-        isOnboardingComplete: !!u.isOnboardingComplete,
         subscriptionPlan: u.subscriptionPlan,
         banned: !!u.banned,
         createdAt: u.createdAt,

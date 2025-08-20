@@ -179,13 +179,113 @@ export async function POST(req: NextRequest) {
     }
     async function markProcessed(id: string, type: string) {
       try {
-        await db
-          .collection("stripe_events")
-          .doc(id)
-          .set({ type, processedAt: Date.now() });
+        const ref = db.collection("stripe_events").doc(id);
+        const snap = await ref.get();
+        if (snap.exists) return; // already processed
+        // Retention: add ttlAt so Firestore TTL (configured in console) can purge old processed events automatically.
+        const retentionDays = parseInt(
+          process.env.STRIPE_EVENT_TTL_DAYS || "30",
+          10
+        );
+        const now = new Date();
+        const ttlAt = new Date(
+          now.getTime() + retentionDays * 24 * 60 * 60 * 1000
+        );
+        await ref.create({
+          type,
+          processedAt: Date.now(), // preserve existing numeric field for backward compatibility
+          createdAt: now,
+          ttlAt, // Firestore TTL field (timestamp)
+          retentionDays,
+        }); // create will fail if exists
       } catch (e) {
-        console.warn("Failed to mark stripe event processed", id, e);
+        // If create failed because exists, ignore; else warn
+        if (!(e instanceof Error && /already exists/i.test(e.message))) {
+          console.warn("Failed to mark stripe event processed", id, e);
+        }
       }
+    }
+
+    // Helper to safely merge billing fields without overwriting mismatched stripe IDs (data integrity guard)
+    async function safeMergeUserBilling(
+      ref: FirebaseFirestore.DocumentReference,
+      payload: {
+        subscriptionPlan?: any;
+        subscriptionExpiresAt?: number | null;
+        stripeCustomerId?: string | undefined;
+        stripeSubscriptionId?: string | undefined;
+      }
+    ) {
+      await db.runTransaction(async (tx: any) => {
+        const doc = await tx.get(ref);
+        if (!doc.exists) return; // Nothing to merge
+        const existing = doc.data() as any;
+        const update: any = { updatedAt: Date.now() };
+        if (payload.subscriptionPlan !== undefined) {
+          update.subscriptionPlan = payload.subscriptionPlan;
+        }
+        if (payload.subscriptionExpiresAt !== undefined) {
+          update.subscriptionExpiresAt = payload.subscriptionExpiresAt;
+        }
+        // Only set stripeCustomerId if not set already OR identical; log mismatch otherwise
+        if (payload.stripeCustomerId) {
+          if (
+            existing.stripeCustomerId &&
+            existing.stripeCustomerId !== payload.stripeCustomerId
+          ) {
+            console.warn("Stripe webhook: stripeCustomerId mismatch", {
+              scope: "stripe.webhook",
+              type: "id_mismatch",
+              userId: ref.id,
+              existing: existing.stripeCustomerId,
+              incoming: payload.stripeCustomerId,
+              correlationId,
+            });
+            logSecurityEvent(
+              "VALIDATION_FAILED",
+              {
+                reason: "stripeCustomerId mismatch",
+                userId: ref.id,
+                existing: existing.stripeCustomerId,
+                incoming: payload.stripeCustomerId,
+                correlationId,
+              },
+              req
+            );
+          } else if (!existing.stripeCustomerId) {
+            update.stripeCustomerId = payload.stripeCustomerId;
+          }
+        }
+        if (payload.stripeSubscriptionId) {
+          if (
+            existing.stripeSubscriptionId &&
+            existing.stripeSubscriptionId !== payload.stripeSubscriptionId
+          ) {
+            console.warn("Stripe webhook: stripeSubscriptionId mismatch", {
+              scope: "stripe.webhook",
+              type: "id_mismatch",
+              userId: ref.id,
+              existing: existing.stripeSubscriptionId,
+              incoming: payload.stripeSubscriptionId,
+              correlationId,
+            });
+            logSecurityEvent(
+              "VALIDATION_FAILED",
+              {
+                reason: "stripeSubscriptionId mismatch",
+                userId: ref.id,
+                existing: existing.stripeSubscriptionId,
+                incoming: payload.stripeSubscriptionId,
+                correlationId,
+              },
+              req
+            );
+          } else if (!existing.stripeSubscriptionId) {
+            update.stripeSubscriptionId = payload.stripeSubscriptionId;
+          }
+        }
+        tx.set(ref, update, { merge: true });
+      });
     }
 
     if (await alreadyProcessed(event.id)) {
@@ -278,20 +378,41 @@ export async function POST(req: NextRequest) {
         try {
           // Update user doc in Firestore by email
           let userRef: FirebaseFirestore.DocumentReference | null = null;
-          if (email) {
+          // Stronger binding: prefer customer/subscription IDs to locate user
+          const customerId =
+            typeof session.customer === "string" ? session.customer : undefined;
+          const subscriptionId =
+            typeof session.subscription === "string"
+              ? session.subscription
+              : undefined;
+          if (customerId) {
             const snap = await db
               .collection(COLLECTIONS.USERS)
-              .where("email", "==", email.toLowerCase())
+              .where("stripeCustomerId", "==", customerId)
               .limit(1)
               .get();
-            if (!snap.empty) {
-              userRef = snap.docs[0].ref;
-            }
+            if (!snap.empty) userRef = snap.docs[0].ref;
+          }
+          if (!userRef && subscriptionId) {
+            const snap = await db
+              .collection(COLLECTIONS.USERS)
+              .where("stripeSubscriptionId", "==", subscriptionId)
+              .limit(1)
+              .get();
+            if (!snap.empty) userRef = snap.docs[0].ref;
           }
           if (!userRef && metaUserId) {
             const ref = db.collection(COLLECTIONS.USERS).doc(metaUserId);
             const doc = await ref.get();
             if (doc.exists) userRef = ref;
+          }
+          if (!userRef && email) {
+            const snap = await db
+              .collection(COLLECTIONS.USERS)
+              .where("email", "==", email.toLowerCase())
+              .limit(1)
+              .get();
+            if (!snap.empty) userRef = snap.docs[0].ref;
           }
           if (userRef) {
             // Derive expiration from subscription if present
@@ -311,16 +432,12 @@ export async function POST(req: NextRequest) {
                 );
               }
             }
-            await userRef.set(
-              {
-                subscriptionPlan: planId,
-                subscriptionExpiresAt: expiresAt,
-                stripeCustomerId: session.customer as string | undefined,
-                stripeSubscriptionId,
-                updatedAt: Date.now(),
-              },
-              { merge: true }
-            );
+            await safeMergeUserBilling(userRef, {
+              subscriptionPlan: planId,
+              subscriptionExpiresAt: expiresAt,
+              stripeCustomerId: session.customer as string | undefined,
+              stripeSubscriptionId,
+            });
           } else {
             console.warn(
               "Stripe webhook: user not found for checkout completion",
@@ -472,6 +589,16 @@ export async function POST(req: NextRequest) {
           break;
         }
         const planId = inferPlanFromSubscription(sub) || undefined;
+        // Enforce allowlist of internal plan IDs (defense in depth)
+        const allowedPlans = new Set(["premium", "premiumPlus", "free"]);
+        if (planId && !allowedPlans.has(planId)) {
+          console.warn("Stripe subscription.updated rejected unknown plan", {
+            planId,
+            subscriptionId: sub.id,
+            correlationId,
+          });
+          break;
+        }
         const email = (sub.metadata?.email || sub.metadata?.userEmail) as
           | string
           | undefined;
@@ -489,19 +616,15 @@ export async function POST(req: NextRequest) {
               .limit(1)
               .get();
             if (!snap.empty) {
-              await snap.docs[0].ref.set(
-                {
-                  subscriptionPlan: planId,
-                  subscriptionExpiresAt: sub.current_period_end
-                    ? sub.current_period_end * 1000
-                    : null,
-                  stripeSubscriptionId: sub.id,
-                  stripeCustomerId:
-                    typeof sub.customer === "string" ? sub.customer : undefined,
-                  updatedAt: Date.now(),
-                },
-                { merge: true }
-              );
+              await safeMergeUserBilling(snap.docs[0].ref, {
+                subscriptionPlan: planId,
+                subscriptionExpiresAt: sub.current_period_end
+                  ? sub.current_period_end * 1000
+                  : null,
+                stripeSubscriptionId: sub.id,
+                stripeCustomerId:
+                  typeof sub.customer === "string" ? sub.customer : undefined,
+              });
               console.info("Stripe subscription.updated synced", {
                 correlationId,
                 subscriptionId: sub.id,
@@ -548,19 +671,15 @@ export async function POST(req: NextRequest) {
               .limit(1)
               .get();
             if (!snap.empty) {
-              await snap.docs[0].ref.set(
-                {
-                  subscriptionPlan: planId,
-                  subscriptionExpiresAt: sub.current_period_end
-                    ? sub.current_period_end * 1000
-                    : null,
-                  stripeSubscriptionId: sub.id,
-                  stripeCustomerId:
-                    typeof sub.customer === "string" ? sub.customer : undefined,
-                  updatedAt: Date.now(),
-                },
-                { merge: true }
-              );
+              await safeMergeUserBilling(snap.docs[0].ref, {
+                subscriptionPlan: planId,
+                subscriptionExpiresAt: sub.current_period_end
+                  ? sub.current_period_end * 1000
+                  : null,
+                stripeSubscriptionId: sub.id,
+                stripeCustomerId:
+                  typeof sub.customer === "string" ? sub.customer : undefined,
+              });
               console.info("Stripe subscription.created synced", {
                 correlationId,
                 subscriptionId: sub.id,
@@ -598,6 +717,14 @@ export async function POST(req: NextRequest) {
             invoiceAny.customer_details?.email) as string | undefined;
           const planId: "premium" | "premiumPlus" | undefined =
             inferPlanFromSubscription(sub) || undefined;
+          if (planId && !["premium", "premiumPlus"].includes(planId)) {
+            console.warn("Stripe invoice.paid rejected unknown plan", {
+              planId,
+              subscriptionId: sub.id,
+              correlationId,
+            });
+            break;
+          }
           if (email && planId) {
             const snap = await db
               .collection(COLLECTIONS.USERS)
@@ -605,19 +732,15 @@ export async function POST(req: NextRequest) {
               .limit(1)
               .get();
             if (!snap.empty) {
-              await snap.docs[0].ref.set(
-                {
-                  subscriptionPlan: planId,
-                  subscriptionExpiresAt: sub.current_period_end
-                    ? sub.current_period_end * 1000
-                    : null,
-                  stripeSubscriptionId: sub.id,
-                  stripeCustomerId:
-                    typeof sub.customer === "string" ? sub.customer : undefined,
-                  updatedAt: Date.now(),
-                },
-                { merge: true }
-              );
+              await safeMergeUserBilling(snap.docs[0].ref, {
+                subscriptionPlan: planId,
+                subscriptionExpiresAt: sub.current_period_end
+                  ? sub.current_period_end * 1000
+                  : null,
+                stripeSubscriptionId: sub.id,
+                stripeCustomerId:
+                  typeof sub.customer === "string" ? sub.customer : undefined,
+              });
               console.info("Stripe invoice.paid subscription synced", {
                 correlationId,
                 subscriptionId: sub.id,

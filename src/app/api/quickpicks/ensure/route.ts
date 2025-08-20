@@ -34,12 +34,12 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       .get();
     const candidates: string[] = [];
   profileSnap.docs.forEach((d: any) => {
-      const data = d.data() as any;
-  if (d.id === user.id) return;
-  if (data.banned) return;
-  if (!data.isOnboardingComplete) return;
-  candidates.push(d.id);
-    });
+    const data = d.data() as any;
+    if (d.id === user.id) return;
+    if (data.banned) return;
+    // isOnboardingComplete removed – rely on basic profile existence checks elsewhere
+    candidates.push(d.id);
+  });
 
     // Determine subscription plan limit
   const plan = (profileSnap.docs.find((d: any) => d.id === user.id)?.data() as any)?.subscriptionPlan || 'free';

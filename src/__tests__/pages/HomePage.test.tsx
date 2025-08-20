@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
-import { useAuth } from "@/hooks/useAuth";
-import type { AuthContextType } from "@/components/FirebaseAuthProvider";
-import HomePage from "@/app/page";
+import { useAuth } from "../../hooks/useAuth";
+import type { AuthContextValue as AuthContextType } from "../../components/FirebaseAuthProvider";
+import HomePage from "../../app/page";
 
 // Mock the useAuth hook
 jest.mock("@/hooks/useAuth");
@@ -18,8 +18,7 @@ const createMockAuthState = (
   isLoading: false,
   isAuthenticated: false,
   // token removed in cookie-auth model
-  isProfileComplete: false,
-  isOnboardingComplete: false,
+  // profile completion flags removed
   isAdmin: false,
   userId: "",
   profile: null,

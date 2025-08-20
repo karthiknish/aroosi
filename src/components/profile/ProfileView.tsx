@@ -230,12 +230,7 @@ const ProfileView: FC<ProfileViewProps> = ({
   };
 
   function refreshProfileLocalStorage() {
-    if (profileData && profileData.isOnboardingComplete !== undefined) {
-      localStorage.setItem(
-        "onboarding",
-        profileData.isOnboardingComplete ? "complete" : "incomplete"
-      );
-    }
+    // Onboarding status logging removed
   }
 
   return (

@@ -15,7 +15,6 @@ export interface AuthenticatedUser {
   profile: {
     id: string;
     fullName?: string;
-    isOnboardingComplete: boolean;
   } | null;
 }
 
@@ -23,27 +22,27 @@ export interface AuthenticatedUser {
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   try {
     // Get the Firebase ID token from cookies
-  const cookieStore = await cookies();
-  const token = cookieStore.get("firebaseAuthToken")?.value;
-    
+    const cookieStore = await cookies();
+    const token = cookieStore.get("firebaseAuthToken")?.value;
+
     if (!token) {
       return null;
     }
-    
+
     // Verify the Firebase ID token
     const decodedToken = await verifyFirebaseIdToken(token);
     const userId = decodedToken.uid;
-    
+
     if (!userId) {
       return null;
     }
-    
+
     // Get the user data from Firestore
-  const userData: any = await getFirebaseUser(userId);
-  if (!userData) {
+    const userData: any = await getFirebaseUser(userId);
+    if (!userData) {
       return null;
     }
-    
+
     // Return user data with profile
     return {
       id: userId,
@@ -59,9 +58,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
         ? {
             id: userId,
             fullName: (userData.fullName as string) || undefined,
-            isOnboardingComplete: Boolean(
-              (userData.isOnboardingComplete as boolean) ?? false
-            ),
+            // isOnboardingComplete removed
           }
         : null,
     };

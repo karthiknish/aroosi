@@ -11,12 +11,12 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useOneSignal } from "@/hooks/useOneSignal";
 
 export default function ClientRoot({ children }: { children: ReactNode }) {
-  const { isSignedIn, isOnboardingComplete } = useAuthContext();
+  const { isSignedIn } = useAuthContext();
 
   // Wire OneSignal registration for signed-in users
   useOneSignal();
 
-  const hideLinks = isSignedIn && !isOnboardingComplete;
+  const hideLinks = false; // onboarding gating removed
 
   return (
     <>

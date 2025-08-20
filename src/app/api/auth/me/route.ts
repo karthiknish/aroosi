@@ -55,9 +55,6 @@ export async function GET(request: Request) {
           ? {
               id: userId,
               fullName: userData.fullName || undefined,
-              isOnboardingComplete: Boolean(
-                userData.isOnboardingComplete ?? false
-              ),
             }
           : null,
         needsProfile: !userData,

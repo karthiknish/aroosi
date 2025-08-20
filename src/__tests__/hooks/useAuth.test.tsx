@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { useAuth } from '@/hooks/useAuth';
+// Adjusted test after removal of onboarding/profile completion flags
+import { useAuth } from '../../hooks/useAuth';
 
 describe('useAuth Hook', () => {
   test('returns loading state initially', () => {
@@ -11,8 +12,7 @@ describe('useAuth Hook', () => {
     expect(result.current.isLoaded).toBe(false);
     // token removed in cookie-auth; ensure absence
     expect("token" in result.current).toBe(false);
-    expect(result.current.isProfileComplete).toBe(false);
-    expect(result.current.isOnboardingComplete).toBe(false);
+    // profile completion flags removed
   });
 
   test('transitions to loaded state after timeout', async () => {
@@ -32,8 +32,7 @@ describe('useAuth Hook', () => {
     expect(result.current.user).toBe(null);
     // token removed in cookie-auth; ensure absence
     expect("token" in result.current).toBe(false);
-    expect(result.current.isProfileComplete).toBe(false);
-    expect(result.current.isOnboardingComplete).toBe(false);
+    // profile completion flags removed
   });
 
   test('maintains consistent state structure', () => {
@@ -47,7 +46,6 @@ describe('useAuth Hook', () => {
     expect(authState).toHaveProperty("isLoading");
     // token property no longer exists
     expect(authState).not.toHaveProperty("token");
-    expect(authState).toHaveProperty("isProfileComplete");
-    expect(authState).toHaveProperty("isOnboardingComplete");
+    // profile completion flags removed
   });
 });

@@ -52,13 +52,7 @@ export async function GET(request: NextRequest) {
     const viewerProfile = session.profile;
     const viewerPlan = viewerProfile?.subscriptionPlan || "free";
 
-    if (!viewerProfile?.isOnboardingComplete) {
-      return errorResponsePublic(
-        "Please finish onboarding to use search.",
-        403,
-        { code: "ONBOARDING_INCOMPLETE" }
-      );
-    }
+    // onboarding completion requirement removed
 
     // Burst limiter
     const burstLimit = checkApiRateLimit(`search:${userId}`, 60, 60_000);
@@ -143,9 +137,7 @@ export async function GET(request: NextRequest) {
     // Build base Firestore query
     const isAny = (v?: string) =>
       typeof v === "string" ? v.trim().toLowerCase() === "any" : false;
-    let base: FirebaseFirestore.Query = db
-      .collection(COLLECTIONS.USERS)
-      .where("isOnboardingComplete", "==", true);
+    let base: FirebaseFirestore.Query = db.collection(COLLECTIONS.USERS);
 
     // City now handled as case-insensitive substring filter AFTER fetch to allow partial matches.
     // (Previously exact equality in Firestore. This change broadens match capability.)
@@ -170,8 +162,7 @@ export async function GET(request: NextRequest) {
     // Composite ordering migration:
     // We now attempt to push the answeredIcebreakersCount weighting into Firestore ordering
     // to avoid in-memory resort. Index requirements (add to firestore.indexes.json):
-    //   isOnboardingComplete ASC, age ASC, answeredIcebreakersCount DESC, createdAt DESC, __name__ DESC (when age inequality)
-    //   isOnboardingComplete ASC, answeredIcebreakersCount DESC, createdAt DESC, __name__ DESC (no age inequality)
+    // Ordering previously included onboarding flag; now removed.
     // Additional equality filters (city, country, gender, etc.) will still require further composite indexes
     // for fully indexed execution. If they are absent OR matching index exists, Firestore returns ordered results.
     // Otherwise we fall back to previous behaviour (scan subset + in-memory sort) when index missing.
@@ -353,7 +344,7 @@ export async function GET(request: NextRequest) {
       const FALLBACK_SCAN_LIMIT = 400; // slightly higher for better result coverage
       const fallbackQuery = db
         .collection(COLLECTIONS.USERS)
-        .where("isOnboardingComplete", "==", true)
+  // onboarding completion filter removed
         .orderBy("createdAt", "desc")
         .orderBy(FieldPath.documentId(), "desc")
         .limit(FALLBACK_SCAN_LIMIT);
@@ -567,7 +558,6 @@ export async function GET(request: NextRequest) {
             fullName: d.fullName || "",
             city: d.city,
             dateOfBirth: d.dateOfBirth,
-            isOnboardingComplete: d.isOnboardingComplete,
             profileCompletionPercentage: d.profileCompletionPercentage,
             hiddenFromSearch: d.hiddenFromSearch,
             boostedUntil: d.boostedUntil,

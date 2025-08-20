@@ -8,7 +8,7 @@ import { showErrorToast } from "@/lib/ui/toast";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireProfile?: boolean;
-  requireOnboarding?: boolean;
+  requireOnboarding?: boolean; // deprecated
   adminOnly?: boolean;
 }
 
@@ -64,14 +64,7 @@ export default function ProtectedRoute({
     }
 
     // Check if profile completion is required
-    const onboardingComplete =
-      profile?.isOnboardingComplete ||
-      (user as any)?.profile?.isOnboardingComplete;
-    if (requireOnboarding && !onboardingComplete) {
-      notify("Please complete onboarding to continue");
-      router.push("/profile/complete");
-      return;
-    }
+    // onboarding requirement removed
 
     setIsChecking(false);
   }, [
@@ -109,15 +102,7 @@ export default function ProtectedRoute({
     return null;
   }
 
-  if (
-    requireOnboarding &&
-    !(
-      profile?.isOnboardingComplete ||
-      (user as any)?.profile?.isOnboardingComplete
-    )
-  ) {
-    return null;
-  }
+  // onboarding gate removed
 
   return <>{children}</>;
 }

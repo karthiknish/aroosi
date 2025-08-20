@@ -1,9 +1,6 @@
 import { db, COLLECTIONS } from '@/lib/userProfile';
-import {
-  calculateProfileCompletion,
-  isOnboardingEssentialComplete,
-} from "@/lib/userProfile/calculations";
-import type { UserProfile } from '@/lib/userProfile';
+import { calculateProfileCompletion } from "@/lib/userProfile/calculations";
+import type { UserProfile } from "@/lib/userProfile";
 
 // Centralized create or update logic for user profiles
 export async function createOrUpdateUserProfile(
@@ -28,7 +25,6 @@ export async function createOrUpdateUserProfile(
     ...data,
     age,
   });
-  const onboardingDone = true; // forced onboarding completion
   const userProfile: UserProfile = {
     id: uid,
     uid,
@@ -37,7 +33,6 @@ export async function createOrUpdateUserProfile(
     createdAt: data.createdAt || now,
     updatedAt: now,
     role: data.role || "user",
-    isOnboardingComplete: onboardingDone,
     profileCompletionPercentage,
     fullName: data.fullName,
     displayName: data.displayName,
@@ -135,7 +130,10 @@ export async function createOrUpdateUserProfile(
   return userProfile;
 }
 
-export async function updateUserProfile(uid: string, data: Partial<UserProfile>): Promise<UserProfile> {
+export async function updateUserProfile(
+  uid: string,
+  data: Partial<UserProfile>
+): Promise<UserProfile> {
   const now = Date.now();
   const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
   let age: number | undefined;
@@ -159,13 +157,11 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
     updatedAt: now,
   };
   const profileCompletionPercentage = calculateProfileCompletion(merged);
-  const onboardingDone = true; // forced onboarding completion
   const updateData = {
     ...data,
     age: age || data.age,
     updatedAt: now,
     profileCompletionPercentage,
-    ...(onboardingDone ? { isOnboardingComplete: true } : {}),
   };
   await userRef.set(updateData, { merge: true });
   const updatedDoc = await userRef.get();

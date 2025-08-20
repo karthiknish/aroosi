@@ -176,29 +176,36 @@ export async function POST(req: NextRequest) {
       console.warn("Checkout route: subscription pre-check failed", alreadyErr);
     }
     // Validate and sanitize base URL
-    const origin = req.headers.get("origin");
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (origin && isValidOrigin() ? origin : null) ||
-      "http://localhost:3000";
+    const originHeader = req.headers.get("origin");
+    const refererHeader = req.headers.get("referer");
+    // Basic CSRF defense: require allowed Origin OR (fallback) allowed Referer
+    if (
+      !isAllowedOrigin(
+        originHeader ||
+          (refererHeader
+            ? (() => {
+                try {
+                  return new URL(refererHeader).origin;
+                } catch {
+                  return null;
+                }
+              })()
+            : null)
+      )
+    ) {
+      return errorResponse("Origin not allowed", 403);
+    }
+    const baseOrigin = deriveBaseUrl(originHeader || refererHeader || null);
 
-    // Allow client-provided success/cancel overrides if same-origin & well-formed
-    const allowUrl = (u?: string | null) => {
-      if (!u || typeof u !== "string") return null;
-      try {
-        const parsed = new URL(u, baseUrl);
-        // Enforce same origin to prevent open redirect abuse
-        const base = new URL(baseUrl);
-        if (parsed.origin !== base.origin) return null;
-        // Only allow http/https
-        if (!/^https?:$/.test(parsed.protocol)) return null;
-        return parsed.toString();
-      } catch {
-        return null;
-      }
-    };
-    const successUrlOverride = allowUrl(body.successUrl);
-    const cancelUrlOverride = allowUrl(body.cancelUrl);
+    // Allow client-provided success/cancel overrides (validated & restricted)
+    const successUrlOverride = sanitizeClientReturnUrl(
+      body.successUrl,
+      baseOrigin
+    );
+    const cancelUrlOverride = sanitizeClientReturnUrl(
+      body.cancelUrl,
+      baseOrigin
+    );
     // Validate email if provided
     const customerEmail =
       userDoc.email && isValidEmail(userDoc.email) ? userDoc.email : undefined;
@@ -209,7 +216,7 @@ export async function POST(req: NextRequest) {
       priceIdSource,
       hasStripeCustomerId: !!userDoc.stripeCustomerId,
       email: userDoc.email,
-      baseUrl,
+      baseOrigin,
       successUrlOverride: !!successUrlOverride,
       cancelUrlOverride: !!cancelUrlOverride,
       mappingContext: debugStripePlanContext(),
@@ -233,8 +240,8 @@ export async function POST(req: NextRequest) {
         email: userDoc.email,
         userId, // Add for double verification in webhook
       },
-      success_url: successUrlOverride || `${baseUrl}/plans?checkout=success`,
-      cancel_url: cancelUrlOverride || `${baseUrl}/plans?checkout=cancel`,
+      success_url: successUrlOverride || `${baseOrigin}/plans?checkout=success`,
+      cancel_url: cancelUrlOverride || `${baseOrigin}/plans?checkout=cancel`,
       billing_address_collection: "required",
       subscription_data: {
         metadata: {
@@ -296,7 +303,77 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email) && email.length <= 255;
 }
 
-function isValidOrigin(): boolean {
-  // Add your allowed origins here if needed
-  return true;
+// Build an allowlist of acceptable origins (scheme+host) from env
+const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
+  [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.APP_BASE_URL,
+    process.env.VERCEL_URL && !process.env.VERCEL_URL.startsWith("http")
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.VERCEL_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]
+    .filter(Boolean)
+    .map((u) => {
+      try {
+        return new URL(u as string).origin;
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean) as string[]
+);
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false; // require explicit origin for CSRF defense (except same-site browsers may omit)
+  try {
+    const o = new URL(origin).origin;
+    return ALLOWED_ORIGINS.has(o);
+  } catch {
+    return false;
+  }
 }
+
+function deriveBaseUrl(originHeader: string | null): string {
+  // Prefer explicit configured app URL; only fallback to validated origin.
+  const primary =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+  if (primary) {
+    try {
+      return new URL(primary).origin;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (originHeader && isAllowedOrigin(originHeader))
+    return new URL(originHeader).origin;
+  return "http://localhost:3000"; // dev fallback
+}
+
+// Restrict which relative paths are allowed for success/cancel overrides
+const ALLOWED_REDIRECT_PATH_PREFIXES = ["/plans", "/billing"]; // extend as needed
+
+function sanitizeClientReturnUrl(
+  candidate: string | undefined | null,
+  baseOrigin: string
+): string | null {
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate, baseOrigin); // resolves relative
+    if (url.origin !== baseOrigin) return null; // enforce same-origin
+    if (!/^https?:$/.test(url.protocol)) return null;
+    if (
+      !ALLOWED_REDIRECT_PATH_PREFIXES.some(
+        (p) => url.pathname === p || url.pathname.startsWith(p + "/")
+      )
+    ) {
+      return null; // disallow arbitrary internal redirects
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+

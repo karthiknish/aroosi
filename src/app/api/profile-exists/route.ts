@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
 
   try {
     // Firestore lookup
-    const userSnap = await db.collection(COLLECTIONS.USERS).where('email', '==', email.toLowerCase()).limit(1).get();
+    const userSnap = await db
+      .collection(COLLECTIONS.USERS)
+      .where("email", "==", email.toLowerCase())
+      .limit(1)
+      .get();
     if (userSnap.empty) {
       return NextResponse.json({
         success: true,
@@ -22,7 +26,10 @@ export async function GET(req: NextRequest) {
     }
     const doc = userSnap.docs[0];
     const userData: any = doc.data();
-    const hasProfile = !!userData.isOnboardingComplete;
+    // Heuristic: consider a profile exists if mandatory fields like fullName and dateOfBirth are present
+    const hasProfile = Boolean(
+      userData.fullName || userData.dateOfBirth || userData.gender
+    );
     return NextResponse.json({
       success: true,
       exists: true,

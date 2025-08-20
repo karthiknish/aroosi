@@ -7,7 +7,7 @@ import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 export default function OAuthCallbackPage() {
   const router = useRouter();
-  const { isSignedIn, isLoaded, isOnboardingComplete } = useAuthContext();
+  const { isSignedIn, isLoaded } = useAuthContext();
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -26,18 +26,13 @@ export default function OAuthCallbackPage() {
       }
 
       // Not a popup, handle normal redirect
-      if (!isOnboardingComplete) {
-        // Redirect to home page which will show the profile creation modal
-        router.push("/");
-      } else {
-        // User has completed onboarding, go to search
-        router.push("/search");
-      }
+      // Always redirect to search now that onboarding flag removed
+      router.push("/search");
     } else {
       // Not signed in, redirect to sign-in page
       router.push("/sign-in");
     }
-  }, [isSignedIn, isLoaded, isOnboardingComplete, router]);
+  }, [isSignedIn, isLoaded, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -61,41 +61,68 @@ const db = admin.firestore();
       }
     } else {
       // Use a simple query (no composite ordering) so this can run without a composite index.
-      // We'll fetch recent users that match onboarding + preferredGender if provided.
-      let q = db.collection('users').where('isOnboardingComplete', '==', true);
-      if (parsed.preferredGender) q = q.where('preferredGender', '==', parsed.preferredGender);
+      // Filter by preferredGender if provided.
+      let q = db.collection("users");
+      if (parsed.preferredGender)
+        q = q.where("preferredGender", "==", parsed.preferredGender);
 
       // Optionally include ordering by answeredIcebreakersCount to reproduce search route
       try {
         if (parsed.includeAnswered) {
-          q = q.orderBy('answeredIcebreakersCount', 'desc').orderBy('createdAt', 'desc').orderBy('id', 'desc').limit(parsed.limit);
+          q = q
+            .orderBy("answeredIcebreakersCount", "desc")
+            .orderBy("createdAt", "desc")
+            .orderBy("id", "desc")
+            .limit(parsed.limit);
         } else {
           q = q.limit(parsed.limit);
         }
       } catch (e) {
-        console.warn('[fetchMatchingUsers] Ordering construction warning:', e.message || e);
+        console.warn(
+          "[fetchMatchingUsers] Ordering construction warning:",
+          e.message || e
+        );
       }
 
-      console.log('[fetchMatchingUsers] Running query with', { limit: parsed.limit, preferredGender: parsed.preferredGender, includeAnswered: parsed.includeAnswered });
+      console.log("[fetchMatchingUsers] Running query with", {
+        limit: parsed.limit,
+        preferredGender: parsed.preferredGender,
+        includeAnswered: parsed.includeAnswered,
+      });
       let snap;
       try {
         snap = await q.get();
       } catch (e) {
-        console.error('[fetchMatchingUsers] Query failed (likely index missing):', e.message || e);
+        console.error(
+          "[fetchMatchingUsers] Query failed (likely index missing):",
+          e.message || e
+        );
         throw e;
       }
-      console.log('[fetchMatchingUsers] Query snapshot size =', snap.size);
+      console.log("[fetchMatchingUsers] Query snapshot size =", snap.size);
 
-      snap.forEach(doc => {
+      snap.forEach((doc) => {
         const d = doc.data();
         results.push({
           id: doc.id,
           answeredIcebreakersCount: d.answeredIcebreakersCount ?? null,
-          createdAt: d.createdAt ? (d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt) : null,
+          createdAt: d.createdAt
+            ? d.createdAt.toDate
+              ? d.createdAt.toDate().toISOString()
+              : d.createdAt
+            : null,
           banned: !!d.banned,
           hiddenFromSearch: !!d.hiddenFromSearch,
-          profileImageIds: Array.isArray(d.profileImageIds) ? d.profileImageIds : d.profileImageIds ? [d.profileImageIds] : [],
-          profileImageUrls: Array.isArray(d.profileImageUrls) ? d.profileImageUrls : d.profileImageUrls ? [d.profileImageUrls] : [],
+          profileImageIds: Array.isArray(d.profileImageIds)
+            ? d.profileImageIds
+            : d.profileImageIds
+              ? [d.profileImageIds]
+              : [],
+          profileImageUrls: Array.isArray(d.profileImageUrls)
+            ? d.profileImageUrls
+            : d.profileImageUrls
+              ? [d.profileImageUrls]
+              : [],
           displayName: d.displayName || d.name || null,
           age: d.age ?? null,
           city: d.city || null,

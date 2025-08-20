@@ -36,8 +36,7 @@ export interface UserProfile {
   banReason?: string;
   banExpiresAt?: number;
 
-  // Onboarding/completion status (single source of truth)
-  isOnboardingComplete: boolean;
+  // Onboarding/completion status removed
   profileCompletionPercentage: number;
 
   // Personal information
@@ -210,7 +209,7 @@ export interface UserDocument {
   age?: number;
   city?: string;
   country?: string;
-  isOnboardingComplete: boolean;
+  // isOnboardingComplete removed
   profileCompletionPercentage: number;
   profileImageUrls?: string[];
   subscriptionPlan?: "free" | "premium" | "premium_plus";

@@ -69,7 +69,6 @@ export async function GET(req: NextRequest) {
     const plan = ["all", "free", "premium", "premiumPlus"].includes(planParam)
       ? planParam
       : "all";
-    // Deprecated isProfileComplete filter removed; rely on isOnboardingComplete if needed in future
     const { profiles, total } = await listProfiles({
       search,
       page,

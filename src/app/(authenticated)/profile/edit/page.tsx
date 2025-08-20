@@ -49,7 +49,6 @@ const defaultProfile: Profile = {
   partnerPreferenceCity: [],
   preferredGender: "any",
   profileImageIds: [],
-  isOnboardingComplete: false,
 
   banned: false,
   createdAt: Date.now(),

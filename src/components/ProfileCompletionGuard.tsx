@@ -28,8 +28,7 @@ export default function ProfileCompletionGuard({
   requireComplete = false,
   redirectTo,
 }: GuardProps) {
-  const { isLoaded, isAuthenticated, isOnboardingComplete, refreshUser } =
-    useAuthContext();
+  const { isLoaded, isAuthenticated, refreshUser } = useAuthContext();
   const router = useRouter();
 
   // Add robust diagnostics to trace guard-driven redirects
@@ -38,18 +37,12 @@ export default function ProfileCompletionGuard({
     console.info("[Guard] effect enter", {
       isLoaded,
       isAuthenticated,
-      isOnboardingComplete,
+      // onboarding flag removed
       requireComplete,
       redirectTo,
       path: typeof window !== "undefined" ? window.location.pathname : "(ssr)",
     });
-  }, [
-    isLoaded,
-    isAuthenticated,
-    isOnboardingComplete,
-    requireComplete,
-    redirectTo,
-  ]);
+  }, [isLoaded, isAuthenticated, requireComplete, redirectTo]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -85,18 +78,7 @@ export default function ProfileCompletionGuard({
       }
 
       // For routes requiring completed profile, enforce completion
-      if (requireComplete) {
-              const needsWizard = !isOnboardingComplete;
-        if (needsWizard) {
-          // eslint-disable-next-line no-console
-          console.warn("[Guard] redirecting: profile incomplete", {
-            isOnboardingComplete,
-            to: redirectTo || "/",
-          });
-          router.replace(redirectTo || "/");
-          return;
-        }
-      }
+          // onboarding completion enforcement removed
 
       // eslint-disable-next-line no-console
       console.info("[Guard] allow render");
@@ -108,7 +90,6 @@ export default function ProfileCompletionGuard({
   }, [
     isLoaded,
     isAuthenticated,
-    isOnboardingComplete,
     requireComplete,
     redirectTo,
     refreshUser,
@@ -122,9 +103,7 @@ export default function ProfileCompletionGuard({
   if (!isAuthenticated) {
     return null;
   }
-  if (requireComplete && !isOnboardingComplete) {
-    return null;
-  }
+  // onboarding gate removed
 
   return <>{children}</>;
 }

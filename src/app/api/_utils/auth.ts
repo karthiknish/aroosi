@@ -101,7 +101,6 @@ export async function requireSession(
             createdAt: now,
             updatedAt: now,
             role: "user",
-            isOnboardingComplete: false,
             subscriptionPlan: "free",
           },
           { merge: true }

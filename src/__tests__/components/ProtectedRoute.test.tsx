@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import type { Profile } from "@/types/profile";
+import ProtectedRoute from "../../components/ProtectedRoute";
+import { useAuthContext } from "../../components/FirebaseAuthProvider";
+import type { Profile } from "../../types/profile";
 
 // Mock hooks
 jest.mock("next/navigation", () => {
@@ -65,8 +65,7 @@ describe("ProtectedRoute Component", () => {
       userId: "",
       token: null,
       profile: null,
-      isProfileComplete: false,
-      isOnboardingComplete: false,
+      // profile completion flags removed
       error: null,
       isAdmin: false,
       signIn: jest.fn(),
@@ -98,8 +97,7 @@ describe("ProtectedRoute Component", () => {
       userId: "",
       token: null,
       profile: null,
-      isProfileComplete: false,
-      isOnboardingComplete: false,
+      // profile completion flags removed
       error: null,
       isAdmin: false,
       signIn: jest.fn(),
@@ -134,8 +132,7 @@ describe("ProtectedRoute Component", () => {
         userId: "user_123",
         subscriptionPlan: "free",
       } as Partial<Profile> as Profile,
-      isProfileComplete: true,
-      isOnboardingComplete: true,
+      // profile completion flags removed
       error: null,
       isAdmin: false,
       signIn: jest.fn(),
@@ -170,8 +167,7 @@ describe("ProtectedRoute Component", () => {
         userId: "user_123",
         subscriptionPlan: "free",
       } as Partial<Profile> as Profile,
-      isProfileComplete: false,
-      isOnboardingComplete: false,
+      // profile completion flags removed
       error: null,
       isAdmin: false,
       signIn: jest.fn(),
@@ -203,8 +199,7 @@ describe("ProtectedRoute Component", () => {
       userId: "user_123",
       token: "token_123",
       profile: null,
-      isProfileComplete: false,
-      isOnboardingComplete: false,
+      // profile completion flags removed
       error: null,
       isAdmin: false,
       signIn: jest.fn(),
