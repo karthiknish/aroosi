@@ -25,10 +25,5 @@
       ]
     }
   ],
-  "crons": [
-    {
-      "path": "/api/tasks/process",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "crons": []
 }

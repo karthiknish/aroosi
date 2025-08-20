@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, db, COLLECTIONS } from "@/lib/firebaseAdmin";
+import { sendWelcomeEmail } from "@/lib/auth/email";
 
 function maskEmail(email?: string) {
   if (!email) return "";
@@ -53,17 +54,15 @@ export async function POST(request: NextRequest) {
       // Create a custom token for the user
       const customToken = await adminAuth.createCustomToken(userRecord.uid);
 
-      // Queue welcome email task (or mark suppressed)
+      // Send welcome email inline instead of relying on cron + task queue (Vercel Hobby limitation)
+      let welcomeEmailQueued = false;
       if (userRecord.email) {
         if (suppressWelcome) {
           try {
-            await db
-              .collection(COLLECTIONS.USERS)
-              .doc(userRecord.uid)
-              .set(
-                { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
-                { merge: true }
-              );
+            await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(
+              { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
+              { merge: true }
+            );
           } catch (e) {
             console.warn("Failed to mark welcomeEmailSentAt (suppressed)", {
               uid: userRecord.uid,
@@ -72,18 +71,19 @@ export async function POST(request: NextRequest) {
           }
         } else {
           try {
-            await db.collection(COLLECTIONS.TASKS).add({
-              type: "send_welcome_email",
-              userId: userRecord.uid,
-              email: userRecord.email,
-              name: fullName || userRecord.displayName || "there",
-              attempt: 0,
-              status: "pending",
-              createdAt: Date.now(),
-              processAfter: Date.now(),
-            });
+            const sent = await sendWelcomeEmail(
+              userRecord.email,
+              fullName || userRecord.displayName || "there"
+            );
+            if (sent) {
+              welcomeEmailQueued = true; // maintain field name for response backwards compatibility
+              await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(
+                { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
+                { merge: true }
+              );
+            }
           } catch (e) {
-            console.warn("Failed to enqueue welcome email task", {
+            console.warn("Failed to send welcome email inline", {
               uid: userRecord.uid,
               error: e instanceof Error ? e.message : String(e),
             });
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
           uid: userRecord.uid,
           email: userRecord.email,
           customToken: customToken,
-          welcomeEmailQueued: Boolean(userRecord.email) && !suppressWelcome,
+          welcomeEmailQueued: welcomeEmailQueued,
           welcomeEmailSuppressed: suppressWelcome,
         },
         { status: 200 }
