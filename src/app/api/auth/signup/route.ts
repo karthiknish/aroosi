@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { sendWelcomeEmail } from "@/lib/auth/email";
+import { randomBytes } from "crypto";
+import { emailVerificationLinkTemplate } from "@/lib/emailTemplates";
+import { sendUserNotification } from "@/lib/email";
 
 function maskEmail(email?: string) {
   if (!email) return "";
@@ -54,15 +57,61 @@ export async function POST(request: NextRequest) {
       // Create a custom token for the user
       const customToken = await adminAuth.createCustomToken(userRecord.uid);
 
+      // Issue email verification token (24h expiry) & send email
+      let verificationEmailQueued = false;
+      try {
+        const tokenRaw = randomBytes(32).toString("hex");
+        const tokenHashBuf = await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(tokenRaw)
+        );
+        const tokenHashHex = Array.from(new Uint8Array(tokenHashBuf))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+        const expiresAt = Date.now() + 1000 * 60 * 60 * 24; // 24h
+        await db
+          .collection(COLLECTIONS.USERS)
+          .doc(userRecord.uid)
+          .set(
+            {
+              emailVerification: {
+                tokenHash: tokenHashHex,
+                issuedAt: Date.now(),
+                expiresAt,
+              },
+              emailVerified: false,
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          );
+        const baseUrl =
+          process.env.NEXT_PUBLIC_APP_BASE_URL || "https://aroosi.app";
+        const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${tokenRaw}`;
+        const tpl = emailVerificationLinkTemplate({
+          fullName: fullName || userRecord.displayName || "there",
+          verifyUrl,
+        });
+        await sendUserNotification(userRecord.email!, tpl.subject, tpl.html);
+        verificationEmailQueued = true;
+      } catch (e) {
+        console.warn("Failed to queue verification email", {
+          uid: userRecord.uid,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+
       // Send welcome email inline instead of relying on cron + task queue (Vercel Hobby limitation)
       let welcomeEmailQueued = false;
       if (userRecord.email) {
         if (suppressWelcome) {
           try {
-            await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(
-              { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
-              { merge: true }
-            );
+            await db
+              .collection(COLLECTIONS.USERS)
+              .doc(userRecord.uid)
+              .set(
+                { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
+                { merge: true }
+              );
           } catch (e) {
             console.warn("Failed to mark welcomeEmailSentAt (suppressed)", {
               uid: userRecord.uid,
@@ -77,10 +126,13 @@ export async function POST(request: NextRequest) {
             );
             if (sent) {
               welcomeEmailQueued = true; // maintain field name for response backwards compatibility
-              await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(
-                { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
-                { merge: true }
-              );
+              await db
+                .collection(COLLECTIONS.USERS)
+                .doc(userRecord.uid)
+                .set(
+                  { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
+                  { merge: true }
+                );
             }
           } catch (e) {
             console.warn("Failed to send welcome email inline", {
@@ -98,6 +150,7 @@ export async function POST(request: NextRequest) {
           email: userRecord.email,
           customToken: customToken,
           welcomeEmailQueued: welcomeEmailQueued,
+          verificationEmailQueued,
           welcomeEmailSuppressed: suppressWelcome,
         },
         { status: 200 }

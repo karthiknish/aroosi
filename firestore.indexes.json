@@ -4,14 +4,8 @@
       "collectionGroup": "blocks",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "blockerId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "blockerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
@@ -234,6 +228,13 @@
           "fieldPath": "lastActiveAt",
           "order": "DESCENDING"
         }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "emailVerification.tokenHash", "order": "ASCENDING" }
       ]
     },
     {

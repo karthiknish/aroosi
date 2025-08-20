@@ -237,6 +237,28 @@ export function otpVerificationTemplate(options: {
   return { subject, html: wrapEmailContent(subject, body) };
 }
 
+// 11. Email verification link (user)
+export function emailVerificationLinkTemplate(options: {
+  fullName: string;
+  verifyUrl: string;
+  expiresMinutes?: number;
+}): EmailPayload {
+  const { fullName, verifyUrl, expiresMinutes = 60 * 24 } = options;
+  const subject = "Verify your email address – Aroosi";
+  const body = `
+    <h1 style="margin:0 0 12px 0;font-size:20px;line-height:1.3;color:#111">Confirm your email</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName || "there"}, please confirm this is your email address so you can access all features on Aroosi.</p>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Click the button below to verify. This link expires in ${Math.round(expiresMinutes/60)} hours.</p>
+    <div style="margin:24px 0">
+      <a href="${verifyUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600">Verify Email</a>
+    </div>
+    <p style="margin:0 0 12px 0;font-size:12px;line-height:1.5;color:#666">If the button doesn't work, copy & paste this URL into your browser:</p>
+    <p style="word-break:break-all;font-size:12px;line-height:1.4;color:#555;margin:0 0 16px 0">${verifyUrl}</p>
+    <p style="margin:0;font-size:12px;line-height:1.6;color:#888">If you didn't create an account, you can safely ignore this email.</p>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
 // 10. Recommended profiles (user)
 export function recommendedProfilesTemplate(options: {
   fullName: string;
