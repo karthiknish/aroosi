@@ -53,7 +53,21 @@ export const ProfileProvider = ({
   }, [fetchProfile]);
 
   const contextValue: ProfileContextType = {
-    isProfileComplete: Boolean(profile?.isProfileComplete),
+    // Deprecated flag removed from Profile; derive completeness heuristically
+    isProfileComplete: profile
+      ? Boolean(
+          profile.profileCompletionPercentage == null
+            ? // Fallback heuristic: required core fields present
+              profile.fullName &&
+                profile.dateOfBirth &&
+                profile.gender &&
+                profile.city &&
+                profile.aboutMe &&
+                profile.occupation &&
+                profile.education
+            : profile.profileCompletionPercentage >= 90
+        )
+      : false,
     isLoading,
     error,
     profile,
