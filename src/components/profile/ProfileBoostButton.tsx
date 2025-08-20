@@ -41,6 +41,7 @@ const ProfileBoostButton = () => {
     "";
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState("");
+  const [progressPct, setProgressPct] = useState<number>(0);
 
   // Update time remaining every minute when boosted
   useEffect(() => {
@@ -49,8 +50,12 @@ const ProfileBoostButton = () => {
     const updateTime = () => {
       if (profile.boostedUntil && profile.boostedUntil > Date.now()) {
         setTimeRemaining(formatTimeRemaining(profile.boostedUntil));
+        const total = 24 * 60 * 60 * 1000;
+        const elapsed = total - (profile.boostedUntil - Date.now());
+        setProgressPct(Math.min(100, Math.max(0, (elapsed / total) * 100)));
       } else {
         setTimeRemaining("");
+        setProgressPct(0);
       }
     };
 
@@ -130,17 +135,29 @@ const ProfileBoostButton = () => {
 
   if (isCurrentlyBoosted) {
     return (
-      <div className="space-y-2">
-        <Badge className="bg-pink-600 text-white flex items-center gap-1">
-          <Zap className="h-3 w-3 fill-current" />
-          Profile Boosted
-        </Badge>
-        {timeRemaining && (
-          <div className="text-xs text-gray-500 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {timeRemaining}
-          </div>
-        )}
+      <div className="space-y-2 p-3 border rounded-md bg-gradient-to-r from-pink-600/10 to-pink-600/5">
+        <div className="flex items-center gap-2">
+          <Badge className="bg-pink-600 text-white flex items-center gap-1">
+            <Zap className="h-3 w-3 fill-current" />
+            Boost Active
+          </Badge>
+          {timeRemaining && (
+            <div className="text-xs text-gray-600 flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {timeRemaining}
+            </div>
+          )}
+        </div>
+        <div className="h-1 w-full bg-pink-200 rounded overflow-hidden">
+          <div
+            className="h-full bg-pink-600 transition-all duration-700"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        <p className="text-[11px] text-pink-700">
+          Your profile is highlighted and appears first in search results while
+          this boost is active.
+        </p>
       </div>
     );
   }

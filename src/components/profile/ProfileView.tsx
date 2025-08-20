@@ -699,6 +699,25 @@ const ProfileView: FC<ProfileViewProps> = ({
                     <span className="text-md font-semibold">
                       {planDisplayName(plan)}
                     </span>
+                    {isPremium(plan) && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-pink-50 text-pink-700 border border-pink-200 flex items-center gap-1">
+                        {profileData.subscriptionExpiresAt &&
+                        profileData.subscriptionExpiresAt > Date.now() ? (
+                          <>
+                            Renews{" "}
+                            {new Date(
+                              profileData.subscriptionExpiresAt
+                            ).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </>
+                        ) : (
+                          <>Expired</>
+                        )}
+                      </span>
+                    )}
 
                     {/* Action buttons based on plan */}
                     {!isPremium(plan) && (
@@ -755,6 +774,33 @@ const ProfileView: FC<ProfileViewProps> = ({
                         title="Upgrade to Premium Plus for Spotlight and unlimited boosts"
                       >
                         Upgrade to unlock
+                      </button>
+                    </div>
+                  )}
+                  {isPremium(plan) && profileData.subscriptionExpiresAt && (
+                    <div className="mt-3 text-xs text-neutral-500 flex flex-wrap items-center gap-2">
+                      <span>
+                        {(() => {
+                          const ms =
+                            profileData.subscriptionExpiresAt! - Date.now();
+                          if (ms <= 0) return "Your subscription has expired.";
+                          const days = Math.floor(ms / 86400000);
+                          if (days > 1)
+                            return `${days} days remaining in your billing period.`;
+                          if (days === 1)
+                            return `1 day remaining in your billing period.`;
+                          const hours = Math.floor(ms / 3600000);
+                          if (hours > 1) return `${hours} hours remaining.`;
+                          const minutes = Math.max(1, Math.floor(ms / 60000));
+                          return `${minutes} minute${minutes === 1 ? "" : "s"} remaining.`;
+                        })()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleOpenBillingPortal}
+                        className="underline text-pink-600"
+                      >
+                        Manage
                       </button>
                     </div>
                   )}

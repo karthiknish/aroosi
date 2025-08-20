@@ -23,6 +23,15 @@
       ]
     },
     {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "boostedUntil", "order": "DESCENDING" },
+        { "fieldPath": "answeredIcebreakersCount", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "interests",
       "queryScope": "COLLECTION",
       "fields": [

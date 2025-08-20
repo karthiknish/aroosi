@@ -159,38 +159,64 @@ export async function GET(request: NextRequest) {
     // Determine if we have inequality filters (Firestore requires first orderBy on that field)
     const hasAgeInequality = false; // we removed direct Firestore age inequality filters (see note above)
 
-    // Composite ordering migration:
-    // We now attempt to push the answeredIcebreakersCount weighting into Firestore ordering
-    // to avoid in-memory resort. Index requirements (add to firestore.indexes.json):
-    // Ordering previously included onboarding flag; now removed.
-    // Additional equality filters (city, country, gender, etc.) will still require further composite indexes
-    // for fully indexed execution. If they are absent OR matching index exists, Firestore returns ordered results.
-    // Otherwise we fall back to previous behaviour (scan subset + in-memory sort) when index missing.
+    // Ordering strategy: prioritize currently boosted profiles first (boostedUntil in future), then
+    // answeredIcebreakersCount (engagement), then recency (createdAt), then doc id for deterministic pagination.
+    // Firestore ordering uses boostedUntil DESC so that future timestamps (active boosts) appear first and
+    // null / missing values sink to the bottom naturally. Expired boosts (timestamps in the past) will order
+    // below active boosts but above nulls – acceptable; we do a lightweight in-memory adjustment later to
+    // demote expired entries if needed.
     let query: FirebaseFirestore.Query;
     const includeAnsweredOrdering = true; // feature flag – set false to revert quickly if needed
+    const includeBoostOrdering = true; // new flag for boosted priority
     if (hasAgeInequality) {
       if (includeAnsweredOrdering) {
         query = base
           .orderBy("age", "asc")
-          .orderBy("answeredIcebreakersCount", "desc")
+          .orderBy(
+            includeBoostOrdering ? "boostedUntil" : "answeredIcebreakersCount",
+            includeBoostOrdering ? "desc" : "desc"
+          )
+          .orderBy(
+            includeBoostOrdering ? "answeredIcebreakersCount" : "createdAt",
+            "desc"
+          )
           .orderBy("createdAt", "desc")
           .orderBy(FieldPath.documentId(), "desc");
       } else {
         query = base
           .orderBy("age", "asc")
+          .orderBy(
+            includeBoostOrdering ? "boostedUntil" : "createdAt",
+            includeBoostOrdering ? "desc" : "desc"
+          )
           .orderBy("createdAt", "desc")
           .orderBy(FieldPath.documentId(), "desc");
       }
     } else {
       if (includeAnsweredOrdering) {
-        query = base
-          .orderBy("answeredIcebreakersCount", "desc")
-          .orderBy("createdAt", "desc")
-          .orderBy(FieldPath.documentId(), "desc");
+        if (includeBoostOrdering) {
+          query = base
+            .orderBy("boostedUntil", "desc")
+            .orderBy("answeredIcebreakersCount", "desc")
+            .orderBy("createdAt", "desc")
+            .orderBy(FieldPath.documentId(), "desc");
+        } else {
+          query = base
+            .orderBy("answeredIcebreakersCount", "desc")
+            .orderBy("createdAt", "desc")
+            .orderBy(FieldPath.documentId(), "desc");
+        }
       } else {
-        query = base
-          .orderBy("createdAt", "desc")
-          .orderBy(FieldPath.documentId(), "desc");
+        if (includeBoostOrdering) {
+          query = base
+            .orderBy("boostedUntil", "desc")
+            .orderBy("createdAt", "desc")
+            .orderBy(FieldPath.documentId(), "desc");
+        } else {
+          query = base
+            .orderBy("createdAt", "desc")
+            .orderBy(FieldPath.documentId(), "desc");
+        }
       }
     }
 
@@ -209,6 +235,7 @@ export async function GET(request: NextRequest) {
       //   createdAt|docId (legacy, no age inequality, pre-answered ordering)
       //   age|createdAt|docId (legacy with age inequality, pre-answered ordering)
       //   answered|createdAt|docId (new, no age inequality, with answered ordering)
+      //   boosted|answered|createdAt|docId (new with boost + answered ordering)
       //   age|answered|createdAt|docId (new, with age inequality & answered ordering)
       let ageCursor: number | null = null;
       let answeredCursor: number | null = null;
@@ -218,11 +245,20 @@ export async function GET(request: NextRequest) {
         const decoded = decodeURIComponent(cursor);
         const parts = decoded.split("|");
         if (parts.length === 4) {
-          // age|answered|createdAt|docId
-          ageCursor = Number(parts[0]);
-          answeredCursor = Number(parts[1]);
-          createdAtCursor = Number(parts[2]);
-          docIdCursor = parts[3];
+          if (hasAgeInequality) {
+            // age|answered|createdAt|docId
+            ageCursor = Number(parts[0]);
+            answeredCursor = Number(parts[1]);
+            createdAtCursor = Number(parts[2]);
+            docIdCursor = parts[3];
+          } else {
+            // boosted|answered|createdAt|docId
+            // treat first as boostedUntil (not strictly needed for startAfter but keep format future-proof)
+            // We'll only use answered|createdAt|docId for startAfter because boostedUntil may fluctuate.
+            answeredCursor = Number(parts[1]);
+            createdAtCursor = Number(parts[2]);
+            docIdCursor = parts[3];
+          }
         } else if (parts.length === 3) {
           if (hasAgeInequality) {
             // legacy age|createdAt|docId
@@ -344,7 +380,7 @@ export async function GET(request: NextRequest) {
       const FALLBACK_SCAN_LIMIT = 400; // slightly higher for better result coverage
       const fallbackQuery = db
         .collection(COLLECTIONS.USERS)
-  // onboarding completion filter removed
+        // onboarding completion filter removed
         .orderBy("createdAt", "desc")
         .orderBy(FieldPath.documentId(), "desc")
         .limit(FALLBACK_SCAN_LIMIT);
@@ -437,9 +473,11 @@ export async function GET(request: NextRequest) {
 
     let docs: any[] = [];
     let primaryAnsweredOrderingApplied = false;
+    let primaryBoostOrderingApplied = false;
     try {
       docs = await runPrimaryQuery();
       primaryAnsweredOrderingApplied = includeAnsweredOrdering; // we attempted it and query succeeded
+      primaryBoostOrderingApplied = includeBoostOrdering;
     } catch (err: any) {
       if (isIndexMissing(err)) {
         const fb = await runFallbackScan();
@@ -531,9 +569,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply in-memory weighting ONLY if Firestore ordering by answeredIcebreakersCount was not applied
-    if (!primaryAnsweredOrderingApplied) {
+    if (!primaryBoostOrderingApplied || !primaryAnsweredOrderingApplied) {
       try {
         docs.sort((a: any, b: any) => {
+          const nowTs = Date.now();
+          const aBoostActive =
+            typeof a.boostedUntil === "number" && a.boostedUntil > nowTs;
+          const bBoostActive =
+            typeof b.boostedUntil === "number" && b.boostedUntil > nowTs;
+          if (aBoostActive !== bBoostActive) return aBoostActive ? -1 : 1; // active boosts first
           const ac =
             typeof a.answeredIcebreakersCount === "number"
               ? a.answeredIcebreakersCount
@@ -542,10 +586,13 @@ export async function GET(request: NextRequest) {
             typeof b.answeredIcebreakersCount === "number"
               ? b.answeredIcebreakersCount
               : 0;
-          if (bc !== ac) return bc - ac; // higher count first
-          return 0; // keep original relative order (already by recency)
+          if (bc !== ac) return bc - ac; // higher engagement first
+          const aCreated = typeof a.createdAt === "number" ? a.createdAt : 0;
+          const bCreated = typeof b.createdAt === "number" ? b.createdAt : 0;
+          if (bCreated !== aCreated) return bCreated - aCreated; // newer first
+          return 0;
         });
-      } catch (e) {}
+      } catch {}
     }
 
     const profiles = docs
@@ -582,20 +629,18 @@ export async function GET(request: NextRequest) {
       if (hasAgeInequality) {
         if (last?.age != null && last?.createdAt) {
           if (includeAnsweredOrdering) {
-            nextCursor = `${encodeURIComponent(
-              `${last.age}|${lastAnswered}|${last.createdAt}|${last.id}`
-            )}`;
+            nextCursor = `${encodeURIComponent(`${last.age}|${lastAnswered}|${last.createdAt}|${last.id}`)}`;
           } else {
-            nextCursor = `${encodeURIComponent(
-              `${last.age}|${last.createdAt}|${last.id}`
-            )}`;
+            nextCursor = `${encodeURIComponent(`${last.age}|${last.createdAt}|${last.id}`)}`;
           }
         }
       } else if (last?.createdAt) {
-        if (includeAnsweredOrdering) {
-          nextCursor = `${encodeURIComponent(
-            `${lastAnswered}|${last.createdAt}|${last.id}`
-          )}`;
+        if (includeAnsweredOrdering && includeBoostOrdering) {
+          const lastBoost =
+            typeof last.boostedUntil === "number" ? last.boostedUntil : 0;
+          nextCursor = `${encodeURIComponent(`${lastBoost}|${lastAnswered}|${last.createdAt}|${last.id}`)}`;
+        } else if (includeAnsweredOrdering) {
+          nextCursor = `${encodeURIComponent(`${lastAnswered}|${last.createdAt}|${last.id}`)}`;
         } else {
           nextCursor = `${encodeURIComponent(`${last.createdAt}|${last.id}`)}`;
         }

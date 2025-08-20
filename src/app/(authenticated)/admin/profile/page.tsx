@@ -42,6 +42,8 @@ type AdminProfile = {
   phoneNumber?: string;
   dateOfBirth?: string;
   banned?: boolean;
+  subscriptionPlan?: string;
+  subscriptionExpiresAt?: number;
 };
 
 type ImageType = { _id: string; url: string | null };
@@ -369,6 +371,28 @@ export default function AdminProfilePage() {
                     </span>
                   )}
                 </div>
+                {profile.subscriptionPlan && (
+                  <div className="flex flex-col items-center mt-1">
+                    <span className="text-[10px] uppercase tracking-wide text-neutral-500">
+                      {profile.subscriptionPlan}
+                    </span>
+                    {typeof profile.subscriptionExpiresAt === "number" && (
+                      <span className="text-[10px] text-neutral-400">
+                        {(() => {
+                          const ms =
+                            profile.subscriptionExpiresAt! * 1 - Date.now();
+                          if (ms <= 0) return "Expired";
+                          const days = Math.floor(ms / 86400000);
+                          if (days >= 1) return `${days}d left`;
+                          const hours = Math.floor(ms / 3600000);
+                          if (hours >= 1) return `${hours}h left`;
+                          const minutes = Math.max(1, Math.floor(ms / 60000));
+                          return `${minutes}m left`;
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
