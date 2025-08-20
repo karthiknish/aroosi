@@ -50,6 +50,12 @@ export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
   try {
+    // If a static billing portal URL is configured, we can short‑circuit and return it
+    // (still performing origin + auth checks so it isn't exposed cross‑origin).
+    // This is useful when you intentionally serve a generic portal login page instead of
+    // creating per-customer sessions (e.g. when Stripe-hosted email auth is acceptable).
+    const staticPortalUrl = process.env.STRIPE_BILLING_PORTAL;
+
     const originHeader = req.headers.get("origin");
     const refererHeader = req.headers.get("referer");
     const candidateOrigin =
@@ -82,9 +88,15 @@ export async function POST(req: NextRequest) {
       return errorResponse("Rate limit exceeded", 429);
     }
 
-    if (!stripe) {
-      console.error("Stripe not configured in portal route");
-      return errorResponse("Payment service temporarily unavailable", 503);
+    if (!stripe && !staticPortalUrl) {
+      // Safety check requested: neither dynamic session creation nor static portal configured
+      console.error(
+        "Billing portal not configured (no Stripe + no static URL)"
+      );
+      return errorResponse("Billing portal not configured", 400);
+    }
+    if (!stripe && staticPortalUrl) {
+      // We will return the static URL below after auth & rate limit checks.
     }
     // Derive base app URL (canonical precedence)
     const baseUrl: string =
@@ -94,7 +106,7 @@ export async function POST(req: NextRequest) {
         ? process.env.VERCEL_URL
         : process.env.VERCEL_URL
           ? `https://${process.env.VERCEL_URL}`
-          : "https://aroosi.app");
+          : "https://www.aroosi.app");
 
     // Attempt to read optional body for returnUrl override (ignore parse errors)
     let body: any = null;
@@ -268,10 +280,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Stripe requires a customer for billing portal session
+    // If a static portal URL is provided, return it directly (after customer presence check)
+    if (staticPortalUrl) {
+      if (!/^https:\/\/billing\.stripe\.com\//.test(staticPortalUrl)) {
+        console.error(
+          "Configured STRIPE_BILLING_PORTAL does not look like a Stripe billing domain",
+          { staticPortalUrl }
+        );
+        return errorResponse("Billing portal misconfigured", 500);
+      }
+      console.info("Static Stripe billing portal URL returned", {
+        scope: "stripe.portal",
+        statusCode: 200,
+        userId,
+        correlationId,
+        durationMs: Date.now() - startedAt,
+      });
+      return successResponse({ url: staticPortalUrl });
+    }
+
+    // Dynamic session creation path (preferred: per-customer session)
     let portalSession;
     try {
-      portalSession = await stripe.billingPortal.sessions.create({
+      portalSession = await stripe!.billingPortal.sessions.create({
         customer: customerId,
         return_url: cleanedReturn,
       });

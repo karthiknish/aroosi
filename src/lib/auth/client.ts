@@ -70,25 +70,7 @@ export async function logout() {
   }
 }
 
-/**
- * Public: trigger forgot password email
- */
-export async function forgotPassword(email: string) {
-  const res = await postJson<{ success: boolean; message?: string }>("/api/auth/reset-password", { email }, {
-    cache: "no-store",
-  });
-  return res;
-}
-
-/**
- * Public: reset password
- */
-export async function resetPassword(params: { email: string; password: string }) {
-  const res = await postJson<{ success: boolean; message?: string }>("/api/auth/reset-password", params, {
-    cache: "no-store",
-  });
-  return res;
-}
+// Deprecated: password reset handled directly via Firebase (sendPasswordResetEmail / confirmPasswordReset)
 
 /**
  * Accessors for current tokens using Firebase
