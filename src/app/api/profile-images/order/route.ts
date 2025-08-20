@@ -48,9 +48,16 @@ export const POST = withFirebaseAuth(async (authUser, req: NextRequest) => {
     );
     const invalid = imageDocs.filter((d) => !d.snap.exists).map((d) => d.docId);
     if (invalid.length) {
+      // Return a semantic error code so client can map to a friendly toast.
       return NextResponse.json(
-        { error: `Invalid image IDs: ${invalid.join(", ")}`, correlationId },
-        { status: 400 }
+        {
+          error:
+            "Some provided image IDs do not exist or have not finished uploading.",
+          code: "INVALID_IMAGE_IDS",
+          invalidIds: invalid,
+          correlationId,
+        },
+        { status: 422 }
       );
     }
     // Build normalized storageIds and url map from image docs (if present)

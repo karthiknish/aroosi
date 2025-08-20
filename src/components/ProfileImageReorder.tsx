@@ -402,11 +402,19 @@ export function ProfileImageReorder({
           } catch {}
         }
       } catch (err) {
-        const errorMessage =
+        let errorMessage =
           err instanceof Error ? err.message : "Failed to update image order";
-        console.error("Error updating image order:", errorMessage);
+        if (
+          err instanceof Error &&
+          ((err as any).code === "INVALID_IMAGE_IDS" ||
+            /Invalid image IDs|processing/.test(err.message))
+        ) {
+          errorMessage =
+            "Some photos are still uploading or failed to upload. Please wait for uploads to finish, then retry.";
+        }
+        console.error("Error updating image order:", errorMessage, err);
         setError(errorMessage);
-        showErrorToast(null, `Failed to update order: ${errorMessage}`);
+        showErrorToast(null, errorMessage);
 
         // Revert optimistic update on error
         if (onReorder) {
@@ -536,10 +544,20 @@ export function ProfileImageReorder({
                                 } catch {}
                               }
                             } catch (e) {
-                              const msg =
+                              let msg =
                                 e instanceof Error
                                   ? e.message
                                   : "Failed to set main";
+                              if (
+                                e instanceof Error &&
+                                ((e as any).code === "INVALID_IMAGE_IDS" ||
+                                  /Invalid image IDs|processing/.test(
+                                    e.message
+                                  ))
+                              ) {
+                                msg =
+                                  "Main photo not set yet—images still uploading. Try again after uploads complete.";
+                              }
                               showErrorToast(null, msg);
                               // rollback
                               if (onReorder) {

@@ -375,7 +375,47 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
 
   const DesktopIconNav = () => {
     if (hideLinks) return null;
-    if (!isSignedIn) return null; // show nothing (CTA in mobile drawer only)
+    // Show guest links on desktop when not signed in
+    if (!isSignedIn) {
+      return (
+        <nav
+          className="hidden md:flex items-center gap-2"
+          aria-label="Primary Guest Navigation"
+        >
+          <Link href="/about" className="block">
+            <Button
+              variant="ghost"
+              className="justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+            >
+              About
+            </Button>
+          </Link>
+          <Link href="/how-it-works" className="block">
+            <Button
+              variant="ghost"
+              className="justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+            >
+              How It Works
+            </Button>
+          </Link>
+          <Link href="/sign-in" prefetch={false} className="block">
+            <Button
+              variant="outline"
+              className="flex items-center gap-1.5 text-pink-600 border-pink-600 hover:bg-pink-50 hover:border-pink-700"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>Sign In</span>
+            </Button>
+          </Link>
+          <Link href="/" prefetch={false} className="block">
+            <Button className="flex items-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
+              <UserPlus className="h-4 w-4" />
+              <span>Sign Up</span>
+            </Button>
+          </Link>
+        </nav>
+      );
+    }
 
     const avatarUrl =
       (profile?.profileImageUrls && profile.profileImageUrls[0]) || "";

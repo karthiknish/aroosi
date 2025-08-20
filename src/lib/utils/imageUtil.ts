@@ -20,18 +20,34 @@ export async function updateImageOrder(args: {
   imageIds: string[];
   skipUrlReorder?: boolean;
   rebuildUrls?: boolean;
-}): Promise<{ ok: true; correlationId?: string }> {
+}): Promise<{ ok: true; correlationId?: string } | never> {
   const profileId = args.profileId || args.userId;
-  const res = await postJson<{
-    success?: boolean;
-    correlationId?: string;
-  }>("/api/profile-images/order", {
-    profileId,
-    imageIds: args.imageIds,
-    skipUrlReorder: args.skipUrlReorder,
-    rebuildUrls: args.rebuildUrls,
-  });
-  return { ok: true, correlationId: res?.correlationId };
+  try {
+    const res = await postJson<{
+      success?: boolean;
+      correlationId?: string;
+      code?: string;
+      invalidIds?: string[];
+      error?: string;
+    }>("/api/profile-images/order", {
+      profileId,
+      imageIds: args.imageIds,
+      skipUrlReorder: args.skipUrlReorder,
+      rebuildUrls: args.rebuildUrls,
+    });
+    return { ok: true, correlationId: res?.correlationId };
+  } catch (e: any) {
+    // Map specific 422 invalid image ids to a cleaner message
+    const raw = e?.message || "";
+    if (/(422|INVALID_IMAGE_IDS)/.test(raw)) {
+      const err = new Error(
+        "Some photos are still processing or failed to upload. Wait for uploads to finish, then try again."
+      );
+      (err as any).code = "INVALID_IMAGE_IDS";
+      throw err;
+    }
+    throw e;
+  }
 }
 
 // Provide an object wrapper to ease spying in tests without redefining the function

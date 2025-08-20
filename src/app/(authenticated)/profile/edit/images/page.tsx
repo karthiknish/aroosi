@@ -288,7 +288,15 @@ export default function EditProfileImagesPage() {
         });
         showInfoToast("Order auto-saved");
       } catch (e: any) {
-        showErrorToast(e?.message || "Failed to auto-save order");
+        let msg = e?.message || "Failed to auto-save order";
+        if (
+          (e instanceof Error && (e as any).code === "INVALID_IMAGE_IDS") ||
+          /Invalid image IDs|processing/.test(String(e?.message || ""))
+        ) {
+          msg =
+            "Waiting for photo uploads to finish before saving order. It will auto-save once complete.";
+        }
+        showErrorToast(msg);
       } finally {
         setIsAutoSaving(false);
       }
@@ -510,11 +518,11 @@ export default function EditProfileImagesPage() {
       const errMsg = error?.message || "";
       if (
         errMsg.includes("Invalid image IDs") ||
-        (error?.response &&
-          error?.response?.error?.includes("Invalid image IDs"))
+        (error as any)?.code === "INVALID_IMAGE_IDS" ||
+        /processing/.test(errMsg)
       ) {
         showErrorToast(
-          "Some images haven't finished uploading yet. Please wait for uploads to complete before saving the order."
+          "Some photos are still uploading. Please wait for uploads to complete before saving."
         );
       } else {
         showErrorToast(
