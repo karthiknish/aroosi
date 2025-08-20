@@ -16,6 +16,12 @@ import { validateSameOriginUrl } from "@/lib/validation/common";
  * Env:
  *  - STRIPE_BILLING_PORTAL_RETURN_URL (confirmed https://aroosi.app/plans)
  */
+/**
+ * Optional JSON body:
+ *  {
+ *    "returnUrl"?: string   // same-origin override for billing portal return URL
+ *  }
+ */
 export async function POST(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
@@ -40,18 +46,41 @@ export async function POST(req: NextRequest) {
       console.error("Stripe not configured in portal route");
       return errorResponse("Payment service temporarily unavailable", 503);
     }
-    // Derive base app URL & sanitize return_url override (future-proof: allow client override param?)
-    const baseUrl =
+    // Derive base app URL (canonical precedence)
+    const baseUrl: string =
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.NEXT_PUBLIC_SITE_URL ||
-      "https://aroosi.app";
+      (process.env.VERCEL_URL?.startsWith("http")
+        ? process.env.VERCEL_URL
+        : process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "https://aroosi.app");
+
+    // Attempt to read optional body for returnUrl override (ignore parse errors)
+    let body: any = null;
+    try {
+      body = await req.json();
+    } catch {
+      /* no body */
+    }
+    const requestedReturnUrl =
+      body && typeof body === "object" ? body.returnUrl : undefined;
+
     const defaultReturn =
       process.env.STRIPE_BILLING_PORTAL_RETURN_URL || `${baseUrl}/plans`;
-    const cleanedReturn =
+    const cleanedReturnDefault =
       validateSameOriginUrl(defaultReturn, baseUrl) || `${baseUrl}/plans`;
+    const cleanedReturnOverride =
+      typeof requestedReturnUrl === "string"
+        ? validateSameOriginUrl(requestedReturnUrl, baseUrl)
+        : undefined;
+    const cleanedReturn = cleanedReturnOverride || cleanedReturnDefault;
 
-    // Fetch Stripe customer id for this user from Firestore
+    // Fetch Stripe related identifiers for this user from Firestore
     let customerId: string | null = null;
+    let subscriptionId: string | null = null;
+    let subscriptionPlan: string | null = null;
+    let subscriptionExpiresAt: number | null = null;
     try {
       const snap = await db.collection(COLLECTIONS.USERS).doc(userId).get();
       if (snap.exists) {
@@ -61,29 +90,159 @@ export async function POST(req: NextRequest) {
           data?.billing?.customerId ||
           data?.stripe?.customerId ||
           null;
+        subscriptionId = data?.stripeSubscriptionId || null;
+        subscriptionPlan = data?.subscriptionPlan || null;
+        subscriptionExpiresAt =
+          typeof data?.subscriptionExpiresAt === "number"
+            ? data.subscriptionExpiresAt
+            : null;
       }
     } catch (e) {
       console.warn("Portal route Firestore fetch failed", {
         scope: "stripe.portal",
         userId,
         message: e instanceof Error ? e.message : String(e),
+        correlationId,
       });
     }
 
+    // Hydrate missing customerId via subscription lookup if possible
+    if (!customerId && subscriptionId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        if (sub && typeof sub.customer === "string") {
+          customerId = sub.customer;
+          // persist for future fast path
+          try {
+            await db
+              .collection(COLLECTIONS.USERS)
+              .doc(userId)
+              .set(
+                { stripeCustomerId: customerId, updatedAt: Date.now() },
+                { merge: true }
+              );
+          } catch (persistErr) {
+            console.warn(
+              "Portal route: failed to persist hydrated customerId",
+              {
+                userId,
+                correlationId,
+                error:
+                  persistErr instanceof Error
+                    ? persistErr.message
+                    : String(persistErr),
+              }
+            );
+          }
+        }
+      } catch (subErr) {
+        console.warn("Portal route: subscription retrieval failed", {
+          userId,
+          subscriptionId,
+          correlationId,
+          error: subErr instanceof Error ? subErr.message : String(subErr),
+        });
+      }
+    }
+
+    // If still no customer id, return clearer guidance
     if (!customerId || typeof customerId !== "string") {
-      // Cannot create portal without a known Stripe customer
       console.warn("Portal route: missing Stripe customer id", {
         scope: "stripe.portal",
         userId,
+        hasSubscriptionId: !!subscriptionId,
+        subscriptionPlan,
+        correlationId,
       });
-      return errorResponse("No billing portal available for this account", 400);
+      return errorResponse(
+        "No billing portal available. Purchase a plan first.",
+        400
+      );
+    }
+
+    // Optional: Validate that subscription (if present) is active/trialing before granting portal.
+    if (subscriptionId) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        if (sub && !["active", "trialing", "past_due"].includes(sub.status)) {
+          // Allow past_due so user can update payment method.
+          return errorResponse(
+            `Subscription not active (status: ${sub.status}).`,
+            409
+          );
+        }
+        // Sync expiration if drift > 60s
+        if (
+          sub &&
+          sub.current_period_end &&
+          (typeof subscriptionExpiresAt !== "number" ||
+            Math.abs(sub.current_period_end * 1000 - subscriptionExpiresAt) >
+              60 * 1000)
+        ) {
+          try {
+            await db
+              .collection(COLLECTIONS.USERS)
+              .doc(userId)
+              .set(
+                {
+                  subscriptionExpiresAt: sub.current_period_end * 1000,
+                  updatedAt: Date.now(),
+                },
+                { merge: true }
+              );
+          } catch (syncErr) {
+            console.warn("Portal route: failed to sync subscription expiry", {
+              userId,
+              correlationId,
+              error:
+                syncErr instanceof Error ? syncErr.message : String(syncErr),
+            });
+          }
+        }
+      } catch (subStatusErr) {
+        console.warn("Portal route: cannot verify subscription status", {
+          userId,
+          subscriptionId,
+          correlationId,
+          error:
+            subStatusErr instanceof Error
+              ? subStatusErr.message
+              : String(subStatusErr),
+        });
+      }
     }
 
     // Stripe requires a customer for billing portal session
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: cleanedReturn,
-    });
+    let portalSession;
+    try {
+      portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: cleanedReturn,
+      });
+    } catch (stripeErr: any) {
+      const code = stripeErr?.code || stripeErr?.type;
+      console.error("Stripe billing portal create error", {
+        scope: "stripe.portal",
+        userId,
+        correlationId,
+        code,
+        message:
+          stripeErr instanceof Error ? stripeErr.message : String(stripeErr),
+      });
+      if (code === "resource_missing") {
+        return errorResponse(
+          "Billing portal unavailable (customer not found).",
+          404
+        );
+      }
+      if (code === "rate_limit") {
+        return errorResponse(
+          "Billing service busy, please try again shortly.",
+          503
+        );
+      }
+      return errorResponse("Failed to create billing portal session", 500);
+    }
 
     if (!portalSession?.url) {
       console.error("Failed to create Stripe billing portal session");

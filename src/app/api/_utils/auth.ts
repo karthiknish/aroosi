@@ -8,6 +8,8 @@ import {
   verifyFirebaseIdToken,
   getFirebaseUser,
   db,
+  adminAuth,
+  COLLECTIONS,
 } from "@/lib/firebaseAdmin";
 
 // Backward compatibility: some call sites imported Id<"users"> types from Convex.
@@ -18,7 +20,10 @@ export type Id<T extends string> = string & { __brand?: T };
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
@@ -82,11 +87,48 @@ export async function requireSession(
       }),
     };
   }
-  const userDoc = await getFirebaseUser(uid);
+  let userDoc = await getFirebaseUser(uid);
   if (!userDoc) {
-    return {
-      errorResponse: json(404, { success: false, error: "User not found" }),
-    };
+    // Auto-bootstrap a minimal Firestore user document if Firebase Auth user exists but profile doc missing
+    try {
+      const authUser = await adminAuth.getUser(uid);
+      if (authUser) {
+        const now = Date.now();
+        const email = authUser.email ? authUser.email.toLowerCase() : "";
+        await db.collection(COLLECTIONS.USERS).doc(uid).set(
+          {
+            email,
+            createdAt: now,
+            updatedAt: now,
+            role: "user",
+            isOnboardingComplete: false,
+            subscriptionPlan: "free",
+          },
+          { merge: true }
+        );
+        userDoc = await getFirebaseUser(uid);
+        if (process.env.NODE_ENV !== "production") {
+          // eslint-disable-next-line no-console
+          console.info("[requireSession] Bootstrapped missing user profile", {
+            uid,
+            email,
+          });
+        }
+      }
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn("[requireSession] Failed to bootstrap missing user doc", {
+          uid,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+    if (!userDoc) {
+      return {
+        errorResponse: json(404, { success: false, error: "User not found" }),
+      };
+    }
   }
   if (userDoc.banned) {
     return {

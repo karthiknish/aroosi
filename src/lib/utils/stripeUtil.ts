@@ -2,7 +2,9 @@
  * Stripe API utilities for handling subscription and payment operations
  */
 
-import { showErrorToast } from "@/lib/ui/toast";
+import { showErrorToast, showInfoToast } from "@/lib/ui/toast";
+
+let portalOpenInFlight = false;
 
 export interface CheckoutSessionRequest {
   planType: "premium" | "premiumPlus";
@@ -48,9 +50,25 @@ export async function createCheckoutSession(
         cancelUrl: request.cancelUrl,
       }),
     });
-
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({}) as any);
+      if (response.status === 409) {
+        const msg: string = errorData.error || "Already subscribed.";
+        // Extract plan name if present in error string
+        const planMatch = msg.match(/plan:\s*(\w+)/i);
+        const planName = planMatch ? planMatch[1] : undefined;
+        showInfoToast(
+          planName
+            ? `You're already on the ${planName} plan. Opening billing portal...`
+            : "You already have an active subscription. Opening billing portal..."
+        );
+        try {
+          await openBillingPortal();
+        } catch {
+          /* handled inside */
+        }
+        return { success: false, error: "already-subscribed" };
+      }
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
@@ -111,29 +129,58 @@ export async function getPlans(): Promise<NormalizedPlan[]> {
  * POST /api/stripe/portal
  */
 export async function openBillingPortal(): Promise<void> {
-  try {
-    const res = await fetch("/api/stripe/portal", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
+  if (portalOpenInFlight) {
+    showInfoToast("Opening billing portal...");
+    return;
+  }
+  portalOpenInFlight = true;
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 400) {
+          showInfoToast(
+            (err && err.error) ||
+              "You don't have a billing profile yet. Choose a plan first."
+          );
+          if (!window.location.pathname.startsWith("/plans")) {
+            window.location.assign("/plans");
+          }
+          return;
+        }
+        if (res.status === 503 && attempt < maxAttempts) {
+          // Exponential backoff (base 500ms)
+          await new Promise((r) =>
+            setTimeout(r, 500 * Math.pow(2, attempt - 1))
+          );
+          continue; // retry
+        }
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = (await res.json()) as { url?: string };
+      if (data?.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      throw new Error("No billing portal URL returned");
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        console.error("Failed to open billing portal", error);
+        const msg =
+          error instanceof Error
+            ? error.message
+            : "Failed to open billing portal";
+        showErrorToast(msg);
+      }
+    } finally {
+      if (attempt === maxAttempts) portalOpenInFlight = false;
     }
-    const data = (await res.json()) as { url?: string };
-    if (data?.url) {
-      window.location.assign(data.url);
-      return;
-    }
-    throw new Error("No billing portal URL returned");
-  } catch (error) {
-    console.error("Failed to open billing portal:", error);
-    const msg =
-      error instanceof Error ? error.message : "Failed to open billing portal";
-    showErrorToast(msg);
   }
 }
 

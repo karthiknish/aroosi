@@ -112,14 +112,38 @@ export default function ProfileEditSimpleForm({
           .enum(["single", "divorced", "widowed", "annulled"])
           .optional(),
         // Lifestyle
+        // Accept legacy + canonical values; canonicalize before submit
         diet: z
-          .enum(["vegetarian", "non-vegetarian", "vegan", "halal", "kosher"])
+          .enum([
+            "vegetarian",
+            "non-vegetarian",
+            "non_vegetarian", // legacy underscore
+            "vegan",
+            "halal",
+            "kosher",
+            "eggetarian",
+            "other", // legacy catch-all
+          ])
           .optional(),
         smoking: z
-          .enum(["never", "occasionally", "regularly", "socially"])
+          .enum([
+            "never",
+            "none", // legacy synonym -> never
+            "once", // legacy synonym -> occasionally
+            "occasionally",
+            "regularly",
+            "frequently", // legacy synonym -> regularly
+            "socially",
+          ])
           .optional(),
         drinking: z
-          .enum(["never", "occasionally", "socially", "regularly"])
+          .enum([
+            "never",
+            "none", // legacy synonym -> never
+            "occasionally",
+            "socially",
+            "regularly",
+          ])
           .optional(),
         physicalStatus: z.enum(["normal", "differently-abled"]).optional(),
         // Professional
@@ -139,7 +163,8 @@ export default function ProfileEditSimpleForm({
             return Number.isFinite(n) && n >= 0 && n <= 999999999;
           }, "Please enter a valid annual income"),
         // About & Contact
-        aboutMe: EnhancedValidationSchemas.aboutMe.shape.aboutMe.optional(),
+        // About me required on edit (match onboarding requirements & error summary expectations)
+        aboutMe: EnhancedValidationSchemas.aboutMe.shape.aboutMe,
         phoneNumber:
           EnhancedValidationSchemas.aboutMe.shape.phoneNumber.optional(),
         // Preferences
@@ -188,6 +213,37 @@ export default function ProfileEditSimpleForm({
         const values = getValues();
         // Build a normalized snapshot similar to onboarding
         const normalized = { ...values };
+
+        // Canonicalize legacy / alternate enum values prior to validation
+        const canonicalize = <T extends Record<string, any>>(obj: T) => {
+          const anyObj = obj as any;
+          const mapDiet: Record<string, string> = {
+            non_vegetarian: "non-vegetarian",
+          };
+          // eggetarian retained as-is (newly exposed option)
+          if (anyObj.diet && mapDiet[anyObj.diet])
+            anyObj.diet = mapDiet[anyObj.diet];
+
+          // Remove unsupported legacy 'other' by leaving as-is (allowed) — optionally could blank out
+
+          const mapSmoking: Record<string, string> = {
+            none: "never",
+            once: "occasionally",
+            frequently: "regularly",
+          };
+          if (anyObj.smoking && mapSmoking[anyObj.smoking])
+            anyObj.smoking = mapSmoking[anyObj.smoking];
+
+          const mapDrinking: Record<string, string> = {
+            none: "never",
+          };
+          if (anyObj.drinking && mapDrinking[anyObj.drinking])
+            anyObj.drinking = mapDrinking[anyObj.drinking];
+
+          return obj;
+        };
+
+        canonicalize(normalized as any);
 
         // Normalize height to number for internal validation when possible
         if (typeof normalized.height === "string") {
@@ -249,6 +305,21 @@ export default function ProfileEditSimpleForm({
       if (pg === "any") {
         setValue("preferredGender", "both" as any, { shouldDirty: false });
       }
+      // Legacy lifestyle value normalization for initial render
+      const diet = (initialValues as any).diet;
+      if (diet === "non_vegetarian") {
+        setValue("diet", "non-vegetarian" as any, { shouldDirty: false });
+      }
+      const smoking = (initialValues as any).smoking;
+      if (smoking === "none")
+        setValue("smoking", "never" as any, { shouldDirty: false });
+      if (smoking === "once")
+        setValue("smoking", "occasionally" as any, { shouldDirty: false });
+      if (smoking === "frequently")
+        setValue("smoking", "regularly" as any, { shouldDirty: false });
+      const drinking = (initialValues as any).drinking;
+      if (drinking === "none")
+        setValue("drinking", "never" as any, { shouldDirty: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
@@ -519,9 +590,11 @@ export default function ProfileEditSimpleForm({
           options={[
             { value: "vegetarian", label: "Vegetarian" },
             { value: "non-vegetarian", label: "Non-Vegetarian" },
+            { value: "eggetarian", label: "Eggetarian" },
             { value: "vegan", label: "Vegan" },
             { value: "halal", label: "Halal" },
             { value: "kosher", label: "Kosher" },
+            { value: "other", label: "Other" },
           ]}
           placeholder="Select diet preference"
         />

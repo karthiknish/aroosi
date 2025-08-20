@@ -10,7 +10,7 @@ const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
 
 // Re-export unified admin handles (db kept for existing imports)
 export const db: any = adminDb;
-export const COLLECTIONS = { USERS: 'users' } as const;
+export const COLLECTIONS = { USERS: "users", TASKS: "tasks" } as const;
 
 export type FirestoreUserProfile = {
   email: string;

@@ -15,7 +15,7 @@
           "value": "*"
         },
         {
-          "key": "Access-Control-Allow-Methods", 
+          "key": "Access-Control-Allow-Methods",
           "value": "GET, POST, PUT, DELETE, OPTIONS"
         },
         {
@@ -23,6 +23,12 @@
           "value": "Content-Type, Authorization"
         }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/tasks/process",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

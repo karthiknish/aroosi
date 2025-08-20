@@ -113,6 +113,68 @@ export async function POST(req: NextRequest) {
     if (!userDoc?.email || typeof userDoc.email !== "string") {
       return errorResponse("User account missing email", 400);
     }
+
+    // Guard: Prevent creating a new checkout session if user already has an active subscription.
+    // We trust Firestore first (fast path) and optionally reconcile with Stripe if we have a subscription id.
+    try {
+      const existingPlan = normaliseInternalPlan(
+        userDoc.subscriptionPlan as any
+      );
+      const now = Date.now();
+      // normaliseInternalPlan returns one of: 'free' | 'premium' | 'premiumPlus'
+      // Type narrowing issue: existingPlan typed to exclude 'free' already, so simple truthy check suffices.
+      const firestoreActive =
+        existingPlan &&
+        (typeof userDoc.subscriptionExpiresAt === "number"
+          ? userDoc.subscriptionExpiresAt > now
+          : true); // if no expiry stored, assume active until proven otherwise
+      let stripeActive = false;
+      if (firestoreActive && userDoc.stripeSubscriptionId && stripe) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(
+            userDoc.stripeSubscriptionId
+          );
+          if (sub && ["active", "trialing"].includes(sub.status)) {
+            stripeActive = true;
+            // Optionally sync expiration if drifted
+            const subExpires = sub.current_period_end * 1000;
+            if (
+              typeof userDoc.subscriptionExpiresAt !== "number" ||
+              Math.abs(subExpires - userDoc.subscriptionExpiresAt) > 60 * 1000
+            ) {
+              try {
+                await db.collection(COLLECTIONS.USERS).doc(userId).set(
+                  {
+                    subscriptionExpiresAt: subExpires,
+                    updatedAt: now,
+                  },
+                  { merge: true }
+                );
+              } catch (syncErr) {
+                console.warn(
+                  "Checkout route: failed to sync subscription expiry",
+                  syncErr
+                );
+              }
+            }
+          }
+        } catch (subErr) {
+          console.warn(
+            "Checkout route: unable to retrieve existing Stripe subscription",
+            subErr
+          );
+        }
+      }
+      if (firestoreActive || stripeActive) {
+        const activePlan = existingPlan || userDoc.subscriptionPlan || "paid";
+        return errorResponse(
+          `Already subscribed on plan: ${activePlan}. Manage it via the billing portal.`,
+          409
+        );
+      }
+    } catch (alreadyErr) {
+      console.warn("Checkout route: subscription pre-check failed", alreadyErr);
+    }
     // Validate and sanitize base URL
     const origin = req.headers.get("origin");
     const baseUrl =
@@ -155,33 +217,33 @@ export async function POST(req: NextRequest) {
     // Create Stripe checkout session with security considerations
     // Reuse existing customer if known
     const stripeSession = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    ...(userDoc.stripeCustomerId
-      ? { customer: userDoc.stripeCustomerId }
-      : { customer_email: customerEmail }),
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    metadata: {
-      planId,
-      email: userDoc.email,
-      userId, // Add for double verification in webhook
-    },
-    success_url: successUrlOverride || `${baseUrl}/plans?checkout=success`,
-    cancel_url: cancelUrlOverride || `${baseUrl}/plans?checkout=cancel`,
-    billing_address_collection: "required",
-    subscription_data: {
+      mode: "subscription",
+      payment_method_types: ["card"],
+      ...(userDoc.stripeCustomerId
+        ? { customer: userDoc.stripeCustomerId }
+        : { customer_email: customerEmail }),
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
       metadata: {
         planId,
         email: userDoc.email,
-        userId,
+        userId, // Add for double verification in webhook
       },
-    },
-  });
+      success_url: successUrlOverride || `${baseUrl}/plans?checkout=success`,
+      cancel_url: cancelUrlOverride || `${baseUrl}/plans?checkout=cancel`,
+      billing_address_collection: "required",
+      subscription_data: {
+        metadata: {
+          planId,
+          email: userDoc.email,
+          userId,
+        },
+      },
+    });
     if (!stripeSession || !stripeSession.url) {
       console.error("stripe.checkout.failed_to_create", { userId, planId });
       return errorResponse("Failed to create checkout session", 500);

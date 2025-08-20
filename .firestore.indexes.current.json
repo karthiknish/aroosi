@@ -191,24 +191,6 @@
       ]
     },
     {
-      "collectionGroup": "tasks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "type",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "processAfter",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "usageTracking",
       "queryScope": "COLLECTION",
       "fields": [
