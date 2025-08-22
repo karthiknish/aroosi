@@ -9,6 +9,7 @@ import { Toaster } from "sonner";
 import ChatBot from "@/components/ChatBot";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useOneSignal } from "@/hooks/useOneSignal";
+import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 
 export default function ClientRoot({ children }: { children: ReactNode }) {
   const { isSignedIn } = useAuthContext();
@@ -20,6 +21,7 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <VerifyEmailBanner />
       <Header hideLinks={hideLinks} />
       <main
         id="main-content"

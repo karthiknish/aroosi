@@ -170,18 +170,25 @@ export async function fetchBlogPostBySlug(
   token?: string
 ): Promise<BlogPost | null> {
   // Firestore-backed API returns { success, data } where data is the post
-  const data = (await getJson(
-    `/api/blog/${encodeURIComponent(slug)}`
-  )) as unknown;
-  if (!data) return null;
-  // If the API returns { data: BlogPost }, return data.data; else, return data
-  if (
-    data &&
-    typeof data === "object" &&
-    "data" in (data as Record<string, unknown>)
-  )
-    return (data as { data: BlogPost }).data;
-  return data as BlogPost;
+  try {
+    const data = (await getJson(
+      `/api/blog/${encodeURIComponent(slug)}`
+    )) as unknown;
+    if (!data) return null;
+    // If the API returns { data: BlogPost }, return data.data; else, return data
+    if (
+      data &&
+      typeof data === "object" &&
+      "data" in (data as Record<string, unknown>)
+    )
+      return (data as { data: BlogPost }).data;
+    return data as BlogPost;
+  } catch (err) {
+    const status = (err as any)?.status;
+    // Treat 404 as a not-found post rather than a hard error
+    if (status === 404) return null;
+    throw err;
+  }
 }
 
 // User: submit a blog post draft for admin review

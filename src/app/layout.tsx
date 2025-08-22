@@ -8,13 +8,7 @@ import Script from "next/script";
 import RouteTransition from "@/components/RouteTransition";
 import RouteLoader from "@/components/RouteLoader";
 import { analytics } from "@/lib/analytics";
-import dynamic from "next/dynamic";
-
-// Lazy load banner to avoid impacting TTFB
-const VerifyEmailBanner = dynamic(
-  () => import("@/components/VerifyEmailBanner"),
-  { ssr: false }
-);
+// Note: Client-only UI like VerifyEmailBanner is rendered inside ClientRoot.
 
 // Removed Next.js Metadata/Viewport exports; using explicit <head> tags instead.
 
@@ -98,7 +92,6 @@ export default function RootLayout({
           <UserProfileProvider>
             <ClientRoot>
               <RouteLoader />
-              <VerifyEmailBanner />
               <RouteTransition>{children}</RouteTransition>
             </ClientRoot>
           </UserProfileProvider>
