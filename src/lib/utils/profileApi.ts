@@ -39,12 +39,24 @@ export async function boostProfileCookieAuth(): Promise<{
 }
 
 export async function deleteProfile(): Promise<void> {
-  const res = await fetchWithFirebaseAuth("/api/profile/delete", {
+  // Prefer unified user profile DELETE; fall back to legacy route
+  let res = await fetchWithFirebaseAuth("/api/user/profile", {
     method: "DELETE",
     headers: {},
-    credentials: "include", // Include cookies in the request
+    credentials: "include",
   });
-  if (!res.ok) throw new Error("Failed to delete profile");
+  if (!res.ok && (res.status === 404 || res.status === 405)) {
+    res = await fetchWithFirebaseAuth("/api/profile/delete", {
+      method: "DELETE",
+      headers: {},
+      credentials: "include",
+    });
+  }
+  if (!res.ok) {
+    const msg =
+      (await res.text().catch(() => "")) || "Failed to delete profile";
+    throw new Error(msg);
+  }
 }
 
 // Record that current user viewed a profile (no error if unauthenticated)

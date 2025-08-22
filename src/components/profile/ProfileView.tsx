@@ -16,6 +16,7 @@ import {
   Edit3,
   BadgeCheck,
   BarChart,
+  AlertTriangle,
 } from "lucide-react";
 import { SpotlightIcon } from "@/components/ui/spotlight-badge";
 // Stripe portal helper
@@ -26,7 +27,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardHeader,
-  CardTitle,
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
@@ -44,13 +44,7 @@ import { planDisplayName } from "@/lib/utils/plan";
 import { isPremium, isPremiumPlus } from "@/lib/utils/subscriptionPlan";
 import { normalisePlan } from "@/lib/subscription/planLimits";
 import type { FC } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { deleteProfile } from "@/lib/utils/profileApi";
 import { boostProfile, activateSpotlight } from "@/lib/profile/userProfileApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
@@ -127,7 +121,7 @@ const DisplaySection: React.FC<DisplaySectionProps> = ({
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-      className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-neutral-100" : ""} ${
+    className={`space-y-6 pt-10 pb-12 ${!noBorder ? "border-b border-neutral-100" : ""} ${
       fullWidth ? "w-full" : ""
     } first:border-t-0 first:pt-0 ${className}`}
   >
@@ -199,19 +193,15 @@ const ProfileView: FC<ProfileViewProps> = ({
     }
   };
 
-  const imageList = useMemo(
-    () =>
-      normalizeProfileImages({
-        rawImages: Array.isArray(images) ? (images as any[]) : undefined,
-        profileImageUrls: (profileData as any)?.profileImageUrls,
-        profileImageIds: profileData?.profileImageIds,
-      }),
-    [
-      images,
-      profileData?.profileImageIds,
-      (profileData as any)?.profileImageUrls,
-    ]
-  );
+  const profileImageUrls = (profileData as any)?.profileImageUrls;
+  const profileImageIds = profileData?.profileImageIds;
+  const imageList = useMemo(() => {
+    return normalizeProfileImages({
+      rawImages: Array.isArray(images) ? (images as any[]) : undefined,
+      profileImageUrls,
+      profileImageIds,
+    });
+  }, [images, profileImageUrls, profileImageIds]);
 
   const handleDeleteProfile = async () => {
     setDeleteError(null);
@@ -354,20 +344,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                   <span className="hidden sm:inline">Usage</span>
                 </Button>
               </div>
-              {/* Destructive / secondary cluster */}
-              <div className="flex gap-2">
-                <Button
-                  className="bg-red-600 hover:bg-red-700 text-white rounded-full px-4"
-                  onClick={() => setShowDeleteDialog(true)}
-                  variant="destructive"
-                  size="sm"
-                  disabled={deleteLoading}
-                  title="Delete Profile"
-                >
-                  <span className="hidden sm:inline">Delete</span>
-                  <span className="sm:hidden">Del</span>
-                </Button>
-              </div>
+              {/* Destructive action moved to Danger Zone at the end */}
             </div>
           </CardHeader>
           <CardContent className="p-6 sm:p-8">
@@ -804,6 +781,33 @@ const ProfileView: FC<ProfileViewProps> = ({
                       </button>
                     </div>
                   )}
+                </DisplaySection>
+
+                {/* Danger Zone */}
+                <DisplaySection
+                  title={
+                    <span className="flex items-center gap-2 text-red-700">
+                      <AlertTriangle className="h-5 w-5" /> Danger zone
+                    </span>
+                  }
+                  noBorder
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg bg-red-50 border border-red-200">
+                    <div className="text-sm text-red-800">
+                      Permanently delete your profile and all related data. This
+                      action cannot be undone.
+                    </div>
+                    <Button
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => setShowDeleteDialog(true)}
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleteLoading}
+                      title="Delete Profile"
+                    >
+                      Delete Profile
+                    </Button>
+                  </div>
                 </DisplaySection>
               </>
             ) : (
