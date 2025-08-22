@@ -110,6 +110,13 @@ export async function GET(req: NextRequest) {
       });
       return applySecurityHeaders(errorResponse(err.message, err.status));
     }
+    // Deny banned users explicitly (defense-in-depth; middleware also gates)
+    try {
+      const u = await db.collection("users").doc(auth.userId).get();
+      if (u.exists && (u.data() as any)?.banned === true) {
+        return applySecurityHeaders(errorResponse("Account is banned", 403));
+      }
+    } catch {}
     // Rate limit: 30/minute per user
     const rl = checkApiRateLimit(`quick_picks_${auth.userId}`, 30, 60000);
     if (!rl.allowed) {

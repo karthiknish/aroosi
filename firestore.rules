@@ -21,6 +21,20 @@ service cloud.firestore {
   true;
     }
 
+    // Conversations metadata: allow participants to create/read; prevent deletes
+    match /conversations/{conversationId} {
+      // Create/update allowed if the caller is included in the participants list they are writing
+      allow create, update: if isSignedIn()
+        && request.resource.data.participants is list
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.updatedAt is number;
+      // Read allowed if the caller is a participant of the conversation
+      allow read: if isSignedIn()
+        && resource.data.participants is list
+        && request.auth.uid in resource.data.participants;
+      allow delete: if false;
+    }
+
     match /blocks/{blockId} {
       allow create: if isSignedIn()
         && request.resource.data.blockerId == request.auth.uid
@@ -97,7 +111,8 @@ service cloud.firestore {
             (!('replyToType' in request.resource.data) || request.resource.data.replyToType in ["text", "voice", "image"]) &&
             (!('replyToFromUserId' in request.resource.data) || request.resource.data.replyToFromUserId is string)
           )
-        );
+        )
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.banned != true;
 
       // Allow participants (sender or recipient) to read messages for their conversation.
       allow read: if isSignedIn() && (
@@ -113,12 +128,13 @@ service cloud.firestore {
         && !("text" in request.resource.data)
         && !("fromUserId" in request.resource.data)
         && !("toUserId" in request.resource.data)
-  && !("replyToMessageId" in request.resource.data)
-  && !("replyToText" in request.resource.data)
-  && !("replyToType" in request.resource.data)
-  && !("replyToFromUserId" in request.resource.data)
+        && !("replyToMessageId" in request.resource.data)
+        && !("replyToText" in request.resource.data)
+        && !("replyToType" in request.resource.data)
+        && !("replyToFromUserId" in request.resource.data)
         && (request.resource.data.readAt is number)
-        && (resource.data.readAt == null || request.resource.data.readAt >= resource.data.readAt);
+        && (resource.data.readAt == null || request.resource.data.readAt >= resource.data.readAt)
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.banned != true;
 
       // Prevent client deletes
       allow delete: if false;
