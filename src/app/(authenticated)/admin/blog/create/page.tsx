@@ -28,12 +28,6 @@ export default function CreateBlogPage() {
   const [slugManuallyEdited, setSlugManuallyEdited] = useState<boolean>(false);
   const [pexelsOpen, setPexelsOpen] = useState<boolean>(false);
   const contentRef = useRef<HTMLTextAreaElement>(null);
-  const isValid =
-    title.trim().length > 0 &&
-    slug.trim().length > 0 &&
-    excerpt.trim().length > 0 &&
-    content.trim().length > 0 &&
-    imageUrl.trim().length > 0;
 
   // Auto-generate slug from title if user hasn't manually edited it
   const onTitleChange = (v: string) => {
@@ -150,7 +144,9 @@ export default function CreateBlogPage() {
   const previewHtml = "";
   const editorResetKey = 0;
 
-  const handleCreatePost = async () => {
+  const handleCreatePost = async (e: React.FormEvent<HTMLFormElement>) => {
+    // Ensure form submission doesn't trigger a full page reload
+    e.preventDefault();
     setCreating(true);
     setError(null);
     try {
@@ -257,14 +253,6 @@ export default function CreateBlogPage() {
             disabled={creating}
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 rounded-md bg-pink-600 text-white hover:bg-pink-700 text-sm disabled:opacity-50"
-            onClick={handleCreatePost}
-            disabled={creating || !isValid}
-          >
-            {creating ? "Creating..." : "Create Post"}
           </button>
         </div>
       </div>

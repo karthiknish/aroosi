@@ -3,6 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
+    // Check if the current user is a participant in a conversation doc
+    function inConversation(convId) {
+      return get(/databases/$(database)/documents/conversations/$(convId)).data != null
+        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
+    }
 
     match /users/{userId} {
       allow read: if isSignedIn();
@@ -80,7 +85,10 @@ service cloud.firestore {
         && request.resource.data.toUserId is string
         && request.resource.data.type in ["text", "voice", "image"]
         && (request.resource.data.text is string || request.resource.data.type != "text")
-        && request.resource.data.createdAt is number
+        && (
+          request.resource.data.createdAt is number ||
+          request.resource.data.createdAt is timestamp
+        )
         // Optional reply metadata (all-or-none basic validation)
         && (
           !('replyToMessageId' in request.resource.data) || (
@@ -93,7 +101,10 @@ service cloud.firestore {
 
       // Allow participants (sender or recipient) to read messages for their conversation.
       allow read: if isSignedIn() && (
-        resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid ||
+        (resource.data.participants is list && request.auth.uid in resource.data.participants) ||
+        (resource.data.conversationId is string && inConversation(resource.data.conversationId))
       );
 
       // Allow recipient to mark a message as read by updating only `readAt` to a newer timestamp.

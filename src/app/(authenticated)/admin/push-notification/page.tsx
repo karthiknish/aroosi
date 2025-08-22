@@ -22,6 +22,8 @@ export default function PushNotificationAdminPage() {
   const [segments, setSegments] = useState<string[]>(["Subscribed Users"]);
   const [maxAudience, setMaxAudience] = useState<number>(100000);
   const [confirmLive, setConfirmLive] = useState<boolean>(false);
+  const [selectedCategory, setSelectedCategory] =
+    useState<string>("Re-engagement");
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) return;
@@ -43,25 +45,115 @@ export default function PushNotificationAdminPage() {
     }
   };
 
+  const templateCategories = useMemo(() => {
+    return {
+      "Re-engagement": [
+        {
+          name: "We miss you",
+          title: "We miss you at Aroosi",
+          message: "Come back and discover new matches waiting for you!",
+        },
+        {
+          name: "New matches",
+          title: "New matches just landed",
+          message: "Fresh profiles match your preferences. Check them out now!",
+        },
+        {
+          name: "Unfinished profile",
+          title: "Finish your profile to get noticed",
+          message: "Complete a few more details to boost your visibility.",
+        },
+      ],
+      "Feature launch": [
+        {
+          name: "Spotlight",
+          title: "Shine with Spotlight",
+          message: "Try the new Spotlight badge and get more profile views.",
+        },
+        {
+          name: "Advanced search",
+          title: "Advanced Search is here",
+          message: "Filter by more preferences to find better matches.",
+        },
+        {
+          name: "Chat improvements",
+          title: "A better chat experience",
+          message: "We’ve improved messaging. Jump in and say hello!",
+        },
+      ],
+      Promotion: [
+        {
+          name: "Limited-time offer",
+          title: "Limited-time offer!",
+          message: "Upgrade to Premium today and save 30%",
+        },
+        {
+          name: "Weekend sale",
+          title: "Weekend sale: Premium perks",
+          message: "Unlock unlimited likes and more at a special price.",
+        },
+        {
+          name: "Referral",
+          title: "Invite friends, get rewards",
+          message: "Share Aroosi and get exclusive benefits for each referral.",
+        },
+      ],
+      Onboarding: [
+        {
+          name: "Welcome",
+          title: "Welcome to Aroosi",
+          message: "Set your preferences to get the best matches.",
+        },
+        {
+          name: "Upload photos",
+          title: "Add your best photo",
+          message: "Profiles with photos get more likes and messages.",
+        },
+        {
+          name: "Set interests",
+          title: "Tell us what you like",
+          message: "Add interests so we can recommend better matches.",
+        },
+      ],
+      "Downtime notice": [
+        {
+          name: "Planned maintenance",
+          title: "Scheduled maintenance",
+          message: "Aroosi will be briefly unavailable at 2:00 AM UTC tonight.",
+        },
+        {
+          name: "Service restored",
+          title: "We’re back online",
+          message: "Thanks for your patience. All services are now restored.",
+        },
+        {
+          name: "Incident update",
+          title: "Service update",
+          message: "We’re investigating an issue affecting some users.",
+        },
+      ],
+      Seasonal: [
+        {
+          name: "Holiday greetings",
+          title: "Happy holidays from Aroosi",
+          message: "Wishing you joyful connections this season!",
+        },
+        {
+          name: "New Year",
+          title: "New year, new connections",
+          message: "Start the year by meeting someone special on Aroosi.",
+        },
+      ],
+    } as Record<string, { name: string; title: string; message: string }[]>;
+  }, []);
+
+  const categoryNames = useMemo(
+    () => Object.keys(templateCategories),
+    [templateCategories]
+  );
   const presets = useMemo(
-    () => [
-      {
-        name: "Promo",
-        title: "Limited-time offer!",
-        message: "Upgrade to Premium today and save 30%",
-      },
-      {
-        name: "Reminder",
-        title: "Complete your profile",
-        message: "Add more details to get better matches",
-      },
-      {
-        name: "Breaking News",
-        title: "New feature released",
-        message: "Check out the latest updates in Aroosi",
-      },
-    ],
-    []
+    () => templateCategories[selectedCategory] || [],
+    [templateCategories, selectedCategory]
   );
 
   return (
@@ -77,21 +169,42 @@ export default function PushNotificationAdminPage() {
           Use Dry Run to preview the payload and audience selection without
           sending.
         </div>
-        <div className="flex flex-wrap gap-2">
-          {presets.map((p) => (
-            <Button
-              key={p.name}
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setTitle(p.title);
-                setMessage(p.message);
-              }}
-              title={`Apply ${p.name} preset`}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div className="md:col-span-1 space-y-1">
+            <Label htmlFor="template-category" className="text-sm">
+              Template Category
+            </Label>
+            <select
+              id="template-category"
+              className="w-full border rounded-md px-3 py-2 bg-white text-sm"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              {p.name}
-            </Button>
-          ))}
+              {categoryNames.map((c) => (
+                <option key={c} value={c} className="text-foreground">
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <div className="flex flex-wrap gap-2">
+              {presets.map((p) => (
+                <Button
+                  key={p.name}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setTitle(p.title);
+                    setMessage(p.message);
+                  }}
+                  title={`Apply ${p.name} preset`}
+                >
+                  {p.name}
+                </Button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="space-y-2">
           <label htmlFor="push-title" className="block text-sm font-medium">

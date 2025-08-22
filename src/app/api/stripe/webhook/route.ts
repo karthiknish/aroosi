@@ -8,7 +8,6 @@ import Stripe from "stripe";
 import {
   inferPlanFromSubscription,
   normaliseInternalPlan,
-  getStripePlanMapping,
 } from "@/lib/subscription/stripePlanMapping";
 
 // Disable automatic body parsing in Next.js (app router) by reading raw body via req.text()
@@ -460,20 +459,42 @@ export async function POST(req: NextRequest) {
 
           if (session.customer_email && isValidEmail(session.customer_email)) {
             try {
-              await Notifications.subscriptionChanged(
-                session.customer_email,
-                session.customer_email.split("@")[0] || session.customer_email,
-                planId
-              );
-              console.info("Stripe webhook notification sent", {
-                scope: "stripe.webhook",
-                type: "notify_success",
-                correlationId,
-                statusCode: 200,
-                durationMs: Date.now() - startedAt,
+              // Attempt to fetch amount/invoice link
+              let amountCents: number | undefined;
+              let invoiceUrl: string | undefined;
+              try {
+                if (session.invoice && typeof session.invoice === "string") {
+                  const inv = await stripe.invoices.retrieve(session.invoice);
+                  amountCents = inv.amount_paid || undefined;
+                  invoiceUrl =
+                    inv.hosted_invoice_url || inv.invoice_pdf || undefined;
+                }
+              } catch {}
+              // Send user receipt
+              let expiresAt: number | null = null;
+              try {
+                if (typeof session.subscription === "string") {
+                  const s = await stripe.subscriptions.retrieve(
+                    session.subscription
+                  );
+                  expiresAt = s.current_period_end
+                    ? s.current_period_end * 1000
+                    : null;
+                }
+              } catch {}
+              await Notifications.subscriptionReceipt(session.customer_email, {
+                fullName:
+                  session.customer_details?.name ||
+                  session.customer_email.split("@")[0] ||
+                  session.customer_email,
+                plan: planId,
+                amountCents,
+                currency: (session.currency || "usd").toString(),
+                invoiceUrl,
+                expiresAt,
               });
             } catch (emailError) {
-              console.error("Stripe webhook notify error", {
+              console.error("Stripe webhook receipt notify error", {
                 scope: "stripe.webhook",
                 type: "notify_error",
                 message:
@@ -481,8 +502,6 @@ export async function POST(req: NextRequest) {
                     ? emailError.message
                     : String(emailError),
                 correlationId,
-                statusCode: 500,
-                durationMs: Date.now() - startedAt,
               });
             }
           }
@@ -565,6 +584,13 @@ export async function POST(req: NextRequest) {
             statusCode: 200,
             durationMs: Date.now() - startedAt,
           });
+          // Notify cancellation
+          const planName = inferPlanFromSubscription(sub) || "premium";
+          await Notifications.subscriptionCancelled(email, {
+            fullName: email.split("@")[0],
+            plan: planName,
+            effectiveDate: sub.cancel_at ? sub.cancel_at * 1000 : undefined,
+          });
           await markProcessed(event.id, event.type);
         } catch (e) {
           console.error("Stripe webhook Firestore downgrade failed", {
@@ -629,6 +655,30 @@ export async function POST(req: NextRequest) {
                 correlationId,
                 subscriptionId: sub.id,
                 planId,
+              });
+            }
+          }
+          // Notify user depending on status
+          if (email && isValidEmail(email)) {
+            const fullName = email.split("@")[0];
+            if (sub.status === "past_due" || sub.status === "unpaid") {
+              const updateUrl =
+                process.env.STRIPE_BILLING_PORTAL ||
+                `${process.env.NEXT_PUBLIC_APP_URL || "https://www.aroosi.app"}/plans`;
+              await Notifications.renewalFailure(email, {
+                fullName,
+                plan: planId || "premium",
+                reason: sub.status,
+                updateUrl,
+              });
+            } else if (sub.status === "active") {
+              await Notifications.renewalSuccess(email, {
+                fullName,
+                plan: planId || "premium",
+                periodEnd: sub.current_period_end
+                  ? sub.current_period_end * 1000
+                  : undefined,
+                invoiceUrl: undefined,
               });
             }
           }
@@ -747,6 +797,28 @@ export async function POST(req: NextRequest) {
                 planId,
               });
             }
+            // Send receipt & renewal success email
+            const amountCents = invoice.amount_paid || invoice.amount_due || 0;
+            const invoiceUrl =
+              invoice.hosted_invoice_url || invoice.invoice_pdf || undefined;
+            await Notifications.subscriptionReceipt(email, {
+              fullName: email.split("@")[0],
+              plan: planId,
+              amountCents,
+              currency: (invoice.currency || "usd").toString(),
+              invoiceUrl,
+              expiresAt: sub.current_period_end
+                ? sub.current_period_end * 1000
+                : null,
+            });
+            await Notifications.renewalSuccess(email, {
+              fullName: email.split("@")[0],
+              plan: planId,
+              periodEnd: sub.current_period_end
+                ? sub.current_period_end * 1000
+                : undefined,
+              invoiceUrl,
+            });
           }
           await markProcessed(event.id, event.type);
         } catch (e) {

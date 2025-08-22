@@ -124,7 +124,7 @@ export async function createOrUpdateUserProfile(
     disabled: data.disabled,
     banReason: data.banReason,
     banExpiresAt: data.banExpiresAt,
-    banned: data.banned,
+    banned: data.banned ?? false,
   };
   await userRef.set(userProfile, { merge: true });
   return userProfile;

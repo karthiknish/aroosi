@@ -509,7 +509,7 @@ export default function AdminProfilePage() {
           open={!!confirmBanId}
           onOpenChange={() => setConfirmBanId(null)}
         >
-          <DialogContent>
+          <DialogContent className="bg-white">
             <DialogTitle>
               {filteredProfiles.find((p) => p._id === confirmBanId)?.banned
                 ? "Unban"

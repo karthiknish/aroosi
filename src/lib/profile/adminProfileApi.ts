@@ -394,16 +394,13 @@ export async function deleteAdminProfileImageById({
   profileId: string;
   imageId: string;
 }): Promise<{ success: boolean; message?: string }> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    // Cookie-based session; no Authorization header
-  };
   try {
-    const res = await fetch(`/api/profile-images`, {
-      method: "DELETE",
-      headers,
-      body: JSON.stringify({ userId: profileId, imageId }),
-    });
+    const res = await fetch(
+      `/api/admin/profiles/${profileId}/images/${imageId}`,
+      {
+        method: "DELETE",
+      }
+    );
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to delete profile image: ${errorText}`);

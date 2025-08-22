@@ -83,16 +83,18 @@ export function profileBanStatusTemplate(options: {
   profile: Profile;
   banned: boolean;
   reason?: string;
+  appealUrl?: string;
 }): EmailPayload {
-  const { profile, banned, reason } = options;
+  const { profile, banned, reason, appealUrl } = options;
   const subject = banned
     ? "Your Aroosi profile has been banned"
     : "Your Aroosi profile is active again";
   const body = banned
     ? `<h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Profile banned</h1>
        <p style="margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#444">Hi ${profile.fullName || "there"}, your profile has been banned due to violations of our community guidelines.</p>
-       ${reason ? `<p style="margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#444"><strong>Reason:</strong> ${reason}</p>` : ""}
-       <p style="margin:0 0 0 0;font-size:14px;line-height:1.6;color:#444">If you believe this is a mistake, reply to this email.</p>`
+       ${reason ? `<p style=\"margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#444\"><strong>Reason:</strong> ${reason}</p>` : ""}
+       <p style=\"margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#444\">If you believe this is a mistake, reply to this email${appealUrl ? ", or" : "."}</p>
+       ${appealUrl ? `<p style=\"margin:0;font-size:14px;line-height:1.6;color:#444\">You can also appeal here: <a href=\"${appealUrl}\" style=\"color:#111\">Appeal decision</a></p>` : ""}`
     : `<h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">You’re back online</h1>
        <p style="margin:0 0 0 0;font-size:14px;line-height:1.6;color:#444">Hi ${profile.fullName || "there"}, your profile is active again and ready to be discovered.</p>`;
   return { subject, html: wrapEmailContent(subject, body) };
@@ -248,7 +250,7 @@ export function emailVerificationLinkTemplate(options: {
   const body = `
     <h1 style="margin:0 0 12px 0;font-size:20px;line-height:1.3;color:#111">Confirm your email</h1>
     <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName || "there"}, please confirm this is your email address so you can access all features on Aroosi.</p>
-    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Click the button below to verify. This link expires in ${Math.round(expiresMinutes/60)} hours.</p>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Click the button below to verify. This link expires in ${Math.round(expiresMinutes / 60)} hours.</p>
     <div style="margin:24px 0">
       <a href="${verifyUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600">Verify Email</a>
     </div>
@@ -315,4 +317,209 @@ export function recommendedProfilesTemplate(options: {
 // Export a union type if helpful for future dynamic template selection
 export type EmailTemplateFn = (...args: unknown[]) => EmailPayload;
 
+// Subscription: Purchase receipt (user)
+export function subscriptionReceiptTemplate(options: {
+  fullName: string;
+  plan: string;
+  amountCents?: number;
+  currency?: string;
+  invoiceUrl?: string;
+  expiresAt?: number | null;
+}): EmailPayload {
+  const {
+    fullName,
+    plan,
+    amountCents,
+    currency = "usd",
+    invoiceUrl,
+    expiresAt,
+  } = options;
+  const amount =
+    typeof amountCents === "number"
+      ? (amountCents / 100).toFixed(2)
+      : undefined;
+  const subject = `Your Aroosi ${plan} subscription receipt`;
+  const expiryStr =
+    typeof expiresAt === "number" && expiresAt > 0
+      ? new Date(expiresAt).toLocaleDateString()
+      : undefined;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Thank you for your purchase</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, your ${plan} subscription is now active.</p>
+    ${amount ? `<p style=\"margin:0 0 12px 0;font-size:14px;color:#444\"><strong>Amount:</strong> ${amount} ${currency.toUpperCase()}</p>` : ""}
+    ${expiryStr ? `<p style=\"margin:0 0 12px 0;font-size:14px;color:#444\"><strong>Renews/Expires:</strong> ${expiryStr}</p>` : ""}
+    ${invoiceUrl ? `<a href=\"${invoiceUrl}\" style=\"display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px\">View invoice</a>` : ""}
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
 
+export function trialStartedTemplate(options: {
+  fullName: string;
+  plan: string;
+  trialEnd: number;
+}): EmailPayload {
+  const { fullName, plan, trialEnd } = options;
+  const date = new Date(trialEnd).toLocaleString();
+  const subject = `Your ${plan} trial has started`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Trial started</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, your ${plan} trial is active until <strong>${date}</strong>.</p>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function trialEndingTemplate(options: {
+  fullName: string;
+  plan: string;
+  trialEnd: number;
+}): EmailPayload {
+  const { fullName, plan, trialEnd } = options;
+  const date = new Date(trialEnd).toLocaleString();
+  const subject = `Your ${plan} trial ends soon`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Trial ending soon</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, your ${plan} trial ends on <strong>${date}</strong>.</p>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function renewalSuccessTemplate(options: {
+  fullName: string;
+  plan: string;
+  periodEnd?: number;
+  invoiceUrl?: string;
+}): EmailPayload {
+  const { fullName, plan, periodEnd, invoiceUrl } = options;
+  const endStr = periodEnd
+    ? new Date(periodEnd).toLocaleDateString()
+    : undefined;
+  const subject = `Your ${plan} subscription renewed successfully`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Renewal successful</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, your ${plan} subscription has renewed successfully.</p>
+    ${endStr ? `<p style=\"margin:0 0 12px 0;font-size:14px;color:#444\"><strong>Next renewal:</strong> ${endStr}</p>` : ""}
+    ${invoiceUrl ? `<a href=\"${invoiceUrl}\" style=\"display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px\">View invoice</a>` : ""}
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function renewalFailureTemplate(options: {
+  fullName: string;
+  plan: string;
+  reason?: string;
+  updateUrl?: string;
+}): EmailPayload {
+  const { fullName, plan, reason, updateUrl } = options;
+  const subject = `We couldn't renew your ${plan} subscription`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Payment failed</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, your ${plan} renewal payment failed${reason ? `: ${reason}` : "."}</p>
+    ${updateUrl ? `<a href=\"${updateUrl}\" style=\"display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px\">Update payment method</a>` : ""}
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function subscriptionCancelledTemplate(options: {
+  fullName: string;
+  plan: string;
+  effectiveDate?: number;
+}): EmailPayload {
+  const { fullName, plan, effectiveDate } = options;
+  const dateStr = effectiveDate
+    ? new Date(effectiveDate).toLocaleDateString()
+    : undefined;
+  const subject = `${plan} subscription cancelled`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111">Subscription cancelled</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444">Hi ${fullName}, your ${plan} subscription has been cancelled.${dateStr ? ` It remains active until ${dateStr}.` : ""}</p>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function refundIssuedTemplate(options: {
+  fullName: string;
+  amountCents?: number;
+  currency?: string;
+}): EmailPayload {
+  const { fullName, amountCents, currency = "usd" } = options;
+  const amount =
+    typeof amountCents === "number"
+      ? (amountCents / 100).toFixed(2)
+      : undefined;
+  const subject = `Your refund has been issued`;
+  const body = `
+    <h1 style=\"margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111\">Refund issued</h1>
+    <p style=\"margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444\">Hi ${fullName}, we've issued your refund${amount ? ` of ${amount} ${currency.toUpperCase()}` : ""}.</p>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function planExpiredTemplate(options: {
+  fullName: string;
+  plan: string;
+}): EmailPayload {
+  const { fullName, plan } = options;
+  const subject = `Your ${plan} plan has ended`;
+  const body = `
+    <h1 style=\"margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111\">Plan ended</h1>
+    <p style=\"margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#444\">Hi ${fullName}, your ${plan} plan has ended. You can renew anytime to continue enjoying benefits.</p>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function unreadMessageReminderTemplate(options: {
+  fullName: string;
+  unreadCount: number;
+}): EmailPayload {
+  const { fullName, unreadCount } = options;
+  const subject =
+    unreadCount === 1
+      ? "You have 1 unread message on Aroosi"
+      : `You have ${unreadCount} unread messages on Aroosi`;
+  const body = `
+    <h1 style=\"margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111\">You have unread messages</h1>
+    <p style=\"margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#444\">Hi ${fullName}, you have ${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}. Don’t keep them waiting.</p>
+    <a href=\"https://aroosi.app/messages\" style=\"display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px\">Open messages</a>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}
+
+export function messagesDigestTemplate(options: {
+  fullName: string;
+  period: "daily" | "weekly";
+  unreadCount?: number;
+  newMatchesCount?: number;
+  previews?: Array<{ from: string; snippet: string }>;
+}): EmailPayload {
+  const {
+    fullName,
+    period,
+    unreadCount = 0,
+    newMatchesCount = 0,
+    previews = [],
+  } = options;
+  const subject =
+    period === "daily"
+      ? "Your Aroosi daily summary"
+      : "Your Aroosi weekly summary";
+  const itemsHtml = previews
+    .slice(0, 5)
+    .map(
+      (p) => `
+      <div style=\"border:1px solid #eee;border-radius:10px;padding:10px;margin:8px 0\">
+        <div style=\"font-weight:600;color:#111;font-size:14px\">${p.from}</div>
+        <div style=\"color:#555;font-size:13px;line-height:1.5\">${p.snippet}</div>
+      </div>`
+    )
+    .join("");
+  const body = `
+    <h1 style=\"margin:0 0 8px 0;font-size:20px;line-height:1.3;color:#111\">Your ${period} summary</h1>
+    <ul style=\"margin:0 0 16px 18px;padding:0;color:#444;font-size:14px;line-height:1.6\">
+      <li>Unread messages: <strong>${unreadCount}</strong></li>
+      <li>New matches: <strong>${newMatchesCount}</strong></li>
+    </ul>
+    ${itemsHtml}
+    <a href=\"https://aroosi.app/messages\" style=\"display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 14px;border-radius:10px;font-size:14px\">Open Aroosi</a>
+  `;
+  return { subject, html: wrapEmailContent(subject, body) };
+}

@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
                 expiresAt,
               },
               emailVerified: false,
+              banned: false,
               updatedAt: Date.now(),
             },
             { merge: true }
@@ -109,7 +110,11 @@ export async function POST(request: NextRequest) {
               .collection(COLLECTIONS.USERS)
               .doc(userRecord.uid)
               .set(
-                { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
+                {
+                  welcomeEmailSentAt: Date.now(),
+                  banned: false,
+                  updatedAt: Date.now(),
+                },
                 { merge: true }
               );
           } catch (e) {
@@ -130,7 +135,11 @@ export async function POST(request: NextRequest) {
                 .collection(COLLECTIONS.USERS)
                 .doc(userRecord.uid)
                 .set(
-                  { welcomeEmailSentAt: Date.now(), updatedAt: Date.now() },
+                  {
+                    welcomeEmailSentAt: Date.now(),
+                    banned: false,
+                    updatedAt: Date.now(),
+                  },
                   { merge: true }
                 );
             }

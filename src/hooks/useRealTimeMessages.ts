@@ -401,6 +401,28 @@ export function useRealTimeMessages({
               }
             : {}),
         });
+        // Upsert conversation membership and lastMessage
+        try {
+          const convRef = doc(db, "conversations", conversationId);
+          await setDoc(
+            convRef,
+            {
+              participants: [userId, toUserId],
+              lastMessage: {
+                id: docRef.id,
+                fromUserId: userId,
+                toUserId,
+                text: trimmed,
+                type: "text",
+                createdAt,
+              },
+              updatedAt: createdAt,
+            },
+            { merge: true }
+          );
+        } catch {
+          /* non-fatal */
+        }
         // Denormalize lastMessage onto match doc
         try {
           const a = [userId, toUserId].sort();
@@ -489,7 +511,30 @@ export function useRealTimeMessages({
             _creationTime: saved.createdAt,
           },
         ]);
-        // Denormalize lastMessage for voice
+        // Upsert conversation membership and lastMessage for voice
+        try {
+          const convRef = doc(db, "conversations", conversationId);
+          await setDoc(
+            convRef,
+            {
+              participants: [userId, toUserId],
+              lastMessage: {
+                id: saved._id,
+                fromUserId: userId,
+                toUserId,
+                text: "",
+                type: "voice",
+                createdAt: saved.createdAt,
+                duration: saved.duration,
+              },
+              updatedAt: saved.createdAt,
+            },
+            { merge: true }
+          );
+        } catch {
+          /* ignore */
+        }
+        // Denormalize lastMessage for voice to matches
         try {
           const a = [userId, toUserId].sort();
           const a1 = a[0];

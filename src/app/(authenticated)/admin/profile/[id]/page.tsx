@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { deleteAdminProfileImageById } from "@/lib/profile/adminProfileApi";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";
@@ -41,7 +42,12 @@ interface MatchType {
 export default function AdminProfileDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { isLoaded: authIsLoaded, isSignedIn, isAdmin, isAuthenticated } = useAuthContext();
+  const {
+    isLoaded: authIsLoaded,
+    isSignedIn,
+    isAdmin,
+    isAuthenticated,
+  } = useAuthContext();
 
   // All hooks must be called unconditionally
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -79,15 +85,18 @@ export default function AdminProfileDetailPage() {
         }
       }
       const { getJson } = await import("@/lib/http/client");
-      const data = await getJson<any>(`/api/admin/profiles/${id}?nocache=true`, {
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "max-age=300, stale-while-revalidate=60",
-          "x-client-check": "admin-profile",
-        },
-        cache: "no-store",
-        next: { revalidate: 300 } as any,
-      });
+      const data = await getJson<any>(
+        `/api/admin/profiles/${id}?nocache=true`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "max-age=300, stale-while-revalidate=60",
+            "x-client-check": "admin-profile",
+          },
+          cache: "no-store",
+          next: { revalidate: 300 } as any,
+        }
+      );
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -184,7 +193,7 @@ export default function AdminProfileDetailPage() {
     const validImages: ImageType[] = Array.isArray(images) ? images : [];
     if (validImages.length === 0) return defaultReturn;
     const map: Record<string, ImageType> = Object.fromEntries(
-      validImages.map((img) => [String(img.storageId), img]),
+      validImages.map((img) => [String(img.storageId), img])
     );
     const all = [...validImages];
     let ordered: ImageType[] = [];
@@ -242,23 +251,24 @@ export default function AdminProfileDetailPage() {
 
     try {
       setIsDeleting(true);
-      const { deleteJson } = await import("@/lib/http/client");
-      const deleteRes = await deleteJson<{ success?: boolean }>(`/api/profile-images`, {
-        headers: { "Content-Type": "application/json", "x-client-check": "admin-delete-image" },
-        body: { userId: profile.userId, imageId: storageId } as any,
-      } as any);
-
-      if (deleteRes && (deleteRes as any).success !== false) {
+      if (!profile?.userId) throw new Error("Missing userId for deletion");
+      const resp = await deleteAdminProfileImageById({
+        profileId: profile.userId,
+        imageId: storageId,
+      });
+      if (resp && (resp as any).success !== false) {
         showSuccessToast("Image deleted successfully");
         setImageToDelete(null);
         setIsDeleteModalOpen(false);
+        void refetchProfile();
       } else {
-        console.error("Error deleting image");
         showErrorToast(null, "Failed to delete image");
       }
     } catch (error) {
-      console.error("Error deleting image:", error);
-      showErrorToast(null, "Failed to delete image");
+      showErrorToast(
+        error instanceof Error ? error : null,
+        "Failed to delete image"
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -276,12 +286,12 @@ export default function AdminProfileDetailPage() {
 
   const handlePrev = () => {
     setCurrentImageIdx((prev) =>
-      prev === 0 ? orderedImages.length - 1 : prev - 1,
+      prev === 0 ? orderedImages.length - 1 : prev - 1
     );
   };
   const handleNext = () => {
     setCurrentImageIdx((prev) =>
-      prev === orderedImages.length - 1 ? 0 : prev + 1,
+      prev === orderedImages.length - 1 ? 0 : prev + 1
     );
   };
 
@@ -309,13 +319,13 @@ export default function AdminProfileDetailPage() {
           hasSpotlightBadge: !profile.hasSpotlightBadge,
           durationDays: 30,
         },
-        undefined,
+        undefined
       );
 
       showSuccessToast(
         profile.hasSpotlightBadge
           ? "Spotlight badge removed."
-          : "Spotlight badge granted for 30 days.",
+          : "Spotlight badge granted for 30 days."
       );
 
       // Refresh profile data
@@ -325,7 +335,7 @@ export default function AdminProfileDetailPage() {
         null,
         error instanceof Error
           ? error.message
-          : "Failed to update spotlight badge",
+          : "Failed to update spotlight badge"
       );
     }
   };
