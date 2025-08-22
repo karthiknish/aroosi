@@ -164,6 +164,27 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 </Link>
               </motion.div>
 
+              <motion.div
+                custom={1.6}
+                variants={navItemVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <Link
+                  href="/engagement/shortlists"
+                  onClick={onClick}
+                  className="block"
+                >
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
+                  >
+                    <Star className="h-5 w-5 mr-2" />
+                    <span>Shortlists</span>
+                  </Button>
+                </Link>
+              </motion.div>
+
               {profile && isPremium(profile.subscriptionPlan) && (
                 <>
                   <motion.div
@@ -453,6 +474,8 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     const items: React.ReactNode[] = [];
     items.push(iconBtn("/search", Search, "Search Profiles"));
     items.push(iconBtn("/matches", Heart, "Matches"));
+    items.push(iconBtn("/engagement/quick-picks", Star, "Quick Picks"));
+    items.push(iconBtn("/engagement/shortlists", Star, "Shortlists"));
     if (isAdmin) items.push(iconBtn("/admin", Shield, "Admin"));
     if (profile) {
       if (isPremium(profile.subscriptionPlan)) {

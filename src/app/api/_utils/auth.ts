@@ -54,9 +54,7 @@ export async function requireSession(
       req.headers.get("authorization") || req.headers.get("Authorization");
     if (authz && authz.toLowerCase().startsWith("bearer ")) {
       firebaseToken = authz.slice(7).trim() || null;
-      if (process.env.NODE_ENV !== "production") {
-        console.info("[requireSession] Using bearer header fallback");
-      }
+      // dev log omitted to satisfy linter
     }
   }
   if (!firebaseToken) {
@@ -106,6 +104,101 @@ export async function requireSession(
           { merge: true }
         );
         userDoc = await getFirebaseUser(uid);
+        // dev log omitted to satisfy linter
+      }
+    } catch {
+      // dev log omitted to satisfy linter
+    }
+    if (!userDoc) {
+      return {
+        errorResponse: json(404, { success: false, error: "User not found" }),
+      };
+    }
+  }
+  if (userDoc.banned) {
+    return {
+      errorResponse: json(403, { success: false, error: "Account is banned" }),
+    };
+  }
+  // Basic public profile (could be expanded if separate collection later)
+  const profile = userDoc; // unify for now
+  return { userId: uid as Id<"users">, user: userDoc, profile };
+}
+
+/**
+ * Same as requireSession but DOES NOT block banned users. Use for endpoints that must allow
+ * banned users, such as submitting an appeal.
+ */
+export async function requireSessionAllowBanned(
+  req: NextRequest
+): Promise<
+  | { userId: Id<"users">; user: any; profile: any | null }
+  | { errorResponse: Response }
+> {
+  const res = await requireSessionCore(req, { allowBanned: true });
+  if ("errorResponse" in res) return res;
+  return res;
+}
+
+// Internal core to avoid duplication; not exported
+async function requireSessionCore(
+  req: NextRequest,
+  options?: { allowBanned?: boolean }
+): Promise<
+  | { userId: Id<"users">; user: any; profile: any | null }
+  | { errorResponse: Response }
+> {
+  // Prefer Firebase ID token cookie
+  let firebaseToken = readCookie(req, "firebaseAuthToken");
+  if (!firebaseToken) {
+    const authz =
+      req.headers.get("authorization") || req.headers.get("Authorization");
+    if (authz && authz.toLowerCase().startsWith("bearer ")) {
+      firebaseToken = authz.slice(7).trim() || null;
+    }
+  }
+  if (!firebaseToken) {
+    // dev log omitted to satisfy linter
+    return {
+      errorResponse: json(401, { success: false, error: "No auth session" }),
+    };
+  }
+  let decoded: any;
+  try {
+    decoded = await verifyFirebaseIdToken(firebaseToken);
+  } catch {
+    // dev log omitted to satisfy linter
+    return {
+      errorResponse: json(401, { success: false, error: "Invalid session" }),
+    };
+  }
+  const uid: string | undefined = decoded?.uid;
+  if (!uid) {
+    return {
+      errorResponse: json(401, {
+        success: false,
+        error: "Invalid token payload",
+      }),
+    };
+  }
+  let userDoc = await getFirebaseUser(uid);
+  if (!userDoc) {
+    try {
+      const authUser = await adminAuth.getUser(uid);
+      if (authUser) {
+        const now = Date.now();
+        const email = authUser.email ? authUser.email.toLowerCase() : "";
+        await db.collection(COLLECTIONS.USERS).doc(uid).set(
+          {
+            email,
+            createdAt: now,
+            updatedAt: now,
+            role: "user",
+            subscriptionPlan: "free",
+          },
+          { merge: true }
+        );
+        userDoc = await getFirebaseUser(uid);
         if (process.env.NODE_ENV !== "production") {
           // eslint-disable-next-line no-console
           console.info("[requireSession] Bootstrapped missing user profile", {
@@ -129,13 +222,12 @@ export async function requireSession(
       };
     }
   }
-  if (userDoc.banned) {
+  if (userDoc.banned && !options?.allowBanned) {
     return {
       errorResponse: json(403, { success: false, error: "Account is banned" }),
     };
   }
-  // Basic public profile (could be expanded if separate collection later)
-  const profile = userDoc; // unify for now
+  const profile = userDoc;
   return { userId: uid as Id<"users">, user: userDoc, profile };
 }
 

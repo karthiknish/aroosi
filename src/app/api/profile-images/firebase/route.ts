@@ -7,7 +7,7 @@ import { NextRequest } from "next/server";
 import { withFirebaseAuth, AuthenticatedUser } from "@/lib/auth/firebaseAuth";
 import { adminStorage, db } from "@/lib/firebaseAdmin";
 
-async function listImages(user: AuthenticatedUser) {
+async function listImages(userId: string) {
   // Resolve bucket defensively: adminStorage.bucket() may throw if no default bucket
   // configured when initializing firebase-admin. Fall back to env-derived bucket.
   let bucket: any;
@@ -24,7 +24,7 @@ async function listImages(user: AuthenticatedUser) {
     bucket = adminStorage.bucket(fallbackName);
   }
   const [filesRaw] = await bucket.getFiles({
-    prefix: `users/${user.id}/profile-images/`,
+    prefix: `users/${userId}/profile-images/`,
   });
   const files: any[] = Array.isArray(filesRaw) ? filesRaw : [];
   const images = await Promise.all(
@@ -45,20 +45,32 @@ async function listImages(user: AuthenticatedUser) {
   return images;
 }
 
-export const GET = withFirebaseAuth(async (user: AuthenticatedUser) => {
-  try {
-    const images = await listImages(user);
-    return new Response(JSON.stringify({ success: true, images }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("firebase images GET error", e);
-    return new Response(JSON.stringify({ success: false, error: "Failed" }), {
-      status: 500,
-    });
+export const GET = withFirebaseAuth(
+  async (user: AuthenticatedUser, req?: NextRequest) => {
+    try {
+      let targetUserId = user.id;
+      try {
+        if (req) {
+          const sp = new URL(req.url).searchParams;
+          const qsUserId = sp.get("userId");
+          if (qsUserId && (qsUserId === user.id || user.role === "admin")) {
+            targetUserId = qsUserId;
+          }
+        }
+      } catch {}
+      const images = await listImages(targetUserId);
+      return new Response(JSON.stringify({ success: true, images }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      console.error("firebase images GET error", e);
+      return new Response(JSON.stringify({ success: false, error: "Failed" }), {
+        status: 500,
+      });
+    }
   }
-});
+);
 
 export const POST = withFirebaseAuth(
   async (user: AuthenticatedUser, req: NextRequest) => {
@@ -191,6 +203,7 @@ export const DELETE = withFirebaseAuth(
       }
       await file.delete({ ignoreNotFound: true });
       const imageId = storageId.split("/").pop() || storageId;
+      // Remove image doc
       await db
         .collection("users")
         .doc(user.id)
@@ -198,6 +211,33 @@ export const DELETE = withFirebaseAuth(
         .doc(imageId)
         .delete()
         .catch(() => {});
+      // Also remove from arrays on user doc to keep UI consistent
+      const userRef = db.collection("users").doc(user.id);
+      const snap = await userRef.get();
+      if (snap.exists) {
+        const data = snap.data() as any;
+        const ids: string[] = Array.isArray(data.profileImageIds)
+          ? data.profileImageIds.slice()
+          : [];
+        const urls: string[] = Array.isArray(data.profileImageUrls)
+          ? data.profileImageUrls.slice()
+          : [];
+        const idx = ids.findIndex(
+          (id) => id === storageId || id.endsWith(`/${imageId}`)
+        );
+        if (idx >= 0) {
+          ids.splice(idx, 1);
+          if (urls[idx]) urls.splice(idx, 1);
+          await userRef.set(
+            {
+              profileImageIds: ids,
+              profileImageUrls: urls,
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          );
+        }
+      }
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (e) {
       console.error("firebase images DELETE error", e);

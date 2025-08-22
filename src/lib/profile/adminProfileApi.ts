@@ -102,12 +102,24 @@ export async function deleteAdminProfile({
 }: {
   id: string;
 }): Promise<{ success: boolean; message?: string }> {
+  // Try RESTful DELETE to /api/admin/profiles/[id]; if unavailable, fall back to
+  // body-based DELETE on /api/admin/profiles with { id }
   const headers: Record<string, string> = {};
   try {
-    const res = await fetch(`/api/admin/profiles/${id}`, {
+    let res = await fetch(`/api/admin/profiles/${id}`, {
       method: "DELETE",
       headers,
     });
+
+    if (!res.ok && (res.status === 404 || res.status === 405)) {
+      // Fallback to index route that expects JSON body
+      res = await fetch(`/api/admin/profiles`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+    }
+
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to delete profile: ${errorText}`);

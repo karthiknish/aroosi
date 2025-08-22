@@ -10,7 +10,8 @@ export interface QueuedEmail {
   subject: string;
   html: string;
   from?: string;
-  status?: 'queued' | 'sending' | 'sent' | 'error' | 'retry';
+  preheader?: string;
+  status?: "queued" | "sending" | "sent" | "error" | "retry";
   error?: string;
   attempts?: number;
   maxAttempts?: number;
@@ -59,7 +60,13 @@ export async function processEmail(docId: string) {
     return { ok: false, reason: 'not_due' } as const;
   }
   await ref.set({ status: 'sending', updatedAt: now, lastAttemptAt: now }, { merge: true });
-  const result = await sendEmail({ to: data.to, subject: data.subject, html: data.html, from: data.from });
+  const result = await sendEmail({
+    to: data.to,
+    subject: data.subject,
+    html: data.html,
+    from: data.from,
+    preheader: data.preheader,
+  });
   if ((result as any).error) {
     const attempts = (data.attempts || 0) + 1;
     const exhausted = attempts >= (data.maxAttempts || DEFAULT_MAX_ATTEMPTS);

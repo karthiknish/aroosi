@@ -215,13 +215,18 @@ export type ProfileImageInfo = { url: string; storageId: string };
  * Fetch the authenticated user's profile images from the server.
  * Uses cookie session via fetchWithFirebaseAuth to ensure proper auth locally.
  */
-export async function fetchProfileImages(): Promise<ProfileImageInfo[]> {
-  const res = await fetchWithFirebaseAuth("/api/profile-images/firebase", {
+export async function fetchProfileImages(
+  userId?: string
+): Promise<ProfileImageInfo[]> {
+  const url = userId
+    ? `/api/profile-images/firebase?userId=${encodeURIComponent(userId)}`
+    : "/api/profile-images/firebase";
+  const res = await fetchWithFirebaseAuth(url, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({} as any));
+    const err = await res.json().catch(() => ({}) as any);
     throw new Error(err?.error || `HTTP ${res.status}`);
   }
   const json = (await res.json().catch(() => ({}))) as {

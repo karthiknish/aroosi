@@ -5,8 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchShortlists, toggleShortlist, fetchNote, setNote, ShortlistEntry } from "@/lib/engagementUtil";
 import Image from "next/image";
 import Link from "next/link";
-import { useQuery as useRQ } from "@tanstack/react-query";
-import { enrichProfiles } from "@/lib/engagementUtil";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,26 +17,6 @@ export default function MyShortlistsPage() {
   });
   const [notes, setNotes] = useState<Record<string, string>>({});
   const entries: ShortlistEntry[] = data || [];
-  const userIds = entries.map((e) => e.userId);
-  const { data: enriched } = useRQ({
-    queryKey: ["shortlist-profiles", userIds],
-    queryFn: async () => {
-      if (userIds.length === 0)
-        return [] as Array<{
-          userId: string;
-          fullName?: string | null;
-          city?: string | null;
-          imageUrl?: string | null;
-        }>;
-      try {
-        return await enrichProfiles(userIds);
-      } catch {
-        return [] as any[];
-      }
-    },
-    enabled: userIds.length > 0,
-    staleTime: 5 * 60 * 1000,
-  });
 
   useEffect(() => {
     let mounted = true;
@@ -72,8 +50,8 @@ export default function MyShortlistsPage() {
   const onSaveNote = async (userId: string) => {
     try {
       const text = notes[userId] || "";
-  const ok = await setNote(userId, text);
-  if (ok) showSuccessToast("Note saved");
+      const ok = await setNote(userId, text);
+      if (ok) showSuccessToast("Note saved");
     } catch (e: any) {
       showErrorToast(e?.message ?? "Failed to save note");
     }
@@ -108,13 +86,10 @@ export default function MyShortlistsPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-neutral-100">
-                        {enriched?.find((p: any) => p.userId === e.userId)
-                          ?.imageUrl ? (
+                        {Array.isArray(e.profileImageUrls) &&
+                        e.profileImageUrls[0] ? (
                           <Image
-                            src={
-                              enriched.find((p: any) => p.userId === e.userId)!
-                                .imageUrl!
-                            }
+                            src={e.profileImageUrls[0] as string}
                             alt="avatar"
                             width={40}
                             height={40}

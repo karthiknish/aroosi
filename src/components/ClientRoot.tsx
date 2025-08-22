@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -12,7 +12,16 @@ import { useOneSignal } from "@/hooks/useOneSignal";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 
 export default function ClientRoot({ children }: { children: ReactNode }) {
-  const { isSignedIn } = useAuthContext();
+  const { profile } = useAuthContext();
+  useEffect(() => {
+    try {
+      if (profile?.banned === true && typeof window !== "undefined") {
+        if (!window.location.pathname.startsWith("/banned")) {
+          window.location.replace("/banned");
+        }
+      }
+    } catch {}
+  }, [profile?.banned]);
 
   // Wire OneSignal registration for signed-in users
   useOneSignal();
@@ -22,7 +31,7 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
   return (
     <>
       <VerifyEmailBanner />
-      <Header hideLinks={hideLinks} />
+      <Header hideLinks={!!profile?.banned || hideLinks} />
       <main
         id="main-content"
         className="pt-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden"

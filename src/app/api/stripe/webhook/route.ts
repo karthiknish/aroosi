@@ -115,26 +115,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.info("Stripe webhook received", {
-      scope: "stripe.webhook",
-      type: "received",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      eventType: event.type,
-      eventId: event.id,
-    });
+    // dev logs removed
 
     // Enforce allowlist
     if (!ALLOWED_EVENT_TYPES.has(event.type)) {
-      console.info("Stripe webhook event type not in allowlist (ignored)", {
-        scope: "stripe.webhook",
-        type: "ignored_event",
-        correlationId,
-        statusCode: 200,
-        durationMs: Date.now() - startedAt,
-        eventType: event.type,
-      });
+      // dev logs removed
       return NextResponse.json({
         received: true,
         ignored: true,
@@ -213,6 +198,10 @@ export async function POST(req: NextRequest) {
         subscriptionExpiresAt?: number | null;
         stripeCustomerId?: string | undefined;
         stripeSubscriptionId?: string | undefined;
+      },
+      options?: {
+        allowReplaceSubIdIfCustomerMatches?: boolean;
+        incomingCustomerId?: string;
       }
     ) {
       await db.runTransaction(async (tx: any) => {
@@ -260,25 +249,53 @@ export async function POST(req: NextRequest) {
             existing.stripeSubscriptionId &&
             existing.stripeSubscriptionId !== payload.stripeSubscriptionId
           ) {
-            console.warn("Stripe webhook: stripeSubscriptionId mismatch", {
-              scope: "stripe.webhook",
-              type: "id_mismatch",
-              userId: ref.id,
-              existing: existing.stripeSubscriptionId,
-              incoming: payload.stripeSubscriptionId,
-              correlationId,
-            });
-            logSecurityEvent(
-              "VALIDATION_FAILED",
-              {
-                reason: "stripeSubscriptionId mismatch",
+            // Allow replacement when explicitly enabled and customer IDs match
+            const incomingCustomerId =
+              options?.incomingCustomerId || payload.stripeCustomerId;
+            const customersMatch =
+              !!incomingCustomerId &&
+              !!existing.stripeCustomerId &&
+              existing.stripeCustomerId === incomingCustomerId;
+
+            if (options?.allowReplaceSubIdIfCustomerMatches && customersMatch) {
+              // Maintain a simple history array for auditability
+              const priorHistory: string[] = Array.isArray(
+                existing.stripeSubscriptionHistory
+              )
+                ? existing.stripeSubscriptionHistory
+                : [];
+              const newHistory = Array.from(
+                new Set(
+                  [
+                    ...priorHistory,
+                    existing.stripeSubscriptionId,
+                    payload.stripeSubscriptionId,
+                  ].filter(Boolean as any)
+                )
+              );
+              update.stripeSubscriptionId = payload.stripeSubscriptionId;
+              update.stripeSubscriptionHistory = newHistory;
+            } else {
+              console.warn("Stripe webhook: stripeSubscriptionId mismatch", {
+                scope: "stripe.webhook",
+                type: "id_mismatch",
                 userId: ref.id,
                 existing: existing.stripeSubscriptionId,
                 incoming: payload.stripeSubscriptionId,
                 correlationId,
-              },
-              req
-            );
+              });
+              logSecurityEvent(
+                "VALIDATION_FAILED",
+                {
+                  reason: "stripeSubscriptionId mismatch",
+                  userId: ref.id,
+                  existing: existing.stripeSubscriptionId,
+                  incoming: payload.stripeSubscriptionId,
+                  correlationId,
+                },
+                req
+              );
+            }
           } else if (!existing.stripeSubscriptionId) {
             update.stripeSubscriptionId = payload.stripeSubscriptionId;
           }
@@ -288,11 +305,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (await alreadyProcessed(event.id)) {
-      console.info("Stripe webhook duplicate ignored", {
-        eventId: event.id,
-        eventType: event.type,
-        correlationId,
-      });
+      // duplicate ignored
       return NextResponse.json({
         received: true,
         duplicate: true,
@@ -306,13 +319,6 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
 
         if (!session || !session.metadata) {
-          console.error("Stripe webhook invalid checkout session object", {
-            scope: "stripe.webhook",
-            type: "validation_error",
-            correlationId,
-            statusCode: 400,
-            durationMs: Date.now() - startedAt,
-          });
           break;
         }
 
@@ -431,12 +437,22 @@ export async function POST(req: NextRequest) {
                 );
               }
             }
-            await safeMergeUserBilling(userRef, {
-              subscriptionPlan: planId,
-              subscriptionExpiresAt: expiresAt,
-              stripeCustomerId: session.customer as string | undefined,
-              stripeSubscriptionId,
-            });
+            await safeMergeUserBilling(
+              userRef,
+              {
+                subscriptionPlan: planId,
+                subscriptionExpiresAt: expiresAt,
+                stripeCustomerId: session.customer as string | undefined,
+                stripeSubscriptionId,
+              },
+              {
+                allowReplaceSubIdIfCustomerMatches: true,
+                incomingCustomerId:
+                  typeof session.customer === "string"
+                    ? (session.customer as string)
+                    : undefined,
+              }
+            );
           } else {
             console.warn(
               "Stripe webhook: user not found for checkout completion",
@@ -448,14 +464,7 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          console.info("Stripe webhook subscription updated", {
-            scope: "stripe.webhook",
-            type: "success",
-            correlationId,
-            statusCode: 200,
-            durationMs: Date.now() - startedAt,
-            planId,
-          });
+          // dev logs removed
 
           if (session.customer_email && isValidEmail(session.customer_email)) {
             try {
@@ -493,42 +502,16 @@ export async function POST(req: NextRequest) {
                 invoiceUrl,
                 expiresAt,
               });
-            } catch (emailError) {
-              console.error("Stripe webhook receipt notify error", {
-                scope: "stripe.webhook",
-                type: "notify_error",
-                message:
-                  emailError instanceof Error
-                    ? emailError.message
-                    : String(emailError),
-                correlationId,
-              });
-            }
+            } catch {}
           }
           await markProcessed(event.id, event.type);
-        } catch (e) {
-          console.error("Stripe webhook Firestore subscription update failed", {
-            scope: "stripe.webhook",
-            type: "firestore_update_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-        }
+        } catch {}
         break;
       }
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
 
         if (!sub || !sub.metadata) {
-          console.warn("Stripe webhook invalid subscription object", {
-            scope: "stripe.webhook",
-            type: "validation_error",
-            correlationId,
-            statusCode: 400,
-            durationMs: Date.now() - startedAt,
-          });
           break;
         }
 
@@ -577,13 +560,7 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          console.info("Stripe webhook subscription downgraded", {
-            scope: "stripe.webhook",
-            type: "success",
-            correlationId,
-            statusCode: 200,
-            durationMs: Date.now() - startedAt,
-          });
+          // dev logs removed
           // Notify cancellation
           const planName = inferPlanFromSubscription(sub) || "premium";
           await Notifications.subscriptionCancelled(email, {
@@ -592,16 +569,7 @@ export async function POST(req: NextRequest) {
             effectiveDate: sub.cancel_at ? sub.cancel_at * 1000 : undefined,
           });
           await markProcessed(event.id, event.type);
-        } catch (e) {
-          console.error("Stripe webhook Firestore downgrade failed", {
-            scope: "stripe.webhook",
-            type: "firestore_update_error",
-            message: e instanceof Error ? e.message : String(e),
-            correlationId,
-            statusCode: 500,
-            durationMs: Date.now() - startedAt,
-          });
-        }
+        } catch {}
         break;
       }
       case "customer.subscription.updated": {
@@ -642,20 +610,23 @@ export async function POST(req: NextRequest) {
               .limit(1)
               .get();
             if (!snap.empty) {
-              await safeMergeUserBilling(snap.docs[0].ref, {
-                subscriptionPlan: planId,
-                subscriptionExpiresAt: sub.current_period_end
-                  ? sub.current_period_end * 1000
-                  : null,
-                stripeSubscriptionId: sub.id,
-                stripeCustomerId:
-                  typeof sub.customer === "string" ? sub.customer : undefined,
-              });
-              console.info("Stripe subscription.updated synced", {
-                correlationId,
-                subscriptionId: sub.id,
-                planId,
-              });
+              await safeMergeUserBilling(
+                snap.docs[0].ref,
+                {
+                  subscriptionPlan: planId,
+                  subscriptionExpiresAt: sub.current_period_end
+                    ? sub.current_period_end * 1000
+                    : null,
+                  stripeSubscriptionId: sub.id,
+                  stripeCustomerId:
+                    typeof sub.customer === "string" ? sub.customer : undefined,
+                },
+                {
+                  allowReplaceSubIdIfCustomerMatches: true,
+                  incomingCustomerId:
+                    typeof sub.customer === "string" ? sub.customer : undefined,
+                }
+              );
             }
           }
           // Notify user depending on status
@@ -683,13 +654,7 @@ export async function POST(req: NextRequest) {
             }
           }
           await markProcessed(event.id, event.type);
-        } catch (e) {
-          console.error("Stripe subscription.updated Firestore sync failed", {
-            correlationId,
-            subscriptionId: sub.id,
-            error: e instanceof Error ? e.message : String(e),
-          });
-        }
+        } catch {}
         break;
       }
       case "customer.subscription.created": {
@@ -721,29 +686,27 @@ export async function POST(req: NextRequest) {
               .limit(1)
               .get();
             if (!snap.empty) {
-              await safeMergeUserBilling(snap.docs[0].ref, {
-                subscriptionPlan: planId,
-                subscriptionExpiresAt: sub.current_period_end
-                  ? sub.current_period_end * 1000
-                  : null,
-                stripeSubscriptionId: sub.id,
-                stripeCustomerId:
-                  typeof sub.customer === "string" ? sub.customer : undefined,
-              });
-              console.info("Stripe subscription.created synced", {
-                correlationId,
-                subscriptionId: sub.id,
-                planId,
-              });
+              await safeMergeUserBilling(
+                snap.docs[0].ref,
+                {
+                  subscriptionPlan: planId,
+                  subscriptionExpiresAt: sub.current_period_end
+                    ? sub.current_period_end * 1000
+                    : null,
+                  stripeSubscriptionId: sub.id,
+                  stripeCustomerId:
+                    typeof sub.customer === "string" ? sub.customer : undefined,
+                },
+                {
+                  allowReplaceSubIdIfCustomerMatches: true,
+                  incomingCustomerId:
+                    typeof sub.customer === "string" ? sub.customer : undefined,
+                }
+              );
             }
           }
           await markProcessed(event.id, event.type);
-        } catch (e) {
-          console.error("Stripe subscription.created Firestore sync failed", {
-            correlationId,
-            error: e instanceof Error ? e.message : String(e),
-          });
-        }
+        } catch {}
         break;
       }
       case "invoice.paid": {
@@ -791,11 +754,6 @@ export async function POST(req: NextRequest) {
                 stripeCustomerId:
                   typeof sub.customer === "string" ? sub.customer : undefined,
               });
-              console.info("Stripe invoice.paid subscription synced", {
-                correlationId,
-                subscriptionId: sub.id,
-                planId,
-              });
             }
             // Send receipt & renewal success email
             const amountCents = invoice.amount_paid || invoice.amount_due || 0;
@@ -821,36 +779,16 @@ export async function POST(req: NextRequest) {
             });
           }
           await markProcessed(event.id, event.type);
-        } catch (e) {
-          console.error("Stripe invoice.paid sync failed", {
-            correlationId,
-            subscriptionId,
-            error: e instanceof Error ? e.message : String(e),
-          });
-        }
+        } catch {}
         break;
       }
 
       default:
-        console.info("Stripe webhook unhandled event type", {
-          scope: "stripe.webhook",
-          type: "unhandled_event",
-          correlationId,
-          statusCode: 200,
-          durationMs: Date.now() - startedAt,
-          eventType: event.type,
-        });
+        // dev logs removed
         break;
     }
 
-    console.info("Stripe webhook processed successfully", {
-      scope: "stripe.webhook",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      eventType: event.type,
-    });
+    // dev logs removed
     return NextResponse.json({
       received: true,
       eventType: event.type,
@@ -858,14 +796,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Stripe webhook processing error", {
-      scope: "stripe.webhook",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
+    // dev logs removed
 
     logSecurityEvent(
       "VALIDATION_FAILED",

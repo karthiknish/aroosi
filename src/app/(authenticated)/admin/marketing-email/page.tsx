@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { sendMarketingEmail } from "@/lib/marketingEmailApi";
+import { useEffect, useMemo, useState } from "react";
+import {
+  sendMarketingEmail,
+  listEmailTemplates,
+  previewMarketingEmail,
+} from "@/lib/marketingEmailApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,27 +21,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const TEMPLATE_OPTIONS = [
-  {
-    key: "profileCompletionReminder",
-    label: "Profile Completion Reminder",
-  },
-  {
-    key: "premiumPromo",
-    label: "Premium Promo (30% off)",
-  },
-  {
-    key: "recommendedProfiles",
-    label: "Recommended Profiles Digest",
-  },
-];
+type TemplateItem = { key: string; label: string; category: string };
 
 export default function MarketingEmailAdminPage() {
   // Cookie-auth; remove token from context and API
   useAuthContext(); // keep hook for gating if needed
-  const [templateKey, setTemplateKey] = useState<string>(
-    TEMPLATE_OPTIONS[0].key
-  );
+  const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [templateKey, setTemplateKey] = useState<string>("");
   const [sending, setSending] = useState(false);
   const [dryRun, setDryRun] = useState(true);
   const [maxAudience, setMaxAudience] = useState<number>(500);
@@ -57,6 +47,29 @@ export default function MarketingEmailAdminPage() {
   // Custom mode fields
   const [customSubject, setCustomSubject] = useState("");
   const [customBody, setCustomBody] = useState("");
+  // Audience filters
+  const [search, setSearch] = useState("");
+  const [htmlPreview, setHtmlPreview] = useState<string>("");
+  const [plan, setPlan] = useState<string>("all");
+  const [banned, setBanned] = useState<string>("all");
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(500);
+
+  useEffect(() => {
+    (async () => {
+      const res = await listEmailTemplates();
+      if (res.success && (res.data as any)?.templates) {
+        const t = (res.data as any).templates as TemplateItem[];
+        setTemplates(t);
+        if (!templateKey && t.length > 0) setTemplateKey(t[0].key);
+      }
+    })();
+  }, []);
+
+  const selectedTemplate = useMemo(
+    () => templates.find((t) => t.key === templateKey),
+    [templates, templateKey]
+  );
 
   const handleSend = async () => {
     setSending(true);
@@ -76,6 +89,12 @@ export default function MarketingEmailAdminPage() {
         dryRun,
         maxAudience,
         sendToAll,
+        preheader: mode === "custom" ? preheader : undefined,
+        search: search || undefined,
+        plan: plan !== "all" ? plan : undefined,
+        banned: banned !== "all" ? banned : undefined,
+        page,
+        pageSize,
         abTest:
           abEnabled && abSubjectA && abSubjectB
             ? {
@@ -89,6 +108,26 @@ export default function MarketingEmailAdminPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const handlePreviewHtml = async () => {
+    try {
+      const params: Record<string, unknown> = {};
+      if (templateKey === "premiumPromo") params.args = [discountPct];
+      if (templateKey === "profileCompletionReminder")
+        params.args = [completionPct];
+      if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
+      const res = await previewMarketingEmail({
+        templateKey: mode === "template" ? templateKey : undefined,
+        subject: mode === "custom" ? customSubject : undefined,
+        body: mode === "custom" ? customBody : undefined,
+        params,
+        preheader: mode === "custom" ? preheader : undefined,
+      });
+      if (res.success && (res.data as any)?.html) {
+        setHtmlPreview((res.data as any).html);
+      }
+    } catch {}
   };
 
   return (
@@ -116,7 +155,7 @@ export default function MarketingEmailAdminPage() {
                   <SelectValue placeholder="Choose template" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TEMPLATE_OPTIONS.map((opt) => (
+                  {templates.map((opt) => (
                     <SelectItem key={opt.key} value={opt.key}>
                       {opt.label}
                     </SelectItem>
@@ -124,6 +163,17 @@ export default function MarketingEmailAdminPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Template preview */}
+            {selectedTemplate && (
+              <div className="rounded-md border p-3 bg-gray-50 text-sm">
+                <div className="mb-1 font-medium">Template</div>
+                <div className="text-muted-foreground">
+                  Key: {selectedTemplate.key} • Category:{" "}
+                  {selectedTemplate.category}
+                </div>
+              </div>
+            )}
 
             {/* Per-template params */}
             {templateKey === "premiumPromo" && (
@@ -264,6 +314,81 @@ export default function MarketingEmailAdminPage() {
               disabled={sendToAll}
             />
           </div>
+          {/* Audience filters */}
+          <div className="col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label htmlFor="search" className="block text-sm mb-1">
+                Search (name/email)
+              </label>
+              <Input
+                id="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="e.g. john or john@..."
+              />
+            </div>
+            <div>
+              <label htmlFor="plan" className="block text-sm mb-1">
+                Plan
+              </label>
+              <Select value={plan} onValueChange={setPlan}>
+                <SelectTrigger id="plan" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="premiumPlus">Premium Plus</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="banned" className="block text-sm mb-1">
+                Banned status
+              </label>
+              <Select value={banned} onValueChange={setBanned}>
+                <SelectTrigger id="banned" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="true">Banned</SelectItem>
+                  <SelectItem value="false">Not banned</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {/* Paging */}
+          <div className="col-span-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label htmlFor="page" className="block text-sm mb-1">
+                Page
+              </label>
+              <Input
+                id="page"
+                type="number"
+                min={1}
+                value={page}
+                onChange={(e) => setPage(parseInt(e.target.value || "1", 10))}
+              />
+            </div>
+            <div>
+              <label htmlFor="pageSize" className="block text-sm mb-1">
+                Page size
+              </label>
+              <Input
+                id="pageSize"
+                type="number"
+                min={10}
+                max={5000}
+                value={pageSize}
+                onChange={(e) =>
+                  setPageSize(parseInt(e.target.value || "500", 10))
+                }
+              />
+            </div>
+          </div>
           <div className="col-span-2">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -337,12 +462,26 @@ export default function MarketingEmailAdminPage() {
                 ? "Preview"
                 : "Send Email to Users"}
           </Button>
+          <Button
+            variant="outline"
+            onClick={handlePreviewHtml}
+            disabled={sending}
+          >
+            Preview HTML
+          </Button>
         </div>
 
         {/* Live preview (client-side) */}
         <div className="border rounded-md p-3">
           <div className="text-sm font-medium mb-2">Live Preview</div>
-          {mode === "custom" ? (
+          {htmlPreview ? (
+            <iframe
+              title="email-html-preview"
+              className="w-full h-[600px] bg-white rounded border"
+              sandbox="allow-same-origin"
+              srcDoc={htmlPreview}
+            />
+          ) : mode === "custom" ? (
             <div
               className="prose max-w-none"
               dangerouslySetInnerHTML={{

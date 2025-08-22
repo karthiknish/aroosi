@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Notifications } from "@/lib/notify";
 import { requireAuth } from "@/lib/auth/requireAuth";
-import { db } from "@/lib/firebaseAdmin";
+import { db, adminAuth } from "@/lib/firebaseAdmin";
 
 interface BanRequestBody {
   banned?: boolean;
@@ -91,11 +91,36 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // Update Firebase custom claims and revoke tokens so the change takes effect ASAP
+    try {
+      const authUser = await adminAuth.getUser(profile.id);
+      const currentClaims = (authUser.customClaims || {}) as Record<
+        string,
+        unknown
+      >;
+      const newClaims = { ...currentClaims, banned: !!body.banned };
+      await adminAuth.setCustomUserClaims(profile.id, newClaims);
+      // Revoke refresh tokens to force clients to obtain a new ID token reflecting the updated claim
+      await adminAuth.revokeRefreshTokens(profile.id);
+    } catch (e) {
+      console.error("Admin profile.ban PUT claims error", {
+        scope: "admin.profile_ban",
+        type: "claims_update_error",
+        message: e instanceof Error ? e.message : String(e),
+        correlationId,
+      });
+      // continue; server-side checks also gate by Firestore banned
+    }
+
     if (profile.email) {
       try {
         await Notifications.profileBanStatus(profile.email, {
           profile: profile as any,
           banned: !!body.banned,
+          // Provide appeal link when banned
+          appealUrl: !!body.banned
+            ? `${process.env.NEXT_PUBLIC_APP_URL || "https://www.aroosi.app"}/banned`
+            : undefined,
         });
       } catch (e) {
         console.error("Admin profile.ban PUT notify error", {

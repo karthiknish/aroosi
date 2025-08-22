@@ -32,6 +32,7 @@ const publicRoutes = [
   "/contact",
   "/forgot-password",
   "/reset-password",
+  "/banned",
   "/api/auth/signin",
   "/api/auth/signup",
   "/api/auth/reset-password",
@@ -101,6 +102,19 @@ export async function middleware(request: NextRequest) {
         url.pathname = "/sign-in";
         return NextResponse.redirect(url);
       }
+
+      // If token contains banned flag (custom claim) or localStorage mirror, gate on client routes
+      // Note: Full authoritative check occurs server-side on sensitive APIs.
+      try {
+        const bannedClaim = (payload as any)?.banned === true;
+        if (bannedClaim) {
+          const url = request.nextUrl.clone();
+          if (!url.pathname.startsWith("/banned")) {
+            url.pathname = "/banned";
+            return NextResponse.redirect(url);
+          }
+        }
+      } catch {}
     }
     // Proceed; downstream server handlers will fully verify.
     return NextResponse.next();

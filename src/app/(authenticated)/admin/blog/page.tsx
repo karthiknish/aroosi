@@ -292,9 +292,8 @@ export default function AdminBlogPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() =>
-                          window.open(`/blog/${blog.slug}`, "_blank")
-                        }
+                        onClick={() => router.push(`/blog/${blog.slug}`)}
+                        title="View post"
                       >
                         <Eye className="h-3 w-3" />
                       </Button>
@@ -370,9 +369,8 @@ export default function AdminBlogPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() =>
-                        window.open(`/blog/${blog.slug}`, "_blank")
-                      }
+                      onClick={() => router.push(`/blog/${blog.slug}`)}
+                      title="View post"
                     >
                       <Eye className="h-3 w-3" />
                     </Button>

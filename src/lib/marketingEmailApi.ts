@@ -19,6 +19,12 @@ export async function sendMarketingEmail(
     sendToAll?: boolean;
     params?: Record<string, unknown>;
     abTest?: { subjects: [string, string]; ratio?: number };
+    preheader?: string;
+    search?: string;
+    plan?: string;
+    banned?: string;
+    page?: number;
+    pageSize?: number;
   }
 ): Promise<
   ApiResponse<null | {
@@ -83,5 +89,37 @@ export async function listEmailTemplates(): Promise<
       error instanceof Error ? error.message : "Failed to fetch templates";
     showErrorToast(errorMessage);
     return { success: false, error: errorMessage };
+  }
+}
+
+export async function previewMarketingEmail(payload: {
+  templateKey?: string;
+  params?: { args?: unknown[] };
+  preheader?: string;
+  subject?: string;
+  body?: string;
+}): Promise<
+  ApiResponse<{
+    subject: string;
+    html: string;
+  }>
+> {
+  try {
+    const response = await fetchWithFirebaseAuth(
+      "/api/admin/marketing-email/preview",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok)
+      throw new Error((data as any)?.error || `HTTP ${response.status}`);
+    return { success: true, data: (data as any).data } as any;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Failed to preview";
+    showErrorToast(msg);
+    return { success: false, error: msg };
   }
 }

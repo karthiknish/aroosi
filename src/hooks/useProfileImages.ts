@@ -16,7 +16,7 @@ export function useProfileImages({ userId, enabled = true, preferInlineUrls }: U
     queryKey: ["profileImages", userId],
     queryFn: async () => {
       if (!userId) return [];
-      const data = await fetchProfileImages();
+      const data = await fetchProfileImages(userId);
       return (data || [])
         .filter((i) => i && (i.url || i.storageId))
         .map((i) => ({ url: i.url || "", storageId: i.storageId }));

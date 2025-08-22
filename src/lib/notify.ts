@@ -1,4 +1,8 @@
-import { sendAdminNotification, sendUserNotification } from "@/lib/email";
+import {
+  sendAdminNotification,
+  sendUserNotification,
+  sendCategorizedUserEmail,
+} from "@/lib/email";
 import {
   profileCreatedTemplate,
   profileApprovedTemplate,
@@ -25,7 +29,13 @@ import { Profile } from "@/types/profile";
 export const Notifications = {
   async profileCreated(userEmail: string, profile: Profile) {
     const { subject, html } = profileCreatedTemplate(profile);
-    await sendUserNotification(userEmail, subject, html);
+    await sendCategorizedUserEmail(
+      userEmail,
+      subject,
+      html,
+      "welcome",
+      "Your Aroosi account is ready"
+    );
   },
 
   async profileApproved(userEmail: string, profile: Profile) {
@@ -89,7 +99,13 @@ export const Notifications = {
     }
   ) {
     const { subject, html } = subscriptionReceiptTemplate(opts);
-    await sendUserNotification(userEmail, subject, html);
+    await sendCategorizedUserEmail(
+      userEmail,
+      subject,
+      html,
+      "billing",
+      `Receipt for your ${opts.plan} plan`
+    );
   },
 
   async trialStarted(
@@ -118,7 +134,13 @@ export const Notifications = {
     }
   ) {
     const { subject, html } = renewalSuccessTemplate(opts);
-    await sendUserNotification(userEmail, subject, html);
+    await sendCategorizedUserEmail(
+      userEmail,
+      subject,
+      html,
+      "billing",
+      `${opts.plan} renewed successfully`
+    );
   },
 
   async renewalFailure(
@@ -131,7 +153,13 @@ export const Notifications = {
     }
   ) {
     const { subject, html } = renewalFailureTemplate(opts);
-    await sendUserNotification(userEmail, subject, html);
+    await sendCategorizedUserEmail(
+      userEmail,
+      subject,
+      html,
+      "billing",
+      "Payment issue with your subscription"
+    );
   },
 
   async subscriptionCancelled(
@@ -139,7 +167,13 @@ export const Notifications = {
     opts: { fullName: string; plan: string; effectiveDate?: number }
   ) {
     const { subject, html } = subscriptionCancelledTemplate(opts);
-    await sendUserNotification(userEmail, subject, html);
+    await sendCategorizedUserEmail(
+      userEmail,
+      subject,
+      html,
+      "billing",
+      `${opts.plan} cancelled`
+    );
   },
 
   async refundIssued(
@@ -164,7 +198,13 @@ export const Notifications = {
     opts: { fullName: string; unreadCount: number }
   ) {
     const { subject, html } = unreadMessageReminderTemplate(opts);
-    await sendUserNotification(userEmail, subject, html);
+    await sendCategorizedUserEmail(
+      userEmail,
+      subject,
+      html,
+      "messages",
+      "You have unread messages"
+    );
   },
 
   // Messages digest (daily/weekly, opt-in)
@@ -179,7 +219,13 @@ export const Notifications = {
     }
   ) {
     const { subject, html } = messagesDigestTemplate(opts);
-    await sendUserNotification(userEmail, subject, html);
+    await sendCategorizedUserEmail(
+      userEmail,
+      subject,
+      html,
+      "messages",
+      `${opts.period === "daily" ? "Daily" : "Weekly"} summary`
+    );
   },
 
   async contactAdmin(name: string, email: string, message: string) {

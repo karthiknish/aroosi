@@ -16,16 +16,22 @@ interface SendEmailOptions {
   subject: string;
   html: string;
   from?: string;
+  preheader?: string;
 }
 
 export const sendEmail = async (options: SendEmailOptions) => {
   try {
     const resend = getResend();
+    // Inject preheader for better inbox preview
+    const preheaderHtml = options.preheader
+      ? `<div style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${options.preheader}</div>`
+      : "";
+    const htmlWithPreheader = `${preheaderHtml}${options.html}`;
     const { data, error } = await resend.emails.send({
       from: options.from || "Aroosi <noreply@aroosi.app>",
       to: options.to,
       subject: options.subject,
-      html: options.html,
+      html: htmlWithPreheader,
     });
 
     if (error) {
@@ -65,6 +71,24 @@ export const sendUserNotification = async (
     subject,
     html,
     metadata: { type: "user_notification" },
+  });
+  return { queued: true };
+};
+
+// Categorized variant to enable downstream filtering/opt-outs per category
+export const sendCategorizedUserEmail = async (
+  email: string,
+  subject: string,
+  html: string,
+  category?: string,
+  preheader?: string
+) => {
+  await enqueueEmail({
+    to: email,
+    subject,
+    html,
+    preheader,
+    metadata: { type: "user_notification", category },
   });
   return { queued: true };
 };

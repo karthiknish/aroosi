@@ -56,7 +56,6 @@ export default function QuickPicksPage() {
     return plan === "premiumPlus" ? 40 : plan === "premium" ? 20 : 5;
   }, [subscription?.plan]);
 
-  // Sort profiles by "most views today" (fallback to provided order)
   const ordered: QuickPickProfile[] = useMemo(() => {
     const profiles = data?.profiles || [];
     const coalesceViews = (p: any) =>
@@ -70,7 +69,6 @@ export default function QuickPicksPage() {
     return [...profiles].sort((a, b) => coalesceViews(b) - coalesceViews(a));
   }, [data?.profiles]);
 
-  // Deck ids
   const userIds: string[] = useMemo(
     () =>
       (data?.userIds || []).filter((id) =>
@@ -79,7 +77,6 @@ export default function QuickPicksPage() {
     [data?.userIds, ordered]
   );
 
-  // Stack of next 3 cards for Tinder-style deck
   const nextCards = useMemo(() => {
     const remainingIds = userIds.slice(index);
     return remainingIds
@@ -87,7 +84,6 @@ export default function QuickPicksPage() {
       .map((id) => ordered.find((p) => p.userId === id));
   }, [ordered, userIds, index]);
 
-  // Actions
   const onAction = useCallback(
     async (action: "like" | "skip") => {
       const currentId = userIds[index];
@@ -96,7 +92,6 @@ export default function QuickPicksPage() {
         await actOnQuickPick(currentId, action);
         setIndex((i) => i + 1);
         if (action === "like") showSuccessToast("Liked");
-        // Track usage event (quick pick action)
         trackUsage({
           feature: "profile_view",
           metadata: { targetUserId: currentId },
@@ -108,7 +103,6 @@ export default function QuickPicksPage() {
     [index, userIds, trackUsage]
   );
 
-  // Keyboard handlers for left/right arrows
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
@@ -121,7 +115,6 @@ export default function QuickPicksPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [onAction]);
 
-  // Touch and mouse swipe
   const startXRef = useRef<number | null>(null);
   const handleStart = (x: number) => (startXRef.current = x);
   const handleEnd = (x: number) => {
@@ -168,7 +161,7 @@ export default function QuickPicksPage() {
           )}
         </div>
 
-        {/* Swipe interaction container (pointer events only; not keyboard interactive) */}
+        {/* Swipe interaction container */}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
         <div
           className="relative h-[420px] select-none"
@@ -259,5 +252,4 @@ export default function QuickPicksPage() {
     </div>
   );
 }
-
 
