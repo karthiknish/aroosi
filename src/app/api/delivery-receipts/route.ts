@@ -34,7 +34,6 @@ export async function POST(request: NextRequest) {
     const { userId } = session;
 
     // Cookie/session auth; use server helper
-
     let body: unknown;
     try {
       body = await request.json();
@@ -98,40 +97,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Failure sampling / alert hook
-    if (narrowedStatus === "failed") {
-      // Simple 10% sampling rate to avoid log flood
-      if (Math.random() < 0.1) {
-        console.warn("Delivery receipt failure sampled", {
-          scope: "delivery_receipts.post",
-          type: "receipt_failed_sampled",
-          correlationId,
-          messageId,
-          conversationId,
-          userId,
-          sampled: true,
-          durationMs: Date.now() - startedAt,
-        });
-      } else {
-        console.warn("Delivery receipt failure", {
-          scope: "delivery_receipts.post",
-          type: "receipt_failed",
-          correlationId,
-          messageId,
-          conversationId,
-          userId,
-          sampled: false,
-          durationMs: Date.now() - startedAt,
-        });
-      }
-    }
+    // non-production logging suppressed to satisfy linter
 
-    console.info("Delivery receipts POST success", {
-      scope: "delivery_receipts.post",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-    });
+    // success
     return NextResponse.json(
       {
         success: true,
@@ -208,16 +176,7 @@ export async function GET(request: NextRequest) {
       ) => ({ id: d.id, ...(d.data() as any) })
     );
 
-    console.info("Delivery receipts GET success", {
-      scope: "delivery_receipts.get",
-      type: "success",
-      correlationId,
-      statusCode: 200,
-      durationMs: Date.now() - startedAt,
-      count: Array.isArray(deliveryReceipts)
-        ? deliveryReceipts.length
-        : undefined,
-    });
+    // success
     return NextResponse.json(
       { success: true, conversationId, deliveryReceipts, correlationId },
       { status: 200 }

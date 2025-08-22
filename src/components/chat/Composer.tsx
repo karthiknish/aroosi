@@ -322,7 +322,11 @@ export default function Composer(props: ComposerProps) {
   const resize = useCallback((el: HTMLTextAreaElement | null) => {
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+    // Increase desktop cap; keep mobile reasonable via CSS overflow
+    const isDesktop =
+      typeof window !== "undefined" && window.innerWidth >= 1024;
+    const cap = isDesktop ? 360 : 200; // ~ up to ~12 lines on desktop
+    el.style.height = Math.min(el.scrollHeight, cap) + "px";
   }, []);
 
   useLayoutEffect(() => {

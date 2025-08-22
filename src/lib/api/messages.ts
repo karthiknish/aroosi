@@ -70,3 +70,35 @@ export const markConversationRead = async (
   // Fallback parse
   return { success: true };
 };
+
+export const deleteMessage = async (
+  messageId: string
+): Promise<{ success: boolean }> => {
+  const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+  const json = await res.json();
+  if (!res.ok || json.success === false) {
+    throw new Error(json.error || "Failed to delete message");
+  }
+  return { success: true };
+};
+
+export const editMessage = async (
+  messageId: string,
+  text: string
+): Promise<{ success: boolean }> => {
+  const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ text }),
+  });
+  const json = await res.json();
+  if (!res.ok || json.success === false) {
+    throw new Error(json.error || "Failed to edit message");
+  }
+  return { success: true };
+};

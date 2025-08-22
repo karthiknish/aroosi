@@ -76,6 +76,7 @@ interface UseRealTimeMessagesReturn {
   hasMore: boolean;
   loadingOlder: boolean;
   error: string | null;
+  deleteMessage: (messageId: string) => Promise<void>;
 }
 
 export function useRealTimeMessages({
@@ -747,6 +748,21 @@ export function useRealTimeMessages({
     }
   }, [loadingOlder, hasMore, olderMessages, windowMessages, conversationId]);
 
+  // Delete message (soft delete via API, optimistic UI)
+  const deleteMessage = useCallback(async (messageId: string) => {
+    try {
+      // Optimistic remove or mark as deleted in UI
+      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+      // Server delete (also updates conversation/match lastMessage if needed)
+      const { deleteMessage: apiDelete } = await import("@/lib/api/messages");
+      await apiDelete(messageId);
+    } catch (err) {
+      // Rollback: trigger refresh window; easiest is to refetch probe and let onSnapshot repopulate
+      setError(err instanceof Error ? err.message : "Failed to delete message");
+      // no explicit rollback since snapshot will re-sync shortly
+    }
+  }, []);
+
   // Initialize connection on mount
   useEffect(() => {
     return () => {
@@ -796,6 +812,7 @@ export function useRealTimeMessages({
     hasMore,
     loadingOlder,
     error,
+    deleteMessage,
   };
 }
 

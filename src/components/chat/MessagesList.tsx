@@ -10,7 +10,7 @@ import React, {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { ArrowDown, Shield, Smile } from "lucide-react";
+import { ArrowDown, Shield, Smile, MoreVertical, Edit3, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMessageTime } from "@/lib/utils/messageUtils";
 import { DeliveryStatus } from "@/components/chat/DeliveryStatus";
@@ -40,6 +40,8 @@ type MessagesListProps = {
   otherLastReadAt?: number;
   onUnblock?: () => void;
   onSelectReply?: (m: MatchMessage) => void;
+  onEditMessage?: (id: string, currentText: string) => void;
+  onDeleteMessage?: (id: string) => void;
 };
 
 export default function MessagesList(props: MessagesListProps) {
@@ -64,6 +66,8 @@ export default function MessagesList(props: MessagesListProps) {
     otherLastReadAt = 0,
     onUnblock,
     onSelectReply,
+    onEditMessage,
+    onDeleteMessage,
   } = props;
   // -------------------- Hooks (must run every render) --------------------
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -491,6 +495,22 @@ export default function MessagesList(props: MessagesListProps) {
                                 </span>
                               </button>
                             )}
+                            {/* top-right triple-dot for own text messages */}
+                            {isCurrentUser && (msg.type === "text") && (
+                              <button
+                                type="button"
+                                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full border border-gray-200 shadow p-1"
+                                aria-label="Message menu"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  openContextMenu(rect.right, rect.top, msg);
+                                }}
+                              >
+                                <MoreVertical className="w-4 h-4 text-gray-600" />
+                              </button>
+                            )}
+
                             {isVoice ? (
                               <VoiceMessageBubble
                                 url={`/api/voice-messages/${encodeURIComponent(msg._id)}/url`}
@@ -642,6 +662,32 @@ export default function MessagesList(props: MessagesListProps) {
           >
             Reply
           </button>
+          {menuState.message.fromUserId === currentUserId && (menuState.message as any).type !== "voice" && (
+            <>
+              <button
+                role="menuitem"
+                className="w-full text-left text-sm px-3 py-2 rounded hover:bg-primary/10 focus:bg-primary/10 focus:outline-none flex items-center gap-2"
+                onClick={() => {
+                  const m = menuState.message;
+                  onEditMessage?.(m._id, (m as any).text || "");
+                  setMenuState(null);
+                }}
+              >
+                <Edit3 className="w-4 h-4 text-gray-600" /> Edit
+              </button>
+              <button
+                role="menuitem"
+                className="w-full text-left text-sm px-3 py-2 rounded hover:bg-red-50 focus:bg-red-50 focus:outline-none text-red-600 flex items-center gap-2"
+                onClick={() => {
+                  const m = menuState.message;
+                  onDeleteMessage?.(m._id);
+                  setMenuState(null);
+                }}
+              >
+                <Trash className="w-4 h-4" /> Delete
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

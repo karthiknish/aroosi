@@ -87,6 +87,13 @@ export function AdminSidebar({
       href: "/admin/push-notification/devices",
       isActive: currentPath === "/admin/push-notification/devices",
     },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: FileText,
+      href: "/admin/reports",
+      isActive: currentPath.startsWith("/admin/reports"),
+    },
   ];
 
   return (

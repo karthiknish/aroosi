@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { checkApiRateLimit } from "@/lib/utils/securityHeaders";
 import { requireSession, devLog } from "@/app/api/_utils/auth";
 import { db } from "@/lib/firebaseAdmin";
+import { Notifications } from "@/lib/notify";
 
 interface ReportDoc {
   reporterUserId: string;
@@ -93,6 +94,14 @@ export async function POST(request: NextRequest) {
       };
       await ref.set(doc);
       reportId = ref.id;
+      // Notify admins for moderation (email)
+      try {
+        await Notifications.contactAdmin(
+          "Safety Report",
+          "noreply@aroosi.app",
+          `New report ${reportId}\nReporter: ${userId}\nReported: ${reportedUserId}\nReason: ${reason}\nDescription: ${description || "-"}`
+        );
+      } catch {}
     } catch (e) {
       devLog("error", "safety.report", "firestore_error", {
         message: e instanceof Error ? e.message : String(e),

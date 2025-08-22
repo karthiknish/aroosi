@@ -8,7 +8,7 @@ import {
   deleteProfileById,
 } from "@/lib/admin/firestoreAdminProfiles";
 import type { Profile } from "@/types/profile";
-import { db, adminAuth } from "@/lib/firebaseAdmin";
+// (db import removed)
 
 function devLog(
   level: "info" | "error",
@@ -137,80 +137,7 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-// Admin: list reports for moderation (minimal)
-export async function GET_reports(req: NextRequest) {
-  try {
-    const admin = await ensureAdmin();
-    const rl = checkApiRateLimit(`admin_reports_${admin.id}`, 60, 60_000);
-    if (!rl.allowed) return errorResponse("Rate limit exceeded", 429);
-    const { searchParams } = new URL(req.url);
-    const status = (searchParams.get("status") || "pending").toLowerCase();
-    let query: FirebaseFirestore.Query = db.collection("reports");
-    if (["pending", "reviewed", "resolved"].includes(status)) {
-      query = query.where("status", "==", status);
-    }
-    query = query.orderBy("createdAt", "desc").limit(200);
-    const snap = await query.get();
-    const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-    return successResponse({ reports: items });
-  } catch {
-    return errorResponse("Failed to fetch reports", 500);
-  }
-}
-
-// Admin: update a report status (and optionally ban the reported user)
-export async function PUT_reports(req: NextRequest) {
-  try {
-    const admin = await ensureAdmin();
-    const rl = checkApiRateLimit(
-      `admin_reports_update_${admin.id}`,
-      60,
-      60_000
-    );
-    if (!rl.allowed) return errorResponse("Rate limit exceeded", 429);
-    const body = await req.json().catch(() => ({}));
-    const { id, status, banUser } = body || {};
-    if (!id || typeof id !== "string")
-      return errorResponse("Missing report id", 400);
-    if (
-      !status ||
-      !["pending", "reviewed", "resolved"].includes(String(status))
-    ) {
-      return errorResponse("Invalid status", 400);
-    }
-    const ref = db.collection("reports").doc(id);
-    const reportSnap = await ref.get();
-    if (!reportSnap.exists) return errorResponse("Report not found", 404);
-    const report = reportSnap.data() as any;
-    await ref.set(
-      { status: String(status), updatedAt: Date.now(), reviewedBy: admin.id },
-      { merge: true }
-    );
-    if (banUser && report?.reportedUserId) {
-      // Set banned in Firestore and claims, revoke tokens
-      const uid = String(report.reportedUserId);
-      await db
-        .collection("users")
-        .doc(uid)
-        .set({ banned: true, updatedAt: Date.now() }, { merge: true });
-      try {
-        const authUser = await adminAuth.getUser(uid);
-        const currentClaims = (authUser.customClaims || {}) as Record<
-          string,
-          unknown
-        >;
-        await adminAuth.setCustomUserClaims(uid, {
-          ...currentClaims,
-          banned: true,
-        });
-        await adminAuth.revokeRefreshTokens(uid);
-      } catch {}
-    }
-    return successResponse({ success: true });
-  } catch {
-    return errorResponse("Failed to update report", 500);
-  }
-}
+// Reports handlers moved to /api/admin/reports
 
 export async function PUT(req: NextRequest) {
   try {

@@ -121,6 +121,28 @@ function ModernChat({
             fromUserId: m.fromUserId,
           })
         }
+        onEditMessage={async (id, currentText) => {
+          const next = window.prompt("Edit message", currentText || "");
+          if (next == null) return;
+          const trimmed = next.trim();
+          if (!trimmed) return;
+          try {
+            const { editMessage } = await import("@/lib/api/messages");
+            await editMessage(id, trimmed);
+          } catch {
+            // optional toast could be added
+          }
+        }}
+        onDeleteMessage={async (id) => {
+          const ok = window.confirm("Delete this message?");
+          if (!ok) return;
+          try {
+            const { deleteMessage } = await import("@/lib/api/messages");
+            await deleteMessage(id);
+          } catch {
+            // optional toast could be added
+          }
+        }}
       />
 
       <Composer
