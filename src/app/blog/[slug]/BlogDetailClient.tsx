@@ -98,15 +98,22 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
     : null;
 
   return (
-    <article className="container mx-auto max-w-3xl px-4 py-10">
+    <article className="container mx-auto max-w-4xl px-4 py-10">
       <header className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">{post.title}</h1>
+        <h1
+          style={{
+            lineHeight: 1.7,
+          }}
+          className="text-3xl md:text-4xl font-bold tracking-tight text-foreground mb-2"
+        >
+          {post.title}
+        </h1>
         <div className="text-sm text-muted-foreground mb-4 flex flex-wrap gap-3 items-center">
           <span>{date}</span>
           {readingTime && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-50 text-pink-600 text-xs border border-pink-200">
+            <Badge variant="secondary" className="text-[11px] font-medium">
               {readingTime} min read
-            </span>
+            </Badge>
           )}
           <button
             type="button"
@@ -122,7 +129,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
                 });
               } catch {}
             }}
-            className="text-xs underline decoration-dotted text-pink-600 hover:text-pink-700"
+            className="text-xs underline decoration-dotted text-primary hover:text-primary/80"
           >
             Share
           </button>
@@ -133,7 +140,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
                 navigator.clipboard.writeText(window.location.href);
               } catch {}
             }}
-            className="text-xs underline decoration-dotted text-pink-600 hover:text-pink-700"
+            className="text-xs underline decoration-dotted text-primary hover:text-primary/80"
           >
             Copy Link
           </button>
@@ -178,12 +185,15 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
       ) : null}
 
       {post.excerpt ? (
-        <p className="text-lg text-muted-foreground mb-6">{post.excerpt}</p>
+        <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+          {post.excerpt}
+        </p>
       ) : null}
 
       {post.content ? (
         <div
-          className="prose prose-neutral max-w-none prose-headings:leading-relaxed"
+          id="blog-content"
+          className="prose prose-neutral dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:leading-snug prose-h2:mt-10 prose-h3:mt-8 prose-p:leading-relaxed prose-p:my-4 prose-li:my-1.5 prose-ul:my-4 prose-ol:my-4 prose-img:my-6 prose-img:rounded-lg prose-a:text-primary hover:prose-a:text-primary/80 prose-blockquote:border-l-border prose-blockquote:pl-4 prose-blockquote:italic prose-hr:border-border prose-code:bg-muted prose-code:text-foreground prose-pre:bg-muted"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       ) : null}
@@ -229,21 +239,23 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
 
       {related.length > 0 && (
         <section className="mt-12 border-t pt-8">
-          <h2 className="text-xl font-semibold mb-4">Related Posts</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-4">
+            Related Posts
+          </h2>
           <div className="grid gap-6 sm:grid-cols-2">
             {related.map((r) => (
               <Link
                 key={r._id}
                 href={`/blog/${r.slug}`}
-                className="group block p-4 rounded-lg border bg-white/70 hover:bg-white transition shadow-sm hover:shadow-md"
+                className="group block p-4 rounded-lg border bg-card/80 hover:bg-card transition shadow-sm hover:shadow-md"
               >
-                <h3 className="font-medium group-hover:text-pink-600 line-clamp-2 mb-1 font-serif">
+                <h3 className="font-medium group-hover:text-primary line-clamp-2 mb-1 font-serif">
                   {r.title}
                 </h3>
-                <p className="text-sm text-neutral-600 line-clamp-3 mb-2">
+                <p className="text-sm text-muted-foreground line-clamp-3 mb-2">
                   {r.excerpt}
                 </p>
-                <div className="text-xs text-neutral-500">
+                <div className="text-xs text-muted-foreground">
                   {r.createdAt
                     ? new Date(r.createdAt).toLocaleDateString()
                     : ""}

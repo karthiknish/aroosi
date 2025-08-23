@@ -84,6 +84,7 @@
 #blog-content h1{
   @apply text-4xl font-bold;
   margin-bottom: 2rem !important;
+  line-height: 1.7 !important;
 }
 
 #blog-content h2{
