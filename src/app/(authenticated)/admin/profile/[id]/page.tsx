@@ -21,7 +21,12 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { deleteAdminProfileImageById } from "@/lib/profile/adminProfileApi";
+import {
+  deleteAdminProfileImageById,
+  fetchAdminProfileById,
+  fetchAdminProfileMatches,
+  fetchAdminProfileImagesById,
+} from "@/lib/profile/adminProfileApi";
 import { useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorState } from "@/components/ui/error-state";
@@ -84,19 +89,7 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const { getJson } = await import("@/lib/http/client");
-      const data = await getJson<any>(
-        `/api/admin/profiles/${id}?nocache=true`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "max-age=300, stale-while-revalidate=60",
-            "x-client-check": "admin-profile",
-          },
-          cache: "no-store",
-          next: { revalidate: 300 } as any,
-        }
-      );
+      const data = await fetchAdminProfileById({ id: String(id) });
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -124,20 +117,9 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const { getJson } = await import("@/lib/http/client");
-      const payload = await getJson<any>(
-        `/api/profile-detail/${userId}/images?nocache=true`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "max-age=300, stale-while-revalidate=60",
-            "x-client-check": "admin-profile-images",
-          },
-          cache: "no-store",
-          next: { revalidate: 300 } as any,
-        }
-      );
-      const data = (payload?.userProfileImages ?? []) as ImageType[];
+      const data = await fetchAdminProfileImagesById({
+        profileId: String(userId),
+      });
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -163,19 +145,7 @@ export default function AdminProfileDetailPage() {
           return JSON.parse(cachedData);
         }
       }
-      const { getJson } = await import("@/lib/http/client");
-      const data = await getJson<MatchType[]>(
-        `/api/admin/profiles/${id}/matches?nocache=true`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "max-age=300, stale-while-revalidate=60",
-            "x-client-check": "admin-profile-matches",
-          },
-          cache: "no-store",
-          next: { revalidate: 300 } as any,
-        }
-      );
+      const data = await fetchAdminProfileMatches({ profileId: String(id) });
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
       sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
       return data;
@@ -627,7 +597,8 @@ export default function AdminProfileDetailPage() {
             </div>
           </div>
           <div className="text-sm text-gray-400 mb-2">
-            Profile ID: {typeof profile?._id === "string" ? profile._id : "-"}
+            Profile ID:{" "}
+            {typeof profile?._id === "string" ? profile._id : String(id)}
           </div>
         </CardContent>
       </Card>

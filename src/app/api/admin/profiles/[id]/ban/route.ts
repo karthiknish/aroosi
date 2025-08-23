@@ -159,3 +159,9 @@ export async function PUT(req: NextRequest) {
     );
   }
 }
+
+// Some environments or client libs may issue POST instead of PUT. Accept POST and delegate.
+export const runtime = "nodejs";
+export async function POST(req: NextRequest) {
+  return PUT(req);
+}

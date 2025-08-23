@@ -187,7 +187,7 @@ function AdminEditProfilePageInner() {
     return null;
   }
 
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size={32} />

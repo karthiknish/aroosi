@@ -292,6 +292,7 @@ export async function fetchAdminProfileById({
       headers,
       credentials: "include",
     });
+    if (res.status === 404) return null;
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch profile: ${errorText}`);
