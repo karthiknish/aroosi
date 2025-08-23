@@ -77,6 +77,16 @@ export function sanitizeBlogContent(html: string) {
     /<iframe[^>]*src=("|')(?!https?:\/\/(www\.)?(youtube\.com|youtu\.be|player\.vimeo\.com)\/)[^>]*>[\s\S]*?<\/iframe>/gi,
     ""
   );
+  // Remove <img> tags with relative or invalid src (e.g., "/eieie", "djjdjdjdjd") to prevent 404 noise
+  cleaned = cleaned.replace(
+    /<img[^>]*src=["'](?!https?:\/\/|data:image\/)[^"']*["'][^>]*>/gi,
+    ""
+  );
+  // Neutralize anchor tags with relative/non-http hrefs to avoid broken navigations
+  cleaned = cleaned.replace(
+    /<a\s+([^>]*?)href=["'](?!https?:\/\/|mailto:|#)[^"']*["']([^>]*)>/gi,
+    "<a $1$2>"
+  );
   // Remove inline event handlers & javascript: schemes as an extra defensive layer.
   cleaned = cleaned.replace(/ on[a-z]+\s*=\s*("|')(?:[^"']*)("')/gi, "");
   cleaned = cleaned.replace(/javascript:/gi, "");

@@ -35,13 +35,10 @@ export async function generateStaticParams() {
 // Revalidate each post every 10 minutes
 export const revalidate = 600; // seconds
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
+export async function generateMetadata(props: {
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  // Prefer real post data for accurate metadata; fall back to slug-derived values
-  const slug = params.slug;
+  const { slug } = await props.params;
   let post: BlogMetaDoc | null = null;
   try {
     const snap = await db
@@ -107,10 +104,9 @@ export async function generateMetadata({
   };
 }
 
-export default function BlogDetailPageWrapper({
-  params,
-}: {
-  params: { slug: string };
+export default async function BlogDetailPageWrapper(props: {
+  params: Promise<{ slug: string }>;
 }) {
-  return <BlogDetailClient slug={params.slug} />;
+  const { slug } = await props.params;
+  return <BlogDetailClient slug={slug} />;
 }

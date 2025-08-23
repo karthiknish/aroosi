@@ -19,8 +19,16 @@ interface BlogPostFieldsProps {
   setImageUrl: (value: string) => void;
   pexelsOpen: boolean;
   setPexelsOpen: (open: boolean) => void;
-  aiLoading: { excerpt?: boolean; category?: boolean };
-  aiText: (text: string, field: "excerpt" | "category") => Promise<string>;
+  aiLoading: {
+    excerpt?: boolean;
+    category?: boolean;
+    title?: boolean;
+    content?: boolean;
+  };
+  aiText: (
+    text: string,
+    field: "excerpt" | "category" | "title" | "content"
+  ) => Promise<string>;
   content: string;
   disabled?: boolean;
 }
@@ -45,6 +53,8 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
   content,
   disabled,
 }) => {
+  // Preserve user-entered whitespace while typing; trimming will be done at submit time
+  const stripTags = (s: string) => s.replace(/<[^>]*>/g, "");
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -55,19 +65,43 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
           >
             Title
           </label>
-          <Input
-            id="blog-title"
-            placeholder="Enter post title"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (!slugManuallyEdited) {
-                setSlug(slugify(e.target.value));
-              }
-            }}
-            disabled={disabled}
-            className="mt-1"
-          />
+          <div className="flex gap-2 items-center">
+            <Input
+              id="blog-title"
+              placeholder="Enter post title"
+              value={title}
+              onChange={(e) => {
+                const val = stripTags(e.target.value);
+                setTitle(val);
+                if (!slugManuallyEdited) {
+                  setSlug(slugify(val));
+                }
+              }}
+              disabled={disabled}
+              className="mt-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="text-pink-600 border-pink-300"
+              onClick={async () => {
+                const ai = await aiText(
+                  `${content}\n\nCurrent slug: ${slug}\nCategories: ${categories.join(", ")}`,
+                  "title"
+                );
+                if (ai) {
+                  setTitle(ai);
+                  // If user hasn't manually edited slug, keep it in sync
+                  if (!slugManuallyEdited) {
+                    setSlug(slugify(ai));
+                  }
+                }
+              }}
+              disabled={aiLoading.title || disabled}
+            >
+              {aiLoading.title ? "AI..." : "AI"}
+            </Button>
+          </div>
         </div>
         <div>
           <label
@@ -81,7 +115,8 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             placeholder="my-first-post"
             value={slug}
             onChange={(e) => {
-              setSlug(e.target.value);
+              // For slug, keep it tidy while typing
+              setSlug(stripTags(e.target.value).trim());
               setSlugManuallyEdited(true);
             }}
             disabled={disabled}
@@ -102,7 +137,7 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             id="blog-excerpt"
             placeholder="Short summary of the post"
             value={excerpt}
-            onChange={(e) => setExcerpt(e.target.value)}
+            onChange={(e) => setExcerpt(stripTags(e.target.value))}
             className="mb-2"
             required
           />
@@ -138,9 +173,9 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
             value={categories.join(", ")}
             onChange={(e) =>
               setCategories(
-                e.target.value
+                stripTags(e.target.value)
                   .split(",")
-                  .map((c) => c.trim())
+                  .map((c) => stripTags(c).trim())
                   .filter(Boolean)
               )
             }
@@ -203,6 +238,11 @@ export const BlogPostFields: React.FC<BlogPostFieldsProps> = ({
         {(!imageUrl || imageUrl.trim() === "") && (
           <div className="text-xs text-red-500 mb-2">
             Image URL is required.
+          </div>
+        )}
+        {imageUrl && !/^https?:\/\/(images\.)?pexels\.com\//.test(imageUrl) && (
+          <div className="text-xs text-red-500 mt-2">
+            Only Pexels URLs are allowed (e.g., https://images.pexels.com/...).
           </div>
         )}
         {imageUrl && /^https?:\/\/(images\.)?pexels\.com\//.test(imageUrl) && (

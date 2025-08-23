@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { welcomeEmailHtml } from "@/emails/welcome";
 import { resetPasswordEmailHtml } from "@/emails/resetPassword";
 import { forgotPasswordEmailHtml } from "@/emails/forgotPassword";
+import { verifyEmailHtml } from "@/emails/verifyEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -68,6 +69,26 @@ export async function sendForgotPasswordEmail(
     return true;
   } catch (error) {
     console.error("Failed to send forgot password email:", error);
+    return false;
+  }
+}
+
+export async function sendVerificationLinkEmail(
+  email: string,
+  name: string,
+  verifyUrl: string
+): Promise<boolean> {
+  try {
+    const html = verifyEmailHtml(name, verifyUrl);
+    await resend.emails.send({
+      from: "Aroosi <noreply@aroosi.app>",
+      to: email,
+      subject: "Verify your email address – Aroosi",
+      html,
+    });
+    return true;
+  } catch (error) {
+    console.error("Failed to send verification link email:", error);
     return false;
   }
 }

@@ -149,7 +149,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
         )}
       </header>
 
-      {post.imageUrl ? (
+      {post.imageUrl && /^https?:\/\//.test(post.imageUrl) ? (
         <div className="relative w-full h-64 md:h-96 mb-6 overflow-hidden rounded-lg">
           <Image
             src={post.imageUrl}
@@ -160,6 +160,21 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
             priority
           />
         </div>
+      ) : post.imageUrl ? (
+        <div className="w-full h-64 md:h-96 mb-6 overflow-hidden rounded-lg">
+          <img
+            src={post.imageUrl}
+            alt={post.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const el = e.currentTarget;
+              if (!el.dataset.fallback) {
+                el.dataset.fallback = "1";
+                el.src = "/placeholder.jpg";
+              }
+            }}
+          />
+        </div>
       ) : null}
 
       {post.excerpt ? (
@@ -168,7 +183,7 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
 
       {post.content ? (
         <div
-          className="prose prose-neutral max-w-none"
+          className="prose prose-neutral max-w-none prose-headings:leading-relaxed"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       ) : null}

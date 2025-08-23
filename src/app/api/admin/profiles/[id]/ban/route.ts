@@ -165,3 +165,13 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   return PUT(req);
 }
+
+// Respond to OPTIONS for CORS/preflight or method discovery
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: "OPTIONS, PUT, POST",
+    },
+  });
+}

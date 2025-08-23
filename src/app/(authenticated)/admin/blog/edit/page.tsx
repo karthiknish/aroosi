@@ -7,7 +7,11 @@ import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { BlogPostFields } from "@/components/admin/BlogPostFields";
 import BlogEditor from "@/components/admin/BlogEditor";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
-import { fetchBlogPostBySlug, editBlogPost } from "@/lib/blogUtil";
+import {
+  fetchBlogPostBySlug,
+  editBlogPost,
+  convertAiTextToHtml,
+} from "@/lib/blogUtil";
 import type { BlogPost } from "@/types/blog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PexelsImageModal } from "@/components/PexelsImageModal";
@@ -47,6 +51,8 @@ function AdminEditBlogPageInner() {
   const [aiLoading, setAiLoading] = useState<{
     excerpt?: boolean;
     category?: boolean;
+    title?: boolean;
+    content?: boolean;
   }>({});
 
   // Populate form when blogPost loads, but only if state is still undefined
@@ -68,15 +74,90 @@ function AdminEditBlogPageInner() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)+/g, "");
 
-  // AI text helper (stub)
+  // AI text helper
   const aiText = useCallback(
-    async (text: string, field: "excerpt" | "category") => {
+    async (
+      text: string,
+      field: "excerpt" | "category" | "title" | "content"
+    ) => {
       setAiLoading((prev) => ({ ...prev, [field]: true }));
-      // TODO: Implement AI text generation if needed
-      setAiLoading((prev) => ({ ...prev, [field]: false }));
-      return text;
+      try {
+        const stripTags = (s: string) =>
+          s
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        const cleanGeneratedHtml = (html: string): string => {
+          if (!html) return html;
+          let out = html.replace(/```[a-zA-Z]*\s*\n?/g, "").replace(/```/g, "");
+          out = out.replace(
+            /^(\s*(Title|Excerpt|Categories)\s*:[^\n]*\n)+/i,
+            ""
+          );
+          for (let i = 0; i < 3; i++) {
+            const before = out;
+            out = out.replace(
+              /^\s*<p>\s*(Title|Excerpt|Categories)\s*:[\s\S]*?<\/p>\s*/i,
+              ""
+            );
+            if (out === before) break;
+          }
+          return out.trim();
+        };
+
+        if (field === "content") {
+          const instructions = `Write a complete blog article in clean semantic HTML based on the details below.
+Requirements:
+- Use the Title exactly once as the <h1> at the top.
+- Use British English spelling and punctuation throughout (e.g., colour, organise, programme).
+- Do NOT include any lines like "Title:", "Excerpt:", or "Categories:" in the output, and do NOT wrap anything in code fences.
+- Include: an engaging introduction paragraph, 4–6 concise sections with <h2> headings, at least one <ul> list, and a short conclusion with a call to action.
+- Length target: 800–1200 words. Tone: warm, helpful, and authoritative.
+- Allowed tags only: <h1>, <h2>, <p>, <ul>, <ol>, <li>, <blockquote>, <strong>, <em>, <a>. No inline styles, no scripts.`;
+          const ctx: string[] = [];
+          if (title) ctx.push(`Title: ${title}`);
+          if (excerpt) ctx.push(`Excerpt: ${excerpt}`);
+          if (Array.isArray(categories) && categories.length)
+            ctx.push(`Categories: ${categories.join(", ")}`);
+          const prompt = `${instructions}\n\n${ctx.join("\n")}`;
+          const res = await convertAiTextToHtml({
+            text: prompt,
+            type: "blog",
+          } as any);
+          const raw = typeof res === "string" ? res : (res as any)?.html || "";
+          return cleanGeneratedHtml(raw);
+        }
+
+        // For title/excerpt/category, build a clean context and ensure plain text
+        let context = text;
+        if (field === "title" || field === "excerpt" || field === "category") {
+          const base = stripTags(content || "");
+          const ctxLines: string[] = [];
+          if (base) ctxLines.push(base);
+          if (title) ctxLines.push(`Current title: ${stripTags(title)}`);
+          if (slug) ctxLines.push(`Slug: ${slug}`);
+          if (categories && categories.length)
+            ctxLines.push(`Categories: ${categories.join(", ")}`);
+          context = ctxLines.join("\n\n");
+        }
+
+        const res = await convertAiTextToHtml({
+          text: context,
+          type: field,
+        } as any);
+        if (typeof res === "string") return res;
+        return (res as any)?.html || "";
+      } catch (error) {
+        console.error(`Error in AI ${field} generation:`, error);
+        const message =
+          error instanceof Error ? error.message : "AI processing failed";
+        showErrorToast(message);
+        return "";
+      } finally {
+        setAiLoading((prev) => ({ ...prev, [field]: false }));
+      }
     },
-    []
+    [content, title, slug, categories]
   );
 
   // Mutation for saving
@@ -179,13 +260,32 @@ function AdminEditBlogPageInner() {
               role="group"
               aria-labelledby="blog-content-label"
             >
-              <label
-                id="blog-content-label"
-                className="text-sm font-medium text-gray-700 mb-2 block"
-                htmlFor="blog-content-editor"
-              >
-                Content
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  id="blog-content-label"
+                  className="text-sm font-medium text-gray-700"
+                  htmlFor="blog-content-editor"
+                >
+                  Content
+                </label>
+                <button
+                  type="button"
+                  className="border border-pink-300 text-pink-600 font-medium text-sm px-3 py-1 rounded"
+                  disabled={saving || aiLoading.content}
+                  onClick={async () => {
+                    const ctxParts: string[] = [];
+                    if (title) ctxParts.push(`Title: ${title}`);
+                    if (excerpt) ctxParts.push(`Excerpt: ${excerpt}`);
+                    if (Array.isArray(categories) && categories.length)
+                      ctxParts.push(`Categories: ${categories.join(", ")}`);
+                    const html = await aiText(ctxParts.join("\n\n"), "content");
+                    if (html) setContent(html);
+                  }}
+                  title="Use AI to generate content"
+                >
+                  {aiLoading.content ? "AI..." : "AI"}
+                </button>
+              </div>
               <BlogEditor
                 value={content ?? ""}
                 onChange={setContent}

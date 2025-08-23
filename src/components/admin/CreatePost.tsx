@@ -47,8 +47,16 @@ interface CreatePostProps {
   slugify: (str: string) => string;
   categories: string[];
   setCategories: (value: string[]) => void;
-  aiLoading: { excerpt?: boolean; category?: boolean; content?: boolean };
-  aiText: (text: string, field: "excerpt" | "category") => Promise<string>;
+  aiLoading: {
+    excerpt?: boolean;
+    category?: boolean;
+    content?: boolean;
+    title?: boolean;
+  };
+  aiText: (
+    text: string,
+    field: "excerpt" | "category" | "title" | "content"
+  ) => Promise<string>;
   previewHtml: string;
   editorResetKey: number;
 }
@@ -108,12 +116,35 @@ export function CreatePost({
             disabled={creating}
           />
           <div>
-            <label
-              htmlFor="blog-content"
-              className="text-sm font-medium text-gray-700"
-            >
-              Content
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="blog-content"
+                className="text-sm font-medium text-gray-700"
+              >
+                Content
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                className="text-pink-600 border-pink-300 h-8 px-3"
+                disabled={creating || aiLoading?.content}
+                onClick={async () => {
+                  const context = [
+                    title ? `Title: ${title}` : "",
+                    excerpt ? `Excerpt: ${excerpt}` : "",
+                    categories?.length
+                      ? `Categories: ${categories.join(", ")}`
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n\n");
+                  const html = await aiText(context, "content");
+                  if (html) setContent(html);
+                }}
+              >
+                {aiLoading?.content ? "AI..." : "AI"}
+              </Button>
+            </div>
             <div className="mt-1">
               <BlogEditor
                 key={editorResetKey}

@@ -325,7 +325,7 @@ export default function BlogPage() {
                     <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-pink-200 to-rose-300 rounded-full opacity-70 group-hover:opacity-100 transition-opacity z-10" />
                     <div className="absolute top-6 left-6 w-8 h-8 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-full opacity-60 group-hover:scale-110 transition-transform z-10" />
 
-                    {post.imageUrl && (
+                    {post.imageUrl && /^https?:\/\//.test(post.imageUrl) && (
                       <div className="relative overflow-hidden rounded-t-3xl">
                         <img
                           src={post.imageUrl}

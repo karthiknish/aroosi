@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { requireSession } from "@/app/api/_utils/auth";
-import { db } from "@/lib/firebaseAdmin";
+import { db, adminStorage } from "@/lib/firebaseAdmin";
 
 // POST /api/images/blog
 // Upload metadata for a blog image and retrieve its public URL.
@@ -58,12 +58,22 @@ export async function POST(req: NextRequest) {
         },
         { merge: true }
       );
+    // Try to construct a public URL when the bucket is public; otherwise return null (client can sign if needed)
+    let url: string | null = null;
+    try {
+      const bucket = adminStorage.bucket();
+      const [exists] = await bucket.file(storageId).exists();
+      if (exists) {
+        const bucketName = bucket.name;
+        url = `https://storage.googleapis.com/${bucketName}/${encodeURIComponent(storageId)}`;
+      }
+    } catch {}
     return successResponse({
       success: true,
       storageId,
       fileName,
-      url: null, // TODO: generate signed URL or public URL if needed
-      placeholder: true,
+      url,
+      placeholder: !url,
     });
   } catch (err) {
     console.error("/api/images/blog Firestore write error", err);

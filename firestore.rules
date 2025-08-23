@@ -21,6 +21,12 @@ service cloud.firestore {
   true;
     }
 
+    // Public blog posts: allow anyone to read, block client writes (server uses Admin SDK)
+    match /blogPosts/{postId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Conversations metadata: allow participants to create/read; prevent deletes
     match /conversations/{conversationId} {
       // Create/update allowed if the caller is included in the participants list they are writing

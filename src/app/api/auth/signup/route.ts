@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, db, COLLECTIONS } from "@/lib/firebaseAdmin";
 import { sendWelcomeEmail } from "@/lib/auth/email";
 import { randomBytes } from "crypto";
-import { emailVerificationLinkTemplate } from "@/lib/emailTemplates";
-import { sendUserNotification } from "@/lib/email";
+import { sendVerificationLinkEmail } from "@/lib/auth/email";
 
 function maskEmail(email?: string) {
   if (!email) return "";
@@ -88,11 +87,11 @@ export async function POST(request: NextRequest) {
         const baseUrl =
           process.env.NEXT_PUBLIC_APP_BASE_URL || "https://aroosi.app";
         const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${tokenRaw}`;
-        const tpl = emailVerificationLinkTemplate({
-          fullName: fullName || userRecord.displayName || "there",
-          verifyUrl,
-        });
-        await sendUserNotification(userRecord.email!, tpl.subject, tpl.html);
+        await sendVerificationLinkEmail(
+          userRecord.email!,
+          fullName || userRecord.displayName || "there",
+          verifyUrl
+        );
         verificationEmailQueued = true;
       } catch (e) {
         console.warn("Failed to queue verification email", {
@@ -106,17 +105,14 @@ export async function POST(request: NextRequest) {
       if (userRecord.email) {
         if (suppressWelcome) {
           try {
-            await db
-              .collection(COLLECTIONS.USERS)
-              .doc(userRecord.uid)
-              .set(
-                {
-                  welcomeEmailSentAt: Date.now(),
-                  banned: false,
-                  updatedAt: Date.now(),
-                },
-                { merge: true }
-              );
+            await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(
+              {
+                welcomeEmailSentAt: Date.now(),
+                banned: false,
+                updatedAt: Date.now(),
+              },
+              { merge: true }
+            );
           } catch (e) {
             console.warn("Failed to mark welcomeEmailSentAt (suppressed)", {
               uid: userRecord.uid,
@@ -131,17 +127,14 @@ export async function POST(request: NextRequest) {
             );
             if (sent) {
               welcomeEmailQueued = true; // maintain field name for response backwards compatibility
-              await db
-                .collection(COLLECTIONS.USERS)
-                .doc(userRecord.uid)
-                .set(
-                  {
-                    welcomeEmailSentAt: Date.now(),
-                    banned: false,
-                    updatedAt: Date.now(),
-                  },
-                  { merge: true }
-                );
+              await db.collection(COLLECTIONS.USERS).doc(userRecord.uid).set(
+                {
+                  welcomeEmailSentAt: Date.now(),
+                  banned: false,
+                  updatedAt: Date.now(),
+                },
+                { merge: true }
+              );
             }
           } catch (e) {
             console.warn("Failed to send welcome email inline", {

@@ -44,7 +44,7 @@ export function useFileUpload({ onUploadComplete, onUploadError }: UseFileUpload
             endpoint = "/api/profile-images/firebase";
             break;
           case "blogImage":
-            endpoint = "/api/blog/images";
+            endpoint = "/api/images/blog";
             break;
           case "voiceMessage":
             endpoint = "/api/voice-messages/firebase";

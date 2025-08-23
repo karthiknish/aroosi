@@ -7,7 +7,6 @@ import ClientRoot from "@/components/ClientRoot";
 import Script from "next/script";
 import RouteTransition from "@/components/RouteTransition";
 import RouteLoader from "@/components/RouteLoader";
-import { analytics } from "@/lib/analytics";
 // Note: Client-only UI like VerifyEmailBanner is rendered inside ClientRoot.
 
 // Removed Next.js Metadata/Viewport exports; using explicit <head> tags instead.
@@ -48,6 +47,7 @@ export default function RootLayout({
         <link rel="canonical" href="https://aroosi.app" />
 
         {/* Favicon: rely on public/favicon.ico only (avoid duplicate app favicon file) */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="manifest" href="/site.webmanifest" />
 
         {/* Fonts */}

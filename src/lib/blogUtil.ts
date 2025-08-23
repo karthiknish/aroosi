@@ -263,16 +263,15 @@ export async function convertAiTextToHtml({
 }: {
   token: string;
   text: string;
-  type: "excerpt" | "category";
+  type: "excerpt" | "category" | "title" | "blog";
 }): Promise<string> {
   const trimmed = (text || "").trim();
-  // Avoid hitting API (which returns 400) if no meaningful input yet
-  if (!trimmed || trimmed.length < 5) return "";
+  // Allow very short input for title/category; still prevent empty
+  if (!trimmed) return "";
   const res = await fetch("/api/convert-ai-text-to-html", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // Cookie-based session; no Authorization header
     },
     body: JSON.stringify({ text: trimmed, type }),
     cache: "no-store",
@@ -281,12 +280,9 @@ export async function convertAiTextToHtml({
   if (!res.ok) {
     throw new Error(data?.error || "AI processing failed");
   }
-  // Extract and return plain text from returned HTML
+  // Server returns { html: string }; for title/excerpt/category this is plain text
   if (typeof data?.html === "string") {
-    const temp = document.createElement("div");
-    temp.innerHTML = data.html;
-    const plain = temp.textContent || temp.innerText || "";
-    return plain.trim();
+    return data.html;
   }
   return "";
 }

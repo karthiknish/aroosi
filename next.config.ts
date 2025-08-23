@@ -7,18 +7,17 @@ const nextConfig: NextConfig = {
   },
   images: {
     domains: [
-      // Legacy Convex domains left for historical images; can prune once confirmed unused
-      "quirky-akita-969.convex.cloud",
-      "proper-gull-501.convex.cloud",
       "images.pexels.com",
       "images.squarespace-cdn.com",
-      "img.clerk.com",
-      "images.clerk.dev",
+
       // Firebase Storage signed URLs and direct media endpoints
       "firebasestorage.googleapis.com",
       "storage.googleapis.com",
       // Custom bucket domain variant (if using CNAME / alternate)
       "aroosi-project.firebasestorage.app",
+      // App hostname if serving absolute image URLs from same origin/CDN
+      "www.aroosi.app",
+      "aroosi.app",
       // Added for Afghan Community Values homepage image
       "i.pinimg.com",
     ],

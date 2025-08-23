@@ -63,10 +63,13 @@ export async function POST(req: NextRequest) {
       prompt = `You are an HTML formatter for blog posts.\n\n- Your ONLY job is to convert the input text into clean, semantic HTML, preserving ALL original content, structure, and formatting.\n- Do NOT summarize, extract, paraphrase, or generate a title, excerpt, or categories.\n- Do NOT add, remove, or change any content, headings, or sections.\n- If the input is already valid HTML, return it unchanged (except for fixing minor HTML errors if present).\n- Use appropriate tags (<h1> to <h6>, <p>, <ul>, <ol>, <li>, <blockquote>, <code>, <pre>, <a>, <table>, etc.) based on the structure and intent of the content.\n- Preserve all formatting such as bold, italics, blockquotes, inline code, tables, lists, and links.\n- Do NOT include <html>, <head>, or <body> tags.\n- Return ONLY the HTML content, and nothing else.\n- Do NOT output any summary, title, excerpt, or categories.\n\nInput:\n${text}`;
     } else if (type === "excerpt") {
       console.log("Converting to excerpt");
-      prompt = `Write a concise, engaging excerpt for this blog post (1-2 sentences, plain text only, no HTML):\n${text}`;
+      prompt = `Write a concise, engaging excerpt for this blog post (1-2 sentences, plain text only, no HTML). The excerpt should be unique and not repeat the title:\n${text}`;
     } else if (type === "category") {
       console.log("Converting to category");
-      prompt = `Suggest 1-3 relevant blog categories for this post, comma separated (plain text, no HTML):\n${text}`;
+      prompt = `Suggest 1-3 relevant blog categories for this post, comma separated (plain text, no HTML). Prefer existing site taxonomy if evident (e.g., Relationships, Culture, Lifestyle):\n${text}`;
+    } else if (type === "title") {
+      console.log("Converting to title");
+      prompt = `Generate a compelling, SEO-friendly blog post title (max 70 characters). Return plain text only, no quotes:\n${text}`;
     } else {
       prompt = text;
     }
@@ -174,7 +177,17 @@ export async function POST(req: NextRequest) {
       return errorResponse("No HTML content received from Gemini", 502);
     }
 
-    return successResponse({ html });
+    // For title/excerpt/category, return plain text (strip any tags)
+    const wantsPlain =
+      type === "title" || type === "excerpt" || type === "category";
+    const payload = wantsPlain
+      ? html
+          .replace(/<[^>]*>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+      : html;
+
+    return successResponse({ html: payload });
   } catch (error: unknown) {
     const message =
       typeof error === "object" && error && "message" in error

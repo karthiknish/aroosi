@@ -28,8 +28,11 @@ export async function GET(req: NextRequest) {
   if (entry.count > RATE_LIMIT_MAX)
     return errorResponse("Too many requests. Please try again later.", 429);
   const url = new URL(req.url);
-  const slug = sanitizeBlogSlug(url.pathname.split("/").pop()!);
+  const raw = url.pathname.split("/").pop()!;
+  const key = decodeURIComponent(raw);
   try {
+    // Strict: lookup by sanitized slug only
+    const slug = sanitizeBlogSlug(key);
     const snap = await db
       .collection("blogPosts")
       .where("slug", "==", slug)
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
     const data = { _id: doc.id, ...doc.data() } as any;
     // Derive weak ETag from updatedAt/createdAt + id
     const ts = data.updatedAt || data.createdAt || 0;
-    const etag = `W/"${doc.id}:${ts}"`;
+    const etag = `W/"${data._id}:${ts}"`;
     const ifNone = req.headers.get("if-none-match");
     if (ifNone && ifNone === etag) {
       return new Response(null, { status: 304, headers: { ETag: etag } });

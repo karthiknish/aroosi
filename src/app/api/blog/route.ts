@@ -87,6 +87,17 @@ export async function POST(req: NextRequest) {
   const required = ["title", "slug", "excerpt", "content", "categories"];
   for (const f of required)
     if (!(f in body)) return errorResponse(`Missing field: ${f}`, 400);
+  // Enforce Pexels-only image URLs if provided
+  if (
+    body.imageUrl &&
+    typeof body.imageUrl === "string" &&
+    !/^https?:\/\/(images\.)?pexels\.com\//.test(body.imageUrl)
+  ) {
+    return errorResponse(
+      "Featured image must be a Pexels URL (https://images.pexels.com/...)",
+      400
+    );
+  }
   const now = Date.now();
   const slug = sanitizeBlogSlug(String(body.slug));
   // Check duplicate slug

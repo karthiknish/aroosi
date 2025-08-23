@@ -700,7 +700,23 @@ export function useUserProfile() {
           profile = await fetchUserProfile(cred.user.uid);
         }
         if (!profile) {
-          // No existing account: sign out immediately and block.
+          // No existing profile for this Google user. Determine if this email uses another provider.
+          let friendlyMsg =
+            "No account exists for this Google email. Please sign up first.";
+          try {
+            if (cred.user?.email) {
+              const methods = await fetchSignInMethodsForEmail(
+                auth,
+                cred.user.email
+              );
+              if (methods.includes("password")) {
+                friendlyMsg =
+                  "This email is registered with email & password. Please sign in using your password.";
+              }
+            }
+          } catch {}
+
+          // Sign out the just-created/linked Google session to avoid partial state
           try {
             await signOut(auth);
           } catch {}
@@ -712,13 +728,11 @@ export function useUserProfile() {
             isAuthenticated: false,
             // onboarding flag removed
             isAdmin: false,
-            error:
-              "No account exists for this Google email. Please sign up first.",
+            error: friendlyMsg,
           }));
           return {
             success: false,
-            error:
-              "No account exists for this Google email. Please sign up first.",
+            error: friendlyMsg,
           };
         }
         if (typeof window !== "undefined") {

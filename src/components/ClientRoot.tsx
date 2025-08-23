@@ -30,13 +30,13 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <VerifyEmailBanner />
       <Header hideLinks={!!profile?.banned || hideLinks} />
       <main
         id="main-content"
-        className="pt-12 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.12))] overflow-x-hidden"
+        className="pt-16 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.16))] overflow-x-hidden"
         tabIndex={-1}
       >
+        <VerifyEmailBanner />
         <ErrorBoundary>
           <RouteTransition>{children}</RouteTransition>
         </ErrorBoundary>
