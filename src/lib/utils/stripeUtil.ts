@@ -163,12 +163,18 @@ export async function openBillingPortal(): Promise<void> {
         }
         throw new Error(err.error || `HTTP ${res.status}`);
       }
-      const data = (await res.json()) as { url?: string };
-      if (data?.url) {
-        window.location.assign(data.url);
+      // API may return either a bare { url } or wrapped { success: true, data: { url } }
+      const raw = (await res.json()) as {
+        url?: string;
+        data?: { url?: string };
+        error?: string;
+      };
+      const url = raw?.url ?? raw?.data?.url;
+      if (typeof url === "string" && url) {
+        window.location.assign(url);
         return;
       }
-      throw new Error("No billing portal URL returned");
+      throw new Error(raw?.error || "No billing portal URL returned");
     } catch (error) {
       if (attempt === maxAttempts) {
         console.error("Failed to open billing portal", error);

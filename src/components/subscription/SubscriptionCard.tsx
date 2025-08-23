@@ -117,6 +117,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   const isTrial = false; // trials disabled server-side
   const isExpired =
     status.expiresAt && status.expiresAt < Date.now() && planKey !== "free";
+  const isCancelScheduled = Boolean(status.cancelAtPeriodEnd && !isExpired);
 
   const updating = Boolean(isTransitioning || (!isLoading && isFetching));
 
@@ -157,6 +158,14 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
       {/* Trial end date removed */}
 
       {/* Status indicators */}
+      {isCancelScheduled && status.expiresAt && (
+        <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+          <p className="text-orange-800 text-sm font-medium">
+            Cancellation scheduled. Access ends on{" "}
+            {new Date(status.expiresAt).toLocaleDateString()}.
+          </p>
+        </div>
+      )}
       {isExpired && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-red-800 text-sm font-medium">

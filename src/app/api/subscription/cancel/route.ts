@@ -77,6 +77,22 @@ export async function POST(request: NextRequest) {
           current_period_end: current.current_period_end,
           correlationId,
         });
+        // Persist the scheduled state in Firestore to reflect in status endpoint immediately
+        try {
+          await db
+            .collection(COLLECTIONS.USERS)
+            .doc(userId)
+            .set(
+              {
+                subscriptionCancelAtPeriodEnd: true,
+                subscriptionExpiresAt: current.current_period_end
+                  ? current.current_period_end * 1000
+                  : profile.subscriptionExpiresAt || null,
+                updatedAt: Date.now(),
+              },
+              { merge: true }
+            );
+        } catch {}
         return successResponse({
           message: "Cancellation already scheduled at period end.",
           accessUntil: current.current_period_end * 1000,
@@ -98,6 +114,22 @@ export async function POST(request: NextRequest) {
         period_end: updatedStripeSub.current_period_end,
         durationMs: Date.now() - startedAt,
       });
+      // Persist the scheduled state in Firestore immediately so the UI reflects it without waiting for webhook
+      try {
+        await db
+          .collection(COLLECTIONS.USERS)
+          .doc(userId)
+          .set(
+            {
+              subscriptionCancelAtPeriodEnd: true,
+              subscriptionExpiresAt: updatedStripeSub.current_period_end
+                ? updatedStripeSub.current_period_end * 1000
+                : profile.subscriptionExpiresAt || null,
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          );
+      } catch {}
     } catch (stripeError) {
       console.error("subscription.cancel.stripe_error", {
         userId,

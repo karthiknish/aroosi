@@ -111,6 +111,7 @@ export async function GET(request: NextRequest) {
       boostsRemaining?: number | null;
       hasSpotlightBadge?: boolean | null;
       spotlightBadgeExpiresAt?: number | null;
+      subscriptionCancelAtPeriodEnd?: boolean | null;
     };
 
     const now = Date.now();
@@ -142,6 +143,7 @@ export async function GET(request: NextRequest) {
         isActive,
         expiresAt,
         daysRemaining,
+        cancelAtPeriodEnd: Boolean(p.subscriptionCancelAtPeriodEnd),
         isTrial,
         trialEndsAt,
         trialDaysRemaining,

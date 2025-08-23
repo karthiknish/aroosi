@@ -86,19 +86,33 @@ export async function createBlogPost(
   _token: string,
   post: Omit<BlogPost, "_id" | "createdAt" | "updatedAt">
 ): Promise<BlogApiResponse<BlogPost>> {
-  const data = (await postJson("/api/blog", post)) as unknown;
-  if (!(data as Record<string, unknown>)?.success) {
+  try {
+    const data = (await postJson("/api/blog", post)) as unknown;
+    if (!(data as Record<string, unknown>)?.success) {
+      return {
+        success: false,
+        error:
+          ((data as Record<string, unknown>)?.error as string) ||
+          "Failed to create blog post",
+      };
+    }
+    return {
+      success: true,
+      data: (data as { data?: BlogPost }).data as BlogPost,
+    };
+  } catch (err) {
+    const status = (err as any)?.status as number | undefined;
+    if (status === 409) {
+      return {
+        success: false,
+        error: "Slug already exists. Please choose a different slug.",
+      };
+    }
     return {
       success: false,
-      error:
-        ((data as Record<string, unknown>)?.error as string) ||
-        "Failed to create blog post",
+      error: (err as Error)?.message || "Failed to create blog post",
     };
   }
-  return {
-    success: true,
-    data: (data as { data?: BlogPost }).data as BlogPost,
-  };
 }
 
 // Delete a blog post by _id (requires auth)
@@ -148,7 +162,7 @@ export async function editBlogPost(
 // Fetch a single blog post by id (optionally with admin token)
 export async function fetchBlogPostById(
   id: string,
-  token?: string
+  _token?: string
 ): Promise<BlogPost | null> {
   const data = (await getJson(
     `/api/blog/${encodeURIComponent(id)}`
@@ -167,7 +181,7 @@ export async function fetchBlogPostById(
 // Fetch a single blog post by slug (optionally with admin token)
 export async function fetchBlogPostBySlug(
   slug: string,
-  token?: string
+  _token?: string
 ): Promise<BlogPost | null> {
   // Firestore-backed API returns { success, data } where data is the post
   try {

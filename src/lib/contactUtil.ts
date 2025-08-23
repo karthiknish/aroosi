@@ -5,7 +5,7 @@ export interface Contact {
   id?: string;
   name: string;
   email: string;
-  subject: string;
+  subject?: string;
   message: string;
   createdAt: string;
 }
@@ -23,6 +23,28 @@ export async function fetchAllContactsAdmin(
   if ([...params.keys()].length > 0) url += `?${params.toString()}`;
 
   // Fetch all contacts for admin users
+  const raw = await getJson<any>(url, {
+    headers: { "Content-Type": "application/json" },
+  });
+  const arr: Contact[] = Array.isArray(raw?.data)
+    ? raw.data
+    : Array.isArray(raw)
+      ? raw
+      : [];
+  return arr.map((c) => ({ ...c, id: c.id || c._id || "" }));
+}
+
+export async function fetchAllVipContactsAdmin(
+  _token: string,
+  opts?: { page?: number; pageSize?: number }
+): Promise<Contact[]> {
+  let url = "/api/contact?source=vip";
+  const params = new URLSearchParams();
+  if (opts?.page && opts.page > 0) params.set("page", String(opts.page));
+  if (opts?.pageSize && opts.pageSize > 0)
+    params.set("pageSize", String(opts.pageSize));
+  if ([...params.keys()].length > 0) url += `&${params.toString()}`;
+
   const raw = await getJson<any>(url, {
     headers: { "Content-Type": "application/json" },
   });

@@ -177,10 +177,20 @@ export default function SubscriptionPage() {
   const handleConfirmCancel = () => {
     cancel(undefined, {
       onSuccess: (data) => {
-        showSuccessToast(
+        const end =
+          typeof data?.accessUntil === "number"
+            ? new Date(data.accessUntil)
+            : null;
+        const endStr = end ? end.toLocaleDateString() : null;
+        const baseMsg =
           data.message ||
-            "Cancellation requested. Your plan will remain active until the end of the billing period."
-        );
+          "Cancellation requested. Your plan will remain active until the end of the billing period.";
+        const msg = endStr ? `${baseMsg} Access ends on ${endStr}.` : baseMsg;
+        showSuccessToast(msg);
+        try {
+          // Nudge status refresh so badges reflect scheduled cancellation immediately
+          queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        } catch {}
       },
       onError: (error) => {
         showErrorToast(error, "Failed to request cancellation");
@@ -337,12 +347,19 @@ export default function SubscriptionPage() {
                         </div>
                       )}
 
-                      {isCurrentPlan && (
-                        <Badge className="absolute top-4 left-4 bg-green-500 hover:bg-green-600">
-                          <Check className="h-3 w-3 mr-1" />
-                          Current Plan
-                        </Badge>
-                      )}
+                      {isCurrentPlan &&
+                        (status?.cancelAtPeriodEnd && status?.expiresAt ? (
+                          <Badge className="absolute top-4 left-4 bg-orange-500 hover:bg-orange-600">
+                            <Check className="h-3 w-3 mr-1" />
+                            Ends{" "}
+                            {new Date(status.expiresAt).toLocaleDateString()}
+                          </Badge>
+                        ) : (
+                          <Badge className="absolute top-4 left-4 bg-green-500 hover:bg-green-600">
+                            <Check className="h-3 w-3 mr-1" />
+                            Current Plan
+                          </Badge>
+                        ))}
 
                       <CardContent className="p-6">
                         <div className="text-center mb-6">
@@ -402,13 +419,26 @@ export default function SubscriptionPage() {
 
                         {isCurrentPlan && (
                           <div className="text-center">
-                            <Badge
-                              variant="secondary"
-                              className="bg-green-100 text-green-700"
-                            >
-                              <Check className="h-3 w-3 mr-1" />
-                              Active
-                            </Badge>
+                            {status?.cancelAtPeriodEnd && status?.expiresAt ? (
+                              <Badge
+                                variant="secondary"
+                                className="bg-orange-100 text-orange-700"
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Ends{" "}
+                                {new Date(
+                                  status.expiresAt
+                                ).toLocaleDateString()}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                className="bg-green-100 text-green-700"
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Active
+                              </Badge>
+                            )}
                           </div>
                         )}
                       </CardContent>

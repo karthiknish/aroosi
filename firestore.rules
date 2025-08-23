@@ -163,6 +163,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // VIP Aroosi contact form submissions
+    match /vip-contact/{docId} {
+  allow create: if true;
+      allow read, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

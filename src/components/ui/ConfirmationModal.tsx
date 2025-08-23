@@ -33,7 +33,7 @@ export function ConfirmationModal({
 }: ConfirmationModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-white">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -53,7 +53,11 @@ export function ConfirmationModal({
             onClick={onConfirm}
             disabled={isLoading || isDeleting}
           >
-            {isLoading ? "Loading..." : isDeleting ? "Deleting..." : confirmText}
+            {isLoading
+              ? "Loading..."
+              : isDeleting
+                ? "Deleting..."
+                : confirmText}
           </Button>
         </DialogFooter>
       </DialogContent>

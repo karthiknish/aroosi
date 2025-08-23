@@ -166,7 +166,7 @@ export default function CreateBlogPage() {
         throw new Error("Slug already exists. Please choose a different slug.");
       }
       const categoriesArray: string[] = categories;
-      await createBlogPost("", {
+      const result = await createBlogPost("", {
         title,
         slug,
         excerpt,
@@ -174,6 +174,12 @@ export default function CreateBlogPage() {
         imageUrl,
         categories: categoriesArray,
       } as any);
+      if (!result?.success) {
+        const msg = result?.error || "Failed to create post";
+        setError(msg);
+        showErrorToast(msg);
+        return;
+      }
       showSuccessToast("Post created successfully");
       // reset
       setTitle("");

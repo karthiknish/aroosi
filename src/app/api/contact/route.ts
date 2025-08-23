@@ -55,14 +55,17 @@ export async function GET(req: NextRequest) {
     return applySecurityHeaders(session.errorResponse);
   try {
     const searchParams = req.nextUrl.searchParams;
+    const source = searchParams.get("source"); // "vip" to fetch vip-contact
     const page = toPositiveInt(searchParams.get("page"), NaN);
     const pageSize = toPositiveInt(
       searchParams.get("pageSize") ?? searchParams.get("limit"),
       NaN
     );
     // Firestore query ordered by createdAt desc
+    const collectionName =
+      source === "vip" ? "vip-contact" : "contactSubmissions";
     const snap = await db
-      .collection("contactSubmissions")
+      .collection(collectionName)
       .orderBy("createdAt", "desc")
       .get();
     const all = snap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => ({
@@ -89,10 +92,10 @@ export async function GET(req: NextRequest) {
       });
       return applySecurityHeaders(res);
     }
-    const res = new Response(JSON.stringify(payload), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+  const res = new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
     return applySecurityHeaders(res);
   } catch (e) {
     return applySecurityHeaders(errorResponse(e, 500));

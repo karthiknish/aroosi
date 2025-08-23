@@ -8,6 +8,7 @@ export interface SubscriptionStatusResponse {
   isActive: boolean;
   daysRemaining: number;
   expiresAt: number | null;
+  cancelAtPeriodEnd?: boolean;
   isTrial?: boolean;
   trialEndsAt?: number | null;
   trialDaysRemaining?: number;
@@ -125,6 +126,7 @@ class SubscriptionAPI {
       subscriptionExpiresAt?: number | null;
       isActive?: boolean;
       daysRemaining?: number;
+      cancelAtPeriodEnd?: boolean;
       isTrial?: boolean;
       trialEndsAt?: number | null;
       trialDaysRemaining?: number;
@@ -154,6 +156,7 @@ class SubscriptionAPI {
           ? payload.daysRemaining
           : fallbackDaysRemaining,
       expiresAt,
+          cancelAtPeriodEnd: Boolean(payload.cancelAtPeriodEnd),
       isTrial: Boolean(payload.isTrial),
       trialEndsAt:
         typeof payload.trialEndsAt === "number" ? payload.trialEndsAt : null,
@@ -218,13 +221,21 @@ class SubscriptionAPI {
    * Cancel current user's subscription
    * POST /api/subscription/cancel
    */
-  async cancel(token?: string): Promise<{ message: string }> {
+  async cancel(
+    token?: string
+  ): Promise<{ message: string; accessUntil?: number; scheduled?: boolean }> {
     const data = (await this.makeRequest(
       "/api/subscription/cancel",
       { method: "POST" },
       token
-    )) as { message?: string };
-    return { message: data?.message ?? "Subscription cancellation requested" };
+    )) as { message?: string; accessUntil?: number; scheduled?: boolean };
+    return {
+      message: data?.message ?? "Subscription cancellation requested",
+      accessUntil:
+        typeof data?.accessUntil === "number" ? data.accessUntil : undefined,
+      scheduled:
+        typeof data?.scheduled === "boolean" ? data.scheduled : undefined,
+    };
   }
 
   /**

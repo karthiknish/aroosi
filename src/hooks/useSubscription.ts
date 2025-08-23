@@ -191,7 +191,16 @@ export const useSubscriptionActions = () => {
   const cancelMutation = useMutation({
     mutationFn: () => subscriptionAPI.cancel(undefined),
     onSuccess: (data) => {
-      showSuccessToast(data.message);
+      const end =
+        typeof (data as any)?.accessUntil === "number"
+          ? new Date((data as any).accessUntil)
+          : null;
+      const endStr = end ? end.toLocaleDateString() : null;
+      const baseMsg =
+        data.message ||
+        "Cancellation requested. Your plan will remain active until the end of the billing period.";
+      const msg = endStr ? `${baseMsg} Access ends on ${endStr}.` : baseMsg;
+      showSuccessToast(msg);
       void queryClient.invalidateQueries({ queryKey: ["subscription"] });
     },
     onError: (error: Error) => {

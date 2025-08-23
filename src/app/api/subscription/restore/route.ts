@@ -121,7 +121,19 @@ export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
     // Query the profile by user ID (optional, for audit/logging)
     // const profile = await convex.query(api.profiles.getProfileByUserId, { userId });
 
-    const body = await request.json();
+    // Safely parse JSON body: allow empty body without throwing
+    let body: any = {};
+    const contentType = request.headers.get("content-type") || "";
+    const contentLength = request.headers.get("content-length");
+    const hasBody = contentLength ? parseInt(contentLength, 10) > 0 : false;
+    if (hasBody && contentType.includes("application/json")) {
+      try {
+        body = await request.json();
+      } catch {
+        return errorResponse("Invalid JSON in request body", 400);
+      }
+    }
+
     const { purchases, platform, receiptData } = body;
 
     if (!platform) {

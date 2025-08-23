@@ -28,7 +28,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import { showSuccessToast } from "@/lib/ui/toast";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
@@ -178,8 +178,12 @@ export default function AdminProfilePage() {
   };
 
   const onToggleBan = async (id: string, isBanned: boolean) => {
-    await setProfileBannedStatus(id, !isBanned);
+    const result = await setProfileBannedStatus(id, !isBanned);
     setConfirmBanId(null);
+    if (!result.success) {
+      showErrorToast(result.error || "Failed to update ban status");
+      return;
+    }
     void loadProfiles();
     showSuccessToast(isBanned ? "Profile unbanned" : "Profile banned");
   };

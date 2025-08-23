@@ -554,6 +554,7 @@ export async function POST(req: NextRequest) {
               {
                 subscriptionPlan: "free",
                 subscriptionExpiresAt: null,
+                subscriptionCancelAtPeriodEnd: false,
                 updatedAt: Date.now(),
               },
               { merge: true }
@@ -620,6 +621,12 @@ export async function POST(req: NextRequest) {
                   stripeSubscriptionId: sub.id,
                   stripeCustomerId:
                     typeof sub.customer === "string" ? sub.customer : undefined,
+                  // Mirror cancel_at_period_end in user doc for status endpoint
+                  ...(typeof sub.cancel_at_period_end === "boolean"
+                    ? {
+                        subscriptionCancelAtPeriodEnd: sub.cancel_at_period_end,
+                      }
+                    : {}),
                 },
                 {
                   allowReplaceSubIdIfCustomerMatches: true,
@@ -627,6 +634,18 @@ export async function POST(req: NextRequest) {
                     typeof sub.customer === "string" ? sub.customer : undefined,
                 }
               );
+              // Also update the cancel-at-period-end flag to reflect current state
+              try {
+                await snap.docs[0].ref.set(
+                  {
+                    subscriptionCancelAtPeriodEnd: Boolean(
+                      sub.cancel_at_period_end
+                    ),
+                    updatedAt: Date.now(),
+                  },
+                  { merge: true }
+                );
+              } catch {}
             }
           }
           // Notify user depending on status

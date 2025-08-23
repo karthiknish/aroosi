@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Notifications } from "@/lib/notify";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { ensureAdmin } from "@/lib/auth/requireAdmin";
 import { db, adminAuth } from "@/lib/firebaseAdmin";
 
 interface BanRequestBody {
@@ -17,8 +17,9 @@ export async function PUT(req: NextRequest) {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const startedAt = Date.now();
 
-  const { role } = await requireAuth(req);
-  if ((role || "user") !== "admin") {
+  try {
+    await ensureAdmin();
+  } catch {
     const status = 403;
     const body = { error: "Unauthorized", correlationId };
     console.warn("Admin profile.ban PUT auth missing", {

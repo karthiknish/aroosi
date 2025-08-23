@@ -16,7 +16,7 @@ export async function fetchAdminProfiles({
   try {
     const res = await fetch(
       `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=${pageSize}`,
-      { headers }
+      { headers, credentials: "include" }
     );
     if (!res.ok) {
       const errorText = await res.text();
@@ -47,6 +47,7 @@ export async function fetchAdminProfileImages({
   try {
     const res = await fetch(`/api/profile-detail/${userId}/images`, {
       headers,
+      credentials: "include",
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -84,6 +85,7 @@ export async function updateAdminProfile({
       method: "PUT",
       headers,
       body: JSON.stringify(updates),
+      credentials: "include",
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -109,6 +111,7 @@ export async function deleteAdminProfile({
     let res = await fetch(`/api/admin/profiles/${id}`, {
       method: "DELETE",
       headers,
+      credentials: "include",
     });
 
     if (!res.ok && (res.status === 404 || res.status === 405)) {
@@ -116,6 +119,7 @@ export async function deleteAdminProfile({
       res = await fetch(`/api/admin/profiles`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ id }),
       });
     }
@@ -148,6 +152,7 @@ export async function banAdminProfile({
       method: "PUT",
       headers,
       body: JSON.stringify({ banned }),
+      credentials: "include",
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -233,6 +238,7 @@ export async function setProfileBannedStatus(
       // Cookie-based session; no Authorization header
       "Content-Type": "application/json",
     },
+      credentials: "include",
     body: JSON.stringify({ banned }),
   });
 
@@ -282,7 +288,10 @@ export async function fetchAdminProfileById({
 }): Promise<AdminProfile | null> {
   const headers: Record<string, string> = {};
   try {
-    const res = await fetch(`/api/admin/profiles/${id}`, { headers });
+    const res = await fetch(`/api/admin/profiles/${id}`, {
+      headers,
+      credentials: "include",
+    });
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch profile: ${errorText}`);
@@ -319,6 +328,7 @@ export async function updateAdminProfileById({
       method: "PUT",
       headers,
       body: JSON.stringify(updates),
+      credentials: "include",
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -342,6 +352,7 @@ export async function fetchAdminProfileImagesById({
   try {
     const res = await fetch(`/api/profile-detail/${profileId}/images`, {
       headers,
+      credentials: "include",
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -383,6 +394,7 @@ export async function updateAdminProfileImageById({
       {
         method: "PUT",
         headers,
+        credentials: "include",
         body: JSON.stringify(updates),
       }
     );
@@ -411,6 +423,7 @@ export async function deleteAdminProfileImageById({
       `/api/admin/profiles/${profileId}/images/${imageId}`,
       {
         method: "DELETE",
+              credentials: "include",
       }
     );
     if (!res.ok) {
@@ -540,8 +553,10 @@ export async function fetchAdminProfileMatches({
 }): Promise<Profile[]> {
   const headers: Record<string, string> = {};
   try {
-    const res = await fetch(`/api/admin/profiles/${profileId}/matches`, {
+    // Matches are served via the profile endpoint with a query param
+    const res = await fetch(`/api/admin/profiles/${profileId}?matches=true`, {
       headers,
+      credentials: "include",
     });
     if (!res.ok) {
       const errorText = await res.text();

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { fetchAllContactsAdmin } from "@/lib/contactUtil";
+import {
+  fetchAllContactsAdmin,
+  fetchAllVipContactsAdmin,
+} from "@/lib/contactUtil";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -17,6 +20,7 @@ import { Contact } from "@/lib/contactUtil";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Simple Modal component
 function Modal({
@@ -84,6 +88,18 @@ export default function AdminContactPage() {
     enabled: true,
   });
 
+  const {
+    data: vipContacts,
+    isLoading: isVipLoading,
+    isError: isVipError,
+    error: vipError,
+    refetch: refetchVip,
+  } = useQuery({
+    queryKey: ["admin-contacts-vip", { page, pageSize }],
+    queryFn: () => fetchAllVipContactsAdmin("", { page, pageSize }),
+    enabled: true,
+  });
+
   const handleRowClick = (contact: Contact) => {
     setSelectedContact(contact);
     setModalOpen(true);
@@ -95,88 +111,176 @@ export default function AdminContactPage() {
   };
 
   return (
-    <div className="max-w-4xl my-10 mx-auto py-8">
+    <div className="max-w-5xl my-10 mx-auto py-8">
       <h1 className="text-2xl font-bold mb-6">Contact Form Submissions</h1>
-      {isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      ) : isError ? (
-        <ErrorState
-          message={error?.message ?? "Failed to load contacts."}
-          onRetry={() => refetch()}
-          className="py-16"
-        />
-      ) : contacts && contacts.length > 0 ? (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Submitted At</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contacts.map((contact: Contact) => (
-                <TableRow
-                  key={
-                    contact._id ??
-                    contact.id ??
-                    `${contact.email}-${contact.createdAt}`
-                  }
-                  className="cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleRowClick(contact)}
-                >
-                  <TableCell>{contact.name}</TableCell>
-                  <TableCell>{contact.email}</TableCell>
-                  <TableCell>{contact.subject}</TableCell>
-                  <TableCell>{contact.message}</TableCell>
-                  <TableCell>
-                    {contact.createdAt
-                      ? new Date(contact.createdAt).toLocaleString()
-                      : "-"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {/* Pagination controls */}
-          <div className="flex items-center justify-between gap-4 py-3">
-            <span className="text-sm text-gray-600">Page {page}</span>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={!contacts || contacts.length < pageSize}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+      <Tabs defaultValue="aroosi">
+        <TabsList>
+          <TabsTrigger value="aroosi">Aroosi</TabsTrigger>
+          <TabsTrigger value="vip">VIP</TabsTrigger>
+        </TabsList>
 
-          <Modal
-            open={modalOpen}
-            onClose={handleCloseModal}
-            contact={selectedContact ?? ({} as Contact)}
-          />
-        </div>
-      ) : (
-        <EmptyState message="No contact form submissions found." />
-      )}
+        <TabsContent value="aroosi">
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : isError ? (
+            <ErrorState
+              message={error?.message ?? "Failed to load contacts."}
+              onRetry={() => refetch()}
+              className="py-16"
+            />
+          ) : contacts && contacts.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead>Submitted At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contacts.map((contact: Contact) => (
+                    <TableRow
+                      key={
+                        contact._id ??
+                        contact.id ??
+                        `${contact.email}-${contact.createdAt}`
+                      }
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleRowClick(contact)}
+                    >
+                      <TableCell>{contact.name}</TableCell>
+                      <TableCell>{contact.email}</TableCell>
+                      <TableCell>{contact.message}</TableCell>
+                      <TableCell>
+                        {contact.createdAt
+                          ? new Date(contact.createdAt).toLocaleString()
+                          : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {/* Pagination controls */}
+              <div className="flex items-center justify-between gap-4 py-3">
+                <span className="text-sm text-gray-600">Page {page}</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!contacts || contacts.length < pageSize}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+
+              <Modal
+                open={modalOpen}
+                onClose={handleCloseModal}
+                contact={selectedContact ?? ({} as Contact)}
+              />
+            </div>
+          ) : (
+            <EmptyState message="No contact form submissions found." />
+          )}
+        </TabsContent>
+
+        <TabsContent value="vip">
+          {isVipLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : isVipError ? (
+            <ErrorState
+              message={vipError?.message ?? "Failed to load VIP contacts."}
+              onRetry={() => refetchVip()}
+              className="py-16"
+            />
+          ) : vipContacts && vipContacts.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead>Submitted At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vipContacts.map((contact: Contact) => (
+                    <TableRow
+                      key={
+                        contact._id ??
+                        contact.id ??
+                        `${contact.email}-${contact.createdAt}`
+                      }
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleRowClick(contact)}
+                    >
+                      <TableCell>{contact.name}</TableCell>
+                      <TableCell>{contact.email}</TableCell>
+                      <TableCell>{contact.message}</TableCell>
+                      <TableCell>
+                        {contact.createdAt
+                          ? new Date(contact.createdAt).toLocaleString()
+                          : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {/* Pagination controls (VIP) */}
+              <div className="flex items-center justify-between gap-4 py-3">
+                <span className="text-sm text-gray-600">Page {page}</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!vipContacts || vipContacts.length < pageSize}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+
+              <Modal
+                open={modalOpen}
+                onClose={handleCloseModal}
+                contact={selectedContact ?? ({} as Contact)}
+              />
+            </div>
+          ) : (
+            <EmptyState message="No VIP contact submissions found." />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
