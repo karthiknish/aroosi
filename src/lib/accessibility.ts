@@ -92,48 +92,59 @@ export const handleKeyboardNavigation = (
   onEscape?: () => void,
   onArrowKeys?: (direction: 'up' | 'down' | 'left' | 'right') => void
 ) => {
+  // Do not intercept typing keys when focus is in editable controls
+  const target = event.target as HTMLElement | null;
+  const tag = target?.tagName?.toLowerCase();
+  const isEditable =
+    target?.isContentEditable ||
+    tag === "input" ||
+    tag === "textarea" ||
+    tag === "select" ||
+    (tag === "button" && Boolean((target as HTMLButtonElement).type));
+  if (isEditable) return;
+
   switch (event.key) {
-    case 'Enter':
+    case "Enter":
       if (onEnter) {
         event.preventDefault();
         onEnter();
       }
       break;
-    case ' ':
-    case 'Space':
+    case " ":
+    case "Space":
       if (onSpace) {
         event.preventDefault();
         onSpace();
       }
       break;
-    case 'Escape':
+    case "Escape":
       if (onEscape) {
         event.preventDefault();
         onEscape();
       }
       break;
-    case 'ArrowUp':
+    case "ArrowUp":
       if (onArrowKeys) {
         event.preventDefault();
-        onArrowKeys('up');
+        onArrowKeys("up");
       }
       break;
-    case 'ArrowDown':
+    case "ArrowDown":
       if (onArrowKeys) {
         event.preventDefault();
-        onArrowKeys('down');
+        onArrowKeys("down");
       }
       break;
-    case 'ArrowLeft':
+    case "ArrowLeft":
       if (onArrowKeys) {
         event.preventDefault();
-        onArrowKeys('left');
+        onArrowKeys("left");
       }
       break;
-    case 'ArrowRight':
+    case "ArrowRight":
       if (onArrowKeys) {
         event.preventDefault();
-        onArrowKeys('right');
+        onArrowKeys("right");
       }
       break;
   }
