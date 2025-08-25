@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { requestEmailVerification } from "@/lib/auth/clientAuth";
 
 export default function VerifyEmailBanner() {
   const { profile, isSignedIn } = useAuthContext();
@@ -30,12 +31,11 @@ export default function VerifyEmailBanner() {
               if (recentlySent) return;
               setSending(true);
               try {
-                const res = await fetch("/api/auth/verify-email/request", {
-                  method: "POST",
-                });
-                if (!res.ok) {
-                  const txt = await res.text();
-                  showErrorToast(txt || "Failed to send verification email");
+                const result = await requestEmailVerification();
+                if (!result.success) {
+                  showErrorToast(
+                    result.error || "Failed to send verification email"
+                  );
                 } else {
                   showSuccessToast("Verification email sent");
                   setSentAt(Date.now());

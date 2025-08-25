@@ -277,7 +277,7 @@ const ProfileView: FC<ProfileViewProps> = ({
                               `Profile boosted for 24 hours! (${result.boostsRemaining ?? 0} boosts left this month)`
                             );
                           } else {
-                            showErrorToast(result.message || "Boost failed");
+                            showErrorToast(result.message, "Boost failed");
                           }
                         } catch {}
                         // Refresh to reflect boosted state ribbon/badges
@@ -464,7 +464,8 @@ const ProfileView: FC<ProfileViewProps> = ({
                                 router.refresh?.();
                               } else {
                                 showErrorToast(
-                                  res.message || "Activation failed"
+                                  res.message,
+                                  "Activation failed"
                                 );
                               }
                             } catch (e) {

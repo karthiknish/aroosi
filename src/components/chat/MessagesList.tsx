@@ -10,7 +10,16 @@ import React, {
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { ArrowDown, Shield, Smile, MoreVertical, Edit3, Trash } from "lucide-react";
+import {
+  ArrowDown,
+  Shield,
+  Smile,
+  MoreVertical,
+  Edit3,
+  Trash,
+  Search,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatMessageTime } from "@/lib/utils/messageUtils";
 import { DeliveryStatus } from "@/components/chat/DeliveryStatus";
@@ -86,6 +95,12 @@ export default function MessagesList(props: MessagesListProps) {
   const longPressTimer = useRef<number | null>(null);
   const pressedMessageRef = useRef<MatchMessage | null>(null);
 
+  // Search functionality
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState<MatchMessage[]>([]);
+  const [currentSearchIndex, setCurrentSearchIndex] = useState(-1);
+
   const clearLongPress = () => {
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
@@ -93,6 +108,63 @@ export default function MessagesList(props: MessagesListProps) {
     }
     pressedMessageRef.current = null;
   };
+
+  // Search functionality
+  const performSearch = useCallback(
+    (query: string) => {
+      if (!query.trim()) {
+        setSearchResults([]);
+        setCurrentSearchIndex(-1);
+        return;
+      }
+
+      const results = messages.filter(
+        (msg) =>
+          msg.text && msg.text.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(results);
+      setCurrentSearchIndex(results.length > 0 ? 0 : -1);
+    },
+    [messages]
+  );
+
+  const navigateSearch = useCallback(
+    (direction: "next" | "prev") => {
+      if (searchResults.length === 0) return;
+
+      let newIndex: number;
+      if (direction === "next") {
+        newIndex =
+          currentSearchIndex < searchResults.length - 1
+            ? currentSearchIndex + 1
+            : 0;
+      } else {
+        newIndex =
+          currentSearchIndex > 0
+            ? currentSearchIndex - 1
+            : searchResults.length - 1;
+      }
+
+      setCurrentSearchIndex(newIndex);
+      const targetMessage = searchResults[newIndex];
+      if (targetMessage && scrollRef.current) {
+        const messageElement = scrollRef.current.querySelector(
+          `[data-message-id="${targetMessage._id}"]`
+        );
+        if (messageElement) {
+          messageElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }
+    },
+    [searchResults, currentSearchIndex]
+  );
+
+  useEffect(() => {
+    performSearch(searchQuery);
+  }, [searchQuery, performSearch]);
 
   const openContextMenu = useCallback(
     (clientX: number, clientY: number, message: MatchMessage) => {
@@ -255,7 +327,96 @@ export default function MessagesList(props: MessagesListProps) {
       aria-label="Conversation messages"
       role="log"
       aria-live="polite"
+      data-messages-list
+      ref={(el) => {
+        if (el) {
+          const handleToggleSearch = () => setShowSearch((prev) => !prev);
+          el.addEventListener("toggleSearch", handleToggleSearch);
+          return () =>
+            el.removeEventListener("toggleSearch", handleToggleSearch);
+        }
+      }}
     >
+      {/* Search Bar */}
+      <AnimatePresence>
+        {showSearch && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-4 py-2 border-b border-gray-200/60 bg-white/80 backdrop-blur-sm"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search messages..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent border-none outline-none text-sm placeholder-gray-400"
+                autoFocus
+                aria-label="Search through conversation messages"
+                aria-describedby="search-results"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    navigateSearch("next");
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    setShowSearch(false);
+                    setSearchQuery("");
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    navigateSearch("prev");
+                  } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    navigateSearch("next");
+                  }
+                }}
+              />
+              {searchQuery && (
+                <div
+                  className="flex items-center gap-1 text-xs text-gray-500"
+                  id="search-results"
+                >
+                  {searchResults.length > 0 && (
+                    <span aria-live="polite">
+                      {currentSearchIndex + 1}/{searchResults.length}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => navigateSearch("prev")}
+                    className="p-1 hover:bg-gray-100 rounded"
+                    disabled={searchResults.length <= 1}
+                    aria-label="Previous search result"
+                    title="Previous (↑)"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => navigateSearch("next")}
+                    className="p-1 hover:bg-gray-100 rounded"
+                    disabled={searchResults.length <= 1}
+                    aria-label="Next search result"
+                    title="Next (↓)"
+                  >
+                    ↓
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchQuery("");
+                }}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div
         ref={scrollRef}
         className="h-full overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 bg-[radial-gradient(circle_at_20%_0%,rgba(0,0,0,0.02),transparent_60%)] focus:outline-none"
@@ -397,7 +558,7 @@ export default function MessagesList(props: MessagesListProps) {
                         )}
                         {showTime && (
                           <div className="text-center py-1">
-                            <span className="text-[10px] text-gray-500 bg-gray-100/80 px-2.5 py-0.5 rounded-full shadow-sm">
+                            <span className="text-[10px] text-gray-600 bg-gray-200/60 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm border border-gray-300/40 font-medium">
                               {formatMessageTime(msg.createdAt)}
                             </span>
                           </div>
@@ -407,27 +568,30 @@ export default function MessagesList(props: MessagesListProps) {
                         >
                           <div
                             className={cn(
-                              "relative group max-w-[320px] px-4 py-2 shadow-sm text-sm break-words transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50",
-                              "border border-gray-200 bg-white/90 backdrop-blur-sm",
+                              "relative group max-w-[85%] sm:max-w-[320px] px-3 sm:px-4 py-2 sm:py-3 shadow-sm text-sm break-words transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 hover:shadow-md touch-manipulation",
+                              "border border-gray-200/80 bg-gradient-to-br from-white to-gray-50/50 backdrop-blur-sm",
                               highlightedId === msg._id &&
-                                "border-primary/70 bg-primary/5 ring-2 ring-primary/40",
+                                "border-primary/70 bg-gradient-to-br from-primary/5 to-primary/10 ring-2 ring-primary/40 shadow-lg",
                               isCurrentUser
-                                ? "text-neutral-900"
-                                : "text-gray-900",
-                              // Rounded adjustments for grouping
+                                ? "text-neutral-900 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/60"
+                                : "text-gray-900 bg-white border-gray-200/60",
+                              // Enhanced rounded adjustments for grouping with better visual flow
                               isCurrentUser
                                 ? cn(
-                                    "rounded-2xl rounded-br-md",
-                                    !isFirstOfGroup && "rounded-tr-md",
+                                    "rounded-2xl rounded-br-sm",
+                                    !isFirstOfGroup && "rounded-tr-sm",
                                     !isLastOfGroup && "rounded-br-2xl"
                                   )
                                 : cn(
-                                    "rounded-2xl rounded-bl-md",
-                                    !isFirstOfGroup && "rounded-tl-md",
+                                    "rounded-2xl rounded-bl-sm",
+                                    !isFirstOfGroup && "rounded-tl-sm",
                                     !isLastOfGroup && "rounded-bl-2xl"
                                   ),
-                              // Subtle background difference for grouped siblings
-                              !isFirstOfGroup && "bg-white/70"
+                              // Enhanced background difference for grouped siblings
+                              !isFirstOfGroup &&
+                                isCurrentUser &&
+                                "bg-gradient-to-br from-blue-50/80 to-indigo-50/80",
+                              !isFirstOfGroup && !isCurrentUser && "bg-white/80"
                             )}
                             data-message-id={msg._id}
                             tabIndex={0}
@@ -543,7 +707,7 @@ export default function MessagesList(props: MessagesListProps) {
                                 mimeType={(msg as any).mimeType}
                               />
                             ) : (
-                              <p className="leading-relaxed whitespace-pre-wrap">
+                              <p className="leading-relaxed whitespace-pre-wrap text-sm font-normal">
                                 {msg.text}
                               </p>
                             )}
@@ -563,7 +727,7 @@ export default function MessagesList(props: MessagesListProps) {
                                         ? "-bottom-3 -right-3 justify-end"
                                         : "-bottom-3 -left-3 justify-start"
                                     )}
-                                    aria-label="Message reactions"
+                                    aria-label={`Message reactions: ${rx.length} reaction${rx.length !== 1 ? "s" : ""}`}
                                     // keep clicks from triggering bubble handlers unnecessarily
                                     onClick={(e) => e.stopPropagation()}
                                   >
@@ -572,10 +736,10 @@ export default function MessagesList(props: MessagesListProps) {
                                         key={`${msg._id}-${r.emoji}`}
                                         type="button"
                                         className={cn(
-                                          "relative h-7 w-7 rounded-full border bg-white shadow-sm flex items-center justify-center text-sm",
+                                          "relative h-8 w-8 rounded-full border bg-white shadow-md flex items-center justify-center text-sm transition-all duration-200 hover:scale-110 active:scale-95 focus:ring-2 focus:ring-primary/50 focus:outline-none",
                                           r.reactedByMe
-                                            ? "border-primary/60 ring-1 ring-primary/40"
-                                            : "border-gray-200"
+                                            ? "border-primary/60 ring-2 ring-primary/40 bg-gradient-to-br from-primary/5 to-primary/10 shadow-lg"
+                                            : "border-gray-200 hover:border-primary/40 hover:shadow-lg"
                                         )}
                                         onClick={() =>
                                           props.onToggleReaction?.(
@@ -584,7 +748,8 @@ export default function MessagesList(props: MessagesListProps) {
                                           )
                                         }
                                         aria-pressed={r.reactedByMe}
-                                        aria-label={`React ${r.emoji}`}
+                                        aria-label={`${r.emoji} reaction${r.reactedByMe ? " (reacted by you)" : ""}${r.count > 1 ? ` (${r.count} reactions)` : ""}`}
+                                        title={`${r.emoji} ${r.count} reaction${r.count !== 1 ? "s" : ""}`}
                                       >
                                         <span className="leading-none select-none">
                                           {r.emoji}
@@ -592,8 +757,9 @@ export default function MessagesList(props: MessagesListProps) {
                                         {r.count > 1 && (
                                           <span
                                             className={cn(
-                                              "absolute -bottom-1 -right-1 text-[10px] leading-none rounded-full px-1 py-0.5 bg-gray-900 text-white shadow",
-                                              r.reactedByMe && "bg-primary"
+                                              "absolute -bottom-1 -right-1 text-[10px] leading-none rounded-full px-1.5 py-0.5 bg-gray-900 text-white shadow-md border border-gray-700 min-w-[18px] h-[18px] flex items-center justify-center font-semibold",
+                                              r.reactedByMe &&
+                                                "bg-primary border-primary/50"
                                             )}
                                             aria-hidden
                                           >
@@ -726,15 +892,23 @@ export default function MessagesList(props: MessagesListProps) {
             <Button
               size="sm"
               onClick={() => onScrollToBottom(true)}
-              className="rounded-full shadow-lg bg-black text-white hover:bg-black/90 h-9 px-3 py-0 flex items-center gap-1"
+              className="rounded-full shadow-xl bg-gradient-to-r from-primary to-primary/90 text-white hover:from-primary/90 hover:to-primary border border-white/20 h-10 px-4 py-2 flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 backdrop-blur-sm focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
               aria-label={
                 unreadCount > 0
                   ? `${unreadCount} new message${unreadCount !== 1 ? "s" : ""}. Scroll to bottom`
                   : "Scroll to latest messages"
               }
+              role="button"
+              tabIndex={0}
             >
-              <ArrowDown className="w-4 h-4" />
-              {unreadCount > 0 ? `${unreadCount}` : "New"}
+              <ArrowDown className="w-4 h-4 animate-bounce" />
+              {unreadCount > 0 ? (
+                <span className="font-semibold animate-pulse">
+                  {unreadCount}
+                </span>
+              ) : (
+                <span className="font-medium">New</span>
+              )}
             </Button>
           </motion.div>
         )}

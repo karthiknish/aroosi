@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
   listEmailTemplates,
   sendMarketingEmail,
@@ -96,7 +97,7 @@ export default function AdminDevicesPage() {
         maxAudience: 1,
         params: {},
       });
-      if (!res.success) throw new Error(res.error || "Failed");
+      if (!res.success) throw new Error(getErrorMessage(res.error) || "Failed");
       showSuccessToast("Email preview queued (dry run)");
     } catch (e) {
       console.error("test email failed", e);

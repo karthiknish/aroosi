@@ -143,8 +143,13 @@ export const useSubscriptionStatus = (_providedToken?: string) => {
         } else if (pollingAttemptsRef.current === 3) {
           // After a few attempts, ask server to reconcile explicitly (may populate expiresAt, etc)
           try {
-            await fetch("/api/subscription/refresh", { method: "POST" });
-          } catch {}
+            const result = await subscriptionAPI.refreshSubscription();
+            if (!result.success) {
+              console.warn("Failed to refresh subscription:", result.error);
+            }
+          } catch (error) {
+            console.warn("Failed to refresh subscription:", error);
+          }
         } else if (pollingAttemptsRef.current > 10) {
           // Give up after ~10 attempts (~20s if interval 2s)
           if (pollingRef.current) {

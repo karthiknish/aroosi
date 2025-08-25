@@ -16,6 +16,7 @@ import {
   submitProfile,
   fetchUserProfileImages,
 } from "@/lib/profile/userProfileApi";
+import { getErrorMessage } from "@/lib/utils/apiResponse";
 
 // Hook for fetching and caching profile data
 export const useProfileTTL = (userId: string) => {
@@ -33,7 +34,7 @@ export const useProfileTTL = (userId: string) => {
       // Fetch from API util if not cached
       const result = await getCurrentUserWithProfile(userId);
       if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to fetch profile");
+        throw new Error(getErrorMessage(result.error) || "Failed to fetch profile");
       }
       const envelope = (result.data as any) ?? {};
       const profile = envelope.profile ?? envelope;
@@ -65,7 +66,7 @@ export const useUpdateProfileTTL = () => {
     }) => {
   const result = await submitProfile(userId, updates as any, "edit");
       if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to update profile");
+        throw new Error(getErrorMessage(result.error) || "Failed to update profile");
       }
       const envelope = (result.data as any) ?? {};
       return envelope.profile ?? envelope;
@@ -103,7 +104,7 @@ export const useProfileImagesTTL = (userId: string) => {
       // Fetch from API util if not cached
       const result = await fetchUserProfileImages(userId);
       if (!result.success) {
-        throw new Error(result.error || "Failed to fetch profile images");
+        throw new Error(getErrorMessage(result.error) || "Failed to fetch profile images");
       }
       const images = (result.data as any) || [];
 

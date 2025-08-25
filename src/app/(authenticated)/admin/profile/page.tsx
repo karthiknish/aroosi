@@ -181,7 +181,7 @@ export default function AdminProfilePage() {
     const result = await setProfileBannedStatus(id, !isBanned);
     setConfirmBanId(null);
     if (!result.success) {
-      showErrorToast(result.error || "Failed to update ban status");
+      showErrorToast(result.error, "Failed to update ban status");
       return;
     }
     void loadProfiles();

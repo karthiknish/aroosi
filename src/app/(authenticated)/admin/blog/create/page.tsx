@@ -148,7 +148,7 @@ Requirements:
       console.error(`Error in AI ${field} generation:`, error);
       const message =
         error instanceof Error ? error.message : "AI processing failed";
-      showErrorToast(message);
+      showErrorToast(null, message);
       return "";
     } finally {
       setAiLoading((prev) => ({ ...prev, [field]: false }));
@@ -252,7 +252,7 @@ Requirements:
       if (!result?.success) {
         const msg = result?.error || "Failed to create post";
         setError(msg);
-        showErrorToast(msg);
+        showErrorToast(null, msg);
         return;
       }
       showSuccessToast("Post created successfully");
@@ -268,7 +268,7 @@ Requirements:
     } catch (err: unknown) {
       const error = err as Error;
       setError(error.message || "Failed to create post");
-      showErrorToast(error);
+      showErrorToast(error, "Failed to create post");
     } finally {
       setCreating(false);
     }

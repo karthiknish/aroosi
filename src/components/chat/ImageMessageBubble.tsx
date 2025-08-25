@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getMessageImageUrl } from "@/lib/api/messages";
 
 type ImageMessageBubbleProps = {
   messageId: string;
@@ -30,26 +31,16 @@ export default function ImageMessageBubble({
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(
-          `/api/message-images/${encodeURIComponent(messageId)}/url`,
-          { credentials: "include" }
-        );
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+        const result = await getMessageImageUrl(messageId);
+        if (!result.success) {
+          throw new Error(result.error || "Failed to get image URL");
         }
-        const data = await res.json().catch(() => ({}));
-        const imageUrl = data?.data?.imageUrl || data?.imageUrl;
+        const imageUrl = result.imageUrl;
         if (!imageUrl) throw new Error("Image URL missing");
         if (!canceled) {
           setUrl(imageUrl);
-          const w = data?.data?.width || data?.width;
-          const h = data?.data?.height || data?.height;
-          if (typeof w === "number" && typeof h === "number") {
-            setDims({ width: w, height: h });
-          } else {
-            setDims(null);
-          }
+          // Note: The current API doesn't return dimensions, so we skip setting them
+          // If dimensions are needed in the future, the API should be updated to include them
         }
       } catch (e: any) {
         if (!canceled) setError(e?.message || "Failed to load image");

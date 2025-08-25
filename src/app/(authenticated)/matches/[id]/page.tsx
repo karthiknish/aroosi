@@ -10,6 +10,7 @@ import { useProfileImage } from "@/lib/hooks/useProfileImage";
 import { markConversationRead } from "@/lib/api/messages";
 import { useState, useEffect } from "react";
 import { showErrorToast } from "@/lib/ui/toast";
+import { getErrorMessage } from "@/lib/utils/apiResponse";
 import Head from "next/head";
 export default function MatchChatPage() {
   const { id: otherUserId } = useParams<{ id: string }>();
@@ -30,7 +31,9 @@ export default function MatchChatPage() {
       if (res.success && res.data) {
         return res.data as { fullName?: string };
       }
-      throw new Error(res.error || "Failed to load match profile");
+      throw new Error(
+        getErrorMessage(res.error) || "Failed to load match profile"
+      );
     },
     enabled: !!otherUserId,
     retry: 1,

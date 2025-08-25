@@ -123,7 +123,7 @@ export default function SubscriptionPage() {
         if (result.success && result.checkoutUrl) {
           window.location.href = result.checkoutUrl;
         } else {
-          showErrorToast(result.error || "Checkout failed. Please try again.");
+          showErrorToast(result.error, "Checkout failed. Please try again.");
         }
       } catch (err) {
         showErrorToast(err, "Checkout failed. Please try again.");

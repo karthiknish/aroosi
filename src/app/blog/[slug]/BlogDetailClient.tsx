@@ -8,7 +8,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import type { BlogPost } from "@/types/blog";
-import { fetchBlogPostBySlug } from "@/lib/blogUtil";
+import { fetchBlogPostBySlug, fetchBlogPosts } from "@/lib/blogUtil";
 
 export default function BlogDetailClient({ slug }: { slug: string }) {
   const {
@@ -27,19 +27,12 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
     queryFn: async () => {
       if (!firstCategory) return [];
       try {
-        const params = new URLSearchParams({
-          page: "0",
-          pageSize: "6",
+        const posts = await fetchBlogPosts({
+          page: 0,
+          pageSize: 6,
           category: firstCategory,
         });
-        const res = await fetch(`/api/blog?${params.toString()}`);
-        if (!res.ok) return [];
-        const json = await res.json();
-        const payload = json?.data || json;
-        const posts: BlogPost[] = (payload.posts || payload || []).filter(
-          (p: BlogPost) => p.slug !== slug
-        );
-        return posts.slice(0, 3);
+        return posts.filter((p: BlogPost) => p.slug !== slug).slice(0, 3);
       } catch {
         return [];
       }

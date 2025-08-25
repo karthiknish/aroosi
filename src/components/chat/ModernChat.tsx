@@ -89,9 +89,13 @@ function ModernChat({
   return (
     <div
       className={cn(
-        "bg-base text-neutral-900 rounded-xl shadow-sm flex flex-col h-full mb-6",
+        "bg-gradient-to-b from-white to-gray-50/30 text-neutral-900 rounded-2xl shadow-lg border border-gray-200/50 flex flex-col h-full mb-6 overflow-hidden backdrop-blur-sm",
         className
       )}
+      style={{
+        backgroundImage:
+          "radial-gradient(circle at 50% 0%, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.6) 50%, rgba(255,255,255,0.9) 100%)",
+      }}
     >
       <ModernChatHeader
         matchUserName={matchUserName}
@@ -100,6 +104,13 @@ function ModernChat({
         connectionStatus={presence?.isOnline ? "connected" : connectionStatus}
         lastSeenAt={presence?.lastSeen}
         onReport={() => setShowReportModal(true)}
+        onToggleSearch={() => {
+          const messagesList = document.querySelector("[data-messages-list]");
+          if (messagesList) {
+            const searchEvent = new CustomEvent("toggleSearch");
+            messagesList.dispatchEvent(searchEvent);
+          }
+        }}
       />
 
       <MessagesList

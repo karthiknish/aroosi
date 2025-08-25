@@ -3,14 +3,11 @@ import { doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 // NOTE: Client-side usage tracking for boosts removed; server is authoritative now.
 import { db } from "@/lib/firebase";
 import { showErrorToast } from "@/lib/ui/toast";
+import { getJson } from "@/lib/http/client";
 
 // Types for API responses
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-  status?: number;
-};
+// Import centralized types
+import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
 
 type ProfileResponse = ApiResponse<Profile | null>;
 
@@ -23,15 +20,31 @@ function handleApiError(error: unknown, context: string): ApiResponse<null> {
     if (error.name === "AbortError") {
       return {
         success: false,
-        error: "Request timed out. Please check your connection and try again.",
+        error: {
+          code: "TIMEOUT_ERROR",
+          message:
+            "Request timed out. Please check your connection and try again.",
+          details: error,
+        },
       };
     }
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: {
+        code: "API_ERROR",
+        message: error.message,
+        details: error,
+      },
+    };
   }
 
   return {
     success: false,
-    error: "An unexpected error occurred. Please try again later.",
+    error: {
+      code: "UNKNOWN_ERROR",
+      message: "An unexpected error occurred. Please try again later.",
+      details: error,
+    },
   };
 }
 
@@ -48,7 +61,10 @@ export async function fetchUserProfile(
   if (!userId) {
     /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No user ID provided to fetchUserProfile");
-    return { success: false, error: "No user ID provided" };
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No user ID provided" },
+    };
   }
 
   try {
@@ -121,7 +137,7 @@ export async function fetchUserProfile(
         data: normalized,
       };
     } else {
-      return { success: true, data: null, status: 404 };
+      return { success: true, data: null };
     }
   } catch (error: unknown) {
     if (retries > 0) {
@@ -148,7 +164,10 @@ export async function fetchUserProfileImages(
   if (!userId) {
     /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No user ID provided to fetchUserProfileImages");
-    return { success: false, error: "No user ID provided" };
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No user ID provided" },
+    };
   }
 
   try {
@@ -172,15 +191,14 @@ export async function fetchUserProfileImages(
       // Attempt to infer from any existing profileImageUrls if env missing
       let inferredBucket: string | undefined = bucketFromEnv;
       if (!inferredBucket) {
-        const sampleUrl: string | undefined =
-          (profileData.profileImageUrls || []).find((u: string) =>
-            /https:\/\/storage.googleapis.com\//.test(u)
-          );
+        const sampleUrl: string | undefined = (
+          profileData.profileImageUrls || []
+        ).find((u: string) => /https:\/\/storage.googleapis.com\//.test(u));
         if (sampleUrl) {
           const m = sampleUrl.match(
             /https:\/\/storage.googleapis.com\/([^/]+)\//
           );
-            // eslint-disable-next-line prefer-destructuring
+          // eslint-disable-next-line prefer-destructuring
           if (m) inferredBucket = m[1];
         }
       }
@@ -233,7 +251,7 @@ export async function fetchUserProfileImages(
         "[ProfileAPI] User document does not exist for userId:",
         userId
       );
-      return { success: true, data: [], status: 404 };
+      return { success: true, data: [] };
     }
   } catch (error) {
     if (retries > 0) {
@@ -263,13 +281,19 @@ export async function updateUserProfile(
   if (!userId) {
     /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No user ID provided to updateUserProfile");
-    return { success: false, error: "No user ID provided" };
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No user ID provided" },
+    };
   }
 
   if (!updates || Object.keys(updates).length === 0) {
     /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No updates provided to updateUserProfile");
-    return { success: false, error: "No updates provided" };
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No updates provided" },
+    };
   }
 
   try {
@@ -316,13 +340,19 @@ export async function submitProfile(
   if (!userId) {
     /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No user ID provided to submitProfile");
-    return { success: false, error: "No user ID provided" };
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No user ID provided" },
+    };
   }
 
   if (!values) {
     /* eslint-disable-next-line no-console */
     console.error("[ProfileAPI] No values provided to submitProfile");
-    return { success: false, error: "No profile data provided" };
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No profile data provided" },
+    };
   }
 
   const sanitize = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
@@ -414,8 +444,7 @@ export async function getCurrentUserWithProfile(
   if (!userId) {
     return {
       success: false,
-      error: "No user ID provided",
-      status: 401,
+      error: { code: "VALIDATION_ERROR", message: "No user ID provided" },
     };
   }
 
@@ -424,7 +453,7 @@ export async function getCurrentUserWithProfile(
     return {
       success: profileResponse.success,
       data: profileResponse.data,
-      status: profileResponse.status,
+
       error: profileResponse.error,
     };
   } catch (error: unknown) {
@@ -488,7 +517,10 @@ export async function deleteUserProfile(
   retries = 2
 ): Promise<ApiResponse<null>> {
   if (!userId) {
-    return { success: false, error: "No user ID provided" };
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No user ID provided" },
+    };
   }
 
   try {
@@ -497,7 +529,6 @@ export async function deleteUserProfile(
     return {
       success: true,
       data: null,
-      status: 200,
     };
   } catch (error) {
     if (
@@ -571,7 +602,13 @@ export async function boostProfile(
       return boostProfile(_userId, retries - 1);
     }
     const handled = handleApiError(err, "boostProfile(fetch)");
-    return { success: false, message: handled.error };
+    return {
+      success: false,
+      message:
+        typeof handled.error === "string"
+          ? handled.error
+          : handled.error?.message,
+    };
   }
 }
 
@@ -615,7 +652,13 @@ export async function activateSpotlight(retries = 1): Promise<{
       return activateSpotlight(retries - 1);
     }
     const handled = handleApiError(err, "activateSpotlight");
-    return { success: false, message: handled.error };
+    return {
+      success: false,
+      message:
+        typeof handled.error === "string"
+          ? handled.error
+          : handled.error?.message,
+    };
   }
 }
 
@@ -632,6 +675,47 @@ export async function checkEmailHasProfile(
     return { exists: false, hasProfile: false };
   } catch {
     return { exists: false, hasProfile: false };
+  }
+}
+
+/**
+ * Fetch a user's profile images using the centralized HTTP client
+ * @param userId - ID of the user whose images to fetch
+ * @returns Promise with profile images or error
+ */
+export async function fetchUserProfileImagesViaApi(
+  userId: string
+): Promise<{ success: boolean; data?: string[]; error?: ApiError }> {
+  if (!userId) {
+    return {
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "No user ID provided" },
+    };
+  }
+
+  try {
+    const result = await getJson<{
+      profileImageUrls?: string[];
+      profileImages?: Array<{ url: string }>;
+    }>(`/api/profile-detail/${userId}/images`);
+
+    if (Array.isArray(result)) {
+      return { success: true, data: result };
+    }
+
+    const images =
+      result?.profileImageUrls ||
+      result?.profileImages?.map((img) => img.url) ||
+      [];
+    return { success: true, data: images };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch profile images";
+    showErrorToast(null, errorMessage);
+    return {
+      success: false,
+      error: { code: "API_ERROR", message: errorMessage },
+    };
   }
 }
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 // Use the implemented API helper inside lib/profile
 import { boostProfile } from "@/lib/profile/userProfileApi";
+import { subscriptionAPI } from "@/lib/api/subscription";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Rocket, Zap, Clock } from "lucide-react";
@@ -71,14 +72,11 @@ const ProfileBoostButton = () => {
     let cancelled = false;
     async function loadQuota() {
       try {
-        const res = await fetch("/api/subscription/quota/boosts", {
-          credentials: "include",
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!cancelled && json?.success !== false) {
-          if (json.unlimited) setBoostsRemaining(-1);
-          else if (typeof json.remaining === "number")
-            setBoostsRemaining(json.remaining);
+        const result = await subscriptionAPI.getBoostQuota();
+        if (!cancelled && result.success) {
+          if (result.unlimited) setBoostsRemaining(-1);
+          else if (typeof result.remaining === "number")
+            setBoostsRemaining(result.remaining);
         }
       } catch {
         // silent

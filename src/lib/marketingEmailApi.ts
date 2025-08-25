@@ -1,4 +1,4 @@
-import { ApiResponse } from "@/lib/utils/apiResponse";
+import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 
@@ -63,7 +63,10 @@ export async function sendMarketingEmail(
     const errorMessage =
       error instanceof Error ? error.message : "Failed to send emails";
     showErrorToast(errorMessage);
-    return { success: false, error: errorMessage };
+    return {
+      success: false,
+      error: { code: "EMAIL_ERROR", message: errorMessage },
+    };
   }
 }
 
@@ -88,7 +91,10 @@ export async function listEmailTemplates(): Promise<
     const errorMessage =
       error instanceof Error ? error.message : "Failed to fetch templates";
     showErrorToast(errorMessage);
-    return { success: false, error: errorMessage };
+    return {
+      success: false,
+      error: { code: "EMAIL_ERROR", message: errorMessage },
+    };
   }
 }
 
@@ -120,6 +126,123 @@ export async function previewMarketingEmail(payload: {
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to preview";
     showErrorToast(msg);
-    return { success: false, error: msg };
+    return {
+      success: false,
+      error: { code: "TEMPLATE_ERROR", message: msg },
+    };
+  }
+}
+
+/**
+ * Send a test email to a specific email address for verification
+ * @param token JWT session token for authentication
+ * @param payload request body containing test email details
+ */
+export async function sendTestEmail(
+  token: string,
+  payload: {
+    testEmail: string;
+    templateKey?: string;
+    subject?: string;
+    body?: string;
+    preheader?: string;
+    params?: Record<string, unknown>;
+    abTest?: { subjects: [string, string]; ratio?: number };
+  }
+): Promise<ApiResponse<{ sent: boolean; recipient: string; subject: string }>> {
+  try {
+    // Validate test email
+    if (!payload.testEmail || !payload.testEmail.includes("@")) {
+      const errorMessage = "Please provide a valid email address";
+      showErrorToast(null, errorMessage);
+      return {
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: errorMessage },
+      };
+    }
+
+    const response = await fetchWithFirebaseAuth(
+      "/api/admin/marketing-email/test",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Cookie-based session; no Authorization header
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error((data as any)?.error || `HTTP ${response.status}`);
+    }
+
+    showSuccessToast(`Test email sent to ${payload.testEmail}`);
+    return { success: true, data: (data as any).data } as any;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to send test email";
+    showErrorToast(null, errorMessage);
+    return {
+      success: false,
+      error: { code: "TEST_EMAIL_ERROR", message: errorMessage },
+    };
+  }
+}
+
+/**
+ * Get recent marketing email campaigns and their status
+ */
+export async function getEmailCampaigns(
+  token: string,
+  options?: {
+    limit?: number;
+    offset?: number;
+  }
+): Promise<
+  ApiResponse<{
+    campaigns: Array<{
+      id: string;
+      status: "completed" | "processing" | "failed";
+      templateKey?: string;
+      subject?: string;
+      totalSent: number;
+      createdAt: string;
+      completedAt?: string;
+    }>;
+    total: number;
+  }>
+> {
+  try {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append("limit", options.limit.toString());
+    if (options?.offset) params.append("offset", options.offset.toString());
+
+    const response = await fetchWithFirebaseAuth(
+      `/api/admin/marketing-email/campaigns?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((data as any)?.error || `HTTP ${response.status}`);
+    }
+
+    return { success: true, data: (data as any).data } as any;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch campaigns";
+    showErrorToast(null, errorMessage);
+    return {
+      success: false,
+      error: { code: "CAMPAIGN_ERROR", message: errorMessage },
+    };
   }
 }

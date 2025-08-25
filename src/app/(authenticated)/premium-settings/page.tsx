@@ -18,6 +18,7 @@ import {
   activateSpotlight,
 } from "@/lib/profile/userProfileApi";
 import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
+import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
   Eye,
   Crown,
@@ -122,7 +123,9 @@ export default function PremiumSettingsPage() {
         hideFromFreeUsers: hideProfile,
       });
       if (!result.success) {
-        throw new Error(result.error || "Failed to save settings");
+        throw new Error(
+          getErrorMessage(result.error) || "Failed to save settings"
+        );
       }
       await refreshProfile();
       showSuccessToast("Settings saved successfully");
@@ -277,7 +280,7 @@ export default function PremiumSettingsPage() {
                 showSuccessToast("Spotlight activated");
                 await refreshProfile();
               } else {
-                showErrorToast(res.message || "Activation failed");
+                showErrorToast(res.message, "Activation failed");
               }
             } catch (e) {
               showErrorToast("Activation failed");

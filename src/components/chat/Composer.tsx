@@ -32,6 +32,7 @@ import {
   formatTime,
 } from "@/lib/audio";
 import { uploadVoiceMessage } from "@/lib/api/voiceMessages";
+import { uploadMessageImage } from "@/lib/api/messages";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import MicPermissionDialog from "@/components/chat/MicPermissionDialog";
@@ -473,7 +474,7 @@ export default function Composer(props: ComposerProps) {
       />
 
       <form
-        className="flex items-end gap-3 relative"
+        className="flex items-end gap-2 sm:gap-3 relative bg-gradient-to-r from-white to-gray-50/50 border-t border-gray-200/60 px-3 sm:px-4 py-3 sm:py-4 rounded-b-2xl backdrop-blur-sm"
         onSubmit={async (e) => {
           e.preventDefault();
           await onSend(text);
@@ -522,8 +523,9 @@ export default function Composer(props: ComposerProps) {
             aria-multiline="true"
             maxLength={maxChars}
             className={cn(
-              "w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-gray-300",
-              (isSending || isBlocked) && "opacity-50 cursor-not-allowed"
+              "w-full border border-gray-200/80 rounded-xl px-3 sm:px-4 py-2 sm:py-3 pr-10 sm:pr-12 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/40 bg-white/90 backdrop-blur-sm text-gray-900 placeholder-gray-500 resize-none leading-relaxed scrollbar-thin scrollbar-thumb-gray-300 shadow-sm transition-all duration-200 hover:shadow-md text-sm sm:text-base",
+              (isSending || isBlocked) &&
+                "opacity-50 cursor-not-allowed bg-gray-50"
             )}
           />
           {/* Character counter */}
@@ -641,31 +643,17 @@ export default function Composer(props: ComposerProps) {
                 const controller = new AbortController();
                 imageAbortRef.current = controller;
 
-                const resp = await fetch("/api/messages/upload-image", {
-                  method: "POST",
-                  body: fd,
-                  credentials: "include",
-                  signal: controller.signal,
-                });
-                if (!resp.ok) {
-                  // Prefer JSON error for rate limit/context messages
-                  let errMsg = `HTTP ${resp.status}`;
-                  try {
-                    const data = await resp.clone().json();
-                    errMsg = data?.error || data?.message || errMsg;
-                    if (resp.status === 429) {
-                      if (data?.resetTime) {
-                        const ms =
-                          new Date(data.resetTime).getTime() - Date.now();
-                        const secs = Math.max(0, Math.ceil(ms / 1000));
-                        errMsg = `Rate limit exceeded. Try again in ${secs}s`;
-                      } else {
-                        errMsg = errMsg || "Rate limit exceeded";
-                      }
-                    }
-                  } catch {
-                    const txt = await resp.text();
-                    errMsg = txt || errMsg;
+                const resp = await uploadMessageImage(
+                  file,
+                  conversationId,
+                  props.fromUserId,
+                  toUserId,
+                  controller.signal
+                );
+                if (!resp.success) {
+                  let errMsg = resp.error || "Upload failed";
+                  if (resp.resetTime) {
+                    errMsg = `Rate limit exceeded. Try again in ${resp.resetTime}s`;
                   }
                   throw new Error(errMsg);
                 }
@@ -747,9 +735,9 @@ export default function Composer(props: ComposerProps) {
           type="submit"
           disabled={!text.trim() || isSending || isBlocked}
           className={cn(
-            "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl",
+            "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-medium px-4 sm:px-6 py-2 sm:py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base",
             (!text.trim() || isSending || isBlocked) &&
-              "opacity-50 cursor-not-allowed transform-none shadow-none"
+              "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100"
           )}
           aria-label={
             isBlocked

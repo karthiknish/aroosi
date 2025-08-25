@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
+import { subscriptionAPI } from "@/lib/api/subscription";
 
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -33,14 +34,11 @@ const FALLBACK_MAX = 5 * 1024 * 1024;
 
 async function fetchSubscriptionPlan(): Promise<string> {
   try {
-    const res = await fetch("/api/subscription/status", {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      credentials: "include",
-    });
-    if (!res.ok) return "free";
-    const json = await res.json().catch(() => ({}));
-    return (json.subscriptionPlan || json.plan || "free") as string;
+    const result = await subscriptionAPI.getStatus();
+    if (result?.plan) {
+      return result.plan;
+    }
+    return "free";
   } catch {
     return "free";
   }

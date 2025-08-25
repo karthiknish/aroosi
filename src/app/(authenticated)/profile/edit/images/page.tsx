@@ -212,7 +212,7 @@ export default function EditProfileImagesPage() {
         });
         queryClient.invalidateQueries({ queryKey: ["profile", userId] });
       } catch (e: any) {
-        showErrorToast(e?.message || "Failed to delete photo");
+        showErrorToast(e, "Failed to delete photo");
         // Rollback if failure
         if (target) {
           if (isLocal(target)) {

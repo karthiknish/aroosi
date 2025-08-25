@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { postJson, getJson } from "@/lib/http/client";
 
 /**
  * Canonical status response used by the UI.
@@ -156,7 +157,7 @@ class SubscriptionAPI {
           ? payload.daysRemaining
           : fallbackDaysRemaining,
       expiresAt,
-          cancelAtPeriodEnd: Boolean(payload.cancelAtPeriodEnd),
+      cancelAtPeriodEnd: Boolean(payload.cancelAtPeriodEnd),
       isTrial: Boolean(payload.isTrial),
       trialEndsAt:
         typeof payload.trialEndsAt === "number" ? payload.trialEndsAt : null,
@@ -326,6 +327,68 @@ class SubscriptionAPI {
     } catch {
       // Silently ignore if endpoint not present
       return { success: false };
+    }
+  }
+
+  /**
+   * Refresh subscription status
+   */
+  async refreshSubscription(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await postJson<{ success?: boolean; error?: string }>(
+        "/api/subscription/refresh"
+      );
+
+      if (!result?.success) {
+        return {
+          success: false,
+          error: result?.error || "Failed to refresh subscription",
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh subscription";
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Get boost quota for the current user
+   */
+  async getBoostQuota(): Promise<{
+    success: boolean;
+    unlimited?: boolean;
+    remaining?: number;
+    error?: string;
+  }> {
+    try {
+      const result = await getJson<{
+        success?: boolean;
+        unlimited?: boolean;
+        remaining?: number;
+        error?: string;
+      }>("/api/subscription/quota/boosts");
+
+      if (!result?.success) {
+        return {
+          success: false,
+          error: result?.error || "Failed to get boost quota",
+        };
+      }
+
+      return {
+        success: true,
+        unlimited: result.unlimited,
+        remaining: result.remaining,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to get boost quota";
+      return { success: false, error: errorMessage };
     }
   }
 }

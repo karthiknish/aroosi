@@ -1,4 +1,4 @@
-import { ApiResponse } from "@/lib/utils/apiResponse";
+import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { fetchWithFirebaseAuth } from "@/lib/api/fetchWithFirebaseAuth";
 
@@ -51,6 +51,9 @@ export async function sendPushNotification(
     const errMsg =
       error instanceof Error ? error.message : "Failed to send notification";
     showErrorToast(errMsg);
-    return { success: false, error: errMsg };
+    return {
+      success: false,
+      error: { code: "NOTIFICATION_ERROR", message: errMsg }
+    };
   }
 }

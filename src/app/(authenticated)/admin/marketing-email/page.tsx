@@ -5,6 +5,8 @@ import {
   sendMarketingEmail,
   listEmailTemplates,
   previewMarketingEmail,
+  sendTestEmail,
+  getEmailCampaigns,
 } from "@/lib/marketingEmailApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { showSuccessToast } from "@/lib/ui/toast";
+import { showSuccessToast, showErrorToast } from "@/lib/ui/toast";
 import {
   Select,
   SelectContent,
@@ -54,6 +56,14 @@ export default function MarketingEmailAdminPage() {
   const [banned, setBanned] = useState<string>("all");
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(500);
+  // Test email functionality
+  const [testEmail, setTestEmail] = useState<string>("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [showTestSection, setShowTestSection] = useState<boolean>(false);
+  // Campaign history
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [showCampaignHistory, setShowCampaignHistory] =
+    useState<boolean>(false);
 
   useEffect(() => {
     (async () => {
@@ -72,6 +82,13 @@ export default function MarketingEmailAdminPage() {
   );
 
   const handleSend = async () => {
+    // Validate form before sending
+    const validationErrors = validateEmailForm();
+    if (validationErrors.length > 0) {
+      showErrorToast(null, validationErrors.join(", "));
+      return;
+    }
+
     setSending(true);
     try {
       const params: Record<string, unknown> = {};
@@ -103,8 +120,15 @@ export default function MarketingEmailAdminPage() {
               }
             : undefined,
       });
-      if (res.success)
-        showSuccessToast(dryRun ? "Preview generated" : "Campaign started");
+      if (res.success) {
+        showSuccessToast(
+          dryRun ? "Preview generated" : "Campaign started successfully"
+        );
+        // Refresh campaign history if it's open
+        if (showCampaignHistory) {
+          loadCampaignHistory();
+        }
+      }
     } finally {
       setSending(false);
     }
@@ -130,10 +154,85 @@ export default function MarketingEmailAdminPage() {
     } catch {}
   };
 
+  const handleSendTestEmail = async () => {
+    if (!testEmail.trim()) {
+      showErrorToast(null, "Please enter a test email address");
+      return;
+    }
+
+    setSendingTest(true);
+    try {
+      const params: Record<string, unknown> = {};
+      if (templateKey === "premiumPromo") params.args = [discountPct];
+      if (templateKey === "profileCompletionReminder")
+        params.args = [completionPct];
+      if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
+
+      const res = await sendTestEmail("", {
+        testEmail: testEmail.trim(),
+        templateKey: mode === "template" ? templateKey : undefined,
+        subject: mode === "custom" ? customSubject : undefined,
+        body: mode === "custom" ? customBody : undefined,
+        preheader: mode === "custom" ? preheader : undefined,
+        params,
+        abTest:
+          abEnabled && abSubjectA && abSubjectB
+            ? {
+                subjects: [abSubjectA, abSubjectB],
+                ratio: Math.max(1, Math.min(99, abRatio)),
+              }
+            : undefined,
+      });
+
+      if (res.success) {
+        setTestEmail("");
+        setShowTestSection(false);
+      }
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const loadCampaignHistory = async () => {
+    if (showCampaignHistory && campaigns.length === 0) {
+      const res = await getEmailCampaigns("", { limit: 20 });
+      if (res.success && (res.data as any)?.campaigns) {
+        setCampaigns((res.data as any).campaigns);
+      }
+    }
+  };
+
+  const validateEmailForm = () => {
+    const errors: string[] = [];
+
+    if (mode === "template" && !templateKey) {
+      errors.push("Please select a template");
+    }
+
+    if (mode === "custom") {
+      if (!customSubject.trim()) {
+        errors.push("Please enter a subject");
+      }
+      if (!customBody.trim()) {
+        errors.push("Please enter email body");
+      }
+    }
+
+    if (!dryRun && !sendToAll && maxAudience <= 0) {
+      errors.push("Please set a valid max audience or select 'Send to all'");
+    }
+
+    return errors;
+  };
+
   return (
     <Card className="max-w-3xl">
       <CardHeader>
-        <CardTitle>Send Marketing Email</CardTitle>
+        <CardTitle>Marketing Email Campaign Manager</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Create, test, and send marketing emails to your users with advanced
+          targeting and analytics.
+        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
@@ -289,15 +388,25 @@ export default function MarketingEmailAdminPage() {
         </Tabs>
 
         <div className="grid grid-cols-2 gap-3">
-          <label htmlFor="dry-run" className="flex items-center gap-2 text-sm">
-            <input
-              id="dry-run"
-              type="checkbox"
-              checked={dryRun}
-              onChange={(e) => setDryRun(e.target.checked)}
-            />
-            Dry run (no emails sent)
-          </label>
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor="dry-run"
+              className="flex items-center gap-2 text-sm"
+            >
+              <input
+                id="dry-run"
+                type="checkbox"
+                checked={dryRun}
+                onChange={(e) => setDryRun(e.target.checked)}
+              />
+              Dry run (no emails sent)
+            </label>
+            <p className="text-xs text-muted-foreground">
+              {dryRun
+                ? "Preview mode - shows what would be sent"
+                : "Live mode - emails will be sent to users"}
+            </p>
+          </div>
           <div>
             <label htmlFor="max-audience" className="block text-sm mb-1">
               Max audience
@@ -398,6 +507,12 @@ export default function MarketingEmailAdminPage() {
               />
               Send to all users (ignores Max audience)
             </label>
+            {!dryRun && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                ⚠️ Live mode: Emails will be sent to real users. Consider
+                testing first.
+              </div>
+            )}
           </div>
           <div className="col-span-2 border-t pt-3">
             <label className="flex items-center gap-2 text-sm mb-2">
@@ -452,15 +567,120 @@ export default function MarketingEmailAdminPage() {
           </div>
         </div>
 
+        {/* Test Email Section */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-medium">Test Email</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTestSection(!showTestSection)}
+            >
+              {showTestSection ? "Hide" : "Show"} Test Options
+            </Button>
+          </div>
+
+          {showTestSection && (
+            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Send a test email to verify your content before sending to your
+                audience.
+              </p>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Input
+                    type="email"
+                    placeholder="your.email@example.com"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                  />
+                </div>
+                <Button
+                  onClick={handleSendTestEmail}
+                  disabled={sendingTest || !testEmail.trim()}
+                  variant="outline"
+                >
+                  {sendingTest ? "Sending..." : "Send Test Email"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Campaign History Section */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-medium">Campaign History</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowCampaignHistory(!showCampaignHistory);
+                if (!showCampaignHistory) {
+                  loadCampaignHistory();
+                }
+              }}
+            >
+              {showCampaignHistory ? "Hide" : "Show"} History
+            </Button>
+          </div>
+
+          {showCampaignHistory && (
+            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              {campaigns.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No campaigns found.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {campaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className="flex items-center justify-between p-3 bg-white rounded border text-sm"
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium">
+                          {campaign.templateKey ||
+                            campaign.subject ||
+                            "Custom Campaign"}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {new Date(campaign.createdAt).toLocaleDateString()} •
+                          {campaign.totalSent} emails sent
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            campaign.status === "completed"
+                              ? "bg-green-100 text-green-800"
+                              : campaign.status === "processing"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {campaign.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-3">
           <Button onClick={handleSend} disabled={sending}>
             {sending
               ? dryRun
                 ? "Generating preview..."
-                : "Sending..."
+                : "Sending campaign..."
               : dryRun
-                ? "Preview"
-                : "Send Email to Users"}
+                ? "Generate Preview"
+                : sendToAll
+                  ? `Send to All Users (${maxAudience} max per batch)`
+                  : `Send to ${maxAudience} Users`}
           </Button>
           <Button
             variant="outline"

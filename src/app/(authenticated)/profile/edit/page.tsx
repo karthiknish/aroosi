@@ -14,6 +14,7 @@ import ProfileEditSimpleForm from "@/components/profile/ProfileEditSimpleForm";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Button } from "@/components/ui/button";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
   getCurrentUserWithProfile,
   submitProfile,
@@ -270,7 +271,10 @@ export default function EditProfilePage() {
       const apiResult = await submitProfile(userId, safeValues, "edit");
       if (!apiResult.success) {
         // Bubble up specific errors for better UX
-        throw new Error(apiResult.error || "Profile update was not successful");
+        throw new Error(
+          getErrorMessage(apiResult.error) ||
+            "Profile update was not successful"
+        );
       }
       return apiResult.data as Profile;
     },
@@ -410,7 +414,6 @@ export default function EditProfilePage() {
     <div className="relative w-full min-h-screen bg-white flex flex-col py-10 px-4 md:px-8 overflow-hidden">
       {/* Decorative pink circle background */}
       <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 bg-pink-300 rounded-full opacity-30 blur-3xl" />
-
 
       {/* Page title with pink wavy underline */}
       <div className="relative w-fit mx-auto mb-8 z-10">

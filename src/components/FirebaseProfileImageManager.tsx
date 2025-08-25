@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { fetchProfileImages, deleteImageById } from "@/lib/utils/imageUtil";
 
 export function FirebaseProfileImageManager() {
   const { user } = useFirebaseAuth();
@@ -19,17 +20,11 @@ export function FirebaseProfileImageManager() {
   // Fetch images from the API
   const fetchImages = useCallback(async () => {
     if (!user?.uid) return;
-    
+
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/profile-images/firebase?userId=${user.uid}`);
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        setImages(result.images);
-      } else {
-        throw new Error(result.error || "Failed to fetch images");
-      }
+      const images = await fetchProfileImages(user.uid);
+      setImages(images);
     } catch (error) {
       console.error("Error fetching images:", error);
       showErrorToast("Failed to load images");
@@ -46,38 +41,37 @@ export function FirebaseProfileImageManager() {
   }, [fetchImages]);
 
   // Handle image upload
-  const handleImageUpload = useCallback(async (imageData: { url: string; storageId: string }) => {
-    // Add the new image to the list
-    setImages(prev => [...prev, {
-      url: imageData.url,
-      storageId: imageData.storageId,
-      fileName: imageData.storageId.split('/').pop() || '',
-      uploadedAt: new Date().toISOString(),
-    }]);
-    
-    showSuccessToast("Image uploaded successfully!");
-  }, []);
+  const handleImageUpload = useCallback(
+    async (imageData: { url: string; storageId: string }) => {
+      // Add the new image to the list
+      setImages((prev) => [
+        ...prev,
+        {
+          url: imageData.url,
+          storageId: imageData.storageId,
+          fileName: imageData.storageId.split("/").pop() || "",
+          uploadedAt: new Date().toISOString(),
+        },
+      ]);
+
+      showSuccessToast("Image uploaded successfully!");
+    },
+    []
+  );
 
   // Handle image delete
   const handleImageDelete = useCallback(async (storageId: string) => {
     try {
       // Call the API to delete the image
-      const response = await fetch(`/api/profile-images/firebase?storageId=${encodeURIComponent(storageId)}`, {
-        method: "DELETE",
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok && result.success) {
-        // Remove the image from the list
-        setImages(prev => prev.filter(img => img.storageId !== storageId));
-        showSuccessToast("Image deleted successfully");
-      } else {
-        throw new Error(result.error || "Failed to delete image");
-      }
+      await deleteImageById(storageId);
+      // Remove the image from the list
+      setImages((prev) => prev.filter((img) => img.storageId !== storageId));
+      showSuccessToast("Image deleted successfully");
     } catch (error) {
       console.error("Error deleting image:", error);
-      showErrorToast(error instanceof Error ? error.message : "Failed to delete image");
+      showErrorToast(
+        error instanceof Error ? error.message : "Failed to delete image"
+      );
     }
   }, []);
 
@@ -111,14 +105,14 @@ export function FirebaseProfileImageManager() {
           </div>
         </CardHeader>
         <CardContent>
-          <FirebaseImageGallery 
+          <FirebaseImageGallery
             userId={user.uid}
             onImageDelete={handleImageDelete}
           />
         </CardContent>
       </Card>
 
-      <FirebaseProfileImageUpload 
+      <FirebaseProfileImageUpload
         onImageUpload={handleImageUpload}
         maxImages={5}
       />

@@ -151,7 +151,7 @@ Requirements:
         console.error(`Error in AI ${field} generation:`, error);
         const message =
           error instanceof Error ? error.message : "AI processing failed";
-        showErrorToast(message);
+        showErrorToast(null, message);
         return "";
       } finally {
         setAiLoading((prev) => ({ ...prev, [field]: false }));

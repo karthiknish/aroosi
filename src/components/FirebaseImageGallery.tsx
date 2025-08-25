@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Trash2, Eye } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
+import { fetchProfileImages, deleteImageById } from "@/lib/utils/imageUtil";
 
 interface FirebaseImage {
   url: string;
@@ -19,15 +20,15 @@ interface FirebaseImageGalleryProps {
   isAdmin?: boolean;
 }
 
-export function FirebaseImageGallery({ 
-  userId: propUserId, 
+export function FirebaseImageGallery({
+  userId: propUserId,
   onImageDelete,
-  isAdmin = false
+  isAdmin = false,
 }: FirebaseImageGalleryProps) {
   const { user } = useFirebaseAuth();
   const [images, setImages] = useState<FirebaseImage[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  
+
   // Use provided userId or fallback to current user's ID
   const targetUserId = propUserId || user?.uid;
 
@@ -36,15 +37,9 @@ export function FirebaseImageGallery({
     queryKey: ["firebase-images", targetUserId],
     queryFn: async () => {
       if (!targetUserId) return [];
-      
-      const response = await fetch(`/api/profile-images/firebase?userId=${targetUserId}`);
-      const result = await response.json();
-      
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to fetch images");
-      }
-      
-      return result.images as FirebaseImage[];
+
+      const images = await fetchProfileImages(targetUserId);
+      return images as FirebaseImage[];
     },
     enabled: !!targetUserId,
   });
@@ -59,27 +54,21 @@ export function FirebaseImageGallery({
   // Delete an image
   const handleDelete = async (storageId: string) => {
     if (!targetUserId) return;
-    
+
     setDeletingId(storageId);
-    
+
     try {
-      const response = await fetch(`/api/profile-images/firebase?storageId=${encodeURIComponent(storageId)}`, {
-        method: "DELETE",
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to delete image");
-      }
-      
+      await deleteImageById(storageId);
+
       // Remove the image from state
-      setImages(prev => prev.filter(img => img.storageId !== storageId));
+      setImages((prev) => prev.filter((img) => img.storageId !== storageId));
       showSuccessToast("Image deleted successfully");
       onImageDelete?.(storageId);
     } catch (error) {
       console.error("Delete failed:", error);
-      showErrorToast(error instanceof Error ? error.message : "Failed to delete image");
+      showErrorToast(
+        error instanceof Error ? error.message : "Failed to delete image"
+      );
     } finally {
       setDeletingId(null);
     }

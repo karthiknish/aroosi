@@ -13,6 +13,7 @@ import {
   showWarningToast,
   showInfoToast,
 } from "@/lib/ui/toast";
+import { getErrorMessage } from "@/lib/utils/apiResponse";
 import {
   handleScrollUtil,
   scrollToBottomUtil,
@@ -490,7 +491,7 @@ export function useModernChat({
       try {
         const { getReactions } = await import("@/lib/chat/reactions");
         const res = await getReactions(conversationId);
-        if (!mounted || !res.success) return;
+        if (!mounted || !res.success || !res.data) return;
         const map: ReactionMap = new Map();
         for (const r of res.data.reactions) {
           if (!map.has(r.messageId)) map.set(r.messageId, new Map());
@@ -542,7 +543,7 @@ export function useModernChat({
           "@/lib/chat/reactions"
         );
         const res = await apiToggle(messageId, emoji);
-        if (!res.success) throw new Error(res.error);
+        if (!res.success) throw new Error(getErrorMessage(res.error));
       } catch (err) {
         // revert on failure
         setReactions((prev) => {

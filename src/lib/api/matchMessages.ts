@@ -1,3 +1,6 @@
+// Import centralized types
+import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
+
 interface MatchMessage {
   _id: string;
   conversationId: string;
@@ -76,17 +79,11 @@ interface StorageItem {
   createdAt: number;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
 class MatchMessagesAPI {
   private async makeRequest<T>(
     endpoint: string,
     options?: RequestInit
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     const baseHeaders: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -95,30 +92,62 @@ class MatchMessagesAPI {
       ...((options?.headers as Record<string, string>) || {}),
     };
 
-    const response = await fetch(`/api/messages${endpoint}`, {
-      headers,
-      credentials: "include",
-      ...options,
-    });
+    try {
+      const response = await fetch(`/api/messages${endpoint}`, {
+        headers,
+        credentials: "include",
+        ...options,
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || `HTTP ${response.status}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: {
+            code: `HTTP_${response.status}`,
+            message: errorText || `HTTP ${response.status}`,
+            details: {
+              status: response.status,
+              statusText: response.statusText,
+            },
+          },
+        };
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        return {
+          success: false,
+          error: {
+            code: "API_ERROR",
+            message: data.error || "Request failed",
+            details: data,
+          },
+        };
+      }
+
+      return {
+        success: true,
+        data: data.data || data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "NETWORK_ERROR",
+          message:
+            error instanceof Error ? error.message : "Network request failed",
+          details: error,
+        },
+      };
     }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || "Request failed");
-    }
-
-    return data.data || data;
   }
 
   async sendMessage(
     params: SendMessageParams
   ): Promise<ApiResponse<MatchMessage>> {
-    return this.makeRequest<ApiResponse<MatchMessage>>("/send", {
+    return this.makeRequest<MatchMessage>("/send", {
       method: "POST",
       body: JSON.stringify(params),
     });
@@ -133,7 +162,7 @@ class MatchMessagesAPI {
       ...(params.before && { before: params.before.toString() }),
     });
 
-    return this.makeRequest<ApiResponse<MatchMessage[]>>(
+    return this.makeRequest<MatchMessage[]>(
       `/messages?${queryParams.toString()}`
     );
   }
@@ -141,14 +170,14 @@ class MatchMessagesAPI {
   async markConversationAsRead(
     params: MarkReadParams
   ): Promise<ApiResponse<void>> {
-    return this.makeRequest<ApiResponse<void>>("/mark-read", {
+    return this.makeRequest<void>("/mark-read", {
       method: "POST",
       body: JSON.stringify(params),
     });
   }
 
   async getUnreadCounts(userId: string): Promise<ApiResponse<number>> {
-    return this.makeRequest<ApiResponse<number>>(`/unread-count/${userId}`);
+    return this.makeRequest<number>(`/unread-count/${userId}`);
   }
 
   // generateUploadUrl removed: multipart uploads are now used directly via /api/messages/upload-image
@@ -156,35 +185,29 @@ class MatchMessagesAPI {
   async getVoiceMessageUrl(
     params: GetVoiceMessageUrlParams
   ): Promise<ApiResponse<string>> {
-    return this.makeRequest<ApiResponse<string>>(
-      `/voice-url/${params.storageId}`
-    );
+    return this.makeRequest<string>(`/voice-url/${params.storageId}`);
   }
 
   async uploadImage(params: StorageUploadParams): Promise<ApiResponse<void>> {
-    return this.makeRequest<ApiResponse<void>>("/upload-image", {
+    return this.makeRequest<void>("/upload-image", {
       method: "POST",
       body: JSON.stringify(params),
     });
   }
 
   async deleteImage(params: StorageDeleteParams): Promise<ApiResponse<void>> {
-    return this.makeRequest<ApiResponse<void>>("/delete-image", {
+    return this.makeRequest<void>("/delete-image", {
       method: "POST",
       body: JSON.stringify(params),
     });
   }
 
   async listImages(userId: string): Promise<ApiResponse<StorageItem[]>> {
-    return this.makeRequest<ApiResponse<StorageItem[]>>(
-      `/list-images/${userId}`
-    );
+    return this.makeRequest<StorageItem[]>(`/list-images/${userId}`);
   }
 
   async getConversations(userId: string): Promise<ApiResponse<Conversation[]>> {
-    return this.makeRequest<ApiResponse<Conversation[]>>(
-      `/conversations/${userId}`
-    );
+    return this.makeRequest<Conversation[]>(`/conversations/${userId}`);
   }
 }
 

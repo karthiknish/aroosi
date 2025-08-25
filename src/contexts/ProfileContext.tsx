@@ -10,6 +10,7 @@ import React, {
 import type { Profile, ProfileContextType } from "@/types/profile";
 import { getCurrentUserWithProfile } from "@/lib/profile/userProfileApi";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { getErrorMessage } from "@/lib/utils/apiResponse";
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
@@ -38,7 +39,9 @@ export const ProfileProvider = ({
         const envelope = result.data ?? {};
         setProfile((envelope as any).profile ?? null);
       } else {
-        setError(new Error(result.error || "Failed to load profile"));
+        setError(
+          new Error(getErrorMessage(result.error) || "Failed to load profile")
+        );
       }
     } catch (err) {
       setError(err as Error);

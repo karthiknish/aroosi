@@ -3,27 +3,28 @@
  * Keeps backward compatibility for existing imports.
  */
 import { matchMessagesAPI, type MatchMessage, type ApiResponse } from "@/lib/api/matchMessages";
+import { postJson } from "@/lib/http/client";
+import { showErrorToast } from "@/lib/ui/toast";
 
 export type Message = MatchMessage;
 
 export const getMessages = async (
   conversationId: string,
   limit?: number,
-  before?: number,
+  before?: number
 ): Promise<Message[]> => {
-  const res = (await matchMessagesAPI.getMessages({
+  const res = await matchMessagesAPI.getMessages({
     conversationId,
     ...(typeof limit === "number" ? { limit } : {}),
     ...(typeof before === "number" ? { before } : {}),
-  })) as unknown as ApiResponse<Message[]>;
-  // matchMessagesAPI returns ApiResponse in some methods; support both shapes
-  if (res && typeof res === "object" && "success" in (res as any)) {
-    return ((res as ApiResponse<Message[]>).data ?? []) as Message[];
+  });
+
+  if (!res.success) {
+    showErrorToast(null, res.error?.message || "Failed to fetch messages");
+    return [];
   }
-  const asObj = res as unknown as { messages?: Message[]; data?: Message[] };
-  return (
-    asObj?.messages || asObj?.data || ((res as unknown as Message[]) ?? [])
-  );
+
+  return res.data || [];
 };
 
 export const sendMessage = async (message: {
@@ -37,7 +38,7 @@ export const sendMessage = async (message: {
   fileSize?: number;
   mimeType?: string;
 }): Promise<Message | null> => {
-  const res = (await matchMessagesAPI.sendMessage({
+  const res = await matchMessagesAPI.sendMessage({
     conversationId: message.conversationId,
     fromUserId: message.fromUserId,
     toUserId: message.toUserId,
@@ -47,58 +48,210 @@ export const sendMessage = async (message: {
     duration: message.duration,
     fileSize: message.fileSize,
     mimeType: message.mimeType,
-  })) as unknown as ApiResponse<Message>;
-  if (res && typeof res === "object" && "success" in res) {
-    if (!res.success) throw new Error(res.error || "Failed to send message");
-    return (res.data as Message) ?? null;
+  });
+
+  if (!res.success) {
+    showErrorToast(null, res.error?.message || "Failed to send message");
+    return null;
   }
-  // Fallback for direct shapes
-  return (res as unknown as { message?: Message }).message ?? (res as unknown as Message);
+
+  return res.data || null;
 };
 
 export const markConversationRead = async (
-  conversationId: string,
+  conversationId: string
 ): Promise<{ success: boolean }> => {
   // Prefer canonical /api/messages/mark-read wrapper
-  const res = (await matchMessagesAPI.markConversationAsRead({
+  const res = await matchMessagesAPI.markConversationAsRead({
     conversationId,
     userId: "", // server derives from token; field ignored if not needed
-  })) as unknown as ApiResponse<void>;
-  if (res && typeof res === "object" && "success" in res) {
-    return { success: res.success };
+  });
+
+  if (!res.success) {
+    showErrorToast(
+      null,
+      res.error?.message || "Failed to mark conversation as read"
+    );
+    return { success: false };
   }
-  // Fallback parse
+
   return { success: true };
 };
 
 export const deleteMessage = async (
   messageId: string
 ): Promise<{ success: boolean }> => {
-  const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-  });
-  const json = await res.json();
-  if (!res.ok || json.success === false) {
-    throw new Error(json.error || "Failed to delete message");
+  try {
+    const result = await postJson<{
+      success?: boolean;
+      error?: string;
+    }>(
+      `/api/messages/${encodeURIComponent(messageId)}`,
+      {},
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!result?.success) {
+      throw new Error(result?.error || "Failed to delete message");
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    const msg =
+      error instanceof Error ? error.message : "Failed to delete message";
+    showErrorToast(null, msg);
+    throw error;
   }
-  return { success: true };
 };
 
 export const editMessage = async (
   messageId: string,
   text: string
 ): Promise<{ success: boolean }> => {
-  const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ text }),
-  });
-  const json = await res.json();
-  if (!res.ok || json.success === false) {
-    throw new Error(json.error || "Failed to edit message");
+  try {
+    const result = await postJson<{
+      success?: boolean;
+      error?: string;
+    }>(
+      `/api/messages/${encodeURIComponent(messageId)}`,
+      { text },
+      {
+        method: "PATCH",
+      }
+    );
+
+    if (!result?.success) {
+      throw new Error(result?.error || "Failed to edit message");
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    const msg =
+      error instanceof Error ? error.message : "Failed to edit message";
+    showErrorToast(null, msg);
+    throw error;
   }
-  return { success: true };
+};
+
+/**
+ * Upload an image for a chat message
+ */
+export const uploadMessageImage = async (
+  file: File,
+  conversationId: string,
+  fromUserId: string,
+  toUserId: string,
+  signal?: AbortSignal
+): Promise<{
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  resetTime?: number;
+}> => {
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("conversationId", conversationId);
+    formData.append("fromUserId", fromUserId);
+    formData.append("toUserId", toUserId);
+    formData.append("fileName", file.name);
+    formData.append("contentType", file.type || "application/octet-stream");
+
+    const result = await postJson<{
+      success?: boolean;
+      messageId?: string;
+      error?: string;
+      resetTime?: number;
+    }>("/api/messages/upload-image", formData, {
+      signal,
+    });
+
+    if (!result?.success) {
+      return {
+        success: false,
+        error: result?.error || "Upload failed",
+        resetTime: result?.resetTime,
+      };
+    }
+
+    return {
+      success: true,
+      messageId: result.messageId,
+    };
+  } catch (error: any) {
+    let errMsg = `HTTP ${error.status || 500}`;
+    let resetTime: number | undefined;
+
+    try {
+      const data = error.response ? await error.response.clone().json() : {};
+      errMsg = data?.error || data?.message || errMsg;
+      if (error.status === 429 && data?.resetTime) {
+        const ms = new Date(data.resetTime).getTime() - Date.now();
+        resetTime = Math.max(0, Math.ceil(ms / 1000));
+        errMsg = `Rate limit exceeded. Try again in ${resetTime}s`;
+      } else if (error.status === 429) {
+        errMsg = errMsg || "Rate limit exceeded";
+      }
+    } catch {
+      const txt = error.response ? await error.response.text() : "";
+      errMsg = txt || errMsg;
+    }
+
+    return {
+      success: false,
+      error: errMsg,
+      resetTime,
+    };
+  }
+};
+
+/**
+ * Get the URL for a message image
+ */
+export const getMessageImageUrl = async (
+  messageId: string
+): Promise<{ success: boolean; imageUrl?: string; error?: string }> => {
+  try {
+    const result = await postJson<{
+      success?: boolean;
+      data?: { imageUrl?: string };
+      imageUrl?: string;
+      error?: string;
+    }>(`/api/message-images/${encodeURIComponent(messageId)}/url`);
+
+    if (!result?.success) {
+      return {
+        success: false,
+        error: result?.error || "Failed to get image URL",
+      };
+    }
+
+    const imageUrl = result?.data?.imageUrl || result?.imageUrl;
+    if (!imageUrl) {
+      return {
+        success: false,
+        error: "Image URL missing",
+      };
+    }
+
+    return {
+      success: true,
+      imageUrl,
+    };
+  } catch (error: any) {
+    let errMsg = "Failed to get image URL";
+    try {
+      const data = error.response ? await error.response.json() : {};
+      errMsg = data?.error || data?.message || errMsg;
+    } catch {
+      // ignore
+    }
+
+    return {
+      success: false,
+      error: errMsg,
+    };
+  }
 };
