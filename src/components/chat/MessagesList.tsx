@@ -42,6 +42,10 @@ type MessagesListProps = {
   onSelectReply?: (m: MatchMessage) => void;
   onEditMessage?: (id: string, currentText: string) => void;
   onDeleteMessage?: (id: string) => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
+  getReactionsForMessage?: (
+    messageId: string
+  ) => Array<{ emoji: string; count: number; reactedByMe: boolean }>;
 };
 
 export default function MessagesList(props: MessagesListProps) {
@@ -246,7 +250,7 @@ export default function MessagesList(props: MessagesListProps) {
 
   return (
     <div
-      className="flex-1 relative"
+      className="flex-1 relative min-h-[50vh]"
       aria-label="Conversation messages"
       role="log"
       aria-live="polite"
@@ -496,14 +500,16 @@ export default function MessagesList(props: MessagesListProps) {
                               </button>
                             )}
                             {/* top-right triple-dot for own text messages */}
-                            {isCurrentUser && (msg.type === "text") && (
+                            {isCurrentUser && msg.type === "text" && (
                               <button
                                 type="button"
                                 className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full border border-gray-200 shadow p-1"
                                 aria-label="Message menu"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  const rect = (
+                                    e.currentTarget as HTMLElement
+                                  ).getBoundingClientRect();
                                   openContextMenu(rect.right, rect.top, msg);
                                 }}
                               >
@@ -511,7 +517,11 @@ export default function MessagesList(props: MessagesListProps) {
                               </button>
                             )}
 
-                            {isVoice ? (
+                            {(msg as any).deleted ? (
+                              <p className="text-xs italic text-gray-500">
+                                This message was deleted
+                              </p>
+                            ) : isVoice ? (
                               <VoiceMessageBubble
                                 url={`/api/voice-messages/${encodeURIComponent(msg._id)}/url`}
                                 durationSeconds={Number(
@@ -528,6 +538,51 @@ export default function MessagesList(props: MessagesListProps) {
                                 {msg.text}
                               </p>
                             )}
+                            {/* Reactions row */}
+                            {props.getReactionsForMessage &&
+                              (() => {
+                                const rx = props.getReactionsForMessage(
+                                  msg._id
+                                );
+                                if (!rx || rx.length === 0) return null;
+                                return (
+                                  <div
+                                    className={cn(
+                                      "mt-1 flex flex-wrap gap-1",
+                                      isCurrentUser
+                                        ? "justify-end"
+                                        : "justify-start"
+                                    )}
+                                    aria-label="Message reactions"
+                                  >
+                                    {rx.map((r) => (
+                                      <button
+                                        key={`${msg._id}-${r.emoji}`}
+                                        type="button"
+                                        className={cn(
+                                          "px-2 py-0.5 rounded-full text-xs border shadow-sm bg-white/90",
+                                          r.reactedByMe
+                                            ? "border-primary/60 text-primary"
+                                            : "border-gray-200 text-gray-700"
+                                        )}
+                                        onClick={() =>
+                                          props.onToggleReaction?.(
+                                            msg._id,
+                                            r.emoji
+                                          )
+                                        }
+                                        aria-pressed={r.reactedByMe}
+                                        aria-label={`React ${r.emoji}`}
+                                      >
+                                        <span className="mr-1">{r.emoji}</span>
+                                        <span className="tabular-nums">
+                                          {r.count}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
                             <div
                               className={cn(
                                 "text-xs mt-2 flex items-center gap-1",
@@ -545,6 +600,23 @@ export default function MessagesList(props: MessagesListProps) {
                                   }
                                 )}
                               </span>
+                              {(msg as any).edited && (
+                                <span
+                                  className={cn(
+                                    "ml-1 text-[10px]",
+                                    isCurrentUser
+                                      ? "text-gray-400"
+                                      : "text-gray-400"
+                                  )}
+                                  title={
+                                    (msg as any).editedAt
+                                      ? `Edited at ${new Date((msg as any).editedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                                      : "Edited"
+                                  }
+                                >
+                                  • edited
+                                </span>
+                              )}
                               <DeliveryStatus
                                 status={(() => {
                                   const base = getMessageDeliveryStatus(
@@ -593,7 +665,7 @@ export default function MessagesList(props: MessagesListProps) {
                                   </button>
                                 </div>
                               )}
-                            {/* Hover affordance (e.g., future reactions) */}
+                            {/* Hover affordance */}
                             <div className="absolute -top-2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-gray-400 select-none">
                               {new Date(msg.createdAt).toLocaleTimeString([], {
                                 hour: "2-digit",
@@ -662,32 +734,51 @@ export default function MessagesList(props: MessagesListProps) {
           >
             Reply
           </button>
-          {menuState.message.fromUserId === currentUserId && (menuState.message as any).type !== "voice" && (
-            <>
-              <button
-                role="menuitem"
-                className="w-full text-left text-sm px-3 py-2 rounded hover:bg-primary/10 focus:bg-primary/10 focus:outline-none flex items-center gap-2"
-                onClick={() => {
-                  const m = menuState.message;
-                  onEditMessage?.(m._id, (m as any).text || "");
-                  setMenuState(null);
-                }}
-              >
-                <Edit3 className="w-4 h-4 text-gray-600" /> Edit
-              </button>
-              <button
-                role="menuitem"
-                className="w-full text-left text-sm px-3 py-2 rounded hover:bg-red-50 focus:bg-red-50 focus:outline-none text-red-600 flex items-center gap-2"
-                onClick={() => {
-                  const m = menuState.message;
-                  onDeleteMessage?.(m._id);
-                  setMenuState(null);
-                }}
-              >
-                <Trash className="w-4 h-4" /> Delete
-              </button>
-            </>
-          )}
+          <div className="px-2 py-1">
+            <div className="text-[11px] text-gray-500 mb-1">React</div>
+            <div className="flex gap-1">
+              {["👍", "❤️", "😂", "😮", "🙏"].map((emoji) => (
+                <button
+                  key={emoji}
+                  className="px-2 py-1 rounded hover:bg-gray-100"
+                  onClick={() => {
+                    props.onToggleReaction?.(menuState.message._id, emoji);
+                    setMenuState(null);
+                  }}
+                  aria-label={`React ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+          {menuState.message.fromUserId === currentUserId &&
+            (menuState.message as any).type !== "voice" && (
+              <>
+                <button
+                  role="menuitem"
+                  className="w-full text-left text-sm px-3 py-2 rounded hover:bg-primary/10 focus:bg-primary/10 focus:outline-none flex items-center gap-2"
+                  onClick={() => {
+                    const m = menuState.message;
+                    onEditMessage?.(m._id, (m as any).text || "");
+                    setMenuState(null);
+                  }}
+                >
+                  <Edit3 className="w-4 h-4 text-gray-600" /> Edit
+                </button>
+                <button
+                  role="menuitem"
+                  className="w-full text-left text-sm px-3 py-2 rounded hover:bg-red-50 focus:bg-red-50 focus:outline-none text-red-600 flex items-center gap-2"
+                  onClick={() => {
+                    const m = menuState.message;
+                    onDeleteMessage?.(m._id);
+                    setMenuState(null);
+                  }}
+                >
+                  <Trash className="w-4 h-4" /> Delete
+                </button>
+              </>
+            )}
         </div>
       )}
     </div>

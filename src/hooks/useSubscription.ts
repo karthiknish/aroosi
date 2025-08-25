@@ -89,8 +89,10 @@ export const useSubscriptionStatus = (_providedToken?: string) => {
       lastStatusPlanRef.current = statusPlan;
     }
 
-    // Show success toast whenever both sources align on an upgraded (non-free) plan and we haven't toasted yet
+    // Show success toast only after a checkout redirect (quickRefresh),
+    // when both sources align on an upgraded (non-free) plan and we haven't toasted yet
     if (
+      quickRefresh &&
       statusPlan === profilePlan &&
       statusPlan !== "free" &&
       lastToastPlanRef.current !== statusPlan

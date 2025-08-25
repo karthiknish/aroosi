@@ -1,199 +1,96 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/app/api/_utils/auth";
+import { NextRequest } from "next/server";
+import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 import { db } from "@/lib/firebaseAdmin";
-import {
-  COL_MESSAGE_RECEIPTS,
-  buildMessageReceipt,
-  messageReceiptId,
-} from "@/lib/firestoreSchema";
 
-const VALID_STATUSES = ["delivered", "read", "failed"] as const;
+export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
+// GET /api/delivery-receipts?conversationId=...
+export const GET = withFirebaseAuth(async (_authUser, request: NextRequest) => {
   try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Delivery receipts POST auth failed", {
-        scope: "delivery_receipts.post",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-    const { userId } = session;
-
-    // Cookie/session auth; use server helper
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid request body", correlationId },
-        { status: 400 }
-      );
-    }
-
-    const { messageId, conversationId, status } =
-      (body as {
-        messageId?: string;
-        conversationId?: string;
-        status?: string;
-      }) || {};
-    if (!messageId || !conversationId || !status) {
-      return NextResponse.json(
-        { error: "Missing messageId, conversationId or status", correlationId },
-        { status: 400 }
-      );
-    }
-
-    if (!VALID_STATUSES.includes(status as (typeof VALID_STATUSES)[number])) {
-      return NextResponse.json(
-        { error: "Invalid status", correlationId },
-        { status: 400 }
-      );
-    }
-
-    // Narrow status to the allowed literal union type
-    const narrowedStatus = status as "delivered" | "read" | "failed";
-
-    // Upsert Firestore receipt (one per messageId_userId)
-    const receiptDocId = messageReceiptId(messageId, userId!);
-    const existing = await db
-      .collection(COL_MESSAGE_RECEIPTS)
-      .doc(receiptDocId)
-      .get();
-    const now = Date.now();
-    if (existing.exists) {
-      const data = existing.data() as any;
-      const updates: any = { status: narrowedStatus, updatedAt: now };
-      if (narrowedStatus === "delivered" && !data.deliveredAt)
-        updates.deliveredAt = now;
-      if (narrowedStatus === "read" && !data.readAt) updates.readAt = now;
-      await db
-        .collection(COL_MESSAGE_RECEIPTS)
-        .doc(receiptDocId)
-        .set(updates, { merge: true });
-    } else {
-      const base = buildMessageReceipt(
-        messageId,
-        conversationId,
-        userId!,
-        narrowedStatus
-      );
-      if (narrowedStatus === "delivered") base.deliveredAt = base.updatedAt;
-      if (narrowedStatus === "read") base.readAt = base.updatedAt;
-      await db.collection(COL_MESSAGE_RECEIPTS).doc(receiptDocId).set(base);
-    }
-
-    // Failure sampling / alert hook
-    // non-production logging suppressed to satisfy linter
-
-    // success
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Delivery receipt recorded",
-        receiptId: receiptDocId,
-        messageId,
-        status,
-        conversationId,
-        timestamp: Date.now(),
-        correlationId,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Delivery receipts POST unhandled error", {
-      scope: "delivery_receipts.post",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
-    });
-    return NextResponse.json(
-      { error: "Failed to record delivery receipt", correlationId },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(request: NextRequest) {
-  const correlationId = Math.random().toString(36).slice(2, 10);
-  const startedAt = Date.now();
-  try {
-    const session = await requireSession(request);
-    if ("errorResponse" in session) {
-      const res = session.errorResponse as NextResponse;
-      const status = res.status || 401;
-      let body: unknown = { error: "Unauthorized", correlationId };
-      try {
-        const txt = await res.text();
-        body = txt ? { ...JSON.parse(txt), correlationId } : body;
-      } catch {}
-      console.warn("Delivery receipts GET auth failed", {
-        scope: "delivery_receipts.get",
-        type: "auth_failed",
-        correlationId,
-        statusCode: status,
-        durationMs: Date.now() - startedAt,
-      });
-      return NextResponse.json(body, { status });
-    }
-
-    // Cookie/session auth; use server helper
-
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get("conversationId");
     if (!conversationId) {
-      return NextResponse.json(
-        { error: "Missing conversationId", correlationId },
+      return new Response(
+        JSON.stringify({ error: "conversationId is required" }),
         { status: 400 }
       );
     }
 
-    // Query receipts by indexed conversationId field (more robust than messageId prefix)
+    // Fetch receipts for the conversation (denormalized conversationId stored on receipts)
     const snap = await db
-      .collection(COL_MESSAGE_RECEIPTS)
+      .collection("messageReceipts")
       .where("conversationId", "==", conversationId)
-      .limit(500)
       .get();
-    const deliveryReceipts = snap.docs.map(
-      (
-        d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
-      ) => ({ id: d.id, ...(d.data() as any) })
-    );
 
-    // success
-    return NextResponse.json(
-      { success: true, conversationId, deliveryReceipts, correlationId },
-      { status: 200 }
+    const deliveryReceipts = snap.docs.map((d: any) => {
+      const data = d.data() || {};
+      return {
+        id: d.id,
+        messageId: data.messageId,
+        userId: data.userId,
+        status: data.status,
+        updatedAt: data.updatedAt || data.timestamp || Date.now(),
+      };
+    });
+
+    return new Response(JSON.stringify({ deliveryReceipts }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("GET /api/delivery-receipts error", error);
+    return new Response(JSON.stringify({ error: "Failed to load receipts" }), {
+      status: 500,
+    });
+  }
+});
+
+// POST /api/delivery-receipts { messageId, status }
+export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
+  try {
+    const userId = authUser.id;
+    const body = await request.json().catch(() => ({}));
+    const { messageId, status } = body as {
+      messageId?: string;
+      status?: "delivered" | "read" | "failed";
+    };
+    if (!messageId || !status) {
+      return new Response(JSON.stringify({ error: "Missing fields" }), {
+        status: 400,
+      });
+    }
+
+    // Lookup message to denormalize conversationId
+    const msgDoc = await db.collection("messages").doc(messageId).get();
+    const messageData = msgDoc.exists ? (msgDoc.data() as any) : null;
+    const conversationId = messageData?.conversationId || null;
+
+    const receiptId = `${messageId}_${userId}`;
+    const updatedAt = Date.now();
+    await db
+      .collection("messageReceipts")
+      .doc(receiptId)
+      .set(
+        {
+          messageId,
+          userId,
+          status,
+          updatedAt,
+          ...(conversationId ? { conversationId } : {}),
+        },
+        { merge: true }
+      );
+
+    return new Response(
+      JSON.stringify({ success: true, data: { messageId, status, updatedAt } }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Delivery receipts GET unhandled error", {
-      scope: "delivery_receipts.get",
-      type: "unhandled_error",
-      message,
-      correlationId,
-      statusCode: 500,
-      durationMs: Date.now() - startedAt,
+    console.error("POST /api/delivery-receipts error", error);
+    return new Response(JSON.stringify({ error: "Failed to record receipt" }), {
+      status: 500,
     });
-    return NextResponse.json(
-      { error: "Failed to fetch delivery receipts", correlationId },
-      { status: 500 }
-    );
   }
-}
+});
+
+// Duplicate alternative implementation removed to avoid redeclarations

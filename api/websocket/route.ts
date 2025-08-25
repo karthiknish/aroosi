@@ -45,7 +45,7 @@ export async function GET(request: Request) {
               type: "message",
               id: `msg_${Date.now()}`,
               conversationId: data.conversationId,
-              fromUserId: data.senderId || data.userId,
+              fromUserId: data.fromUserId || data.userId,
               toUserId: data.toUserId || "all",
               messageType: "text",
               content: data.message || data.content,

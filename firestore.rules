@@ -3,10 +3,15 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
     function isAdmin() { return isSignedIn() && request.auth.token.admin == true; }
-    // Check if the current user is a participant in a conversation doc
-    function inConversation(convId) {
-      return get(/databases/$(database)/documents/conversations/$(convId)).data != null
-        && request.auth.uid in get(/databases/$(database)/documents/conversations/$(convId)).data.participants;
+    // Safe version that handles missing conversation docs by checking conversation ID format
+    function safeInConversation(convId) {
+      let convDoc = get(/databases/$(database)/documents/conversations/$(convId));
+      // If conversation doc exists, check membership; otherwise validate based on ID format
+      return convDoc.data != null
+        ? (request.auth.uid in convDoc.data.participants)
+        : (
+          convId.split('_').size() == 2 && request.auth.uid in convId.split('_')
+        );
     }
 
     match /users/{userId} {
@@ -30,10 +35,26 @@ service cloud.firestore {
     // Conversations metadata: allow participants to create/read; prevent deletes
     match /conversations/{conversationId} {
       // Create/update allowed if the caller is included in the participants list they are writing
+      // and the conversation ID matches the participant format
       allow create, update: if isSignedIn()
         && request.resource.data.participants is list
         && request.auth.uid in request.resource.data.participants
-        && request.resource.data.updatedAt is number;
+        && request.resource.data.updatedAt is number
+        && request.resource.data.participants.size() == 2
+        && (
+          // Build expected normalized conversationId without using unsupported sort/join
+          (
+            (request.resource.data.participants[0] is string) &&
+            (request.resource.data.participants[1] is string)
+          ) &&
+          (
+            conversationId == (
+              request.resource.data.participants[0] < request.resource.data.participants[1]
+                ? (request.resource.data.participants[0] + '_' + request.resource.data.participants[1])
+                : (request.resource.data.participants[1] + '_' + request.resource.data.participants[0])
+            )
+          )
+        );
       // Read allowed if the caller is a participant of the conversation
       allow read: if isSignedIn()
         && resource.data.participants is list
@@ -54,12 +75,7 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Message delivery & read receipts (write server-only: rely on custom backend)
-    match /messageReceipts/{receiptId} {
-      allow read: if isSignedIn();
-      // Deny direct client writes to prevent spoofing; backend uses Admin SDK.
-      allow write: if false;
-    }
+  // Message delivery & read receipts
 
     // Cached recommendations snapshots - never directly writable by clients
     match /recommendations/{recId} {
@@ -67,14 +83,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Voice messages metadata - restrict to sender or participants (simplified: owner write, participants read)
+    // Voice messages metadata - restrict to sender/recipient or conversation participants.
     match /voiceMessages/{msgId} {
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+      // Allow authenticated users to create voice messages they are the sender of
+      allow create: if isSignedIn() && request.resource.data.fromUserId == request.auth.uid;
+
+      // Allow reads if the caller is the sender/recipient, or if the message has a conversationId and the caller is a participant of that conversation.
       allow read: if isSignedIn() && (
-        resource.data.senderId == request.auth.uid ||
-        (resource.data.recipientId != null && resource.data.recipientId == request.auth.uid)
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid ||
+        (resource.data.conversationId is string && safeInConversation(resource.data.conversationId))
       );
-      // Prevent updates except maybe status by sender (optional hard deny for now)
+
+      // Prevent client updates/deletes
       allow update: if false;
       allow delete: if false;
     }
@@ -118,29 +139,42 @@ service cloud.firestore {
             (!('replyToFromUserId' in request.resource.data) || request.resource.data.replyToFromUserId is string)
           )
         )
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.banned != true;
+        // Optional participants field for easier rule checking
+        && (
+          !('participants' in request.resource.data) || 
+          (request.resource.data.participants is list && request.auth.uid in request.resource.data.participants)
+        )
+        // Validate conversation ID format matches participants
+        && (
+          // Build expected normalized ID a_b deterministically without sort/join
+          (
+            request.resource.data.fromUserId is string &&
+            request.resource.data.toUserId is string
+          ) &&
+          (
+            request.resource.data.conversationId == (
+              request.resource.data.fromUserId < request.resource.data.toUserId
+                ? (request.resource.data.fromUserId + '_' + request.resource.data.toUserId)
+                : (request.resource.data.toUserId + '_' + request.resource.data.fromUserId)
+            )
+          )
+        )
+    ;
 
       // Allow participants (sender or recipient) to read messages for their conversation.
       allow read: if isSignedIn() && (
         resource.data.fromUserId == request.auth.uid ||
         resource.data.toUserId == request.auth.uid ||
         (resource.data.participants is list && request.auth.uid in resource.data.participants) ||
-        (resource.data.conversationId is string && inConversation(resource.data.conversationId))
+        (resource.data.conversationId is string && safeInConversation(resource.data.conversationId))
       );
 
       // Allow recipient to mark a message as read by updating only `readAt` to a newer timestamp.
       allow update: if isSignedIn()
         && request.auth.uid == resource.data.toUserId
-        && !("text" in request.resource.data)
-        && !("fromUserId" in request.resource.data)
-        && !("toUserId" in request.resource.data)
-        && !("replyToMessageId" in request.resource.data)
-        && !("replyToText" in request.resource.data)
-        && !("replyToType" in request.resource.data)
-        && !("replyToFromUserId" in request.resource.data)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(["readAt"]) 
         && (request.resource.data.readAt is number)
-        && (resource.data.readAt == null || request.resource.data.readAt >= resource.data.readAt)
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.banned != true;
+    && (resource.data.readAt == null || request.resource.data.readAt >= resource.data.readAt);
 
       // Prevent client deletes
       allow delete: if false;
@@ -154,8 +188,27 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.messageId is string
         && request.resource.data.status in ["delivered", "read"]
-        && request.resource.data.updatedAt is number;
+        && request.resource.data.updatedAt is number
+        // Ensure receipt ID follows expected format: messageId_userId
+        && receiptId == request.resource.data.messageId + '_' + request.auth.uid;
       allow delete: if false;
+    }
+
+    // Matches denormalization: allow participants to update lastMessage and updatedAt only
+    match /matches/{matchId} {
+      allow read: if isSignedIn()
+        && (
+          request.auth.uid == resource.data.user1Id || 
+          request.auth.uid == resource.data.user2Id
+        );
+      allow update: if isSignedIn()
+        && (
+          // Either participant can update
+          request.auth.uid == resource.data.user1Id || request.auth.uid == resource.data.user2Id
+        )
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(["lastMessage", "updatedAt"])
+        && request.resource.data.status == resource.data.status; // Don't allow status changes
+      allow create, delete: if false;
     }
 
     // Typing indicators: ephemeral docs under typingIndicators/{conversationId}/users/{userId}
@@ -164,8 +217,13 @@ service cloud.firestore {
       allow create, update: if isSignedIn() && request.auth.uid == userId
         && request.resource.data.isTyping is bool
         && request.resource.data.updatedAt is number;
-      // Participants may read typing indicators for their conversation (requires a backend check to verify membership if needed).
-      allow read: if isSignedIn();
+      // Participants may read typing indicators for their conversation
+      allow read: if isSignedIn() && (
+  // Allow reading if user is part of the conversation based on conversation ID format
+  request.auth.uid in conversationId.split('_') ||
+        // Or if conversation document exists and user is a participant
+        safeInConversation(conversationId)
+      );
       allow delete: if false;
     }
 

@@ -5,6 +5,8 @@ import MessagesList from "@/components/chat/MessagesList";
 import Composer from "@/components/chat/Composer";
 import ReportModal from "@/components/chat/ReportModal";
 import { useModernChat, type ReportReason } from "@/hooks/useModernChat";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { useState } from "react";
 
 export type ModernChatProps = {
   conversationId: string;
@@ -23,6 +25,9 @@ function ModernChat({
   matchUserAvatarUrl = "",
   className = "",
 }: ModernChatProps) {
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [targetDeleteId, setTargetDeleteId] = useState<string | null>(null);
   const {
     subscriptionStatus,
     connectionStatus,
@@ -76,6 +81,9 @@ function ModernChat({
     onScrollToBottom,
     setReplyTo,
     // setMessageFeedback managed inside hook
+    startEditMessage,
+    cancelEditMessage,
+    toggleReaction,
   } = handlers;
 
   return (
@@ -121,28 +129,15 @@ function ModernChat({
             fromUserId: m.fromUserId,
           })
         }
-        onEditMessage={async (id, currentText) => {
-          const next = window.prompt("Edit message", currentText || "");
-          if (next == null) return;
-          const trimmed = next.trim();
-          if (!trimmed) return;
-          try {
-            const { editMessage } = await import("@/lib/api/messages");
-            await editMessage(id, trimmed);
-          } catch {
-            // optional toast could be added
-          }
-        }}
+        onEditMessage={(id, currentText) => startEditMessage(id, currentText)}
         onDeleteMessage={async (id) => {
-          const ok = window.confirm("Delete this message?");
-          if (!ok) return;
-          try {
-            const { deleteMessage } = await import("@/lib/api/messages");
-            await deleteMessage(id);
-          } catch {
-            // optional toast could be added
-          }
+          setTargetDeleteId(id);
+          setDeleteModalOpen(true);
         }}
+        onToggleReaction={(messageId, emoji) =>
+          toggleReaction(messageId, emoji)
+        }
+        getReactionsForMessage={messagesState.getReactionsForMessage}
       />
 
       <Composer
@@ -172,6 +167,8 @@ function ModernChat({
         }
         replyTo={replyTo || undefined}
         onCancelReply={() => setReplyTo(null)}
+        editing={state.editing || null}
+        onCancelEdit={cancelEditMessage}
       />
 
       <ReportModal
@@ -184,6 +181,34 @@ function ModernChat({
             description
           );
         }}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteModalOpen(false);
+            setTargetDeleteId(null);
+          }
+        }}
+        onConfirm={async () => {
+          if (!targetDeleteId) return;
+          try {
+            setDeleting(true);
+            const { deleteMessage } = await import("@/lib/api/messages");
+            await deleteMessage(targetDeleteId);
+          } catch {
+            // optional toast could be added
+          } finally {
+            setDeleting(false);
+            setDeleteModalOpen(false);
+            setTargetDeleteId(null);
+          }
+        }}
+        title="Delete this message?"
+        description="This action will delete the message for you. It may not remove it for the other participant depending on policy."
+        isDeleting={deleting}
+        confirmText="Delete"
       />
     </div>
   );

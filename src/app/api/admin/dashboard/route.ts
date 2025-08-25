@@ -38,20 +38,20 @@ export async function GET(req: NextRequest) {
       countCollection("blogPosts"),
     ]);
 
-    // Active users: distinct senderId in messages last 30 days
+    // Active users: distinct fromUserId in messages last 30 days
     const THIRTY_DAYS = Date.now() - 30 * 24 * 60 * 60 * 1000;
     let activeUsers = 0;
     try {
       const activitySnap = await db
         .collection("messages")
         .where("createdAt", ">=", THIRTY_DAYS)
-        .select("senderId")
+        .select("fromUserId")
         .limit(5000)
         .get();
       const ids = new Set<string>();
       activitySnap.forEach((d: any) => {
         const data = d.data();
-        if (data?.senderId) ids.add(String(data.senderId));
+        if (data?.fromUserId) ids.add(String(data.fromUserId));
       });
       activeUsers = ids.size;
     } catch {}

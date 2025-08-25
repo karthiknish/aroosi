@@ -25,7 +25,7 @@ export default function RouteLoader() {
     if (prev.current !== pathname) {
       prev.current = pathname;
       setLoading(true);
-      // Show loader for at least 600ms and at most 2500ms
+      // Show loader for ~1.2s by default
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
       hideTimer.current = window.setTimeout(() => setLoading(false), 1200);
     }
@@ -48,7 +48,7 @@ export default function RouteLoader() {
           {/* Top progress bar */}
           <div className="absolute left-0 right-0 top-2 h-1 z-50 overflow-hidden">
             <motion.div
-              className="h-1 bg-accent"
+              className="h-1 bg-[#BFA67A]"
               initial={{ width: "0%" }}
               animate={{ width: ["0%", "60%", "90%"] }}
               transition={{ duration: 1.1, ease: "easeOut" }}
@@ -56,8 +56,8 @@ export default function RouteLoader() {
           </div>
 
           {/* Center spinner */}
-          <div className="mt-12 rounded-full bg-black/40 p-3 pointer-events-auto">
-            <LoadingSpinner size={28} colorClassName="text-white" />
+          <div className="mt-12 rounded-full bg-white/80 backdrop-blur p-3 pointer-events-auto border border-[#BFA67A]/30 shadow-sm">
+            <LoadingSpinner size={28} colorClassName="text-[#BFA67A]" />
           </div>
         </motion.div>
       )}

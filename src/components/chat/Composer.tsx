@@ -57,6 +57,9 @@ type ComposerProps = {
     fromUserId?: string;
   };
   onCancelReply?: () => void;
+  // Editing existing message
+  editing?: { messageId: string; originalText: string } | null;
+  onCancelEdit?: () => void;
 };
 
 export default function Composer(props: ComposerProps) {
@@ -342,10 +345,25 @@ export default function Composer(props: ComposerProps) {
 
   return (
     <div
-      className="border-t border-secondary-light/30 p-4 bg-base-dark rounded-b-2xl"
+      className="border-t border-secondary-light/30 p-4 bg-white/70 backdrop-blur-sm rounded-b-2xl"
       aria-label="Message composer"
       role="group"
     >
+      {/* Editing banner */}
+      {props.editing && (
+        <div className="mb-2 p-2 rounded-lg border border-blue-200 bg-blue-50 text-xs text-blue-800 flex items-center justify-between">
+          <div className="truncate mr-2">Editing message</div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 text-xs px-2"
+            onClick={props.onCancelEdit}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
       {/* Feedback banner */}
       <MessageFeedback
         type={messageFeedback.type}
@@ -470,7 +488,7 @@ export default function Composer(props: ComposerProps) {
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 text-xs"
+              className="h-8 text-xs bg-[#BFA67A] hover:bg-[#a89263] text-white border-0 shadow-sm"
               onClick={() => (window.location.href = "/subscription")}
               title="Upgrade to Premium to send voice messages"
             >
@@ -493,7 +511,9 @@ export default function Composer(props: ComposerProps) {
               ? "Messaging disabled"
               : !text.trim()
                 ? "Enter a message to send"
-                : "Send message"
+                : props.editing
+                  ? "Save edits"
+                  : "Send message"
           }
         >
           {isSending ? (

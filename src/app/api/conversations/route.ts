@@ -138,7 +138,6 @@ export async function GET(request: NextRequest) {
             lastMessage = {
               _id: lmSource.id || lmSource._id || "",
               id: lmSource.id || lmSource._id || "",
-              senderId: lmSource.fromUserId,
               fromUserId: lmSource.fromUserId,
               toUserId: lmSource.toUserId,
               content: lmSource.text,
@@ -162,7 +161,6 @@ export async function GET(request: NextRequest) {
                 lastMessage = {
                   _id: lastMsgSnap.docs[0].id,
                   id: lastMsgSnap.docs[0].id,
-                  senderId: lm.fromUserId,
                   fromUserId: lm.fromUserId,
                   toUserId: lm.toUserId,
                   content: lm.text,

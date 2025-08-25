@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     }
 
     const result = await getProfileById(id);
-
+    console.log("result", result);
     if (!result) {
       console.info("Admin profile GET not_found", {
         scope: "admin.profile",

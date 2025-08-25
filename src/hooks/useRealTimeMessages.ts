@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 // Removed REST message send in favor of direct Firestore writes
 // (legacy REST utilities no longer needed here)
 import { useAuthContext } from "@/components/UserProfileProvider";
@@ -47,6 +47,9 @@ interface MessageData {
   replyToText?: string;
   replyToType?: "text" | "voice" | "image";
   replyToFromUserId?: string;
+  deleted?: boolean;
+  edited?: boolean;
+  editedAt?: number;
 }
 
 interface UseRealTimeMessagesReturn {
@@ -85,6 +88,12 @@ export function useRealTimeMessages({
 }: UseRealTimeMessagesProps): UseRealTimeMessagesReturn {
   const { user: userObj } = useAuthContext();
   const userId = userObj?.uid;
+  // Normalize conversationId to sorted "userA_userB" if it looks like a two-user chat id
+  const convKey = useMemo(() => {
+    if (!conversationId) return conversationId as string;
+    const parts = String(conversationId).split("_");
+    return parts.length === 2 ? parts.slice().sort().join("_") : conversationId;
+  }, [conversationId]);
   // Core message state (merged text + voice + older pages)
   const [messages, setMessages] = useState<MessageData[]>(
     initialMessages.map((m) => ({
@@ -106,18 +115,19 @@ export function useRealTimeMessages({
   const unsubMessagesRef = useRef<(() => void) | null>(null);
   const unsubTypingRef = useRef<(() => void) | null>(null);
   const unsubVoiceRef = useRef<(() => void) | null>(null);
+  const attemptedConvUpsertRef = useRef<boolean>(false);
 
   const PAGE_SIZE = 50;
 
   // Firestore real-time subscription for messages with retry on transient errors
   useEffect(() => {
-    if (!userId || !conversationId) return;
+    if (!userId || !convKey) return;
     setIsConnected(false);
     setError(null);
     const msgsRef = collection(db, "messages");
     const q = query(
       msgsRef,
-      where("conversationId", "==", conversationId),
+      where("conversationId", "==", convKey),
       orderBy("createdAt", "desc"),
       fsLimit(PAGE_SIZE)
     );
@@ -164,6 +174,17 @@ export function useRealTimeMessages({
               readAt: readAtNorm,
               createdAt,
               _creationTime: createdAt,
+              deleted: !!d.deleted,
+              edited: !!d.edited,
+              editedAt:
+                d.editedAt instanceof Timestamp
+                  ? d.editedAt.toMillis()
+                  : d.editedAt,
+              // Include reply metadata if present (for reply previews & scroll linkage)
+              replyToMessageId: d.replyToMessageId,
+              replyToText: d.replyToText,
+              replyToType: d.replyToType,
+              replyToFromUserId: d.replyToFromUserId,
             });
           });
           // list currently descending -> reverse to ascending for UI
@@ -179,7 +200,7 @@ export function useRealTimeMessages({
               const oldest = ascWindow[0].createdAt;
               const probeQ = query(
                 msgsRef,
-                where("conversationId", "==", conversationId),
+                where("conversationId", "==", convKey),
                 orderBy("createdAt", "asc"),
                 where("createdAt", "<", oldest),
                 fsLimit(1)
@@ -198,6 +219,28 @@ export function useRealTimeMessages({
           const msg = (err as any)?.message as string | undefined;
           if (code === "permission-denied") {
             setError("Permission denied. Please sign in again.");
+            if (!attemptedConvUpsertRef.current) {
+              attemptedConvUpsertRef.current = true;
+              try {
+                const parts = String(convKey).split("_");
+                if (parts.length === 2 && userId) {
+                  const otherId = parts[0] === userId ? parts[1] : parts[0];
+                  if (otherId && otherId !== userId) {
+                    const convRef = doc(db, "conversations", convKey);
+                    void setDoc(
+                      convRef,
+                      {
+                        participants: [userId, otherId],
+                        updatedAt: Date.now(),
+                      },
+                      { merge: true }
+                    );
+                  }
+                }
+              } catch {
+                /* ignore */
+              }
+            }
           } else if (
             code === "failed-precondition" &&
             msg &&
@@ -216,12 +259,7 @@ export function useRealTimeMessages({
             const base = 1000 * Math.pow(2, retryCount - 1);
             const jitter = Math.floor(Math.random() * 250);
             const delay = base + jitter;
-            console.info(
-              "Retrying messages subscription in ms:",
-              delay,
-              "attempt:",
-              retryCount + 1
-            );
+            // retry info suppressed to satisfy lint rules
             retryTimer = setTimeout(() => {
               // unsubscribe previous and resubscribe
               try {
@@ -239,16 +277,17 @@ export function useRealTimeMessages({
       unsubMessagesRef.current?.();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [userId, conversationId]);
+  }, [userId, convKey]);
 
   // Voice messages subscription (no pagination yet; typically fewer)
   useEffect(() => {
-    if (!userId || !conversationId) return;
+    if (!userId || !convKey) return;
     const vRef = collection(db, "voiceMessages");
     const vq = query(
       vRef,
-      where("conversationId", "==", conversationId),
-      orderBy("createdAt", "asc")
+      where("conversationId", "==", convKey)
+      // Note: removed orderBy to avoid composite index requirement
+      // Voice messages will be sorted client-side by createdAt
     );
     unsubVoiceRef.current = onSnapshot(
       vq,
@@ -277,6 +316,8 @@ export function useRealTimeMessages({
             _creationTime: createdAt,
           });
         });
+        // Sort by createdAt since we removed orderBy from query to avoid composite index
+        list.sort((a, b) => a.createdAt - b.createdAt);
         setVoiceMessages(list);
       },
       (err) => {
@@ -286,7 +327,7 @@ export function useRealTimeMessages({
     return () => {
       unsubVoiceRef.current?.();
     };
-  }, [userId, conversationId]);
+  }, [userId, convKey]);
 
   // Merge older + window + voice into messages (ascending by createdAt)
   useEffect(() => {
@@ -308,13 +349,8 @@ export function useRealTimeMessages({
 
   // Firestore typing indicators (ephemeral docs in collection typingIndicators/{conversationId}/users/{userId})
   useEffect(() => {
-    if (!userId || !conversationId) return;
-    const typingColl = collection(
-      db,
-      "typingIndicators",
-      conversationId,
-      "users"
-    );
+    if (!userId || !convKey) return;
+    const typingColl = collection(db, "typingIndicators", convKey, "users");
     const typingQ = query(typingColl);
     unsubTypingRef.current = onSnapshot(
       typingQ,
@@ -341,7 +377,7 @@ export function useRealTimeMessages({
     return () => {
       unsubTypingRef.current?.();
     };
-  }, [userId, conversationId]);
+  }, [userId, convKey]);
 
   // (moved above to satisfy dependency order)
 
@@ -358,16 +394,21 @@ export function useRealTimeMessages({
       }
     ) => {
       if (!userId || !text.trim()) return;
+      if (typeof toUserId !== "string" || toUserId.length === 0) {
+        setError("Recipient missing");
+        return;
+      }
       const trimmed = text.trim();
       try {
         const createdAt = Date.now();
+        const normalizedConvId = [userId, toUserId].sort().join("_");
         // Optimistic local append (will be replaced by snapshot shortly)
         const tempId = `tmp-${createdAt}`;
         setMessages((prev) => [
           ...prev,
           {
             _id: tempId,
-            conversationId,
+            conversationId: normalizedConvId,
             fromUserId: userId,
             toUserId,
             text: trimmed,
@@ -385,14 +426,30 @@ export function useRealTimeMessages({
               : {}),
           },
         ]);
+        // Ensure conversation doc exists with membership before message write (some rules require membership)
+        try {
+          const convRef = doc(db, "conversations", normalizedConvId);
+          await setDoc(
+            convRef,
+            {
+              participants: [userId, toUserId],
+              updatedAt: createdAt,
+            },
+            { merge: true }
+          );
+        } catch (e) {
+          // Non-fatal: message may still be allowed depending on rules, but try to continue
+          // eslint-disable-next-line no-console
+          console.warn("Conversation upsert failed (continuing)", e);
+        }
+
         const docRef = await addDoc(collection(db, "messages"), {
-          conversationId,
+          conversationId: normalizedConvId,
           fromUserId: userId,
           toUserId,
           text: trimmed,
           type: "text",
-          createdAt, // numeric for easier client sorting
-          createdAtTs: serverTimestamp(), // optional canonical server timestamp
+          createdAt,
           ...(replyMeta
             ? {
                 replyToMessageId: replyMeta.messageId,
@@ -404,7 +461,7 @@ export function useRealTimeMessages({
         });
         // Upsert conversation membership and lastMessage
         try {
-          const convRef = doc(db, "conversations", conversationId);
+          const convRef = doc(db, "conversations", normalizedConvId);
           await setDoc(
             convRef,
             {
@@ -471,13 +528,15 @@ export function useRealTimeMessages({
         } catch {
           // Non-fatal
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to send message via Firestore", err);
-        setError(err?.message || "Failed to send message");
-        throw err;
+        const message =
+          err instanceof Error ? err.message : "Failed to send message";
+        setError(message);
+        throw err as Error;
       }
     },
-    [userId, conversationId]
+    [userId]
   );
 
   // Send voice message
@@ -486,8 +545,9 @@ export function useRealTimeMessages({
       if (!userId) return;
 
       try {
+        const normalizedConvId = [userId, toUserId].sort().join("_");
         const saved = await uploadVoiceMessage({
-          conversationId,
+          conversationId: normalizedConvId,
           toUserId,
           blob,
           duration,
@@ -498,7 +558,7 @@ export function useRealTimeMessages({
           ...prev,
           {
             _id: saved._id,
-            conversationId,
+            conversationId: normalizedConvId,
             fromUserId: userId,
             toUserId,
             text: "",
@@ -514,7 +574,7 @@ export function useRealTimeMessages({
         ]);
         // Upsert conversation membership and lastMessage for voice
         try {
-          const convRef = doc(db, "conversations", conversationId);
+          const convRef = doc(db, "conversations", normalizedConvId);
           await setDoc(
             convRef,
             {
@@ -585,27 +645,21 @@ export function useRealTimeMessages({
         throw err;
       }
     },
-    [userId, conversationId]
+    [userId]
   );
 
   // Send typing indicators
   const updateTypingDoc = useCallback(
     async (isTyping: boolean) => {
-      if (!userId || !conversationId) return;
+      if (!userId || !convKey) return;
       try {
-        const ref = doc(
-          db,
-          "typingIndicators",
-          conversationId,
-          "users",
-          userId
-        );
+        const ref = doc(db, "typingIndicators", convKey, "users", userId);
         await setDoc(ref, { isTyping, updatedAt: Date.now() }, { merge: true });
       } catch {
         /* ignore */
       }
     },
-    [userId, conversationId]
+    [userId, convKey]
   );
 
   const sendTypingStop = useCallback(() => {
@@ -647,6 +701,7 @@ export function useRealTimeMessages({
               userId,
               status: "read",
               updatedAt: readAt,
+              conversationId: convKey,
             },
             { merge: true }
           );
@@ -666,7 +721,7 @@ export function useRealTimeMessages({
         );
       }
     },
-    [userId]
+    [userId, convKey]
   );
 
   // Refresh messages from server
@@ -678,7 +733,7 @@ export function useRealTimeMessages({
       const msgsRef = collection(db, "messages");
       const probeQ = query(
         msgsRef,
-        where("conversationId", "==", conversationId),
+        where("conversationId", "==", convKey),
         orderBy("createdAt", "asc"),
         where("createdAt", "<", oldest),
         fsLimit(1)
@@ -688,7 +743,7 @@ export function useRealTimeMessages({
     } catch {
       /* ignore */
     }
-  }, [conversationId, windowMessages]);
+  }, [convKey, windowMessages]);
 
   // Pagination: fetch older chunk
   const fetchOlder = useCallback(async () => {
@@ -703,7 +758,7 @@ export function useRealTimeMessages({
       const msgsRef = collection(db, "messages");
       const olderQ = query(
         msgsRef,
-        where("conversationId", "==", conversationId),
+        where("conversationId", "==", convKey),
         orderBy("createdAt", "asc"),
         where("createdAt", "<", anchor),
         fsLimit(PAGE_SIZE)
@@ -733,10 +788,17 @@ export function useRealTimeMessages({
           readAt: readAtNorm,
           createdAt,
           _creationTime: createdAt,
+          // Carry reply metadata for older pages as well
           replyToMessageId: d.replyToMessageId,
           replyToText: d.replyToText,
           replyToType: d.replyToType,
           replyToFromUserId: d.replyToFromUserId,
+          deleted: !!d.deleted,
+          edited: !!d.edited,
+          editedAt:
+            d.editedAt instanceof Timestamp
+              ? d.editedAt.toMillis()
+              : d.editedAt,
         });
       });
       setOlderMessages((prev) => [...chunk, ...prev]);
@@ -746,8 +808,7 @@ export function useRealTimeMessages({
     } finally {
       setLoadingOlder(false);
     }
-  }, [loadingOlder, hasMore, olderMessages, windowMessages, conversationId]);
-
+  }, [loadingOlder, hasMore, olderMessages, windowMessages, convKey]);
   // Delete message (soft delete via API, optimistic UI)
   const deleteMessage = useCallback(async (messageId: string) => {
     try {

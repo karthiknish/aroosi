@@ -138,6 +138,50 @@ export default function ProfileEditForm({
     // Map legacy values to onboarding equivalents (e.g., preferredGender: any -> both)
     const clamp = (v: any, allowed: string[], empty = "") =>
       allowed.includes(String(v)) ? String(v) : empty;
+    // Canonicalize country using COUNTRIES (case-insensitive)
+    const countryInput = safe(iv.country, "") as string;
+    const canonicalCountry = countryInput
+      ? COUNTRIES.find(
+          (c) => c.name.toLowerCase() === String(countryInput).toLowerCase()
+        )?.name || countryInput
+      : "";
+    // Canonicalize motherTongue, ethnicity to option values (lowercase, hyphenated where needed)
+    const mtAllowed = [
+      "farsi-dari",
+      "pashto",
+      "uzbeki",
+      "hazaragi",
+      "turkmeni",
+      "balochi",
+      "nuristani",
+      "punjabi",
+    ];
+    const ethAllowed = [
+      "tajik",
+      "pashtun",
+      "uzbek",
+      "hazara",
+      "turkmen",
+      "baloch",
+      "nuristani",
+      "aimaq",
+      "pashai",
+      "qizilbash",
+      "punjabi",
+    ];
+    const normalizeToOption = (v: any, allowed: string[]) => {
+      const raw = String(v || "").trim();
+      if (!raw) return "";
+      const lower = raw.toLowerCase();
+      // try direct
+      if (allowed.includes(lower)) return lower;
+      // try hyphenated
+      const hyph = lower.replace(/\s+/g, "-");
+      if (allowed.includes(hyph)) return hyph;
+      return "";
+    };
+    const canonicalMotherTongue = normalizeToOption(iv.motherTongue, mtAllowed);
+    const canonicalEthnicity = normalizeToOption(iv.ethnicity, ethAllowed);
     const preferred =
       (iv as any).preferredGender === "any" ? "both" : iv.preferredGender;
     const dietClamped = clamp(
@@ -165,7 +209,7 @@ export default function ProfileEditForm({
       dateOfBirth: safe(iv.dateOfBirth, ""),
       gender: safe(iv.gender, ""),
       city: safe(iv.city, ""),
-      country: safe(iv.country, ""),
+      country: canonicalCountry,
       phoneNumber: safe(iv.phoneNumber, ""),
       aboutMe: safe(iv.aboutMe, ""),
       height: safe(iv.height, ""),
@@ -186,9 +230,9 @@ export default function ProfileEditForm({
       // Extended admin-only fields (not part of narrow ProfileFormValues type yet)
       subscriptionExpiresAt: anyIv.subscriptionExpiresAt,
       hideFromFreeUsers: anyIv.hideFromFreeUsers ?? false,
-      motherTongue: safe(iv.motherTongue, ""),
+      motherTongue: canonicalMotherTongue,
       religion: safe(iv.religion, ""),
-      ethnicity: safe(iv.ethnicity, ""),
+      ethnicity: canonicalEthnicity,
     } as Partial<ProfileFormValues>;
   }, [initialValues]);
 

@@ -24,34 +24,46 @@ export async function GET(req: NextRequest) {
     qRaw && qRaw.trim().length > 1 ? qRaw.trim().toLowerCase() : undefined;
 
   try {
-    let query: any = db.collection(COLLECTION);
-    if (category && category !== "all") {
-      query = query.where("categories", "array-contains", category);
-    }
-    query = query.orderBy("createdAt", "desc");
-    // Total count (aggregation). If unsupported, fallback to fetching IDs.
-    let total = 0;
-    try {
-      const agg = await query.count().get();
-      total = agg.data().count || 0;
-    } catch {
-      const allSnap = await query.get();
-      total = allSnap.size;
-    }
-    // Pagination via offset (acceptable for small blog size)
+    // Robust querying: Firestore may require composite indexes for array-contains + orderBy.
+    // To avoid 500s when index is missing, use a safe fallback path for category queries.
     const offset = page * pageSize;
-    if (offset > 0) query = query.offset(offset);
-    query = query.limit(pageSize);
-    const snap = await query.get();
-    let posts = snap.docs.map((d: any) => ({ _id: d.id, ...d.data() }));
+    let posts: any[] = [];
+    let total = 0;
+
+    if (category && category !== "all") {
+      // Fallback strategy: fetch category set without orderBy, sort & paginate in memory
+      const catSnap = await db
+        .collection(COLLECTION)
+        .where("categories", "array-contains", category)
+        .get();
+      const all = catSnap.docs.map((d: any) => ({ _id: d.id, ...d.data() }));
+      total = all.length;
+      all.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+      posts = all.slice(offset, offset + pageSize);
+    } else {
+      // No category filter: use efficient ordered query with pagination
+      let query: any = db.collection(COLLECTION).orderBy("createdAt", "desc");
+      try {
+        const agg = await query.count().get();
+        total = agg.data().count || 0;
+      } catch {
+        const allSnap = await query.get();
+        total = allSnap.size;
+      }
+      if (offset > 0) query = query.offset(offset);
+      query = query.limit(pageSize);
+      const snap = await query.get();
+      posts = snap.docs.map((d: any) => ({ _id: d.id, ...d.data() }));
+    }
+
     if (q) {
-      // Lightweight server-side filtering (Firestore full-text alternative pending Algolia/Elastic integration)
       posts = posts.filter((p: any) => {
         const title = (p.title || "").toLowerCase();
         const excerpt = (p.excerpt || "").toLowerCase();
         return title.includes(q) || excerpt.includes(q);
       });
     }
+
     const res = successResponse({ posts, total, page, pageSize });
     res.headers.set(
       "Cache-Control",

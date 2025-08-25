@@ -31,15 +31,45 @@ export async function GET(req: NextRequest) {
   const raw = url.pathname.split("/").pop()!;
   const key = decodeURIComponent(raw);
   try {
-    // Strict: lookup by sanitized slug only
-    const slug = sanitizeBlogSlug(key);
-    const snap = await db
+    // Prefer: lookup by sanitized slug
+    const slug = sanitizeBlogSlug(
+      key.normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip diacritics
+    );
+
+    let doc: any | null = null;
+
+    // 1) Try by sanitized slug
+    const snap1 = await db
       .collection("blogPosts")
       .where("slug", "==", slug)
       .limit(1)
       .get();
-    if (snap.empty) return errorResponse("Not found", 404);
-    const doc = snap.docs[0];
+    if (!snap1.empty) {
+      doc = snap1.docs[0];
+    }
+
+    // 2) Fallback: try by raw key (lowercased) in case legacy data stored unsanitized
+    if (!doc) {
+      const rawLower = String(key).toLowerCase();
+      const snap2 = await db
+        .collection("blogPosts")
+        .where("slug", "==", rawLower)
+        .limit(1)
+        .get();
+      if (!snap2.empty) {
+        doc = snap2.docs[0];
+      }
+    }
+
+    // 3) Fallback: treat key as document id
+    if (!doc) {
+      const byId = await db.collection("blogPosts").doc(String(key)).get();
+      if (byId.exists) {
+        doc = byId;
+      }
+    }
+
+    if (!doc) return errorResponse("Not found", 404);
     const data = { _id: doc.id, ...doc.data() } as any;
     // Derive weak ETag from updatedAt/createdAt + id
     const ts = data.updatedAt || data.createdAt || 0;

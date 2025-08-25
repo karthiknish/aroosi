@@ -61,7 +61,7 @@ export const WebSocketTest: React.FC<WebSocketTestProps> = ({
         JSON.stringify({
           type: "message",
           message: inputMessage,
-          senderId: userId,
+          fromUserId: userId,
           conversationId,
         })
       );

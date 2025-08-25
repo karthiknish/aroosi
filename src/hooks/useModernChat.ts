@@ -96,6 +96,11 @@ export function useModernChat({
     type?: "text" | "voice" | "image";
     fromUserId?: string;
   } | null>(null);
+  // Edit state: when set, composer edits an existing message instead of sending new
+  const [editing, setEditing] = useState<{
+    messageId: string;
+    originalText: string;
+  } | null>(null);
 
   // Feedback state
   const [messageFeedback, setMessageFeedback] = useState<{
@@ -248,6 +253,22 @@ export function useModernChat({
       stopTyping();
 
       try {
+        // If editing an existing message, update it and exit
+        if (editing && editing.messageId) {
+          try {
+            const { editMessage } = await import("@/lib/api/messages");
+            await editMessage(editing.messageId, messageText.trim());
+            setEditing(null);
+            setText("");
+            setIsNearBottom(true);
+            setTimeout(() => inputRef.current?.focus(), 100);
+            return;
+          } catch (err) {
+            showErrorToast(err, "Failed to edit message");
+            return;
+          }
+        }
+
         const payload = {
           fromUserId: currentUserId,
           toUserId: matchUserId,
@@ -353,6 +374,7 @@ export function useModernChat({
       markMessageAsPending,
       markMessageAsSent,
       trackUsage,
+      editing,
     ]
   );
 
@@ -457,6 +479,103 @@ export function useModernChat({
     [matchUserId, setShowReportModal, trackUsage]
   );
 
+  // Reactions state: map messageId -> emoji -> Set<userId>
+  type ReactionMap = Map<string, Map<string, Set<string>>>;
+  const [reactions, setReactions] = useState<ReactionMap>(new Map());
+
+  // Load initial reactions for this conversation
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { getReactions } = await import("@/lib/chat/reactions");
+        const res = await getReactions(conversationId);
+        if (!mounted || !res.success) return;
+        const map: ReactionMap = new Map();
+        for (const r of res.data.reactions) {
+          if (!map.has(r.messageId)) map.set(r.messageId, new Map());
+          const inner = map.get(r.messageId)!;
+          if (!inner.has(r.emoji)) inner.set(r.emoji, new Set());
+          inner.get(r.emoji)!.add(r.userId);
+        }
+        setReactions(map);
+      } catch {}
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [conversationId]);
+
+  const getReactionsForMessage = useCallback(
+    (messageId: string) => {
+      const inner = reactions.get(messageId);
+      if (!inner)
+        return [] as Array<{
+          emoji: string;
+          count: number;
+          reactedByMe: boolean;
+        }>;
+      return Array.from(inner.entries()).map(([emoji, users]) => ({
+        emoji,
+        count: users.size,
+        reactedByMe: users.has(currentUserId),
+      }));
+    },
+    [reactions, currentUserId]
+  );
+
+  const toggleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      // Optimistic update
+      setReactions((prev) => {
+        const map = new Map(prev);
+        const inner = new Map(map.get(messageId) || new Map());
+        const set = new Set(inner.get(emoji) || new Set<string>());
+        if (set.has(currentUserId)) set.delete(currentUserId);
+        else set.add(currentUserId);
+        inner.set(emoji, set);
+        map.set(messageId, inner);
+        return map;
+      });
+      try {
+        const { toggleReaction: apiToggle } = await import(
+          "@/lib/chat/reactions"
+        );
+        const res = await apiToggle(messageId, emoji);
+        if (!res.success) throw new Error(res.error);
+      } catch (err) {
+        // revert on failure
+        setReactions((prev) => {
+          const map = new Map(prev);
+          const inner = new Map(map.get(messageId) || new Map());
+          const set = new Set(inner.get(emoji) || new Set<string>());
+          if (set.has(currentUserId)) set.delete(currentUserId);
+          else set.add(currentUserId);
+          inner.set(emoji, set);
+          map.set(messageId, inner);
+          return map;
+        });
+      }
+    },
+    [currentUserId]
+  );
+
+  // Edit helpers to start/cancel editing from UI
+  const startEditMessage = useCallback(
+    (messageId: string, originalText: string) => {
+      setReplyTo(null);
+      setEditing({ messageId, originalText });
+      setText(originalText || "");
+      setTimeout(() => inputRef.current?.focus(), 50);
+    },
+    []
+  );
+
+  const cancelEditMessage = useCallback(() => {
+    setEditing(null);
+    setText("");
+  }, []);
+
   // Public API
   return {
     subscriptionStatus,
@@ -475,6 +594,7 @@ export function useModernChat({
       messageFeedback,
       error,
       replyTo,
+      editing,
     },
     messagesState: {
       messages,
@@ -485,6 +605,7 @@ export function useModernChat({
       getMessageDeliveryStatus,
       showScrollToBottom,
       otherLastReadAt: getLastReadAtForOther(matchUserId),
+      getReactionsForMessage,
     },
     handlers: {
       setText,
@@ -502,6 +623,9 @@ export function useModernChat({
       onScrollToBottom: () =>
         scrollToBottomUtil(scrollRef as React.RefObject<HTMLDivElement>, true),
       setReplyTo,
+      startEditMessage,
+      cancelEditMessage,
+      toggleReaction,
     },
     presence: otherPresence,
   };

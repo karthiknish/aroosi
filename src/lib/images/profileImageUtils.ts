@@ -33,10 +33,31 @@ export function buildProfileImageUrl(idOrPath: string): string {
   // If it's already an absolute URL, still attempt to sanitize malformed bucket patterns
   if (/^(https?:|blob:|data:)/i.test(idOrPath)) {
     try {
+      // Prefer proxy for Firebase/GCS absolute URLs to get signed access
+      try {
+        const u = new URL(idOrPath);
+        // Direct GCS: https://storage.googleapis.com/<bucket>/<path>
+        if (/^storage\.googleapis\.com$/i.test(u.hostname)) {
+          const parts = u.pathname.split("/").filter(Boolean);
+          if (parts.length >= 2) {
+            const storagePath = decodeURIComponent(parts.slice(1).join("/"));
+            if (storagePath.startsWith("users/"))
+              return `/api/storage/${storagePath}`;
+          }
+        }
+        // Firebase REST: https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<path>?alt=media
+        if (/^firebasestorage\.googleapis\.com$/i.test(u.hostname)) {
+          const m = u.pathname.match(/\/v0\/b\/[^/]+\/o\/(.+)$/);
+          if (m?.[1]) {
+            const storagePath = decodeURIComponent(m[1]);
+            if (storagePath.startsWith("users/"))
+              return `/api/storage/${storagePath}`;
+          }
+        }
+      } catch {}
       // Fix cases like https://storage.googleapis.com/your-project.firebasestorage.app/...
       // (Do NOT mutate the bucket domain if user intentionally uses .firebasestorage.app)
       if (
-        false &&
         /storage\.googleapis\.com\/.+\.firebasestorage\.app\//i.test(idOrPath)
       ) {
         return idOrPath.replace(
@@ -46,7 +67,6 @@ export function buildProfileImageUrl(idOrPath: string): string {
       }
       // Fix firebase REST style with malformed bucket
       if (
-        false &&
         /firebasestorage\.googleapis\.com\/v0\/b\/.+\.firebasestorage\.app\//i.test(
           idOrPath
         )
@@ -62,13 +82,12 @@ export function buildProfileImageUrl(idOrPath: string): string {
   const bucket = getPublicBucketName();
   if (!bucket) return idOrPath; // can't build better
 
+  // Prefer proxy for storage paths we control
+  if (idOrPath.startsWith("users/")) return `/api/storage/${idOrPath}`;
+
   const direct = `https://storage.googleapis.com/${bucket}/${idOrPath}`;
   const firebaseRest = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(idOrPath)}?alt=media`;
-  // If bucket is the custom .firebasestorage.app variant, prefer direct first (likely a raw GCS bucket not managed by Firebase console)
-  if (/\.firebasestorage\.app$/i.test(bucket)) {
-    return direct + `#alt=${encodeURIComponent(firebaseRest)}`;
-  }
-  // Otherwise keep REST primary for standard Firebase-managed buckets
+  // Include both as hints via #alt fallback
   return firebaseRest + `#alt=${encodeURIComponent(direct)}`;
 }
 
