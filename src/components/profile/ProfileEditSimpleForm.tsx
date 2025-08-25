@@ -30,6 +30,7 @@ import { ErrorSummary } from "@/components/ui/ErrorSummary";
 import { SimpleProgress } from "@/components/ui/ProgressIndicator";
 
 // Validation schemas used in onboarding/profile creation
+import { enhancedValidationSchemas } from "@/lib/validation/profileValidation";
 import { EnhancedValidationSchemas } from "@/lib/validation/onboarding";
 import * as z from "zod";
 
@@ -81,121 +82,61 @@ export default function ProfileEditSimpleForm({
   const { handleSubmit, formState, watch, setValue, getValues } = form;
   const router = useRouter();
 
-  // Build Zod schema for edit form, mapping to EnhancedValidationSchemas
-  // We validate a subset that makes sense on edit, mirroring onboarding requirements
+  // Build Zod schema for edit form, using the same schemas as onboarding
   const editSchema = useMemo(
     () =>
       z.object({
-        // Basic info
-        fullName: EnhancedValidationSchemas.basicInfo.shape.fullName.optional(),
+        // Basic info - using same validation as hero onboarding
+        fullName: enhancedValidationSchemas.basicInfo.shape.fullName.optional(),
         dateOfBirth:
-          EnhancedValidationSchemas.basicInfo.shape.dateOfBirth.optional(),
-        gender: EnhancedValidationSchemas.basicInfo.shape.gender.optional(),
-        preferredGender:
-          EnhancedValidationSchemas.basicInfo.shape.preferredGender.optional(),
-        // Location
-        country: EnhancedValidationSchemas.location.shape.country.optional(),
-        city: EnhancedValidationSchemas.location.shape.city.optional(),
-        // Physical
-        // Height is stored as "<cm> cm" string in UI; validate by extracting number if possible
-        height: z
-          .string()
-          .optional()
-          .refine((v) => {
-            if (!v) return true;
-            const match = v.match(/(\d{2,3})/);
-            if (!match) return false;
-            const cm = Number(match[1]);
-            return cm >= 100 && cm <= 250;
-          }, "Height must be between 100–250 cm"),
-        maritalStatus: z
-          .enum(["single", "divorced", "widowed", "annulled"])
-          .optional(),
-        // Lifestyle
-        // Accept legacy + canonical values; canonicalize before submit
-        diet: z
-          .enum([
-            "vegetarian",
-            "non-vegetarian",
-            "non_vegetarian", // legacy underscore
-            "vegan",
-            "halal",
-            "kosher",
-            "eggetarian",
-            "other", // legacy catch-all
-          ])
-          .optional(),
-        smoking: z
-          .enum([
-            "never",
-            "none", // legacy synonym -> never
-            "once", // legacy synonym -> occasionally
-            "occasionally",
-            "regularly",
-            "frequently", // legacy synonym -> regularly
-            "socially",
-          ])
-          .optional(),
-        drinking: z
-          .enum([
-            "never",
-            "none", // legacy synonym -> never
-            "occasionally",
-            "socially",
-            "regularly",
-          ])
-          .optional(),
-        physicalStatus: z.enum(["normal", "differently-abled"]).optional(),
-        // Professional
-        education:
-          EnhancedValidationSchemas.professional.shape.education.optional(),
-        occupation:
-          EnhancedValidationSchemas.professional.shape.occupation.optional(),
-        annualIncome: z
-          .union([z.string(), z.number()])
-          .optional()
-          .refine((val) => {
-            if (val === undefined || val === "") return true;
-            const n =
-              typeof val === "number"
-                ? val
-                : Number(String(val).replace(/[^\d.-]/g, ""));
-            return Number.isFinite(n) && n >= 0 && n <= 999999999;
-          }, "Please enter a valid annual income"),
-        // About & Contact
-        // About me required on edit (match onboarding requirements & error summary expectations)
-        aboutMe: EnhancedValidationSchemas.aboutMe.shape.aboutMe,
+          enhancedValidationSchemas.basicInfo.shape.dateOfBirth.optional(),
+        gender: enhancedValidationSchemas.basicInfo.shape.gender.optional(),
         phoneNumber:
-          EnhancedValidationSchemas.aboutMe.shape.phoneNumber.optional(),
-        // Preferences
-        partnerPreferenceAgeMin: z
-          .union([z.string(), z.number()])
-          .optional()
-          .refine((v) => {
-            if (v === undefined || v === "") return true;
-            const n = Number(v);
-            return Number.isFinite(n) && n >= 18 && n <= 120;
-          }, "Min age must be between 18 and 99"),
-        partnerPreferenceAgeMax: z
-          .union([z.string(), z.number()])
-          .optional()
-          .refine((v) => {
-            if (v === undefined || v === "") return true;
-            const n = Number(v);
-            return Number.isFinite(n) && n >= 18 && n <= 120;
-          }, "Max age must be between 18 and 120"),
-        partnerPreferenceCity: z
-          .union([z.array(z.string()), z.string()])
-          .optional()
-          .refine((v) => {
-            if (!v) return true;
-            const arr = Array.isArray(v)
-              ? v
-              : String(v)
-                  .split(",")
-                  .map((s) => s.trim());
-            return arr.every((s) => s.length > 0 && s.length <= 50);
-          }, "Preferred cities must be non-empty names"),
+          enhancedValidationSchemas.basicInfo.shape.phoneNumber.optional(),
+        profileFor:
+          enhancedValidationSchemas.basicInfo.shape.profileFor.optional(),
+
+        // Location - using same validation as profile creation modal
+        country: enhancedValidationSchemas.location.shape.country.optional(),
+        city: enhancedValidationSchemas.location.shape.city.optional(),
+
+        // Physical - using same validation as profile creation modal
+        height: enhancedValidationSchemas.location.shape.height.optional(),
+        maritalStatus:
+          enhancedValidationSchemas.location.shape.maritalStatus.optional(),
+        physicalStatus:
+          enhancedValidationSchemas.location.shape.physicalStatus.optional(),
+
+        // Cultural - using same validation as profile creation modal
+        motherTongue:
+          enhancedValidationSchemas.cultural.shape.motherTongue.optional(),
+        religion: enhancedValidationSchemas.cultural.shape.religion.optional(),
+        ethnicity:
+          enhancedValidationSchemas.cultural.shape.ethnicity.optional(),
+        diet: enhancedValidationSchemas.cultural.shape.diet.optional(),
+        smoking: enhancedValidationSchemas.cultural.shape.smoking.optional(),
+        drinking: enhancedValidationSchemas.cultural.shape.drinking.optional(),
+
+        // Professional - using same validation as profile creation modal
+        education:
+          enhancedValidationSchemas.education.shape.education.optional(),
+        occupation:
+          enhancedValidationSchemas.education.shape.occupation.optional(),
+        annualIncome:
+          enhancedValidationSchemas.education.shape.annualIncome.optional(),
+
+        // About - using same validation as profile creation modal
+        aboutMe: enhancedValidationSchemas.education.shape.aboutMe.optional(),
+
+        // Preferences - using same validation as profile creation modal
+        preferredGender:
+          enhancedValidationSchemas.preferencesBase.shape.preferredGender.optional(),
+        partnerPreferenceAgeMin:
+          enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceAgeMin.optional(),
+        partnerPreferenceAgeMax:
+          enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceAgeMax.optional(),
+        partnerPreferenceCity:
+          enhancedValidationSchemas.preferencesBase.shape.partnerPreferenceCity.optional(),
       }),
     []
   );
@@ -214,44 +155,15 @@ export default function ProfileEditSimpleForm({
         // Build a normalized snapshot similar to onboarding
         const normalized = { ...values };
 
-        // Canonicalize legacy / alternate enum values prior to validation
-        const canonicalize = <T extends Record<string, any>>(obj: T) => {
-          const anyObj = obj as any;
-          const mapDiet: Record<string, string> = {
-            non_vegetarian: "non-vegetarian",
-          };
-          // eggetarian retained as-is (newly exposed option)
-          if (anyObj.diet && mapDiet[anyObj.diet])
-            anyObj.diet = mapDiet[anyObj.diet];
-
-          // Remove unsupported legacy 'other' by leaving as-is (allowed) — optionally could blank out
-
-          const mapSmoking: Record<string, string> = {
-            none: "never",
-            once: "occasionally",
-            frequently: "regularly",
-          };
-          if (anyObj.smoking && mapSmoking[anyObj.smoking])
-            anyObj.smoking = mapSmoking[anyObj.smoking];
-
-          const mapDrinking: Record<string, string> = {
-            none: "never",
-          };
-          if (anyObj.drinking && mapDrinking[anyObj.drinking])
-            anyObj.drinking = mapDrinking[anyObj.drinking];
-
-          return obj;
-        };
-
-        canonicalize(normalized as any);
-
-        // Normalize height to number for internal validation when possible
+        // Normalize height: convert "150 cm" to 150 cm format for validation
         if (typeof normalized.height === "string") {
-          const m = normalized.height.match(/(\d{2,3})/);
-          if (m) normalized.height = `${m[1]} cm`;
+          const heightMatch = normalized.height.match(/(\d{2,3})/);
+          if (heightMatch) {
+            normalized.height = `${heightMatch[1]} cm`;
+          }
         }
 
-        // Normalize phone number to +<digits> if looks valid
+        // Normalize phone number to E.164 format like onboarding
         if (typeof normalized.phoneNumber === "string") {
           const cleaned = normalized.phoneNumber.replace(/[^\d+]/g, "");
           const digits = cleaned.replace(/\D/g, "");
@@ -260,7 +172,17 @@ export default function ProfileEditSimpleForm({
           }
         }
 
-        // Validate with zod
+        // Normalize age preferences to numbers
+        if (typeof normalized.partnerPreferenceAgeMin === "string") {
+          const num = Number(normalized.partnerPreferenceAgeMin);
+          if (!isNaN(num)) normalized.partnerPreferenceAgeMin = num;
+        }
+        if (typeof normalized.partnerPreferenceAgeMax === "string") {
+          const num = Number(normalized.partnerPreferenceAgeMax);
+          if (!isNaN(num)) normalized.partnerPreferenceAgeMax = num;
+        }
+
+        // Validate with zod using onboarding schemas
         const res = editSchema.safeParse(normalized);
         if (!res.success) {
           const errs: Record<string, string> = {};
@@ -296,30 +218,42 @@ export default function ProfileEditSimpleForm({
     }
   }, [heightValue, setValue]);
 
-  // Reset form when initialValues prop changes
+  // Reset form when initialValues prop changes - normalize like onboarding
   useEffect(() => {
     if (initialValues && Object.keys(initialValues).length) {
       form.reset(initialValues);
-      // Normalize legacy values for parity with onboarding
+
+      // Normalize values to match onboarding format for consistency
+
+      // Handle preferredGender: convert "any" to "both" for UI consistency
       const pg = (initialValues as any).preferredGender;
       if (pg === "any") {
         setValue("preferredGender", "both" as any, { shouldDirty: false });
       }
-      // Legacy lifestyle value normalization for initial render
+
+      // Handle legacy lifestyle values like onboarding normalization
       const diet = (initialValues as any).diet;
       if (diet === "non_vegetarian") {
         setValue("diet", "non-vegetarian" as any, { shouldDirty: false });
       }
+
       const smoking = (initialValues as any).smoking;
-      if (smoking === "none")
+      if (smoking === "no")
         setValue("smoking", "never" as any, { shouldDirty: false });
-      if (smoking === "once")
-        setValue("smoking", "occasionally" as any, { shouldDirty: false });
-      if (smoking === "frequently")
+      if (smoking === "yes")
         setValue("smoking", "regularly" as any, { shouldDirty: false });
+
       const drinking = (initialValues as any).drinking;
-      if (drinking === "none")
+      if (drinking === "no")
         setValue("drinking", "never" as any, { shouldDirty: false });
+      if (drinking === "yes")
+        setValue("drinking", "regularly" as any, { shouldDirty: false });
+
+      // Handle partnerPreferenceCity array to comma-separated string for UI
+      const cities = (initialValues as any).partnerPreferenceCity;
+      if (Array.isArray(cities) && cities.length > 0) {
+        setPreferredCitiesInput(cities.join(", "));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
@@ -348,21 +282,37 @@ export default function ProfileEditSimpleForm({
   return (
     <form
       onSubmit={handleSubmit(async (data) => {
-        // Run Zod validation summary before submit
+        // Run the same validation as onboarding before submit
         const ok = await validateAll();
         if (!ok) return;
 
-        // Normalize phone like ProfileCreationModal did
+        // Normalize phone number like onboarding/profile creation
         const phone = (data.phoneNumber ?? "") as string;
         const cleaned = phone.replace(/[^\d+]/g, "");
         const digits = cleaned.replace(/\D/g, "");
         const normalizedPhone =
           digits.length >= 10 && digits.length <= 15 ? `+${digits}` : phone;
-
-        // Persist normalized phone
         (data as any).phoneNumber = normalizedPhone;
 
-        // Normalize partnerPreferenceCity if comma-separated string entered in helper input
+        // Normalize height to match onboarding format
+        if (typeof data.height === "string") {
+          const heightMatch = data.height.match(/(\d{2,3})/);
+          if (heightMatch) {
+            (data as any).height = `${heightMatch[1]} cm`;
+          }
+        }
+
+        // Normalize age preferences to numbers like onboarding
+        if (typeof data.partnerPreferenceAgeMin === "string") {
+          const num = Number(data.partnerPreferenceAgeMin);
+          if (!isNaN(num)) (data as any).partnerPreferenceAgeMin = num;
+        }
+        if (typeof data.partnerPreferenceAgeMax === "string") {
+          const num = Number(data.partnerPreferenceAgeMax);
+          if (!isNaN(num)) (data as any).partnerPreferenceAgeMax = num;
+        }
+
+        // Handle partnerPreferenceCity like onboarding (comma-separated string to array)
         if (
           preferredCitiesInput &&
           Array.isArray(data.partnerPreferenceCity) === false
@@ -372,6 +322,11 @@ export default function ProfileEditSimpleForm({
             .map((s) => s.trim())
             .filter(Boolean);
           (data as any).partnerPreferenceCity = parsed;
+        }
+
+        // Ensure consistent value normalization like onboarding
+        if ((data as any).preferredGender === "both") {
+          (data as any).preferredGender = "any"; // Convert back to API format
         }
 
         onSubmit(data as ProfileFormValues);
@@ -492,7 +447,7 @@ export default function ProfileEditSimpleForm({
           />
         </div>
 
-        {/* Marital Status */}
+        {/* Marital Status - using same options as onboarding */}
         <ValidatedSelect
           label="Marital Status"
           field="maritalStatus"
@@ -505,7 +460,7 @@ export default function ProfileEditSimpleForm({
             { value: "single", label: "Single" },
             { value: "divorced", label: "Divorced" },
             { value: "widowed", label: "Widowed" },
-            { value: "annulled", label: "Annulled" },
+            { value: "separated", label: "Separated" },
           ]}
           placeholder="Select marital status"
           required
@@ -578,7 +533,7 @@ export default function ProfileEditSimpleForm({
           placeholder="Select ethnicity"
         />
 
-        {/* Diet */}
+        {/* Diet - using same options as onboarding */}
         <ValidatedSelect
           label="Diet"
           field="diet"
@@ -590,16 +545,14 @@ export default function ProfileEditSimpleForm({
           options={[
             { value: "vegetarian", label: "Vegetarian" },
             { value: "non-vegetarian", label: "Non-Vegetarian" },
-            { value: "eggetarian", label: "Eggetarian" },
             { value: "vegan", label: "Vegan" },
             { value: "halal", label: "Halal" },
             { value: "kosher", label: "Kosher" },
-            { value: "other", label: "Other" },
           ]}
           placeholder="Select diet preference"
         />
 
-        {/* Smoking */}
+        {/* Smoking - using same options as onboarding */}
         <ValidatedSelect
           label="Smoking"
           field="smoking"
@@ -617,7 +570,7 @@ export default function ProfileEditSimpleForm({
           placeholder="Select smoking preference"
         />
 
-        {/* Drinking */}
+        {/* Drinking - using same options as onboarding */}
         <ValidatedSelect
           label="Drinking"
           field="drinking"
@@ -689,6 +642,7 @@ export default function ProfileEditSimpleForm({
           required
         />
 
+        {/* Preferred Gender - using same options as onboarding */}
         <ValidatedSelect
           label="Preferred Gender"
           field="preferredGender"
