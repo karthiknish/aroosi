@@ -191,254 +191,362 @@ export default function AdminProfilePage() {
   // Loading state
   if (loading)
     return (
-      <div className="max-w-7xl mx-auto py-10 px-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <Skeleton className="h-8 w-48 mb-2" />
-            <Skeleton className="h-5 w-96 max-w-full" />
-          </div>
-          <Skeleton className="h-12 w-48" />
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <Skeleton className="h-10 w-full sm:w-80 mb-2" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-8">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-lg shadow p-6 flex flex-col gap-4"
-            >
-              <Skeleton className="h-24 w-24 rounded-full mx-auto mb-4" />
-              <Skeleton className="h-6 w-32 mx-auto mb-2" />
-              <Skeleton className="h-4 w-24 mx-auto mb-2" />
-              <Skeleton className="h-4 w-40 mx-auto mb-2" />
-              <Skeleton className="h-8 w-full" />
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          {/* Header Skeleton */}
+          <div className="bg-white rounded-lg border shadow-sm p-6 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex-1">
+                <Skeleton className="h-8 w-64 mb-2" />
+                <Skeleton className="h-5 w-96 max-w-full" />
+              </div>
+              <Skeleton className="h-12 w-48" />
             </div>
-          ))}
+          </div>
+
+          {/* Search Controls Skeleton */}
+          <div className="bg-white rounded-lg border shadow-sm p-4 mb-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </div>
+
+          {/* Pagination Skeleton */}
+          <div className="bg-white rounded-lg border shadow-sm p-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <Skeleton className="h-5 w-48" />
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl shadow-md border p-4 flex flex-col gap-3 min-h-[320px]"
+              >
+                <Skeleton className="h-20 w-20 rounded-xl mx-auto mb-2" />
+                <div className="text-center space-y-2 flex-1">
+                  <Skeleton className="h-6 w-32 mx-auto" />
+                  <Skeleton className="h-4 w-24 mx-auto" />
+                  <Skeleton className="h-3 w-16 mx-auto" />
+                </div>
+                <div className="flex justify-center gap-1 mt-auto">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+                <div className="border-t border-gray-100 pt-2">
+                  <div className="flex justify-center gap-1">
+                    <Skeleton className="h-8 flex-1" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
 
   if (error)
     return (
-      <ErrorState
-        message={(error as Error)?.message || "An error occurred."}
-        onRetry={() => loadProfiles()}
-        className="min-h-[60vh]"
-      />
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg border shadow-sm p-6">
+            <ErrorState
+              message={(error as Error)?.message || "An error occurred."}
+              onRetry={() => loadProfiles()}
+              className="min-h-[40vh]"
+            />
+          </div>
+        </div>
+      </div>
     );
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-1">Profile Management</h1>
-          <p className="text-muted-foreground max-w-2xl">
-            View, search, edit, ban, or delete user profiles. Use the search and
-            filter options to quickly find profiles. Click a card for more
-            details or actions.
-          </p>
-        </div>
-        <Link href="/admin/profile/create">
-          <Button size="lg" className="gap-2">
-            <Plus className="w-5 h-5" /> Create New Profile
-          </Button>
-        </Link>
-      </div>
-
-      {/* Search & Status (minimal) */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="flex-1 flex items-center gap-2 bg-white rounded-lg border px-3 py-2 shadow-sm">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by name, city, or phone..."
-            className="flex-1 outline-none bg-white text-base text-foreground"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Status:</span>
-          <select
-            className="border rounded px-2 py-1 text-base text-foreground bg-white"
-            value={status}
-            onChange={(e) =>
-              setStatus(e.target.value as "all" | "active" | "banned")
-            }
-          >
-            {statusOptions.map((opt) => (
-              <option
-                key={opt.value}
-                value={opt.value}
-                className="text-foreground"
-              >
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Pagination header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-muted-foreground">
-          Page {serverPage} of {totalPages} • Page size {serverPageSize} • Total{" "}
-          {total}
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={loading || serverPage <= 1}
-          >
-            Prev
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={loading || serverPage >= totalPages}
-            title="Next page"
-          >
-            Next
-          </Button>
-        </div>
-      </div>
-
-      {/* Empty-state or Grid */}
-      {filteredProfiles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center gap-4 py-8">
-          <div className="text-neutral-500">
-            No profiles match your search/filter.
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="bg-white rounded-lg border shadow-sm p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile Management</h1>
+              <p className="text-gray-600 max-w-2xl">
+                View, search, edit, ban, or delete user profiles. Use the search and
+                filter options to quickly find profiles. Click a card for more
+                details or actions.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <Link href="/admin/profile/create">
+                <Button size="lg" className="gap-2">
+                  <Plus className="w-5 h-5" /> 
+                  Create New Profile
+                </Button>
+              </Link>
+            </div>
           </div>
-          {!loading && (
-            <Button variant="outline" onClick={() => loadProfiles()}>
-              Refresh
+        </div>
+
+      {/* Search & Status Controls */}
+      <div className="bg-white rounded-lg border shadow-sm p-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Search Input */}
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search by name, city, or phone..."
+                className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Status Filter */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Status:</label>
+            <select
+              className="border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+              value={status}
+              onChange={(e) =>
+                setStatus(e.target.value as "all" | "active" | "banned")
+              }
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Results Count */}
+          <div className="flex items-center">
+            <span className="text-sm text-muted-foreground">
+              {filteredProfiles.length} of {profiles.length} profiles
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Pagination and Stats Bar */}
+      <div className="bg-white rounded-lg border shadow-sm p-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {/* Stats */}
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <span>Page {serverPage} of {totalPages}</span>
+            <span>•</span>
+            <span>{serverPageSize} per page</span>
+            <span>•</span>
+            <span className="font-medium text-foreground">{total} total profiles</span>
+          </div>
+          
+          {/* Pagination Controls */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={loading || serverPage <= 1}
+              className="min-w-[70px]"
+            >
+              Previous
             </Button>
-          )}
+            <div className="px-3 py-1 text-sm border rounded">
+              {serverPage}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={loading || serverPage >= totalPages}
+              className="min-w-[70px]"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Profiles Grid or Empty State */}
+      {filteredProfiles.length === 0 ? (
+        <div className="bg-white rounded-lg border shadow-sm p-12">
+          <div className="flex flex-col items-center justify-center text-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+              <UserX className="w-8 h-8 text-gray-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No profiles found
+              </h3>
+              <p className="text-gray-500 max-w-md">
+                {search.trim() || status !== "all" 
+                  ? "No profiles match your current search criteria. Try adjusting your filters."
+                  : "No profiles have been created yet."}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              {(search.trim() || status !== "all") && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearch("");
+                    setStatus("all");
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => loadProfiles()}>
+                Refresh
+              </Button>
+              <Link href="/admin/profile/create">
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Profile
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProfiles.map((profile: AdminProfile) => (
             <div
               key={profile._id}
-              className="bg-white rounded-xl shadow-md border p-4 flex flex-col gap-3 hover:shadow-lg transition group relative"
+              className="bg-white rounded-xl shadow-md border hover:shadow-lg transition-all duration-200 group relative overflow-hidden"
             >
-              {/* Profile image */}
-              <div className="w-20 h-20 rounded-lg overflow-hidden border mx-auto mb-2 bg-gray-50 flex items-center justify-center">
-                {profileImages[profile._id] === undefined ? (
-                  <Skeleton className="w-full h-full" />
-                ) : profileImages[profile._id].length > 0 ? (
-                  <Image
-                    src={
-                      profileImages[profile._id][0].url ||
-                      "/images/placeholder.png"
-                    }
-                    alt={profile.fullName || "Profile image"}
-                    width={80}
-                    height={80}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <UserX className="w-10 h-10 text-neutral-300" />
-                )}
-              </div>
-
-              {/* Name, city, age */}
-              <div className="text-center">
-                <div className="font-semibold text-lg truncate">
-                  {profile.fullName}
-                </div>
-                <div className="text-sm text-muted-foreground truncate">
-                  {profile.city}
-                </div>
-                <div className="text-xs text-neutral-400">
-                  Age: {getAge(profile.dateOfBirth)}
-                </div>
-              </div>
-
-              {/* Status badge */}
-              <div className="flex flex-col items-center gap-1 mb-1">
-                <div className="flex justify-center gap-2">
-                  {profile.banned ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
-                      <Ban className="w-3 h-3" /> Banned
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-pink-100 text-pink-700">
-                      <CheckCircle className="w-3 h-3" /> Active
-                    </span>
-                  )}
-                </div>
-                {profile.subscriptionPlan && (
-                  <div className="flex flex-col items-center mt-1">
-                    <span className="text-[10px] uppercase tracking-wide text-neutral-500">
-                      {profile.subscriptionPlan}
-                    </span>
-                    {typeof profile.subscriptionExpiresAt === "number" && (
-                      <span className="text-[10px] text-neutral-400">
-                        {(() => {
-                          const ms =
-                            profile.subscriptionExpiresAt! * 1 - Date.now();
-                          if (ms <= 0) return "Expired";
-                          const days = Math.floor(ms / 86400000);
-                          if (days >= 1) return `${days}d left`;
-                          const hours = Math.floor(ms / 3600000);
-                          if (hours >= 1) return `${hours}h left`;
-                          const minutes = Math.max(1, Math.floor(ms / 60000));
-                          return `${minutes}m left`;
-                        })()}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-center gap-2 mt-2">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  title="View"
-                  onClick={() => router.push(`/admin/profile/${profile._id}`)}
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
-
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  title={profile.banned ? "Unban" : "Ban"}
-                  onClick={() => setConfirmBanId(profile._id)}
-                >
-                  <Ban className="w-4 h-4" />
-                </Button>
-
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  title="Delete"
-                  onClick={() => setConfirmDeleteId(profile._id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-
+              {/* Edit Button */}
               <button
                 type="button"
-                className="absolute top-2 right-2 bg-white rounded-full p-2 shadow hover:bg-gray-100 transition"
+                className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-sm hover:bg-white hover:shadow-md transition-all opacity-0 group-hover:opacity-100"
                 title="Edit Profile"
                 onClick={() =>
                   router.push(`/admin/profile/edit?id=${profile._id}`)
                 }
               >
-                <Pencil className="w-5 h-5 text-neutral-600" />
+                <Pencil className="w-4 h-4 text-gray-600" />
               </button>
+
+              <div className="p-4 flex flex-col h-full">
+                {/* Profile Image */}
+                <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-100 mx-auto mb-4 bg-gray-50 flex items-center justify-center">
+                  {profileImages[profile._id] === undefined ? (
+                    <Skeleton className="w-full h-full rounded-xl" />
+                  ) : profileImages[profile._id].length > 0 ? (
+                    <Image
+                      src={
+                        profileImages[profile._id][0].url ||
+                        "/images/placeholder.png"
+                      }
+                      alt={profile.fullName || "Profile image"}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <UserX className="w-8 h-8 text-gray-300" />
+                  )}
+                </div>
+
+                {/* Profile Info */}
+                <div className="text-center mb-4 flex-1">
+                  <h3 className="font-semibold text-lg text-gray-900 truncate mb-1">
+                    {profile.fullName || "Unknown User"}
+                  </h3>
+                  <p className="text-sm text-gray-500 truncate mb-1">
+                    {profile.city || "Location not set"}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Age: {getAge(profile.dateOfBirth)}
+                  </p>
+                </div>
+
+                {/* Status & Subscription */}
+                <div className="flex flex-col gap-2 mb-4">
+                  {/* Status Badge */}
+                  <div className="flex justify-center">
+                    {profile.banned ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        <Ban className="w-3 h-3" />
+                        Banned
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                        <CheckCircle className="w-3 h-3" />
+                        Active
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Subscription Info */}
+                  {profile.subscriptionPlan && (
+                    <div className="text-center">
+                      <span className="text-xs uppercase tracking-wide text-gray-500 font-medium">
+                        {profile.subscriptionPlan}
+                      </span>
+                      {typeof profile.subscriptionExpiresAt === "number" && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          {(() => {
+                            const ms = profile.subscriptionExpiresAt! * 1 - Date.now();
+                            if (ms <= 0) return "Expired";
+                            const days = Math.floor(ms / 86400000);
+                            if (days >= 1) return `${days}d remaining`;
+                            const hours = Math.floor(ms / 3600000);
+                            if (hours >= 1) return `${hours}h remaining`;
+                            const minutes = Math.max(1, Math.floor(ms / 60000));
+                            return `${minutes}m remaining`;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-center gap-1 pt-2 border-t border-gray-100">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title="View Details"
+                    onClick={() => router.push(`/admin/profile/${profile._id}`)}
+                    className="flex-1"
+                  >
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title={profile.banned ? "Unban User" : "Ban User"}
+                    onClick={() => setConfirmBanId(profile._id)}
+                    className={profile.banned ? "text-green-600 hover:text-green-700" : "text-red-600 hover:text-red-700"}
+                  >
+                    <Ban className="w-4 h-4" />
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title="Delete Profile"
+                    onClick={() => setConfirmDeleteId(profile._id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -549,6 +657,7 @@ export default function AdminProfilePage() {
           </DialogContent>
         </Dialog>
       )}
+      </div>
     </div>
   );
 }
