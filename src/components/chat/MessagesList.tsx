@@ -538,7 +538,7 @@ export default function MessagesList(props: MessagesListProps) {
                                 {msg.text}
                               </p>
                             )}
-                            {/* Reactions row */}
+                            {/* Reactions: circular badges anchored to bubble corner */}
                             {props.getReactionsForMessage &&
                               (() => {
                                 const rx = props.getReactionsForMessage(
@@ -548,22 +548,25 @@ export default function MessagesList(props: MessagesListProps) {
                                 return (
                                   <div
                                     className={cn(
-                                      "mt-1 flex flex-wrap gap-1",
+                                      "absolute z-10 flex gap-1",
+                                      // anchor to outer bottom corner, slightly outside the bubble
                                       isCurrentUser
-                                        ? "justify-end"
-                                        : "justify-start"
+                                        ? "-bottom-3 -right-3 justify-end"
+                                        : "-bottom-3 -left-3 justify-start"
                                     )}
                                     aria-label="Message reactions"
+                                    // keep clicks from triggering bubble handlers unnecessarily
+                                    onClick={(e) => e.stopPropagation()}
                                   >
                                     {rx.map((r) => (
                                       <button
                                         key={`${msg._id}-${r.emoji}`}
                                         type="button"
                                         className={cn(
-                                          "px-2 py-0.5 rounded-full text-xs border shadow-sm bg-white/90",
+                                          "relative h-7 w-7 rounded-full border bg-white shadow-sm flex items-center justify-center text-sm",
                                           r.reactedByMe
-                                            ? "border-primary/60 text-primary"
-                                            : "border-gray-200 text-gray-700"
+                                            ? "border-primary/60 ring-1 ring-primary/40"
+                                            : "border-gray-200"
                                         )}
                                         onClick={() =>
                                           props.onToggleReaction?.(
@@ -574,10 +577,20 @@ export default function MessagesList(props: MessagesListProps) {
                                         aria-pressed={r.reactedByMe}
                                         aria-label={`React ${r.emoji}`}
                                       >
-                                        <span className="mr-1">{r.emoji}</span>
-                                        <span className="tabular-nums">
-                                          {r.count}
+                                        <span className="leading-none select-none">
+                                          {r.emoji}
                                         </span>
+                                        {r.count > 1 && (
+                                          <span
+                                            className={cn(
+                                              "absolute -bottom-1 -right-1 text-[10px] leading-none rounded-full px-1 py-0.5 bg-gray-900 text-white shadow",
+                                              r.reactedByMe && "bg-primary"
+                                            )}
+                                            aria-hidden
+                                          >
+                                            {r.count}
+                                          </span>
+                                        )}
                                       </button>
                                     ))}
                                   </div>
