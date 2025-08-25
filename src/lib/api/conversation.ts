@@ -50,7 +50,16 @@ export async function getPresence(userId: string): Promise<{ isOnline: boolean; 
 }
 
 export async function heartbeat(): Promise<void> {
-  await fetch(`/api/presence`, { method: "POST" });
+  try {
+    await fetch(`/api/presence`, {
+      method: "POST",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "online" }),
+    });
+  } catch {
+    // ignore network errors silently
+  }
 }
 
 /**

@@ -92,7 +92,7 @@ export default function MatchChatPage() {
           }}
         ></div>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="min-h-screen pt-6">
+          <div className="h-screen pt-6 flex flex-col">
             {/* Optional back link */}
             <button
               onClick={() => router.push("/matches")}

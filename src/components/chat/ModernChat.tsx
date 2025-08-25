@@ -89,7 +89,7 @@ function ModernChat({
   return (
     <div
       className={cn(
-        "bg-gradient-to-b from-white to-gray-50/30 text-neutral-900 rounded-2xl shadow-lg border border-gray-200/50 flex flex-col h-full mb-6 overflow-hidden backdrop-blur-sm",
+        "bg-gradient-to-b from-white to-gray-50/30 text-neutral-900 rounded-2xl shadow-lg border border-gray-200/50 flex flex-col flex-1 overflow-hidden backdrop-blur-sm",
         className
       )}
       style={{

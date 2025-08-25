@@ -3,7 +3,7 @@
  * Keeps backward compatibility for existing imports.
  */
 import { matchMessagesAPI, type MatchMessage, type ApiResponse } from "@/lib/api/matchMessages";
-import { postJson } from "@/lib/http/client";
+import { postJson, getJson } from "@/lib/http/client";
 import { showErrorToast } from "@/lib/ui/toast";
 
 export type Message = MatchMessage;
@@ -214,7 +214,7 @@ export const getMessageImageUrl = async (
   messageId: string
 ): Promise<{ success: boolean; imageUrl?: string; error?: string }> => {
   try {
-    const result = await postJson<{
+    const result = await getJson<{
       success?: boolean;
       data?: { imageUrl?: string };
       imageUrl?: string;

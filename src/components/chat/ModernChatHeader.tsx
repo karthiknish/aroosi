@@ -30,14 +30,28 @@ export default function ModernChatHeader({
   className = "",
 }: ModernChatHeaderProps) {
   const lastSeenLabel = (() => {
+    // Use presence-based logic for more accurate online status
     if (connectionStatus === "connected") return "Online";
-    if (!lastSeenAt) return "Offline";
+    if (!lastSeenAt || lastSeenAt === 0) return "Offline";
+
+    // If we have a lastSeen timestamp, show when they were last online
     const d = new Date(lastSeenAt);
-    return `Last seen ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMinutes < 1) return "Last seen just now";
+    if (diffMinutes < 60) return `Last seen ${diffMinutes}m ago`;
+    if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+    if (diffDays < 7) return `Last seen ${diffDays}d ago`;
+
+    return `Last seen ${d.toLocaleDateString([], { month: "short", day: "numeric" })}`;
   })();
   return (
     <div
-      className={`bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-white px-3 sm:px-5 py-3 sm:py-4 rounded-t-2xl shadow-sm relative overflow-hidden ${className}`}
+      className={`bg-primary text-white px-3 sm:px-5 py-3 sm:py-4 rounded-t-2xl shadow-sm relative overflow-hidden ${className}`}
       style={{
         backgroundImage:
           "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
@@ -90,11 +104,6 @@ export default function ModernChatHeader({
               <span className="text-xs sm:text-sm text-white/90 truncate">
                 {lastSeenLabel}
               </span>
-              {connectionStatus === "connected" && (
-                <span className="text-xs bg-green-500/20 text-green-100 px-2 py-0.5 rounded-full border border-green-400/30">
-                  Online
-                </span>
-              )}
             </div>
           </div>
         </div>

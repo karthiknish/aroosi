@@ -78,11 +78,18 @@ export async function GET(req: NextRequest) {
         try {
           // Update presence heartbeat for this user via local API
           try {
-            await fetch(`${req.nextUrl.origin}/api/presence`, {
+            const response = await fetch(`${req.nextUrl.origin}/api/presence`, {
               method: "POST",
+              headers: {
+                // Get auth from session - this should work since we have session from requireSession
+                Cookie: req.headers.get("cookie") || "",
+              },
             });
-          } catch {
-            /* ignore */
+            if (!response.ok) {
+              console.warn("Presence heartbeat failed:", response.status);
+            }
+          } catch (error) {
+            console.warn("Presence heartbeat error:", error);
           }
           controller.enqueue(`:keep-alive\n\n`);
         } catch {
@@ -94,6 +101,21 @@ export async function GET(req: NextRequest) {
       closed = true;
       clearInterval(heartbeat);
       eventBus.off(conversationId, send);
+
+      // Set user as offline when SSE connection is cancelled
+      setTimeout(async () => {
+        try {
+          await fetch(`${req.nextUrl.origin}/api/presence`, {
+            method: "POST",
+            headers: {
+              Cookie: req.headers.get("cookie") || "",
+            },
+            body: JSON.stringify({ status: "offline" }),
+          });
+        } catch (error) {
+          console.warn("Failed to set offline status:", error);
+        }
+      }, 1000); // Small delay to avoid race conditions
     },
   });
 

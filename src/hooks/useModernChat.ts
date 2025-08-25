@@ -124,6 +124,7 @@ export function useModernChat({
   useEffect(() => setIsBlocked(false), [matchUserId]);
 
   // Presence: poll other user's presence + heartbeat self
+  // More frequent polling for better real-time experience
   useEffect(() => {
     let mounted = true;
     const interval = setInterval(async () => {
@@ -132,7 +133,23 @@ export function useModernChat({
         const p = await getPresence(matchUserId);
         if (mounted) setOtherPresence(p);
       } catch {}
-    }, 15000);
+    }, 10000); // Increased frequency from 15s to 10s
+
+    // Set user as offline when leaving the page
+    const handleBeforeUnload = async () => {
+      try {
+        await fetch("/api/presence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "offline" }),
+        });
+      } catch {
+        // Ignore errors when setting offline on page unload
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     (async () => {
       try {
         await heartbeat();
@@ -140,9 +157,11 @@ export function useModernChat({
         if (mounted) setOtherPresence(p);
       } catch {}
     })();
+
     return () => {
       mounted = false;
       clearInterval(interval);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [matchUserId]);
 
@@ -500,7 +519,9 @@ export function useModernChat({
           inner.get(r.emoji)!.add(r.userId);
         }
         setReactions(map);
-      } catch {}
+      } catch (error) {
+        console.error("Error loading reactions:", error);
+      }
     })();
     return () => {
       mounted = false;
@@ -516,11 +537,13 @@ export function useModernChat({
           count: number;
           reactedByMe: boolean;
         }>;
-      return Array.from(inner.entries()).map(([emoji, users]) => ({
-        emoji,
-        count: users.size,
-        reactedByMe: users.has(currentUserId),
-      }));
+      return Array.from(inner.entries())
+        .filter(([, users]) => users.size > 0)
+        .map(([emoji, users]) => ({
+          emoji,
+          count: users.size,
+          reactedByMe: users.has(currentUserId),
+        }));
     },
     [reactions, currentUserId]
   );
@@ -534,8 +557,10 @@ export function useModernChat({
         const set = new Set(inner.get(emoji) || new Set<string>());
         if (set.has(currentUserId)) set.delete(currentUserId);
         else set.add(currentUserId);
-        inner.set(emoji, set);
-        map.set(messageId, inner);
+        if (set.size === 0) inner.delete(emoji);
+        else inner.set(emoji, set);
+        if (inner.size === 0) map.delete(messageId);
+        else map.set(messageId, inner);
         return map;
       });
       try {
@@ -552,8 +577,10 @@ export function useModernChat({
           const set = new Set(inner.get(emoji) || new Set<string>());
           if (set.has(currentUserId)) set.delete(currentUserId);
           else set.add(currentUserId);
-          inner.set(emoji, set);
-          map.set(messageId, inner);
+          if (set.size === 0) inner.delete(emoji);
+          else inner.set(emoji, set);
+          if (inner.size === 0) map.delete(messageId);
+          else map.set(messageId, inner);
           return map;
         });
       }

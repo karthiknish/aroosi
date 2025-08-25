@@ -1,5 +1,6 @@
 "use client";
 
+import Head from "next/head";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -187,8 +188,75 @@ export default function MatchesPage() {
   }
 
   return (
-    <SubscriptionGuard feature="canChatWithMatches">
-      <div className="w-full overflow-x-hidden overflow-y-hidden bg-base-light pt-24 pb-12 relative">
+    <>
+      <Head>
+        <title>Your Matches | Aroosi Afghan Matrimony</title>
+        <meta
+          name="description"
+          content="View and connect with your matches on Aroosi. Chat with verified Afghan singles who match your preferences and cultural values."
+        />
+        <meta
+          name="keywords"
+          content="matches aroosi, afghan matches, matrimonial matches, chat matches, afghan dating matches, muslim marriage matches"
+        />
+        <link rel="canonical" href="https://aroosi.app/matches" />
+
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://aroosi.app/matches" />
+        <meta property="og:title" content="Your Matches | Aroosi Afghan Matrimony" />
+        <meta
+          property="og:description"
+          content="View and connect with your matches on Aroosi. Chat with verified Afghan singles who match your preferences."
+        />
+        <meta property="og:image" content="https://aroosi.app/og-matches.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Aroosi Matches - Connect with Afghan Singles" />
+        <meta property="og:site_name" content="Aroosi" />
+        <meta property="og:locale" content="en_US" />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://aroosi.app/matches" />
+        <meta property="twitter:title" content="Your Matches | Aroosi Afghan Matrimony" />
+        <meta
+          property="twitter:description"
+          content="View and connect with your matches on Aroosi. Chat with verified Afghan singles who match your preferences."
+        />
+        <meta property="twitter:image" content="https://aroosi.app/og-matches.png" />
+        <meta property="twitter:site" content="@aroosiapp" />
+        <meta property="twitter:creator" content="@aroosiapp" />
+
+        {/* Additional SEO */}
+        <meta name="robots" content="noindex, nofollow" /> {/* Private user data */}
+        <meta name="author" content="Aroosi Team" />
+        <meta name="geo.region" content="GLOBAL" />
+        <meta name="geo.placename" content="Worldwide" />
+        <meta name="geo.position" content="0;0" />
+        <meta name="ICBM" content="0, 0" />
+
+        {/* Schema.org structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebPage",
+              name: "Aroosi Matches",
+              url: "https://aroosi.app/matches",
+              description: "View and connect with your matches on Aroosi Afghan matrimony platform",
+              isPartOf: {
+                "@type": "WebSite",
+                name: "Aroosi",
+                url: "https://aroosi.app",
+              },
+            }),
+          }}
+        />
+      </Head>
+      <SubscriptionGuard feature="canChatWithMatches">
+        <div className="w-full overflow-x-hidden overflow-y-hidden bg-base-light pt-24 pb-12 relative">
         {/* Decorative pink circles */}
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] bg-primary rounded-full blur-3xl opacity-40 z-0 pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-[32rem] h-[32rem] bg-accent-100 rounded-full blur-3xl opacity-20 z-0 pointer-events-none" />
@@ -318,5 +386,6 @@ export default function MatchesPage() {
         </div>
       </div>
     </SubscriptionGuard>
+    </>
   );
 }

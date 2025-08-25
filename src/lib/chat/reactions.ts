@@ -1,5 +1,5 @@
 import { showErrorToast } from "@/lib/ui/toast";
-import { postJson } from "@/lib/http/client";
+import { postJson, getJson } from "@/lib/http/client";
 import { ApiResponse, ApiError } from "@/lib/utils/apiResponse";
 
 export async function toggleReaction(
@@ -43,7 +43,7 @@ export async function getReactions(conversationId: string): Promise<
   }>
 > {
   try {
-    const result = await postJson<{
+    const result = await getJson<{
       success?: boolean;
       error?: string;
       reactions?: Array<{

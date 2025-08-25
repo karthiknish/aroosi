@@ -77,7 +77,7 @@ export default function ImageMessageBubble({
             >
               <img
                 src={url}
-                alt="sent image"
+                alt="Chat message"
                 className="block max-h-72 md:max-h-96 h-auto w-auto max-w-full rounded-xl object-contain bg-black/5"
                 loading="lazy"
               />

@@ -36,6 +36,11 @@ import { uploadMessageImage } from "@/lib/api/messages";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import MicPermissionDialog from "@/components/chat/MicPermissionDialog";
+import {
+  validateFileSize,
+  compressImage,
+  MAX_FILE_SIZE_DISPLAY,
+} from "@/lib/utils/imageProcessing";
 
 type ComposerProps = {
   inputRef: RefObject<HTMLInputElement>;
@@ -153,6 +158,8 @@ export default function Composer(props: ComposerProps) {
   const imageAbortRef = React.useRef<AbortController | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState<number>(0);
   const [micHelpOpen, setMicHelpOpen] = useState(false);
 
   const canUseVoice = useMemo(
@@ -474,7 +481,7 @@ export default function Composer(props: ComposerProps) {
       />
 
       <form
-        className="flex items-end gap-2 sm:gap-3 relative bg-gradient-to-r from-white to-gray-50/50 border-t border-gray-200/60 px-3 sm:px-4 py-3 sm:py-4 rounded-b-2xl backdrop-blur-sm"
+        className="flex items-center gap-2 sm:gap-3 relative bg-gradient-to-r from-white to-gray-50/50 border-t border-gray-200/60 px-3 sm:px-4 py-3 sm:py-4 rounded-b-2xl backdrop-blur-sm"
         onSubmit={async (e) => {
           e.preventDefault();
           await onSend(text);
@@ -555,12 +562,12 @@ export default function Composer(props: ComposerProps) {
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-1 items-center">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-secondary hover:text-primary transition-colors p-2 h-10 w-10"
+            className="text-secondary hover:text-primary transition-colors p-2 h-10 w-10 flex-shrink-0"
             title={canUseVoice ? "Record voice" : "Voice not available"}
             disabled={!canUseVoice || isSending || isBlocked || isRecording}
             onClick={startRecording}
@@ -578,6 +585,15 @@ export default function Composer(props: ComposerProps) {
               const inputEl = e.currentTarget as HTMLInputElement | null;
               let file = inputEl?.files?.[0];
               if (!file) return;
+
+              // Validate file size first
+              const sizeValidation = validateFileSize(file);
+              if (!sizeValidation.valid) {
+                setImageError(sizeValidation.message!);
+                showErrorToast(null, sizeValidation.message!);
+                return;
+              }
+
               // Always show a preview immediately for better UX
               setImageError(null);
               // If HEIC/HEIF, convert to JPEG in browser for preview/upload
@@ -612,6 +628,42 @@ export default function Composer(props: ComposerProps) {
                   setIsImageConverting(false);
                 }
               }
+
+              // Compress image if it's large or not a HEIC file
+              if (
+                !isHeicLike &&
+                (file.size > 2 * 1024 * 1024 || file.type !== "image/jpeg")
+              ) {
+                try {
+                  setIsCompressing(true);
+                  setCompressionProgress(0);
+                  showSuccessToast("Compressing image…");
+
+                  const originalSize = file.size;
+                  file = await compressImage(file, setCompressionProgress);
+
+                  const compressionRatio = (
+                    ((originalSize - file.size) / originalSize) *
+                    100
+                  ).toFixed(1);
+                  showSuccessToast(
+                    `Image compressed! Saved ${compressionRatio}% space`
+                  );
+                } catch (compErr: any) {
+                  setImageError(
+                    "Failed to compress image, continuing with original"
+                  );
+                  showErrorToast(
+                    null,
+                    "Failed to compress image, continuing with original"
+                  );
+                  // Continue with original file if compression fails
+                } finally {
+                  setIsCompressing(false);
+                  setCompressionProgress(0);
+                }
+              }
+
               try {
                 // Revoke previous preview if any
                 if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
@@ -688,30 +740,64 @@ export default function Composer(props: ComposerProps) {
             variant="ghost"
             size="sm"
             className={cn(
-              "text-secondary hover:text-primary transition-colors p-2 h-10 w-10",
+              "text-secondary hover:text-primary transition-colors p-2 h-10 w-10 flex-shrink-0",
               (isImageUploading || isImageConverting) &&
                 "opacity-50 cursor-not-allowed"
             )}
             title={
-              isImageConverting
-                ? "Converting image…"
-                : isImageUploading
-                  ? "Uploading image…"
-                  : "Send image"
+              isCompressing
+                ? `Compressing image… ${compressionProgress}%`
+                : isImageConverting
+                  ? "Converting image…"
+                  : isImageUploading
+                    ? "Uploading image…"
+                    : `Send image (max ${MAX_FILE_SIZE_DISPLAY})`
             }
             disabled={
               isSending ||
               isBlocked ||
               isRecording ||
               isImageUploading ||
-              isImageConverting
+              isImageConverting ||
+              isCompressing
             }
             onClick={() => imageInputRef.current?.click()}
           >
-            {isImageUploading || isImageConverting ? (
+            {isCompressing ? (
+              <div className="flex items-center gap-1">
+                <LoadingSpinner size={12} />
+                <span className="text-xs">{compressionProgress}%</span>
+              </div>
+            ) : isImageUploading || isImageConverting ? (
               <LoadingSpinner size={14} />
             ) : (
               <ImageIcon className="w-4 h-4" />
+            )}
+          </Button>
+
+          {/* Send */}
+          <Button
+            type="submit"
+            disabled={!text.trim() || isSending || isBlocked}
+            className={cn(
+              "bg-primary hover:bg-primary/90 text-white font-medium px-4 sm:px-6 py-2 sm:py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base flex-shrink-0",
+              (!text.trim() || isSending || isBlocked) &&
+                "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100"
+            )}
+            aria-label={
+              isBlocked
+                ? "Messaging disabled"
+                : !text.trim()
+                  ? "Enter a message to send"
+                  : props.editing
+                    ? "Save edits"
+                    : "Send message"
+            }
+          >
+            {isSending ? (
+              <LoadingSpinner size={16} className="text-white" />
+            ) : (
+              <Send className="w-4 h-4" />
             )}
           </Button>
 
@@ -729,32 +815,6 @@ export default function Composer(props: ComposerProps) {
             </Button>
           )}
         </div>
-
-        {/* Send */}
-        <Button
-          type="submit"
-          disabled={!text.trim() || isSending || isBlocked}
-          className={cn(
-            "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-medium px-4 sm:px-6 py-2 sm:py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 text-sm sm:text-base",
-            (!text.trim() || isSending || isBlocked) &&
-              "opacity-50 cursor-not-allowed transform-none shadow-none hover:scale-100"
-          )}
-          aria-label={
-            isBlocked
-              ? "Messaging disabled"
-              : !text.trim()
-                ? "Enter a message to send"
-                : props.editing
-                  ? "Save edits"
-                  : "Send message"
-          }
-        >
-          {isSending ? (
-            <LoadingSpinner size={16} className="text-white" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-        </Button>
 
         {/* Emoji picker */}
         <AnimatePresence>
