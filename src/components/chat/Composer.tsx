@@ -34,6 +34,7 @@ import {
 import { uploadVoiceMessage } from "@/lib/api/voiceMessages";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
+import MicPermissionDialog from "@/components/chat/MicPermissionDialog";
 
 type ComposerProps = {
   inputRef: RefObject<HTMLInputElement>;
@@ -151,6 +152,7 @@ export default function Composer(props: ComposerProps) {
   const imageAbortRef = React.useRef<AbortController | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string | null>(null);
+  const [micHelpOpen, setMicHelpOpen] = useState(false);
 
   const canUseVoice = useMemo(
     () =>
@@ -175,18 +177,12 @@ export default function Composer(props: ComposerProps) {
               name: "microphone",
             } as any);
             if (status.state === "denied") {
-              // Guide user to enable mic permissions in browser
+              // Show help modal; cannot programmatically open browser settings
+              setMicHelpOpen(true);
               showErrorToast(
                 null,
-                "Microphone access is blocked. Please allow it in your browser settings."
+                "Microphone access is blocked. Use the instructions to enable it, then try again."
               );
-              // Attempt to open site settings in Chrome-like browsers
-              try {
-                const origin = window.location.origin;
-                window.open(
-                  `chrome://settings/content/siteDetails?site=${encodeURIComponent(origin)}`
-                );
-              } catch {}
               return;
             }
             // If prompt or granted, a getUserMedia call will trigger the prompt if needed
@@ -198,10 +194,8 @@ export default function Composer(props: ComposerProps) {
           // Surfacing clearer reasons
           const name = permErr?.name || "Error";
           if (name === "NotAllowedError") {
-            showErrorToast(
-              null,
-              "Microphone permission denied. Click the address bar camera icon to allow."
-            );
+            setMicHelpOpen(true);
+            showErrorToast(null, "Microphone permission denied.");
             return;
           }
           if (name === "NotFoundError") {
@@ -462,6 +456,21 @@ export default function Composer(props: ComposerProps) {
 
       {/* Recording / Upload banner */}
       {recordingBanner}
+
+      {/* Mic permission help dialog */}
+      <MicPermissionDialog
+        open={micHelpOpen}
+        onClose={() => setMicHelpOpen(false)}
+        onRetry={async () => {
+          try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            setMicHelpOpen(false);
+            await start();
+          } catch (e) {
+            // keep dialog open; user may need to change settings then reload
+          }
+        }}
+      />
 
       <form
         className="flex items-end gap-3 relative"
