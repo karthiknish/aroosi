@@ -10,12 +10,30 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion, AnimatePresence } from "framer-motion";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
-import { Smile, Image as ImageIcon, Send, Mic, Square, Pause, Play } from "lucide-react";
+import {
+  Smile,
+  Image as ImageIcon,
+  Send,
+  Mic,
+  Square,
+  Pause,
+  Play,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MessageFeedback } from "@/components/ui/MessageFeedback";
+import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
-import { buildVoiceUploadFormData, validateAudioCaps, MAX_DURATION_SECONDS, MAX_FILE_BYTES, formatTime } from "@/lib/audio";
+import {
+  buildVoiceUploadFormData,
+  validateAudioCaps,
+  MAX_DURATION_SECONDS,
+  MAX_FILE_BYTES,
+  formatTime,
+} from "@/lib/audio";
 import { uploadVoiceMessage } from "@/lib/api/voiceMessages";
+import { useAuthContext } from "@/components/FirebaseAuthProvider";
+import { isPremium } from "@/lib/utils/subscriptionPlan";
 
 type ComposerProps = {
   inputRef: RefObject<HTMLInputElement>;
@@ -31,7 +49,7 @@ type ComposerProps = {
   onKeyPress: (e: React.KeyboardEvent) => void;
   // Legacy voice props kept for compatibility with parent; will be superseded by inline upload
   canSendVoice: boolean;
-  onSendVoice: (blob: Blob, duration: number) => Promise<void> | void;
+  onSendVoice?: (blob: Blob, duration: number) => Promise<void> | void;
   onVoiceUpgradeRequired: () => void;
   onVoiceError: (error: any) => void;
   messageFeedback: {
@@ -48,6 +66,7 @@ type ComposerProps = {
   // New: conversation context for upload
   conversationId?: string;
   toUserId?: string;
+  fromUserId?: string;
   // New: show subtle typing hint under composer
   isOtherTyping?: boolean;
   replyTo?: {
@@ -89,6 +108,13 @@ export default function Composer(props: ComposerProps) {
     onCancelReply,
   } = props;
 
+  // Subscription plan to conditionally render upgrade CTA
+  const { profile: authProfile } = useAuthContext();
+  const needsVoiceUpgrade = React.useMemo(() => {
+    const plan = (authProfile as any)?.subscriptionPlan as string | undefined;
+    return !!authProfile && !isPremium(plan);
+  }, [authProfile]);
+
   // Recorder hook
   const {
     state,
@@ -118,6 +144,13 @@ export default function Composer(props: ComposerProps) {
   const lastUploadRef = React.useRef<{ fd: FormData; attempt: number } | null>(
     null
   );
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [isImageConverting, setIsImageConverting] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = React.useRef<HTMLInputElement | null>(null);
+  const imageAbortRef = React.useRef<AbortController | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageFileName, setImageFileName] = useState<string | null>(null);
 
   const canUseVoice = useMemo(
     () =>
@@ -132,6 +165,59 @@ export default function Composer(props: ComposerProps) {
       return;
     }
     try {
+      // Try to preflight microphone permission to provide better UX
+      if (typeof navigator !== "undefined") {
+        try {
+          // If Permissions API is available, check state first
+          const hasPermsApi = (navigator as any).permissions?.query;
+          if (hasPermsApi) {
+            const status = await (navigator as any).permissions.query({
+              name: "microphone",
+            } as any);
+            if (status.state === "denied") {
+              // Guide user to enable mic permissions in browser
+              showErrorToast(
+                null,
+                "Microphone access is blocked. Please allow it in your browser settings."
+              );
+              // Attempt to open site settings in Chrome-like browsers
+              try {
+                const origin = window.location.origin;
+                window.open(
+                  `chrome://settings/content/siteDetails?site=${encodeURIComponent(origin)}`
+                );
+              } catch {}
+              return;
+            }
+            // If prompt or granted, a getUserMedia call will trigger the prompt if needed
+          }
+          // Use a quick, throwaway getUserMedia to explicitly trigger the prompt when needed
+          // Some browsers require this to be called from a user gesture (our click handler qualifies)
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (permErr: any) {
+          // Surfacing clearer reasons
+          const name = permErr?.name || "Error";
+          if (name === "NotAllowedError") {
+            showErrorToast(
+              null,
+              "Microphone permission denied. Click the address bar camera icon to allow."
+            );
+            return;
+          }
+          if (name === "NotFoundError") {
+            showErrorToast(null, "No microphone found on this device.");
+            return;
+          }
+          if (name === "SecurityError") {
+            showErrorToast(
+              null,
+              "Microphone blocked by site policy. Ensure HTTPS and Permissions-Policy allow microphone."
+            );
+            return;
+          }
+          // Other errors are non-fatal; proceed to start() which may succeed
+        }
+      }
       await start();
     } catch (e: any) {
       onVoiceError?.(e);
@@ -434,7 +520,7 @@ export default function Composer(props: ComposerProps) {
           {/* Character counter */}
           <div
             className={cn(
-              "absolute bottom-1 right-10 text-[10px] text-gray-400 select-none",
+              "absolute right-10 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 select-none",
               nearingLimit && remaining >= 0 && "text-orange-500",
               remaining < 0 && "text-red-600"
             )}
@@ -471,19 +557,169 @@ export default function Composer(props: ComposerProps) {
             <Mic className="w-4 h-4" />
           </Button>
 
+          {/* Hidden file input for image uploads */}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept=".heic,.heif,image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const inputEl = e.currentTarget as HTMLInputElement | null;
+              let file = inputEl?.files?.[0];
+              if (!file) return;
+              // Always show a preview immediately for better UX
+              setImageError(null);
+              // If HEIC/HEIF, convert to JPEG in browser for preview/upload
+              const isHeicLike =
+                file.type === "image/heic" ||
+                file.type === "image/heif" ||
+                /\.(heic|heif)$/i.test(file.name || "");
+              if (isHeicLike) {
+                try {
+                  setIsImageConverting(true);
+                  showSuccessToast("Converting image…");
+                  // Dynamic import to avoid bundling when not needed
+                  const mod: any = await import("heic2any");
+                  const convertedBlob: Blob = await mod.default({
+                    blob: file,
+                    toType: "image/jpeg",
+                    quality: 0.85,
+                  });
+                  const newName = (file.name || "image").replace(
+                    /\.(heic|heif)$/i,
+                    ".jpg"
+                  );
+                  file = new File([convertedBlob], newName, {
+                    type: "image/jpeg",
+                  });
+                } catch (convErr: any) {
+                  setImageError("Couldn't convert HEIC image");
+                  showErrorToast(null, "Couldn't convert HEIC image");
+                  setIsImageConverting(false);
+                  return;
+                } finally {
+                  setIsImageConverting(false);
+                }
+              }
+              try {
+                // Revoke previous preview if any
+                if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+              } catch {}
+              const preview = URL.createObjectURL(file);
+              setImagePreviewUrl(preview);
+              setImageFileName(file.name || "image");
+              // If we don't have the required context, keep the preview visible and surface an error,
+              // but do not attempt an upload.
+              if (!conversationId || !toUserId || !props.fromUserId) {
+                showErrorToast(null, "Missing conversation context");
+                setImageError("Missing conversation context");
+                return;
+              }
+              setIsImageUploading(true);
+              try {
+                const fd = new FormData();
+                fd.append("image", file);
+                fd.append("conversationId", conversationId);
+                fd.append("fromUserId", props.fromUserId);
+                fd.append("toUserId", toUserId);
+                fd.append("fileName", file.name);
+                fd.append(
+                  "contentType",
+                  file.type || "application/octet-stream"
+                );
+
+                // Support aborting in-flight upload
+                const controller = new AbortController();
+                imageAbortRef.current = controller;
+
+                const resp = await fetch("/api/messages/upload-image", {
+                  method: "POST",
+                  body: fd,
+                  credentials: "include",
+                  signal: controller.signal,
+                });
+                if (!resp.ok) {
+                  // Prefer JSON error for rate limit/context messages
+                  let errMsg = `HTTP ${resp.status}`;
+                  try {
+                    const data = await resp.clone().json();
+                    errMsg = data?.error || data?.message || errMsg;
+                    if (resp.status === 429) {
+                      if (data?.resetTime) {
+                        const ms =
+                          new Date(data.resetTime).getTime() - Date.now();
+                        const secs = Math.max(0, Math.ceil(ms / 1000));
+                        errMsg = `Rate limit exceeded. Try again in ${secs}s`;
+                      } else {
+                        errMsg = errMsg || "Rate limit exceeded";
+                      }
+                    }
+                  } catch {
+                    const txt = await resp.text();
+                    errMsg = txt || errMsg;
+                  }
+                  throw new Error(errMsg);
+                }
+                // Success toast
+                showSuccessToast("Image sent");
+                // Clear preview on success; message bubble will show the image
+                try {
+                  if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                } catch {}
+                setImagePreviewUrl(null);
+                setImageFileName(null);
+              } catch (err: any) {
+                if (err?.name === "AbortError") {
+                  showErrorToast(null, "Image upload canceled");
+                } else {
+                  const msg = err?.message || "Failed to send image";
+                  setImageError(msg);
+                  // Error toast (handles 429 and other server messages)
+                  showErrorToast(null, msg);
+                }
+              } finally {
+                setIsImageUploading(false);
+                imageAbortRef.current = null;
+                // reset input value to allow re-selecting the same file
+                if (inputEl) inputEl.value = "";
+              }
+            }}
+          />
+
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-secondary hover:text-primary transition-colors p-2 h-10 w-10"
-            title="Send image (Premium feature)"
-            disabled
+            className={cn(
+              "text-secondary hover:text-primary transition-colors p-2 h-10 w-10",
+              (isImageUploading || isImageConverting) &&
+                "opacity-50 cursor-not-allowed"
+            )}
+            title={
+              isImageConverting
+                ? "Converting image…"
+                : isImageUploading
+                  ? "Uploading image…"
+                  : "Send image"
+            }
+            disabled={
+              isSending ||
+              isBlocked ||
+              isRecording ||
+              isImageUploading ||
+              isImageConverting
+            }
+            onClick={() => imageInputRef.current?.click()}
           >
-            <ImageIcon className="w-4 h-4" />
+            {isImageUploading || isImageConverting ? (
+              <LoadingSpinner size={14} />
+            ) : (
+              <ImageIcon className="w-4 h-4" />
+            )}
           </Button>
 
           {/* Inline upgrade hint when voice is unavailable */}
-          {!canUseVoice && (
+          {!canUseVoice && needsVoiceUpgrade && !isBlocked && (
             <Button
               type="button"
               variant="outline"
@@ -546,6 +782,87 @@ export default function Composer(props: ComposerProps) {
           )}
         </AnimatePresence>
       </form>
+
+      {/* Selected image preview with overlay */}
+      <AnimatePresence>
+        {imagePreviewUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="mt-2 relative inline-flex flex-col gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-sm max-w-full"
+          >
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imagePreviewUrl}
+                alt={imageFileName || "Selected image"}
+                className="max-h-56 md:max-h-64 max-w-full h-auto rounded-lg object-contain"
+              />
+              {/* Close button */}
+              <button
+                type="button"
+                aria-label="Remove selected image"
+                onClick={() => {
+                  if (isImageUploading) return; // prevent removal mid-upload; use cancel below
+                  try {
+                    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                  } catch {}
+                  setImagePreviewUrl(null);
+                  setImageFileName(null);
+                  setImageError(null);
+                  if (imageInputRef.current) imageInputRef.current.value = "";
+                }}
+                className={cn(
+                  "absolute -top-2 -right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/90 text-gray-600 shadow ring-1 ring-gray-200",
+                  isImageUploading && "opacity-50 cursor-not-allowed"
+                )}
+                disabled={isImageUploading}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              {/* Uploading overlay */}
+              {isImageUploading && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/30">
+                  <div className="flex items-center gap-2 text-white text-xs font-medium">
+                    <LoadingSpinner size={14} /> Uploading…
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Error text and cancel button when uploading */}
+            <div className="flex items-center justify-between gap-2">
+              {imageFileName && (
+                <span
+                  className="truncate text-xs text-gray-500"
+                  title={imageFileName}
+                >
+                  {imageFileName}
+                </span>
+              )}
+              {isImageUploading && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={() => {
+                    try {
+                      imageAbortRef.current?.abort();
+                    } catch {}
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+            {imageError && (
+              <div className="text-xs text-red-600">{imageError}</div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Keyboard shortcuts hint */}
       <div className="mt-2 text-[11px] text-gray-400 flex items-center gap-3 pl-1 select-none">

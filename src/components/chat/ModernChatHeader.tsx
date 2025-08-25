@@ -46,12 +46,16 @@ export default function ModernChatHeader({
                 <AvatarImage
                   src={matchUserAvatarUrl}
                   alt={matchUserName || "User"}
+                  onError={(e) => {
+                    // Hide broken image to show fallback
+                    (e.currentTarget as HTMLImageElement).style.display =
+                      "none";
+                  }}
                 />
-              ) : (
-                <AvatarFallback>
-                  {matchUserName ? matchUserName[0] : "U"}
-                </AvatarFallback>
-              )}
+              ) : null}
+              <AvatarFallback className="text-xs font-medium">
+                {matchUserName ? matchUserName[0]?.toUpperCase() : "U"}
+              </AvatarFallback>
             </Avatar>
             <span
               className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${

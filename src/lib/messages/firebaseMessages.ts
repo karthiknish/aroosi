@@ -50,8 +50,27 @@ export async function markMessagesRead(conversationId: string, userId: string) {
 export async function uploadMessageImage(params: { conversationId: string; fileName: string; contentType: string; bytes: Uint8Array; }) {
   const id = uuid();
   const path = `messages/${params.conversationId}/${id}_${params.fileName}`;
-  const bucket = adminStorage.bucket();
+  // Resolve bucket defensively: adminStorage.bucket() may throw if no default bucket
+  // was configured during firebase-admin initialization. Fall back to env-derived
+  // bucket name if necessary, matching logic used in other image routes.
+  let bucket: any;
+  try {
+    bucket = adminStorage.bucket();
+  } catch (e) {
+    const fallbackName =
+      process.env.FIREBASE_STORAGE_BUCKET ||
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+      (process.env.GCLOUD_PROJECT
+        ? `${process.env.GCLOUD_PROJECT}.appspot.com`
+        : undefined);
+    if (!fallbackName) throw e;
+    bucket = adminStorage.bucket(fallbackName);
+  }
   const file = bucket.file(path);
-  await file.save(Buffer.from(params.bytes), { contentType: params.contentType, resumable: false, public: false });
+  await file.save(Buffer.from(params.bytes), {
+    contentType: params.contentType,
+    resumable: false,
+    public: false,
+  });
   return { storageId: path };
 }

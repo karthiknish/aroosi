@@ -4,6 +4,8 @@ import { requireAuth, AuthError } from "@/lib/auth/requireAuth";
 import { db } from "@/lib/firebaseAdmin";
 import { COL_USAGE_EVENTS } from "@/lib/firestoreSchema";
 
+type UsageHistoryItem = { feature: string; timestamp: number };
+
 export async function GET(request: NextRequest) {
   let auth;
   try {
@@ -22,22 +24,29 @@ export async function GET(request: NextRequest) {
     );
     const limit = Math.max(
       1,
-      Math.min(500, Number(url.searchParams.get("limit") || 100))
+      Math.min(1000, Number(url.searchParams.get("limit") || 200))
     );
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const snap = await db
       .collection(COL_USAGE_EVENTS)
       .where("userId", "==", auth.userId)
       .where("timestamp", ">=", cutoff)
+      .orderBy("timestamp", "desc")
+      .limit(limit)
       .get();
-    let events = snap.docs.map(
+
+    const items: UsageHistoryItem[] = snap.docs.map(
       (
         d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>
-      ) => ({ id: d.id, ...(d.data() as any) })
+      ) => {
+        const data = d.data() as any;
+        return {
+          feature: String(data.feature || "unknown"),
+          timestamp: Number(data.timestamp || Date.now()),
+        };
+      }
     );
-    events.sort((a: any, b: any) => b.timestamp - a.timestamp);
-    events = events.slice(0, limit);
-    return successResponse(events);
+    return successResponse<UsageHistoryItem[]>(items);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("/api/subscription/usage-history failure", {

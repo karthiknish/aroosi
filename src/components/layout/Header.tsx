@@ -9,7 +9,6 @@ import {
   LogIn,
   UserPlus,
   LayoutDashboard,
-  Shield,
   Search,
   Menu,
   X,
@@ -18,6 +17,11 @@ import {
   BarChart,
   User as UserIcon,
   Star,
+  ShieldUser,
+  Gem,
+  Wallet,
+  SlidersHorizontal,
+  Zap,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
@@ -140,7 +144,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                       variant="ghost"
                       className="w-full justify-start text-primary-dark hover:text-primary hover:bg-pink-50 font-semibold"
                     >
-                      <Shield className="h-5 w-5 mr-2" />
+                      <ShieldUser className="h-5 w-5 mr-2" />
                       <span>Admin</span>
                     </Button>
                   </Link>
@@ -179,7 +183,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                     variant="ghost"
                     className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
                   >
-                    <Star className="h-5 w-5 mr-2" />
+                    <SlidersHorizontal className="h-5 w-5 mr-2" />
                     <span>Shortlists</span>
                   </Button>
                 </Link>
@@ -202,7 +206,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                         variant="ghost"
                         className="w-full justify-start text-[#BFA67A] hover:text-[#BFA67A] hover:bg-pink-50"
                       >
-                        <Shield className="h-5 w-5 mr-2" />
+                        <Gem className="h-5 w-5 mr-2" />
                         <span>Premium Settings</span>
                       </Button>
                     </Link>
@@ -232,7 +236,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                         }
                       }}
                     >
-                      <Shield className="h-5 w-5 mr-2" />
+                      <Wallet className="h-5 w-5 mr-2" />
                       <span>Billing Portal</span>
                     </Button>
                   </motion.div>
@@ -474,13 +478,13 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     const items: React.ReactNode[] = [];
     items.push(iconBtn("/search", Search, "Search Profiles"));
     items.push(iconBtn("/matches", Heart, "Matches"));
-    items.push(iconBtn("/engagement/quick-picks", Star, "Quick Picks"));
+    items.push(iconBtn("/engagement/quick-picks", Zap, "Quick Picks"));
     items.push(iconBtn("/engagement/shortlists", Star, "Shortlists"));
-    if (isAdmin) items.push(iconBtn("/admin", Shield, "Admin"));
+    if (isAdmin) items.push(iconBtn("/admin", ShieldUser, "Admin"));
     if (profile) {
       if (isPremium(profile.subscriptionPlan)) {
         items.push(
-          iconBtn("/premium-settings", Shield, "Premium Settings", {
+          iconBtn("/premium-settings", Gem, "Premium Settings", {
             premiumTint: true,
           })
         );

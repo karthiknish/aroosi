@@ -99,7 +99,9 @@ const nextConfig: NextConfig = {
           // Add feature policy headers for better cross-browser support
           {
             key: "Permissions-Policy",
-            value: "geolocation=(), microphone=(), camera=()",
+            // Allow microphone/camera on same-origin pages; keep geolocation disabled by default
+            // Syntax: feature=(self) allows same-origin; () denies all
+            value: "geolocation=(), microphone=(self), camera=(self)",
           },
         ],
       },

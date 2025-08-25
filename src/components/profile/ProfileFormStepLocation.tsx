@@ -20,7 +20,6 @@ const ProfileFormStepLocation: React.FC<Props> = ({
       form={form}
       placeholder="Select city"
       options={cityOptions}
-      isRequired
     />
     <FormSelectField
       name="country"
@@ -28,7 +27,6 @@ const ProfileFormStepLocation: React.FC<Props> = ({
       form={form}
       placeholder="Select country"
       options={countryOptions}
-      isRequired
     />
     <FormSelectField
       name="diet"
@@ -38,8 +36,10 @@ const ProfileFormStepLocation: React.FC<Props> = ({
       options={[
         { value: "vegetarian", label: "Vegetarian" },
         { value: "non-vegetarian", label: "Non-Vegetarian" },
-        { value: "vegan", label: "Vegan" },
         { value: "eggetarian", label: "Eggetarian" },
+        { value: "vegan", label: "Vegan" },
+        { value: "halal", label: "Halal" },
+        { value: "kosher", label: "Kosher" },
         { value: "other", label: "Other" },
       ]}
     />
@@ -49,9 +49,10 @@ const ProfileFormStepLocation: React.FC<Props> = ({
       form={form}
       placeholder="Select smoking habit"
       options={[
-        { value: "no", label: "No" },
+        { value: "never", label: "Never" },
         { value: "occasionally", label: "Occasionally" },
-        { value: "yes", label: "Yes" },
+        { value: "regularly", label: "Regularly" },
+        { value: "socially", label: "Socially" },
       ]}
     />
     <FormSelectField
@@ -60,9 +61,10 @@ const ProfileFormStepLocation: React.FC<Props> = ({
       form={form}
       placeholder="Select drinking habit"
       options={[
-        { value: "no", label: "No" },
+        { value: "never", label: "Never" },
         { value: "occasionally", label: "Occasionally" },
-        { value: "yes", label: "Yes" },
+        { value: "socially", label: "Socially" },
+        { value: "regularly", label: "Regularly" },
       ]}
     />
     <FormSelectField
@@ -73,7 +75,6 @@ const ProfileFormStepLocation: React.FC<Props> = ({
       options={[
         { value: "normal", label: "Normal" },
         { value: "differently-abled", label: "Differently-abled" },
-        { value: "other", label: "Other" },
       ]}
     />
   </>

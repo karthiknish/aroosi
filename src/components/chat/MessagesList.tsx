@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { formatMessageTime } from "@/lib/utils/messageUtils";
 import { DeliveryStatus } from "@/components/chat/DeliveryStatus";
 import VoiceMessageBubble from "@/components/chat/VoiceMessageBubble";
+import ImageMessageBubble from "@/components/chat/ImageMessageBubble";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 
 import type { MatchMessage } from "@/lib/api/matchMessages";
@@ -314,7 +315,9 @@ export default function MessagesList(props: MessagesListProps) {
                       !prevMsg ||
                       msg.createdAt - (prevMsg?.createdAt || 0) > 7 * 60 * 1000;
                     const isVoice =
-                      msg.type === "voice" && !!msg.audioStorageId;
+                      msg.type === "voice" && !!(msg as any).audioStorageId;
+                    const isImage =
+                      msg.type === "image" && !!(msg as any).audioStorageId;
                     const isNewDay = (() => {
                       if (!prevMsg) return true;
                       const d1 = new Date(prevMsg.createdAt);
@@ -532,6 +535,12 @@ export default function MessagesList(props: MessagesListProps) {
                                 }
                                 isMine={isCurrentUser}
                                 messageId={msg._id}
+                              />
+                            ) : isImage ? (
+                              <ImageMessageBubble
+                                messageId={msg._id}
+                                isMine={isCurrentUser}
+                                mimeType={(msg as any).mimeType}
                               />
                             ) : (
                               <p className="leading-relaxed whitespace-pre-wrap">

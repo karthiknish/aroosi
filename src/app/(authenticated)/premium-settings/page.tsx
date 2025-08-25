@@ -403,19 +403,6 @@ export default function PremiumSettingsPage() {
                       >
                         Manage Plan
                       </Button>
-                      <Button
-                        variant="default"
-                        onClick={async () => {
-                          const { openBillingPortal } = await import(
-                            "@/lib/utils/stripeUtil"
-                          );
-                          await openBillingPortal();
-                        }}
-                        className="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white shadow-md"
-                        title="Open Stripe Billing Portal"
-                      >
-                        Billing Portal
-                      </Button>
                     </div>
                   </div>
                 </CardContent>

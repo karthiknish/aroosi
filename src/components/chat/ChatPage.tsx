@@ -9,6 +9,7 @@ import ConversationList from "./ConversationList";
 import ModernChat from "./ModernChat";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { useProfileImage } from "@/lib/hooks/useProfileImage";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 // import { createConversationId } from '@/lib/utils/messageUtils';
 
 interface ChatPageProps {
@@ -170,12 +171,23 @@ export default function ChatPage({
                     <ArrowLeft className="w-4 h-4" />
                   </Button>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-primary-light/30 to-secondary-light/30 rounded-full flex items-center justify-center">
-                      <span className="text-primary font-medium text-sm">
-                        {selectedConversation.otherUserName
-                          .charAt(0)
-                          .toUpperCase()}
-                      </span>
+                    <div className="relative">
+                      <Avatar className="h-8 w-8 border border-secondary-light/40">
+                        {selectedAvatar ? (
+                          <AvatarImage
+                            src={selectedAvatar}
+                            alt={selectedConversation.otherUserName || "User"}
+                          />
+                        ) : (
+                          <AvatarFallback className="text-[11px]">
+                            {selectedConversation.otherUserName
+                              .charAt(0)
+                              .toUpperCase() || "U"}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      {/* Presence dot placeholder; can be wired to real presence later */}
+                      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-base bg-success" />
                     </div>
                     <div>
                       <h3 className="font-medium text-neutral">

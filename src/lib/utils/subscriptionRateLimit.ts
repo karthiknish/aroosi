@@ -107,8 +107,25 @@ export class SubscriptionRateLimiter {
         };
       }
 
-      const data = (await response.json()) as { canUse: boolean; plan: string };
-      return { canUse: data.canUse, plan: data.plan };
+      const payload = (await response.json()) as any;
+      // Support both legacy and current API shapes
+      // Legacy: { canUse: boolean, plan: string }
+      // Current (standardized): { success: true, data: { canPerform: boolean, plan: string, ... } }
+      let canUse = false;
+      let plan = "free";
+      if (payload && typeof payload === "object") {
+        if ("canUse" in payload) {
+          canUse = Boolean(payload.canUse);
+          plan = String(payload.plan ?? plan);
+        } else if (payload.success === true && payload.data) {
+          const d = payload.data as Record<string, unknown>;
+          // Prefer canPerform; fall back to canUse if present inside data
+          const maybe = (d.canPerform ?? d.canUse) as unknown;
+          canUse = typeof maybe === "boolean" ? maybe : Boolean(maybe);
+          plan = typeof d.plan === "string" ? d.plan : plan;
+        }
+      }
+      return { canUse, plan };
     } catch (error) {
       console.error("Error checking feature access:", error);
       // Fail closed to avoid overuse when feature check fails

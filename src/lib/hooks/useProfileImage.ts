@@ -1,16 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 
+// Cookie-auth friendly: token parameter is optional/ignored. We rely on HttpOnly cookies.
 export function useProfileImage(
   userId: string | undefined,
-  token: string | undefined
+  _token?: string | undefined
 ) {
   const { data, isLoading } = useQuery<string | null>({
     queryKey: ["profileImage", userId],
-    enabled: Boolean(userId && token),
+    enabled: Boolean(userId),
     queryFn: async () => {
-      if (!userId || !token) return null;
+      if (!userId) return null;
       const res = await fetch(`/api/profile-detail/${userId}/images`, {
         // Cookie-based session; no Authorization header
+        credentials: "include",
       });
       if (!res.ok) return null;
       const json = await res.json();

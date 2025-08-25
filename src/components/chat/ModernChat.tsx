@@ -152,14 +152,17 @@ function ModernChat({
         onSend={handleSendMessage}
         onInputChange={handleInputChange}
         onKeyPress={handleKeyPress}
-        // Voice not used: provide no-op handlers to satisfy props
-        canSendVoice={false}
-        onSendVoice={async () => {}}
+        // Voice: enable if device supports it; Composer will gate via hook
+        canSendVoice={true}
+        onSendVoice={undefined}
         onVoiceUpgradeRequired={() => {}}
         onVoiceError={() => {}}
         messageFeedback={messageFeedback}
         setMessageFeedback={() => {}}
         error={error}
+        conversationId={conversationId}
+        toUserId={matchUserId}
+        fromUserId={currentUserId}
         // tiny typing hint inline below composer
         isOtherTyping={
           (Array.isArray(typingUsers) &&

@@ -130,16 +130,84 @@ export const POST = withFirebaseAuth(async (authUser, request: NextRequest) => {
       bytes,
     });
 
-    // Create message document
+    // Create message document (store dimensions if validator extracted)
     const message = await sendFirebaseMessage({
       conversationId,
       fromUserId,
       toUserId,
       type: "image",
+      // Keep field name aligned with existing schema where image storage used audioStorageId
       audioStorageId: storageId,
       fileSize: image.size,
       mimeType: contentType,
+      // Optional metadata forwarded from validator
+      ...(typeof validation.width === "number" && validation.width > 0
+        ? { width: validation.width }
+        : {}),
+      ...(typeof validation.height === "number" && validation.height > 0
+        ? { height: validation.height }
+        : {}),
     });
+
+    // Denormalize lastMessage to conversations and matches collections for list UIs
+    try {
+      const { db } = await import("@/lib/firebaseAdmin");
+      const now = Date.now();
+      // Upsert conversation lastMessage
+      const convRef = db.collection("conversations").doc(conversationId);
+      await convRef.set(
+        {
+          participants: [fromUserId, toUserId],
+          lastMessage: {
+            id: (message as any)?.id || (message as any)?._id,
+            fromUserId,
+            toUserId,
+            text: "",
+            type: "image",
+            createdAt: (message as any)?.createdAt || now,
+            ...(typeof (message as any)?.width === "number"
+              ? { width: (message as any).width }
+              : {}),
+            ...(typeof (message as any)?.height === "number"
+              ? { height: (message as any).height }
+              : {}),
+          },
+          updatedAt: (message as any)?.createdAt || now,
+        },
+        { merge: true }
+      );
+
+      // Update matches lastMessage (for both participant orderings)
+      const a = [fromUserId, toUserId].sort();
+      const a1 = a[0];
+      const a2 = a[1];
+      const matchesColl = db.collection("matches");
+      const q1 = await matchesColl
+        .where("user1Id", "==", a1)
+        .where("user2Id", "==", a2)
+        .where("status", "==", "matched")
+        .limit(1)
+        .get();
+      const matchDoc = !q1.empty ? q1.docs[0] : null;
+      if (matchDoc) {
+        await matchesColl.doc(matchDoc.id).set(
+          {
+            lastMessage: {
+              id: (message as any)?.id || (message as any)?._id,
+              fromUserId,
+              toUserId,
+              text: "",
+              type: "image",
+              createdAt: (message as any)?.createdAt || now,
+            },
+            updatedAt: (message as any)?.createdAt || now,
+          },
+          { merge: true }
+        );
+      }
+    } catch {
+      // non-fatal denormalization failure
+    }
 
     return successResponse(
       {
