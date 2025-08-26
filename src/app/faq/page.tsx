@@ -330,7 +330,7 @@ export default function FaqPage() {
                 </div>
                 {query.trim() && (
                   <div className="mt-2 text-sm text-gray-500">
-                    Showing results for "{query.trim()}" —{" "}
+                    Showing results for &quot;{query.trim()}&quot; —{" "}
                     {filtered.reduce((acc, c) => acc + c.questions.length, 0)}{" "}
                     matches
                     <button
