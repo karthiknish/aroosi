@@ -234,11 +234,7 @@ export default function ManagePlansPage() {
                 {fetchError}
               </div>
             )}
-            {!isFetching && (!plans || plans.length === 0) && (
-              <div className="lg:col-span-3 text-center text-sm text-gray-600">
-                No plans to display.
-              </div>
-            )}
+            {/* Removed empty-state message: fallback to DEFAULT_PLANS ensures cards are shown */}
             {(plans && plans.length ? plans : DEFAULT_PLANS).map((plan) => {
               const selected = isCurrent(plan.id);
               const isPopular = plan.popular || plan.id === "premium";

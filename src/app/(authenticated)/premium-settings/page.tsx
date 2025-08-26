@@ -376,25 +376,7 @@ export default function PremiumSettingsPage() {
                         )}
                       </div>
 
-                      <div className="mt-4 flex gap-3">
-                        {/* Manage billing portal */}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const { openBillingPortal } = await import(
-                                "@/lib/utils/stripeUtil"
-                              );
-                              await openBillingPortal();
-                            } catch (e) {
-                              console.error("Manage billing failed", e);
-                            }
-                          }}
-                          className="inline-flex items-center justify-center rounded-md bg-[#BFA67A] px-4 py-2 text-white hover:bg-[#a69063] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#BFA67A]"
-                        >
-                          Manage billing
-                        </button>
-                      </div>
+                      {/* Removed separate Manage billing placement; moved next to Manage Plan on the right */}
                     </div>
 
                     <div className="flex gap-2">
@@ -406,6 +388,24 @@ export default function PremiumSettingsPage() {
                       >
                         Manage Plan
                       </Button>
+                      {/* Manage billing portal (now next to Manage Plan) */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const { openBillingPortal } = await import(
+                              "@/lib/utils/stripeUtil"
+                            );
+                            await openBillingPortal();
+                          } catch (e) {
+                            console.error("Manage billing failed", e);
+                          }
+                        }}
+                        className="inline-flex items-center justify-center rounded-md bg-[#BFA67A] px-4 py-2 text-white hover:bg-[#a69063] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#BFA67A]"
+                        title="Open billing portal"
+                      >
+                        Manage billing
+                      </button>
                     </div>
                   </div>
                 </CardContent>

@@ -48,7 +48,19 @@ export async function GET(req: NextRequest) {
       doc = snap1.docs[0];
     }
 
-    // 2) Fallback: try by raw key (lowercased) in case legacy data stored unsanitized
+    // 2) Fallback: try by exact raw key (case-sensitive) to handle legacy mixed-case slugs
+    if (!doc) {
+      const snapExact = await db
+        .collection("blogPosts")
+        .where("slug", "==", key)
+        .limit(1)
+        .get();
+      if (!snapExact.empty) {
+        doc = snapExact.docs[0];
+      }
+    }
+
+    // 3) Fallback: try by raw key (lowercased) in case legacy data stored unsanitized
     if (!doc) {
       const rawLower = String(key).toLowerCase();
       const snap2 = await db
@@ -61,7 +73,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 3) Fallback: treat key as document id
+    // 4) Fallback: treat key as document id
     if (!doc) {
       const byId = await db.collection("blogPosts").doc(String(key)).get();
       if (byId.exists) {

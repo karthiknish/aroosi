@@ -12,6 +12,8 @@ interface ValidatedInputProps
   step: number;
   value: string;
   onValueChange: (value: string) => void;
+  // Optional: use a different value for validation than the displayed string
+  validationValue?: unknown;
   required?: boolean;
   hint?: string;
   maxLength?: number;
@@ -32,13 +34,14 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
       maxLength,
       showCharacterCount = false,
       validateOnMount = false,
+      validationValue,
       className,
       ...props
     },
     ref
   ) => {
     const { isValid, error, isValidating, hasBeenValidated } =
-      useFieldValidation(field, value, {
+          useFieldValidation(field, validationValue ?? value, {
         step,
         validateOnMount,
         debounceMs: 500,

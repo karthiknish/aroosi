@@ -716,6 +716,10 @@ export default function ProfileEditSimpleForm({
           field="partnerPreferenceCity"
           step={5 as any}
           value={preferredCitiesInput}
+          validationValue={preferredCitiesInput
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)}
           onValueChange={(raw) => {
             const str = String(raw);
             setPreferredCitiesInput(str);

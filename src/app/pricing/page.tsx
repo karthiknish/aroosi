@@ -322,11 +322,7 @@ export default function PricingPage() {
                 {fetchError}
               </div>
             )}
-            {!isFetching && (!plans || plans.length === 0) && (
-              <div className="lg:col-span-3 text-center text-sm text-gray-600">
-                No plans to display.
-              </div>
-            )}
+            {/* Removed empty-state message: we always render DEFAULT_PLANS as fallback */}
             {/* Ensure we always show Free, Premium and Premium Plus as a fallback */}
             {(plans && plans.length ? plans : DEFAULT_PLANS).map((plan) => {
               const isPopular = plan.popular || plan.id === "premium";

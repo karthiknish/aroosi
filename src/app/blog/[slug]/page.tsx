@@ -41,11 +41,18 @@ export async function generateMetadata(props: {
   const { slug } = await props.params;
   let post: BlogMetaDoc | null = null;
   try {
-    const snap = await db
-      .collection("blogPosts")
-      .where("slug", "==", sanitizeBlogSlug(slug))
-      .limit(1)
-      .get();
+    // Prefer sanitized slug
+    const sanitized = sanitizeBlogSlug(slug);
+    const col = db.collection("blogPosts");
+    let snap = await col.where("slug", "==", sanitized).limit(1).get();
+    if (snap.empty) {
+      // Try exact raw key
+      snap = await col.where("slug", "==", slug).limit(1).get();
+    }
+    if (snap.empty) {
+      // Try lowercased raw key
+      snap = await col.where("slug", "==", slug.toLowerCase()).limit(1).get();
+    }
     if (!snap.empty) {
       const d = snap.docs[0];
       post = d.data() as BlogMetaDoc;

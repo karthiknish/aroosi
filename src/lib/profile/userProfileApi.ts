@@ -709,6 +709,12 @@ export async function fetchUserProfileImagesViaApi(
       [];
     return { success: true, data: images };
   } catch (error) {
+    // Gracefully handle 404: treat as no images without noisy toast
+    const status = (error as any)?.status as number | undefined;
+    if (status === 404) {
+      return { success: true, data: [] };
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : "Failed to fetch profile images";
     showErrorToast(null, errorMessage);

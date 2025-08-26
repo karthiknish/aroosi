@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -143,6 +144,37 @@ const faqCategories = [
 ];
 
 export default function FaqPage() {
+  const [query, setQuery] = useState("");
+
+  // Create a stable, safe id from a category label
+  const slugify = (s: string) =>
+    s
+      .toLowerCase()
+      .trim()
+      // Replace any sequence of non-alphanumeric characters with a single hyphen
+      .replace(/[^a-z0-9]+/g, "-")
+      // Trim leading/trailing hyphens
+      .replace(/^-+|-+$/g, "");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return faqCategories;
+
+    return faqCategories
+      .map((cat) => {
+        // If category label matches, keep all its questions
+        if (cat.category.toLowerCase().includes(q)) return cat;
+
+        const matchedQuestions = cat.questions.filter(
+          (item) =>
+            item.question.toLowerCase().includes(q) ||
+            item.answer.toLowerCase().includes(q)
+        );
+        return { ...cat, questions: matchedQuestions };
+      })
+      .filter((cat) => cat.questions.length > 0);
+  }, [query]);
+
   return (
     <>
       <Head>
@@ -267,7 +299,7 @@ export default function FaqPage() {
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                     onClick={() => {
                       const element = document.getElementById(
-                        cat.category.toLowerCase().replace(" ", "-"),
+                        slugify(cat.category)
                       );
                       element?.scrollIntoView({ behavior: "smooth" });
                     }}
@@ -292,70 +324,92 @@ export default function FaqPage() {
                     type="text"
                     placeholder="Search for answers..."
                     className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500/20 transition-all duration-200"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
+                {query.trim() && (
+                  <div className="mt-2 text-sm text-gray-500">
+                    Showing results for "{query.trim()}" —{" "}
+                    {filtered.reduce((acc, c) => acc + c.questions.length, 0)}{" "}
+                    matches
+                    <button
+                      type="button"
+                      className="ml-2 underline text-pink-600 hover:text-pink-700"
+                      onClick={() => setQuery("")}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
 
             {/* FAQ Categories */}
             <div className="space-y-12">
-              {faqCategories.map((category, categoryIndex) => (
-                <motion.div
-                  key={categoryIndex}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.6,
-                    delay: 0.2 + categoryIndex * 0.1,
-                  }}
-                  id={category.category.toLowerCase().replace(" ", "-")}
-                  className="scroll-mt-24"
-                >
-                  <Card className="bg-white/80 backdrop-blur-sm shadow-xl overflow-hidden">
-                    {/* Category Header */}
-                    <div
-                      className={`p-6 border-b border-gray-100 bg-gradient-to-r from-${category.color.split("-")[1]}-50 to-white`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`p-3 rounded-xl ${category.bgColor} ${category.color}`}
-                        >
-                          {category.icon}
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-800">
-                          {category.category}
-                        </h2>
-                      </div>
-                    </div>
-
-                    {/* Questions Accordion */}
-                    <div className="p-6">
-                      <Accordion
-                        type="single"
-                        collapsible
-                        className="space-y-4"
+              {filtered.length === 0 ? (
+                <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-gray-600">
+                  No results found. Try a different search.
+                </div>
+              ) : (
+                filtered.map((category, categoryIndex) => (
+                  <motion.div
+                    key={categoryIndex}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.6,
+                      delay: 0.2 + categoryIndex * 0.1,
+                    }}
+                    id={slugify(category.category)}
+                    className="scroll-mt-24"
+                  >
+                    <Card className="bg-white/80 backdrop-blur-sm shadow-xl overflow-hidden">
+                      {/* Category Header */}
+                      <div
+                        className={`p-6 border-b border-gray-100 bg-gradient-to-r from-${category.color.split("-")[1]}-50 to-white`}
                       >
-                        {category.questions.map((item, index) => (
-                          <AccordionItem
-                            key={index}
-                            value={`${categoryIndex}-${index}`}
-                            className="border border-gray-200 rounded-lg px-4 hover:border-gray-300 transition-colors"
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`p-3 rounded-xl ${category.bgColor} ${category.color}`}
                           >
-                            <AccordionTrigger className="text-left hover:no-underline py-4">
-                              <span className="font-light text-gray-800 pr-4">
-                                {item.question}
-                              </span>
-                            </AccordionTrigger>
-                            <AccordionContent className="text-gray-600 leading-relaxed pb-4">
-                              {item.answer}
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
+                            {category.icon}
+                          </div>
+                          <h2 className="text-2xl font-bold text-gray-800">
+                            {category.category}
+                          </h2>
+                        </div>
+                      </div>
+
+                      {/* Questions Accordion */}
+                      <div className="p-6">
+                        <Accordion
+                          type="single"
+                          collapsible
+                          className="space-y-4"
+                        >
+                          {category.questions.map((item, index) => (
+                            <AccordionItem
+                              key={index}
+                              value={`${categoryIndex}-${index}`}
+                              className="border border-gray-200 rounded-lg px-4 hover:border-gray-300 transition-colors"
+                            >
+                              <AccordionTrigger className="text-left hover:no-underline py-4">
+                                <span className="font-light text-gray-800 pr-4">
+                                  {item.question}
+                                </span>
+                              </AccordionTrigger>
+                              <AccordionContent className="text-gray-600 leading-relaxed pb-4">
+                                {item.answer}
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))
+              )}
             </div>
 
             {/* Contact CTA */}
