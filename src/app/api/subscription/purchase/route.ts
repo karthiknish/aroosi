@@ -151,8 +151,12 @@ export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
 
     // Validate product ID and map to subscription plan
     const productPlanMap: Record<string, "premium" | "premiumPlus"> = {
+      // Legacy IDs
       aroosi_premium_monthly: "premium",
       aroosi_premium_plus_monthly: "premiumPlus",
+      // New Play Console product IDs
+      premium: "premium",
+      premiumplus: "premiumPlus",
     };
     const plan = productPlanMap[productId];
     if (!plan) {

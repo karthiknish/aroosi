@@ -156,8 +156,12 @@ export async function POST(request: NextRequest) {
 
       // Map Android productId to plan
       const productPlanMap: Record<string, "premium" | "premiumPlus"> = {
+        // Legacy IDs
         aroosi_premium_monthly: "premium",
         aroosi_premium_plus_monthly: "premiumPlus",
+        // New Play Console product IDs
+        premium: "premium",
+        premiumplus: "premiumPlus",
       };
 
       plan = productPlanMap[productId];

@@ -164,8 +164,12 @@ export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
             string,
             { plan: "premium" | "premiumPlus"; tier: number }
           > = {
+            // Legacy IDs
             aroosi_premium_monthly: { plan: "premium", tier: 1 },
             aroosi_premium_plus_monthly: { plan: "premiumPlus", tier: 2 },
+            // New Play Console product IDs
+            premium: { plan: "premium", tier: 1 },
+            premiumplus: { plan: "premiumPlus", tier: 2 },
           };
           const planInfo = productPlanMap[productId];
           if (planInfo && planInfo.tier > highestTier) {
