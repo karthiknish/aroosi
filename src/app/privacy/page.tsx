@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           content="Read the privacy policy for Aroosi, the trusted Afghan matrimony platform for Afghans worldwide."
         />
         <meta property="og:image" content="/og-image.png" />
-        <meta property="og:url" content="https://aroosi.co.uk/privacy" />
+        <meta property="og:url" content="https://aroosi.app/privacy" />
         <meta property="og:type" content="article" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Privacy Policy | Aroosi" />
@@ -55,6 +55,72 @@ export default function PrivacyPage() {
               respect your privacy regarding any information we may collect from
               you across our website and other sites we own and operate as a
               trusted Afghan matrimony platform for Afghans worldwide.
+            </p>
+
+            <h2>Mobile App Permissions (Android)</h2>
+            <p>
+              Our Android app requests certain permissions to provide core
+              features. You can manage or revoke these at any time in your
+              device settings. We only request permissions when needed and use
+              them solely for the purposes described below:
+            </p>
+            <ul>
+              <li>
+                <strong>Camera (android.permission.CAMERA)</strong>: To let you
+                take and upload profile photos or images shared in chats.
+              </li>
+              <li>
+                <strong>Microphone (android.permission.RECORD_AUDIO)</strong>:
+                To record and send voice messages where available.
+              </li>
+              <li>
+                <strong>Photos/Media</strong> —<em>Read-only access</em> via
+                <code>READ_MEDIA_IMAGES</code> and <code>READ_MEDIA_VIDEO</code>
+                (or legacy <code>READ/WRITE_EXTERNAL_STORAGE</code> on older
+                Android versions): To select and upload photos/videos to your
+                profile or conversations. We do not modify or delete your media
+                without your explicit action.
+              </li>
+              <li>
+                <strong>
+                  Location (ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION)
+                </strong>
+                : Optional; used to show distance or nearby matches if you
+                enable location features.
+              </li>
+              <li>
+                <strong>Contacts (READ_CONTACTS)</strong>: Optional; if you
+                choose to find friends who also use Aroosi. We will not access
+                contacts without your consent.
+              </li>
+              <li>
+                <strong>Notifications (POST_NOTIFICATIONS)</strong>: To send
+                alerts for new messages, matches, and important updates. You can
+                control notification preferences in system settings and in the
+                app.
+              </li>
+              <li>
+                <strong>In‑app Purchases (com.android.vending.BILLING)</strong>:
+                To securely process subscriptions or premium upgrades through
+                Google Play Billing.
+              </li>
+              <li>
+                <strong>Network and Performance</strong> —<code>INTERNET</code>,{" "}
+                <code>ACCESS_NETWORK_STATE</code>,<code>ACCESS_WIFI_STATE</code>
+                , <code>WAKE_LOCK</code>,<code>VIBRATE</code>,{" "}
+                <code>FOREGROUND_SERVICE</code>,
+                <code>RECEIVE_BOOT_COMPLETED</code>, and
+                <code>MODIFY_AUDIO_SETTINGS</code>: Required for core app
+                functionality such as connectivity, media playback/recording,
+                push notifications, and reliable background services. We do not
+                collect audio or network data beyond what is necessary to
+                provide these features.
+              </li>
+            </ul>
+            <p>
+              We <strong>do not</strong> request background location or overlay
+              window permissions. If a feature requires additional access in the
+              future, we will ask before enabling it and update this policy.
             </p>
 
             <h2>1. Information We Collect</h2>
@@ -123,6 +189,13 @@ export default function PrivacyPage() {
               to access, correct, erase, restrict processing, data portability,
               and to object to processing. If you wish to exercise any of these
               rights, please contact us.
+            </p>
+
+            <h2>Contact Us</h2>
+            <p>
+              If you have questions about this policy or our data practices,
+              contact us at{" "}
+              <a href="mailto:contact@aroosi.app">contact@aroosi.app</a>.
             </p>
 
             <p className="mt-8">
