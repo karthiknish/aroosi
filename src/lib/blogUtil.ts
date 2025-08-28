@@ -185,22 +185,70 @@ export async function fetchBlogPostBySlug(
 ): Promise<BlogPost | null> {
   // Firestore-backed API returns { success, data } where data is the post
   try {
-    const data = (await getJson(
-      `/api/blog/${encodeURIComponent(slug)}`
-    )) as unknown;
-    if (!data) return null;
-    // If the API returns { data: BlogPost }, return data.data; else, return data
+    console.log(`[fetchBlogPostBySlug] Fetching blog post for slug: "${slug}"`);
+    // Bypass HTTP cache to avoid 304 handling issues
+    const data = (await getJson(`/api/blog/${encodeURIComponent(slug)}`, {
+      cache: "no-store",
+    })) as unknown;
+    if (!data) {
+      console.log(`[fetchBlogPostBySlug] No data returned for slug: "${slug}"`);
+      return null;
+    }
     if (
       data &&
       typeof data === "object" &&
       "data" in (data as Record<string, unknown>)
-    )
-      return (data as { data: BlogPost }).data;
-    return data as BlogPost;
+    ) {
+      const post = (data as { data: BlogPost }).data;
+      console.log(`[fetchBlogPostBySlug] Found post via data wrapper:`, {
+        id: post._id,
+        title: post.title,
+      });
+      return post;
+    }
+    const post = data as BlogPost;
+    console.log(`[fetchBlogPostBySlug] Found post directly:`, {
+      id: post._id,
+      title: post.title,
+    });
+    return post;
   } catch (err) {
     const status = (err as any)?.status;
+    console.error(
+      `[fetchBlogPostBySlug] Error fetching blog post for slug "${slug}":`,
+      err
+    );
+    // Treat 304 as stale cache; retry once with a cache-busting param
+    if (status === 304) {
+      try {
+        const bust = Date.now();
+        const data2 = (await getJson(
+          `/api/blog/${encodeURIComponent(slug)}?v=${bust}`,
+          { cache: "no-store" }
+        )) as unknown;
+        if (
+          data2 &&
+          typeof data2 === "object" &&
+          "data" in (data2 as Record<string, unknown>)
+        ) {
+          return (data2 as { data: BlogPost }).data;
+        }
+        return (data2 as BlogPost) || null;
+      } catch (e2) {
+        console.error(
+          `[fetchBlogPostBySlug] Retry after 304 failed for slug "${slug}":`,
+          e2
+        );
+        return null;
+      }
+    }
     // Treat 404 as a not-found post rather than a hard error
-    if (status === 404) return null;
+    if (status === 404) {
+      console.log(
+        `[fetchBlogPostBySlug] Blog post not found (404) for slug: "${slug}"`
+      );
+      return null;
+    }
     throw err;
   }
 }

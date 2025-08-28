@@ -105,7 +105,12 @@ export default function AdminProfilePage() {
     ],
     queryFn: async () => {
       // Server reads HttpOnly cookies for admin auth
-      const { profiles, total } = await fetchAdminProfiles({
+      const {
+        profiles,
+        total,
+        page: srvPage,
+        pageSize: srvPageSize,
+      } = await fetchAdminProfiles({
         search: "", // server-side search not used yet
         page,
         pageSize,
@@ -113,7 +118,7 @@ export default function AdminProfilePage() {
         sortDir,
         banned: bannedFilter,
         plan: planFilter,
-      } as any);
+      });
 
       const profilesForImages = profiles.map((p: AdminProfile) => ({
         _id: p._id,
@@ -124,7 +129,13 @@ export default function AdminProfilePage() {
         profiles: profilesForImages,
       });
 
-      return { profiles, profileImages, total, page, pageSize };
+      return {
+        profiles,
+        profileImages,
+        total,
+        page: srvPage || page,
+        pageSize: srvPageSize || pageSize,
+      };
     },
     enabled: true,
     retry: 2,

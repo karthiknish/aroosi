@@ -7,17 +7,50 @@ export async function fetchAdminProfiles({
   search,
   page,
   pageSize = 10,
+  sortBy = "createdAt",
+  sortDir = "desc",
+  banned = "all",
+  plan = "all",
 }: {
   search: string;
   page: number;
   pageSize?: number;
-}): Promise<{ profiles: AdminProfile[]; total: number }> {
-  const headers: Record<string, string> = {};
+  sortBy?: "createdAt" | "banned" | "subscriptionPlan";
+  sortDir?: "asc" | "desc";
+  banned?: "true" | "false" | "all";
+  plan?: "all" | "free" | "premium" | "premiumPlus";
+}): Promise<{
+  profiles: AdminProfile[];
+  total: number;
+  page: number;
+  pageSize: number;
+  sortBy: string;
+  sortDir: string;
+  banned: string;
+  plan: string;
+}> {
+  const headers: Record<string, string> = {
+    // Help defeat any intermediate caches
+    "Cache-Control": "no-store",
+    Pragma: "no-cache",
+  };
   try {
-    const res = await fetch(
-      `/api/admin/profiles?search=${encodeURIComponent(search)}&page=${page}&pageSize=${pageSize}`,
-      { headers, credentials: "include" }
-    );
+    const v = Date.now();
+    const qs = new URLSearchParams({
+      search: search || "",
+      page: String(page ?? 1),
+      pageSize: String(pageSize ?? 10),
+      sortBy,
+      sortDir,
+      banned,
+      plan,
+      v: String(v),
+    });
+    const res = await fetch(`/api/admin/profiles?${qs.toString()}`, {
+      headers,
+      credentials: "include",
+      cache: "no-store",
+    });
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch profiles: ${errorText}`);
@@ -43,11 +76,16 @@ export async function fetchAdminProfileImages({
 }: {
   userId: string;
 }): Promise<{ userProfileImages: ImageType[] }> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Cache-Control": "no-store",
+    Pragma: "no-cache",
+  };
   try {
-    const res = await fetch(`/api/profile-detail/${userId}/images`, {
+    const v = Date.now();
+    const res = await fetch(`/api/profile-detail/${userId}/images?v=${v}`, {
       headers,
       credentials: "include",
+      cache: "no-store",
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -238,7 +276,7 @@ export async function setProfileBannedStatus(
       // Cookie-based session; no Authorization header
       "Content-Type": "application/json",
     },
-      credentials: "include",
+    credentials: "include",
     body: JSON.stringify({ banned }),
   });
 
@@ -259,9 +297,17 @@ export type AdminProfileMatchesResult = {
 }[];
 
 export async function fetchAdminAllMatches(): Promise<AdminProfileMatchesResult> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Cache-Control": "no-store",
+    Pragma: "no-cache",
+  };
   try {
-    const res = await fetch(`/api/admin/matches`, { headers });
+    const v = Date.now();
+    const res = await fetch(`/api/admin/matches?v=${v}`, {
+      headers,
+      cache: "no-store",
+      credentials: "include",
+    });
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch all matches: ${errorText}`);
@@ -286,11 +332,16 @@ export async function fetchAdminProfileById({
 }: {
   id: string;
 }): Promise<AdminProfile | null> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Cache-Control": "no-store",
+    Pragma: "no-cache",
+  };
   try {
-    const res = await fetch(`/api/admin/profiles/${id}`, {
+    const v = Date.now();
+    const res = await fetch(`/api/admin/profiles/${id}?nocache=true&v=${v}`, {
       headers,
       credentials: "include",
+      cache: "no-store",
     });
     if (res.status === 404) return null;
     if (!res.ok) {
@@ -349,11 +400,16 @@ export async function fetchAdminProfileImagesById({
 }: {
   profileId: string;
 }): Promise<ImageType[]> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Cache-Control": "no-store",
+    Pragma: "no-cache",
+  };
   try {
-    const res = await fetch(`/api/profile-detail/${profileId}/images`, {
+    const v = Date.now();
+    const res = await fetch(`/api/profile-detail/${profileId}/images?v=${v}`, {
       headers,
       credentials: "include",
+      cache: "no-store",
     });
     if (!res.ok) {
       const errorText = await res.text();
@@ -424,7 +480,7 @@ export async function deleteAdminProfileImageById({
       `/api/admin/profiles/${profileId}/images/${imageId}`,
       {
         method: "DELETE",
-              credentials: "include",
+        credentials: "include",
       }
     );
     if (!res.ok) {
@@ -552,13 +608,21 @@ export async function fetchAdminProfileMatches({
 }: {
   profileId: string;
 }): Promise<Profile[]> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "Cache-Control": "no-store",
+    Pragma: "no-cache",
+  };
   try {
     // Matches are served via the profile endpoint with a query param
-    const res = await fetch(`/api/admin/profiles/${profileId}?matches=true`, {
-      headers,
-      credentials: "include",
-    });
+    const v = Date.now();
+    const res = await fetch(
+      `/api/admin/profiles/${profileId}?matches=true&v=${v}`,
+      {
+        headers,
+        credentials: "include",
+        cache: "no-store",
+      }
+    );
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Failed to fetch profile matches: ${errorText}`);

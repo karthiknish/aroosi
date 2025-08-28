@@ -31,10 +31,12 @@ export async function GET(req: NextRequest) {
   const raw = url.pathname.split("/").pop()!;
   const key = decodeURIComponent(raw);
   try {
+    console.log(`[Blog API] Looking for blog post with slug/key: "${key}"`);
     // Prefer: lookup by sanitized slug
     const slug = sanitizeBlogSlug(
       key.normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip diacritics
     );
+    console.log(`[Blog API] Sanitized slug: "${slug}"`);
 
     let doc: any | null = null;
 
@@ -44,6 +46,9 @@ export async function GET(req: NextRequest) {
       .where("slug", "==", slug)
       .limit(1)
       .get();
+    console.log(
+      `[Blog API] Query 1 (sanitized slug) found ${snap1.size} results`
+    );
     if (!snap1.empty) {
       doc = snap1.docs[0];
     }
@@ -55,6 +60,9 @@ export async function GET(req: NextRequest) {
         .where("slug", "==", key)
         .limit(1)
         .get();
+      console.log(
+        `[Blog API] Query 2 (exact raw slug) found ${snapExact.size} results`
+      );
       if (!snapExact.empty) {
         doc = snapExact.docs[0];
       }
@@ -68,6 +76,9 @@ export async function GET(req: NextRequest) {
         .where("slug", "==", rawLower)
         .limit(1)
         .get();
+      console.log(
+        `[Blog API] Query 3 (lowercased raw slug) found ${snap2.size} results`
+      );
       if (!snap2.empty) {
         doc = snap2.docs[0];
       }
@@ -76,6 +87,7 @@ export async function GET(req: NextRequest) {
     // 4) Fallback: treat key as document id
     if (!doc) {
       const byId = await db.collection("blogPosts").doc(String(key)).get();
+      console.log(`[Blog API] Doc by id exists: ${byId.exists}`);
       if (byId.exists) {
         doc = byId;
       }
@@ -88,6 +100,7 @@ export async function GET(req: NextRequest) {
     const etag = `W/"${data._id}:${ts}"`;
     const ifNone = req.headers.get("if-none-match");
     if (ifNone && ifNone === etag) {
+      // Not modified — return 304 without body
       return new Response(null, { status: 304, headers: { ETag: etag } });
     }
     const res = successResponse(data);
@@ -95,6 +108,9 @@ export async function GET(req: NextRequest) {
     res.headers.set(
       "Cache-Control",
       "public, max-age=120, stale-while-revalidate=300"
+    );
+    console.log(
+      `[Blog API] Found blog post: ${data._id}, title: "${data.title}", slug: "${data.slug}"`
     );
     return res;
   } catch (e) {

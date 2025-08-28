@@ -10,6 +10,8 @@ interface BlogMetaDoc {
   createdAt?: number;
   updatedAt?: number;
   slug?: string;
+  categories?: string[];
+  content?: string;
 }
 
 // Pre-generate the most recent slugs (ISR) to improve initial load & SEO
@@ -20,14 +22,19 @@ export async function generateStaticParams() {
       .orderBy("createdAt", "desc")
       .limit(25)
       .get();
-    return snap.docs
-      .map(
-        (d: FirebaseFirestore.QueryDocumentSnapshot): string | undefined =>
-          (d.data() as BlogMetaDoc).slug
-      )
-      .filter((s: string | undefined): s is string => Boolean(s))
-      .map((slugStr: string) => ({ slug: slugStr }));
-  } catch {
+
+    const slugs = snap.docs
+      .map((d: FirebaseFirestore.QueryDocumentSnapshot) => {
+        const data = d.data() as BlogMetaDoc;
+        return data.slug;
+      })
+      .filter((slug: string | undefined): slug is string => Boolean(slug));
+
+   
+
+    return slugs.map((slugStr: string) => ({ slug: slugStr }));
+  } catch (error) {
+    console.error("[generateStaticParams] Error fetching blog posts:", error);
     return [];
   }
 }
@@ -43,21 +50,31 @@ export async function generateMetadata(props: {
   try {
     // Prefer sanitized slug
     const sanitized = sanitizeBlogSlug(slug);
+    console.log(`[generateMetadata] Looking for blog post with slug: "${slug}" (sanitized: "${sanitized}")`);
+
     const col = db.collection("blogPosts");
     let snap = await col.where("slug", "==", sanitized).limit(1).get();
+    console.log(`[generateMetadata] Query 1 (sanitized slug) found ${snap.size} results`);
+
     if (snap.empty) {
       // Try exact raw key
       snap = await col.where("slug", "==", slug).limit(1).get();
+      console.log(`[generateMetadata] Query 2 (exact slug) found ${snap.size} results`);
     }
     if (snap.empty) {
       // Try lowercased raw key
       snap = await col.where("slug", "==", slug.toLowerCase()).limit(1).get();
+      console.log(`[generateMetadata] Query 3 (lowercased slug) found ${snap.size} results`);
     }
     if (!snap.empty) {
       const d = snap.docs[0];
       post = d.data() as BlogMetaDoc;
+      console.log(`[generateMetadata] Found post:`, { id: d.id, title: post.title, slug: post.slug });
+    } else {
+      console.log(`[generateMetadata] No blog post found for slug: "${slug}"`);
     }
-  } catch {
+  } catch (error) {
+    console.error(`[generateMetadata] Error fetching blog post for slug "${slug}":`, error);
     // ignore
   }
 

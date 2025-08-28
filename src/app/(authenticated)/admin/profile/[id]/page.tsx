@@ -102,7 +102,9 @@ export default function AdminProfileDetailPage() {
     retryDelay: 1000,
   });
 
-  const userId = profile?.userId;
+  // Many user docs use _id equal to userId; fall back safely when userId absent
+  const userId =
+    profile?.userId || (profile?._id ? String(profile._id) : undefined);
   const { data: images = [] } = useQuery<ImageType[]>({
     queryKey: ["profileImages", userId, "admin"],
     queryFn: async () => {
