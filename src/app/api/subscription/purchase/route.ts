@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { Notifications } from "@/lib/notify";
 import type { Profile } from "@/types/profile";
 import { db } from "@/lib/firebaseAdmin";
+import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 
 // Type for Apple receipt item
@@ -104,16 +105,16 @@ async function validateGooglePurchase(
   purchaseToken: string
 ): Promise<{ valid: boolean; expiresAt?: number; error?: string }> {
   const packageName = process.env.GOOGLE_PLAY_PACKAGE_NAME;
-  const apiKey = process.env.GOOGLE_PLAY_API_KEY;
-  if (!packageName || !apiKey) {
+  if (!packageName) {
     return {
       valid: false,
-      error: "Google Play API credentials not configured",
+      error: "Google Play package name not configured",
     };
   }
+  const accessToken = await getAndroidPublisherAccessToken();
   const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/subscriptions/${productId}/tokens/${purchaseToken}`;
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) {
     const error = await res.text();
@@ -207,7 +208,7 @@ export const POST = withFirebaseAuth(async (user, request: NextRequest) => {
 
     // Apple receipt validation for iOS
     if (platform === "ios") {
-      const result = await validateAppleReceipt(productId, purchaseToken);
+      const result = await validateAppleReceipt(productId, receiptData);
       if (!result.valid) {
         return errorResponse(
           `Apple receipt validation failed: ${result.error || "Unknown error"}`,

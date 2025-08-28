@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
 import { db } from "@/lib/firebaseAdmin";
+import { getAndroidPublisherAccessToken } from "@/lib/googlePlay";
 import { withFirebaseAuth } from "@/lib/auth/firebaseAuth";
 
 // Apple App Store receipt validation helper
@@ -80,17 +81,17 @@ async function validateGooglePurchase(
   purchaseToken: string
 ): Promise<{ valid: boolean; expiresAt?: number; error?: string }> {
   const packageName = process.env.GOOGLE_PLAY_PACKAGE_NAME;
-  const apiKey = process.env.GOOGLE_PLAY_API_KEY;
-  if (!packageName || !apiKey) {
+  if (!packageName) {
     return {
       valid: false,
-      error: "Google Play API credentials not configured",
+      error: "Google Play package name not configured",
     };
   }
+  const accessToken = await getAndroidPublisherAccessToken();
   const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/subscriptions/${productId}/tokens/${purchaseToken}`;
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${accessToken}`,
     },
   });
   if (!res.ok) {

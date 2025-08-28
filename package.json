@@ -134,6 +134,7 @@
     "lightningcss": "^1.28.2",
     "node-mocks-http": "1.17.2",
     "ts-node": "10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "5.9.2",
     "whatwg-fetch": "3.6.20"
   },
@@ -154,6 +155,9 @@
     "build:indexes": "ts-node scripts/build-firestore-indexes.ts",
     "deploy:firestore": "firebase deploy --only firestore",
     "precompute:recs": "ts-node scripts/precomputeRecommendations.ts",
-    "seed:users": "ts-node scripts/seedUsers.ts --count 20"
+    "seed:users": "ts-node scripts/seedUsers.ts --count 20",
+    "test:google-play-auth": "ts-node scripts/testGooglePlayAuth.ts",
+    "test:google-play-auth:esm": "node scripts/testGooglePlayAuth.mjs",
+    "test:google-play-auth:env": "tsx scripts/testGooglePlayAuthFromEnv.ts"
   }
 }
