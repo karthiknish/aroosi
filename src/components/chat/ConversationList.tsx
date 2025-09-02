@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, MessageCircle, Mic, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMessageTime, ConversationData } from "@/lib/utils/messageUtils";
 import { useSubscriptionStatus } from "@/hooks/useSubscription";
-import { getConversations } from "@/lib/api/conversation";
+import { getConversations, getPresence } from "@/lib/api/conversation";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 
 // Type for conversation from API
@@ -72,6 +72,9 @@ export default function ConversationList({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [presenceMap, setPresenceMap] = useState<
+    Record<string, { isOnline: boolean; lastSeen: number }>
+  >({});
 
   // Fetch conversations from API
   const fetchConversations = useCallback(async () => {
@@ -80,10 +83,12 @@ export default function ConversationList({
     try {
       setLoading(true);
 
-      const result = (await getConversations()) as { conversations?: ApiConversation[] } | ApiConversation[];
+      const result = (await getConversations()) as
+        | { conversations?: ApiConversation[] }
+        | ApiConversation[];
       const conversationsData = Array.isArray(result)
         ? (result as ApiConversation[])
-        : ((result?.conversations as ApiConversation[]) || []);
+        : (result?.conversations as ApiConversation[]) || [];
 
       // Transform conversations to include user info and metadata
       const transformedConversations: ConversationWithUser[] =
@@ -142,8 +147,60 @@ export default function ConversationList({
       conv.otherUser.fullName
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      conv.lastMessagePreview.toLowerCase().includes(searchQuery.toLowerCase()),
+      conv.lastMessagePreview.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Extract other user ids for presence polling
+  const partnerIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of conversations) {
+      if (c.otherUser?._id) ids.add(c.otherUser._id);
+    }
+    return Array.from(ids);
+  }, [conversations]);
+
+  // Poll presence for displayed users every 30s
+  useEffect(() => {
+    let canceled = false;
+    if (!partnerIds.length) return;
+
+    const loadPresence = async () => {
+      try {
+        const results = await Promise.allSettled(
+          partnerIds.map(async (uid) => ({ uid, res: await getPresence(uid) }))
+        );
+        if (canceled) return;
+        const next: Record<string, { isOnline: boolean; lastSeen: number }> =
+          {};
+        for (const r of results) {
+          if (r.status === "fulfilled") {
+            const { uid, res } = r.value as any;
+            if (res && typeof res.isOnline === "boolean") {
+              next[uid] = {
+                isOnline: res.isOnline,
+                lastSeen: Number(res.lastSeen || 0),
+              };
+            } else if (res?.data && typeof res.data.isOnline === "boolean") {
+              next[uid] = {
+                isOnline: !!res.data.isOnline,
+                lastSeen: Number(res.data.lastSeen || 0),
+              };
+            }
+          }
+        }
+        setPresenceMap((prev) => ({ ...prev, ...next }));
+      } catch {
+        // ignore
+      }
+    };
+
+    loadPresence();
+    const id = setInterval(loadPresence, 30000);
+    return () => {
+      canceled = true;
+      clearInterval(id);
+    };
+  }, [partnerIds.join("|")]);
 
   // Initial load
   useEffect(() => {
@@ -258,9 +315,7 @@ export default function ConversationList({
                     selectedConversationId === conv._id
                       ? "bg-primary-light/20"
                       : "hover:bg-secondary-light/10",
-                    conv.unreadCount > 0
-                      ? "text-neutral"
-                      : "text-neutral-light",
+                    conv.unreadCount > 0 ? "text-neutral" : "text-neutral-light"
                   )}
                   onClick={() => handleConversationClick(conv)}
                 >
@@ -281,7 +336,8 @@ export default function ConversationList({
                         )}
                       </div>
                       {/* Online indicator */}
-                      {conv.otherUser.isOnline && (
+                      {(presenceMap[conv.otherUser._id]?.isOnline ||
+                        conv.otherUser.isOnline) && (
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-base rounded-full" />
                       )}
                       {/* Unread badge */}
@@ -300,7 +356,7 @@ export default function ConversationList({
                             "font-medium text-sm truncate",
                             conv.unreadCount > 0
                               ? "text-gray-900"
-                              : "text-gray-700",
+                              : "text-gray-700"
                           )}
                         >
                           {conv.otherUser.fullName}
@@ -323,7 +379,7 @@ export default function ConversationList({
                             "text-sm truncate",
                             conv.unreadCount > 0
                               ? "text-neutral font-medium"
-                              : "text-neutral-light",
+                              : "text-neutral-light"
                           )}
                         >
                           {conv.lastMessagePreview}
@@ -348,7 +404,7 @@ export default function ConversationList({
             <Button
               size="sm"
               className="w-full bg-primary hover:bg-primary-dark"
-              onClick={() => (window.location.href = '/plans')}
+              onClick={() => (window.location.href = "/plans")}
             >
               Upgrade to Premium
             </Button>
