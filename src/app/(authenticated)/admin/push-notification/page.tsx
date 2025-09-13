@@ -1159,29 +1159,30 @@ export default function PushNotificationAdminPage() {
                               onChange={(e) => {
                                 const nf: any = { ...f } as any;
                                 const val = e.target.value as any;
-                                if (val === "tag")
-                                  (nf.field = "tag"),
-                                    (nf.key = ""),
-                                    (nf.relation = "="),
-                                    (nf.value = "");
-                                else if (
+                                if (val === "tag") {
+                                  nf.field = "tag";
+                                  nf.key = "";
+                                  nf.relation = "=";
+                                  nf.value = "";
+                                } else if (
                                   val === "language" ||
                                   val === "country"
-                                )
-                                  (nf.field = val),
-                                    (nf.relation = "="),
-                                    (nf.value = "");
-                                else if (val === "last_session")
-                                  (nf.field = "last_session"),
-                                    (nf.relation = ">"),
-                                    (nf.hours_ago = 24);
-                                else if (
+                                ) {
+                                  nf.field = val;
+                                  nf.relation = "=";
+                                  nf.value = "";
+                                } else if (val === "last_session") {
+                                  nf.field = "last_session";
+                                  nf.relation = ">";
+                                  nf.hours_ago = 24;
+                                } else if (
                                   val === "session_count" ||
                                   val === "amount_spent"
-                                )
-                                  (nf.field = val),
-                                    (nf.relation = ">"),
-                                    (nf.value = 0);
+                                ) {
+                                  nf.field = val;
+                                  nf.relation = ">";
+                                  nf.value = 0;
+                                }
                                 const copy = [...filters];
                                 copy[idx] = nf;
                                 setFilters(copy);
