@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {}
-  const { playerId, title, message, url } = body || {};
+  const { playerId, title, message, url, imageUrl, data, buttons } = body || {};
   if (!playerId || !String(playerId).trim())
     return errorResponse("playerId required", 400);
   if (!title || !message)
@@ -21,13 +21,20 @@ export async function POST(request: NextRequest) {
     return errorResponse("OneSignal not configured", 500);
   }
 
-  const payload = {
+  const payload: Record<string, any> = {
     app_id: process.env.ONESIGNAL_APP_ID as string,
     headings: { en: title },
     contents: { en: message },
     include_player_ids: [String(playerId)],
     url: url || undefined,
   };
+  if (imageUrl) {
+    payload.big_picture = imageUrl;
+    payload.ios_attachments = { id: imageUrl };
+    payload.chrome_web_image = imageUrl;
+  }
+  if (data && typeof data === "object") payload.data = data;
+  if (Array.isArray(buttons) && buttons.length) payload.buttons = buttons;
   try {
     const res = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",

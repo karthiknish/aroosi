@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isPremium } from "@/lib/utils/subscriptionPlan";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { getSentInterests } from "@/lib/interestUtils";
 import { useAuthContext } from "@/components/FirebaseAuthProvider";
 import { motion } from "framer-motion";
 import { fetchProfileSearchResults } from "@/lib/utils/searchUtil";
@@ -290,6 +291,28 @@ export default function SearchProfilesPage() {
   // Extract profiles and total from search results
   const { profiles = [], total: totalResults = 0 } = searchResults || {};
 
+  // Fetch sent interests to hide those users from search
+  const { data: sentInterestsData } = useQuery({
+    queryKey: ["sentInterests", isLoaded, isAuthenticated],
+    queryFn: async () => {
+      const res = await getSentInterests();
+      // Normalize envelopes: expect { success, data } or raw array
+      const raw = (
+        res && typeof res === "object" && "data" in res
+          ? (res as any).data
+          : res
+      ) as any;
+      return Array.isArray(raw) ? raw : [];
+    },
+    enabled: isLoaded && isAuthenticated,
+    staleTime: 60_000,
+  });
+  const sentToIds = useMemo(
+    () =>
+      (sentInterestsData || []).map((i: any) => i?.toUserId).filter(Boolean),
+    [sentInterestsData]
+  );
+
   // Update total count for pagination and track search usage
   useEffect(() => {
     if (typeof totalResults === "number") {
@@ -499,10 +522,13 @@ export default function SearchProfilesPage() {
   const filtered = useMemo(() => {
     return (publicProfiles || []).filter((u: ProfileSearchResult) => {
       const p = u.profile;
-          // isOnboardingComplete removed
+  // isOnboardingComplete removed
 
       // Hide blocked users from search results
       if (blockedUserIds.includes(u.userId)) return false;
+
+      // Hide users to whom the viewer has already sent interest
+      if (sentToIds.includes(u.userId)) return false;
 
       // Hide premium-hidden profiles from free viewers
       const viewerPlan = currentUser?.subscriptionPlan || "free";
@@ -520,7 +546,7 @@ export default function SearchProfilesPage() {
       }
       return true;
     });
-  }, [publicProfiles, currentUser, blockedUserIds]);
+  }, [publicProfiles, currentUser, blockedUserIds, sentToIds]);
 
   const totalPages = Math.ceil(total / pageSize);
 

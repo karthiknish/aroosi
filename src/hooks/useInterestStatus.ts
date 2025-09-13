@@ -217,6 +217,8 @@ export function useInterestStatus({
       void queryClient.invalidateQueries({
         queryKey: ["unreadCounts", "self"],
       });
+      // Ensure any sentInterests-based UIs (e.g., Search filtering) refresh immediately
+      void queryClient.invalidateQueries({ queryKey: ["sentInterests"] });
       const refetchResult = await refetchInterestStatus();
       // Maintain optimistic state until server confirms expected transition to avoid UI flicker
       if (!wasSentBeforeClick) {

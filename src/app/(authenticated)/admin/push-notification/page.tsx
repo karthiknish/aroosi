@@ -26,6 +26,7 @@ import {
   Check,
   AlertTriangle,
   RefreshCw,
+  Save,
 } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "@/lib/ui/toast";
 
@@ -42,21 +43,85 @@ interface DeviceItem {
 export default function PushNotificationAdminPage() {
   // Cookie-auth; no token in context
   useAuthContext();
+  // Tabs navigation
+  const [activeTab, setActiveTab] = useState<
+    "compose" | "devices" | "test" | "templates"
+  >("compose");
 
   // Notification form state
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [url, setUrl] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [dataJson, setDataJson] = useState(
+    '{\n  "type": "system_notification"\n}'
+  );
+  const [buttonsJson, setButtonsJson] = useState(
+    '[\n  { "id": "view", "text": "View" }\n]'
+  );
   const [sending, setSending] = useState(false);
   const [dryRun, setDryRun] = useState(true);
   const [segments, setSegments] = useState<string[]>(["Subscribed Users"]);
+  const [excludedSegments, setExcludedSegments] = useState<string[]>([]);
   const [maxAudience, setMaxAudience] = useState<number>(100000);
   const [confirmLive, setConfirmLive] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] =
     useState<string>("Re-engagement");
   const [scheduledTime, setScheduledTime] = useState("");
   const [isScheduled, setIsScheduled] = useState(false);
+  const [delayedOption, setDelayedOption] = useState<
+    "immediate" | "timezone" | "last-active"
+  >("immediate");
+  const [deliveryTimeOfDay, setDeliveryTimeOfDay] = useState("");
+  const [throttlePerMinute, setThrottlePerMinute] = useState<number>(0);
+  const [androidChannelId, setAndroidChannelId] = useState("");
+  const [priority, setPriority] = useState<"normal" | "high" | "custom">(
+    "normal"
+  );
+  const [customPriority, setCustomPriority] = useState<number>(5);
+  const [ttl, setTtl] = useState<number>(0);
+  const [collapseId, setCollapseId] = useState("");
+  const [iosBadgeType, setIosBadgeType] = useState<
+    "None" | "SetTo" | "Increase"
+  >("None");
+  const [iosBadgeCount, setIosBadgeCount] = useState<number>(0);
+  const [iosSound, setIosSound] = useState("");
+  const [androidSound, setAndroidSound] = useState("");
+  const [iosInterruptionLevel, setIosInterruptionLevel] = useState<
+    "active" | "passive" | "time-sensitive" | "critical" | ""
+  >("");
+  const [mutableContent, setMutableContent] = useState(false);
+  const [contentAvailable, setContentAvailable] = useState(false);
+  const [includePlayerIds, setIncludePlayerIds] = useState<string>("");
+  const [includeExternalUserIds, setIncludeExternalUserIds] =
+    useState<string>("");
+  // Track applied saved template id for lastUsedAt updates on live send
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(
+    null
+  );
+  // Filters builder state
+  type FilterItem =
+    | {
+        field: "tag";
+        key: string;
+        relation: "=" | "!=" | ">" | "<" | "exists" | "not_exists";
+        value?: string;
+      }
+    | { field: "language" | "country"; relation: "=" | "!="; value: string }
+    | { field: "last_session"; relation: ">" | "<"; hours_ago: number }
+    | {
+        field: "session_count" | "amount_spent";
+        relation: "=" | "!=" | ">" | "<";
+        value: number;
+      }
+    | { operator: "OR" };
+  const [filters, setFilters] = useState<FilterItem[]>([]);
+
+  // Saved templates state
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateDesc, setNewTemplateDesc] = useState("");
 
   // Device management state
   const [devices, setDevices] = useState<DeviceItem[]>([]);
@@ -87,6 +152,18 @@ export default function PushNotificationAdminPage() {
   });
 
   const devicePageSize = 20;
+
+  // Helpers
+  const safeParseJSON = (text: string): any => {
+    try {
+      const t = (text || "").trim();
+      if (!t) return undefined;
+      return JSON.parse(t);
+    } catch {
+      showErrorToast(null, "Invalid JSON in custom data/buttons");
+      return undefined;
+    }
+  };
 
   // Fetch devices
   const fetchDevices = async (override?: {
@@ -143,7 +220,7 @@ export default function PushNotificationAdminPage() {
 
     setSending(true);
     try {
-      const payload = {
+      const payload: any = {
         title: title.trim(),
         message: message.trim(),
         url: url.trim() || undefined,
@@ -151,9 +228,47 @@ export default function PushNotificationAdminPage() {
         dryRun,
         confirm: !dryRun && confirmLive,
         audience: segments,
+        excludedSegments,
+        includePlayerIds: includePlayerIds
+          .split(/[,\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+        includeExternalUserIds: includeExternalUserIds
+          .split(/[,\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+        data: safeParseJSON(dataJson),
+        buttons: safeParseJSON(buttonsJson),
+        filters: filters.length ? filters : undefined,
         maxAudience,
-        scheduledTime: isScheduled ? scheduledTime : undefined,
+        delayedOption,
+        sendAfter: isScheduled ? scheduledTime : undefined,
+        deliveryTimeOfDay:
+          delayedOption === "timezone" ? deliveryTimeOfDay : undefined,
+        throttlePerMinute: throttlePerMinute || undefined,
+        androidChannelId: androidChannelId || undefined,
+        priority:
+          priority === "custom"
+            ? customPriority
+            : priority === "high"
+              ? "high"
+              : "normal",
+        ttl: ttl || undefined,
+        collapseId: collapseId || undefined,
+        iosBadgeType: iosBadgeType !== "None" ? iosBadgeType : undefined,
+        iosBadgeCount:
+          iosBadgeType !== "None" && iosBadgeCount ? iosBadgeCount : undefined,
+        iosSound: iosSound || undefined,
+        androidSound: androidSound || undefined,
+        iosInterruptionLevel: iosInterruptionLevel || undefined,
+        mutableContent,
+        contentAvailable,
       };
+
+      // attach templateId for live sends to update lastUsedAt on server
+      if (!dryRun && appliedTemplateId) {
+        payload.templateId = appliedTemplateId;
+      }
 
       const result = await sendPushNotification(payload as any);
 
@@ -169,6 +284,7 @@ export default function PushNotificationAdminPage() {
         setUrl("");
         setImageUrl("");
         setConfirmLive(false);
+        setAppliedTemplateId(null);
       }
     } catch (error) {
       showErrorToast(
@@ -179,6 +295,150 @@ export default function PushNotificationAdminPage() {
       setSending(false);
     }
   };
+
+  // Templates API helpers
+  const loadTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const res = await fetch("/api/admin/push-notification/templates");
+      const json = await res.json();
+      setTemplates(json?.data?.items || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const saveCurrentAsTemplate = async () => {
+    if (!newTemplateName.trim()) {
+      showErrorToast(null, "Template name required");
+      return;
+    }
+    const payload: any = {
+      title: title.trim(),
+      message: message.trim(),
+      url: url.trim() || undefined,
+      imageUrl: imageUrl.trim() || undefined,
+      audience: segments,
+      excludedSegments,
+      includePlayerIds: includePlayerIds
+        .split(/[\,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+      includeExternalUserIds: includeExternalUserIds
+        .split(/[\,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+      data: safeParseJSON(dataJson),
+      buttons: safeParseJSON(buttonsJson),
+      androidChannelId: androidChannelId || undefined,
+      priority:
+        priority === "custom"
+          ? customPriority
+          : priority === "high"
+            ? "high"
+            : "normal",
+      ttl: ttl || undefined,
+      collapseId: collapseId || undefined,
+      iosBadgeType: iosBadgeType !== "None" ? iosBadgeType : undefined,
+      iosBadgeCount:
+        iosBadgeType !== "None" && iosBadgeCount ? iosBadgeCount : undefined,
+      iosSound: iosSound || undefined,
+      androidSound: androidSound || undefined,
+      iosInterruptionLevel: iosInterruptionLevel || undefined,
+      mutableContent,
+      contentAvailable,
+      delayedOption,
+      sendAfter: isScheduled ? scheduledTime : undefined,
+      deliveryTimeOfDay:
+        delayedOption === "timezone" ? deliveryTimeOfDay : undefined,
+      throttlePerMinute: throttlePerMinute || undefined,
+      filters: filters.length ? filters : undefined,
+    };
+    try {
+      const res = await fetch("/api/admin/push-notification/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newTemplateName.trim(),
+          description: newTemplateDesc.trim() || undefined,
+          payload,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save template");
+      showSuccessToast("Template saved");
+      setNewTemplateName("");
+      setNewTemplateDesc("");
+      loadTemplates();
+    } catch (e) {
+      console.error(e);
+      showErrorToast(null, "Failed to save template");
+    }
+  };
+
+  const deleteTemplate = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/push-notification/templates/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      loadTemplates();
+    } catch (e) {
+      console.error(e);
+      showErrorToast(null, "Failed to delete template");
+    }
+  };
+
+  const applyTemplate = (tpl: any) => {
+    try {
+      const p = tpl?.payload || {};
+      setTitle(p.title || "");
+      setMessage(p.message || "");
+      setUrl(p.url || "");
+      setImageUrl(p.imageUrl || "");
+      setSegments(Array.isArray(p.audience) ? p.audience : segments);
+      setExcludedSegments(
+        Array.isArray(p.excludedSegments) ? p.excludedSegments : []
+      );
+      setIncludePlayerIds((p.includePlayerIds || []).join(", "));
+      setIncludeExternalUserIds((p.includeExternalUserIds || []).join(", "));
+      setDataJson(p.data ? JSON.stringify(p.data, null, 2) : "");
+      setButtonsJson(p.buttons ? JSON.stringify(p.buttons, null, 2) : "");
+      setAndroidChannelId(p.androidChannelId || "");
+      if (typeof p.priority === "number") {
+        setPriority("custom");
+        setCustomPriority(p.priority);
+      } else if (p.priority === "high") {
+        setPriority("high");
+      } else {
+        setPriority("normal");
+      }
+      setTtl(p.ttl || 0);
+      setCollapseId(p.collapseId || "");
+      setIosBadgeType((p.iosBadgeType as any) || "None");
+      setIosBadgeCount(p.iosBadgeCount || 0);
+      setIosSound(p.iosSound || "");
+      setAndroidSound(p.androidSound || "");
+      setIosInterruptionLevel((p.iosInterruptionLevel as any) || "");
+      setMutableContent(!!p.mutableContent);
+      setContentAvailable(!!p.contentAvailable);
+      setDelayedOption((p.delayedOption as any) || "immediate");
+      setScheduledTime(p.sendAfter || "");
+      setIsScheduled(!!p.sendAfter);
+      setDeliveryTimeOfDay(p.deliveryTimeOfDay || "");
+      setThrottlePerMinute(p.throttlePerMinute || 0);
+      setFilters(Array.isArray(p.filters) ? p.filters : []);
+      setAppliedTemplateId(tpl?.id || null);
+      showSuccessToast("Template applied");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
 
   const handleTestSend = async () => {
     if (!testPlayerId.trim() || !title.trim() || !message.trim()) {
@@ -363,6 +623,13 @@ export default function PushNotificationAdminPage() {
     [deviceTotal]
   );
 
+  // Confirmation modal for 'Send to selected users'
+  const [confirmSendUsersOpen, setConfirmSendUsersOpen] = useState(false);
+  const [pendingExternalIds, setPendingExternalIds] = useState<string[]>([]);
+  // Confirmation modal for 'Send to selected devices'
+  const [confirmSendDevicesOpen, setConfirmSendDevicesOpen] = useState(false);
+  const [pendingPlayerIds, setPendingPlayerIds] = useState<string[]>([]);
+
   const NotificationPreview = () => (
     <div className="border rounded-lg p-4 bg-gray-50">
       <div className="flex items-center gap-2 mb-3">
@@ -507,8 +774,12 @@ export default function PushNotificationAdminPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="compose" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as any)}
+        className="space-y-6"
+      >
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="compose" className="gap-2">
             <Send className="h-4 w-4" />
             Compose
@@ -520,6 +791,10 @@ export default function PushNotificationAdminPage() {
           <TabsTrigger value="test" className="gap-2">
             <TestTube className="h-4 w-4" />
             Test
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="gap-2">
+            <Copy className="h-4 w-4" />
+            Templates
           </TabsTrigger>
         </TabsList>
 
@@ -582,6 +857,7 @@ export default function PushNotificationAdminPage() {
                             setTitle(p.title);
                             setMessage(p.message);
                             if (p.imageUrl) setImageUrl(p.imageUrl);
+                            setAppliedTemplateId(null);
                           }}
                           title={`Apply ${p.name} preset`}
                         >
@@ -653,6 +929,35 @@ export default function PushNotificationAdminPage() {
                       placeholder="https://aroosi.com/images/..."
                     />
                   </div>
+
+                  {/* Custom Data */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Custom Data (JSON)
+                    </Label>
+                    <Textarea
+                      value={dataJson}
+                      onChange={(e) => setDataJson(e.target.value)}
+                      rows={4}
+                      placeholder='{"type":"new_message","conversationId":"..."}'
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Buttons (JSON)
+                    </Label>
+                    <Textarea
+                      value={buttonsJson}
+                      onChange={(e) => setButtonsJson(e.target.value)}
+                      rows={3}
+                      placeholder='[{"id":"view","text":"View"}]'
+                    />
+                    <div className="text-xs text-gray-500">
+                      Supported keys: id, text, icon, url
+                    </div>
+                  </div>
                 </div>
 
                 {/* Audience & Scheduling */}
@@ -685,6 +990,32 @@ export default function PushNotificationAdminPage() {
                           </Button>
                         );
                       })}
+                    </div>
+                    <div className="space-y-2 mt-3">
+                      <Label className="text-sm font-medium">
+                        Exclude Segments
+                      </Label>
+                      <div className="flex flex-wrap gap-2">
+                        {["Dormant", "Churn Risk"].map((seg) => {
+                          const active = excludedSegments.includes(seg);
+                          return (
+                            <Button
+                              key={seg}
+                              variant={active ? "default" : "outline"}
+                              size="sm"
+                              onClick={() =>
+                                setExcludedSegments((prev) =>
+                                  prev.includes(seg)
+                                    ? prev.filter((s) => s !== seg)
+                                    : [...prev, seg]
+                                )
+                              }
+                            >
+                              {seg}
+                            </Button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -724,17 +1055,478 @@ export default function PushNotificationAdminPage() {
                   </div>
 
                   {isScheduled && (
-                    <Input
-                      type="datetime-local"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      min={new Date().toISOString().slice(0, 16)}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-sm">Delivery Mode</Label>
+                        <select
+                          className="w-full border rounded-md px-3 py-2 bg-white text-sm"
+                          value={delayedOption}
+                          onChange={(e) =>
+                            setDelayedOption(e.target.value as any)
+                          }
+                        >
+                          <option value="immediate">
+                            Immediate (send_after)
+                          </option>
+                          <option value="timezone">Per timezone</option>
+                          <option value="last-active">
+                            Optimized by last active
+                          </option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-sm">Send After</Label>
+                        <Input
+                          type="datetime-local"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          min={new Date().toISOString().slice(0, 16)}
+                        />
+                      </div>
+                      {delayedOption === "timezone" && (
+                        <div>
+                          <Label className="text-sm">
+                            Delivery Time (HH:MM)
+                          </Label>
+                          <Input
+                            placeholder="09:00:00"
+                            value={deliveryTimeOfDay}
+                            onChange={(e) =>
+                              setDeliveryTimeOfDay(e.target.value)
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
                   )}
+                </div>
+
+                {/* Filters Builder */}
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">
+                      Filters (advanced targeting)
+                    </Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setFilters((prev) => [
+                          ...prev,
+                          {
+                            field: "tag",
+                            key: "",
+                            relation: "=",
+                            value: "",
+                          } as any,
+                        ])
+                      }
+                    >
+                      Add Filter
+                    </Button>
+                  </div>
+                  {filters.length === 0 && (
+                    <div className="text-xs text-gray-500">
+                      No filters. Add a filter to target by tag, language,
+                      country, last_session, session_count, or amount_spent. You
+                      can also insert an OR operator between filters.
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {filters.map((f, idx) => (
+                      <div
+                        key={idx}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        {"operator" in f ? (
+                          <>
+                            <Badge variant="outline">OR</Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setFilters(filters.filter((_, i) => i !== idx))
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <select
+                              className="border rounded px-2 py-1 text-sm"
+                              value={(f as any).field}
+                              onChange={(e) => {
+                                const nf: any = { ...f } as any;
+                                const val = e.target.value as any;
+                                if (val === "tag")
+                                  (nf.field = "tag"),
+                                    (nf.key = ""),
+                                    (nf.relation = "="),
+                                    (nf.value = "");
+                                else if (
+                                  val === "language" ||
+                                  val === "country"
+                                )
+                                  (nf.field = val),
+                                    (nf.relation = "="),
+                                    (nf.value = "");
+                                else if (val === "last_session")
+                                  (nf.field = "last_session"),
+                                    (nf.relation = ">"),
+                                    (nf.hours_ago = 24);
+                                else if (
+                                  val === "session_count" ||
+                                  val === "amount_spent"
+                                )
+                                  (nf.field = val),
+                                    (nf.relation = ">"),
+                                    (nf.value = 0);
+                                const copy = [...filters];
+                                copy[idx] = nf;
+                                setFilters(copy);
+                              }}
+                            >
+                              <option value="tag">tag</option>
+                              <option value="language">language</option>
+                              <option value="country">country</option>
+                              <option value="last_session">last_session</option>
+                              <option value="session_count">
+                                session_count
+                              </option>
+                              <option value="amount_spent">amount_spent</option>
+                            </select>
+                            {(f as any).field === "tag" && (
+                              <>
+                                <Input
+                                  className="w-40"
+                                  placeholder="key"
+                                  value={(f as any).key}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).key = e.target.value;
+                                    setFilters(copy as any);
+                                  }}
+                                />
+                                <select
+                                  className="border rounded px-2 py-1 text-sm"
+                                  value={(f as any).relation}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).relation =
+                                      e.target.value;
+                                    setFilters(copy as any);
+                                  }}
+                                >
+                                  <option value="=">=</option>
+                                  <option value="!=">!=</option>
+                                  <option value=">">&gt;</option>
+                                  <option value="<">&lt;</option>
+                                  <option value="exists">exists</option>
+                                  <option value="not_exists">not_exists</option>
+                                </select>
+                                {(f as any).relation !== "exists" &&
+                                  (f as any).relation !== "not_exists" && (
+                                    <Input
+                                      className="w-48"
+                                      placeholder="value"
+                                      value={(f as any).value || ""}
+                                      onChange={(e) => {
+                                        const copy: any[] = [...filters];
+                                        (copy[idx] as any).value =
+                                          e.target.value;
+                                        setFilters(copy as any);
+                                      }}
+                                    />
+                                  )}
+                              </>
+                            )}
+                            {((f as any).field === "language" ||
+                              (f as any).field === "country") && (
+                              <>
+                                <select
+                                  className="border rounded px-2 py-1 text-sm"
+                                  value={(f as any).relation}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).relation =
+                                      e.target.value;
+                                    setFilters(copy as any);
+                                  }}
+                                >
+                                  <option value="=">=</option>
+                                  <option value="!=">!=</option>
+                                </select>
+                                <Input
+                                  className="w-40"
+                                  placeholder={
+                                    (f as any).field === "language"
+                                      ? "e.g., en"
+                                      : "e.g., US"
+                                  }
+                                  value={(f as any).value || ""}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).value = e.target.value;
+                                    setFilters(copy as any);
+                                  }}
+                                />
+                              </>
+                            )}
+                            {(f as any).field === "last_session" && (
+                              <>
+                                <select
+                                  className="border rounded px-2 py-1 text-sm"
+                                  value={(f as any).relation}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).relation =
+                                      e.target.value;
+                                    setFilters(copy as any);
+                                  }}
+                                >
+                                  <option value=">">&gt;</option>
+                                  <option value="<">&lt;</option>
+                                </select>
+                                <Input
+                                  type="number"
+                                  className="w-32"
+                                  placeholder="hours_ago"
+                                  value={(f as any).hours_ago || 24}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).hours_ago =
+                                      Number(e.target.value) || 0;
+                                    setFilters(copy as any);
+                                  }}
+                                />
+                              </>
+                            )}
+                            {((f as any).field === "session_count" ||
+                              (f as any).field === "amount_spent") && (
+                              <>
+                                <select
+                                  className="border rounded px-2 py-1 text-sm"
+                                  value={(f as any).relation}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).relation =
+                                      e.target.value;
+                                    setFilters(copy as any);
+                                  }}
+                                >
+                                  <option value="=">=</option>
+                                  <option value="!=">!=</option>
+                                  <option value=">">&gt;</option>
+                                  <option value="<">&lt;</option>
+                                </select>
+                                <Input
+                                  type="number"
+                                  className="w-32"
+                                  placeholder="value"
+                                  value={(f as any).value ?? 0}
+                                  onChange={(e) => {
+                                    const copy: any[] = [...filters];
+                                    (copy[idx] as any).value =
+                                      Number(e.target.value) || 0;
+                                    setFilters(copy as any);
+                                  }}
+                                />
+                              </>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setFilters(filters.filter((_, i) => i !== idx))
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                    <div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setFilters((prev) => [...prev, { operator: "OR" }])
+                        }
+                      >
+                        Insert OR operator
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Send Options */}
                 <div className="space-y-3 border-t pt-4">
+                  {/* Targeting IDs */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm">Include Player IDs</Label>
+                      <Input
+                        placeholder="id1, id2, id3"
+                        value={includePlayerIds}
+                        onChange={(e) => setIncludePlayerIds(e.target.value)}
+                      />
+                      <div className="text-xs text-gray-500">
+                        Optional: overrides segment targeting for direct sends
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">
+                        Include External User IDs
+                      </Label>
+                      <Input
+                        placeholder="user1, user2"
+                        value={includeExternalUserIds}
+                        onChange={(e) =>
+                          setIncludeExternalUserIds(e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Delivery Controls */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm">Android Channel ID</Label>
+                      <Input
+                        value={androidChannelId}
+                        onChange={(e) => setAndroidChannelId(e.target.value)}
+                        placeholder="(optional)"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Priority</Label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="border rounded px-2 py-1 text-sm"
+                          value={priority}
+                          onChange={(e) => setPriority(e.target.value as any)}
+                        >
+                          <option value="normal">Normal</option>
+                          <option value="high">High</option>
+                          <option value="custom">Custom</option>
+                        </select>
+                        {priority === "custom" && (
+                          <Input
+                            type="number"
+                            className="w-24"
+                            value={customPriority}
+                            onChange={(e) =>
+                              setCustomPriority(Number(e.target.value) || 0)
+                            }
+                          />
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Time To Live (seconds)</Label>
+                      <Input
+                        type="number"
+                        value={ttl}
+                        onChange={(e) => setTtl(Number(e.target.value) || 0)}
+                        placeholder="0 = default"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Collapse ID</Label>
+                      <Input
+                        value={collapseId}
+                        onChange={(e) => setCollapseId(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Throttle per minute</Label>
+                      <Input
+                        type="number"
+                        value={throttlePerMinute}
+                        onChange={(e) =>
+                          setThrottlePerMinute(Number(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">iOS Badge</Label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="border rounded px-2 py-1 text-sm"
+                          value={iosBadgeType}
+                          onChange={(e) =>
+                            setIosBadgeType(e.target.value as any)
+                          }
+                        >
+                          <option>None</option>
+                          <option>SetTo</option>
+                          <option>Increase</option>
+                        </select>
+                        {iosBadgeType !== "None" && (
+                          <Input
+                            type="number"
+                            className="w-24"
+                            value={iosBadgeCount}
+                            onChange={(e) =>
+                              setIosBadgeCount(Number(e.target.value) || 0)
+                            }
+                          />
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">iOS Sound</Label>
+                      <Input
+                        value={iosSound}
+                        onChange={(e) => setIosSound(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Android Sound</Label>
+                      <Input
+                        value={androidSound}
+                        onChange={(e) => setAndroidSound(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">iOS Interruption Level</Label>
+                      <select
+                        className="border rounded px-2 py-1 text-sm"
+                        value={iosInterruptionLevel}
+                        onChange={(e) =>
+                          setIosInterruptionLevel(e.target.value as any)
+                        }
+                      >
+                        <option value="">Default</option>
+                        <option value="active">active</option>
+                        <option value="passive">passive</option>
+                        <option value="time-sensitive">time-sensitive</option>
+                        <option value="critical">critical</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="mutableContent"
+                          checked={mutableContent}
+                          onCheckedChange={setMutableContent}
+                        />
+                        <Label htmlFor="mutableContent">Mutable Content</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="contentAvailable"
+                          checked={contentAvailable}
+                          onCheckedChange={setContentAvailable}
+                        />
+                        <Label htmlFor="contentAvailable">
+                          Content Available
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-3">
                     <Switch
                       id="dryRun"
@@ -874,6 +1666,42 @@ export default function PushNotificationAdminPage() {
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
                   Refresh
+                </Button>
+                <Button
+                  onClick={() => {
+                    const ids = Array.from(selectedDevices);
+                    if (!ids.length) return;
+                    setPendingPlayerIds(ids);
+                    setConfirmSendDevicesOpen(true);
+                  }}
+                  disabled={selectedDevices.size === 0}
+                  title="Prefill Include Player IDs and go to Compose"
+                >
+                  <Send className="h-4 w-4 mr-1" />
+                  Send to selected devices
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (selectedDevices.size === 0) return;
+                    const selected = new Set(selectedDevices);
+                    const userIds = Array.from(
+                      new Set(
+                        devices
+                          .filter((d) => selected.has(d.playerId))
+                          .map((d) => d.userId)
+                          .filter(Boolean)
+                      )
+                    );
+                    if (userIds.length === 0) return;
+                    setPendingExternalIds(userIds);
+                    setConfirmSendUsersOpen(true);
+                  }}
+                  disabled={selectedDevices.size === 0}
+                  title="Prefill Include External User IDs and go to Compose"
+                  variant="outline"
+                >
+                  <Users className="h-4 w-4 mr-1" />
+                  Send to selected users
                 </Button>
               </div>
 
@@ -1167,7 +1995,213 @@ export default function PushNotificationAdminPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Copy className="h-5 w-5" />
+                  Saved Templates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    {templatesLoading
+                      ? "Loading..."
+                      : `${templates.length} templates`}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={loadTemplates}>
+                    Refresh
+                  </Button>
+                </div>
+                <div className="border rounded-md divide-y">
+                  {templates.length === 0 && (
+                    <div className="p-4 text-sm text-gray-500">
+                      No templates saved yet.
+                    </div>
+                  )}
+                  {templates.map((t) => (
+                    <div
+                      key={t.id}
+                      className="p-3 flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <div className="font-medium">{t.name}</div>
+                        {t.description && (
+                          <div className="text-xs text-gray-500">
+                            {t.description}
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-400">
+                          Created {new Date(t.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => applyTemplate(t)}>
+                          Apply
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteTemplate(t.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Save className="h-5 w-5" />
+                  Save Current as Template
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm">Template Name</Label>
+                  <Input
+                    value={newTemplateName}
+                    onChange={(e) => setNewTemplateName(e.target.value)}
+                    placeholder="e.g., Reengage 30d"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Description (optional)</Label>
+                  <Input
+                    value={newTemplateDesc}
+                    onChange={(e) => setNewTemplateDesc(e.target.value)}
+                    placeholder="Short note about this template"
+                  />
+                </div>
+                <Button
+                  onClick={saveCurrentAsTemplate}
+                  disabled={!newTemplateName.trim()}
+                  className="w-full"
+                >
+                  Save Template
+                </Button>
+                <div className="text-xs text-gray-500">
+                  The template captures all current fields, including advanced
+                  options and filters.
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
+      {/* Confirm Send to Selected Users Dialog */}
+      <ConfirmSendUsersDialog
+        open={confirmSendUsersOpen}
+        count={pendingExternalIds.length}
+        onCancel={() => {
+          setConfirmSendUsersOpen(false);
+          setPendingExternalIds([]);
+        }}
+        onConfirm={() => {
+          setIncludeExternalUserIds(pendingExternalIds.join(", "));
+          setConfirmSendUsersOpen(false);
+          setPendingExternalIds([]);
+          showSuccessToast("Selected users added to Include External User IDs");
+          setActiveTab("compose");
+        }}
+      />
+      {/* Confirm Send to Selected Devices Dialog */}
+      <ConfirmSendDevicesDialog
+        open={confirmSendDevicesOpen}
+        count={pendingPlayerIds.length}
+        onCancel={() => {
+          setConfirmSendDevicesOpen(false);
+          setPendingPlayerIds([]);
+        }}
+        onConfirm={() => {
+          setIncludePlayerIds(pendingPlayerIds.join(", "));
+          setConfirmSendDevicesOpen(false);
+          setPendingPlayerIds([]);
+          showSuccessToast("Selected device IDs added to Include Player IDs");
+          setActiveTab("compose");
+        }}
+      />
     </div>
+  );
+}
+
+// Local inline dialog component
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+function ConfirmSendUsersDialog({
+  open,
+  count,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  count: number;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!v ? onCancel() : undefined)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send to selected users?</DialogTitle>
+          <DialogDescription>
+            This will prefill <strong>Include External User IDs</strong> with{" "}
+            {count} user IDs from the Devices tab and take you to Compose.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={onConfirm}>Continue</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ConfirmSendDevicesDialog({
+  open,
+  count,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  count: number;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!v ? onCancel() : undefined)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send to selected devices?</DialogTitle>
+          <DialogDescription>
+            This will prefill <strong>Include Player IDs</strong> with {count}{" "}
+            device IDs from the Devices tab and take you to Compose.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={onConfirm}>Continue</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
