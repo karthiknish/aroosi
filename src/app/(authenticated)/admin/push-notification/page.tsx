@@ -19,11 +19,8 @@ import {
   Users,
   TestTube,
   Clock,
-  ChevronDown,
-  ChevronUp,
   Trash2,
   Copy,
-  Check,
   AlertTriangle,
   RefreshCw,
   Save,
@@ -138,7 +135,6 @@ export default function PushNotificationAdminPage() {
   const [testSending, setTestSending] = useState(false);
 
   // Preview state
-  const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
 
   // Analytics state
@@ -202,8 +198,8 @@ export default function PushNotificationAdminPage() {
         webDevices: items.filter((d: DeviceItem) => d.deviceType === "web")
           .length,
       }));
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
+      console.error(_e);
       showErrorToast(null, "Failed to fetch devices");
     } finally {
       setDevicesLoading(false);
@@ -274,7 +270,6 @@ export default function PushNotificationAdminPage() {
 
       if (dryRun) {
         setPreviewData(result);
-        setShowPreview(true);
         showSuccessToast("Preview generated successfully");
       } else {
         showSuccessToast("Push notification sent successfully");
@@ -286,7 +281,7 @@ export default function PushNotificationAdminPage() {
         setConfirmLive(false);
         setAppliedTemplateId(null);
       }
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(
         null,
         `Failed to ${dryRun ? "preview" : "send"} notification`
@@ -371,8 +366,8 @@ export default function PushNotificationAdminPage() {
       setNewTemplateName("");
       setNewTemplateDesc("");
       loadTemplates();
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
+      console.error(_e);
       showErrorToast(null, "Failed to save template");
     }
   };
@@ -384,8 +379,8 @@ export default function PushNotificationAdminPage() {
       });
       if (!res.ok) throw new Error("Delete failed");
       loadTemplates();
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
+      console.error(_e);
       showErrorToast(null, "Failed to delete template");
     }
   };
@@ -431,8 +426,8 @@ export default function PushNotificationAdminPage() {
       setFilters(Array.isArray(p.filters) ? p.filters : []);
       setAppliedTemplateId(tpl?.id || null);
       showSuccessToast("Template applied");
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
+      console.error(_e);
     }
   };
 
@@ -476,7 +471,7 @@ export default function PushNotificationAdminPage() {
     try {
       await navigator.clipboard.writeText(text);
       showSuccessToast("Copied to clipboard");
-    } catch (error) {
+    } catch (_error) {
       showErrorToast(null, "Failed to copy to clipboard");
     }
   };
