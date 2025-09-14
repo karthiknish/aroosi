@@ -48,25 +48,35 @@ export async function GET(request: NextRequest, ctx: { params: { id: string } })
     }
 
     // Aggregate opens/clicks from tracking subcollections (bounded scan)
-    const trackingTotals = { opens: 0, clicks: 0 };
-    const trackingByHour: { opens: Record<string, number>; clicks: Record<string, number> } = { opens: {}, clicks: {} };
-    const collections = ["opens", "clicks"] as const;
+  const trackingTotals = { opens: 0, clicks: 0, unsubscribes: 0 };
+  const trackingByHour: {
+    opens: Record<string, number>;
+    clicks: Record<string, number>;
+    unsubscribes: Record<string, number>;
+  } = { opens: {}, clicks: {}, unsubscribes: {} };
+  const collections = ["opens", "clicks", "unsubscribes"] as const;
     for (const coll of collections) {
       const pageSize = 500;
       let last: FirebaseFirestore.QueryDocumentSnapshot | undefined;
       let processed = 0;
       while (processed < 5000) {
-        let q = adminDb.collection("email_tracking").doc(id).collection(coll).orderBy("firstAt", "asc").limit(pageSize);
+        let q = adminDb
+          .collection("email_tracking")
+          .doc(id)
+          .collection(coll)
+          .orderBy("firstAt", "asc")
+          .limit(pageSize);
         if (last) q = q.startAfter(last);
         const snap = await q.get();
         if (snap.empty) break;
         for (const doc of snap.docs) {
           const d = doc.data() as any;
           const count = Number(d.count || 0);
-          trackingTotals[coll] += count;
+          (trackingTotals as any)[coll] += count;
           const byHourMap = (d.byHour || {}) as Record<string, number>;
           for (const [h, c] of Object.entries(byHourMap)) {
-            trackingByHour[coll][h] = (trackingByHour[coll][h] || 0) + (c as number);
+            (trackingByHour as any)[coll][h] =
+              ((trackingByHour as any)[coll][h] || 0) + (c as number);
           }
           processed += 1;
           if (processed >= 5000) break;
@@ -85,6 +95,8 @@ export async function GET(request: NextRequest, ctx: { params: { id: string } })
       error: byStatus.error || 0,
       opens: trackingTotals.opens,
       clicks: trackingTotals.clicks,
+      unsubscribes: trackingTotals.unsubscribes,
+      skippedUnsubscribed: Number((campaign as any).skippedUnsubscribed || 0),
     };
 
     return successResponse({ campaign, totals, byHour, trackingByHour });

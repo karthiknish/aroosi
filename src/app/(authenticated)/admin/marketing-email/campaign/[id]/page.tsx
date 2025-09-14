@@ -8,9 +8,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 type Summary = {
   campaign: any;
-  totals: { total: number; queued: number; sending: number; retry: number; sent: number; error: number; opens?: number; clicks?: number };
+  totals: {
+    total: number;
+    queued: number;
+    sending: number;
+    retry: number;
+    sent: number;
+    error: number;
+    opens?: number;
+    clicks?: number;
+    unsubscribes?: number;
+    skippedUnsubscribed?: number;
+  };
   byHour: Record<string, number>;
-  trackingByHour?: { opens: Record<string, number>; clicks: Record<string, number> };
+  trackingByHour?: {
+    opens: Record<string, number>;
+    clicks: Record<string, number>;
+    unsubscribes?: Record<string, number>;
+  };
 };
 
 export default function CampaignDetailsPage() {
@@ -23,6 +38,14 @@ export default function CampaignDetailsPage() {
   const [filter, setFilter] = useState<string>("");
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugJson, setDebugJson] = useState<any | null>(null);
+  const [priority, setPriority] = useState<string>("normal");
+  const [listId, setListId] = useState<string>("");
+  const [headers, setHeaders] = useState<Array<{ key: string; value: string }>>(
+    []
+  );
+  const [status, setStatus] = useState<string>("active");
+  const [maxAttempts, setMaxAttempts] = useState<number>(5);
+  const [batchSize, setBatchSize] = useState<number>(50);
 
   const load = async (reset = false) => {
     setLoading(true);
@@ -31,14 +54,19 @@ export default function CampaignDetailsPage() {
         setCursor(undefined);
         setEmails([]);
       }
-      const s = await fetch(`/api/admin/marketing-email/campaigns/${id}/summary`).then((r) => r.json());
+      const s = await fetch(
+        `/api/admin/marketing-email/campaigns/${id}/summary`
+      ).then((r) => r.json());
       if (s?.data) setSummary(s.data as Summary);
       const q = new URLSearchParams();
       q.set("limit", "50");
       if (cursor && !reset) q.set("after", cursor);
       if (filter) q.set("status", filter);
-      const e = await fetch(`/api/admin/marketing-email/campaigns/${id}/emails?${q.toString()}`).then((r) => r.json());
-      if (e?.data?.items) setEmails((prev) => (reset ? e.data.items : prev.concat(e.data.items)));
+      const e = await fetch(
+        `/api/admin/marketing-email/campaigns/${id}/emails?${q.toString()}`
+      ).then((r) => r.json());
+      if (e?.data?.items)
+        setEmails((prev) => (reset ? e.data.items : prev.concat(e.data.items)));
       if (e?.data?.nextCursor) setCursor(e.data.nextCursor);
       else setCursor(undefined);
     } finally {
@@ -51,10 +79,25 @@ export default function CampaignDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, filter]);
 
+  useEffect(() => {
+    if (summary?.campaign?.settings) {
+      setPriority(summary.campaign.settings.priority || "normal");
+      setListId(summary.campaign.settings.listId || "");
+      const h = summary.campaign.settings.headers || {};
+      setHeaders(Object.keys(h).map((k) => ({ key: k, value: String(h[k]) })));
+      if ((summary as any)?.campaign?.status)
+        setStatus((summary as any).campaign.status);
+      if ((summary as any)?.campaign?.settings?.maxAttempts)
+        setMaxAttempts((summary as any).campaign.settings.maxAttempts);
+      if ((summary as any)?.campaign?.settings?.batchSize)
+        setBatchSize((summary as any).campaign.settings.batchSize);
+    }
+  }, [summary?.campaign?.settings]);
+
   const kpis = useMemo(() => {
     const t = summary?.totals;
     if (!t) return [];
-    return [
+    const items = [
       { label: "Total", value: t.total },
       { label: "Sent", value: t.sent },
       { label: "Retry", value: t.retry },
@@ -64,6 +107,13 @@ export default function CampaignDetailsPage() {
       { label: "Opens", value: t.opens ?? 0 },
       { label: "Clicks", value: t.clicks ?? 0 },
     ];
+    // Append Unsubs and Skipped (with tooltip)
+    items.push({ label: "Unsubs", value: t.unsubscribes ?? 0 });
+    items.push({
+      label: "Skipped (unsubs)",
+      value: t.skippedUnsubscribed ?? 0,
+    });
+    return items;
   }, [summary]);
 
   return (
@@ -77,7 +127,15 @@ export default function CampaignDetailsPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             {kpis.map((k) => (
-              <div key={k.label} className="p-3 rounded border bg-white">
+              <div
+                key={k.label}
+                className="p-3 rounded border bg-white"
+                title={
+                  k.label === "Skipped (unsubs)"
+                    ? "Emails not sent because the recipient had previously unsubscribed (global or marketing category)."
+                    : undefined
+                }
+              >
                 <div className="text-xs text-muted-foreground">{k.label}</div>
                 <div className="text-xl font-semibold">{k.value}</div>
               </div>
@@ -87,7 +145,7 @@ export default function CampaignDetailsPage() {
           {/* Opens/Clicks timeline (tiny bars) */}
           {summary?.trackingByHour && (
             <div className="space-y-2">
-              {(["opens", "clicks"] as const).map((kind) => {
+              {(["opens", "clicks", "unsubscribes"] as const).map((kind) => {
                 const map = summary.trackingByHour?.[kind] || {};
                 const entries = Object.entries(map).sort((a, b) =>
                   a[0] < b[0] ? -1 : 1
@@ -104,7 +162,13 @@ export default function CampaignDetailsPage() {
                         <div
                           key={k}
                           title={`${k}: ${v}`}
-                          className="bg-blue-500"
+                          className={
+                            kind === "unsubscribes"
+                              ? "bg-red-500"
+                              : kind === "clicks"
+                                ? "bg-green-500"
+                                : "bg-blue-500"
+                          }
                           style={{
                             width: 4,
                             height: Math.max(
@@ -152,6 +216,149 @@ export default function CampaignDetailsPage() {
             >
               Refresh
             </Button>
+          </div>
+
+          {/* Campaign Settings */}
+          <div className="rounded border p-3 space-y-2">
+            <div className="text-sm font-medium">Campaign Settings</div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm" htmlFor="priority-select">
+                Priority
+              </label>
+              <select
+                id="priority-select"
+                className="border rounded px-2 py-1 text-sm"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+              >
+                <option value="high">High</option>
+                <option value="normal">Normal</option>
+                <option value="low">Low</option>
+              </select>
+              <label className="text-sm" htmlFor="listid-input">
+                List-Id
+              </label>
+              <input
+                id="listid-input"
+                className="border rounded px-2 py-1 text-sm"
+                placeholder="e.g. marketing.aroosi.app"
+                value={listId}
+                onChange={(e) => setListId(e.target.value)}
+              />
+              <label className="text-sm" htmlFor="status-select">
+                Status
+              </label>
+              <select
+                id="status-select"
+                className="border rounded px-2 py-1 text-sm"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <label className="text-sm" htmlFor="maxAttempts">
+                Max Attempts
+              </label>
+              <input
+                id="maxAttempts"
+                type="number"
+                className="border rounded px-2 py-1 text-sm w-20"
+                value={maxAttempts}
+                onChange={(e) =>
+                  setMaxAttempts(parseInt(e.target.value || "5", 10))
+                }
+              />
+              <label className="text-sm" htmlFor="batchSize">
+                Batch Size
+              </label>
+              <input
+                id="batchSize"
+                type="number"
+                className="border rounded px-2 py-1 text-sm w-20"
+                value={batchSize}
+                onChange={(e) =>
+                  setBatchSize(parseInt(e.target.value || "50", 10))
+                }
+              />
+              <Button
+                size="sm"
+                onClick={async () => {
+                  await fetch(
+                    `/api/admin/marketing-email/campaigns/${id}/settings`,
+                    {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        priority,
+                        listId,
+                        status,
+                        maxAttempts,
+                        batchSize,
+                        headers: headers
+                          .filter((row) => row.key.trim())
+                          .reduce((acc: Record<string, string>, row) => {
+                            acc[row.key.trim()] = row.value;
+                            return acc;
+                          }, {}),
+                      }),
+                    }
+                  );
+                  await load(true);
+                }}
+              >
+                Save
+              </Button>
+            </div>
+            <div>
+              <div className="text-sm font-medium mt-2 mb-1">Headers</div>
+              <div className="space-y-2">
+                {headers.map((row, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      className="border rounded px-2 py-1 text-sm w-48"
+                      placeholder="Header-Name"
+                      value={row.key}
+                      onChange={(e) => {
+                        const next = [...headers];
+                        next[idx] = { ...next[idx], key: e.target.value };
+                        setHeaders(next);
+                      }}
+                    />
+                    <input
+                      className="border rounded px-2 py-1 text-sm flex-1"
+                      placeholder="Header value"
+                      value={row.value}
+                      onChange={(e) => {
+                        const next = [...headers];
+                        next[idx] = { ...next[idx], value: e.target.value };
+                        setHeaders(next);
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const next = headers.filter((_, i) => i !== idx);
+                        setHeaders(next);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setHeaders([...headers, { key: "", value: "" }])
+                  }
+                >
+                  Add Header
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Emails table */}

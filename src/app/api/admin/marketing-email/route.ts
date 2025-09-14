@@ -15,7 +15,10 @@ import { db, adminAuth } from "@/lib/firebaseAdmin";
 import { sendUserNotification } from "@/lib/email";
 import type { Profile } from "@/types/profile";
 import { renderMarketingReactTemplate } from "@/lib/reactEmailRenderers";
+import { renderTemplate as renderCustomTemplate } from "@/lib/marketingTemplateRegistry";
+import { renderBuiltTemplate } from "@/lib/templateBuilder";
 import { getPublicBaseUrl, hashEmail } from "@/lib/tracking";
+import { buildListUnsubscribeHeaders, isUnsubscribed } from "@/lib/unsubscribe";
 
 const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
   profileCompletionReminder:
@@ -49,6 +52,7 @@ export async function POST(request: Request) {
       templateKey,
       params,
       dryRun,
+      exportCsv,
       confirm,
       maxAudience,
       sendToAll,
@@ -59,16 +63,29 @@ export async function POST(request: Request) {
       search,
       plan,
       banned,
+      // new audience filters
+      lastActiveDays,
+      lastActiveFrom,
+      lastActiveTo,
+      completionMin,
+      completionMax,
+      city,
+      country,
+      createdAtFrom,
+      createdAtTo,
       sendToAllFromAuth,
       // deprecated isProfileComplete removed; optional future filters: isOnboardingComplete
       page,
       pageSize,
       sortBy,
       sortDir,
+      priority,
+      listId,
     } = (body || {}) as {
       templateKey?: string;
       params?: { args?: unknown[] };
       dryRun?: boolean;
+      exportCsv?: boolean;
       confirm?: boolean;
       maxAudience?: number;
       subject?: string;
@@ -78,6 +95,15 @@ export async function POST(request: Request) {
       search?: string;
       plan?: string;
       banned?: string;
+      lastActiveDays?: number;
+      lastActiveFrom?: number;
+      lastActiveTo?: number;
+      completionMin?: number;
+      completionMax?: number;
+      city?: string | string[];
+      country?: string | string[];
+      createdAtFrom?: number;
+      createdAtTo?: number;
       // deprecated isProfileComplete?: string;
       page?: number;
       pageSize?: number;
@@ -85,6 +111,8 @@ export async function POST(request: Request) {
       sendToAllFromAuth?: boolean;
       sortBy?: string;
       sortDir?: string;
+      priority?: "high" | "normal" | "low";
+      listId?: string;
     };
 
     if (!templateKey && !subject) {
@@ -131,12 +159,20 @@ export async function POST(request: Request) {
         banned: !!u.banned,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
+        lastLoginAt: u.lastLoginAt,
+        profileCompletionPercentage: u.profileCompletionPercentage,
+        city: u.location?.city || u.city,
+        country: u.location?.country || u.country,
       } as Partial<Profile> & {
         email?: string;
         banned?: boolean;
         subscriptionPlan?: string;
         createdAt?: number;
         updatedAt?: number;
+        lastLoginAt?: number;
+        profileCompletionPercentage?: number;
+        city?: string;
+        country?: string;
       };
     };
 
@@ -168,6 +204,10 @@ export async function POST(request: Request) {
           db.collection("users");
         if (plan) q = q.where("subscriptionPlan", "==", plan);
         if (banned === "true") q = q.where("banned", "==", true);
+        if (Number.isFinite(createdAtFrom))
+          q = q.where("createdAt", ">=", Number(createdAtFrom));
+        if (Number.isFinite(createdAtTo))
+          q = q.where("createdAt", "<=", Number(createdAtTo));
         try {
           q = q.orderBy(sortField, dir as any);
         } catch {}
@@ -188,6 +228,10 @@ export async function POST(request: Request) {
         db.collection("users");
       if (plan) queryRef = queryRef.where("subscriptionPlan", "==", plan);
       if (banned === "true") queryRef = queryRef.where("banned", "==", true);
+      if (Number.isFinite(createdAtFrom))
+        queryRef = queryRef.where("createdAt", ">=", Number(createdAtFrom));
+      if (Number.isFinite(createdAtTo))
+        queryRef = queryRef.where("createdAt", "<=", Number(createdAtTo));
       try {
         queryRef = queryRef.orderBy(sortField, dir as any);
       } catch {}
@@ -202,11 +246,69 @@ export async function POST(request: Request) {
           (p.aboutMe && String(p.aboutMe).toLowerCase().includes(term))
       );
     }
-    // removed isProfileComplete filtering
+    // removed isProfileComplete filtering; apply new filters client requested
     if (plan) profiles = profiles.filter((p) => p.subscriptionPlan === plan);
     if (banned === "true") profiles = profiles.filter((p) => p.banned === true);
     if (banned === "false")
       profiles = profiles.filter((p) => p.banned !== true);
+    // last active filters
+    if (Number.isFinite(lastActiveDays)) {
+      const cutoff = Date.now() - Number(lastActiveDays) * 24 * 60 * 60 * 1000;
+      profiles = profiles.filter(
+        (p: any) => !p.lastLoginAt || p.lastLoginAt <= cutoff
+      );
+    }
+    if (Number.isFinite(lastActiveFrom)) {
+      profiles = profiles.filter(
+        (p: any) => (p.lastLoginAt ?? 0) >= Number(lastActiveFrom)
+      );
+    }
+    if (Number.isFinite(lastActiveTo)) {
+      profiles = profiles.filter(
+        (p: any) => (p.lastLoginAt ?? 0) <= Number(lastActiveTo)
+      );
+    }
+    // completion percentage
+    if (Number.isFinite(completionMin)) {
+      profiles = profiles.filter(
+        (p: any) =>
+          Number(p.profileCompletionPercentage ?? 0) >= Number(completionMin)
+      );
+    }
+    if (Number.isFinite(completionMax)) {
+      profiles = profiles.filter(
+        (p: any) =>
+          Number(p.profileCompletionPercentage ?? 0) <= Number(completionMax)
+      );
+    }
+    // location filters (string match, case-insensitive)
+    const citySet = Array.isArray(city)
+      ? new Set((city as string[]).map((s) => s.toLowerCase()))
+      : typeof city === "string" && city.trim()
+        ? new Set([city.toLowerCase()])
+        : null;
+    const countrySet = Array.isArray(country)
+      ? new Set((country as string[]).map((s) => s.toLowerCase()))
+      : typeof country === "string" && country.trim()
+        ? new Set([country.toLowerCase()])
+        : null;
+    if (citySet)
+      profiles = profiles.filter(
+        (p: any) => p.city && citySet.has(String(p.city).toLowerCase())
+      );
+    if (countrySet)
+      profiles = profiles.filter(
+        (p: any) => p.country && countrySet.has(String(p.country).toLowerCase())
+      );
+    // createdAt range (additional guard if not handled in query)
+    if (Number.isFinite(createdAtFrom))
+      profiles = profiles.filter(
+        (p: any) => (p.createdAt ?? 0) >= Number(createdAtFrom)
+      );
+    if (Number.isFinite(createdAtTo))
+      profiles = profiles.filter(
+        (p: any) => (p.createdAt ?? 0) <= Number(createdAtTo)
+      );
     // Secondary sort (stable)
     const dirMul = dir === "asc" ? 1 : -1;
     profiles.sort((a: any, b: any) => {
@@ -224,7 +326,7 @@ export async function POST(request: Request) {
       .slice(start, start + safePageSize)
       .slice(0, effectiveMax);
 
-  const templateFn = templateKey ? TEMPLATE_MAP[templateKey] : null;
+    const templateFn = templateKey ? TEMPLATE_MAP[templateKey] : null;
 
     const appendTrackingToHtml = (
       html: string,
@@ -271,6 +373,41 @@ export async function POST(request: Request) {
       const sample = finalProfiles.slice(0, Math.min(10, finalProfiles.length));
       const ratio = Math.max(1, Math.min(99, Number(abTest?.ratio ?? 50)));
       const aCount = Math.round((sample.length * ratio) / 100);
+      if (exportCsv) {
+        // Produce CSV of the full filtered list
+        const cols = [
+          "email",
+          "fullName",
+          "createdAt",
+          "updatedAt",
+          "lastLoginAt",
+          "profileCompletionPercentage",
+          "city",
+          "country",
+        ];
+        const lines = [cols.join(",")];
+        for (const p of finalProfiles) {
+          const row = [
+            String((p as any).email || ""),
+            JSON.stringify(String((p as any).fullName || "")),
+            String((p as any).createdAt || ""),
+            String((p as any).updatedAt || ""),
+            String((p as any).lastLoginAt || ""),
+            String((p as any).profileCompletionPercentage ?? ""),
+            JSON.stringify(String((p as any).city || "")),
+            JSON.stringify(String((p as any).country || "")),
+          ];
+          lines.push(row.join(","));
+        }
+        const csv = lines.join("\n");
+        return new Response(csv, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": 'attachment; filename="audience.csv"',
+          },
+        });
+      }
       for (let i = 0; i < sample.length; i++) {
         const p = sample[i];
         // Guard missing fields for type safety
@@ -281,13 +418,15 @@ export async function POST(request: Request) {
         } as Profile;
 
         // Prefer React renderer for TSX templates, with graceful fallback to string templates
-        let payload:
-          | { subject: string; html: string }
-          | null = null;
+        let payload: { subject: string; html: string } | null = null;
         if (templateKey) {
           payload = renderMarketingReactTemplate(
             templateKey,
-            { ...(params || {}), completionPercentage: (baseProfile as any).profileCompletionPercentage || 0 },
+            {
+              ...(params || {}),
+              completionPercentage:
+                (baseProfile as any).profileCompletionPercentage || 0,
+            },
             { profile: baseProfile, unsubscribeToken: "" }
           );
         }
@@ -379,12 +518,62 @@ export async function POST(request: Request) {
       sent: 0,
       errors: 0,
       lastError: null,
+      settings: {
+        priority:
+          priority && ["high", "normal", "low"].includes(priority)
+            ? priority
+            : undefined,
+        listId: typeof listId === "string" ? listId : undefined,
+      },
     });
 
     let sent = 0;
     let errors = 0;
+    let skippedUnsubscribed = 0;
     const ratio = Math.max(1, Math.min(99, Number(abTest?.ratio ?? 50)));
     const aCount = Math.round((finalProfiles.length * ratio) / 100);
+    // Basic HTML validator for links/images/unsubscribe headers
+    function validateEmailHtml(
+      html: string,
+      headers: Record<string, string>
+    ): { ok: boolean; issues: string[] } {
+      const issues: string[] = [];
+      // Unsubscribe headers present
+      if (!headers["List-Unsubscribe"])
+        issues.push("Missing List-Unsubscribe header");
+      if (!headers["List-Unsubscribe-Post"])
+        issues.push("Missing List-Unsubscribe-Post header");
+      // Validate links
+      const linkRe = /<a\s+[^>]*href=("|')([^"']+)(\1)/gi;
+      let m: RegExpExecArray | null;
+      let linkCount = 0;
+      while ((m = linkRe.exec(html)) !== null) {
+        linkCount++;
+        try {
+          const u = new URL(m[2]);
+          if (!(u.protocol === "http:" || u.protocol === "https:"))
+            issues.push(`Invalid link protocol: ${m[2]}`);
+        } catch {
+          issues.push(`Invalid link URL: ${m[2]}`);
+        }
+      }
+      if (linkCount === 0) issues.push("No links found in email");
+      // Validate images (if present)
+      const imgRe = /<img\s+[^>]*src=("|')([^"']+)(\1)/gi;
+      while ((m = imgRe.exec(html)) !== null) {
+        try {
+          const u = new URL(m[2]);
+          if (!(u.protocol === "http:" || u.protocol === "https:"))
+            issues.push(`Invalid image protocol: ${m[2]}`);
+        } catch {
+          // allow data: URLs for inline images
+          if (!m[2].startsWith("data:"))
+            issues.push(`Invalid image URL: ${m[2]}`);
+        }
+      }
+      return { ok: issues.length === 0, issues };
+    }
+
     for (let i = 0; i < finalProfiles.length; i++) {
       const p = finalProfiles[i];
       try {
@@ -396,12 +585,44 @@ export async function POST(request: Request) {
 
         let emailPayload: { subject: string; html: string } | null = null;
         if (templateKey) {
-          // Attempt React render first
-          emailPayload = renderMarketingReactTemplate(
+          // Try custom registry first for override
+          const reg = renderCustomTemplate(
             templateKey,
-            { ...(params || {}), completionPercentage: (baseProfile as any).profileCompletionPercentage || 0 },
+            {
+              ...(params || {}),
+              completionPercentage:
+                (baseProfile as any).profileCompletionPercentage || 0,
+            },
             { profile: baseProfile, unsubscribeToken: "" }
           );
+          if (reg) emailPayload = reg;
+          // Declarative builder path (templateKey === 'builder' and a builder schema provided in params)
+          if (
+            !emailPayload &&
+            templateKey === "builder" &&
+            params &&
+            (params as any).schema
+          ) {
+            try {
+              const built = renderBuiltTemplate((params as any).schema);
+              emailPayload = {
+                subject: built.subject || subject || "(no subject)",
+                html: built.html,
+              };
+            } catch {}
+          }
+          // Fallback to React built-ins
+          if (!emailPayload) {
+            emailPayload = renderMarketingReactTemplate(
+              templateKey,
+              {
+                ...(params || {}),
+                completionPercentage:
+                  (baseProfile as any).profileCompletionPercentage || 0,
+              },
+              { profile: baseProfile, unsubscribeToken: "" }
+            );
+          }
         }
         if (!emailPayload) {
           if (templateFn) {
@@ -478,6 +699,24 @@ export async function POST(request: Request) {
             p.email,
             abVariant ? { ab: abVariant } : {}
           );
+          // Respect unsubscribes (global or category-specific)
+          const eid = hashEmail(p.email);
+          if (await isUnsubscribed(eid, "marketing")) {
+            skippedUnsubscribed += 1;
+            continue;
+          }
+          const listHeaders = buildListUnsubscribeHeaders({
+            eid,
+            cid: campaignId,
+            category: "marketing",
+          });
+          // Pre-send validation
+          const validation = validateEmailHtml(trackedHtml, listHeaders);
+          if (!validation.ok) {
+            throw new Error(
+              `Email validation failed: ${validation.issues.join("; ")}`
+            );
+          }
           await sendUserNotification(
             p.email,
             emailPayload.subject,
@@ -488,6 +727,12 @@ export async function POST(request: Request) {
               campaignId,
               tags: ["marketing", templateKey || "custom"],
               abVariant,
+              headers: listHeaders,
+              priority:
+                priority && ["high", "normal", "low"].includes(priority)
+                  ? priority
+                  : undefined,
+              listId: typeof listId === "string" ? listId : undefined,
             }
           );
           sent += 1;
@@ -518,6 +763,7 @@ export async function POST(request: Request) {
       {
         status: "completed",
         sent,
+        skippedUnsubscribed,
         completedAt: Date.now(),
         updatedAt: Date.now(),
       },

@@ -14,12 +14,16 @@ function getResend(): Resend {
   return resendInstance;
 }
 
+type Address = string | { email: string; name?: string };
+
 interface SendEmailOptions {
-  to: string | string[];
+  to: Address | Address[];
   subject: string;
   html?: string;
   text?: string;
   from?: string;
+  fromEmail?: string;
+  fromName?: string;
   preheader?: string;
   cc?: string[];
   bcc?: string[];
@@ -40,16 +44,52 @@ interface SendEmailOptions {
   react?: unknown; // React.ReactElement, kept as unknown to avoid adding react type dep here
   // Convenience: add List-Unsubscribe headers for one-click
   unsubscribeUrl?: string;
+  // Extras
+  generateTextFromHtml?: boolean; // if true and text is absent, derive from HTML
+  priority?: "high" | "normal" | "low"; // adds X-Priority/Importance headers
+  listId?: string; // List-Id header
+  idempotencyKey?: string; // forwarded as header (if supported by provider)
+  inReplyTo?: string; // thread headers
+  references?: string | string[];
+  messageId?: string;
 }
 
 export const sendEmail = async (options: SendEmailOptions) => {
   try {
     const resend = getResend();
+    // Validate from fields: either use `from` or (`fromEmail`/`fromName`), not both
+    if (options.from && (options.fromEmail || options.fromName)) {
+      console.warn(
+        "sendEmail: both `from` and (`fromEmail`/`fromName`) provided. Using `from` and ignoring fromEmail/fromName."
+      );
+    }
+    // Helper: format name/email display
+    const formatAddress = (addr: Address): string => {
+      if (typeof addr === "string") return addr;
+      const e = addr.email.trim();
+      const n = (addr.name || "").trim();
+      return n ? `${n} <${e}>` : e;
+    };
+    const toValue = Array.isArray(options.to)
+      ? (options.to as Address[]).map(formatAddress)
+      : formatAddress(options.to as Address);
+
     // Inject preheader for better inbox preview
     const preheaderHtml = options.preheader
       ? `<div style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${options.preheader}</div>`
       : "";
     const htmlWithPreheader = `${preheaderHtml}${options.html || ""}`;
+    // Optional plain text generation
+    const textContent =
+      options.text ||
+      (options.generateTextFromHtml && options.html
+        ? String(options.html)
+            .replace(/<style[\s\S]*?<\/style>/gi, " ")
+            .replace(/<script[\s\S]*?<\/script>/gi, " ")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+        : undefined);
     // Normalize tags to Resend's expected shape
     let tags: any = undefined;
     if (Array.isArray(options.tags)) {
@@ -61,18 +101,51 @@ export const sendEmail = async (options: SendEmailOptions) => {
       } else {
         tags = options.tags;
       }
+    } else if (options.tags && !Array.isArray(options.tags)) {
+      // if someone passes a map/object in the future
+      tags = Object.entries(options.tags as any).map(([name, value]) => ({
+        name,
+        value: String(value),
+      }));
     }
     // Unsubscribe headers
-    const headers: Record<string, string> | undefined = options.unsubscribeUrl
-      ? {
-          ...options.headers,
-          "List-Unsubscribe": `<${options.unsubscribeUrl}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        }
-      : options.headers;
+    const headers: Record<string, string> = { ...(options.headers || {}) };
+    if (options.unsubscribeUrl) {
+      headers["List-Unsubscribe"] = `<${options.unsubscribeUrl}>`;
+      headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+    }
+    if (options.listId) headers["List-Id"] = options.listId;
+    if (options.idempotencyKey)
+      headers["Idempotency-Key"] = options.idempotencyKey;
+    if (options.inReplyTo) headers["In-Reply-To"] = options.inReplyTo;
+    if (options.messageId) headers["Message-Id"] = options.messageId;
+    if (options.references) {
+      const refs = Array.isArray(options.references)
+        ? options.references.join(" ")
+        : options.references;
+      headers["References"] = refs;
+    }
+    if (options.priority) {
+      const p = options.priority;
+      if (p === "high") {
+        headers["X-Priority"] = "1 (Highest)";
+        headers["X-MSMail-Priority"] = "High";
+        headers["Importance"] = "High";
+      } else if (p === "low") {
+        headers["X-Priority"] = "5 (Lowest)";
+        headers["X-MSMail-Priority"] = "Low";
+        headers["Importance"] = "Low";
+      }
+    }
     const payload: any = {
-      from: options.from || "Aroosi <noreply@aroosi.app>",
-      to: options.to,
+      from:
+        options.from ||
+        (options.fromEmail
+          ? options.fromName
+            ? `${options.fromName} <${options.fromEmail}>`
+            : options.fromEmail
+          : "Aroosi <noreply@aroosi.app>"),
+      to: toValue,
       subject: options.subject,
       // Prefer react if supplied; fallback to html/text
       react: options.react,
@@ -81,7 +154,7 @@ export const sendEmail = async (options: SendEmailOptions) => {
         : options.html
           ? htmlWithPreheader
           : undefined,
-      text: options.text,
+      text: textContent,
       cc: options.cc,
       bcc: options.bcc,
       reply_to: options.replyTo,
@@ -112,19 +185,47 @@ export const sendEmail = async (options: SendEmailOptions) => {
   }
 };
 
-export const sendAdminNotification = async (subject: string, html: string) => {
-  if (!process.env.ADMIN_EMAIL) {
-    console.error("ADMIN_EMAIL environment variable not set");
-    return { error: "Admin email not configured" };
+export const sendAdminNotification = async (
+  subject: string,
+  html: string,
+  options?: {
+    text?: string;
+    replyTo?: string | string[];
+    cc?: string[];
+    bcc?: string[];
+    headers?: Record<string, string>;
+    tags?: Array<string> | Array<{ name: string; value: string }>;
+    from?: string;
+    fromEmail?: string;
+    fromName?: string;
   }
-  // Enqueue instead of direct send
+) => {
+  const raw = process.env.ADMIN_EMAIL;
+  if (!raw || raw.trim().length === 0) {
+    console.error("ADMIN_EMAIL environment variable not set");
+    return { error: "Admin email not configured" } as const;
+  }
+  // Support comma/semicolon separated list of recipients
+  const recipients = raw
+    .split(/[;,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   await enqueueEmail({
-    to: process.env.ADMIN_EMAIL,
+    to: recipients.length === 1 ? recipients[0] : recipients,
     subject: `[Admin Notification] ${subject}`,
     html,
+    text: options?.text,
+    cc: options?.cc,
+    bcc: options?.bcc,
+    replyTo: options?.replyTo,
+    headers: options?.headers,
+    tags: options?.tags as any,
+    from: options?.from,
+    fromEmail: options?.fromEmail,
+    fromName: options?.fromName,
     metadata: { type: "admin_notification" },
   });
-  return { queued: true };
+  return { queued: true } as const;
 };
 
 export const sendUserNotification = async (
@@ -152,6 +253,17 @@ export const sendUserNotification = async (
     text?: string;
     from?: string;
     unsubscribeUrl?: string;
+    // New extras
+    fromEmail?: string;
+    fromName?: string;
+    generateTextFromHtml?: boolean;
+    priority?: "high" | "normal" | "low";
+    listId?: string;
+    idempotencyKey?: string;
+    inReplyTo?: string;
+    references?: string | string[];
+    messageId?: string;
+    maxAttempts?: number;
   }
 ) => {
   let html: string;
@@ -168,6 +280,8 @@ export const sendUserNotification = async (
     html,
     text: extra?.text,
     from: extra?.from,
+    fromEmail: extra?.fromEmail,
+    fromName: extra?.fromName,
     cc: extra?.cc,
     bcc: extra?.bcc,
     replyTo: extra?.replyTo,
@@ -175,6 +289,14 @@ export const sendUserNotification = async (
     attachments: extra?.attachments,
     tags: extra?.tags as any,
     scheduledAt: extra?.scheduledAt,
+    generateTextFromHtml: extra?.generateTextFromHtml,
+    priority: extra?.priority,
+    listId: extra?.listId,
+    idempotencyKey: extra?.idempotencyKey,
+    inReplyTo: extra?.inReplyTo,
+    references: extra?.references,
+    messageId: extra?.messageId,
+    maxAttempts: extra?.maxAttempts,
     metadata: {
       type: "user_notification",
       category: extra?.category,
@@ -213,6 +335,15 @@ export const sendCategorizedUserEmail = async (
     text?: string;
     from?: string;
     unsubscribeUrl?: string;
+    fromEmail?: string;
+    fromName?: string;
+    generateTextFromHtml?: boolean;
+    priority?: "high" | "normal" | "low";
+    listId?: string;
+    idempotencyKey?: string;
+    inReplyTo?: string;
+    references?: string | string[];
+    messageId?: string;
   }
 ) => {
   let html: string;
@@ -230,6 +361,8 @@ export const sendCategorizedUserEmail = async (
     text: options?.text,
     preheader,
     from: options?.from,
+    fromEmail: options?.fromEmail,
+    fromName: options?.fromName,
     cc: options?.cc,
     bcc: options?.bcc,
     replyTo: options?.replyTo,
@@ -237,6 +370,13 @@ export const sendCategorizedUserEmail = async (
     attachments: options?.attachments,
     tags: options?.tags as any,
     scheduledAt: options?.scheduledAt,
+    generateTextFromHtml: options?.generateTextFromHtml,
+    priority: options?.priority,
+    listId: options?.listId,
+    idempotencyKey: options?.idempotencyKey,
+    inReplyTo: options?.inReplyTo,
+    references: options?.references,
+    messageId: options?.messageId,
     metadata: {
       type: "user_notification",
       category,

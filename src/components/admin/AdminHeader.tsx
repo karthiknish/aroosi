@@ -34,6 +34,7 @@ export function AdminHeader({
     if (path.startsWith("/admin/contact")) return "Contact Messages";
     if (path.startsWith("/admin/matches")) return "Match Management";
     if (path.startsWith("/admin/analytics")) return "Analytics";
+    if (path.startsWith("/admin/marketing-email")) return "Marketing Email";
     return "Admin Panel";
   };
 

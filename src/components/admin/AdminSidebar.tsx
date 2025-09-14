@@ -81,11 +81,11 @@ export function AdminSidebar({
       isActive: currentPath === "/admin/push-notification",
     },
     {
-      id: "email",
-      label: "Email Notifications",
+      id: "marketing-email",
+      label: "Email Marketing",
       icon: Mail,
-      href: "/admin/push-notification/devices",
-      isActive: currentPath === "/admin/push-notification/devices",
+      href: "/admin/marketing-email",
+      isActive: currentPath.startsWith("/admin/marketing-email"),
     },
     {
       id: "reports",

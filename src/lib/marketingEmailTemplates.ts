@@ -5,6 +5,23 @@ type MarketingEmailPayload = {
   html: string;
 };
 
+// Build a safe absolute URL for images in emails
+function resolveImageUrl(url?: string): string {
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.APP_BASE_URL ||
+    "https://aroosi.app";
+  const placeholder = `${base.replace(/\/$/, "")}/placeholder.jpg`;
+  if (!url || typeof url !== "string") return placeholder;
+  // Already absolute http(s)
+  if (/^https?:\/\//i.test(url)) return url;
+  // Root-relative path
+  if (url.startsWith("/")) {
+    return `${base.replace(/\/$/, "")}${url}`;
+  }
+  return placeholder;
+}
+
 function wrapMarketingEmailContent(
   title: string,
   body: string,
@@ -295,7 +312,7 @@ export function recommendedProfilesTemplate(
     <div style="border:1px solid #eee; border-radius:8px; overflow:hidden; margin-bottom:16px; background:#fff;">
       <div style="display:flex; padding:16px;">
         <div style="flex:0 0 80px; margin-right:16px;">
-          <img src="${profile.profileImageUrl}" alt="${profile.fullName}" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" />
+          <img src="${resolveImageUrl(profile.profileImageUrl)}" alt="${profile.fullName}" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" />
         </div>
         <div style="flex:1;">
           <h3 style="margin:0 0 8px 0; font-size:18px; color:#222;">${profile.fullName}</h3>

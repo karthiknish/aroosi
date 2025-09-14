@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/app/api/_utils/auth";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import {
+  successResponse,
+  errorResponse,
+  errorResponsePublic,
+} from "@/lib/apiResponse";
 import {
   profileCompletionReminderTemplate,
   premiumPromoTemplate,
@@ -11,7 +15,7 @@ import {
   welcomeDay1Template,
 } from "@/lib/marketingEmailTemplates";
 import type { Profile } from "@/types/profile";
-import { sendUserNotification } from "@/lib/email";
+import { sendEmail as sendEmailNow } from "@/lib/email";
 
 type TestBody = {
   testEmail: string;
@@ -41,13 +45,22 @@ export async function POST(request: NextRequest) {
     try {
       body = (await request.json()) as TestBody;
     } catch {
-      return errorResponse("Invalid JSON body", 400);
+      return errorResponsePublic("Invalid JSON body", 400);
     }
 
-    const { testEmail, templateKey, params, preheader, subject, body: customHtml } = body || {};
+    const {
+      testEmail,
+      templateKey,
+      params,
+      preheader,
+      subject,
+      body: customHtml,
+    } = body || {};
     if (!testEmail || !testEmail.includes("@")) {
-      return errorResponse("Invalid testEmail", 400);
+      return errorResponsePublic("Invalid testEmail", 400);
     }
+
+    const providerConfigured = !!process.env.RESEND_API_KEY;
 
     // Custom mode: subject + html provided
     if (!templateKey && subject && typeof customHtml === "string") {
@@ -64,11 +77,31 @@ export async function POST(request: NextRequest) {
           html = pre + html;
         }
       }
-      await sendUserNotification(testEmail, subject, html);
+      // If email provider isn't configured in this environment, simulate success to enable local testing
+      if (!providerConfigured) {
+        return successResponse({
+          sent: true,
+          simulated: true,
+          recipient: testEmail,
+          subject,
+        });
+      }
+      const result = await sendEmailNow({ to: testEmail, subject, html });
+      if ((result as any)?.error) {
+        const msg =
+          typeof (result as any).error === "string"
+            ? (result as any).error
+            : (result as any).error?.message || "Email provider error";
+        return errorResponsePublic(msg, 502);
+      }
       return successResponse({ sent: true, recipient: testEmail, subject });
     }
 
-    if (!templateKey) return errorResponse("Missing templateKey or custom subject/body", 400);
+    if (!templateKey)
+      return errorResponsePublic(
+        "Missing templateKey or custom subject/body",
+        400
+      );
 
     const profile = stubProfile();
     const unsub = "test_unsub_token";
@@ -81,7 +114,12 @@ export async function POST(request: NextRequest) {
         break;
       case "profileCompletionReminder": {
         const pct = Number(args[0] ?? 70);
-        payload = profileCompletionReminderTemplate(profile, pct, unsub, preheader);
+        payload = profileCompletionReminderTemplate(
+          profile,
+          pct,
+          unsub,
+          preheader
+        );
         break;
       }
       case "weeklyDigest": {
@@ -101,7 +139,9 @@ export async function POST(request: NextRequest) {
       }
       case "successStory": {
         const title = String(args[0] ?? "A Beautiful Beginning");
-        const preview = String(args[1] ?? "Two hearts found each other on Aroosi.");
+        const preview = String(
+          args[1] ?? "Two hearts found each other on Aroosi."
+        );
         payload = successStoryTemplate(title, preview, unsub, preheader);
         break;
       }
@@ -112,7 +152,7 @@ export async function POST(request: NextRequest) {
             fullName: "Mina",
             city: "Herat",
             country: "Afghanistan",
-            profileImageUrl: "https://aroosi.app/images/placeholder.png",
+            profileImageUrl: "/placeholder.jpg",
             compatibilityScore: 92,
             aboutMe: "I love poetry and mountains.",
           },
@@ -121,7 +161,7 @@ export async function POST(request: NextRequest) {
             fullName: "Ahmad",
             city: "Kabul",
             country: "Afghanistan",
-            profileImageUrl: "https://aroosi.app/images/placeholder.png",
+            profileImageUrl: "/placeholder.jpg",
             compatibilityScore: 88,
             aboutMe: "Coffee, books, and long walks.",
           },
@@ -130,13 +170,40 @@ export async function POST(request: NextRequest) {
         break;
       }
       default:
-        return errorResponse("Unknown templateKey", 400);
+        return errorResponsePublic("Unknown templateKey", 400);
     }
 
     if (!payload) return errorResponse("Failed to render template", 500);
-    await sendUserNotification(testEmail, payload.subject, payload.html);
-    return successResponse({ sent: true, recipient: testEmail, subject: payload.subject });
+    // If email provider isn't configured in this environment, simulate success to enable local testing
+    if (!providerConfigured) {
+      return successResponse({
+        sent: true,
+        simulated: true,
+        recipient: testEmail,
+        subject: payload.subject,
+      });
+    }
+    const result = await sendEmailNow({
+      to: testEmail,
+      subject: payload.subject,
+      html: payload.html,
+    });
+    if ((result as any)?.error) {
+      const msg =
+        typeof (result as any).error === "string"
+          ? (result as any).error
+          : (result as any).error?.message || "Email provider error";
+      return errorResponsePublic(msg, 502);
+    }
+    return successResponse({
+      sent: true,
+      recipient: testEmail,
+      subject: payload.subject,
+    });
   } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[marketing-email/test] Unexpected error", e);
+    }
     return errorResponse("Failed to send test email", 500);
   }
 }

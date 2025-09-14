@@ -159,7 +159,14 @@ export async function POST(req: NextRequest) {
           email,
           message,
         });
-        await sendAdminNotification(adminTemplate.subject, adminTemplate.html);
+        await sendAdminNotification(
+          `[Contact] ${adminTemplate.subject}`,
+          adminTemplate.html,
+          {
+            replyTo: `${name} <${email}>`,
+            headers: { "X-Category": "contact" },
+          }
+        );
         const userTemplate = contactFormUserAckTemplate({ name });
         await sendUserNotification(
           email,

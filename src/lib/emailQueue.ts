@@ -2,15 +2,21 @@
 // Provides enqueue + attempt delivery + logging pattern
 
 import { adminDb } from '@/lib/firebaseAdminInit';
-import { sendEmail } from '@/lib/email';
+// Import the provider-level sender to avoid circular dependency with lib/email
+import { sendEmail } from '@/lib/email/resend';
 
 export interface QueuedEmail {
   id?: string;
-  to: string | string[];
+  to:
+    | string
+    | { email: string; name?: string }
+    | Array<string | { email: string; name?: string }>;
   subject: string;
   html?: string;
   text?: string;
   from?: string;
+  fromEmail?: string;
+  fromName?: string;
   preheader?: string;
   cc?: string[];
   bcc?: string[];
@@ -24,6 +30,13 @@ export interface QueuedEmail {
   }>;
   tags?: Array<string> | Array<{ name: string; value: string }>;
   scheduledAt?: number;
+  generateTextFromHtml?: boolean;
+  priority?: "high" | "normal" | "low";
+  listId?: string;
+  idempotencyKey?: string;
+  inReplyTo?: string;
+  references?: string | string[];
+  messageId?: string;
   status?: "queued" | "sending" | "sent" | "error" | "retry";
   error?: string;
   attempts?: number;
@@ -83,21 +96,129 @@ export async function processEmail(docId: string) {
     { status: "sending", updatedAt: now, lastAttemptAt: now },
     { merge: true }
   );
+  // Merge latest campaign settings (if present) at send time
+  let mergedPriority = data.priority;
+  let mergedListId = data.listId;
+  let mergedHeaders = { ...(data.headers || {}) } as Record<string, string>;
+  try {
+    const campaignId = data.metadata?.campaignId as string | undefined;
+    if (campaignId) {
+      const campaignSnap = await adminDb
+        .collection("marketing_email_campaigns")
+        .doc(campaignId)
+        .get();
+      if (campaignSnap.exists) {
+        const c = campaignSnap.data() as any;
+        const settings = c?.settings || {};
+        if (settings.priority) mergedPriority = settings.priority;
+        if (settings.listId) mergedListId = settings.listId;
+        if (settings.headers && typeof settings.headers === "object") {
+          mergedHeaders = { ...mergedHeaders, ...settings.headers };
+        }
+      }
+    }
+  } catch {}
+
+  // Skip processing if campaign is paused/cancelled
+  try {
+    const campaignId = data.metadata?.campaignId as string | undefined;
+    if (campaignId) {
+      const campaignSnap = await adminDb
+        .collection("marketing_email_campaigns")
+        .doc(campaignId)
+        .get();
+      if (campaignSnap.exists) {
+        const status = (campaignSnap.data() as any)?.status;
+        if (status === "paused" || status === "cancelled") {
+          await ref.set(
+            {
+              status: status === "paused" ? "queued" : "error",
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          );
+          return { ok: false, reason: status } as const;
+        }
+      }
+    }
+  } catch {}
+
+  // Normalize addresses for provider
+  const formatAddress = (addr: string | { email: string; name?: string }) => {
+    if (typeof addr === "string") return addr;
+    return addr.name ? `${addr.name} <${addr.email}>` : addr.email;
+  };
+  const toArray: string[] = Array.isArray(data.to)
+    ? (data.to as Array<string | { email: string; name?: string }>).map(
+        formatAddress
+      )
+    : [formatAddress(data.to as any)];
+
+  // Choose a from address
+  const fromAddress: string =
+    data.from ||
+    (data.fromEmail
+      ? data.fromName
+        ? `${data.fromName} <${data.fromEmail}>`
+        : data.fromEmail
+      : "Aroosi <noreply@aroosi.app>");
+
+  // Inject preheader if provided
+  const preheaderHtml = data.preheader
+    ? `<div style="display:none!important;opacity:0;color:transparent;height:0;width:0;overflow:hidden">${data.preheader}</div>`
+    : "";
+  const htmlWithPreheader = `${preheaderHtml}${data.html || ""}`;
+
+  // Derive text from HTML if requested
+  const textContent =
+    data.text ||
+    (data.generateTextFromHtml && data.html
+      ? String(data.html)
+          .replace(/<style[\s\S]*?<\/style>/gi, " ")
+          .replace(/<script[\s\S]*?<\/script>/gi, " ")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+      : undefined);
+
+  // Map headers and special fields
+  const headers = { ...mergedHeaders } as Record<string, string>;
+  if (data.replyTo)
+    headers["Reply-To"] = Array.isArray(data.replyTo)
+      ? data.replyTo.join(", ")
+      : data.replyTo;
+  if (mergedListId) headers["List-Id"] = mergedListId;
+  if (data.idempotencyKey) headers["Idempotency-Key"] = data.idempotencyKey;
+  if (data.inReplyTo) headers["In-Reply-To"] = data.inReplyTo;
+  if (data.messageId) headers["Message-Id"] = data.messageId;
+  if (data.references)
+    headers["References"] = Array.isArray(data.references)
+      ? data.references.join(" ")
+      : (data.references as string);
+  if (mergedPriority === "high") {
+    headers["X-Priority"] = "1 (Highest)";
+    headers["X-MSMail-Priority"] = "High";
+    headers["Importance"] = "High";
+  } else if (mergedPriority === "low") {
+    headers["X-Priority"] = "5 (Lowest)";
+    headers["X-MSMail-Priority"] = "Low";
+    headers["Importance"] = "Low";
+  }
+
   const result = await sendEmail({
-    to: data.to,
+    from: fromAddress,
+    to: toArray,
     subject: data.subject,
-    html: data.html,
-    text: data.text,
-    from: data.from,
-    preheader: data.preheader,
-    cc: data.cc,
-    bcc: data.bcc,
-    replyTo: data.replyTo,
-    headers: data.headers,
-    attachments: data.attachments,
-    tags: data.tags,
-    scheduledAt: data.scheduledAt,
-    metadata: data.metadata,
+    html: htmlWithPreheader || undefined,
+    text: textContent,
+    cc: data.cc && data.cc.length ? data.cc : undefined,
+    bcc: data.bcc && data.bcc.length ? data.bcc : undefined,
+    headers,
+    attachments: data.attachments?.map((a) => ({
+      filename: a.filename,
+      content: a.content as any,
+      contentType: a.contentType,
+    })),
   });
   if ((result as any).error) {
     const attempts = (data.attempts || 0) + 1;

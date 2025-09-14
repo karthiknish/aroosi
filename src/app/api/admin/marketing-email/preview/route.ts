@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/app/api/_utils/auth";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
+import {
+  successResponse,
+  errorResponse,
+  errorResponsePublic,
+} from "@/lib/apiResponse";
 import {
   welcomeDay1Template,
   profileCompletionReminderTemplate,
@@ -38,21 +42,32 @@ export async function POST(request: NextRequest) {
     try {
       body = (await request.json()) as PreviewBody;
     } catch {
-      return errorResponse("Invalid JSON body", 400);
+      return errorResponsePublic("Invalid JSON body", 400);
     }
 
-    const { templateKey, params, preheader, subject, body: customHtml } = body || {};
+    const {
+      templateKey,
+      params,
+      preheader,
+      subject,
+      body: customHtml,
+    } = body || {};
 
     // Custom mode: return provided subject/body with preheader inserted at top
     if (!templateKey && subject && typeof customHtml === "string") {
-      const pre = preheader && preheader.trim()
-        ? `<div style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;color:transparent">${preheader.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`
-        : "";
+      const pre =
+        preheader && preheader.trim()
+          ? `<div style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;color:transparent">${preheader.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`
+          : "";
       const html = `${pre}${customHtml}`;
       return successResponse({ subject, html });
     }
 
-    if (!templateKey) return errorResponse("Missing templateKey or custom subject/body", 400);
+    if (!templateKey)
+      return errorResponsePublic(
+        "Missing templateKey or custom subject/body",
+        400
+      );
 
     const profile = stubProfile();
     const unsub = "test_unsub_token";
@@ -65,7 +80,12 @@ export async function POST(request: NextRequest) {
         break;
       case "profileCompletionReminder": {
         const pct = Number(args[0] ?? 70);
-        payload = profileCompletionReminderTemplate(profile, pct, unsub, preheader);
+        payload = profileCompletionReminderTemplate(
+          profile,
+          pct,
+          unsub,
+          preheader
+        );
         break;
       }
       case "weeklyDigest": {
@@ -85,7 +105,9 @@ export async function POST(request: NextRequest) {
       }
       case "successStory": {
         const title = String(args[0] ?? "A Beautiful Beginning");
-        const preview = String(args[1] ?? "Two hearts found each other on Aroosi.");
+        const preview = String(
+          args[1] ?? "Two hearts found each other on Aroosi."
+        );
         payload = successStoryTemplate(title, preview, unsub, preheader);
         break;
       }
@@ -96,7 +118,7 @@ export async function POST(request: NextRequest) {
             fullName: "Mina",
             city: "Herat",
             country: "Afghanistan",
-            profileImageUrl: "https://aroosi.app/images/placeholder.png",
+            profileImageUrl: "/placeholder.jpg",
             compatibilityScore: 92,
             aboutMe: "I love poetry and mountains.",
           },
@@ -105,7 +127,7 @@ export async function POST(request: NextRequest) {
             fullName: "Ahmad",
             city: "Kabul",
             country: "Afghanistan",
-            profileImageUrl: "https://aroosi.app/images/placeholder.png",
+            profileImageUrl: "/placeholder.jpg",
             compatibilityScore: 88,
             aboutMe: "Coffee, books, and long walks.",
           },
@@ -114,12 +136,15 @@ export async function POST(request: NextRequest) {
         break;
       }
       default:
-        return errorResponse("Unknown templateKey", 400);
+        return errorResponsePublic("Unknown templateKey", 400);
     }
 
     if (!payload) return errorResponse("Failed to render template", 500);
     return successResponse(payload);
   } catch (e) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[marketing-email/preview] Unexpected error", e);
+    }
     return errorResponse("Preview failed", 500);
   }
 }

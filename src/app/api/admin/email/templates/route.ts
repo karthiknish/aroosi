@@ -1,43 +1,30 @@
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/app/api/_utils/auth";
 import { successResponse, errorResponse } from "@/lib/apiResponse";
-
-type TemplateItem = {
-  key: string;
-  label: string;
-  category: "marketing" | "transactional";
-};
-
-const MARKETING_TEMPLATES: TemplateItem[] = [
-  { key: "profileCompletionReminder", label: "Profile Completion Reminder", category: "marketing" },
-  { key: "premiumPromo", label: "Premium Promo", category: "marketing" },
-  { key: "recommendedProfiles", label: "Recommended Profiles Digest", category: "marketing" },
-  { key: "reEngagement", label: "Re-Engagement", category: "marketing" },
-  { key: "successStory", label: "Success Story", category: "marketing" },
-  { key: "weeklyDigest", label: "Weekly Matches Digest", category: "marketing" },
-  { key: "welcomeDay1", label: "Welcome Day 1", category: "marketing" },
-];
-
-const TRANSACTIONAL_TEMPLATES: TemplateItem[] = [
-  { key: "profileCreated", label: "Profile Created (user)", category: "transactional" },
-  { key: "profileApproved", label: "Profile Approved (user)", category: "transactional" },
-  { key: "profileBanStatus", label: "Profile Ban/Unban (user)", category: "transactional" },
-  { key: "newMatch", label: "New Match (user)", category: "transactional" },
-  { key: "newMessage", label: "New Message (user)", category: "transactional" },
-  { key: "contactFormAdmin", label: "Contact Form (admin)", category: "transactional" },
-  { key: "subscriptionChanged", label: "Subscription Changed (user)", category: "transactional" },
-  { key: "contactFormUserAck", label: "Contact Form Ack (user)", category: "transactional" },
-  { key: "profileCreatedAdmin", label: "Profile Created (admin)", category: "transactional" },
-  { key: "subscriptionPurchasedAdmin", label: "Subscription Purchased (admin)", category: "transactional" },
-  { key: "otpVerification", label: "OTP Verification (user)", category: "transactional" },
-  { key: "recommendedProfilesUser", label: "Recommended Profiles (user)", category: "transactional" },
-];
+import { TEMPLATE_MAP } from "@/lib/marketingEmailTemplatesPublic";
 
 export async function GET(request: NextRequest) {
   const adminCheck = await requireAdminSession(request);
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
+
   try {
-    const templates = [...MARKETING_TEMPLATES, ...TRANSACTIONAL_TEMPLATES];
+    // Source of truth: marketing templates public map
+    // This endpoint is used by the marketing email UI dropdown, so we only return marketing templates here.
+    const templates = Object.keys(TEMPLATE_MAP)
+      // Exclude builder-only template from the marketing dropdown until the builder flow is implemented
+      .filter((key) => key !== "builder" && (TEMPLATE_MAP as any)[key]?.category !== "builder")
+      .map((key) => {
+        const t = (TEMPLATE_MAP as any)[key] as {
+          label?: string;
+          category?: string;
+        };
+        return {
+          key,
+          label: t?.label || key,
+          category: t?.category || "general",
+        };
+      });
+
     return successResponse({ templates });
   } catch (e) {
     return errorResponse("Failed to list templates", 500);
