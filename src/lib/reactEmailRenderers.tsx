@@ -1,5 +1,5 @@
 import React from "react";
-import ReactDOMServer from "react-dom/server";
+import { render as renderEmail } from "@react-email/render";
 import { Profile } from "@/types/profile";
 import { ProfileCompletionReminder } from "@/emails/Marketing/ProfileCompletionReminder";
 import { RecommendedProfiles } from "@/emails/Marketing/RecommendedProfiles";
@@ -22,12 +22,14 @@ export function renderMarketingReactTemplate(
           unsubscribeToken={unsubscribeToken}
         />
       );
-      const html = ReactDOMServer.renderToStaticMarkup(element);
+      const html = renderEmail(element);
       const subject = `${profile.fullName}, your profile is ${completionPercentage}% complete`;
       return { subject, html };
     }
     case "recommendedProfiles": {
-      const recs = Array.isArray(args?.recommendations) ? args.recommendations : [];
+      const recs = Array.isArray(args?.recommendations)
+        ? args.recommendations
+        : [];
       const element = (
         <RecommendedProfiles
           name={profile.fullName || "there"}
@@ -35,7 +37,7 @@ export function renderMarketingReactTemplate(
           unsubscribeToken={unsubscribeToken}
         />
       );
-      const html = ReactDOMServer.renderToStaticMarkup(element);
+      const html = renderEmail(element);
       const subject = `New matches for you on Aroosi – ${recs.length} recommended profiles`;
       return { subject, html };
     }

@@ -1,7 +1,8 @@
+import "server-only";
 import { Resend } from "resend";
 import { enqueueEmail } from "@/lib/emailQueue";
 import React from "react";
-import ReactDOMServer from "react-dom/server";
+import { render as renderEmail } from "@react-email/render";
 
 // Lazy-initialize Resend to avoid requiring API key in test environment
 let resendInstance: Resend | null = null;
@@ -153,12 +154,14 @@ export const sendUserNotification = async (
     unsubscribeUrl?: string;
   }
 ) => {
-  const html =
-    typeof htmlOrReact === "string"
-      ? htmlOrReact
-      : React.isValidElement(htmlOrReact as any)
-        ? ReactDOMServer.renderToStaticMarkup(htmlOrReact as any)
-        : String(htmlOrReact ?? "");
+  let html: string;
+  if (typeof htmlOrReact === "string") {
+    html = htmlOrReact;
+  } else if (React.isValidElement(htmlOrReact as any)) {
+    html = await renderEmail(htmlOrReact as any);
+  } else {
+    html = String(htmlOrReact ?? "");
+  }
   await enqueueEmail({
     to: email,
     subject,
@@ -212,12 +215,14 @@ export const sendCategorizedUserEmail = async (
     unsubscribeUrl?: string;
   }
 ) => {
-  const html =
-    typeof htmlOrReact === "string"
-      ? htmlOrReact
-      : React.isValidElement(htmlOrReact as any)
-        ? ReactDOMServer.renderToStaticMarkup(htmlOrReact as any)
-        : String(htmlOrReact ?? "");
+  let html: string;
+  if (typeof htmlOrReact === "string") {
+    html = htmlOrReact;
+  } else if (React.isValidElement(htmlOrReact as any)) {
+    html = await renderEmail(htmlOrReact as any);
+  } else {
+    html = String(htmlOrReact ?? "");
+  }
   await enqueueEmail({
     to: email,
     subject,
