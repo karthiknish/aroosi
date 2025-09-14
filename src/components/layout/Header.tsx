@@ -36,9 +36,19 @@ import {
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
   const pathname = usePathname();
+  const [scrolled, setScrolled] = React.useState(false);
 
   React.useEffect(() => {
     setHydrated(true);
+  }, []);
+
+  React.useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 4);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const {
@@ -121,7 +131,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/search" onClick={onClick} className="block">
+                <Link
+                  href="/search"
+                  onClick={onClick}
+                  className="block"
+                  aria-current={pathname === "/search" ? "page" : undefined}
+                >
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
@@ -139,7 +154,14 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   initial="hidden"
                   animate="visible"
                 >
-                  <Link href="/admin" onClick={onClick} className="block">
+                  <Link
+                    href="/admin"
+                    onClick={onClick}
+                    className="block"
+                    aria-current={
+                      pathname.startsWith("/admin") ? "page" : undefined
+                    }
+                  >
                     <Button
                       variant="ghost"
                       className="w-full justify-start text-primary-dark hover:text-primary hover:bg-pink-50 font-semibold"
@@ -157,7 +179,14 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/matches" onClick={onClick} className="block">
+                <Link
+                  href="/matches"
+                  onClick={onClick}
+                  className="block"
+                  aria-current={
+                    pathname.startsWith("/matches") ? "page" : undefined
+                  }
+                >
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
@@ -178,6 +207,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   href="/engagement/shortlists"
                   onClick={onClick}
                   className="block"
+                  aria-current={
+                    pathname.startsWith("/engagement/shortlists")
+                      ? "page"
+                      : undefined
+                  }
                 >
                   <Button
                     variant="ghost"
@@ -201,6 +235,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                       href="/premium-settings"
                       onClick={onClick}
                       className="block"
+                      aria-current={
+                        pathname.startsWith("/premium-settings")
+                          ? "page"
+                          : undefined
+                      }
                     >
                       <Button
                         variant="ghost"
@@ -269,7 +308,14 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/usage" onClick={onClick} className="block">
+                <Link
+                  href="/usage"
+                  onClick={onClick}
+                  className="block"
+                  aria-current={
+                    pathname.startsWith("/usage") ? "page" : undefined
+                  }
+                >
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
@@ -332,7 +378,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/about" onClick={onClick} className="block">
+                <Link
+                  href="/about"
+                  onClick={onClick}
+                  className="block"
+                  aria-current={pathname === "/about" ? "page" : undefined}
+                >
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
@@ -348,7 +399,14 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                 initial="hidden"
                 animate="visible"
               >
-                <Link href="/how-it-works" onClick={onClick} className="block">
+                <Link
+                  href="/how-it-works"
+                  onClick={onClick}
+                  className="block"
+                  aria-current={
+                    pathname === "/how-it-works" ? "page" : undefined
+                  }
+                >
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
@@ -370,6 +428,9 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   prefetch={false}
                   onClick={onClick}
                   className="block"
+                  aria-current={
+                    pathname.startsWith("/sign-in") ? "page" : undefined
+                  }
                 >
                   <Button
                     variant="outline"
@@ -384,6 +445,7 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
                   prefetch={false}
                   onClick={onClick}
                   className="block"
+                  aria-current={pathname === "/" ? "page" : undefined}
                 >
                   <Button className="w-full flex items-center justify-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
                     <UserPlus className="h-4 w-4" />
@@ -407,7 +469,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
           className="hidden md:flex items-center gap-2"
           aria-label="Primary Guest Navigation"
         >
-          <Link href="/about" className="block">
+          <Link
+            href="/about"
+            className="block"
+            aria-current={pathname === "/about" ? "page" : undefined}
+          >
             <Button
               variant="ghost"
               className="justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
@@ -415,7 +481,11 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               About
             </Button>
           </Link>
-          <Link href="/how-it-works" className="block">
+          <Link
+            href="/how-it-works"
+            className="block"
+            aria-current={pathname === "/how-it-works" ? "page" : undefined}
+          >
             <Button
               variant="ghost"
               className="justify-start text-gray-700 hover:text-primary hover:bg-pink-50"
@@ -423,7 +493,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               How It Works
             </Button>
           </Link>
-          <Link href="/sign-in" prefetch={false} className="block">
+          <Link
+            href="/sign-in"
+            prefetch={false}
+            className="block"
+            aria-current={pathname.startsWith("/sign-in") ? "page" : undefined}
+          >
             <Button
               variant="outline"
               className="flex items-center gap-1.5 text-pink-600 border-pink-600 hover:bg-pink-50 hover:border-pink-700"
@@ -432,7 +507,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
               <span>Sign In</span>
             </Button>
           </Link>
-          <Link href="/" prefetch={false} className="block">
+          <Link
+            href="/"
+            prefetch={false}
+            className="block"
+            aria-current={pathname === "/" ? "page" : undefined}
+          >
             <Button className="flex items-center gap-1.5 bg-pink-600 hover:bg-pink-700 text-white">
               <UserPlus className="h-4 w-4" />
               <span>Sign Up</span>
@@ -591,7 +671,12 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
         variants={headerVariants}
         initial="hidden"
         animate="visible"
-        className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm"
+        className={
+          "fixed top-0 left-0 right-0 z-50 transition-all duration-300 " +
+          (scrolled
+            ? "bg-white/90 backdrop-blur border-b border-gray-200 shadow-sm"
+            : "bg-white shadow-sm")
+        }
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">

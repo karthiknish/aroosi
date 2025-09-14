@@ -142,9 +142,17 @@ export default function MarketingEmailAdminPage() {
       if (templateKey === "profileCompletionReminder")
         params.args = [completionPct];
       if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
+      if (mode === "builder") {
+        (params as any).schema = builderSchema;
+      }
 
       const res = await sendMarketingEmail("", {
-        templateKey: mode === "template" ? templateKey : undefined,
+        templateKey:
+          mode === "template"
+            ? templateKey
+            : mode === "builder"
+              ? "builder"
+              : undefined,
         subject: mode === "custom" ? customSubject : undefined,
         body: mode === "custom" ? customBody : undefined,
         params,
@@ -192,12 +200,21 @@ export default function MarketingEmailAdminPage() {
       if (templateKey === "profileCompletionReminder")
         params.args = [completionPct];
       if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
+      if (mode === "builder") {
+        (params as any).schema = builderSchema;
+      }
       const res = await previewMarketingEmail({
-        templateKey: mode === "template" ? templateKey : undefined,
+        templateKey:
+          mode === "template"
+            ? templateKey
+            : mode === "builder"
+              ? "builder"
+              : undefined,
         subject: mode === "custom" ? customSubject : undefined,
         body: mode === "custom" ? customBody : undefined,
         params,
-        preheader: mode === "custom" ? preheader : undefined,
+        preheader:
+          mode === "custom" ? preheader : builderSchema.preheader || undefined,
       });
       if (res.success && (res.data as any)?.html) {
         setHtmlPreview((res.data as any).html);
@@ -218,13 +235,22 @@ export default function MarketingEmailAdminPage() {
       if (templateKey === "profileCompletionReminder")
         params.args = [completionPct];
       if (templateKey === "reEngagement") params.args = [daysSinceLastLogin];
+      if (mode === "builder") {
+        (params as any).schema = builderSchema;
+      }
 
       const res = await sendTestEmail("", {
         testEmail: testEmail.trim(),
-        templateKey: mode === "template" ? templateKey : undefined,
+        templateKey:
+          mode === "template"
+            ? templateKey
+            : mode === "builder"
+              ? "builder"
+              : undefined,
         subject: mode === "custom" ? customSubject : undefined,
         body: mode === "custom" ? customBody : undefined,
-        preheader: mode === "custom" ? preheader : undefined,
+        preheader:
+          mode === "custom" ? preheader : builderSchema.preheader || undefined,
         params,
         abTest:
           abEnabled && abSubjectA && abSubjectB
