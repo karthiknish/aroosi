@@ -8,9 +8,22 @@ export interface QueuedEmail {
   id?: string;
   to: string | string[];
   subject: string;
-  html: string;
+  html?: string;
+  text?: string;
   from?: string;
   preheader?: string;
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string | string[];
+  headers?: Record<string, string>;
+  attachments?: Array<{
+    filename: string;
+    content?: string | Buffer;
+    contentType?: string;
+    path?: string;
+  }>;
+  tags?: Array<string> | Array<{ name: string; value: string }>;
+  scheduledAt?: number;
   status?: "queued" | "sending" | "sent" | "error" | "retry";
   error?: string;
   attempts?: number;
@@ -22,23 +35,26 @@ export interface QueuedEmail {
   nextVisibleAt?: number; // scheduled time for next retry (backoff)
   metadata?: Record<string, any>;
   providerResponseId?: string;
+  providerResponse?: any;
 }
 
-const COLLECTION = 'emails_outbox';
+const COLLECTION = "emails_outbox";
 const DEFAULT_MAX_ATTEMPTS = 5;
 const BASE_BACKOFF_MS = 30_000; // 30s initial backoff
 const MAX_BACKOFF_MS = 15 * 60_000; // 15 min cap
 
-export async function enqueueEmail(email: Omit<QueuedEmail, 'status' | 'attempts' | 'createdAt' | 'updatedAt'>) {
+export async function enqueueEmail(
+  email: Omit<QueuedEmail, "status" | "attempts" | "createdAt" | "updatedAt">
+) {
   const now = Date.now();
   const docRef = await adminDb.collection(COLLECTION).add({
     ...email,
-    status: 'queued',
+    status: "queued",
     attempts: 0,
     maxAttempts: email.maxAttempts || DEFAULT_MAX_ATTEMPTS,
     createdAt: now,
-  updatedAt: now,
-  nextVisibleAt: now
+    updatedAt: now,
+    nextVisibleAt: now,
   });
   return docRef.id;
 }
@@ -47,43 +63,75 @@ export async function enqueueEmail(email: Omit<QueuedEmail, 'status' | 'attempts
 export async function processEmail(docId: string) {
   const ref = adminDb.collection(COLLECTION).doc(docId);
   const snap = await ref.get();
-  if (!snap.exists) return { ok: false, reason: 'not_found' } as const;
+  if (!snap.exists) return { ok: false, reason: "not_found" } as const;
   const data = snap.data() as QueuedEmail;
 
-  if (data.status === 'sent') return { ok: true, already: true } as const;
-  if (data.status === 'sending') return { ok: false, reason: 'in_progress' } as const;
-  if (data.attempts && data.attempts >= (data.maxAttempts || DEFAULT_MAX_ATTEMPTS)) {
-    return { ok: false, reason: 'exhausted' } as const;
+  if (data.status === "sent") return { ok: true, already: true } as const;
+  if (data.status === "sending")
+    return { ok: false, reason: "in_progress" } as const;
+  if (
+    data.attempts &&
+    data.attempts >= (data.maxAttempts || DEFAULT_MAX_ATTEMPTS)
+  ) {
+    return { ok: false, reason: "exhausted" } as const;
   }
   const now = Date.now();
   if (data.nextVisibleAt && data.nextVisibleAt > now) {
-    return { ok: false, reason: 'not_due' } as const;
+    return { ok: false, reason: "not_due" } as const;
   }
-  await ref.set({ status: 'sending', updatedAt: now, lastAttemptAt: now }, { merge: true });
+  await ref.set(
+    { status: "sending", updatedAt: now, lastAttemptAt: now },
+    { merge: true }
+  );
   const result = await sendEmail({
     to: data.to,
     subject: data.subject,
     html: data.html,
+    text: data.text,
     from: data.from,
     preheader: data.preheader,
+    cc: data.cc,
+    bcc: data.bcc,
+    replyTo: data.replyTo,
+    headers: data.headers,
+    attachments: data.attachments,
+    tags: data.tags,
+    scheduledAt: data.scheduledAt,
+    metadata: data.metadata,
   });
   if ((result as any).error) {
     const attempts = (data.attempts || 0) + 1;
     const exhausted = attempts >= (data.maxAttempts || DEFAULT_MAX_ATTEMPTS);
     // exponential backoff: base * 2^(attempts-1)
-    const backoff = Math.min(BASE_BACKOFF_MS * Math.pow(2, attempts - 1), MAX_BACKOFF_MS);
+    const backoff = Math.min(
+      BASE_BACKOFF_MS * Math.pow(2, attempts - 1),
+      MAX_BACKOFF_MS
+    );
     const nextVisibleAt = exhausted ? null : Date.now() + backoff;
-    await ref.set({
-      status: exhausted ? 'error' : 'retry',
-      error: String((result as any).error),
-      attempts,
-      updatedAt: Date.now(),
-      nextVisibleAt
-    }, { merge: true });
-    return { ok: false, reason: exhausted ? 'error' : 'retry' } as const;
+    await ref.set(
+      {
+        status: exhausted ? "error" : "retry",
+        error: String((result as any).error),
+        attempts,
+        updatedAt: Date.now(),
+        nextVisibleAt,
+      },
+      { merge: true }
+    );
+    return { ok: false, reason: exhausted ? "error" : "retry" } as const;
   }
-  const providerId = (result as any).data?.id || (result as any).data?.messageId;
-  await ref.set({ status: 'sent', sentAt: Date.now(), updatedAt: Date.now(), providerResponseId: providerId }, { merge: true });
+  const providerId =
+    (result as any).data?.id || (result as any).data?.messageId;
+  await ref.set(
+    {
+      status: "sent",
+      sentAt: Date.now(),
+      updatedAt: Date.now(),
+      providerResponseId: providerId,
+      providerResponse: (result as any).data,
+    },
+    { merge: true }
+  );
   return { ok: true } as const;
 }
 

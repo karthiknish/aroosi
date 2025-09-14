@@ -11,9 +11,11 @@ import {
   weeklyMatchesDigestTemplate,
   welcomeDay1Template,
 } from "@/lib/marketingEmailTemplates";
-import { db } from "@/lib/firebaseAdmin";
+import { db, adminAuth } from "@/lib/firebaseAdmin";
 import { sendUserNotification } from "@/lib/email";
 import type { Profile } from "@/types/profile";
+import { renderMarketingReactTemplate } from "@/lib/reactEmailRenderers";
+import { getPublicBaseUrl, hashEmail } from "@/lib/tracking";
 
 const TEMPLATE_MAP: Record<string, MarketingEmailTemplateFn> = {
   profileCompletionReminder:
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
       search,
       plan,
       banned,
+      sendToAllFromAuth,
       // deprecated isProfileComplete removed; optional future filters: isOnboardingComplete
       page,
       pageSize,
@@ -79,6 +82,7 @@ export async function POST(request: Request) {
       page?: number;
       pageSize?: number;
       sendToAll?: boolean;
+      sendToAllFromAuth?: boolean;
       sortBy?: string;
       sortDir?: string;
     };
@@ -138,7 +142,24 @@ export async function POST(request: Request) {
 
     let profiles: Array<Partial<Profile> & { email?: string }>;
     // If sendToAll is requested, paginate through users using cursors
-    if (sendToAll) {
+    if (sendToAllFromAuth) {
+      // Fetch from Firebase Auth user registry (up to effectiveMax)
+      profiles = [];
+      let nextPageToken: string | undefined = undefined;
+      let fetched = 0;
+      while (fetched < effectiveMax) {
+        const page = await adminAuth.listUsers(1000, nextPageToken);
+        for (const u of page.users) {
+          const email = u.email || undefined;
+          if (!email) continue;
+          profiles.push({ email } as any);
+          fetched += 1;
+          if (fetched >= effectiveMax) break;
+        }
+        nextPageToken = page.pageToken || undefined;
+        if (!nextPageToken) break;
+      }
+    } else if (sendToAll) {
       profiles = [];
       let last: FirebaseFirestore.QueryDocumentSnapshot | null = null;
       let fetched = 0;
@@ -203,7 +224,45 @@ export async function POST(request: Request) {
       .slice(start, start + safePageSize)
       .slice(0, effectiveMax);
 
-    const templateFn = templateKey ? TEMPLATE_MAP[templateKey] : null;
+  const templateFn = templateKey ? TEMPLATE_MAP[templateKey] : null;
+
+    const appendTrackingToHtml = (
+      html: string,
+      campaignId: string,
+      email: string,
+      extraParams: Record<string, string>
+    ) => {
+      const base = getPublicBaseUrl();
+      const eid = hashEmail(email);
+      const tracked = html.replace(
+        /<a\s+([^>]*?)href=("|')(https?:[^"']+)(\2)([^>]*)>/gi,
+        (m, pre, quote, url, _quote2, post) => {
+          try {
+            const target = new URL(url);
+            target.searchParams.set("utm_source", "email");
+            target.searchParams.set("utm_medium", "marketing");
+            if (templateKey)
+              target.searchParams.set("utm_campaign", templateKey);
+            for (const [k, v] of Object.entries(extraParams))
+              target.searchParams.set(k, v);
+            const redirect = new URL(`${base}/api/admin/email/tracking/click`);
+            redirect.searchParams.set("url", target.toString());
+            redirect.searchParams.set("cid", campaignId);
+            redirect.searchParams.set("eid", eid);
+            const newHref = `${quote}${redirect.toString()}${quote}`;
+            return `<a ${pre}href=${newHref}${post}>`;
+          } catch {
+            return m;
+          }
+        }
+      );
+      // Add open pixel just before closing body or at end
+      const pixelUrl = `${base}/api/admin/email/tracking/open?cid=${encodeURIComponent(campaignId)}&eid=${encodeURIComponent(eid)}`;
+      const pixelTag = `<img src="${pixelUrl}" alt="" width="1" height="1" style="display:none;" />`;
+      if (tracked.match(/<\/body>/i))
+        return tracked.replace(/<\/body>/i, `${pixelTag}</body>`);
+      return tracked + pixelTag;
+    };
 
     // If dryRun, return preview count and first few preview payloads
     if (dryRun) {
@@ -221,23 +280,36 @@ export async function POST(request: Request) {
           fullName: (p as Profile).fullName || "",
         } as Profile;
 
-        const payload = templateFn
-          ? templateKey === "profileCompletionReminder"
-            ? templateFn(
-                baseProfile,
-                baseProfile.profileCompletionPercentage || 0,
-                ""
-              )
-            : templateKey === "premiumPromo"
-              ? templateFn(baseProfile, 30, "")
-              : templateKey === "recommendedProfiles"
-                ? templateFn(baseProfile, [], "")
-                : templateFn(
-                    baseProfile,
-                    ...((params?.args || []) as unknown[]),
-                    ""
-                  )
-          : { subject: subject || "(no subject)", html: customBody || "" };
+        // Prefer React renderer for TSX templates, with graceful fallback to string templates
+        let payload:
+          | { subject: string; html: string }
+          | null = null;
+        if (templateKey) {
+          payload = renderMarketingReactTemplate(
+            templateKey,
+            { ...(params || {}), completionPercentage: (baseProfile as any).profileCompletionPercentage || 0 },
+            { profile: baseProfile, unsubscribeToken: "" }
+          );
+        }
+        if (!payload) {
+          payload = templateFn
+            ? templateKey === "profileCompletionReminder"
+              ? templateFn(
+                  baseProfile,
+                  baseProfile.profileCompletionPercentage || 0,
+                  ""
+                )
+              : templateKey === "premiumPromo"
+                ? templateFn(baseProfile, 30, "")
+                : templateKey === "recommendedProfiles"
+                  ? templateFn(baseProfile, [], "")
+                  : templateFn(
+                      baseProfile,
+                      ...((params?.args || []) as unknown[]),
+                      ""
+                    )
+            : { subject: subject || "(no subject)", html: customBody || "" };
+        }
 
         let finalSubject = payload.subject;
         let abVariant: "A" | "B" | undefined;
@@ -287,7 +359,30 @@ export async function POST(request: Request) {
           : undefined,
     });
 
+    // Create a campaign document for admin history
+    const campaignRef = await db.collection("marketing_email_campaigns").add({
+      status: "processing",
+      templateKey: templateKey || null,
+      subject: subject || null,
+      hasCustom: Boolean(subject || customBody),
+      maxAudience: effectiveMax,
+      abTest:
+        abTest && abTest.subjects
+          ? {
+              subjects: abTest.subjects,
+              ratio: Math.max(1, Math.min(99, Number(abTest.ratio ?? 50))),
+            }
+          : null,
+      createdAt: Date.now(),
+      startedBy: userId,
+      totalCandidates: finalProfiles.length,
+      sent: 0,
+      errors: 0,
+      lastError: null,
+    });
+
     let sent = 0;
+    let errors = 0;
     const ratio = Math.max(1, Math.min(99, Number(abTest?.ratio ?? 50)));
     const aCount = Math.round((finalProfiles.length * ratio) / 100);
     for (let i = 0; i < finalProfiles.length; i++) {
@@ -300,35 +395,44 @@ export async function POST(request: Request) {
         } as Profile;
 
         let emailPayload: { subject: string; html: string } | null = null;
-        if (templateFn) {
-          if (templateKey === "profileCompletionReminder") {
-            emailPayload = templateFn(
-              baseProfile,
-              baseProfile.profileCompletionPercentage || 0,
-              ""
-            );
-          } else if (templateKey === "premiumPromo") {
-            const promoDays =
-              Array.isArray(params?.args) &&
-              typeof params!.args![0] === "number"
-                ? (params!.args![0] as number)
-                : 30;
-            emailPayload = templateFn(baseProfile, promoDays, "");
-          } else if (templateKey === "recommendedProfiles") {
-            // Optional: enrichment omitted in live send for safety; can be added behind a smaller cap
-            emailPayload = templateFn(baseProfile, [], "");
+        if (templateKey) {
+          // Attempt React render first
+          emailPayload = renderMarketingReactTemplate(
+            templateKey,
+            { ...(params || {}), completionPercentage: (baseProfile as any).profileCompletionPercentage || 0 },
+            { profile: baseProfile, unsubscribeToken: "" }
+          );
+        }
+        if (!emailPayload) {
+          if (templateFn) {
+            if (templateKey === "profileCompletionReminder") {
+              emailPayload = templateFn(
+                baseProfile,
+                baseProfile.profileCompletionPercentage || 0,
+                ""
+              );
+            } else if (templateKey === "premiumPromo") {
+              const promoDays =
+                Array.isArray(params?.args) &&
+                typeof params!.args![0] === "number"
+                  ? (params!.args![0] as number)
+                  : 30;
+              emailPayload = templateFn(baseProfile, promoDays, "");
+            } else if (templateKey === "recommendedProfiles") {
+              emailPayload = templateFn(baseProfile, [], "");
+            } else {
+              emailPayload = templateFn(
+                baseProfile,
+                ...((params?.args || []) as unknown[]),
+                ""
+              );
+            }
           } else {
-            emailPayload = templateFn(
-              baseProfile,
-              ...((params?.args || []) as unknown[]),
-              ""
-            );
+            emailPayload = {
+              subject: subject || "(no subject)",
+              html: customBody || "",
+            };
           }
-        } else {
-          emailPayload = {
-            subject: subject || "(no subject)",
-            html: customBody || "",
-          };
         }
         // A/B subject override
         if (
@@ -357,19 +461,68 @@ export async function POST(request: Request) {
         }
 
         if (p.email) {
+          // Tracking links and metadata
+          const campaignId = campaignRef.id as string;
+          const abVariant =
+            abTest &&
+            abTest.subjects &&
+            abTest.subjects[0] &&
+            abTest.subjects[1]
+              ? i < aCount
+                ? "A"
+                : "B"
+              : undefined;
+          const trackedHtml = appendTrackingToHtml(
+            emailPayload.html,
+            campaignId,
+            p.email,
+            abVariant ? { ab: abVariant } : {}
+          );
           await sendUserNotification(
             p.email,
             emailPayload.subject,
-            emailPayload.html
+            trackedHtml,
+            {
+              preheader,
+              category: "marketing",
+              campaignId,
+              tags: ["marketing", templateKey || "custom"],
+              abVariant,
+            }
           );
           sent += 1;
+          if (sent % 25 === 0) {
+            await campaignRef.set(
+              { sent, updatedAt: Date.now() },
+              { merge: true }
+            );
+          }
         }
-      } catch {
+      } catch (err: any) {
         devLog("warn", "admin.marketing-email", "send_error", {
           email: p.email,
         });
+        errors += 1;
+        await campaignRef.set(
+          {
+            errors,
+            lastError: err?.message || String(err),
+            updatedAt: Date.now(),
+          },
+          { merge: true }
+        );
       }
     }
+
+    await campaignRef.set(
+      {
+        status: "completed",
+        sent,
+        completedAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
 
     return successResponse({
       dryRun: false,

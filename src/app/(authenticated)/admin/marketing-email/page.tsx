@@ -64,6 +64,7 @@ export default function MarketingEmailAdminPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [showCampaignHistory, setShowCampaignHistory] =
     useState<boolean>(false);
+  const [processingOutbox, setProcessingOutbox] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -223,6 +224,22 @@ export default function MarketingEmailAdminPage() {
     }
 
     return errors;
+  };
+
+  const handleProcessOutbox = async () => {
+    setProcessingOutbox(true);
+    try {
+      const res = await fetch("/api/admin/email/outbox/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showSuccessToast("Processed email outbox batch");
+    } catch (e) {
+      showErrorToast(null, "Failed to process outbox");
+    } finally {
+      setProcessingOutbox(false);
+    }
   };
 
   return (
@@ -661,6 +678,12 @@ export default function MarketingEmailAdminPage() {
                         >
                           {campaign.status}
                         </span>
+                        <a
+                          className="px-2 py-1 rounded border text-xs"
+                          href={`/admin/marketing-email/campaign/${campaign.id}`}
+                        >
+                          View
+                        </a>
                       </div>
                     </div>
                   ))}
@@ -688,6 +711,14 @@ export default function MarketingEmailAdminPage() {
             disabled={sending}
           >
             Preview HTML
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleProcessOutbox}
+            disabled={processingOutbox}
+            title="Process a small batch of queued emails"
+          >
+            {processingOutbox ? "Processing…" : "Process Outbox"}
           </Button>
         </div>
 

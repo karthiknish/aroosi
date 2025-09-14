@@ -7,6 +7,7 @@ import ReportModal from "@/components/chat/ReportModal";
 import { useModernChat, type ReportReason } from "@/hooks/useModernChat";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useState } from "react";
+import { canSendVoiceMessage } from "@/lib/utils/messageUtils";
 
 export type ModernChatProps = {
   conversationId: string;
@@ -163,8 +164,11 @@ function ModernChat({
         onSend={handleSendMessage}
         onInputChange={handleInputChange}
         onKeyPress={handleKeyPress}
-        // Voice: enable if device supports it; Composer will gate via hook
-        canSendVoice={true}
+        // Voice: gate mic based on subscription plan
+        canSendVoice={(() => {
+          const plan = subscriptionStatus.data?.plan || "free";
+          return canSendVoiceMessage(plan);
+        })()}
         onSendVoice={undefined}
         onVoiceUpgradeRequired={() => {}}
         onVoiceError={() => {}}
