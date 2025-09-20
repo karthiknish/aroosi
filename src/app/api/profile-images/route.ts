@@ -43,15 +43,12 @@ async function listUserImages(user: AuthenticatedUser) {
       .filter((f: any) => !f.name.endsWith("/"))
       .map(async (f: any) => {
         const [meta] = await f.getMetadata();
-        // Generate signed URL for secure access
-        const [signedUrl] = await f.getSignedUrl({
-          action: "read",
-          expires: Date.now() + 60 * 60 * 1000, // 1 hour
-        });
+        // Use public URL since storage rules allow public read access
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${f.name}`;
         return {
           storageId: f.name,
           fileName: meta.name,
-          url: signedUrl,
+          url: publicUrl,
           size: Number(meta.size || 0),
           uploadedAt: meta.metadata?.uploadedAt || meta.timeCreated,
           contentType: meta.contentType || null,
@@ -161,10 +158,8 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
       bucket = adminStorage.bucket(fallbackName);
     }
     const file = bucket.file(storageId);
-    const [signedUrl] = await file.getSignedUrl({
-      action: "read",
-      expires: Date.now() + 60 * 60 * 1000, // 1 hour
-    });
+    // Use public URL since storage rules allow public read access
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storageId}`;
 
     await db
       .collection("users")
@@ -177,13 +172,13 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
           fileName,
           contentType,
           size,
-          url: signedUrl,
+          url: publicUrl,
           uploadedAt: new Date().toISOString(),
         },
         { merge: true }
       );
     return new Response(
-      JSON.stringify({ success: true, imageId, correlationId }),
+      JSON.stringify({ success: true, imageId, url: publicUrl, correlationId }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (e) {

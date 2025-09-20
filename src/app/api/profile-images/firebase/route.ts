@@ -145,7 +145,7 @@ export const POST = withFirebaseAuth(
 
       if (!existingIds.includes(storageId)) {
         existingIds.push(storageId);
-        existingUrls.push(signedUrl);
+        existingUrls.push(publicUrl);
         await userRef.set(
           {
             profileImageIds: existingIds,
@@ -158,7 +158,7 @@ export const POST = withFirebaseAuth(
         // If ID exists but URL missing at same index, repair alignment
         const idx = existingIds.indexOf(storageId);
         if (idx >= 0 && (!existingUrls[idx] || existingUrls[idx] === "")) {
-          existingUrls[idx] = signedUrl;
+          existingUrls[idx] = publicUrl;
           await userRef.set(
             { profileImageUrls: existingUrls, updatedAt: Date.now() },
             { merge: true }
@@ -167,7 +167,7 @@ export const POST = withFirebaseAuth(
       }
 
       return new Response(
-        JSON.stringify({ success: true, imageId, url: signedUrl }),
+        JSON.stringify({ success: true, imageId, url: publicUrl }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     } catch (e) {
