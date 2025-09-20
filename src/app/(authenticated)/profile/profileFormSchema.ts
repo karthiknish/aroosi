@@ -63,7 +63,7 @@ export function getProfileFormSchema(isOnboarding: boolean) {
         z.number().max(99).optional()
       ),
       partnerPreferenceCity: z.array(z.string()).optional(),
-      preferredGender: z.enum(["male", "female", "other", "any"], {
+      preferredGender: z.enum(["male", "female", "non-binary", "other", "any"], {
         required_error: "Preferred gender is required",
       }),
       profileImageIds: z.array(z.string()).optional(),

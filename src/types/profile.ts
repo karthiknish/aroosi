@@ -4,8 +4,8 @@
 export type Id<_TableName extends string> = string;
 
 // Type definitions matching mobile version exactly
-export type Gender = "male" | "female" | "other";
-export type PreferredGender = "male" | "female" | "other" | "any" | "";
+export type Gender = "male" | "female" | "non-binary" | "other";
+export type PreferredGender = "male" | "female" | "non-binary" | "other" | "any" | "";
 export type MaritalStatus = "single" | "divorced" | "widowed" | "annulled";
 export type Diet =
   | "vegetarian"

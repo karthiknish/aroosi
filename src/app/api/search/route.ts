@@ -27,7 +27,7 @@ const QuerySchema = z.object({
   ethnicity: SanStr.optional(),
   motherTongue: SanStr.optional(),
   language: SanStr.optional(),
-  preferredGender: z.enum(["any", "male", "female", "other"]).optional(),
+  preferredGender: z.enum(["any", "male", "female", "non-binary", "other"]).optional(),
   ageMin: z.coerce.number().int().min(18).max(120).optional(),
   ageMax: z.coerce.number().int().min(18).max(120).optional(),
   page: z.coerce.number().int().min(0).max(100).default(0),

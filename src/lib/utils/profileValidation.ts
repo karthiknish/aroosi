@@ -38,14 +38,14 @@ export function validateProfileData(data: Record<string, unknown>): ValidationRe
 
   // Validate gender
   if (data.gender !== undefined) {
-    if (!['male', 'female', 'other'].includes(data.gender as string)) {
+    if (!['male', 'female', 'non-binary', 'other'].includes(data.gender as string)) {
       return { isValid: false, error: 'Invalid gender value' };
     }
   }
 
   // Validate preferredGender
   if (data.preferredGender !== undefined) {
-    if (!['male', 'female', 'other', 'any', ''].includes(data.preferredGender as string)) {
+    if (!['male', 'female', 'non-binary', 'other', 'any', ''].includes(data.preferredGender as string)) {
       return { isValid: false, error: 'Invalid preferred gender value' };
     }
   }

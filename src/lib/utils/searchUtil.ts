@@ -25,7 +25,7 @@ export async function fetchProfileSearchResults({
   country,
   ageMin,
   ageMax,
-  preferredGender, // "any" | "male" | "female" | "other"
+  preferredGender, // "any" | "male" | "female" | "non-binary" | "other"
   ethnicity,
   motherTongue,
   language,
@@ -36,7 +36,7 @@ export async function fetchProfileSearchResults({
   country?: string;
   ageMin?: number | string;
   ageMax?: number | string;
-  preferredGender?: "any" | "male" | "female" | "other";
+  preferredGender?: "any" | "male" | "female" | "non-binary" | "other";
   ethnicity?: string;
   motherTongue?: string;
   language?: string;

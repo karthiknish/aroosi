@@ -1,11 +1,11 @@
 // Centralized Firebase Admin initialization to avoid duplicate app inits.
-import { getApps, initializeApp, cert, applicationDefault, App } from 'firebase-admin/app';
+import * as admin from 'firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import { getMessaging } from 'firebase-admin/messaging';
 
-let app: App;
+let app: admin.app.App;
 
 // Credential resolution priority:
 // 1. FIREBASE_SERVICE_ACCOUNT (single-line JSON OR base64 if it does not start with '{')
@@ -60,50 +60,54 @@ function parseServiceAccount(): Record<string, any> | null {
   return null;
 }
 
-if (!getApps().length) {
-  const svc = parseServiceAccount();
-  try {
-    if (svc) {
-      app = initializeApp({
-        credential: cert(svc),
-        projectId: svc.project_id,
-      } as any);
-      // Ensure downstream Google libs see a project ID (some rely on GCLOUD_PROJECT / GOOGLE_CLOUD_PROJECT)
-      if (!process.env.GCLOUD_PROJECT && svc.project_id) {
-        process.env.GCLOUD_PROJECT = svc.project_id;
-      }
-      if (!process.env.GOOGLE_CLOUD_PROJECT && svc.project_id) {
-        process.env.GOOGLE_CLOUD_PROJECT = svc.project_id;
-      }
-      if (process.env.NODE_ENV !== "production") {
-        console.info(
-          "[firebase-admin] Initialized with explicit service account for project:",
-          svc.project_id
-        );
-      }
-    } else {
-      // Use project ID from environment or fallback to known project ID
-      const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'aroosi-project';
-      app = initializeApp({
-        credential: applicationDefault(),
-        projectId: projectId
-      } as any);
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          "[firebase-admin] Using applicationDefault credentials (no explicit service account env parsed). Project ID:",
-          projectId
-        );
-      }
+const svc = parseServiceAccount();
+try {
+  if (svc) {
+    app = admin.initializeApp({
+      credential: admin.credential.cert(svc),
+      projectId: svc.project_id,
+    });
+    // Ensure downstream Google libs see a project ID (some rely on GCLOUD_PROJECT / GOOGLE_CLOUD_PROJECT)
+    if (!process.env.GCLOUD_PROJECT && svc.project_id) {
+      process.env.GCLOUD_PROJECT = svc.project_id;
     }
-  } catch (e) {
-    console.error(
-      "[firebase-admin] Initialization error; final fallback to applicationDefault()",
-      (e as Error).message
-    );
-    app = initializeApp({ credential: applicationDefault() } as any);
+    if (!process.env.GOOGLE_CLOUD_PROJECT && svc.project_id) {
+      process.env.GOOGLE_CLOUD_PROJECT = svc.project_id;
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.info(
+        "[firebase-admin] Initialized with explicit service account for project:",
+        svc.project_id
+      );
+    }
+  } else {
+    // Use project ID from environment or fallback to known project ID
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'aroosi-project';
+    app = admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      projectId: projectId
+    });
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[firebase-admin] Using applicationDefault credentials (no explicit service account env parsed). Project ID:",
+        projectId
+      );
+    }
   }
-} else {
-  app = getApps()[0];
+} catch (e) {
+  console.error(
+    "[firebase-admin] Initialization error; final fallback to applicationDefault()",
+    (e as Error).message
+  );
+  try {
+    app = admin.initializeApp({ credential: admin.credential.applicationDefault() });
+  } catch (e2) {
+    console.error(
+      "[firebase-admin] Final fallback also failed:",
+      (e2 as Error).message
+    );
+    throw e2;
+  }
 }
 
 // Development diagnostic: verify projectId resolution
@@ -124,7 +128,6 @@ if (process.env.NODE_ENV !== "production") {
 export const adminDb = getFirestore();
 export const adminFieldValue = FieldValue;
 export const adminAuth = getAuth();
-// For development, use a hardcoded bucket name when no environment variable is set
-const defaultBucket = 'aroosi-project.appspot.com';
-export const adminStorage = getStorage(app, process.env.FIREBASE_STORAGE_BUCKET || defaultBucket);
-export const adminMessaging = getMessaging(app);
+
+export const adminStorage = getStorage();
+export const adminMessaging = getMessaging();

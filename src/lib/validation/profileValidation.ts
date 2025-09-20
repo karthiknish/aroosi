@@ -123,7 +123,7 @@ export const enhancedValidationSchemas = {
         message: errorMessages.required(fieldDisplayNames.profileFor),
       }),
     }),
-    gender: z.enum(["male", "female", "other"], {
+    gender: z.enum(["male", "female", "non-binary", "other"], {
       errorMap: () => ({
         message: errorMessages.required(fieldDisplayNames.gender),
       }),
@@ -207,7 +207,7 @@ export const enhancedValidationSchemas = {
 
   // Step 5: Partner Preferences (base schema)
   preferencesBase: z.object({
-    preferredGender: z.enum(["male", "female", "any", "other"], {
+    preferredGender: z.enum(["male", "female", "non-binary", "any", "other"], {
       errorMap: () => ({
         message: errorMessages.required(fieldDisplayNames.preferredGender),
       }),
@@ -228,7 +228,7 @@ export const enhancedValidationSchemas = {
   // Step 5: Partner Preferences (with validation)
   preferences: z
     .object({
-      preferredGender: z.enum(["male", "female", "any", "other"], {
+      preferredGender: z.enum(["male", "female", "non-binary", "any", "other"], {
         errorMap: () => ({
           message: errorMessages.required(fieldDisplayNames.preferredGender),
         }),
