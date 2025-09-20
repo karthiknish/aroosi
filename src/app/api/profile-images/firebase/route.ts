@@ -32,13 +32,10 @@ async function listImages(userId: string) {
       .filter((f: any) => !f.name.endsWith("/"))
       .map(async (f: any) => {
         const [meta] = await f.getMetadata();
-        // Generate signed URL for secure access
-        const [signedUrl] = await f.getSignedUrl({
-          action: "read",
-          expires: Date.now() + 60 * 60 * 1000, // 1 hour
-        });
+        // Use public URL since storage rules allow public read access
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${f.name}`;
         return {
-          url: signedUrl,
+          url: publicUrl,
           storageId: f.name,
           fileName: meta.name,
           size: Number(meta.size || 0),
@@ -120,10 +117,8 @@ export const POST = withFirebaseAuth(
         bucket = adminStorage.bucket(fallbackName);
       }
       const file = bucket.file(storageId);
-      const [signedUrl] = await file.getSignedUrl({
-        action: "read",
-        expires: Date.now() + 60 * 60 * 1000, // 1 hour
-      });
+      // Use public URL since storage rules allow public read access
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storageId}`;
 
       await imagesCol.doc(imageId).set(
         {
@@ -131,7 +126,7 @@ export const POST = withFirebaseAuth(
           fileName,
           contentType,
           size,
-          url: signedUrl,
+          url: publicUrl,
           uploadedAt: new Date().toISOString(),
         },
         { merge: true }

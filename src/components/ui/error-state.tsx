@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, WifiOff, RefreshCw, Clock } from "lucide-react";
 import * as React from "react";
-import { useOffline, NetworkStatus } from "@/hooks/useOffline";
+import { useOffline } from "@/hooks/useOffline";
 
 interface ErrorStateProps {
   message?: string;
@@ -30,12 +30,12 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
     return <AlertTriangle className="h-8 w-8 text-orange-500" />;
   };
 
-  const getDisplayMessage = () => {
-    if (!networkStatus.isOnline) {
+  const getDisplayMessage = (status: typeof networkStatus) => {
+    if (!status.isOnline) {
       return "You're offline. Please check your internet connection and try again.";
     }
-    if (networkStatus.isSlowConnection) {
-      return networkStatus.quality === "slow"
+    if (status.isSlowConnection) {
+      return status.quality === "slow"
         ? "Connection is slow. This might take longer than usual."
         : "Poor connection detected. Please check your network.";
     }
@@ -64,7 +64,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       <p className={`text-gray-700 max-w-xs ${
         variant === "minimal" ? "text-xs" : "text-sm"
       }`}>
-        {getDisplayMessage()}
+        {getDisplayMessage(networkStatus)}
       </p>
 
       {networkStatus.latency && networkStatus.latency < Infinity && (
@@ -96,6 +96,16 @@ export const NetworkErrorState: React.FC<{
 }> = ({ onRetry, className = "", showQuality = false }) => {
   const networkStatus = useOffline();
 
+  const getNetworkDisplayMessage = (status: typeof networkStatus) => {
+    if (!status.isOnline) {
+      return "You're offline. Please check your internet connection.";
+    }
+    if (status.isSlowConnection) {
+      return "Connection is slow. Some features may be delayed.";
+    }
+    return "Network error occurred. Please try again.";
+  };
+
   return (
     <div className={`flex flex-col items-center justify-center text-center gap-4 py-8 ${className}`}>
       <div className="flex items-center gap-2">
@@ -110,7 +120,7 @@ export const NetworkErrorState: React.FC<{
       <div className="text-center">
         <h3 className="font-medium text-gray-900 mb-1">Connection Issue</h3>
         <p className="text-sm text-gray-600 max-w-xs">
-          {getDisplayMessage()}
+          {getNetworkDisplayMessage(networkStatus)}
         </p>
         {networkStatus.latency && networkStatus.latency < Infinity && (
           <p className="text-xs text-gray-500 mt-2">
@@ -133,13 +143,3 @@ function getIcon() {
   return <WifiOff className="h-8 w-8 text-red-500" />;
 }
 
-function getDisplayMessage() {
-  const networkStatus = useOffline();
-  if (!networkStatus.isOnline) {
-    return "You're offline. Please check your internet connection.";
-  }
-  if (networkStatus.isSlowConnection) {
-    return "Connection is slow. Some features may be delayed.";
-  }
-  return "Network error occurred. Please try again.";
-}
