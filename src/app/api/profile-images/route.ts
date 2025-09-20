@@ -43,10 +43,15 @@ async function listUserImages(user: AuthenticatedUser) {
       .filter((f: any) => !f.name.endsWith("/"))
       .map(async (f: any) => {
         const [meta] = await f.getMetadata();
+        // Generate signed URL for secure access
+        const [signedUrl] = await f.getSignedUrl({
+          action: "read",
+          expires: Date.now() + 60 * 60 * 1000, // 1 hour
+        });
         return {
           storageId: f.name,
           fileName: meta.name,
-          url: `https://storage.googleapis.com/${bucket.name || process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/${f.name}`,
+          url: signedUrl,
           size: Number(meta.size || 0),
           uploadedAt: meta.metadata?.uploadedAt || meta.timeCreated,
           contentType: meta.contentType || null,
@@ -141,18 +146,26 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
     } catch {}
 
     const imageId = String(storageId).split("/").pop() || String(storageId);
-    // Resolve bucket name defensively for the public URL
-    let resolvedBucketName: string | undefined;
+    // Generate signed URL for the image
+    let bucket: any;
     try {
-      resolvedBucketName = adminStorage.bucket().name;
+      bucket = adminStorage.bucket();
     } catch (e) {
-      resolvedBucketName =
+      const fallbackName =
         process.env.FIREBASE_STORAGE_BUCKET ||
         process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
         (process.env.GCLOUD_PROJECT
           ? `${process.env.GCLOUD_PROJECT}.appspot.com`
           : undefined);
+      if (!fallbackName) throw e;
+      bucket = adminStorage.bucket(fallbackName);
     }
+    const file = bucket.file(storageId);
+    const [signedUrl] = await file.getSignedUrl({
+      action: "read",
+      expires: Date.now() + 60 * 60 * 1000, // 1 hour
+    });
+
     await db
       .collection("users")
       .doc(user.id)
@@ -164,7 +177,7 @@ export const POST = withFirebaseAuth(async (user, req: NextRequest) => {
           fileName,
           contentType,
           size,
-          url: `https://storage.googleapis.com/${resolvedBucketName}/${storageId}`,
+          url: signedUrl,
           uploadedAt: new Date().toISOString(),
         },
         { merge: true }

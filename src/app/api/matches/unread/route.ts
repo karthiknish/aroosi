@@ -8,10 +8,11 @@ export const GET = withFirebaseAuth(async (authUser, _req: NextRequest) => {
   const correlationId = Math.random().toString(36).slice(2, 10);
   const userId = authUser.id;
   try {
-    // Prefer limited recent window to keep query bounded; fall back gracefully if index constraints arise
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    // Query messages for the user with proper index support
     let snap: FirebaseFirestore.QuerySnapshot | null = null;
     try {
+      // Use the new composite index: (toUserId, createdAt)
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
       snap = await db
         .collection(COLLECTION)
         .where("toUserId", "==", userId)
@@ -20,12 +21,12 @@ export const GET = withFirebaseAuth(async (authUser, _req: NextRequest) => {
         .limit(1000)
         .get();
     } catch {
-      // Fallback: drop createdAt filter and rely on limit; may be heavier but avoids index errors
+      // Fallback: simpler query without time constraint but still uses index
       snap = await db
         .collection(COLLECTION)
         .where("toUserId", "==", userId)
         .orderBy("createdAt", "desc")
-        .limit(1000)
+        .limit(500)
         .get();
     }
 

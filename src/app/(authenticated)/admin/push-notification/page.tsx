@@ -955,7 +955,6 @@ export default function PushNotificationAdminPage() {
                 handleSaveTemplate={handleSaveTemplate}
                 handleDeleteTemplate={handleDeleteTemplate}
                 handleApplyTemplate={handleApplyTemplate}
-                copyToClipboard={copyToClipboard}
               />
             </TabsContent>
           </Tabs>

@@ -32,8 +32,13 @@ async function listImages(userId: string) {
       .filter((f: any) => !f.name.endsWith("/"))
       .map(async (f: any) => {
         const [meta] = await f.getMetadata();
+        // Generate signed URL for secure access
+        const [signedUrl] = await f.getSignedUrl({
+          action: "read",
+          expires: Date.now() + 60 * 60 * 1000, // 1 hour
+        });
         return {
-          url: `https://storage.googleapis.com/${bucket.name || process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}/${f.name}`,
+          url: signedUrl,
           storageId: f.name,
           fileName: meta.name,
           size: Number(meta.size || 0),
@@ -100,26 +105,33 @@ export const POST = withFirebaseAuth(
         .doc(user.id)
         .collection("images");
       const imageId = storageId.split("/").pop() || storageId;
-      // Always derive bucket name from admin SDK where possible, otherwise fall back to env
-      let resolvedBucketName: string | undefined;
+      // Generate signed URL for the image
+      let bucket: any;
       try {
-        resolvedBucketName = adminStorage.bucket().name;
+        bucket = adminStorage.bucket();
       } catch (e) {
-        resolvedBucketName =
+        const fallbackName =
           process.env.FIREBASE_STORAGE_BUCKET ||
           process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
           (process.env.GCLOUD_PROJECT
             ? `${process.env.GCLOUD_PROJECT}.appspot.com`
             : undefined);
+        if (!fallbackName) throw e;
+        bucket = adminStorage.bucket(fallbackName);
       }
-      const publicUrl = `https://storage.googleapis.com/${resolvedBucketName}/${storageId}`;
+      const file = bucket.file(storageId);
+      const [signedUrl] = await file.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 60 * 60 * 1000, // 1 hour
+      });
+
       await imagesCol.doc(imageId).set(
         {
           storageId,
           fileName,
           contentType,
           size,
-          url: publicUrl,
+          url: signedUrl,
           uploadedAt: new Date().toISOString(),
         },
         { merge: true }
@@ -138,7 +150,7 @@ export const POST = withFirebaseAuth(
 
       if (!existingIds.includes(storageId)) {
         existingIds.push(storageId);
-        existingUrls.push(publicUrl);
+        existingUrls.push(signedUrl);
         await userRef.set(
           {
             profileImageIds: existingIds,
@@ -151,7 +163,7 @@ export const POST = withFirebaseAuth(
         // If ID exists but URL missing at same index, repair alignment
         const idx = existingIds.indexOf(storageId);
         if (idx >= 0 && (!existingUrls[idx] || existingUrls[idx] === "")) {
-          existingUrls[idx] = publicUrl;
+          existingUrls[idx] = signedUrl;
           await userRef.set(
             { profileImageUrls: existingUrls, updatedAt: Date.now() },
             { merge: true }
@@ -160,7 +172,7 @@ export const POST = withFirebaseAuth(
       }
 
       return new Response(
-        JSON.stringify({ success: true, imageId, url: publicUrl }),
+        JSON.stringify({ success: true, imageId, url: signedUrl }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     } catch (e) {
