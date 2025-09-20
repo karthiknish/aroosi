@@ -5,11 +5,11 @@ import { db } from "@/lib/firebaseAdmin";
 
 const COLLECTION = "pushTemplates";
 
-export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { role } = await requireAuth(request);
   if ((role || "user") !== "admin")
     return errorResponse("Admin privileges required", 403);
-  const id = context?.params?.id;
+  const { id } = await params;
   if (!id) return errorResponse("Missing template id", 400);
   try {
     const ref = db.collection(COLLECTION).doc(id);

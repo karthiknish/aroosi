@@ -82,10 +82,16 @@ if (!getApps().length) {
         );
       }
     } else {
-      app = initializeApp({ credential: applicationDefault() } as any);
+      // Use project ID from environment or fallback to known project ID
+      const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'aroosi-project';
+      app = initializeApp({
+        credential: applicationDefault(),
+        projectId: projectId
+      } as any);
       if (process.env.NODE_ENV !== "production") {
         console.warn(
-          "[firebase-admin] Using applicationDefault credentials (no explicit service account env parsed)."
+          "[firebase-admin] Using applicationDefault credentials (no explicit service account env parsed). Project ID:",
+          projectId
         );
       }
     }
@@ -118,5 +124,7 @@ if (process.env.NODE_ENV !== "production") {
 export const adminDb = getFirestore();
 export const adminFieldValue = FieldValue;
 export const adminAuth = getAuth();
-export const adminStorage = getStorage(app);
+// For development, use a hardcoded bucket name when no environment variable is set
+const defaultBucket = 'aroosi-project.appspot.com';
+export const adminStorage = getStorage(app, process.env.FIREBASE_STORAGE_BUCKET || defaultBucket);
 export const adminMessaging = getMessaging(app);

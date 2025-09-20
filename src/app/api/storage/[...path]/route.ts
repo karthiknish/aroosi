@@ -6,9 +6,10 @@ import { adminStorage } from "@/lib/firebaseAdmin";
 // We expect callers to pass the full storage path like users/<uid>/profile-images/<filename>
 // For backwards compatibility, if only a filename is provided we attempt to locate it under any user's profile-images (NOT recommended: O(n) listing, so we avoid and just 404).
 
-export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const start = Date.now();
-  const segments = params.path || [];
+  const { path } = await params;
+  const segments = path || [];
   if (!segments.length) {
     return new Response(JSON.stringify({ error: "Missing path" }), { status: 400 });
   }
@@ -46,6 +47,19 @@ export async function GET(req: NextRequest, { params }: { params: { path: string
       },
     });
   } catch (e: any) {
+    // Development fallback: if Firebase Admin fails, try to construct a public URL directly
+    if (process.env.NODE_ENV === "development" && storagePath.includes("profile-images")) {
+      const url = `https://storage.googleapis.com/aroosi-project.appspot.com/${storagePath}`;
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: url,
+          "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+          "X-Proxy-Time": `${Date.now() - start}ms`,
+          "X-Development-Fallback": "true",
+        },
+      });
+    }
     console.error("/api/storage error", e);
     return new Response(JSON.stringify({ error: e?.message || "Failed" }), { status: 500 });
   }

@@ -5,11 +5,11 @@ import { db } from "@/lib/firebaseAdmin";
 
 const COLL = 'email_builder_presets';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const adminCheck = await requireAdminSession(request);
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
   try {
-    const id = params.id;
+    const { id } = await params;
     const snap = await db.collection(COLL).doc(id).collection('versions').orderBy('createdAt', 'desc').limit(50).get();
     const versions = snap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) => ({ id: d.id, ...(d.data() as any) }));
     return successResponse({ versions });

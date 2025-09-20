@@ -5,11 +5,11 @@ import { db } from "@/lib/firebaseAdmin";
 
 const COLL = 'email_builder_presets';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const adminCheck = await requireAdminSession(request);
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
   try {
-    const id = params.id;
+    const { id } = await params;
     const body = await request.json().catch(() => ({}));
     const updates: any = { updatedAt: Date.now() };
     if (typeof body?.name === 'string') updates.name = String(body.name).trim();
@@ -39,11 +39,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // List versions for a preset
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const adminCheck = await requireAdminSession(request);
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
   try {
-    const id = params.id;
+    const { id } = await params;
     const snap = await db.collection(COLL).doc(id).collection('versions').orderBy('createdAt', 'desc').limit(25).get();
     const versions = snap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>) => ({ id: d.id, ...(d.data() as any) }));
     return successResponse({ versions });
@@ -52,11 +52,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const adminCheck = await requireAdminSession(request);
   if ("errorResponse" in adminCheck) return adminCheck.errorResponse;
   try {
-    const id = params.id;
+    const { id } = await params;
     await db.collection(COLL).doc(id).delete();
     return successResponse({ ok: true });
   } catch (e) {
