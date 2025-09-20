@@ -11,6 +11,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useOneSignal } from "@/hooks/useOneSignal";
 import VerifyEmailBanner from "@/components/VerifyEmailBanner";
 import BackToTop from "@/components/BackToTop";
+import { OfflineBanner } from "@/components/ui/offline-banner";
 
 export default function ClientRoot({ children }: { children: ReactNode }) {
   const { profile } = useAuthContext();
@@ -32,6 +33,7 @@ export default function ClientRoot({ children }: { children: ReactNode }) {
   return (
     <>
       <Header hideLinks={!!profile?.banned || hideLinks} />
+      <OfflineBanner variant="banner" dismissible={false} />
       <main
         id="main-content"
         className="pt-16 min-h-[calc(100vh-theme(spacing.24)-theme(spacing.16))] overflow-x-hidden"

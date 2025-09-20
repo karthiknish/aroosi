@@ -9,7 +9,7 @@ import { subscriptionRateLimiter } from "@/lib/utils/subscriptionRateLimit"; // 
 import { z } from "zod";
 import { requireSession } from "@/app/api/_utils/auth";
 import { db, COLLECTIONS } from "@/lib/firebaseAdmin";
-import { FieldPath } from "firebase-admin/firestore";
+import { FieldPath, Query, QueryDocumentSnapshot } from "firebase-admin/firestore";
 // Logging removed per request
 
 // type Gender = "any" | "male" | "female" | "other";
@@ -18,7 +18,7 @@ import { FieldPath } from "firebase-admin/firestore";
 const SanStr = z
   .string()
   .trim()
-  .transform((v) => v.replace(/[<>'"&]/g, ""))
+  .transform((v: string) => v.replace(/[<>'"&]/g, ""))
   .pipe(z.string().min(2).max(50));
 
 const QuerySchema = z.object({
@@ -52,6 +52,11 @@ export async function GET(request: NextRequest) {
     const viewerProfile = session.profile;
     const viewerPlan = viewerProfile?.subscriptionPlan || "free";
 
+    // Ensure we have a valid user profile
+    if (!viewerProfile) {
+      return errorResponse("User profile not found. Please complete your profile.", 404);
+    }
+
     // onboarding completion requirement removed
 
     // Burst limiter
@@ -64,6 +69,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const paramsObj = Object.fromEntries(searchParams.entries());
     const parsed = QuerySchema.safeParse(paramsObj);
+
     if (!parsed.success) {
       // Humanize first validation issue for user-friendly feedback
       const issue = parsed.error.issues[0];
@@ -137,7 +143,7 @@ export async function GET(request: NextRequest) {
     // Build base Firestore query
     const isAny = (v?: string) =>
       typeof v === "string" ? v.trim().toLowerCase() === "any" : false;
-    let base: FirebaseFirestore.Query = db.collection(COLLECTIONS.USERS);
+    let base: Query = db.collection(COLLECTIONS.USERS);
 
     // City now handled as case-insensitive substring filter AFTER fetch to allow partial matches.
     // (Previously exact equality in Firestore. This change broadens match capability.)
@@ -165,7 +171,7 @@ export async function GET(request: NextRequest) {
     // null / missing values sink to the bottom naturally. Expired boosts (timestamps in the past) will order
     // below active boosts but above nulls – acceptable; we do a lightweight in-memory adjustment later to
     // demote expired entries if needed.
-    let query: FirebaseFirestore.Query;
+    let query: Query;
     const includeAnsweredOrdering = true; // feature flag – set false to revert quickly if needed
     const includeBoostOrdering = true; // new flag for boosted priority
     if (hasAgeInequality) {
@@ -386,12 +392,12 @@ export async function GET(request: NextRequest) {
         .limit(FALLBACK_SCAN_LIMIT);
       const fbSnap = await fallbackQuery.get();
       const all = fbSnap.docs.map(
-        (d: FirebaseFirestore.QueryDocumentSnapshot) => ({
+        (d: QueryDocumentSnapshot) => ({
           id: d.id,
           ...(d.data() as any),
         })
       );
-      let filtered = all.filter((d: any) => {
+      let filtered = all.filter((d: { [key: string]: any }) => {
         const computeAge = (): number | null => {
           // Prioritize deriving from dateOfBirth (handles Firestore Timestamp / seconds form)
           const dob = d.dateOfBirth;

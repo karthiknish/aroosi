@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { ConnectionIndicator } from "@/components/ui/offline-banner";
 
 export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
   const [hydrated, setHydrated] = React.useState(false);
@@ -556,6 +557,19 @@ export default function Header({ hideLinks = false }: { hideLinks?: boolean }) {
     );
 
     const items: React.ReactNode[] = [];
+
+    // Add connection indicator at the beginning
+    items.push(
+      <Tooltip key="connection">
+        <TooltipTrigger asChild>
+          <div className="flex items-center">
+            <ConnectionIndicator size="sm" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>Network Status</TooltipContent>
+      </Tooltip>
+    );
+
     items.push(iconBtn("/search", Search, "Search Profiles"));
     items.push(iconBtn("/matches", Heart, "Matches"));
     items.push(iconBtn("/engagement/quick-picks", Zap, "Quick Picks"));

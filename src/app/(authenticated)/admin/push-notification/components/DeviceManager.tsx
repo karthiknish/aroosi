@@ -26,7 +26,7 @@ interface DeviceManagerProps {
   deviceSearch: string;
   setDeviceSearch: (value: string) => void;
   devicePage: number;
-  setDevicePage: (value: number) => void;
+  setDevicePage: (value: number | ((prev: number) => number)) => void;
   deviceTotal: number;
   devicesLoading: boolean;
   selectedDevices: Set<string>;

@@ -39,9 +39,9 @@ interface NotificationFormProps {
 
   // Audience state
   segments: string[];
-  setSegments: (value: string[]) => void;
+  setSegments: (value: string[] | ((prev: string[]) => string[])) => void;
   excludedSegments: string[];
-  setExcludedSegments: (value: string[]) => void;
+  setExcludedSegments: (value: string[] | ((prev: string[]) => string[])) => void;
   maxAudience: number;
   setMaxAudience: (value: number) => void;
 
@@ -342,9 +342,9 @@ export function NotificationForm({
                           size="sm"
                           className={active ? "bg-green-600 hover:bg-green-700" : "hover:bg-green-50"}
                           onClick={() =>
-                            setSegments((prev) =>
+                            setSegments((prev: string[]) =>
                               prev.includes(seg)
-                                ? prev.filter((s) => s !== seg)
+                                ? prev.filter((s: string) => s !== seg)
                                 : [...prev, seg]
                             )
                           }
@@ -377,9 +377,9 @@ export function NotificationForm({
                           size="sm"
                           className={active ? "bg-red-600 hover:bg-red-700" : "hover:bg-red-50"}
                           onClick={() =>
-                            setExcludedSegments((prev) =>
+                            setExcludedSegments((prev: string[]) =>
                               prev.includes(seg)
-                                ? prev.filter((s) => s !== seg)
+                                ? prev.filter((s: string) => s !== seg)
                                 : [...prev, seg]
                             )
                           }
