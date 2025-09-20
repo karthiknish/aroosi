@@ -118,5 +118,5 @@ if (process.env.NODE_ENV !== "production") {
 export const adminDb = getFirestore();
 export const adminFieldValue = FieldValue;
 export const adminAuth = getAuth();
-export const adminStorage = getStorage();
-export const adminMessaging = getMessaging();
+export const adminStorage = getStorage(app, process.env.FIREBASE_STORAGE_BUCKET);
+export const adminMessaging = getMessaging(app);

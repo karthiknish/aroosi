@@ -25,12 +25,22 @@ export async function GET(req: NextRequest, { params }: { params: { path: string
     if (!exists) {
       return new Response(JSON.stringify({ error: "Not found" }), { status: 404 });
     }
-    // Generate signed URL with short expiry (1 hour) to leverage CDN caching client-side if desired
-    const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 60 * 60 * 1000 });
+    // Use public URL for profile images since storage rules allow public read access
+    let url: string;
+    if (storagePath.startsWith("users/") && storagePath.includes("profile-images")) {
+      // Use public URL for profile images
+      const bucketName = bucket.name;
+      url = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
+    } else {
+      // Generate signed URL for other files
+      const [signedUrl] = await file.getSignedUrl({ action: "read", expires: Date.now() + 60 * 60 * 1000 });
+      url = signedUrl;
+    }
+
     return new Response(null, {
       status: 302,
       headers: {
-        Location: signedUrl,
+        Location: url,
         "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
         "X-Proxy-Time": `${Date.now() - start}ms`,
       },
