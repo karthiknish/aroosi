@@ -50,7 +50,6 @@ interface TemplateManagerProps {
   handleSaveTemplate: () => void;
   handleDeleteTemplate: (template: Template) => void;
   handleApplyTemplate: (template: Template) => void;
-  copyToClipboard: (text: string) => void;
 }
 
 export function TemplateManager({
@@ -74,7 +73,6 @@ export function TemplateManager({
   handleSaveTemplate,
   handleDeleteTemplate,
   handleApplyTemplate,
-  copyToClipboard,
 }: TemplateManagerProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -129,6 +127,15 @@ export function TemplateManager({
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                   onClick={() => setSelectedTemplate(template)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedTemplate(template);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Select template: ${template.name}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

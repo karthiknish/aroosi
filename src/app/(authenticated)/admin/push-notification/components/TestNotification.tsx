@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   TestTube,
-  Send,
   Smartphone,
   AlertTriangle,
   Copy,
@@ -66,7 +65,7 @@ export function TestNotification({
             <span className="font-medium">Test Mode</span>
           </div>
           <p className="mt-1 text-sm">
-            Test notifications are sent to specific devices only and won't affect your audience.
+            Test notifications are sent to specific devices only and won&apos;t affect your audience.
           </p>
         </div>
 
@@ -227,7 +226,7 @@ export function TestNotification({
           <h4 className="font-medium text-blue-800 mb-2">Testing Tips</h4>
           <ul className="text-sm text-blue-700 space-y-1">
             <li>• Use a real device Player ID from the Devices tab for accurate testing</li>
-            <li>• Test notifications won't count toward your monthly quota</li>
+            <li>• Test notifications won&apos;t count toward your monthly quota</li>
             <li>• Include an image URL to test rich notifications</li>
             <li>• Check the API response for detailed delivery information</li>
           </ul>
