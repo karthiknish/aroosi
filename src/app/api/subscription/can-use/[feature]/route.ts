@@ -153,7 +153,7 @@ export async function GET(
     const canPerform = rem.unlimited || currentUsage < rem.limit;
     const remaining = rem.remaining;
     const responseBody = {
-      canPerform,
+      canUse: canPerform,
       currentUsage,
       limit: rem.limit,
       remaining,
