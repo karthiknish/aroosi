@@ -61,11 +61,14 @@ function parseServiceAccount(): Record<string, any> | null {
 }
 
 const svc = parseServiceAccount();
+const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || (svc?.project_id ? `${svc.project_id}.firebasestorage.app` : 'aroosi-project.firebasestorage.app');
+
 try {
   if (svc) {
     app = admin.initializeApp({
       credential: admin.credential.cert(svc),
       projectId: svc.project_id,
+      storageBucket,
     });
     // Ensure downstream Google libs see a project ID (some rely on GCLOUD_PROJECT / GOOGLE_CLOUD_PROJECT)
     if (!process.env.GCLOUD_PROJECT && svc.project_id) {
@@ -85,7 +88,8 @@ try {
     const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'aroosi-project';
     app = admin.initializeApp({
       credential: admin.credential.applicationDefault(),
-      projectId: projectId
+      projectId: projectId,
+      storageBucket,
     });
     if (process.env.NODE_ENV !== "production") {
       console.warn(

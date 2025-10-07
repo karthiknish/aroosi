@@ -220,7 +220,7 @@ export default function ProfileEditSimpleForm({
 
   // Reset form when initialValues prop changes - normalize like onboarding
   useEffect(() => {
-    if (initialValues && Object.keys(initialValues).length) {
+    if (initialValues) {
       form.reset(initialValues);
 
       // Normalize values to match onboarding format for consistency
@@ -258,15 +258,36 @@ export default function ProfileEditSimpleForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
-  const isDataReady =
-    initialValues &&
-    Object.values(initialValues).some((v) =>
-      Array.isArray(v)
-        ? v.length > 0
-        : typeof v === "object"
-          ? !!v
-          : String(v || "").trim() !== ""
-    );
+  // Update isDataReady logic to handle edge cases better
+  const isDataReady = useMemo(() => {
+    if (!initialValues) return false;
+
+    // If we have initialValues, check if it has any meaningful data
+    const hasMeaningfulData = Object.entries(initialValues).some(([key, value]) => {
+      // Skip technical fields that don't indicate data readiness
+      if (key === '_id' || key === 'userId' || key === 'profileImageIds' ||
+          key === 'profileImageUrls' || key === 'createdAt' || key === 'updatedAt' ||
+          key === 'banned' || key === 'profileFor') {
+        return false;
+      }
+
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+
+      if (typeof value === "object" && value !== null) {
+        return Object.keys(value).length > 0;
+      }
+
+      if (typeof value === "string" || typeof value === "number") {
+        return String(value).trim().length > 0;
+      }
+
+      return !!value;
+    });
+
+    return hasMeaningfulData;
+  }, [initialValues]);
 
   if (!isDataReady) {
     return (

@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     const bucket = adminStorage.bucket();
+    console.log(`[Profile Images Batch] Using bucket: ${bucket.name}`);
     const result: Record<string, string | null> = {};
     await Promise.all(
       userIds.map(async (uid) => {
@@ -35,9 +36,11 @@ export async function GET(req: NextRequest) {
           // First try ordering from user doc profileImageIds for chosen first image
           const userDoc = await db.collection("users").doc(uid).get();
           const data = userDoc.data() || {};
+          console.log(`[Profile Images Batch] User ${uid} exists: ${userDoc.exists}, data keys:`, Object.keys(data || {}));
           const ordered: string[] = Array.isArray(data.profileImageIds)
             ? data.profileImageIds
             : [];
+          console.log(`[Profile Images Batch] User ${uid} has ${ordered.length} ordered images`);
           if (ordered.length > 0) {
             // Build URL cheaply
             result[uid] =
@@ -57,7 +60,8 @@ export async function GET(req: NextRequest) {
           } else {
             result[uid] = null;
           }
-        } catch {
+        } catch (error) {
+          console.error(`[Profile Images Batch] Error processing user ${uid}:`, error);
           result[uid] = null;
         }
       })
@@ -68,8 +72,9 @@ export async function GET(req: NextRequest) {
       { status: 200 }
     );
   } catch (err) {
+    console.error(`[Profile Images Batch] Top-level error:`, err);
     return NextResponse.json(
-      { error: "Failed to fetch images", correlationId },
+      { error: "Failed to fetch images", correlationId, details: (err as Error)?.message },
       { status: 500 }
     );
   } finally {

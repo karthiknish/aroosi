@@ -861,8 +861,8 @@ export default function SearchProfilesPage() {
             </div>
           ) : loadingProfiles ||
             loadingImages ||
-            profiles === undefined ||
-            userImages === undefined ? (
+            (profiles === undefined && isAuthenticated) ||
+            (userImages === undefined && profiles && profiles.length > 0) ? (
             // Show loading skeleton when data is being fetched
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (

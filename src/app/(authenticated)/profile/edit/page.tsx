@@ -244,18 +244,47 @@ export default function EditProfilePage() {
   const profileDataStateString = JSON.stringify(profileDataState);
   const profileData: Profile = useMemo(() => {
     if (!profileDataState) return defaultProfile;
+
+    // Filter out undefined/null values and ensure required fields are present
     const filtered = Object.fromEntries(
-      Object.entries(profileDataState).filter(([, v]) => v !== undefined)
+      Object.entries(profileDataState).filter(([, v]) => v !== undefined && v !== null)
     );
+
     return {
       ...defaultProfile,
       ...filtered,
       _id: profileDataState._id || defaultProfile._id,
       userId: (profileDataState.userId as string) || defaultProfile.userId,
+      email: (profileDataState.email as string) || defaultProfile.email,
+      fullName: (profileDataState.fullName as string) || defaultProfile.fullName,
       gender:
         (profileDataState.gender as "male" | "female" | "other") || "other",
+      city: (profileDataState.city as string) || defaultProfile.city,
+      country: (profileDataState.country as string) || defaultProfile.country,
+      dateOfBirth: (profileDataState.dateOfBirth as string) || defaultProfile.dateOfBirth,
+      phoneNumber: (profileDataState.phoneNumber as string) || defaultProfile.phoneNumber,
+      aboutMe: (profileDataState.aboutMe as string) || defaultProfile.aboutMe,
+      height: (profileDataState.height as string) || defaultProfile.height,
+      maritalStatus: (profileDataState.maritalStatus as "single" | "divorced" | "widowed") || "single",
+      education: (profileDataState.education as string) || defaultProfile.education,
+      occupation: (profileDataState.occupation as string) || defaultProfile.occupation,
+      annualIncome: (profileDataState.annualIncome as string) || defaultProfile.annualIncome,
+      diet: (profileDataState.diet as Diet) || "vegetarian",
+      smoking: (profileDataState.smoking as SmokingDrinking) || "no",
+      drinking: (profileDataState.drinking as SmokingDrinking) || "no",
+      physicalStatus: (profileDataState.physicalStatus as PhysicalStatus) || "normal",
+      partnerPreferenceAgeMin: profileDataState.partnerPreferenceAgeMin || 18,
+      partnerPreferenceAgeMax: profileDataState.partnerPreferenceAgeMax || 80,
+      partnerPreferenceCity: (profileDataState.partnerPreferenceCity as string[]) || [],
+      preferredGender: (profileDataState.preferredGender as "male" | "female" | "any") || "any",
+      profileImageIds: (profileDataState.profileImageIds as string[]) || [],
+      subscriptionPlan: (profileDataState.subscriptionPlan as string) || "free",
+      profileFor: (profileDataState.profileFor as string) || "self",
       createdAt: profileDataState.createdAt || Date.now(),
       updatedAt: profileDataState.updatedAt || Date.now(),
+      motherTongue: (profileDataState.motherTongue as string) || "",
+      religion: (profileDataState.religion as string) || "",
+      ethnicity: (profileDataState.ethnicity as string) || "",
     };
   }, [profileDataStateString, profileDataState]); // Compare content of profileDataState
 
@@ -363,6 +392,19 @@ export default function EditProfilePage() {
       </div>
     );
   }
+
+  // Show loading if we don't have profile data but we're authenticated
+  if (!profileData && isSignedIn && !isProfileError) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <LoadingSpinner size={32} colorClassName="text-pink-600" />
+        <span className="ml-3 text-pink-700 font-semibold">
+          Loading profile data...
+        </span>
+      </div>
+    );
+  }
+
   if (!profileData) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
