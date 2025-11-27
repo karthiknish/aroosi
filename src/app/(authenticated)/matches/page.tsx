@@ -42,11 +42,11 @@ function MatchCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
     >
-      <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-base hover-lift overflow-hidden">
+      <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-white rounded-2xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="flex">
+          <div className="flex items-center p-4 sm:p-6 gap-4 sm:gap-6">
             {/* Profile Image */}
-            <div className="relative p-4">
+            <div className="relative flex-shrink-0">
               {avatar ? (
                 <div className="relative">
                   <Image
@@ -54,7 +54,7 @@ function MatchCard({
                     alt={match.fullName || "Avatar"}
                     width={80}
                     height={80}
-                    className="w-20 h-20 rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform duration-300"
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-md group-hover:scale-105 transition-transform duration-300 ring-2 ring-white"
                   />
                   {(match.unread ?? 0) > 0 ? (
                     <motion.div
@@ -62,53 +62,63 @@ function MatchCard({
                       animate={{ scale: 1 }}
                       className="absolute -top-1 -right-1"
                     >
-                      <span className="flex items-center justify-center h-6 min-w-6 rounded-full bg-primary text-white text-[10px] leading-none font-bold shadow-lg px-1">
+                      <span className="flex items-center justify-center h-6 min-w-6 rounded-full bg-primary text-white text-[10px] leading-none font-bold shadow-lg px-1 border-2 border-white">
                         {match.unread > 9 ? "9+" : match.unread}
                       </span>
                     </motion.div>
                   ) : null}
                 </div>
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary-light to-accent-light flex items-center justify-center shadow-lg">
-                  <UserCircle className="w-12 h-12 text-secondary" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-secondary-light to-accent-light flex items-center justify-center shadow-md ring-2 ring-white">
+                  <UserCircle className="w-10 h-10 text-secondary" />
                 </div>
               )}
             </div>
 
             {/* Profile Info */}
-            <div className="flex-1 p-4 min-w-0">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-lg text-neutral truncate group-hover:text-primary transition-colors">
+            <div className="flex-1 min-w-0">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-lg sm:text-xl text-neutral-dark truncate group-hover:text-primary transition-colors font-serif">
                     {match.fullName || "Unknown"}
                   </h3>
-                </div>
-
-                <div className="flex items-center gap-1 text-sm text-neutral-light">
-                  <MapPin className="w-4 h-4 text-secondary" />
-                  <span className="truncate">
-                    {match.city || "Location not specified"}
+                  <span className="text-xs text-neutral-400 hidden sm:block">
+                    Matched
                   </span>
                 </div>
 
-                {match.occupation && (
-                  <div className="flex items-center gap-1 text-sm text-neutral-light">
-                    <Users className="w-4 h-4 text-secondary" />
-                    <span className="truncate">{match.occupation}</span>
+                <div className="flex items-center gap-4 text-sm text-neutral-500">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-secondary" />
+                    <span className="truncate max-w-[100px] sm:max-w-xs">
+                      {match.city || "Location hidden"}
+                    </span>
                   </div>
-                )}
+                  
+                  {match.occupation && (
+                    <div className="flex items-center gap-1 hidden sm:flex">
+                      <Users className="w-3.5 h-3.5 text-secondary" />
+                      <span className="truncate max-w-[150px]">{match.occupation}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <p className="text-sm text-neutral-400 truncate mt-1">
+                  {(match.unread ?? 0) > 0 
+                    ? <span className="text-primary font-medium">You have new messages</span>
+                    : "Start a conversation..."}
+                </p>
               </div>
             </div>
 
             {/* Action Button */}
-            <div className="p-4 flex items-center">
+            <div className="flex-shrink-0">
               <Link href={`/matches/${match.userId}`}>
                 <Button
-                  className="bg-primary hover:bg-primary-dark text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 group"
-                  size="sm"
+                  className="bg-primary/10 hover:bg-primary text-primary hover:text-white border-0 shadow-none hover:shadow-lg transition-all duration-300 rounded-full w-10 h-10 sm:w-auto sm:h-10 sm:px-6 p-0 flex items-center justify-center"
                 >
-                  <MessageCircle className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                  Chat
+                  <MessageCircle className="w-5 h-5 sm:mr-2" />
+                  <span className="hidden sm:inline">Chat</span>
                 </Button>
               </Link>
             </div>

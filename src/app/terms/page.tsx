@@ -16,22 +16,18 @@ export default function TermsPage() {
           className="max-w-3xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
         >
           <div className="text-center mb-8 sm:mb-12">
-            <Link
-              href="/"
-              className="inline-block mb-4 text-4xl sm:text-5xl font-serif font-bold text-primary hover:text-primary-dark transition-colors"
-            >
-              Aroosi
-            </Link>
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-dark">
+            <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-primary mb-4">
               Terms and Conditions
             </h1>
+            <p className="text-neutral-500">
+              Last updated: November 28, 2025
+            </p>
           </div>
 
-          <article className="prose prose-lg max-w-none text-neutral-light">
+          <article className="prose prose-lg max-w-none text-neutral-light prose-headings:text-neutral-dark prose-a:text-primary hover:prose-a:text-primary-dark">
             <p className="lead">
               Welcome to Aroosi! These terms and conditions outline the rules
-              and regulations for the use of Aroosi&apos;s Website, located at
-              [Your Website URL].
+              and regulations for the use of Aroosi&apos;s Website and Services.
             </p>
 
             <h2>1. Acceptance of Terms</h2>
@@ -81,11 +77,20 @@ export default function TermsPage() {
               or location.
             </p>
 
-            <p className="mt-8">
-              Please review these Terms and Conditions periodically for changes.
-              If you have any questions about these Terms, please contact us.
-            </p>
-            <p>Last updated: {new Date().toLocaleDateString()}</p>
+            <div className="mt-12 pt-8 border-t border-gray-100">
+              <p className="mb-4">
+                If you have any questions about these Terms, please contact us at{" "}
+                <a href="mailto:contact@aroosi.app">contact@aroosi.app</a>.
+              </p>
+              <div className="flex justify-center mt-8">
+                <Link 
+                  href="/"
+                  className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark transition-colors"
+                >
+                  Return to Home
+                </Link>
+              </div>
+            </div>
           </article>
         </motion.main>
       </div>

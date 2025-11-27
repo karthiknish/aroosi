@@ -15,18 +15,15 @@ export default function PrivacyPage() {
           className="max-w-3xl mx-auto bg-white p-6 sm:p-8 md:p-10 rounded-xl shadow-xl"
         >
           <div className="text-center mb-8 sm:mb-12">
-            <Link
-              href="/"
-              className="inline-block mb-4 text-4xl sm:text-5xl font-serif font-bold text-primary hover:text-primary-dark transition-colors"
-            >
-              Aroosi
-            </Link>
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-neutral-dark">
+            <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-primary mb-4">
               Privacy Policy
             </h1>
+            <p className="text-neutral-500">
+              Last updated: November 28, 2025
+            </p>
           </div>
 
-          <article className="prose prose-lg max-w-none text-neutral-light">
+          <article className="prose prose-lg max-w-none text-neutral-light prose-headings:text-neutral-dark prose-a:text-primary hover:prose-a:text-primary-dark">
             <p className="lead">
               Your privacy is important to us. It is Aroosi&apos;s policy to
               respect your privacy regarding any information we may collect from
@@ -175,12 +172,14 @@ export default function PrivacyPage() {
               <a href="mailto:contact@aroosi.app">contact@aroosi.app</a>.
             </p>
 
-            <p className="mt-8">
-              This policy is effective as of {new Date().toLocaleDateString()}.
-              We may update this privacy policy from time to time. We will
-              notify you of any changes by posting the new privacy policy on
-              this page.
-            </p>
+            <div className="mt-12 pt-8 border-t border-gray-100 flex justify-center">
+              <Link 
+                href="/"
+                className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark transition-colors"
+              >
+                Return to Home
+              </Link>
+            </div>
           </article>
         </motion.main>
       </div>
