@@ -41,7 +41,7 @@ export interface UseVoiceRecorderResult {
   start: () => Promise<void>;
   pause: () => void;
   resume: () => void;
-  stop: () => Promise<{ blob: Blob; durationMs: number; mimeType: string } | null>;
+  stop: () => Promise<{ blob: Blob; durationMs: number; mimeType: string; peaks?: number[] } | null>;
   cancel: () => void;
 
   // Capability flags
@@ -244,7 +244,7 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
     } catch {}
   }, []);
 
-  const stop = useCallback(async (): Promise<{ blob: Blob; durationMs: number; mimeType: string } | null> => {
+  const stop = useCallback(async (): Promise<{ blob: Blob; durationMs: number; mimeType: string; peaks?: number[] } | null> => {
     return new Promise((resolve) => {
       try {
         if (!recorderRef.current) return resolve(null);
@@ -263,19 +263,20 @@ export function useVoiceRecorder(options?: UseVoiceRecorderOptions): UseVoiceRec
               return resolve(null);
             }
 
+            let finalPeaks: number[] | undefined;
             // Decode and compute peaks (post-stop)
             try {
               const ctx = new AudioContext();
               const audioBuf = await decodeToAudioBuffer(ctx, blob);
-              const newPeaks = generateWaveformPeaks(audioBuf, bars);
-              setPeaks(newPeaks);
+              finalPeaks = generateWaveformPeaks(audioBuf, bars);
+              setPeaks(finalPeaks);
               ctx.close().catch(() => {});
             } catch {
               // Non-fatal if decode fails; playback still possible via <audio>
             }
 
             setState("idle");
-            resolve({ blob, durationMs, mimeType: recordedMime });
+            resolve({ blob, durationMs, mimeType: recordedMime, peaks: finalPeaks });
             cleanup();
           } catch (e: any) {
             setError(e?.message || "Failed to finalize recording");

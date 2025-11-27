@@ -26,12 +26,18 @@ export function useTypingIndicators({
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSentRef = useRef<number>(0);
   const unsubRef = useRef<(() => void) | null>(null);
 
   // Send typing status to server
   const sendTypingStatus = useCallback(
     async (action: "start" | "stop") => {
       try {
+        // Update ref immediately for "start" to prevent duplicate calls
+        if (action === "start") {
+          lastSentRef.current = Date.now();
+        }
+
         const ref = doc(
           db,
           "typingIndicators",
@@ -51,9 +57,6 @@ export function useTypingIndicators({
     [conversationId, currentUserId]
   );
 
-  // Fetch current typing users
-  const fetchTypingUsers = useCallback(() => {}, []); // unused after Firestore subscription
-
   // Stop typing
   const stopTyping = useCallback(() => {
     if (isTyping) {
@@ -69,9 +72,18 @@ export function useTypingIndicators({
 
   // Start typing
   const startTyping = useCallback(() => {
+    const now = Date.now();
+    
+    // If not currently typing, set state and send update
     if (!isTyping) {
       setIsTyping(true);
       void sendTypingStatus("start");
+    } else {
+      // If already typing, but it's been a while since last update (keep-alive), send update
+      // The listener filters out > 5000ms, so we refresh every 3000ms to be safe
+      if (now - lastSentRef.current > 3000) {
+        void sendTypingStatus("start");
+      }
     }
 
     // Clear existing timeout
@@ -85,7 +97,7 @@ export function useTypingIndicators({
     }, 3000);
   }, [isTyping, sendTypingStatus, stopTyping]);
 
-  // Prefer SSE updates if available; fallback to polling
+  // Listen for typing updates
   useEffect(() => {
     const q = query(
       collection(db, "typingIndicators", conversationId, "users")
@@ -95,6 +107,7 @@ export function useTypingIndicators({
       const now = Date.now();
       snap.forEach((d) => {
         const data: any = d.data();
+        // Filter out self and stale updates (> 5s old)
         if (
           d.id !== currentUserId &&
           data.isTyping &&
@@ -117,11 +130,8 @@ export function useTypingIndicators({
         clearTimeout(typingTimeoutRef.current);
       }
       unsubRef.current?.();
-      if (isTyping) {
-        void sendTypingStatus("stop");
-      }
     };
-  }, [isTyping, sendTypingStatus]);
+  }, []);
 
   return {
     typingUsers,

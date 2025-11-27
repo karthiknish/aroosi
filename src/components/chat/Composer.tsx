@@ -5,6 +5,8 @@ import React, {
   useMemo,
   useState,
   useLayoutEffect,
+  useRef,
+  useEffect,
 } from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -19,6 +21,7 @@ import {
   Pause,
   Play,
   X,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MessageFeedback } from "@/components/ui/MessageFeedback";
@@ -162,6 +165,24 @@ export default function Composer(props: ComposerProps) {
   const [compressionProgress, setCompressionProgress] = useState<number>(0);
   const [micHelpOpen, setMicHelpOpen] = useState(false);
 
+  // Review state
+  const [reviewData, setReviewData] = useState<{
+    blob: Blob;
+    durationMs: number;
+    peaks: number[];
+    url: string;
+  } | null>(null);
+  const [isPlayingReview, setIsPlayingReview] = useState(false);
+  const [reviewProgress, setReviewProgress] = useState(0);
+  const reviewAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Cleanup review URL
+  useEffect(() => {
+    return () => {
+      if (reviewData?.url) URL.revokeObjectURL(reviewData.url);
+    };
+  }, [reviewData]);
+
   const canUseVoice = useMemo(
     () =>
       mediaSupported && mediaRecorderSupported && canSendVoice && !isBlocked,
@@ -226,31 +247,52 @@ export default function Composer(props: ComposerProps) {
     }
   }, [canUseVoice, onVoiceError, onVoiceUpgradeRequired, start]);
 
-  const stopAndUpload = useCallback(async () => {
+  const handleStopRecording = useCallback(async () => {
     try {
-      setUploading(true);
       setUploadError(null);
-      setUploadProgress(0);
       const result = await stop();
-      if (!result) {
-        setUploading(false);
-        setUploadProgress(0);
-        return;
-      }
-      const { blob, durationMs } = result;
+      if (!result) return;
+      
+      const { blob, durationMs, peaks: finalPeaks } = result;
 
       const caps = validateAudioCaps({ durationMs, sizeBytes: blob.size });
       if (!caps.ok) {
-        setUploading(false);
         setUploadError(caps.error || "Audio does not meet constraints");
         onVoiceError?.(caps.error);
         return;
       }
 
+      // Create URL for preview
+      const url = URL.createObjectURL(blob);
+      
+      setReviewData({
+        blob,
+        durationMs,
+        peaks: finalPeaks || [],
+        url
+      });
+    } catch (e: any) {
+      const msg = e?.message || "Recording error";
+      setUploadError(msg);
+      onVoiceError?.(msg);
+    }
+  }, [stop, onVoiceError]);
+
+  const handleSendVoice = useCallback(async () => {
+    if (!reviewData) return;
+    
+    try {
+      setUploading(true);
+      setUploadError(null);
+      setUploadProgress(0);
+
+      const { blob, durationMs, peaks: persistedPeaks } = reviewData;
+
       // Allow parent legacy pipeline as fallback if provided
       if (typeof onSendVoice === "function") {
         await onSendVoice(blob, Math.round(durationMs / 1000));
         setUploading(false);
+        setReviewData(null);
         return;
       }
 
@@ -262,11 +304,6 @@ export default function Composer(props: ComposerProps) {
         return;
       }
 
-      // Generate normalized peaks to persist on server for fast playback UI
-      // Use the lightweight peaks already computed by the hook if present
-      const persistedPeaks: number[] | undefined =
-        Array.isArray(peaks) && peaks.length ? peaks : undefined;
-
       const fd = await buildVoiceUploadFormData({
         blob,
         conversationId,
@@ -276,7 +313,7 @@ export default function Composer(props: ComposerProps) {
 
       // Append peaks as JSON if available (server expects FormData field "peaks")
       try {
-        if (persistedPeaks && typeof (fd as any).append === "function") {
+        if (persistedPeaks && persistedPeaks.length > 0 && typeof (fd as any).append === "function") {
           (fd as any).append("peaks", JSON.stringify(persistedPeaks));
         }
       } catch (err) {
@@ -294,6 +331,8 @@ export default function Composer(props: ComposerProps) {
       // Success
       setUploading(false);
       setUploadError(null);
+      setReviewData(null);
+      
       // Surface a transient feedback
       setMessageFeedback({
         type: "success",
@@ -311,97 +350,194 @@ export default function Composer(props: ComposerProps) {
       onVoiceError?.(msg);
     }
   }, [
+    reviewData,
     conversationId,
+    toUserId,
     onSendVoice,
     onVoiceError,
     setMessageFeedback,
     messageFeedback,
-    peaks,
-    stop,
-    toUserId,
   ]);
 
-  const recordingBanner = (isRecording || isPaused || isUploading) && (
+  const handleDeleteVoice = useCallback(() => {
+    setReviewData(null);
+    setUploadError(null);
+  }, []);
+
+  const recordingBanner = (isRecording || isPaused || isUploading || reviewData) && (
     <div className="mb-3 p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-2 flex items-end gap-1">
-            {/* Lightweight bars from peaks */}
-            {peaks.length > 0 ? (
-              peaks.map((p, i) => (
-                <div
-                  key={i}
-                  className="w-1 bg-pink-500 rounded-sm"
-                  style={{ height: `${Math.max(10, p * 28)}px` }}
-                  title={`${i}`}
-                />
-              ))
-            ) : (
-              <div className="text-xs text-gray-500">Recording…</div>
-            )}
+      <div className="flex items-center justify-between w-full">
+        {reviewData ? (
+          // Review UI
+          <div className="flex items-center gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => {
+                if (reviewAudioRef.current) {
+                  if (isPlayingReview) {
+                    reviewAudioRef.current.pause();
+                  } else {
+                    reviewAudioRef.current.play();
+                  }
+                }
+              }}
+              className="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+            >
+              {isPlayingReview ? (
+                <Pause className="w-4 h-4 fill-current" />
+              ) : (
+                <Play className="w-4 h-4 fill-current ml-0.5" />
+              )}
+            </button>
+            
+            <div className="flex-1 h-8 flex items-center gap-1 px-2 bg-gray-50 rounded-md overflow-hidden relative">
+               {/* Waveform visualization */}
+               <div className="flex items-end gap-[1px] h-full w-full justify-center py-1">
+                {reviewData.peaks.length > 0 ? (
+                  reviewData.peaks.map((p, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-1 rounded-full transition-colors",
+                        (i / reviewData.peaks.length) * 100 <= reviewProgress 
+                          ? "bg-primary" 
+                          : "bg-gray-300"
+                      )}
+                      style={{ height: `${Math.max(20, p * 100)}%` }}
+                    />
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-400 w-full text-center">Audio recorded</div>
+                )}
+               </div>
+               <audio
+                ref={reviewAudioRef}
+                src={reviewData.url}
+                onPlay={() => setIsPlayingReview(true)}
+                onPause={() => setIsPlayingReview(false)}
+                onEnded={() => {
+                  setIsPlayingReview(false);
+                  setReviewProgress(0);
+                }}
+                onTimeUpdate={(e) => {
+                  const el = e.currentTarget;
+                  if (el.duration) {
+                    setReviewProgress((el.currentTime / el.duration) * 100);
+                  }
+                }}
+                className="hidden"
+              />
+            </div>
+
+            <div className="text-xs font-medium text-gray-500 min-w-[40px] text-right">
+              {formatTime(reviewData.durationMs)}
+            </div>
+
+            <div className="flex items-center gap-1 ml-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleDeleteVoice}
+                className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full"
+                title="Delete recording"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSendVoice}
+                disabled={isUploading}
+                className="h-8 px-3 bg-primary hover:bg-primary/90 text-white rounded-full text-xs font-medium"
+              >
+                {isUploading ? <LoadingSpinner size={12} /> : "Send"}
+              </Button>
+            </div>
           </div>
-          <div
-            className={cn(
-              "text-sm font-medium",
-              isPaused ? "text-orange-600" : "text-pink-600"
-            )}
-          >
-            {isUploading ? "Uploading…" : isPaused ? "Paused" : "Recording"}
-          </div>
-          <div className="text-xs text-gray-600">
-            • {elapsedLabel} / {formatTime(MAX_DURATION_SECONDS * 1000)}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {!isUploading && (
-            <>
-              {isRecording && !isPaused && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={pause}
-                  className="h-8"
-                >
-                  <Pause className="w-4 h-4 mr-1" /> Pause
-                </Button>
+        ) : (
+          // Recording UI
+          <>
+            <div className="flex items-center gap-3">
+              <div className="h-2 flex items-end gap-1">
+                {/* Lightweight bars from peaks */}
+                {peaks.length > 0 ? (
+                  peaks.map((p, i) => (
+                    <div
+                      key={i}
+                      className="w-1 bg-pink-500 rounded-sm"
+                      style={{ height: `${Math.max(10, p * 28)}px` }}
+                      title={`${i}`}
+                    />
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500">Recording…</div>
+                )}
+              </div>
+              <div
+                className={cn(
+                  "text-sm font-medium",
+                  isPaused ? "text-orange-600" : "text-pink-600"
+                )}
+              >
+                {isUploading ? "Uploading…" : isPaused ? "Paused" : "Recording"}
+              </div>
+              <div className="text-xs text-gray-600">
+                • {elapsedLabel} / {formatTime(MAX_DURATION_SECONDS * 1000)}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {!isUploading && (
+                <>
+                  {isRecording && !isPaused && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={pause}
+                      className="h-8"
+                    >
+                      <Pause className="w-4 h-4 mr-1" /> Pause
+                    </Button>
+                  )}
+                  {isRecording && isPaused && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={resume}
+                      className="h-8"
+                    >
+                      <Play className="w-4 h-4 mr-1" /> Resume
+                    </Button>
+                  )}
+                  {isRecording && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleStopRecording}
+                      className="h-8"
+                    >
+                      <Square className="w-4 h-4 mr-1" /> Stop
+                    </Button>
+                  )}
+                  {!isRecording && !isPaused && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancel}
+                      className="h-8"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </>
               )}
-              {isRecording && isPaused && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={resume}
-                  className="h-8"
-                >
-                  <Play className="w-4 h-4 mr-1" /> Resume
-                </Button>
-              )}
-              {isRecording && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={stopAndUpload}
-                  className="h-8"
-                >
-                  <Square className="w-4 h-4 mr-1" /> Stop & Send
-                </Button>
-              )}
-              {!isRecording && !isPaused && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={cancel}
-                  className="h-8"
-                >
-                  Cancel
-                </Button>
-              )}
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
       {uploadError && (
         <div className="mt-2 text-xs text-red-600">{uploadError}</div>
